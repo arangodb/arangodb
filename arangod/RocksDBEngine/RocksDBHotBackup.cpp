@@ -73,6 +73,9 @@ std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
     } else if (0 == suffixes[0].compare("restore")) {
       operation.reset((isCoord ? (RocksDBHotBackup *)new RocksDBHotBackupRestoreCoord(body)
                        : (RocksDBHotBackup *)new RocksDBHotBackupRestore(body)));
+    } else if (0 == suffixes[0].compare("list")) {
+      operation.reset((isCoord ? (RocksDBHotBackup *)new RocksDBHotBackupListCoord(body)
+                       : (RocksDBHotBackup *)new RocksDBHotBackupList(body)));
     }
 #if USE_ENTERPRISE
     else if (0 == suffixes[0].compare("upload")) {
@@ -151,7 +154,7 @@ std::string RocksDBHotBackup::buildDirectoryPath(const std::string & timestamp, 
 } // RocksDBHotBackup::buildDirectoryPath
 
 
-std::string RocksDBHotBackup::rebuildPath(const std::string & suffix) {
+std::string RocksDBHotBackup::rebuildPathPrefix() {
   std::string ret_string;
 
   ret_string = getDatabasePath();
@@ -162,6 +165,16 @@ std::string RocksDBHotBackup::rebuildPath(const std::string & suffix) {
   long sysError;
   std::string errorStr;
   TRI_CreateRecursiveDirectory(ret_string.c_str(), sysError, errorStr);
+
+  return ret_string;
+
+} // RocksDBHotBackup::rebuildPathPrefix
+
+
+std::string RocksDBHotBackup::rebuildPath(const std::string & suffix) {
+  std::string ret_string;
+
+  ret_string = rebuildPathPrefix();
 
   ret_string += TRI_DIR_SEPARATOR_CHAR;
   ret_string += suffix;
@@ -782,6 +795,105 @@ bool RocksDBHotBackupRestore::createRestoringDirectory(std::string & restoreDirO
   return retFlag;
 
 } // RocksDBHotBackupRestore::createRestoringDirectory
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief RocksDBHotBackupList
+///        POST:  Returns array of Hotbackup directory names
+////////////////////////////////////////////////////////////////////////////////
+RocksDBHotBackupList::RocksDBHotBackupList(const VPackSlice body)
+  : RocksDBHotBackup(body)
+{
+}
+
+
+RocksDBHotBackupList::~RocksDBHotBackupList() {
+}
+
+
+void RocksDBHotBackupList::parseParameters(rest::RequestType const type) {
+
+  _valid = (rest::RequestType::POST == type);
+
+  if (!_valid) {
+    try {
+      _result.add(VPackValue(VPackValueType::Object));
+      _result.add("httpMethod", VPackValue("only POST allowed"));
+      _result.close();
+      _respCode = rest::ResponseCode::BAD;
+      _respError = TRI_ERROR_HTTP_BAD_PARAMETER;
+    } catch (...) {
+      _result.clear();
+      _respCode = rest::ResponseCode::BAD;
+      _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+      _errorMessage = "RocksDBHotBackupList::parseParameters caught exception.";
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "RocksDBHotBackupList::parseParameters caught exception.";
+    } // catch
+  } // if
+
+  return;
+
+} // RocksDBHotBackupList::parseParameters
+
+
+// @brief route to independent functions for "create" and "delete"
+void RocksDBHotBackupList::execute() {
+  std::vector<std::string> hotbackups;
+
+  hotbackups = TRI_FilesDirectory(rebuildPathPrefix().c_str());
+
+  // remove working directories from list
+  std::vector<std::string>::iterator found;
+  found = std::find(hotbackups.begin(), hotbackups.end(), dirCreatingString);
+  if (hotbackups.end() != found) {
+    hotbackups.erase(found);
+  }
+
+  found = std::find(hotbackups.begin(), hotbackups.end(), dirRestoringString);
+  if (hotbackups.end() != found) {
+    hotbackups.erase(found);
+  }
+
+  found = std::find(hotbackups.begin(), hotbackups.end(), dirDownloadingString);
+  if (hotbackups.end() != found) {
+    hotbackups.erase(found);
+  }
+
+  // add two failsafe directory name string variables (from different branch)
+  found = std::find(hotbackups.begin(), hotbackups.end(), "FAILSAFE");
+  if (hotbackups.end() != found) {
+    hotbackups.erase(found);
+  }
+
+  found = std::find(hotbackups.begin(), hotbackups.end(), "FAILSAFE.1");
+  if (hotbackups.end() != found) {
+    hotbackups.erase(found);
+  }
+
+
+  try {
+    _result.add(VPackValue(VPackValueType::Object));
+    _result.add("server", VPackValue(getPersistedId()));
+    _result.add("hotbackups", VPackValue(VPackValueType::Array));  // open
+    for (auto dir : hotbackups) {
+      _result.add(VPackValue(dir.c_str()));
+    } // for
+    _result.close();
+    _result.close();
+    _success = true;
+  } catch (...) {
+    _result.clear();
+    _respCode = rest::ResponseCode::BAD;
+    _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+    _errorMessage = "RocksDBHotBackupList::execute caught exception.";
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      << "RocksDBHotBackupList::execute caught exception.";
+  } // catch
+
+  return;
+
+} // RocksDBHotBackupList::execute
 
 
 } // namespace arangodb
