@@ -198,7 +198,24 @@ void Thread::shutdown() {
       TRI_DetachThread(&_thread);
     } else {
       auto timeout = 5 * 60 * 1000; // wait max 5min for the thread to terminate
-      if (TRI_JoinThreadWithTimeout(&_thread, timeout) != TRI_ERROR_NO_ERROR) {
+#ifdef __APPLE__
+      // MacOS does not provide an implemenation of pthread_timedjoin_np which is used
+      // in TRI_JoinThreadWithTimeout, so we simply wait for _state to be set to STOPPED
+
+      size_t n = timeout / 100;
+      for (size_t i = 0; i < n; ++i) {
+        if (_state.load() == ThreadState::STOPPED) {
+          break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      }
+
+      int ret = _state.load() == ThreadState::STOPPED ? TRI_JoinThread(&_thread) : TRI_ERROR_FAILED;
+#else
+      auto ret = TRI_JoinThreadWithTimeout(&_thread, timeout);
+#endif
+
+      if (ret != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
           << "cannot shutdown thread '" << _name << "', giving up";
         FATAL_ERROR_ABORT();
