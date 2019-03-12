@@ -458,7 +458,6 @@ function optimizerRuleTestSuite() {
           return (l.outVariable.name < r.outVariable.name ? -1 : 1);
         }
         return 0;
-        }
       });
       nodes.forEach(function(n, i) {
         assertEqual("IndexNode", n.type);
