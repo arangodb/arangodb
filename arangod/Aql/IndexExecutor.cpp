@@ -471,7 +471,6 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     // Read the next elements from the indexes
     bool more = readIndex(callback, hasWritten);
     TRI_ASSERT(getCursor() != nullptr || !more);
-    TRI_ASSERT(getCursor() != nullptr && more == getCursor()->hasMore());
 
     if (!more) {
       _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
