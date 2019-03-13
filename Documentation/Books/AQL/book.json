@@ -35,7 +35,7 @@
   "pluginsConfig": {
     "arangodb-outdated": {
       "eolDate": "2019-03-31"
-    }
+    },
     "addcssjs": {
       "js": ["styles/header.js", "styles/hs.js"],
       "css": ["styles/header.css"]
