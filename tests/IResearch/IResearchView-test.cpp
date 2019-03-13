@@ -44,8 +44,6 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Utils/ExecContext.h"
 
-#include <thread>
-
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
