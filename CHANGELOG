@@ -9,7 +9,7 @@ devel
 
   When `--all-databases` is used, arangodump will create a subdirectory
   with the data of each dumped database. Databases will be dumped one 
-  after the after. However, inside each database, the collections of the
+  after the other. However, inside each database, the collections of the
   database can be dumped in parallel using multiple threads.
 
 * fix compation behavior of followers
