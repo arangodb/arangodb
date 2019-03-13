@@ -83,7 +83,6 @@ function ReplicationSuite() {
       verbose: true,
       includeSystem: false,
       keepBarrier: true,
-      requireFromPresent: true,
     });
 
     assertTrue(syncResult.hasOwnProperty('lastLogTick'));
@@ -97,7 +96,8 @@ function ReplicationSuite() {
     let applierConfiguration = {
       endpoint: masterEndpoint,
       username: "root",
-      password: "" 
+      password: "", 
+      requireFromPresent: true 
     };
 
     connectToSlave();
