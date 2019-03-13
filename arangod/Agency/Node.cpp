@@ -287,24 +287,30 @@ NodeType Node::type() const {
 
 /// @brief lh-value at path vector
 Node& Node::operator()(std::vector<std::string> const& pv) {
-  if (!pv.empty()) {
-    std::string const& key = pv.front();
-    // Create new child
-    // 1. Remove any values, 2. add new child
-    if (_children.find(key) == _children.end()) {
-      _isArray = false;
-      if (!_value.empty()) {
-        _value.clear();
+  Node* current = this;
+
+  for (std::string const& key : pv) {
+
+    auto& children = current->_children;
+    auto const& child = children.find(key);
+
+    if (child == children.end()) {
+
+      current->_isArray = false;
+      if (!current->_value.empty()) {
+        current->_value.clear();
       }
-      _children[key] = std::make_shared<Node>(key, this);
+
+      auto const& node = std::make_shared<Node>(key, current);
+      children.insert(Children::value_type(key, node));
+
+      current = node.get();
+    } else {
+      current = child->second.get();
     }
-    auto pvc(pv);
-    pvc.erase(pvc.begin());
-    TRI_ASSERT(_children[key]->_parent == this);
-    return (*_children[key])(pvc);
-  } else {
-    return *this;
   }
+
+  return *current;
 }
 
 /// @brief rh-value at path vector. Check if TTL has expired.
@@ -1027,7 +1033,7 @@ std::pair<std::string, bool> Node::hasAsString(std::string const& url) const {
 }  // hasAsString
 
 std::pair<Node::Children const&, bool> Node::hasAsChildren(std::string const& url) const {
-  
+
   // retrieve node, throws if does not exist
   try {
     Node const& target(operator()(url));
@@ -1038,7 +1044,7 @@ std::pair<Node::Children const&, bool> Node::hasAsChildren(std::string const& ur
   }  // catch
 
   return std::pair<Children const&, bool> {dummyChildren, false};
-  
+
 }  // hasAsChildren
 
 std::pair<void*, bool> Node::hasAsBuilder(std::string const& url, Builder& builder,
