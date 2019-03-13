@@ -522,9 +522,6 @@ class Methods {
   /// @brief read- or write-unlock a collection
   ENTERPRISE_VIRT Result unlockRecursive(TRI_voc_cid_t, AccessMode::Type);
 
-  /// @brief returns an empty index iterator for the collection
-  std::unique_ptr<IndexIterator> createEmptyIndexIterator(std::string const& collectionName);
-
  private:
   /// @brief replicates operations from leader to follower(s)
   Result replicateOperations(LogicalCollection* collection,

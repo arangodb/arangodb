@@ -31,11 +31,12 @@ using namespace arangodb;
 
 IndexIterator::IndexIterator(LogicalCollection* collection, transaction::Methods* trx)
     : _collection(collection), _trx(trx) {
-  TRI_ASSERT(_collection != nullptr);
+  // note: collection may be a nullptr here, if we are dealing with the EmptyIndexIterator
   TRI_ASSERT(_trx != nullptr);
 }
 
 bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  TRI_ASSERT(_collection != nullptr);
   return next(
       [this, &cb](LocalDocumentId const& token) {
         _collection->readDocumentWithCallback(_trx, token, cb);
