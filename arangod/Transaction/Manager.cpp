@@ -42,7 +42,7 @@ namespace transaction {
 
 // register a list of failed transactions
 void Manager::registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
-  TRI_ASSERT(!_keepTransactionData);
+  TRI_ASSERT(_keepTransactionData);
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
   for (auto const& it : failedTransactions) {
     const size_t bucket = getBucket(it);
@@ -53,7 +53,7 @@ void Manager::registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const
 
 // unregister a list of failed transactions
 void Manager::unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
-  TRI_ASSERT(!_keepTransactionData);
+  TRI_ASSERT(_keepTransactionData);
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
     WRITE_LOCKER(locker, _transactions[bucket]._lock);
