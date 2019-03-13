@@ -248,12 +248,21 @@ Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
   // It is illegal to call this method on the primary index
   // RocksDBPrimaryIndex must override this method accordingly
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
+  bool tempEnableIndexing = mthd->isIndexingDisbled() && hasExpansion() && unique();
+  if (tempEnableIndexing) {
+    mthd->EnableIndexing();
+  }
 
   Result res = remove(trx, mthd, oldDocumentId, oldDoc, mode);
   if (!res.ok()) {
     return res;
   }
-  return insert(trx, mthd, newDocumentId, newDoc, mode);
+  auto ret = insert(trx, mthd, newDocumentId, newDoc, mode);
+
+  if (tempEnableIndexing) {
+    mthd->DisableIndexing();
+  }
+  return ret;
 }
 
 /// @brief return the memory usage of the index

@@ -782,6 +782,7 @@ function ensureIndexSuite() {
       assertTrue(found);
 
       // this should work without problems:
+      collection.update("test1", {value: ['1']});
       collection.update("test1", {value: ['othervalue']});
       collection.update("test1", {value: ['othervalue', 'morevalues']});
     },

@@ -1308,14 +1308,7 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
 
   // we may only disable indexing if we don't have a unique array index
-  bool mayDisableIndexing = trx->isSingleOperationTransaction();
-  for (std::shared_ptr<Index> const& idx : _indexes) {
-    RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    if (rIdx->hasExpansion() && rIdx->unique()) {
-      mayDisableIndexing = false;
-    }
-  }
-  IndexingDisabler disabler(mthds, mayDisableIndexing);
+  IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
   RocksDBKeyLeaser key(trx);
   key->constructDocument(_objectId, oldDocumentId);
