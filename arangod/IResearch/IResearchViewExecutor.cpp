@@ -105,6 +105,8 @@ IResearchViewExecutor<ordered>::IResearchViewExecutor(IResearchViewExecutor::Fet
       {
   TRI_ASSERT(infos.getQuery().trx() != nullptr);
 
+  TRI_ASSERT(ordered == (infos.getNumScoreRegisters() != 0));
+
   // add expression execution context
   _filterCtx.emplace(_execCtx);
 }

@@ -984,11 +984,16 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   bool const ordered = !_scorers.empty();
 
-  // We have exactly one output register here, namely the first register after
-  // the last input register.
+  // We have one output register for documents, which is always the first after
+  // the input registers.
   aql::RegisterId const firstOutputRegister = getNrInputRegisters();
-  aql::RegisterId const numScoreRegisters =
-      getNrOutputRegisters() - getNrInputRegisters() - 1;
+  auto numScoreRegisters = static_cast<const aql::RegisterId>(_scorers.size());
+
+  // We have one additional output register for each scorer, consecutively after
+  // the output register for documents. These must of course fit in the
+  // available registers. There may be unused registers reserved for later
+  // blocks.
+  TRI_ASSERT(getNrInputRegisters() + 1 + numScoreRegisters <= getNrOutputRegisters());
   std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
       aql::make_shared_unordered_set();
   writableOutputRegisters->reserve(1 + numScoreRegisters);
@@ -997,8 +1002,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     writableOutputRegisters->emplace(reg);
   }
   TRI_ASSERT(writableOutputRegisters->size() == 1 + numScoreRegisters);
-  TRI_ASSERT(*writableOutputRegisters->begin() == firstOutputRegister);
-  TRI_ASSERT((numScoreRegisters != 0) == ordered);
+  TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->begin(),
+                                                      writableOutputRegisters->end()));
   // TODO Don't we have to set some input registers here?
   aql::ExecutorInfos infos = createRegisterInfos({}, std::move(writableOutputRegisters));
   // TODO Don't pass `this`, but only the necessary members.
