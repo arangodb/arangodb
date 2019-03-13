@@ -24,6 +24,7 @@
 #ifndef ARANGOD_INDEXES_INDEX_H
 #define ARANGOD_INDEXES_INDEX_H 1
 
+#include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -44,7 +45,6 @@ class LocalTaskQueue;
 
 class IndexIterator;
 class LogicalCollection;
-class ManagedDocumentResult;
 struct IndexIteratorOptions;
 
 namespace velocypack {
@@ -53,7 +53,6 @@ class Slice;
 }  // namespace velocypack
 
 namespace aql {
-struct AstNode;
 class SortCondition;
 struct Variable;
 }  // namespace aql
@@ -340,7 +339,6 @@ class Index {
                                                       arangodb::aql::Variable const*) const;
 
   virtual IndexIterator* iteratorForCondition(transaction::Methods* trx,
-                                              ManagedDocumentResult* result,
                                               aql::AstNode const* condNode,
                                               aql::Variable const* var,
                                               IndexIteratorOptions const& opts) = 0;
@@ -363,6 +361,11 @@ class Index {
   static size_t sortWeight(arangodb::aql::AstNode const* node);
 
  protected:
+  /// @brief return the name of the (sole) index attribute
+  /// it is only allowed to call this method if the index contains a
+  /// single attribute
+  std::string const& getAttribute() const;
+ 
   /// @brief generate error result
   /// @param code the error key
   /// @param key the conflicting key
@@ -379,6 +382,11 @@ class Index {
   /// @param key the conflicting key
   arangodb::Result& addErrorMsg(Result& r, std::string const& key = "");
 
+  /// @brief extracts a timestamp value from a document
+  /// returns a negative value if the document does not contain the specified
+  /// attribute, or the attribute does not contain a valid timestamp or date string
+  double getTimestamp(arangodb::velocypack::Slice const& doc, std::string const& attributeName) const;
+
   TRI_idx_iid_t const _iid;
   LogicalCollection& _collection;
   std::vector<std::vector<arangodb::basics::AttributeName>> const _fields;
@@ -390,6 +398,29 @@ class Index {
   // use this with c++17  --  attributeMatches
   // static inline std::vector<arangodb::basics::AttributeName> const vec_id {{ StaticStrings::IdString, false }};
 };
+
+/// @brief simple struct that takes an AstNode of type comparison and
+/// splits it into the comparison operator, the attribute access and the 
+/// lookup value parts
+/// only works for conditions such as  a.b == 2   or   45 < a.xx.c
+/// the collection variable (a in the above examples) is passed in "variable"
+struct AttributeAccessParts {
+  AttributeAccessParts(arangodb::aql::AstNode const* comparison,
+                       arangodb::aql::Variable const* variable);
+  
+  /// @brief comparison operation, e.g. NODE_TYPE_OPERATOR_BINARY_EQ
+  arangodb::aql::AstNode const* comparison;
+  
+  /// @brief attribute access node
+  arangodb::aql::AstNode const* attribute;
+  
+  /// @brief lookup value 
+  arangodb::aql::AstNode const* value;
+
+  /// @brief operation type
+  arangodb::aql::AstNodeType opType;
+};
+
 }  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::Index const*);

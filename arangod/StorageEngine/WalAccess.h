@@ -109,6 +109,9 @@ class WalAccess {
 
     /// In case collection is == 0,
     bool includeSystem = false;
+    
+    /// export _queues and _jobs collection
+    bool includeFoxxQueues = false;
 
     /// only output markers from this database
     TRI_voc_tick_t vocbase = 0;
@@ -145,7 +148,8 @@ class WalAccess {
                                            TransactionCallback const&) const = 0;
 
   virtual WalAccessResult tail(Filter const& filter, size_t chunkSize,
-                               TRI_voc_tid_t barrierId, MarkerCallback const&) const = 0;
+                               TRI_voc_tid_t barrierId,
+                               MarkerCallback const&) const = 0;
 };
 
 /// @brief helper class used to resolve vocbases

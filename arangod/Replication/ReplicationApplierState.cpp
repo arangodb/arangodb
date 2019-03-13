@@ -43,9 +43,16 @@ ReplicationApplierState::ReplicationApplierState()
       _totalRequests(0),
       _totalFailedConnects(0),
       _totalEvents(0),
+      _totalDocuments(0),
+      _totalRemovals(0),
       _totalResyncs(0),
-      _skippedOperations(0) {
+      _totalSkippedOperations(0),
+      _totalApplyTime(0.0),
+      _totalApplyInstances(0),
+      _totalFetchTime(0.0),
+      _totalFetchInstances(0) {
   _progressTime[0] = '\0';
+  _startTime[0] = '\0';
 }
 
 ReplicationApplierState::~ReplicationApplierState() {}
@@ -61,6 +68,7 @@ ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierSt
   _serverId = other._serverId;
   _progressMsg = other._progressMsg;
   memcpy(&_progressTime[0], &other._progressTime[0], sizeof(_progressTime));
+  memcpy(&_startTime[0], &other._startTime[0], sizeof(_startTime));
 
   _lastError.code = other._lastError.code;
   _lastError.message = other._lastError.message;
@@ -70,17 +78,42 @@ ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierSt
   _totalRequests = other._totalRequests;
   _totalFailedConnects = other._totalFailedConnects;
   _totalEvents = other._totalEvents;
+  _totalDocuments = other._totalDocuments;
+  _totalRemovals = other._totalRemovals;
   _totalResyncs = other._totalResyncs;
-  _skippedOperations = other._skippedOperations;
+  _totalSkippedOperations = other._totalSkippedOperations;
+  _totalApplyTime = other._totalApplyTime;
+  _totalApplyInstances = other._totalApplyInstances;
+  _totalFetchTime = other._totalFetchTime;
+  _totalFetchInstances = other._totalFetchInstances;
 
   return *this;
 }
 
-void ReplicationApplierState::reset(bool resetState) {
+void ReplicationApplierState::reset(bool resetPhase, bool reducedSet) {
   _lastProcessedContinuousTick = 0;
   _lastAppliedContinuousTick = 0;
-  _lastAvailableContinuousTick = 0;
   _safeResumeTick = 0;
+  _failedConnects = 0;
+  // don't need to reset the following
+  // _totalFailedConnects = 0;
+  // _totalResyncs = 0; 
+  // _totalRequests = 0;
+  // _totalEvents = 0;
+  // _totalDocuments = 0;
+  // _totalRemovals = 0;
+  // _totalSkippedOperations = 0;
+  // _totalApplyTime = 0.0;
+  // _totalApplyInstances = 0;
+  // _totalFetchTime = 0.0;
+  // _totalFetchInstances = 0;
+  // _startTime[0] = '\0';
+
+  if (reducedSet) { 
+    return;
+  }
+
+  _lastAvailableContinuousTick = 0;
   _preventStart = false;
   _stopInitialSynchronization = false;
   _progressMsg.clear();
@@ -88,14 +121,7 @@ void ReplicationApplierState::reset(bool resetState) {
   _serverId = 0;
   _lastError.reset();
 
-  _failedConnects = 0;
-  _totalRequests = 0;
-  _totalFailedConnects = 0;
-  _totalEvents = 0;
-  _totalResyncs = 0;
-  _skippedOperations = 0;
-
-  if (resetState) {
+  if (resetPhase) {
     _phase = ActivityPhase::INACTIVE;
   }
 }
@@ -118,6 +144,7 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
   result.openObject();
 
   if (full) {
+    result.add("started", VPackValue(_startTime));
     result.add("running", VPackValue(isTailing()));  // isRunning
     result.add("phase", VPackValue(ActivityToString(_phase)));
 
@@ -153,9 +180,12 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
     }
 
     if (isTailing()) {
-      TRI_voc_tick_t ticksBehind =
+      int64_t ticksBehind =
           _lastAvailableContinuousTick -
           std::max(_lastAppliedContinuousTick, _lastProcessedContinuousTick);
+      if (ticksBehind < 0) {
+        ticksBehind = 0;
+      }
       result.add("ticksBehind", VPackValue(ticksBehind));
     }
 
@@ -171,8 +201,22 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
     result.add("totalRequests", VPackValue(_totalRequests));
     result.add("totalFailedConnects", VPackValue(_totalFailedConnects));
     result.add("totalEvents", VPackValue(_totalEvents));
+    result.add("totalDocuments", VPackValue(_totalDocuments));
+    result.add("totalRemovals", VPackValue(_totalRemovals));
     result.add("totalResyncs", VPackValue(_totalResyncs));
-    result.add("totalOperationsExcluded", VPackValue(_skippedOperations));
+    result.add("totalOperationsExcluded", VPackValue(_totalSkippedOperations));
+    result.add("totalApplyTime", VPackValue(_totalApplyTime));
+    if (_totalApplyInstances == 0) {
+      result.add("averageApplyTime", VPackValue(0));
+    } else {
+      result.add("averageApplyTime", VPackValue(_totalApplyTime / _totalApplyInstances));
+    }
+    result.add("totalFetchTime", VPackValue(_totalFetchTime));
+    if (_totalFetchInstances == 0) {
+      result.add("averageFetchTime", VPackValue(0));
+    } else {
+      result.add("averageFetchTime", VPackValue(_totalFetchTime / _totalFetchInstances));
+    }
 
     // lastError
     result.add(VPackValue("lastError"));
@@ -191,4 +235,10 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
   }
 
   result.close();
+}
+
+void ReplicationApplierState::setStartTime() {
+  if (_startTime[0] == '\0') {
+    TRI_GetTimeStampReplication(_startTime, sizeof(_startTime) - 1);
+  }
 }

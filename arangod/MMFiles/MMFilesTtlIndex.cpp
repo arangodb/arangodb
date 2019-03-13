@@ -23,6 +23,7 @@
 
 #include "MMFilesTtlIndex.h"
 #include "Basics/StaticStrings.h"
+#include "Transaction/Helpers.h"
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -59,4 +60,42 @@ void MMFilesTtlIndex::toVelocyPack(arangodb::velocypack::Builder& builder,
   );
   builder.add(StaticStrings::IndexExpireAfter, VPackValue(_expireAfter));
   builder.close();
+}
+
+/// @brief inserts a document into the index
+Result MMFilesTtlIndex::insert(transaction::Methods& trx, 
+                               LocalDocumentId const& documentId,
+                               velocypack::Slice const& doc,
+                               Index::OperationMode mode) {
+  double timestamp = getTimestamp(doc);
+  if (timestamp < 0) {
+    // index attribute not present or invalid. nothing to do 
+    return Result();
+  }
+  transaction::BuilderLeaser leased(&trx);
+  leased->openObject();
+  leased->add(getAttribute(), VPackValue(timestamp));
+  leased->close(); 
+  return MMFilesSkiplistIndex::insert(trx, documentId, leased->slice(), mode);
+}
+
+/// @brief removes a document from the index
+Result MMFilesTtlIndex::remove(transaction::Methods& trx, 
+                               LocalDocumentId const& documentId,
+                               velocypack::Slice const& doc,
+                               Index::OperationMode mode) {
+  double timestamp = getTimestamp(doc);
+  if (timestamp < 0) {
+    // index attribute not present or invalid. nothing to do 
+    return Result();
+  }
+  transaction::BuilderLeaser leased(&trx);
+  leased->openObject();
+  leased->add(getAttribute(), VPackValue(timestamp));
+  leased->close(); 
+  return MMFilesSkiplistIndex::remove(trx, documentId, leased->slice(), mode);
+}
+ 
+double MMFilesTtlIndex::getTimestamp(arangodb::velocypack::Slice const& doc) const {
+  return Index::getTimestamp(doc, getAttribute());
 }

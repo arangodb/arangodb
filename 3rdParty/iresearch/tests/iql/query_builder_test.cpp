@@ -53,7 +53,7 @@ namespace tests {
         const irs::index_reader& index,
         const irs::sort::field_collector* field,
         const irs::sort::term_collector* term
-      ) const {
+      ) const override {
         // do not need to collect stats
       }
       virtual irs::sort::field_collector::ptr prepare_field_collector() const override {

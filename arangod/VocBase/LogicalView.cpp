@@ -31,6 +31,7 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -82,6 +83,20 @@ Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
   builder.add(StaticStrings::DataSourceType, arangodb::velocypack::Value(type().name()));
 
   return appendVelocyPackImpl(builder, detailed, forPersistence);
+}
+
+bool LogicalView::canUse(arangodb::auth::Level const& level) {
+  auto* ctx = arangodb::ExecContext::CURRENT;
+
+  // as per https://github.com/arangodb/backlog/issues/459
+  return !ctx || ctx->canUseDatabase(vocbase().name(), level); // can use vocbase
+
+  /* FIXME TODO per-view authentication checks disabled as per https://github.com/arangodb/backlog/issues/459
+  return !ctx // authentication not enabled
+    || (ctx->canUseDatabase(vocbase.name(), level) // can use vocbase
+        && (ctx->canUseCollection(vocbase.name(), name(), level)) // can use view
+       );
+  */
 }
 
 /*static*/ LogicalDataSource::Category const& LogicalView::category() noexcept {

@@ -23,12 +23,8 @@
 
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
-#include "formats/formats_10.hpp" 
-#include "filter_test_case_base.hpp"
 #include "analysis/token_attributes.hpp"
 #include "search/phrase_filter.hpp"
-#include "store/memory_directory.hpp"
-#include "store/fs_directory.hpp"
 #ifndef IRESEARCH_DLL
 #include "search/term_query.hpp"
 #endif
@@ -68,7 +64,9 @@ void analyzed_json_field_factory(
   }
 }
 
-class phrase_filter_test_case : public filter_test_case_base {
+NS_END
+
+class phrase_filter_test_case : public tests::filter_test_case_base {
  protected:
   void sequential() {
     // add segment
@@ -346,10 +344,10 @@ class phrase_filter_test_case : public filter_test_case_base {
         ++finish_count;
       };
       sort.prepare_field_collector_ = [&sort]()->irs::sort::field_collector::ptr {
-        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(sort);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(sort);
       };
       sort.prepare_term_collector_ = [&sort]()->irs::sort::term_collector::ptr {
-        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(sort);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(sort);
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
         ASSERT_TRUE(
@@ -694,11 +692,9 @@ class phrase_filter_test_case : public filter_test_case_base {
   }
 }; // phrase_filter_test_case
 
-NS_END // tests
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                             by_phrase base tests 
-// ----------------------------------------------------------------------------
+TEST_P(phrase_filter_test_case, by_phrase) {
+  sequential();
+}
 
 TEST(by_phrase_test, ctor) {
   irs::by_phrase q;
@@ -901,47 +897,19 @@ TEST(by_phrase_test, equal) {
   }
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                           memory_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class memory_phrase_filter_test_case : public tests::phrase_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(memory_phrase_filter_test_case, by_phrase) {
-  sequential();
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                               fs_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class fs_phrase_filter_test_case : public tests::phrase_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    auto dir = test_dir();
-
-    dir /= "index";
-
-    return new irs::fs_directory(dir.utf8());
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(fs_phrase_filter_test_case, by_phrase) {
-  sequential();
-}
+INSTANTIATE_TEST_CASE_P(
+  phrase_filter_test,
+  phrase_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -41,11 +41,13 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/voc-types.h"
@@ -54,9 +56,15 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
+
+arangodb::velocypack::StringRef const cuidRef("cuid");
+arangodb::velocypack::StringRef const dbRef("db");
+arangodb::velocypack::StringRef const databaseRef("database");
+arangodb::velocypack::StringRef const globallyUniqueIdRef("globallyUniqueId");
 
 /// @brief extract the collection id from VelocyPack
 TRI_voc_cid_t getCid(arangodb::velocypack::Slice const& slice) {
@@ -130,20 +138,43 @@ arangodb::Result applyCollectionDumpMarkerInternal(
     options.indexOperationMode = arangodb::Index::OperationMode::internal;
 
     try {
-      // try insert first
-      OperationResult opRes = trx.insert(coll->name(), slice, options);
+      OperationResult opRes;
+      bool useReplace = false;
+      VPackSlice keySlice = arangodb::transaction::helpers::extractKeyFromDocument(slice);
 
-      if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-        bool useReplace = true;
+      // if we are about to process a single document marker we first check if the target 
+      // document exists. if yes, we don't try an insert (which would fail anyway) but carry 
+      // on with a replace.
+      if (keySlice.isString()) {
+        arangodb::LocalDocumentId const oldDocumentId =
+            coll->getPhysical()->lookupKey(&trx, keySlice);
+        if (oldDocumentId.isSet()) {
+          useReplace = true;
+          opRes.result.reset(TRI_ERROR_NO_ERROR, keySlice.copyString());
+        }
+      }
 
+      if (!useReplace) {
+        // try insert first
+        opRes = trx.insert(coll->name(), slice, options);
+        if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+          useReplace = true;
+        }
+      }
+
+      if (useReplace) {
         // conflicting key is contained in opRes.errorMessage() now
-        VPackSlice keySlice = slice.get(arangodb::StaticStrings::KeyString);
-
         if (keySlice.isString()) {
           // let's check if the key we have got is the same as the one
           // that we would like to insert
           if (keySlice.copyString() != opRes.errorMessage()) {
             // different key
+            if (trx.isSingleOperationTransaction()) {
+              // return a special error code from here, with the key of
+              // the conflicting document as the error message :-|
+              return Result(TRI_ERROR_ARANGO_TRY_AGAIN, opRes.errorMessage());
+            }
+
             VPackBuilder tmp;
             tmp.add(VPackValue(opRes.errorMessage()));
 
@@ -219,7 +250,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 namespace arangodb {
 
 Syncer::JobSynchronizer::JobSynchronizer(std::shared_ptr<Syncer const> const& syncer)
-    : _syncer(syncer), _gotResponse(false), _jobsInFlight(0) {}
+    : _syncer(syncer), _gotResponse(false), _time(0.0), _jobsInFlight(0) {}
 
 Syncer::JobSynchronizer::~JobSynchronizer() {
   // signal that we have got something
@@ -238,24 +269,26 @@ Syncer::JobSynchronizer::~JobSynchronizer() {
 
 /// @brief will be called whenever a response for the job comes in
 void Syncer::JobSynchronizer::gotResponse(
-    std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response) noexcept {
+    std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response, double time) noexcept {
   CONDITION_LOCKER(guard, _condition);
   _res.reset();  // no error!
   _response = std::move(response);
   _gotResponse = true;
+  _time = time;
 
   guard.signal();
 }
 
 /// @brief will be called whenever an error occurred
 /// expects "res" to be an error!
-void Syncer::JobSynchronizer::gotResponse(arangodb::Result&& res) noexcept {
+void Syncer::JobSynchronizer::gotResponse(arangodb::Result&& res, double time) noexcept {
   TRI_ASSERT(res.fail());
 
   CONDITION_LOCKER(guard, _condition);
   _res = std::move(res);
   _response.reset();
   _gotResponse = true;
+  _time = time;
 
   guard.signal();
 }
@@ -384,7 +417,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
   } else if (_state.applier._chunkSize < 16 * 1024) {
     _state.applier._chunkSize = 16 * 1024;
   }
-
+    
   // get our own server-id
   _state.localServerId = ServerIdFeature::getId();
   _state.localServerIdString = basics::StringUtils::itoa(_state.localServerId);
@@ -429,9 +462,9 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
   std::string name;
   if (slice.isObject()) {
     VPackSlice tmp;
-    if ((tmp = slice.get("db")).isString()) {  // wal access protocol
+    if ((tmp = slice.get(::dbRef)).isString()) {  // wal access protocol
       name = tmp.copyString();
-    } else if ((tmp = slice.get("database")).isString()) {  // pre 3.3
+    } else if ((tmp = slice.get(::databaseRef)).isString()) {  // pre 3.3
       name = tmp.copyString();
     }
   } else if (slice.isString()) {
@@ -471,9 +504,9 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
   if (!_state.master.simulate32Client() || cid == 0) {
     VPackSlice uuid;
 
-    if ((uuid = slice.get("cuid")).isString()) {
+    if ((uuid = slice.get(::cuidRef)).isString()) {
       return vocbase.lookupCollectionByUuid(uuid.copyString());
-    } else if ((uuid = slice.get("globallyUniqueId")).isString()) {
+    } else if ((uuid = slice.get(::globallyUniqueIdRef)).isString()) {
       return vocbase.lookupCollectionByUuid(uuid.copyString());
     }
   }
@@ -854,9 +887,9 @@ Result Syncer::dropView(arangodb::velocypack::Slice const& slice, bool reportErr
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  VPackSlice guidSlice = slice.get("globallyUniqueId");
+  VPackSlice guidSlice = slice.get(::globallyUniqueIdRef);
   if (guidSlice.isNone()) {
-    guidSlice = slice.get("cuid");
+    guidSlice = slice.get(::cuidRef);
   }
   if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,

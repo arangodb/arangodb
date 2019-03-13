@@ -252,6 +252,18 @@ bool Agent::isCommitted(index_t index) {
   }
 }
 
+index_t Agent::index() {
+
+  if (challengeLeadership()) {
+    resign();
+    return 0;
+  }
+
+  MUTEX_LOCKER(tiLocker, _tiLock);
+  return _confirmed[id()];
+
+}
+
 //  AgentCallback reports id of follower and its highest processed index
 void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
   auto startTime = steady_clock::now();
@@ -371,9 +383,6 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
       {
         WRITE_LOCKER(oLocker, _outputLock);
         _commitIndex = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
-        if (_commitIndex >= _state.nextCompactionAfter()) {
-          _compactor.wakeUp();
-        }
       }
       return priv_rpc_ret_t(true, t);
     } else {
@@ -400,7 +409,8 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
     CONDITION_LOCKER(guard, _waitForCV);
     _commitIndex = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
     _waitForCV.broadcast();
-    if (_commitIndex >= _state.nextCompactionAfter()) {
+    if (leaderCommitIndex >= _state.nextCompactionAfter() &&
+        payload[nqs - 1].get("index").getNumber<index_t>() >= _state.nextCompactionAfter()) {
       _compactor.wakeUp();
     }
   }
@@ -1582,6 +1592,29 @@ arangodb::consensus::index_t Agent::readDB(Node& node) const {
   READ_LOCKER(oLocker, _outputLock);
   node = _readDB.get();
   return _commitIndex;
+}
+
+/// Get readdb
+arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+
+  uint64_t commitIndex = 0;
+   
+  { READ_LOCKER(oLocker, _outputLock);
+
+    commitIndex = _commitIndex;
+    // commit index
+    builder.add("index", VPackValue(commitIndex));
+    builder.add("term", VPackValue(term()));
+
+    // key-value store {}
+    builder.add(VPackValue("agency"));
+    _readDB.get().toBuilder(builder, true); }
+  
+  // replicated log []
+  _state.toVelocyPack(commitIndex, builder);
+  
+  return commitIndex;
 }
 
 void Agent::executeLockedRead(std::function<void()> const& cb) {

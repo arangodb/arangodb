@@ -42,7 +42,6 @@
 #include "Logger/Logger.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
-#include "Replication/GlobalInitialSyncer.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -253,9 +252,7 @@ void HeartbeatThread::run() {
   } else if (ServerState::instance()->isSingleServer(role)) {
     if (ReplicationFeature::INSTANCE->isActiveFailoverEnabled()) {
       runSingleServer();
-    } else {
-      // runSimpleServer();  // for later when CriticalThreads identified
-    }  // else
+    }
   } else if (ServerState::instance()->isAgent(role)) {
     runSimpleServer();
   } else {
@@ -661,6 +658,8 @@ void HeartbeatThread::runSingleServer() {
         if (applier->isActive()) {
           applier->stopAndJoin();
         }
+        // we are leader now. make sure the applier drops its previous state
+        applier->forget();
         lastTick = EngineSelectorFeature::ENGINE->currentTick();
         
         // put the leader in optional read-only mode
@@ -678,8 +677,7 @@ void HeartbeatThread::runSingleServer() {
         }
         
         // server is now responsible for expiring outdated documents
-        ttlFeature->activate();
-
+        ttlFeature->allowRunning(true);
         continue;  // nothing more to do
       }
 
@@ -689,7 +687,7 @@ void HeartbeatThread::runSingleServer() {
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Following: " << leaderStr;
         
       // server is not responsible anymore for expiring outdated documents
-      ttlFeature->deactivate();
+      ttlFeature->allowRunning(false);
 
       ServerState::instance()->setFoxxmaster(leaderStr);  // leader is foxxmater
       ServerState::instance()->setReadOnly(true);  // Disable writes with dirty-read header
@@ -745,6 +743,7 @@ void HeartbeatThread::runSingleServer() {
         config._requireFromPresent = true;
         config._incremental = true;
         TRI_ASSERT(!config._skipCreateDrop);
+        config._includeFoxxQueues = true; // sync _queues and _jobs
 
         applier->forget();  // forget about any existing configuration
         applier->reconfigure(config);

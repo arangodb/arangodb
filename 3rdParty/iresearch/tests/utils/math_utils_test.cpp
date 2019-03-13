@@ -209,7 +209,7 @@ TEST(math_utils, popcnt64) {
   ASSERT_EQ(16, math::popcnt64(2863311530));
   ASSERT_EQ(32, math::popcnt64(std::numeric_limits<uint32_t>::max()));
   ASSERT_EQ(64, math::popcnt64(std::numeric_limits<uint64_t>::max()));
-  
+
   ASSERT_EQ(0, math::pop64(0));
   ASSERT_EQ(1, math::pop64(1));
   ASSERT_EQ(16, math::pop64(2863311530));
@@ -221,4 +221,55 @@ TEST(math_utils, clz32) {
   ASSERT_EQ(31, math::clz32(1));
   ASSERT_EQ(9, math::clz32(4333568));
   ASSERT_EQ(0, math::clz32(std::numeric_limits<uint32_t>::max()));
+}
+
+TEST(math_utils, div_ceil32) {
+  ASSERT_EQ(7, math::div_ceil32(49,7));
+  ASSERT_EQ(7, math::div_ceil32(48,7));
+  ASSERT_EQ(6, math::div_ceil32(41,7));
+  ASSERT_EQ(6, math::div_ceil32(42,7));
+  ASSERT_EQ(1, math::div_ceil32(2,2));
+  ASSERT_EQ(2, math::div_ceil32(3,2));
+  ASSERT_EQ(1, math::div_ceil32(5,7));
+  ASSERT_EQ(0, math::div_ceil32(0,7));
+  ASSERT_EQ(0, math::div_ceil32(0,1));
+  ASSERT_EQ(7, math::div_ceil32(7,1));
+  ASSERT_EQ(1, math::div_ceil32(irs::integer_traits<uint32_t>::const_max/2,irs::integer_traits<uint32_t>::const_max/2));
+  ASSERT_EQ(1, math::div_ceil32(irs::integer_traits<uint32_t>::const_max/2,irs::integer_traits<uint32_t>::const_max/2));
+  ASSERT_EQ(1, math::div_ceil32(-1+irs::integer_traits<uint32_t>::const_max/2,1+irs::integer_traits<uint32_t>::const_max/2));
+}
+
+TEST(math_utils, div_ceil64) {
+  ASSERT_EQ(7, math::div_ceil64(49,7));
+  ASSERT_EQ(7, math::div_ceil64(48,7));
+  ASSERT_EQ(6, math::div_ceil64(41,7));
+  ASSERT_EQ(6, math::div_ceil64(42,7));
+  ASSERT_EQ(1, math::div_ceil64(2,2));
+  ASSERT_EQ(2, math::div_ceil64(3,2));
+  ASSERT_EQ(1, math::div_ceil64(5,7));
+  ASSERT_EQ(0, math::div_ceil64(0,7));
+  ASSERT_EQ(0, math::div_ceil64(0,1));
+  ASSERT_EQ(7, math::div_ceil64(7,1));
+  ASSERT_EQ(1, math::div_ceil64(irs::integer_traits<uint64_t>::const_max/2,irs::integer_traits<uint64_t>::const_max/2));
+  ASSERT_EQ(1, math::div_ceil64(-1+irs::integer_traits<uint64_t>::const_max/2,1+irs::integer_traits<uint64_t>::const_max/2));
+}
+
+TEST(math_utils, ceil32) {
+  ASSERT_EQ(41, math::ceil32(41, 1));
+  ASSERT_EQ(0, math::ceil32(0, 7));
+  ASSERT_EQ(42, math::ceil32(41, 7));
+  ASSERT_EQ(42, math::ceil32(42, 7));
+  ASSERT_EQ(49, math::ceil32(43, 7));
+  ASSERT_EQ(uint32_t(irs::integer_traits<uint32_t>::const_max-3), math::ceil32(irs::integer_traits<uint32_t>::const_max-3, 2));
+  ASSERT_EQ(uint32_t(irs::integer_traits<uint32_t>::const_max-3), math::ceil32(irs::integer_traits<uint32_t>::const_max-4, 2));
+}
+
+TEST(math_utils, ceil64) {
+  ASSERT_EQ(41, math::ceil64(41, 1));
+  ASSERT_EQ(0, math::ceil64(0, 7));
+  ASSERT_EQ(42, math::ceil64(41, 7));
+  ASSERT_EQ(42, math::ceil64(42, 7));
+  ASSERT_EQ(49, math::ceil64(43, 7));
+  ASSERT_EQ(uint64_t(irs::integer_traits<uint64_t>::const_max-3), math::ceil64(irs::integer_traits<uint64_t>::const_max-3, 2));
+  ASSERT_EQ(uint64_t(irs::integer_traits<uint64_t>::const_max-3), math::ceil64(irs::integer_traits<uint64_t>::const_max-4, 2));
 }

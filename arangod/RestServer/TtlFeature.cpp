@@ -400,6 +400,7 @@ TtlFeature::TtlFeature(
     application_features::ApplicationServer& server
 )
     : ApplicationFeature(server, "Ttl"), 
+      _allowRunning(true),
       _active(true) {
   startsAfter("DatabasePhase");
   startsAfter("ServerPhase");
@@ -493,6 +494,27 @@ void TtlFeature::beginShutdown() {
 void TtlFeature::stop() {
   shutdownThread();
 }
+
+void TtlFeature::allowRunning(bool value) {
+  {
+    MUTEX_LOCKER(locker, _propertiesMutex);
+
+    if (value) {
+      _allowRunning = true;
+    } else {
+      _allowRunning = false;
+    }
+  }
+  
+  if (!value && _thread != nullptr) {
+    // wait until TTL operations have finished
+    _thread->wakeup();
+
+    while (_thread->isCurrentlyWorking()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+  }
+}
   
 void TtlFeature::activate() { 
   {
@@ -530,7 +552,7 @@ void TtlFeature::deactivate() {
 
 bool TtlFeature::isActive() const { 
   MUTEX_LOCKER(locker, _propertiesMutex);
-  return _active; 
+  return _allowRunning && _active; 
 }
 
 void TtlFeature::statsToVelocyPack(VPackBuilder& builder) const {

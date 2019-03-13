@@ -53,10 +53,13 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 
+static arangodb::velocypack::StringRef const idRef("id");
+static arangodb::velocypack::StringRef const cidRef("cid");
+
 static std::unique_ptr<VPackAttributeTranslator> translator;
 static std::unique_ptr<VPackAttributeExcludeHandler> excludeHandler;
 static std::unique_ptr<VPackCustomTypeHandler>customTypeHandler;
-      
+
 template<bool useUtf8, typename Comparator>
 int compareObjects(VPackSlice const& lhs, 
                    VPackSlice const& rhs,
@@ -976,10 +979,10 @@ uint64_t VelocyPackHelper::extractIdValue(VPackSlice const& slice) {
   if (!slice.isObject()) {
     return 0;
   }
-  VPackSlice id = slice.get("id");
+  VPackSlice id = slice.get(::idRef);
   if (id.isNone()) {
     // pre-3.1 compatibility
-    id = slice.get("cid");
+    id = slice.get(::cidRef);
   }
 
   if (id.isString()) {

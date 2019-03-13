@@ -47,12 +47,17 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
+
+namespace {
+arangodb::velocypack::StringRef const cuidRef("cuid");
+}
 
 DatabaseTailingSyncer::DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
                                              ReplicationApplierConfiguration const& configuration,
@@ -73,30 +78,11 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
 
 /// @brief save the current applier state
 Result DatabaseTailingSyncer::saveApplierState() {
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
-      << "saving replication applier state. last applied continuous tick: "
-      << applier()->_state._lastAppliedContinuousTick
-      << ", safe resume tick: " << applier()->_state._safeResumeTick;
-
-  try {
-    _applier->persistState(false);
-    return Result();
-  } catch (basics::Exception const& ex) {
-    std::string errorMsg =
-        std::string("unable to save replication applier state: ") + ex.what();
-    LOG_TOPIC(WARN, Logger::REPLICATION) << errorMsg;
-    THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), errorMsg);
-  } catch (std::exception const& ex) {
-    std::string errorMsg =
-        std::string("unable to save replication applier state: ") + ex.what();
-    LOG_TOPIC(WARN, Logger::REPLICATION) << errorMsg;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "caught unknown exception while saving applier state");
+  auto rv = _applier->persistStateResult(false);
+  if (rv.fail()) {
+    THROW_ARANGO_EXCEPTION(rv);
   }
-  return TRI_ERROR_INTERNAL;
+  return rv;
 }
 
 /// @brief finalize the synchronization of a collection by tailing the WAL
@@ -194,6 +180,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     }
     if (!fromIncluded && fromTick > 0) {
       until = fromTick;
+      abortOngoingTransactions();
       return Result(
           TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
           std::string("required follow tick value '") + StringUtils::itoa(lastIncludedTick) +
@@ -203,9 +190,9 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
               "number of historic logfiles on the master.");
     }
 
-    uint64_t processedMarkers = 0;
+    ApplyStats applyStats;
     uint64_t ignoreCount = 0;
-    Result r = applyLog(response.get(), fromTick, processedMarkers, ignoreCount);
+    Result r = applyLog(response.get(), fromTick, applyStats, ignoreCount);
     if (r.fail()) {
       until = fromTick;
       return r;
@@ -257,7 +244,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
   // now check for a globally unique id attribute ("cuid")
   // if its present, then we will use our local cuid -> collection name
   // translation table
-  VPackSlice const name = slice.get("cuid");
+  VPackSlice const name = slice.get(::cuidRef);
   if (!name.isString()) {
     return false;
   }

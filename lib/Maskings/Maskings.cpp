@@ -180,17 +180,14 @@ VPackValue Maskings::maskedItem(Collection& collection, std::vector<std::string>
                                 std::string& buffer, VPackSlice const& data) {
   static std::string xxxx("xxxx");
 
-  if (path.size() == 1) {
-    if (path[0] == "_key" || path[0] == "_id" || path[0] == "_rev" ||
-        path[0] == "_from" || path[0] == "_to") {
-      if (data.isString()) {
-        velocypack::ValueLength length;
-        char const* c = data.getString(length);
-        buffer = std::string(c, length);
-        return VPackValue(buffer);
-      } else if (data.isInteger()) {
-        return VPackValue(data.getInt());
-      }
+  if (path.size() == 1 && path[0].size() >= 1 && path[0][0] == '_') {
+    if (data.isString()) {
+      velocypack::ValueLength length;
+      char const* c = data.getString(length);
+      buffer = std::string(c, length);
+      return VPackValue(buffer);
+    } else if (data.isInteger()) {
+      return VPackValue(data.getInt());
     }
   }
 

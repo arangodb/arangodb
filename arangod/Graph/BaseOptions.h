@@ -38,6 +38,7 @@ struct AstNode;
 class ExecutionPlan;
 class Expression;
 class Query;
+
 }  // namespace aql
 
 namespace velocypack {
@@ -149,7 +150,7 @@ struct BaseOptions {
                               std::string const& collectionName,
                               std::string const& attributeName, aql::AstNode* condition);
 
-  EdgeCursor* nextCursorLocal(ManagedDocumentResult*, arangodb::velocypack::StringRef vid,
+  EdgeCursor* nextCursorLocal(arangodb::velocypack::StringRef vid,
                               std::vector<LookupInfo>&);
 
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);

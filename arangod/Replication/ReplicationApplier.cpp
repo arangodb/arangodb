@@ -406,6 +406,37 @@ void ReplicationApplier::removeState() {
   }
 }
 
+Result ReplicationApplier::resetState(bool reducedSet) {
+  // make sure the both vars below match your needs
+  static const bool resetPhase = false;
+  static const bool doSync = false;
+
+  if (!applies()) {
+    return Result{};
+  }
+  std::string const filename = getStateFilename();
+
+  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  _state.reset(resetPhase, reducedSet);
+
+  if (!filename.empty() && TRI_ExistsFile(filename.c_str())) {
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing replication state file '"
+                                          << filename << "' for " << _databaseName;
+    int res = TRI_UnlinkFile(filename.c_str());
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return Result{res, std::string("unable to remove replication state file '") + filename + "'"};
+    }
+  }
+
+  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    << "' with lastProcessedContinuousTick: " << _state._lastProcessedContinuousTick
+    << ", lastAppliedContinuousTick: " << _state._lastAppliedContinuousTick
+    << ", safeResumeTick: " << _state._safeResumeTick;
+
+  return persistStateResult(doSync);
+}
+
 void ReplicationApplier::reconfigure(ReplicationApplierConfiguration const& configuration) {
   if (!applies()) {
     return;
@@ -431,9 +462,15 @@ void ReplicationApplier::reconfigure(ReplicationApplierConfiguration const& conf
 }
 
 /// @brief load the applier state from persistent storage
+bool ReplicationApplier::loadState() {
+  WRITE_LOCKER_EVENTUAL(readLocker, _statusLock);
+  return loadStateNoLock();
+}
+
+/// @brief load the applier state from persistent storage
 /// must currently be called while holding the write-lock
 /// returns whether a previous state was found
-bool ReplicationApplier::loadState() {
+bool ReplicationApplier::loadStateNoLock() {
   if (!applies()) {
     // unsupported
     return false;
@@ -521,6 +558,33 @@ void ReplicationApplier::persistState(bool doSync) {
   }
 }
 
+Result ReplicationApplier::persistStateResult(bool doSync) {
+  LOG_TOPIC(TRACE, Logger::REPLICATION)
+    << "saving replication applier state. last applied continuous tick: "
+    << this->_state._lastAppliedContinuousTick
+    << ", safe resume tick: " << this->_state._safeResumeTick;
+
+  Result rv{};
+
+  try {
+    persistState(doSync);
+  } catch (basics::Exception const& ex) {
+    std::string errorMsg = std::string("unable to save replication applier state: ") + ex.what();
+    LOG_TOPIC(WARN, Logger::REPLICATION) << errorMsg;
+    rv.reset(ex.code(), errorMsg);
+  } catch (std::exception const& ex) {
+    std::string errorMsg = std::string("unable to save replication applier state: ") + ex.what();
+    LOG_TOPIC(WARN, Logger::REPLICATION) << errorMsg;
+    rv.reset(TRI_ERROR_INTERNAL, errorMsg);
+  } catch (...) {
+    std::string errorMsg = std::string("caught unknown exception while saving applier state");
+    LOG_TOPIC(WARN, Logger::REPLICATION) << errorMsg;
+    rv.reset(TRI_ERROR_INTERNAL, errorMsg);
+  }
+
+  return rv;
+}
+
 /// @brief store the current applier state in the passed vpack builder
 void ReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {
   TRI_ASSERT(!result.isClosed());
@@ -578,7 +642,7 @@ void ReplicationApplier::setError(arangodb::Result const& r) {
 }
 
 Result ReplicationApplier::lastError() const {
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  READ_LOCKER_EVENTUAL(writeLocker, _statusLock);
   return Result(_state._lastError.code, _state._lastError.message);
 }
 

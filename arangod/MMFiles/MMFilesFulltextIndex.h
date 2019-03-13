@@ -72,7 +72,7 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
   void load() override {}
   void unload() override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, 
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override final;

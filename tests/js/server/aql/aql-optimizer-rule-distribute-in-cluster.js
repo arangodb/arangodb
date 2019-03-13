@@ -646,13 +646,14 @@ function interactionOtherRulesTestSuite () {
   var undist = "undistribute-remove-after-enum-coll"; // Rule 3
 
   // various choices to control the optimizer: 
-  var allRules         = { optimizer: { rules: [ "+all" ] } };
+  var allRules         = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection" ] } };
   var allRulesNoInter  = 
-    { optimizer: { rules: [ "+all", "-interchange-adjacent-enumerations" ] } };
+    { optimizer: { rules: [ "+all", "-interchange-adjacent-enumerations", "-reduce-extraction-to-projection" ] } };
   var ruleDisabled   = { optimizer: { rules: [ "+all", "-" + undist ] } };
   var ruleDisabledNoInter  = 
     { optimizer: { rules: [ "+all", 
                             "-interchange-adjacent-enumerations", 
+                            "-reduce-extraction-to-projection",
                             "-" + undist ] } };
 
   var cn1 = "UnitTestsAql1";

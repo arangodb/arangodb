@@ -264,6 +264,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
                   result.errorNumber(), result.errorMessage());
     return;
   }
+  
+  TRI_ASSERT(latest >= result.maxTick());
 
   bool const checkMore = (result.maxTick() > 0 && result.maxTick() < latest);
 
@@ -365,6 +367,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
   // include system collections?
   bool includeSystem = _request->parsedValue("includeSystem", true);
+  bool includeFoxxQs = _request->parsedValue("includeFoxxQueues", false);
 
   // produce inventory for all databases?
   bool isGlobal = false;
@@ -377,10 +380,10 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   Result res;
   if (isGlobal) {
     builder.add(VPackValue("databases"));
-    res = ctx->getInventory(_vocbase, includeSystem, true, builder);
+    res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, true, builder);
   } else {
     grantTemporaryRights();
-    res = ctx->getInventory(_vocbase, includeSystem, false, builder);
+    res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false, builder);
     TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
   }
 

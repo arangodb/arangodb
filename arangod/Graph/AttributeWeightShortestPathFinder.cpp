@@ -30,7 +30,6 @@
 #include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
 #include "Transaction/Helpers.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
@@ -157,8 +156,7 @@ AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(ShortestPat
       _bingo(false),
       _resultCode(TRI_ERROR_NO_ERROR),
       _intermediateSet(false),
-      _intermediate(),
-      _mmdr(new ManagedDocumentResult{}) {}
+      _intermediate() {}
 
 AttributeWeightShortestPathFinder::~AttributeWeightShortestPathFinder() {}
 
@@ -293,9 +291,9 @@ void AttributeWeightShortestPathFinder::expandVertex(bool isBackward,
                                                      std::vector<Step*>& result) {
   std::unique_ptr<EdgeCursor> edgeCursor;
   if (isBackward) {
-    edgeCursor.reset(_options.nextReverseCursor(_mmdr.get(), vertex));
+    edgeCursor.reset(_options.nextReverseCursor(vertex));
   } else {
-    edgeCursor.reset(_options.nextCursor(_mmdr.get(), vertex));
+    edgeCursor.reset(_options.nextCursor(vertex));
   }
 
   std::unordered_map<arangodb::velocypack::StringRef, size_t> candidates;

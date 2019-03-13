@@ -37,16 +37,12 @@
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @return the specified object is granted 'level' access
+/// @return the specified vocbase is granted 'level' access
 ////////////////////////////////////////////////////////////////////////////////
-bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase,
-            std::string const* dataSource = nullptr  // nullptr == validate only vocbase
-) {
+bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase) {
   auto* execCtx = arangodb::ExecContext::CURRENT;
 
-  return !execCtx ||
-         (execCtx->canUseDatabase(vocbase.name(), level) &&
-          (!dataSource || execCtx->canUseCollection(vocbase.name(), *dataSource, level)));
+  return !execCtx || execCtx->canUseDatabase(vocbase.name(), level);
 }
 
 }  // namespace
@@ -71,10 +67,7 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RO,
-              view->vocbase())) {  // as per
-                                   // https://github.com/arangodb/backlog/issues/459
-    // if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) { // check
+  if (!view->canUse(auth::Level::RO)) { // check auth after ensuring that the view exists
     // auth after ensuring that the view exists
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to get view"));
@@ -284,11 +277,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       // end of parameter parsing
       // .......................................................................
 
-      if (!canUse(auth::Level::RW,
-                  view->vocbase())) {  // as per
-                                       // https://github.com/arangodb/backlog/issues/459
-        // if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { //
-        // check auth after ensuring that the view exists
+      if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
         generateError(
             Result(TRI_ERROR_FORBIDDEN, "insufficient rights to rename view"));
 
@@ -330,11 +319,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     // end of parameter parsing
     // .........................................................................
 
-    if (!canUse(auth::Level::RW,
-                view->vocbase())) {  // as per
-                                     // https://github.com/arangodb/backlog/issues/459
-      // if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { //
-      // check auth after ensuring that the view exists
+    if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
       generateError(
           Result(TRI_ERROR_FORBIDDEN, "insufficient rights to modify view"));
 
@@ -421,11 +406,7 @@ void RestViewHandler::deleteView() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RW,
-              view->vocbase())) {  // as per
-                                   // https://github.com/arangodb/backlog/issues/459
-    // if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check
-    // auth after ensuring that the view exists
+  if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to drop view"));
 
@@ -506,10 +487,7 @@ void RestViewHandler::getViews() {
 
   for (auto view : views) {
     if (view && (!excludeSystem || !view->system())) {
-      if (!canUse(auth::Level::RO,
-                  view->vocbase())) {  // as per
-                                       // https://github.com/arangodb/backlog/issues/459
-        // if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) {
+      if (!view->canUse(auth::Level::RO)) { // check auth after ensuring that the view exists
         continue;  // skip views that are not authorized to be read
       }
 
