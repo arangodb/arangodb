@@ -350,7 +350,7 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
         _console->printLine(is.str());
 
         if (v8connection->role() == "PRIMARY" || v8connection->role() == "DBSERVER") {
-          std::string msg("WARNING: operations in the cluster should be carried via a coordinator, but the shell is connected to a database server node");
+          std::string msg("WARNING: You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator");
           if (_console->colors()) {
             msg = ShellColorsFeature::SHELL_COLOR_RED + msg + ShellColorsFeature::SHELL_COLOR_RESET;
           }
