@@ -224,6 +224,18 @@ name _cannot_ be changed after index creation. No two indices on the same
 collection may share the same name, but two indices on different collections 
 may.
 
+Client tools
+------------
+
+Under normal circumstances there should be no need to connect to a 
+database server in a cluster with one of the client tools, and it is 
+likely that any user operations carried out there with one of the client
+tools may cause trouble. 
+
+The client tools arangosh, arangodump and arangorestore will now emit 
+a warning when connecting with them to a database server node in a cluster.
+
+
 Internal
 --------
 

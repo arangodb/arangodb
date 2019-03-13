@@ -1041,11 +1041,17 @@ void DumpFeature::start() {
 
   // check if we are in cluster or single-server mode
   Result result{TRI_ERROR_NO_ERROR};
-  std::tie(result, _options.clusterMode) = _clientManager.getArangoIsCluster(*httpClient);
+  std::string role;
+  std::tie(result, role) = _clientManager.getArangoIsCluster(*httpClient);
+  _options.clusterMode = (role == "COORDINATOR");
   if (result.fail()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+    LOG_TOPIC(FATAL, arangodb::Logger::DUMP)
         << "Error: could not detect ArangoDB instance type: " << result.errorMessage();
     FATAL_ERROR_EXIT();
+  }
+
+  if (role == "DBSERVER" || role == "PRIMARY") {
+    LOG_TOPIC(WARN, arangodb::Logger::DUMP) << "You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator. This is an unsupported operation!";
   }
 
   // special cluster-mode parameter checks
