@@ -372,7 +372,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info,
   setOperationResult(std::move(operationResult));
 
   handleBabyStats(stats, info, _operationResult.countErrorCodes,
-                  toRemove.length(), info._ignoreErrors);
+                  toRemove.length(), info._ignoreErrors, info._ignoreDocumentNotFound);
 
   _tmpBuilder.clear();
 
@@ -756,7 +756,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
     }
 
     handleBabyStats(stats, info, _operationResult.countErrorCodes,
-                    toUpdateOrReplace.length(), info._ignoreErrors);
+                    toUpdateOrReplace.length(), info._ignoreErrors, info._ignoreDocumentNotFound);
   }
 
   _tmpBuilder.clear();

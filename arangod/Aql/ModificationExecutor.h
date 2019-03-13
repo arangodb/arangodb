@@ -107,7 +107,7 @@ class ModificationExecutorInfos : public ExecutorInfos {
                             transaction::Methods* trx, OperationOptions options,
                             aql::Collection const* aqlCollection, bool producesResults,
                             bool consultAqlWriteFilter, bool ignoreErrors,
-                            bool doCount, bool returnInheritedResults,
+                            bool doCount, /*bool returnInheritedResults,*/
                             bool isReplace, bool ignoreDocumentNotFound)
       : ExecutorInfos(makeSet({wrap(input1RegisterId), wrap(input2RegisterId),
                                wrap(input3RegisterId)}) /*input registers*/,
@@ -121,7 +121,7 @@ class ModificationExecutorInfos : public ExecutorInfos {
         _consultAqlWriteFilter(consultAqlWriteFilter),
         _ignoreErrors(ignoreErrors),
         _doCount(doCount),
-        _returnInheritedResults(returnInheritedResults),
+        //_returnInheritedResults(returnInheritedResults),
         _isReplace(isReplace),
         _ignoreDocumentNotFound(ignoreDocumentNotFound),
         _input1RegisterId(input1RegisterId),
@@ -143,7 +143,7 @@ class ModificationExecutorInfos : public ExecutorInfos {
   bool _consultAqlWriteFilter;
   bool _ignoreErrors;
   bool _doCount;  // count statisitics
-  bool _returnInheritedResults;
+  //bool _returnInheritedResults;
   bool _isReplace;               // needed for upsert
   bool _ignoreDocumentNotFound;  // needed for update replace
 

@@ -136,7 +136,7 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
       calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
       _collection, producesResults(), _options.consultAqlWriteFilter,
-      _options.ignoreErrors, countStats(), false /*return interhited FIXME*/,
+      _options.ignoreErrors, countStats() /*, false return interhited FIXME*/,
       false /*is replace (needed by upsert)*/, _options.ignoreDocumentNotFound);
 
   return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Remove>>>(&engine, this,
@@ -207,7 +207,7 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
       calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
       _collection, producesResults(), _options.consultAqlWriteFilter,
-      _options.ignoreErrors, countStats(), false /*return interhited FIXME*/,
+      _options.ignoreErrors, countStats() /*, false return interhited FIXME*/,
       false /*is replace (needed by upsert)*/, _options.ignoreDocumentNotFound);
 
   return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Insert>>>(&engine, this,
@@ -302,7 +302,7 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
       calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
       _collection, producesResults(), _options.consultAqlWriteFilter,
-      _options.ignoreErrors, countStats(), false /*return interhited FIXME*/,
+      _options.ignoreErrors, countStats() /*, false return interhited FIXME*/,
       false /*is replace (needed by upsert)*/, _options.ignoreDocumentNotFound);
 
   return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Update>>>(&engine, this,
@@ -379,7 +379,7 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
       calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
       _collection, producesResults(), _options.consultAqlWriteFilter,
-      _options.ignoreErrors, countStats(), false /*return interhited FIXME*/,
+      _options.ignoreErrors, countStats() /*, false return interhited FIXME*/,
       false /*is replace (needed by upsert)*/, _options.ignoreDocumentNotFound);
 
   return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Replace>>>(&engine, this,
@@ -472,7 +472,7 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
       calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
       _collection, producesResults(), _options.consultAqlWriteFilter,
-      _options.ignoreErrors, countStats(), false /*return interhited FIXME*/,
+      _options.ignoreErrors, countStats() /*, false return interhited FIXME*/,
       _isReplace, _options.ignoreDocumentNotFound);
 
   return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Upsert>>>(&engine, this,
