@@ -498,16 +498,6 @@ struct IndexFactoryMock : arangodb::IndexFactory {
 
 }
 
-void ContextDataMock::pinData(arangodb::LogicalCollection* collection) {
-  if (collection) {
-    pinned.emplace(collection->id());
-  }
-}
-
-bool ContextDataMock::isPinned(TRI_voc_cid_t cid) const {
-  return pinned.find(cid) != pinned.end();
-}
-
 std::function<void()> PhysicalCollectionMock::before = []()->void {};
 
 PhysicalCollectionMock::PhysicalCollectionMock(
@@ -1166,10 +1156,7 @@ std::unique_ptr<arangodb::TransactionCollection> StorageEngineMock::createTransa
 }
 
 std::unique_ptr<arangodb::transaction::ContextData> StorageEngineMock::createTransactionContextData() {
-  before();
-  return std::unique_ptr<arangodb::transaction::ContextData>(
-    new ContextDataMock()
-  );
+  return std::unique_ptr<arangodb::transaction::ContextData>();
 }
 
 std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransactionManager() {

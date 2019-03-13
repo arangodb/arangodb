@@ -43,14 +43,6 @@ class WalAccess;
 
 } // arangodb
 
-class ContextDataMock: public arangodb::transaction::ContextData {
- public:
-  std::set<TRI_voc_cid_t> pinned;
-
-  void pinData(arangodb::LogicalCollection* collection) override;
-  bool isPinned(TRI_voc_cid_t cid) const override;
-};
-
 class PhysicalCollectionMock: public arangodb::PhysicalCollection {
  public:
   static std::function<void()> before;

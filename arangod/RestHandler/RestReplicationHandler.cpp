@@ -1011,13 +1011,17 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
         SingleCollectionTransaction trx(ctx, name, AccessMode::Type::EXCLUSIVE);
         
         Result res = trx.begin();
-        if (!res.ok()) {
+        if (res.fail()) {
           return res;
         }
         
         OperationOptions options;
         OperationResult result = trx.truncate(name, options);
         res = trx.finish(result.result);
+        if (res.fail()) {
+          res.appendErrorMessage(". Unable to truncate collection (dropping is forbidden)");
+        }
+        return res;
       }
 
       if (!result.ok()) {

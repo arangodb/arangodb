@@ -128,7 +128,7 @@ std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager() 
 }
 
 std::unique_ptr<transaction::ContextData> ClusterEngine::createTransactionContextData() {
-  return std::unique_ptr<transaction::ContextData>(nullptr); // not used by coordinator
+  return std::unique_ptr<transaction::ContextData>(); // not used by coordinator
 }
 
 std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(TRI_vocbase_t& vocbase,

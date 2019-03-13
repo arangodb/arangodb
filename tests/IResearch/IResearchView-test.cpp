@@ -44,6 +44,8 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Utils/ExecContext.h"
 
+#include <thread>
+
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
@@ -5221,9 +5223,9 @@ SECTION("test_update_partial") {
       "{ \"links\": { \"testCollection\": {} } }"
     );
 
-    auto before = StorageEngineMock::inRecoveryResult;
+    auto beforeRec = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+    auto restore = irs::make_finally([&beforeRec]()->void { StorageEngineMock::inRecoveryResult = beforeRec; });
     persisted = false;
     CHECK((view->properties(updateJson->slice(), true).ok()));
     CHECK((false == persisted));
