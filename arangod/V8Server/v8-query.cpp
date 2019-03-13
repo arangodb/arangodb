@@ -221,17 +221,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // We directly read the entire cursor. so batchsize == limit
-  std::unique_ptr<OperationCursor> opCursor =
-      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL);
-
-  if (opCursor->fail()) {
-    TRI_V8_THROW_EXCEPTION(opCursor->code);
-  }
-
-  if (!opCursor->hasMore()) {
-    // OUT OF MEMORY. initial hasMore should return true even if index is empty
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  OperationCursor opCursor(trx.indexScan(collectionName, transaction::Methods::CursorType::ALL));
 
   // copy default options
   VPackOptions resultOptions = VPackOptions::Defaults;
@@ -240,7 +230,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
-  opCursor->allDocuments(
+  opCursor.allDocuments(
       [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
         resultBuilder.add(slice);
       },

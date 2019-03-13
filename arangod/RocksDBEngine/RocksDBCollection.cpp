@@ -295,7 +295,7 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << msg;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto it : _indexes) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "- " << it.get();
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "- " << it->context();
     }
 #endif
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
@@ -531,13 +531,11 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(transaction::Methods* trx) const {
-  return std::unique_ptr<IndexIterator>(
-      new RocksDBAllIndexIterator(&_logicalCollection, trx, primaryIndex()));
+  return std::make_unique<RocksDBAllIndexIterator>(&_logicalCollection, trx, primaryIndex());
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(transaction::Methods* trx) const {
-  return std::unique_ptr<IndexIterator>(
-      new RocksDBAnyIndexIterator(&_logicalCollection, trx, primaryIndex()));
+  return std::make_unique<RocksDBAnyIndexIterator>(&_logicalCollection, trx, primaryIndex());
 }
 
 void RocksDBCollection::invokeOnAllElements(transaction::Methods* trx,
@@ -562,6 +560,8 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   TRI_ASSERT(_objectId != 0);
   auto state = RocksDBTransactionState::toState(&trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
+  // don't compact on restore
+  bool const doCompact = !options.isRestore;
 
   if (state->isOnlyExclusiveTransaction() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
@@ -645,7 +645,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
     guard.fire();  // remove blocker
 
-    if (numDocs > 64 * 1024) {
+    if (numDocs > 64 * 1024 && doCompact) {
       // also compact the ranges in order to speed up all further accesses
       compact();
     }
@@ -716,7 +716,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   // reset to previous value after truncate is finished
   state->options().intermediateCommitCount = prvICC;
 
-  if (found > 64 * 1024) {
+  if (found > 64 * 1024 && doCompact) {
     // also compact the ranges in order to speed up all further accesses
     compact();
   }

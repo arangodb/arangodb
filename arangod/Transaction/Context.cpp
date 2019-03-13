@@ -32,7 +32,6 @@
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>

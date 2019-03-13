@@ -104,9 +104,12 @@ class ReplicationApplier {
   virtual void reconfigure(ReplicationApplierConfiguration const& configuration);
 
   /// @brief load the applier state from persistent storage
+  bool loadState();
+
+  /// @brief load the applier state from persistent storage
   /// must currently be called while holding the write-lock
   /// returns whether a previous state was found
-  bool loadState();
+  bool loadStateNoLock();
 
   /// @brief store the configuration for the applier
   virtual void storeConfiguration(bool doSync) = 0;
