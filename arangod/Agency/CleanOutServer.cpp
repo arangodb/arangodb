@@ -519,8 +519,8 @@ arangodb::Result CleanOutServer::abort() {
   }
 
   // Abort all our subjobs:
-  Node::Children const todos = _snapshot.hasAsChildren(toDoPrefix).first;
-  Node::Children const pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  Node::Children const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
 
   for (auto const& subJob : todos) {
     if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
