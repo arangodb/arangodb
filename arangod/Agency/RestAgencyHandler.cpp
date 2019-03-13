@@ -560,7 +560,8 @@ RestStatus RestAgencyHandler::handleConfig() {
 }
 
 RestStatus RestAgencyHandler::handleState() {
-  Builder body;
+
+  VPackBuilder body;
   body.add(VPackValue(VPackValueType::Array));
   for (auto const& i : _agent->state().get()) {
     body.add(VPackValue(VPackValueType::Object));

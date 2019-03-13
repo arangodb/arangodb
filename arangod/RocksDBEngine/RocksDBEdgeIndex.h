@@ -73,7 +73,6 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   // returns false if there are no more keys to look for
   bool initKey(arangodb::velocypack::Slice& key);
   void resetInplaceMemory();
-  arangodb::StringRef getFromToFromIterator(arangodb::velocypack::ArrayIterator const&);
   void lookupInRocksDB(StringRef edgeKey);
 
   std::unique_ptr<arangodb::velocypack::Builder> _keys;

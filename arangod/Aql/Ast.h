@@ -353,27 +353,16 @@ class Ast {
   /// @brief create an AST direction node
   AstNode* createNodeCollectionDirection(uint64_t, AstNode const*);
 
-  /// @brief create an AST traversal node with only vertex variable
-  AstNode* createNodeTraversal(char const*, size_t, AstNode const*,
-                               AstNode const*, AstNode const*, AstNode const*);
+  /// @brief create an AST options node:
+  //  Will either return Noop noed, if the input is nullptr
+  //  Otherwise return the input node.
+  AstNode const* createNodeOptions(AstNode const*) const;
 
-  /// @brief create an AST traversal node with vertex and edge variable
-  AstNode* createNodeTraversal(char const*, size_t, char const*, size_t, AstNode const*,
-                               AstNode const*, AstNode const*, AstNode const*);
+  /// @brief create an AST traversal node 
+  AstNode* createNodeTraversal(AstNode const*, AstNode const*);
 
-  /// @brief create an AST traversal node with vertex, edge and path variable
-  AstNode* createNodeTraversal(char const*, size_t, char const*, size_t,
-                               char const*, size_t, AstNode const*,
-                               AstNode const*, AstNode const*, AstNode const*);
-
-  /// @brief create an AST shortest path node with only vertex variable
-  AstNode* createNodeShortestPath(char const*, size_t, uint64_t, AstNode const*,
-                                  AstNode const*, AstNode const*, AstNode const*);
-
-  /// @brief create an AST shortest path node with vertex and edge variable
-  AstNode* createNodeShortestPath(char const*, size_t, char const*, size_t,
-                                  uint64_t, AstNode const*, AstNode const*,
-                                  AstNode const*, AstNode const*);
+  /// @brief create an AST shortest path node 
+  AstNode* createNodeShortestPath(AstNode const*, AstNode const*);
 
   /// @brief create an AST function call node
   AstNode* createNodeFunctionCall(char const* functionName, AstNode const* arguments) {
