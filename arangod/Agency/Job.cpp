@@ -237,7 +237,7 @@ size_t Job::countGoodServersInList(Node const& snap, VPackSlice const& serverLis
   auto health = snap.hasAsChildren(healthPrefix);
   // Do we have a Health substructure?
   if (health.second) {
-    Node::Children& healthData = health.first; // List of servers in Health
+    Node::Children const& healthData = health.first; // List of servers in Health
     for (VPackSlice const serverName : VPackArrayIterator(serverList)) {
       if (serverName.isString()) {
         // serverName not a string? Then don't count
@@ -265,7 +265,7 @@ size_t Job::countGoodServersInList(Node const& snap, std::vector<std::string> co
   auto health = snap.hasAsChildren(healthPrefix);
   // Do we have a Health substructure?
   if (health.second) {
-    Node::Children& healthData = health.first; // List of servers in Health
+    Node::Children const& healthData = health.first; // List of servers in Health
     for (auto& serverStr : serverList) {
       // Now look up this server:
       auto it = healthData.find(serverStr);
