@@ -76,6 +76,9 @@ std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
     } else if (0 == suffixes[0].compare("list")) {
       operation.reset((isCoord ? (RocksDBHotBackup *)new RocksDBHotBackupListCoord(body)
                        : (RocksDBHotBackup *)new RocksDBHotBackupList(body)));
+    } else if (0 == suffixes[0].compare("lock")) {
+      operation.reset((isCoord ? (RocksDBHotBackup *)new RocksDBHotBackupLockCoord(body)
+                       : (RocksDBHotBackup *)new RocksDBHotBackupLock(body)));
     }
 #if USE_ENTERPRISE
     else if (0 == suffixes[0].compare("upload")) {
@@ -188,7 +191,7 @@ std::string RocksDBHotBackup::rebuildPath(const std::string & suffix) {
 // @brief Remove file or dir currently occupying "path"
 //
 bool RocksDBHotBackup::clearPath(const std::string & path) {
-  bool retFlag = {true};
+  bool retFlag{true};
 
   if (basics::FileUtils::exists(path)) {
     if (basics::FileUtils::isDirectory(path)) {
@@ -412,8 +415,10 @@ void RocksDBHotBackupCreate::parseParameters(rest::RequestType const type) {
   // single server create, we generate the timestamp
   if (isSingle && _isCreate) {
     _timestamp = timepointToString(std::chrono::system_clock::now());
-  } else {
+  } else if (_isCreate) {
     getParamValue("timestamp", _timestamp, true);
+  } else {
+    getParamValue("directory", _directory, true);
   } // else
 
   // remaining params are optional
@@ -484,7 +489,7 @@ void RocksDBHotBackupCreate::executeCreate() {
 
   dirPathFinal = buildDirectoryPath(_timestamp, _userString);
   dirPathTemp = rebuildPath(dirCreatingString);
-  flag = clearPath(dirCreatingString);
+  flag = clearPath(dirPathTemp);
 
   stat = rocksdb::Checkpoint::Create(rocksutils::globalRocksDB(), &ptr);
 
@@ -530,7 +535,7 @@ void RocksDBHotBackupCreate::executeCreate() {
     // velocypack loves to throw. wrap it.
     try {
       _result.add(VPackValue(VPackValueType::Object));
-      _result.add("directory", VPackValue(dirPathFinal));
+      _result.add("directory", VPackValue(TRI_Basename(dirPathFinal.c_str())));
       _result.add("forced", VPackValue(!gotLock));
       _result.close();
     } catch (...) {
@@ -551,6 +556,30 @@ void RocksDBHotBackupCreate::executeCreate() {
   return;
 
 } // RocksDBHotBackupCreate::executeCreate
+
+
+/// @brief /_admin/hotbackup/create with DELETE method comes here, deletes
+///        a directory if it exists
+///        NOTE: returns success if the requested directory does not exist
+///              (was previously deleted)
+void RocksDBHotBackupCreate::executeDelete() {
+  std::string dirToDelete;
+
+  dirToDelete = rebuildPath(_directory);
+  _success = clearPath(dirToDelete);
+
+  // set response codes
+  if (_success) {
+    _respCode = rest::ResponseCode::OK;
+    _respError = TRI_ERROR_NO_ERROR;
+  } else {
+    _respCode = rest::ResponseCode::NOT_FOUND;
+    _respError = TRI_ERROR_FILE_NOT_FOUND;
+  } //else
+
+  return;
+
+} // RocksDBHotBackupCreate::executeDelete
 
 
 
@@ -894,6 +923,63 @@ void RocksDBHotBackupList::execute() {
   return;
 
 } // RocksDBHotBackupList::execute
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief RocksDBHotBackupLock
+///        POST:  Initiate lock on transactions within rocksdb
+///      DELETE:  Remove lock on transactions
+////////////////////////////////////////////////////////////////////////////////
+RocksDBHotBackupLock::RocksDBHotBackupLock(const VPackSlice body)
+  : RocksDBHotBackup(body), _isLock(false)
+{
+}
+
+
+RocksDBHotBackupLock::~RocksDBHotBackupLock() {
+}
+
+
+void RocksDBHotBackupLock::parseParameters(rest::RequestType const type) {
+
+  _isLock = (rest::RequestType::POST == type);
+  _valid = _isLock || (rest::RequestType::DELETE_REQ == type);
+
+  getParamValue("timeout", _timeoutSeconds, false);
+
+  if (!_valid) {
+    try {
+      _result.add(VPackValue(VPackValueType::Object));
+      _result.add("httpMethod", VPackValue("only POST or DELTE allowed"));
+      _result.close();
+      _respCode = rest::ResponseCode::BAD;
+      _respError = TRI_ERROR_HTTP_BAD_PARAMETER;
+    } catch (...) {
+      _result.clear();
+      _respCode = rest::ResponseCode::BAD;
+      _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+      _errorMessage = "RocksDBHotBackupLock::parseParameters caught exception.";
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "RocksDBHotBackupLock::parseParameters caught exception.";
+    } // catch
+  } // if
+
+  return;
+
+} // RocksDBHotBackupLock::parseParameters
+
+
+void RocksDBHotBackupLock::execute() {
+
+  if (_isLock) {
+  } else {
+  }  // else
+
+  /// return codes?
+
+  return;
+
+} // RocksDBHotBackupLock::execute
 
 
 } // namespace arangodb

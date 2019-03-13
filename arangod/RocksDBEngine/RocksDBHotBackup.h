@@ -133,12 +133,13 @@ protected:
   void executeCreate();
 
   // @brief Execute the delete operation
-  void executeDelete() {};
+  void executeDelete();
 
   bool _isCreate;
   bool _forceBackup;
-  std::string _timestamp;
+  std::string _timestamp;   // required for Create from Coordinator
   std::string _userString;
+  std::string _directory;   // required for Delete
 
 };// class RocksDBHotBackupCreate
 
@@ -194,6 +195,26 @@ public:
   void execute() override;
 
 };// class RocksDBHotBackupList
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief POST:  Set lock on rocksdb transactions
+///       DELETE:  Remove lock on rocksdb transactions
+////////////////////////////////////////////////////////////////////////////////
+class RocksDBHotBackupLock : public RocksDBHotBackup {
+public:
+
+  RocksDBHotBackupLock() = delete;
+  RocksDBHotBackupLock(const VPackSlice body);
+  ~RocksDBHotBackupLock();
+
+  void parseParameters(rest::RequestType const) override;
+  void execute() override;
+
+protected:
+  bool _isLock;
+
+};// class RocksDBHotBackupLock
 
 
 class RocksDBHotBackupPolicy : public RocksDBHotBackup {
