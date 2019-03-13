@@ -274,10 +274,7 @@ struct IndexingDisabler {
   RocksDBMethods* _meth;
 };
 
-// INDEXING MAY ONLY BE DISABLED IN TOPLEVEL AQL TRANSACTIONS
-// THIS IS BECAUSE THESE TRANSACTIONS WILL EITHER READ FROM
-// OR (XOR) WRITE TO A COLLECTION. IF THIS PRECONDITION IS
-// VIOLATED THE DISABLED INDEXING WILL BREAK GET OPERATIONS.
+// if only single indices should be enabled during operations
 struct IndexingEnabler {
   // will only be active if condition is true
 
