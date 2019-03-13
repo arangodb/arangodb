@@ -11,6 +11,8 @@ Apart from that, AQL also offers several language constructs:
 - simple [array access](../Fundamentals/DataTypes.md#arrays--lists) of individual elements,
 - [array operators](../Advanced/ArrayOperators.md) for array expansion and contraction,
   optionally with inline filter, limit and projection,
+- [spreading](../Advanced/Spreading.md) and
+  [destructuring](../Advanced/Destructuring.md) array operators
 - [array comparison operators](../Operators.md#array-comparison-operators) to compare
   each element in an array to a value or the elements of another array,
 - loop-based operations using [FOR](../Operations/For.md),
