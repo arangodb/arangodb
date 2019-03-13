@@ -248,6 +248,7 @@ Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
   // It is illegal to call this method on the primary index
   // RocksDBPrimaryIndex must override this method accordingly
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
+  // only if the insert needs to see the changes of the update, enable indexing:
   bool tempEnableIndexing = mthd->isIndexingDisbled() && hasExpansion() && unique();
   if (tempEnableIndexing) {
     mthd->EnableIndexing();
