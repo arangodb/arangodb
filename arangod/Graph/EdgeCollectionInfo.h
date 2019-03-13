@@ -77,8 +77,7 @@ class EdgeCollectionInfo {
   /// @brief Get edges for the given direction and start vertex.
   ////////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::OperationCursor> getEdges(std::string const&,
-                                                      ManagedDocumentResult*);
+  std::unique_ptr<arangodb::OperationCursor> getEdges(std::string const&);
 
   transaction::Methods* trx() const { return _trx; }
 

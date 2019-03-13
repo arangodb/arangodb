@@ -40,7 +40,6 @@
 
 namespace arangodb {
 
-class ManagedDocumentResult;
 namespace transaction {
 class Methods;
 }
@@ -270,8 +269,6 @@ class Traverser {
 
   TraverserOptions* options() { return _opts; }
 
-  ManagedDocumentResult* mmdr() const { return _mmdr.get(); }
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Simple check if there are potentially more paths.
   ///        It might return true although there are no more paths available.
@@ -299,8 +296,6 @@ class Traverser {
  protected:
   /// @brief Outer top level transaction
   transaction::Methods* _trx;
-
-  std::unique_ptr<ManagedDocumentResult> _mmdr;
 
   /// @brief internal cursor to enumerate the paths of a graph
   std::unique_ptr<traverser::PathEnumerator> _enumerator;

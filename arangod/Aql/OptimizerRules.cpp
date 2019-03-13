@@ -2877,12 +2877,12 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
       auto trx = _plan->getAst()->query()->trx();
       size_t coveredAttributes = 0;
-      auto resultPair =
+      bool canBeUsed = 
           trx->getIndexForSortCondition(enumerateCollectionNode->collection()->name(),
                                         &sortCondition, outVariable,
                                         enumerateCollectionNode->collection()->count(trx),
                                         usedIndexes, coveredAttributes);
-      if (resultPair.second) {
+      if (canBeUsed) {
         // If this bit is set, then usedIndexes has length exactly one
         // and contains the best index found.
         auto condition = std::make_unique<Condition>(_plan->getAst());
