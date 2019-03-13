@@ -1037,23 +1037,20 @@ std::pair<std::string, bool> Node::hasAsString(std::string const& url) const {
   return ret_pair;
 }  // hasAsString
 
-std::pair<Node::Children, bool> Node::hasAsChildren(std::string const& url) const {
-  std::pair<Children, bool> ret_pair;
-
-  ret_pair.second = false;
+std::pair<Node::Children const&, bool> Node::hasAsChildren(std::string const& url) const {
+  std::pair<Children const&, bool>* ret_pair;
 
   // retrieve node, throws if does not exist
   try {
     Node const& target(operator()(url));
-    ret_pair.first = target.children();
-    ret_pair.second = true;
+    ret_pair = new std::pair<Children const&, bool> {target.children(), true};
   } catch (...) {
     // do nothing, ret_pair second already false
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
         << "hasAsChildren had exception processing " << url;
   }  // catch
 
-  return ret_pair;
+  return *ret_pair;
 }  // hasAsChildren
 
 std::pair<void*, bool> Node::hasAsBuilder(std::string const& url, Builder& builder,
