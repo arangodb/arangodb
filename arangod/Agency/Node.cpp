@@ -45,6 +45,8 @@ struct Empty {
   bool operator()(const std::string& s) { return s.empty(); }
 };
 
+const Node::Children Node::dummyChildren = Node::Children();
+
 /// @brief Split strings by separator
 inline static std::vector<std::string> split(const std::string& str, char separator) {
   std::vector<std::string> result;
@@ -1025,22 +1027,18 @@ std::pair<std::string, bool> Node::hasAsString(std::string const& url) const {
 }  // hasAsString
 
 std::pair<Node::Children const&, bool> Node::hasAsChildren(std::string const& url) const {
-  std::pair<Children const&, bool>* ret_pair;
-
-  static Children const dummyChildren;
   
   // retrieve node, throws if does not exist
   try {
     Node const& target(operator()(url));
-    ret_pair = new std::pair<Children const&, bool> {target.children(), true};
+    return std::pair<Children const&, bool> {target.children(), true};
   } catch (...) {
-    // do nothing, ret_pair second already false
-    ret_pair = new std::pair<Children const&, bool> {dummyChildren, false};
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
         << "hasAsChildren had exception processing " << url;
   }  // catch
 
-  return *ret_pair;
+  return std::pair<Children const&, bool> {dummyChildren, false};
+  
 }  // hasAsChildren
 
 std::pair<void*, bool> Node::hasAsBuilder(std::string const& url, Builder& builder,
