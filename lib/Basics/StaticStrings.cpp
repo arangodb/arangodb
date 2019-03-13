@@ -93,11 +93,19 @@ std::string const StaticStrings::DataSourceType("type");
 std::string const StaticStrings::IndexExpireAfter("expireAfter");
 std::string const StaticStrings::IndexFields("fields");
 std::string const StaticStrings::IndexId("id");
+std::string const StaticStrings::IndexName("name");
 std::string const StaticStrings::IndexSparse("sparse");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
 std::string const StaticStrings::IndexIsBuilding("isBuilding");
 std::string const StaticStrings::IndexInBackground("inBackground");
+
+// static index names
+std::string const StaticStrings::IndexNameEdge("edge");
+std::string const StaticStrings::IndexNameEdgeFrom("edge_from");
+std::string const StaticStrings::IndexNameEdgeTo("edge_to");
+std::string const StaticStrings::IndexNameInaccessible("inaccessible");
+std::string const StaticStrings::IndexNamePrimary("primary");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");

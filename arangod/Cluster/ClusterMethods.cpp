@@ -21,7 +21,6 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterMethods.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -30,6 +29,7 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
+#include "ClusterMethods.h"
 #include "Graph/Traverser.h"
 #include "Indexes/Index.h"
 #include "RestServer/TtlFeature.h"
@@ -2520,7 +2520,7 @@ Result getTtlStatisticsFromAllDBServers(TtlStatistics& out) {
     cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::GET,
                      url, body, headers, nullptr, 120.0);
   }
-  
+
   // Now listen to the results:
   int count;
   int nrok = 0;
@@ -2576,7 +2576,7 @@ Result getTtlPropertiesFromAllDBServers(VPackBuilder& out) {
     cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::GET,
                      url, body, headers, nullptr, 120.0);
   }
-  
+
   // Now listen to the results:
   bool set = false;
   int count;
@@ -2636,7 +2636,7 @@ Result setTtlPropertiesOnAllDBServers(VPackSlice const& properties, VPackBuilder
     cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::PUT,
                      url, body, headers, nullptr, 120.0);
   }
-  
+
   // Now listen to the results:
   bool set = false;
   int count;
@@ -2777,12 +2777,11 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
 
   VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);
   auto& dbName = col->vocbase().name();
-  auto res = ci->createCollectionCoordinator( // create collection
-    dbName, std::to_string(col->id()),
-                                                col->numberOfShards(),
-                                                col->replicationFactor(), waitForSyncReplication,
-    velocy.slice(), // collection definition
-    240.0 // request timeout
+  auto res = ci->createCollectionCoordinator(  // create collection
+      dbName, std::to_string(col->id()), col->numberOfShards(),
+      col->replicationFactor(), waitForSyncReplication,
+      velocy.slice(),  // collection definition
+      240.0            // request timeout
   );
 
   if (!res.ok()) {

@@ -1,6 +1,10 @@
 devel
 -----
 
+* added "name" property for indices
+
+  If a name is not specified on index creation, one will be auto-generated.
+
 * Under normal circumstances there should be no need to connect to a 
   database server in a cluster with one of the client tools, and it is 
   likely that any user operations carried out there with one of the client
@@ -9,7 +13,7 @@ devel
   The client tools arangosh, arangodump and arangorestore will now emit 
   a warning when connecting with them to a database server node in a cluster.
 
-* fix compation behaviour of followers
+* fix compation behavior of followers
 
 * added "random" masking to mask any data type, added wildcard masking
 
@@ -81,20 +85,20 @@ devel
 
 * `--query.registry-ttl` is now honored in single-server mode, and cursor TTLs
   are now honored on DBServers in cluster mode
-  
-* add "TTL" index type, for optional auto-expiration of documents 
+
+* add "TTL" index type, for optional auto-expiration of documents
 
 * disable selection of index types "persistent" and "skiplist" in the web
   interface when using the RocksDB engine. The index types "hash", "skiplist"
   and "persistent" are just aliases of each other with the RocksDB engine,
   so there is no need to offer all of them.
 
-* fixed JS AQL query objects with empty query strings not being recognized 
+* fixed JS AQL query objects with empty query strings not being recognized
   as AQL queries
 
 * update V8 to 7.1.302.28
 
-  New V8 behavior introduced herein: 
+  New V8 behavior introduced herein:
 
   - ES2016 changed the default timezone of date strings to be conditional on
     whether a time part is included. The semantics were a compromise approach
@@ -102,7 +106,7 @@ devel
     shipping ES5.1 default timezone semantics. This patch implements the
     new semantics, following ChakraCore and SpiderMonkey (though JSC
     implements V8's previous semantics).
- 
+
 * fixed JS AQL query objects with empty query strings not being recognized as AQL queries
 
 * report run-time openssl version (for dynamically linked executables)
@@ -121,7 +125,7 @@ devel
 
 * upgraded to OpenSSL 1.1.0j
 
-* added configurable masking of dumped data via `arangodump` tool to obfuscate 
+* added configurable masking of dumped data via `arangodump` tool to obfuscate
   exported sensible data
 
 * fixed arangoimp script for MacOSX CLI Bundle
@@ -140,7 +144,7 @@ devel
 * fix issue #7903: Regression on ISO8601 string compatibility in AQL
 
   millisecond parts of AQL date values were limited to up to 3 digits.
-  Now the length of the millisecond part is unrestricted, but the 
+  Now the length of the millisecond part is unrestricted, but the
   millisecond precision is still limited to up to 3 digits.
 
 * the RocksDB primary index can now be used by the optimizer to optimize queries
@@ -150,7 +154,7 @@ devel
   sorted when sorting documents by their `_key` values.
 
   Previous versions of ArangoDB tried to interpret `_key` values as numeric values if
-  possible and sorted by these. That previous sort strategy never used an index and 
+  possible and sorted by these. That previous sort strategy never used an index and
   could have caused unnecessary overhead. The new version will now use an index for
   sorting for the RocksDB engine, but may change the order in which documents are
   shown in the web UI (e.g. now a `_key` value of "10" will be shown before a `_key`
