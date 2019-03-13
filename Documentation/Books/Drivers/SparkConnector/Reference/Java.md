@@ -65,6 +65,17 @@ List<MyBean> docs = ...
 JavaRDD<MyBean> documents = sc.parallelize(docs);
 ArangoSpark.save(documents, "myCollection", new WriteOptions().database("myDB"));
 ```
+
+**Very Large Datasets**
+
+To prevent errors on very large datasets (>1.000.000 Objects) use "repartition" for smaller chunks
+
+```Java
+ArangoSpark.save(allEdges.toJSON.repartition(20000), collection = "mio_edges", options = writeOptions)
+```
+
+
+
 ## ArangoSpark.saveDF
 
 ```
