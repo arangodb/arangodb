@@ -73,7 +73,7 @@ To prevent errors on very large datasets (over one million objects) use "reparti
 ```Java
 ArangoSpark.save(allEdges.toJSON.repartition(20000), collection = "mio_edges", options = writeOptions)
 ```
-1
+
 
 ## ArangoSpark.saveDF
 
