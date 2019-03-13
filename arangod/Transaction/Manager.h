@@ -90,7 +90,8 @@ class Manager final {
                           velocypack::Slice const trxOpts);
   
   /// @brief lease the transaction, increases nesting
-  std::shared_ptr<transaction::Context> leaseTrx(TRI_voc_tid_t, AccessMode::Type mode);
+  std::shared_ptr<transaction::Context> leaseManagedTrx(TRI_voc_tid_t tid,
+                                                        AccessMode::Type mode);
   void returnManagedTrx(TRI_voc_tid_t, AccessMode::Type mode) noexcept;
   
   /// @brief get the meta transasction state
@@ -120,7 +121,8 @@ class Manager final {
     return std::hash<TRI_voc_cid_t>()(tid) % numBuckets;
   }
   
-  Result commitAbortTransaction(TRI_voc_tid_t tid, transaction::Status status);
+  Result updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
+                           bool clearServers);
   
  private:
     

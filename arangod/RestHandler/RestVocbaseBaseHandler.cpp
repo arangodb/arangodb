@@ -579,12 +579,11 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
       }
     }
     
-    auto ctx = mgr->leaseTrx(tid, type);
+    auto ctx = mgr->leaseManagedTrx(tid, type);
     if (!ctx) {
       LOG_DEVEL << "1. Transaction " << tid << " not found";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NOT_FOUND);
     }
-    
     return std::make_unique<SingleCollectionTransaction>(ctx, name, type);
   } else {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
@@ -631,7 +630,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createAQLTransacti
 //      }
   }
   
-  auto ctx = mgr->leaseTrx(tid, AccessMode::Type::WRITE);
+  auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
   if (!ctx) {
     LOG_DEVEL << "2. Transaction " << tid << " not found";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NOT_FOUND);

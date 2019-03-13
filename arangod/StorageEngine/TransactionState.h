@@ -105,12 +105,16 @@ class TransactionState {
   void setRegistered() noexcept { _registeredTransaction = true; }
   bool wasRegistered() const noexcept { return _registeredTransaction; }
 
-  int increaseNesting() { return ++_nestingLevel; }
+  int increaseNesting() {
+    return _nestingLevel.fetch_add(1, std::memory_order_relaxed) + 1;
+  }
   int decreaseNesting() {
     TRI_ASSERT(nestingLevel() > 0);
-    return --_nestingLevel;
+    return _nestingLevel.fetch_sub(1, std::memory_order_relaxed) - 1;
   }
-  int nestingLevel() const { return _nestingLevel; }
+  int nestingLevel() const {
+    return _nestingLevel.load(std::memory_order_relaxed);
+  }
   bool isTopLevelTransaction() const { return nestingLevel() == 0; }
   bool isEmbeddedTransaction() const { return !isTopLevelTransaction(); }
 
@@ -254,7 +258,7 @@ protected:
   arangodb::HashSet<std::string> _knownServers;
   
   /// @brief reference counter of # of 'Methods' instances using this object
-  int _nestingLevel;
+  std::atomic<int> _nestingLevel;
   
   bool _registeredTransaction;
 };

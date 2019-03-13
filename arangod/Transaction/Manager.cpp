@@ -375,7 +375,8 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
 }
 
 /// @brief lease the transaction, increases nesting
-std::shared_ptr<transaction::Context> Manager::leaseTrx(TRI_voc_tid_t tid, AccessMode::Type mode) {
+std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid,
+                                                               AccessMode::Type mode) {
   const size_t bucket = getBucket(tid);
   
   int i = 0;
@@ -425,6 +426,7 @@ std::shared_ptr<transaction::Context> Manager::leaseTrx(TRI_voc_tid_t tid, Acces
   } while (true);
   
   if (state) {
+    state->increaseNesting();
     return std::make_shared<ManagedContext>(tid, state, mode);
   }
   TRI_ASSERT(false); // should be unreachable
@@ -443,6 +445,10 @@ void Manager::returnManagedTrx(TRI_voc_tid_t tid, AccessMode::Type mode) noexcep
     return;
   }
   
+  TRI_ASSERT(it->second.state != nullptr);
+  TRI_ASSERT(it->second.state->isEmbeddedTransaction());
+
+  it->second.state->decreaseNesting();
   it->second.expires = defaultTTL + TRI_microtime();
   if (AccessMode::isWriteOrExclusive(mode)) {
     it->second.rwlock.unlockWrite();
@@ -480,14 +486,15 @@ transaction::Status Manager::getManagedTrxStatus(TRI_voc_tid_t tid) const {
 }
   
 Result Manager::commitManagedTrx(TRI_voc_tid_t tid) {
-  return commitAbortTransaction(tid, transaction::Status::COMMITTED);
+  return updateTransaction(tid, transaction::Status::COMMITTED, false);
 }
 
 Result Manager::abortManagedTrx(TRI_voc_tid_t tid) {
-  return commitAbortTransaction(tid, transaction::Status::ABORTED);
+  return updateTransaction(tid, transaction::Status::ABORTED, false);
 }
 
-Result Manager::commitAbortTransaction(TRI_voc_tid_t tid, transaction::Status status) {
+Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
+                                       bool clearServers) {
   TRI_ASSERT(status == transaction::Status::COMMITTED ||
              status == transaction::Status::ABORTED);
     
@@ -546,6 +553,9 @@ Result Manager::commitAbortTransaction(TRI_voc_tid_t tid, transaction::Status st
   TRI_ASSERT(trx.state()->nestingLevel() == 1);
   trx.state()->decreaseNesting();
   TRI_ASSERT(trx.state()->isTopLevelTransaction());
+  if (clearServers) {
+    state->clearKnownServers();
+  }
   if (status == transaction::Status::COMMITTED) {
     res = trx.commit();
   } else {
@@ -559,11 +569,11 @@ Result Manager::commitAbortTransaction(TRI_voc_tid_t tid, transaction::Status st
 /// @brief abort all transactions on a given shard
 void Manager::abortAllManagedTrx(TRI_voc_cid_t cid, bool leader) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
-  std::vector<TRI_voc_tid_t> gcBuffer;
+  std::vector<TRI_voc_tid_t> toAbort;
   
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    WRITE_LOCKER(locker, _transactions[bucket]._lock);
+    READ_LOCKER(locker, _transactions[bucket]._lock);
     
     auto it = _transactions[bucket]._managed.begin();
     while (it != _transactions[bucket]._managed.end()) {
@@ -579,8 +589,7 @@ void Manager::abortAllManagedTrx(TRI_voc_cid_t cid, bool leader) {
         if (tryGuard.isLocked()) {
           TransactionCollection* tcoll = mtrx.state->collection(cid, AccessMode::Type::NONE);
           if (tcoll != nullptr) {
-            mtrx.state->clearKnownServers();  // do not replicate abort
-            gcBuffer.emplace_back(it->first);
+            toAbort.emplace_back(it->first);
           }
         }
       }
@@ -588,9 +597,9 @@ void Manager::abortAllManagedTrx(TRI_voc_cid_t cid, bool leader) {
     }
   }
   
-  for (TRI_voc_tid_t tid : gcBuffer) {
+  for (TRI_voc_tid_t tid : toAbort) {
     LOG_DEVEL << "aborting " << tid << " mod 4 " << (tid % 4) << " leader: " << leader;
-    Result res = abortManagedTrx(tid);
+    Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/true);
     if (res.fail()) {
       LOG_TOPIC(INFO, Logger::TRANSACTIONS) << "error while GC collecting "
       "transaction: '" << res.errorMessage() << "'";
