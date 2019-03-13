@@ -82,7 +82,7 @@ class RocksDBMethods {
   virtual bool DisableIndexing() { return false; }
 
   // the default implementation is to do nothing
-  virtual void EnableIndexing() {}
+  virtual bool EnableIndexing() { return false; }
 
   virtual rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
                               rocksdb::Slice const&, std::string*) = 0;
@@ -156,7 +156,7 @@ class RocksDBTrxMethods : public RocksDBMethods {
   /// @brief returns true if indexing was disabled by this call
   bool DisableIndexing() override;
 
-  void EnableIndexing() override;
+  bool EnableIndexing() override;
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                       std::string* val) override;
@@ -267,6 +267,38 @@ struct IndexingDisabler {
   ~IndexingDisabler() {
     if (_meth) {
       _meth->EnableIndexing();
+    }
+  }
+
+ private:
+  RocksDBMethods* _meth;
+};
+
+// INDEXING MAY ONLY BE DISABLED IN TOPLEVEL AQL TRANSACTIONS
+// THIS IS BECAUSE THESE TRANSACTIONS WILL EITHER READ FROM
+// OR (XOR) WRITE TO A COLLECTION. IF THIS PRECONDITION IS
+// VIOLATED THE DISABLED INDEXING WILL BREAK GET OPERATIONS.
+struct IndexingEnabler {
+  // will only be active if condition is true
+
+  IndexingEnabler() = delete;
+  IndexingEnabler(IndexingEnabler&&) = delete;
+  IndexingEnabler(IndexingEnabler const&) = delete;
+  IndexingEnabler& operator=(IndexingEnabler const&) = delete;
+  IndexingEnabler& operator=(IndexingEnabler&&) = delete;
+
+  IndexingEnabler(RocksDBMethods* meth, bool condition) : _meth(nullptr) {
+    if (condition) {
+      bool enableHere = meth->EnableIndexing();
+      if (enableHere) {
+        _meth = meth;
+      }
+    }
+  }
+
+  ~IndexingEnabler() {
+    if (_meth) {
+      _meth->DisableIndexing();
     }
   }
 
