@@ -3,7 +3,8 @@ Fulltext indexes
 
 This is an introduction to ArangoDB's fulltext indexes.
 
-### Introduction to Fulltext Indexes
+Introduction to Fulltext Indexes
+--------------------------------
 
 A fulltext index can be used to find words, or prefixes of words inside documents.
 

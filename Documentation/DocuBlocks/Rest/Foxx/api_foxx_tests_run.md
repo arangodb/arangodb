@@ -9,7 +9,7 @@ Runs the tests for the service at the given mount path and returns the results.
 Supported test reporters are:
 
 - *default*: a simple list of test cases
-- *suite*: a object of test cases nested in suites
+- *suite*: an object of test cases nested in suites
 - *stream*: a raw stream of test results
 - *xunit*: an XUnit/JUnit compatible structure
 - *tap*: a raw TAP compatible stream

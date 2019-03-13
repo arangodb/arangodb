@@ -15,7 +15,8 @@ you from doing this by placing a lockfile in the database directory and
 not allowing a second ArangoDB instance to use the same database directory
 if a lockfile is already present.
 
-### In Case Of Disaster
+In Case Of Disaster
+-------------------
 
 The following command starts an emergency console.
 

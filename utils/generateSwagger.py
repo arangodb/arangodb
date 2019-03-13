@@ -301,7 +301,7 @@ def Typography(txt):
     r = rc(r"""@ref [a-zA-Z0-9]+""", MS)
     txt = r.sub("the manual", txt)
     txt = re.sub(r"@endDocuBlock", "", txt)
-    txt = BACKSLASH(txt);
+    txt = BACKSLASH(txt)
     return txt
 
 ################################################################################
@@ -373,6 +373,7 @@ class Regexen:
         self.DESCRIPTION_BL = re.compile('^\s*$')
         self.EMPTY_LINE = re.compile('^\s*$')
         self.START_DOCUBLOCK = re.compile('.*@startDocuBlock ')
+        self.HINTS = re.compile('.*@HINTS')
         self.END_EXAMPLE_ARANGOSH_RUN = re.compile('.*@END_EXAMPLE_ARANGOSH_RUN')
         self.EXAMPLES = re.compile('.*@EXAMPLES')
         self.EXAMPLE_ARANGOSH_RUN = re.compile('.*@EXAMPLE_ARANGOSH_RUN{')
@@ -391,6 +392,8 @@ class Regexen:
         self.RESTRETURNCODES = re.compile('.*@RESTRETURNCODES')
         self.RESTURLPARAM = re.compile('.*@RESTURLPARAM{')
         self.RESTURLPARAMETERS = re.compile('.*@RESTURLPARAMETERS')
+        self.RESTPARAM = re.compile('.*@RESTPARAM')
+        self.RESTQUERYPARAMS = re.compile('.*@RESTQUERYPARAMS')
         self.TRIPLENEWLINEATSTART = re.compile('^\n\n\n')
 
 ################################################################################
@@ -410,6 +413,7 @@ def next_step(fp, line, r):
     if not line:                              return eof, (fp, line)
     elif check_end_of_comment(line, r):       return skip_code, (fp, line)
     elif r.START_DOCUBLOCK.match(line):       return start_docublock, (fp, line)
+    elif r.HINTS.match(line):                 return hints, (fp, line)
     elif r.EXAMPLE_ARANGOSH_RUN.match(line):  return example_arangosh_run, (fp, line)
     elif r.RESTBODYPARAM.match(line):         return restbodyparam, (fp, line)
     elif r.RESTSTRUCT.match(line):            return reststruct, (fp, line)
@@ -425,6 +429,8 @@ def next_step(fp, line, r):
     elif r.RESTRETURNCODES.match(line):       return restreturncodes, (fp, line)
     elif r.RESTURLPARAM.match(line):          return resturlparam, (fp, line)
     elif r.RESTURLPARAMETERS.match(line):     return resturlparameters, (fp, line)
+    elif r.RESTPARAM.match(line):             return restparam, (fp, line)
+    elif r.RESTQUERYPARAMS.match(line):       return restqueryparams, (fp, line)
     elif r.EXAMPLES.match(line):              return examples, (fp, line)
 
     return None, None
@@ -504,6 +510,24 @@ def setRequired(where, which):
     where['required'].append(which)
 
 ################################################################################
+### @brief restparam - deprecated - abort.
+################################################################################
+def restparam(cargo, r=Regexen()):
+    global swagger, operation, httpPath, method, restBodyParam, fn, currentExample, currentReturnCode, currentDocuBlock, lastDocuBlock, restReplyBodyParam
+    print >> sys.stderr, "deprecated RESTPARAM declaration detected:"
+    print >> sys.stderr, json.dumps(swagger['paths'][httpPath], indent=4, separators=(', ',': '), sort_keys=True)
+    raise Exception("RESTPARAM not supported anymore.")
+
+################################################################################
+### @brief restparam - deprecated - abort.
+################################################################################
+def restqueryparams(cargo, r=Regexen()):
+    global swagger, operation, httpPath, method, restBodyParam, fn, currentExample, currentReturnCode, currentDocuBlock, lastDocuBlock, restReplyBodyParam
+    print >> sys.stderr, "deprecated RESTQUERYPARAMS declaration detected:"
+    print >> sys.stderr, json.dumps(swagger['paths'][httpPath], indent=4, separators=(', ',': '), sort_keys=True)
+    raise Exception("RESTQUERYPARAMS not supported anymore. Use RESTQUERYPARAMETERS instead.")
+
+################################################################################
 ### @brief restheader
 ################################################################################
 
@@ -549,6 +573,7 @@ def restheader(cargo, r=Regexen()):
 
     swagger['paths'][httpPath][method] = {
         'x-filename': fn,
+        'x-hints': '',
         'x-examples': [],
         'tags': [currentTag],
         'summary': summary.strip(),
@@ -767,7 +792,7 @@ def restallbodyparam(cargo, r=Regexen()):
 ################################################################################
 
 def reststruct(cargo, r=Regexen()):
-    global swagger, operation, httpPath, method, restBodyParam, restSubBodyParam
+    global swagger, operation, httpPath, method, restBodyParam, restSubBodyParam, fn
     (fp, last) = cargo
 
     try:
@@ -786,7 +811,8 @@ def reststruct(cargo, r=Regexen()):
         swagger['definitions'][className] = {
             'type': 'object',
             'properties' : {},
-            'description': ''
+            'description': '',
+            'x-filename': fn
             }
 
     swagger['definitions'][className]['properties'][name] = {
@@ -857,6 +883,23 @@ def restqueryparam(cargo, r=Regexen()):
     return generic_handler_desc(cargo, r, "restqueryparam", None, para, 'description')
 
 ################################################################################
+### @brief hints
+################################################################################
+
+def hints(cargo, r=Regexen()):
+    global swagger, operation, httpPath, method
+
+    ret = generic_handler_desc(cargo, r, "hints", None,
+                               swagger['paths'][httpPath][method], 'x-hints')
+
+    if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['x-hints']):
+        (fp, last) = cargo
+        print >> sys.stderr, 'remove newline after @HINTS in file %s' % (fp.name)
+        exit(1)
+
+    return ret
+
+################################################################################
 ### @brief restdescription
 ################################################################################
 
@@ -865,8 +908,8 @@ def restdescription(cargo, r=Regexen()):
     swagger['paths'][httpPath][method]['description'] += '\n\n'
 
     ret = generic_handler_desc(cargo, r, "restdescription", None,
-                                swagger['paths'][httpPath][method],
-                                'description')
+                               swagger['paths'][httpPath][method],
+                               'description')
 
     if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['description']):
         (fp, last) = cargo
@@ -910,7 +953,7 @@ def restreplybody(cargo, r=Regexen()):
     if restReplyBodyParam == None:
         # https://github.com/swagger-api/swagger-ui/issues/1430
         # once this is solved we can skip this:
-        operation['description'] += '\n#### HTTP ' + currentReturnCode + '\n'
+        operation['description'] += '\n**HTTP ' + currentReturnCode + '**\n'
         operation['description'] += "*A json document with these Properties is returned:*\n"
         operation['responses'][currentReturnCode]['x-description-offset'] = len(operation['description'])
 
@@ -994,6 +1037,9 @@ def restreplybody(cargo, r=Regexen()):
         setRequired(swagger['definitions'][rcBlock], name)
 
     if len(name) > 0:
+        if 'description' not in swagger['definitions'][rcBlock]['properties']:
+            swagger['definitions'][rcBlock]['properties'][name]['description'] = ''
+	
         return generic_handler_desc(cargo, r, "restreplybody", None,
                                     swagger['definitions'][rcBlock]['properties'][name],
                                     'description')
@@ -1060,11 +1106,11 @@ def example_arangosh_run(cargo, r=Regexen()):
         print >> sys.stderr, "Failed to open example file:\n  '%s'" % fn
         raise
     operation['x-examples'][currentExample]= '\n\n**Example:**\n ' + exampleHeader.strip('\n ') + '\n\n<pre><code class="json">'
-    
+
     for line in examplefile.readlines():
-        operation['x-examples'][currentExample] += line
+        operation['x-examples'][currentExample] += '<code>' + line + '</code>'
     
-    operation['x-examples'][currentExample] += '</code></pre>\n\n\n'
+    operation['x-examples'][currentExample] += '</pre>\n\n\n'
 
     line = ""
 
@@ -1139,6 +1185,7 @@ automat.add_state(comment)
 automat.add_state(eof, end_state=1)
 automat.add_state(error, end_state=1)
 automat.add_state(start_docublock)
+automat.add_state(hints)
 automat.add_state(example_arangosh_run)
 automat.add_state(examples)
 automat.add_state(skip_code)
@@ -1156,12 +1203,13 @@ automat.add_state(restreturncodes)
 automat.add_state(restreplybody)
 automat.add_state(resturlparam)
 automat.add_state(resturlparameters)
+automat.add_state(restparam)
+automat.add_state(restqueryparam)
 
 
-
-def getOneApi(infile, filename):
+def getOneApi(infile, filename, thisFn):
     automat.set_start(skip_code)
-    automat.set_fn(filename)
+    automat.set_fn(thisFn)
     automat.run((infile, ''))
 
 ################################################################################
@@ -1287,14 +1335,10 @@ for version in f:
 f.close()
 
 
-paths = {};
+paths = {}
 
 topdir = sys.argv[4]
 files = {}
-
-
-# Intentionaly not there: 
-#  "structure" : [ "js/actions/api-structure.js" ],
 
 for chapter in os.listdir(topdir):
     if not os.path.isdir(os.path.join(topdir, chapter)) or chapter[0] == ".":
@@ -1315,7 +1359,7 @@ for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
         thisfn = fn
         infile = open(fn)
         try:
-            getOneApi(infile, name + " - " + ', '.join(filenames))
+            getOneApi(infile, name + " - " + ', '.join(filenames), fn)
         except Exception as x:
             print >> sys.stderr, "\nwhile parsing file: '%s' error: %s" % (thisfn, x)
             raise
@@ -1329,7 +1373,7 @@ def descOffsetGet(value):
 
 for route in swagger['paths'].keys():
     for verb in swagger['paths'][route].keys():
-        offsetPlus = 0;
+        offsetPlus = 0
         thisVerb = swagger['paths'][route][verb]
         if len(thisVerb['description']) == 0:
             print >> sys.stderr, "Description of Route empty; @RESTDESCRIPTION missing?"
@@ -1400,6 +1444,18 @@ for route in swagger['paths'].keys():
 
             #print '-'*80
             #print thisVerb['description']
+
+        # Simplify hint box code to something that works in Swagger UI
+        # Append the result to the description field
+        # Place invisible markers, so that hints can be removed again
+        if 'x-hints' in thisVerb and len(thisVerb['x-hints']) > 0:
+            thisVerb['description'] += '\n<!-- Hints Start -->'
+            tmp = re.sub("{% hint '([^']+?)' %}",
+                         lambda match: "\n\n**{}:**  ".format(match.group(1).title()),
+                         thisVerb['x-hints'])
+            tmp = re.sub('{%[^%]*?%}', '', tmp)
+            thisVerb['description'] += tmp
+            thisVerb['description'] += '\n<!-- Hints End -->'
 
         # Append the examples to the description:
         if 'x-examples' in thisVerb and len(thisVerb['x-examples']) > 0:

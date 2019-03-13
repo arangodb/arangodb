@@ -3,7 +3,8 @@ String functions
 
 For string processing, AQL offers the following functions:
 
-### CHAR_LENGTH()
+CHAR_LENGTH()
+-------------
 
 `CHAR_LENGTH(value) → length`
 
@@ -18,7 +19,8 @@ Return the number of characters in *value* (not byte length).
 |false| 5 |
 |null| 0 |
 
-### CONCAT()
+CONCAT()
+--------
 
 `CONCAT(value1, value2, ... valueN) → str`
 
@@ -47,7 +49,8 @@ CONCAT( [ "foo", "bar", "baz" ] ) // "foobarbaz"
 CONCAT( [1, 2, 3] ) // "123"
 ```
 
-### CONCAT_SEPARATOR()
+CONCAT_SEPARATOR()
+------------------
 
 `CONCAT_SEPARATOR(separator, value1, value2, ... valueN) → joinedString`
 
@@ -77,7 +80,8 @@ CONCAT_SEPARATOR("-", [1, 2, 3, null], [4, null, 5])
 // "1-2-3-4-5"
 ```
 
-### CONTAINS()
+CONTAINS()
+----------
 
 `CONTAINS(text, search, returnIndex) → match`
 
@@ -101,11 +105,16 @@ CONTAINS("foobarbaz", "ba", true) // 3
 CONTAINS("foobarbaz", "horse", true) // -1
 ```
 
-### COUNT()
+To determine if or at which position a value is included in an array, see the
+[POSITION() array function](Array.md#position).
+
+COUNT()
+-------
 
 This is an alias for [LENGTH()](#length).
 
-### FIND_FIRST()
+FIND_FIRST()
+------------
 
 `FIND_FIRST(text, search, start, end) → position`
 
@@ -127,7 +136,8 @@ FIND_FIRST("foobarbaz", "ba", 4) // 6
 FIND_FIRST("foobarbaz", "ba", 0, 3) // -1
 ```
 
-### FIND_LAST()
+FIND_LAST()
+-----------
 
 `FIND_LAST(text, search, start, end) → position`
 
@@ -149,7 +159,8 @@ FIND_LAST("foobarbaz", "ba", 7) // -1
 FIND_LAST("foobarbaz", "ba", 0, 4) // 3
 ```
 
-### JSON_PARSE()
+JSON_PARSE()
+------------
 
 `JSON_PARSE(text) → value`
 
@@ -167,7 +178,8 @@ JSON_PARSE("{\\\"a\\\": 1}") // { a : 1 }
 JSON_PARSE("abc") // null
 ```
 
-### JSON_STRINGIFY()
+JSON_STRINGIFY()
+----------------
 
 `JSON_STRINGIFY(value) → text`
 
@@ -184,7 +196,8 @@ JSON_STRINGIFY("abc") // "\"abc\""
 JSON_STRINGIFY("[1, 2, 3]") // "[1,2,3]"
 ```
 
-### LEFT()
+LEFT()
+------
 
 `LEFT(value, length) → substring`
 
@@ -200,7 +213,8 @@ LEFT("foobar", 3) // "foo"
 LEFT("foobar", 10) // "foobar"
 ```
 
-### LENGTH()
+LENGTH()
+--------
 
 `LENGTH(str) → length`
 
@@ -218,7 +232,8 @@ LENGTH("电脑坏了") // 4
 the [number of attribute keys](Document.md#length) of an object / document and
 the [amount of documents](Miscellaneous.md#length) in a collection.
 
-### LIKE()
+LIKE()
+------
 
 `LIKE(text, search, caseInsensitive) → bool`
 
@@ -250,7 +265,8 @@ LIKE("FoO bAr BaZ", "fOo%bAz")       // false
 LIKE("FoO bAr BaZ", "fOo%bAz", true) // true
 ```
 
-### LOWER()
+LOWER()
+-------
 
 `LOWER(value) → lowerCaseString`
 
@@ -261,7 +277,8 @@ All other characters are returned unchanged.
 - returns **lowerCaseString** (string): *value* with upper-case characters converted
   to lower-case characters
 
-### LTRIM()
+LTRIM()
+-------
 
 `LTRIM(value, chars) → strippedString`
 
@@ -280,7 +297,8 @@ LTRIM("  foo bar  ") // "foo bar  "
 LTRIM("--==[foo-bar]==--", "-=[]") // "foo-bar]==--"
 ```
 
-### MD5()
+MD5()
+-----
 
 `MD5(text) → hash`
 
@@ -294,7 +312,8 @@ string representation.
 MD5("foobar") // "3858f62230ac3c915f300c664312c63f"
 ```
 
-### RANDOM_TOKEN()
+RANDOM_TOKEN()
+--------------
 
 `RANDOM_TOKEN(length) → randomString`
 
@@ -311,7 +330,8 @@ RANDOM_TOKEN(8) // "zGl09z42"
 RANDOM_TOKEN(8) // "m9w50Ft9"
 ```
 
-### REGEX_TEST()
+REGEX_TEST()
+------------
 
 `REGEX_TEST(text, search, caseInsensitive) → bool`
 
@@ -377,7 +397,8 @@ REGEX_TEST("the quick brown fox", "^(a|the)\s+(quick|slow).*f.x$") // true
 REGEX_TEST("the\nquick\nbrown\nfox", "^the(\n[a-w]+)+\nfox$") // true
 ```
 
-### REGEX_REPLACE()
+REGEX_REPLACE()
+---------------
 
 `REGEX_REPLACE(text, search, replacement, caseInsensitive) → string`
 
@@ -402,7 +423,8 @@ REGEX_REPLACE("the quick brown fox", "the.*fox", "jumped over") // jumped over
 REGEX_REPLACE("the quick brown fox", "o", "i") // the quick briwn fix
 ```
 
-### REVERSE()
+REVERSE()
+---------
 
 `REVERSE(value) → reversedString`
 
@@ -417,7 +439,8 @@ REVERSE("foobar") // "raboof"
 REVERSE("电脑坏了") // "了坏脑电"
 ```
 
-### RIGHT()
+RIGHT()
+-------
 
 `RIGHT(value, length) → substring`
 
@@ -433,7 +456,8 @@ RIGHT("foobar", 3) // "bar"
 RIGHT("foobar", 10) // "foobar"
 ```
 
-### RTRIM()
+RTRIM()
+-------
 
 `RTRIM(value, chars) → strippedString`
 
@@ -452,7 +476,8 @@ RTRIM("  foo bar  ") // "  foo bar"
 RTRIM("--==[foo-bar]==--", "-=[]") // "--==[foo-bar"
 ```
 
-### SHA1()
+SHA1()
+------
 
 `SHA1(text) → hash`
 
@@ -466,7 +491,8 @@ string representation.
 SHA1("foobar") // "8843d7f92416211de9ebb963ff4ce28125932878"
 ```
 
-### SPLIT()
+SPLIT()
+-------
 
 `SPLIT(value, separator, limit) → strArray`
 
@@ -486,7 +512,8 @@ SPLIT( "foo-bar-baz", "-", 1 ) // [ "foo", "bar-baz" ]
 SPLIT( "foo, bar & baz", [ ", ", " & " ] ) // [ "foo", "bar", "baz" ]
 ```
 
-### SUBSTITUTE()
+SUBSTITUTE()
+------------
 
 `SUBSTITUTE(value, search, replace, limit) → substitutedString`
 
@@ -558,7 +585,8 @@ SUBSTITUTE("the quick brown foxx", {
 // "the small slow foxx"
 ```
 
-### SUBSTRING()
+SUBSTRING()
+-----------
 
 `SUBSTRING(value, offset, length) → substring`
 
@@ -570,15 +598,16 @@ Return a substring of *value*.
   substring from *offset* to the end of the string
 - returns **substring** (string): a substring of *value*
 
-### TRIM()
+TRIM()
+------
 
 `TRIM(value, type) → strippedString`
 
 Return the string *value* with whitespace stripped from the start and/or end.
 
 The optional *type* parameter specifies from which parts of the string the
-whitespace is stripped. [LTRIM()](#ltrim) and [RTRIM()](#rtrim) are preferred
-however.
+whitespace is stripped. [LTRIM()](#ltrim) and
+[RTRIM()](#rtrim) are preferred however.
 
 - **value** (string): a string
 - **type** (number, *optional*): strip whitespace from the
@@ -605,7 +634,8 @@ TRIM("  foobar\t \r\n ") // "foobar"
 TRIM(";foo;bar;baz, ", ",; ") // "foo;bar;baz"
 ```
 
-### UPPER()
+UPPER()
+-------
 
 `UPPER(value) → upperCaseString`
 

@@ -5,16 +5,16 @@ shell> curl -X PUT --header 'x-arango-async: store' --data-binary @- --dump - ht
 EOF
 
 HTTP/1.1 202 Accepted
-x-content-type-options: nosniff
-x-arango-async-id: 154895675895238
 content-type: text/plain; charset=utf-8
+x-content-type-options: nosniff
+x-arango-async-id: 155192296440356
 
-shell> curl -X PUT --dump - http://localhost:8529/_api/job/154895675895238
+shell> curl -X PUT --dump - http://localhost:8529/_api/job/155192296440356
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">400</span> Bad Request
-x-content-type-options: nosniff
-x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">154895675895238</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
+x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">155192296440356</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 

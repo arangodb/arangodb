@@ -1,5 +1,5 @@
 Launching an ArangoDB cluster for testing
------------------------------------------
+=========================================
 
 An ArangoDB cluster consists of several running tasks which form the cluster. ArangoDB itself won't start or monitor any of these tasks. So it will need some kind of supervisor which is monitoring and starting these tasks. For production usage we recommend using Apache Mesos as the cluster supervisor.
 
@@ -13,7 +13,8 @@ In the following sections we will go through the relevant options per role.
 
 ![single node cluster](simple_cluster.png)
 
-### Agency
+Agency
+------
 
 To start up an agency you first have to activate it. This is done by providing `--agency.activate true`.
 
@@ -37,7 +38,8 @@ arangod --server.endpoint tcp://0.0.0.0:5001 --server.authentication false --age
 Furthermore, in the following sections when `--cluster.agency-address` is used multiple times to specify all three agent addresses, just use a single option ```--cluster.agency.address tcp://127.0.0.1:5001``` instead.
 
 
-### Coordinators and DBServers
+Coordinators and DBServers
+--------------------------
 
 These two roles share a common set of relevant options. First you should specify the role using `--cluster.my-role`. This can either be `PRIMARY` (a database server) or `COORDINATOR`. Both need some unique information with which they will register in the agency, too. This could for example be some combination of host name and port or whatever you have at hand. However it must be unique for each instance and be provided as value for `--cluster.my-local-info`. Furthermore provide the external endpoint (IP and port) of the task via `--cluster.my-address`.
 

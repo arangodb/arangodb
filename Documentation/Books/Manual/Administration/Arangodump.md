@@ -92,7 +92,8 @@ to produce a 2.8-compatible dump with a 3.0 ArangoDB, please specify the option
     
     unix> arangodump --compat28 true --collection myvalues --output-directory "dump"
 
-### Advanced cluster options
+Advanced cluster options
+------------------------
 
 Starting with version 3.1.17, collections may be created with shard
 distribution identical to an existing prototypical collection;

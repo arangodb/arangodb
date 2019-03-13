@@ -4,7 +4,7 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"first"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/17425"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/17424"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"persistent"</span>, 
@@ -13,31 +13,31 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17428"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17428"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YISCx7i---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17427"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17427"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YTVPf2e---"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17432"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17432"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YISCx7i--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17431"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17431"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YTVPf2i---"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"John"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17435"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17435"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YISCx7m---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17434"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17434"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YTVPf2i--_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17438"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17438"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YISCx7m--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17437"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17437"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YTVPf2m---"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17441"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17441"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YISCx7m--A"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17440"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17440"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YTVPf2m--_"</span> 
 }

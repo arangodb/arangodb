@@ -40,19 +40,26 @@ It is possible to define more than one geo-spatial index per collection.  In
 this case you must give a hint using the *geo* operator which of indexes
 should be used in a query.
 
-### Near
+Near
+----
+
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionNear
 
-### Within
+Within
+------
+
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionWithin
 
-### Geo
+Geo
+---
+
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionGeo
 
-### Related topics
+Related topics
+--------------
 
 Other ArangoDB geographic features are described in: 
 - [AQL Geo functions](../../../AQL/Functions/Geo.html)

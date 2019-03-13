@@ -11,9 +11,8 @@ Please note that the graph viewer requires canvas (optional: webgl)  support
 in your browser. Especially Internet Explorer browsers older than version 9
 are likely to not support this.
 
-<!-- Graph Viewer -->
 Graph Viewer
-======
+------------
 
 ![display graphs](images/graphViewer.png)
 
@@ -48,8 +47,7 @@ Edge Highlighting (right-mouse-click node):
 
 ![graph context menu](images/graphViewerContextMenu.png)
 
-Graph Viewer Options
-======
+### Graph Viewer Options
 
 Graph Options Menu: 
 

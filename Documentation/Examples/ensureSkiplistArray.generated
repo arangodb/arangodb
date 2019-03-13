@@ -4,7 +4,7 @@ arangosh&gt; db.test.ensureIndex({ <span class="hljs-attr">type</span>: <span cl
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"a[*]"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/17483"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/17482"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
@@ -13,19 +13,19 @@ arangosh&gt; db.test.ensureIndex({ <span class="hljs-attr">type</span>: <span cl
 }
 arangosh&gt; db.test.save({ <span class="hljs-attr">a</span> : [ <span class="hljs-number">1</span>, <span class="hljs-number">2</span> ] });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/17486"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17486"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YISCy_q---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/17485"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17485"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YTVPf6m---"</span> 
 }
 arangosh&gt; db.test.save({ <span class="hljs-attr">a</span> : [ <span class="hljs-number">1</span>, <span class="hljs-number">3</span> ] });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/17490"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17490"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YISCy_q--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/17489"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17489"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YTVPf6q---"</span> 
 }
 arangosh&gt; db.test.save({ <span class="hljs-attr">a</span> : <span class="hljs-literal">null</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/17493"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17493"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YISCy_u---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/17492"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17492"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YTVPf6q--_"</span> 
 }

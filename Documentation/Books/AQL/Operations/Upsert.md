@@ -62,7 +62,8 @@ Note that in the *UPDATE* case it is possible to refer to the previous version o
 document using the *OLD* pseudo-value.
 
 
-### Setting query options
+Setting query options
+---------------------
 
 As in several above examples, the *ignoreErrors* option can be used to suppress query 
 errors that may occur when trying to violate unique key constraints.
@@ -82,7 +83,8 @@ To make sure data are durable when an update query returns, there is the *waitFo
 query option.
 
 
-### Returning documents
+Returning documents
+-------------------
 
 `UPSERT` statements can optionally return data. To do so, they need to be followed
 by a `RETURN` statement (intermediate `LET` statements are allowed, too). These statements
@@ -104,4 +106,3 @@ INSERT { name: 'superuser', logins: 1, dateCreated: DATE_NOW() }
 UPDATE { logins: OLD.logins + 1 } IN users
 RETURN { doc: NEW, type: OLD ? 'update' : 'insert' }
 ```
-

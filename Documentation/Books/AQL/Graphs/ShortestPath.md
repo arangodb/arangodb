@@ -44,7 +44,7 @@ Now let's see how we can write a shortest path query.
 You have two options here, you can either use a named graph or a set of edge
 collections (anonymous graph).
 
-#### Working with named graphs
+### Working with named graphs
 
 ```
 FOR vertex[, edge]
