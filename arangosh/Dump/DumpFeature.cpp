@@ -1051,7 +1051,7 @@ void DumpFeature::start() {
   }
 
   if (role == "DBSERVER" || role == "PRIMARY") {
-    LOG_TOPIC(WARN, arangodb::Logger::DUMP) << "operations in the cluster should be carried via a coordinator, but we are connected to a database server node. this is an unsupported operation!";
+    LOG_TOPIC(WARN, arangodb::Logger::DUMP) << "You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator. This is an unsupported operation!";
   }
 
   // special cluster-mode parameter checks
