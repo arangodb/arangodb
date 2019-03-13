@@ -2,7 +2,8 @@ v3.4.5 (XXXX-XX-XX)
 -------------------
 
 * fixed internal issue #3757 : when restarting a follower in active failover mode,
-  try an incremental sync instead of a full resync
+  try an incremental sync instead of a full resync. Fixed also the case where a
+  double resync was made
 
 * add "PRUNE <condition>" to AQL Traversals (internal issue #3068). This allows to early
   abort searching of unnecessary branches within a traversal.
