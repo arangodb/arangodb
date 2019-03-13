@@ -602,7 +602,8 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
   
   options->addOption(
       "--all-databases", "dump data of all databases",
-      new BooleanParameter(&_options.allDatabases));
+      new BooleanParameter(&_options.allDatabases))
+      .setIntroducedIn(30500);
 
   options->addOption(
       "--force", "continue dumping even in the face of some server-side errors",
