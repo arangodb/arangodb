@@ -3435,14 +3435,3 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
 
   return Result{};
 }
-  
-/// @brief returns an empty index iterator for the collection
-std::unique_ptr<IndexIterator> Methods::createEmptyIndexIterator(std::string const& collectionName) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
-  TransactionCollection* trxColl = trxCollection(cid);
-  if (trxColl == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "unable to determine transaction collection");
-  }
-  return std::make_unique<EmptyIndexIterator>(documentCollection(trxColl), this);
-}
