@@ -1304,10 +1304,9 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(_objectId != 0);
   Result res;
-  
-  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
 
-  // we may only disable indexing if we don't have a unique array index
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
+  // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
   RocksDBKeyLeaser key(trx);
