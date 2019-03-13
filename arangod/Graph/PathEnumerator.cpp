@@ -195,7 +195,7 @@ arangodb::aql::AqlValue DepthFirstEnumerator::lastEdgeToAqlValue() {
   return _opts->cache()->fetchEdgeAqlResult(_enumeratedPath.edges.back());
 }
 
-arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(arangodb::velocypack::Builder& result) {
+VPackSlice DepthFirstEnumerator::pathToSlice(VPackBuilder& result) {
   result.clear();
   result.openObject();
   result.add(VPackValue("edges"));
@@ -208,29 +208,42 @@ arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(arangodb::velocypac
   result.add(VPackValue("vertices"));
   result.openArray();
   for (auto const& it : _enumeratedPath.vertices) {
-    _traverser->addVertexToVelocyPack(arangodb::velocypack::StringRef(it), result);
+    _traverser->addVertexToVelocyPack(VPackStringRef(it), result);
   }
   result.close();
   result.close();
-  return arangodb::aql::AqlValue(result.slice());
+  TRI_ASSERT(result.isClosed());
+  return result.slice();
+}
+
+arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(VPackBuilder& result) {
+  return arangodb::aql::AqlValue(pathToSlice(result));
 }
 
 bool DepthFirstEnumerator::shouldPrune() {
   // We need to call prune here
   if (_opts->usesPrune()) {
-    auto* evaluator = _opts->getPruneEvaluator();
-    if (evaluator->needsVertex()) {
-      evaluator->injectVertex(lastVertexToAqlValue().slice());
+    // evaluator->evaluate() might access these, so they have to live long
+    // enough. To make that perfectly clear, I added a scope.
+    transaction::BuilderLeaser pathBuilder(_opts->trx());
+    aql::AqlValue vertex, edge;
+    aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
+    {
+      aql::PruneExpressionEvaluator* evaluator = _opts->getPruneEvaluator();
+      if (evaluator->needsVertex()) {
+        vertex = lastVertexToAqlValue();
+        evaluator->injectVertex(vertex.slice());
+      }
+      if (evaluator->needsEdge()) {
+        edge = lastEdgeToAqlValue();
+        evaluator->injectEdge(edge.slice());
+      }
+      if (evaluator->needsPath()) {
+        VPackSlice path = pathToSlice(*pathBuilder.get());
+        evaluator->injectPath(path);
+      }
+      return evaluator->evaluate();
     }
-    if (evaluator->needsEdge()) {
-      evaluator->injectEdge(lastEdgeToAqlValue().slice());
-    }
-    transaction::BuilderLeaser builder(_opts->trx());
-    if (evaluator->needsPath()) {
-      aql::AqlValue val = pathToAqlValue(*builder.get());
-      evaluator->injectPath(val.slice());
-    }
-    return evaluator->evaluate();
   }
   return false;
 }
