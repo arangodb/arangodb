@@ -117,6 +117,8 @@ Turn an array of arrays into a flat array. All array elements in *array* will be
 expanded in the result array. Non-array elements are added as they are. The function
 will recurse into sub-arrays up to the specified depth. Duplicates will not be removed.
 
+Also see [array contraction](../Advanced/ArrayOperators.md#array-contraction).
+
 - **array** (array): array with elements of arbitrary type, including nested arrays
 - **depth** (number, *optional*):  flatten up to this many levels, the default is 1
 - returns **flatArray** (array): a flattened array
