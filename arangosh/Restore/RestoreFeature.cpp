@@ -926,7 +926,7 @@ arangodb::Result processInputDirectory(
     // wait for all jobs to finish, then check for errors
     if (options.progress) {
       LOG_TOPIC(INFO, Logger::RESTORE)
-          << "# Dispatched " << stats.totalCollections << " job(s) to "
+          << "# Dispatched " << stats.totalCollections << " job(s), using "
           << options.threadCount << " worker(s)";
 
       double start = TRI_microtime();
@@ -1337,13 +1337,18 @@ void RestoreFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  // Version 1.4 did not yet have a cluster mode
-  std::tie(result, _options.clusterMode) = _clientManager.getArangoIsCluster(*httpClient);
+  std::string role;
+  std::tie(result, role) = _clientManager.getArangoIsCluster(*httpClient);
+  _options.clusterMode = (role == "COORDINATOR");
   if (result.fail()) {
     LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
         << "Error: could not detect ArangoDB instance type: " << result.errorMessage();
     _exitCode = EXIT_FAILURE;
     return;
+  }
+  
+  if (role == "DBSERVER" || role == "PRIMARY") {
+    LOG_TOPIC(WARN, arangodb::Logger::DUMP) << "operations in the cluster should be carried via a coordinator, but we are connected to a database server node. this is an unsupported operation!";
   }
 
   std::tie(result, _options.indexesFirst) =

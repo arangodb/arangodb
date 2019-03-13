@@ -215,6 +215,18 @@ entries, and will continue to work.
 Existing `_modules` collections will also remain functional.
 
 
+Client tools
+------------
+
+Under normal circumstances there should be no need to connect to a 
+database server in a cluster with one of the client tools, and it is 
+likely that any user operations carried out there with one of the client
+tools may cause trouble. 
+
+The client tools arangosh, arangodump and arangorestore will now emit 
+a warning when connecting with them to a database server node in a cluster.
+
+
 Internal
 --------
 

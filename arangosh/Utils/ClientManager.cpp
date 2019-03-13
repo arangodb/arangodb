@@ -159,7 +159,7 @@ std::string ClientManager::rewriteLocation(void* data, std::string const& locati
   return "/_db/" + dbname + "/" + location;
 }
 
-std::pair<Result, bool> ClientManager::getArangoIsCluster(httpclient::SimpleHttpClient& client) {
+std::pair<Result, std::string> ClientManager::getArangoIsCluster(httpclient::SimpleHttpClient& client) {
   using arangodb::basics::VelocyPackHelper;
 
   Result result{TRI_ERROR_NO_ERROR};
@@ -168,7 +168,7 @@ std::pair<Result, bool> ClientManager::getArangoIsCluster(httpclient::SimpleHttp
 
   if (response == nullptr || !response->isComplete()) {
     result.reset(TRI_ERROR_INTERNAL, "no response from server!");
-    return {result, false};
+    return {result, ""};
   }
 
   std::string role = "UNDEFINED";
@@ -194,7 +194,7 @@ std::pair<Result, bool> ClientManager::getArangoIsCluster(httpclient::SimpleHttp
     client.disconnect();
   }
 
-  return {result, (role == "COORDINATOR")};
+  return {result, role};
 }
 
 std::pair<Result, bool> ClientManager::getArangoIsUsingEngine(httpclient::SimpleHttpClient& client,
