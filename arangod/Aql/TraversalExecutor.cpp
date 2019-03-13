@@ -119,7 +119,7 @@ TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
 
 TraversalExecutor::~TraversalExecutor() {
   auto opts = _traverser.options();
-  if (opts != nullptr) {
+  if (opts != nullptr && opts->usesPrune()) {
     auto *evaluator = opts->getPruneEvaluator();
     if (evaluator != nullptr) {
       // The InAndOutRowExpressionContext in the PruneExpressionEvaluator holds

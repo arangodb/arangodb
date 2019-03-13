@@ -51,7 +51,7 @@ class PruneExpressionEvaluator {
 
   bool evaluate();
   void prepareContext(InputAqlItemRow input) { _ctx.setInputRow(std::move(input)); }
-  void unPrepareContext() { _ctx.setInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}); }
+  void unPrepareContext() { _ctx.invalidateInputRow(); }
 
   bool needsVertex() const { return _ctx.needsVertexValue(); }
   void injectVertex(velocypack::Slice v) { _ctx.setVertexValue(v); }
