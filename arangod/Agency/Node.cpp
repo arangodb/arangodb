@@ -1040,12 +1040,15 @@ std::pair<std::string, bool> Node::hasAsString(std::string const& url) const {
 std::pair<Node::Children const&, bool> Node::hasAsChildren(std::string const& url) const {
   std::pair<Children const&, bool>* ret_pair;
 
+  static Children const dummyChildren;
+  
   // retrieve node, throws if does not exist
   try {
     Node const& target(operator()(url));
     ret_pair = new std::pair<Children const&, bool> {target.children(), true};
   } catch (...) {
     // do nothing, ret_pair second already false
+    ret_pair = new std::pair<Children const&, bool> {dummyChildren, false};
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
         << "hasAsChildren had exception processing " << url;
   }  // catch
