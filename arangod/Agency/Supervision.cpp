@@ -857,11 +857,6 @@ void Supervision::run() {
         // No point in progressing, if indexes cannot be advanced
         while (!this->isStopping() && _agent->leading()) { 
 
-          // avoid getting trapped as last agent standing
-          if () {
-            break;
-          }
-
           auto result = _agent->waitFor(leaderIndex);
           if (result == Agent::raft_commit_t::TIMEOUT) { // Oh snap
             // Note that we can get UNKNOWN if we have lost leadership or
