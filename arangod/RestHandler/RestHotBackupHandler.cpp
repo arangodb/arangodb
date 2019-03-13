@@ -53,7 +53,11 @@ RestStatus RestHotBackupHandler::execute() {
 
       // if !valid() then !success() already set
       if (operation->success()) {
-        generateOk(rest::ResponseCode::OK, operation->resultSlice());
+        if (operation->result().isEmpty()) {
+          generateOk(rest::ResponseCode::OK, velocypack::Slice::emptyObjectSlice());
+        } else {
+          generateOk(rest::ResponseCode::OK, operation->resultSlice());
+        } // else
       } else {
         if (!operation->result().isEmpty()) {
           std::string msg = "Error, details: ";
