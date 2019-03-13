@@ -730,7 +730,62 @@ function ensureIndexSuite() {
         }
       });
       assertTrue(found);
+
+      // this should work without problems:
+      collection.update("test1", {value: 'othervalue'});
     },
+
+    ////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureUniqueHashOnArray : function () {
+      var res = collection.getIndexes();
+
+      assertEqual(1, res.length);
+
+      var idx = collection.ensureIndex({ type: "hash", unique: true ,fields: [ "value[*]" ] });
+      assertEqual("hash", idx.type);
+      assertTrue(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "value[*]" ], idx.fields);
+
+      res = collection.getIndexes()[collection.getIndexes().length - 1];
+
+      assertEqual("hash", res.type);
+      assertTrue(res.unique);
+      assertFalse(res.sparse);
+      assertEqual([ "value[*]" ], res.fields);
+
+      assertEqual(idx.id, res.id);
+
+      var i = 0;
+      for (i = 0; i < 100; ++i) {
+        collection.insert({ _key: "test" + i, value: [ i ] });
+      }
+      for (i = 0; i < 100; ++i) {
+        var doc = collection.document("test" + i);
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value[0]);
+      }
+
+      var query = "FOR doc IN " + collection.name() + " FILTER doc._key == 'test1' && doc.value[0] == 1 RETURN doc";
+      var st = db._createStatement({ query: query });
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
+        if (node.type === "IndexNode") {
+          assertTrue(node.indexes[0].type === "primary" || node.indexes[0].type === "hash");
+          found = true;
+        }
+      });
+      assertTrue(found);
+
+      // this should work without problems:
+      collection.update("test1", {value: ['othervalue']});
+      collection.update("test1", {value: ['othervalue', 'morevalues']});
+    },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: ensure w/ skiplist
