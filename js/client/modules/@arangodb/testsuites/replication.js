@@ -74,7 +74,9 @@ function replicationFuzz (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_fuzz);
 
   options.replication = true;
-  options.test = 'replication-fuzz';
+  if (options.test === undefined) {
+    options.test = 'replication-fuzz';
+  }
   let startStopHandlers = {
     postStart: function (options,
                          serverOptions,
@@ -143,7 +145,9 @@ function replicationRandom (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_random);
 
   options.replication = true;
-  options.test = 'replication-random';
+  if (options.test === undefined) {
+    options.test = 'replication-random';
+  }
   let startStopHandlers = {
     postStart: function (options,
                          serverOptions,
@@ -213,7 +217,9 @@ function replicationAql (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_aql);
 
   options.replication = true;
-  options.test = 'replication-aql';
+  if (options.test === undefined) {
+    options.test = 'replication-aql';
+  }
   let startStopHandlers = {
     postStart: function (options,
                          serverOptions,
