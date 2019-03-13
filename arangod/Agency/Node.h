@@ -334,6 +334,8 @@ class Node {
   mutable Buffer<uint8_t> _vecBuf;
   mutable bool _vecBufDirty;
   bool _isArray;
+  static Children const dummyChildren;
+
 };
 
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
