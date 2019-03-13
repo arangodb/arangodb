@@ -2717,4 +2717,79 @@ int fetchEdgesFromEngines(std::string const& dbname,
   return TRI_ERROR_NO_ERROR;
 }
 
+arangodb::Result hotBackupCoordinator(
+  HotBackupMode const& mode, uint64_t const& wait) {
+
+  ClusterInfo* ci = ClusterInfo::instance();
+
+  // Go to backup mode for 5 minutes if and only if not already in
+  // backup mode. Otherwise we cannot know, why the supervision was
+  // disable and might be enabled any time. This seems enough to make sure that
+  // no other backup is going on?
+
+  auto hlRes = ci->agencyHotBackupLock(wait);
+  if (!hlRes.successful()) {
+    return hlRes;
+  }
+
+  // acquire agency dump
+  auto agency = std::make_shared<VPackBuilder>;
+  arangodb::Result dumpRes = ci->agencyDump(agency);
+  if (!dumpRes.successful()) {
+    LOG_TOPIC(ERR, Logger::HOTBACKUP)
+      << "Failed to acquire agency dump: " << dumpRes.errorMessage();
+    return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
+  }
+
+
+  
+  
+  auto adRes = ci->agencuDump()
+  
+  auto result = _agency.casValue(
+    "Target/Backup", off.slice(), on.slice(), 300, 10);
+
+  while (true) {
+    0;
+  }
+  
+  // We need to stop right here! Failure:
+  if (!result.successful()) {
+    return arangodb::Result(result.errorCode(), result.errorMessage());
+  }
+
+  // Now try to lock down the db servers
+  std::vector<arangodb::ClusterCommRequest> locks;
+  static std::string const lockURL = "/_admin/hot-backup/lock";
+  for (auto const& dbServer : _DBServers) {
+    locks.emplace_back("server:" + dbServer.first, body);
+  }
+  
+
+/*  AgencyOperation newVal("Supervision/Maintenance", );
+  AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
+  AgencyPrecondition precondition("Plan/Databases/" + name,
+                                  AgencyPrecondition::Type::EMPTY, true);
+  AgencyWriteTransaction trx({newVal, incrementVersion}, precondition);
+
+  res = ac.sendTransactionWithFailover(trx, realTimeout);
+      operations['/arango/Supervision/Maintenance'] =
+        {"op":"set","new":true,"ttl":3600};
+
+  std::vector<ClusterCommRequest> rqs;
+  for (auto const& dbserver : _DBServers) {
+    
+  }
+*/
+/*  auto it = _shardServers.find(shardId);
+  if (it != _shardServers.end()) {
+    servers = (*it).second;
+    return arangodb::Result();
+  }
+
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+  << "Strange, did not find shard in _shardServers: " << shardId;*/
+  return arangodb::Result();
+}
+
 }  // namespace arangodb

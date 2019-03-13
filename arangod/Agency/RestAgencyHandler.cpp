@@ -567,8 +567,11 @@ RestStatus RestAgencyHandler::handleState() {
     body.add(VPackValue(VPackValueType::Object));
     body.add("index", VPackValue(i.index));
     body.add("term", VPackValue(i.term));
-    if (i.entry != nullptr) {
-      body.add("query", VPackSlice(i.entry->data()));
+    if (i.request != nullptr) {
+      body.add("request", VPackSlice(i.request->data()));
+    }
+    if (i.precondition != nullptr) {
+      body.add("precondition", VPackSlice(i.precondition->data()));
     }
     body.add("clientId", VPackValue(i.clientId));
     body.close();

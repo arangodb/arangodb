@@ -236,6 +236,14 @@ int truncateCollectionOnCoordinator(std::string const& dbname, std::string const
 int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector,
                            double maxWaitTime = -1.0);
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief create hotbackup on a coordinator
+//////////////////////////////////////////////////////////////////////////////
+
+enum HotBackupMode {CONSISTENT, DIRTY};
+
+arangodb::Result hotBackupCoordinator(HotBackupMode const&, uint64_t const&);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the active journals for the collection on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,6 +275,7 @@ class ClusterMethods {
       LogicalCollection* col, bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
       bool enforceReplicationFactor, arangodb::velocypack::Slice parameters);
 };
+
 
 }  // namespace arangodb
 

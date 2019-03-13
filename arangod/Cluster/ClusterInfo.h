@@ -602,6 +602,14 @@ class ClusterInfo {
    */
   arangodb::Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
 
+  /**
+   * @brief Lock agency's hot backup with TTL 60 seconds 
+   *
+   * @param  timeout  Timeout to waitfor
+   * @return          Operation's result
+   */
+  arangodb::Result agencyHotBackupLock(uint64_t const& timeout);
+
  private:
   void loadClusterId();
 
