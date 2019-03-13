@@ -854,10 +854,11 @@ void Supervision::run() {
       index_t leaderIndex = _agent->index();
       
       if (leaderIndex != 0) {
-        while (true) { // No point in progressing, if indexes cannot be advanced
+        // No point in progressing, if indexes cannot be advanced
+        while (!this->isStopping() && _agent->leading()) { 
 
           // avoid getting trapped as last agent standing
-          if (this->isStopping()) {
+          if () {
             break;
           }
 
