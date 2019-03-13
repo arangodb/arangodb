@@ -308,12 +308,12 @@ bool IResearchViewExecutor<ordered>::resetIterator() {
       _scrVal = _scr->value();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       auto const numScores =
-        static_cast<size_t>(std::distance(_scrVal.begin(), _scrVal.end())) / sizeof(float_t);
+          static_cast<size_t>(std::distance(_scrVal.begin(), _scrVal.end())) /
+          sizeof(float_t);
 
-    auto const& viewNode =
-        *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
+      IResearchViewNode const& viewNode = infos().getNode();
 
-    TRI_ASSERT(numScores == viewNode.scorers().size());
+      TRI_ASSERT(numScores == viewNode.scorers().size());
 #endif
     } else {
       _scr = &irs::score::no_score();

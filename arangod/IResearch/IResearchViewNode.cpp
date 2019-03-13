@@ -990,8 +990,12 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   aql::RegisterId const numScoreRegisters =
       getNrOutputRegisters() - getNrInputRegisters() - 1;
   std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
-      aql::make_shared_unordered_set(firstOutputRegister,
-                                     firstOutputRegister + numScoreRegisters + 1);
+      aql::make_shared_unordered_set();
+  writableOutputRegisters->reserve(1 + numScoreRegisters);
+  for (aql::RegisterId reg = firstOutputRegister;
+       reg < firstOutputRegister + numScoreRegisters + 1; reg++) {
+    writableOutputRegisters->emplace(reg);
+  }
   TRI_ASSERT(writableOutputRegisters->size() == 1 + numScoreRegisters);
   TRI_ASSERT(*writableOutputRegisters->begin() == firstOutputRegister);
   TRI_ASSERT((numScoreRegisters != 0) == ordered);
