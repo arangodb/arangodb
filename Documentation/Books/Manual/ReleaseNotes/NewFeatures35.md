@@ -209,7 +209,7 @@ of each dumped database. Databases will be dumped one after the after. However,
 inside each database, the collections of the database can be dumped in parallel 
 using multiple threads.
 When dumping all databases, the consistency guarantees of arangodump are the same
-as when dumping multiple single database indivually, so the dump does not provide
+as when dumping multiple single database individually, so the dump does not provide
 cross-database consistency of the data.
 
 
