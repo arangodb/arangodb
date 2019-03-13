@@ -354,7 +354,7 @@ bool MoveShard::start(bool&) {
                            pending.add(plan[0]);
                            if (!_toServerIsFollower) {
                              pending.add(VPackValue(_to));
-                           } 
+                           }
                            for (size_t i = 1; i < plan.length(); ++i) {
                              pending.add(plan[i]);
                            }
@@ -655,7 +655,7 @@ JOB_STATUS MoveShard::pendingLeader() {
     return (finishedAfterTransaction ? FINISHED : PENDING);
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "Precondition failed for MoveShard job " + _jobId;
   return PENDING;
 }
@@ -753,7 +753,7 @@ arangodb::Result MoveShard::abort() {
   }
 
 
-  // Can now only be TODO or PENDING. 
+  // Can now only be TODO or PENDING.
   if (_status == TODO) {
 
     // Do NOT remove, just cause it seems obvious!
@@ -769,7 +769,7 @@ arangodb::Result MoveShard::abort() {
         }
       }
     }
-  
+
     if (finish("", "", true, "job aborted", todoPrec)) {
       return result;
     }
@@ -781,7 +781,7 @@ arangodb::Result MoveShard::abort() {
   // Find the other shards in the same distributeShardsLike group:
   std::vector<Job::shard_t> shardsLikeMe =
     clones(_snapshot, _database, _collection, _shard);
-    
+
   // We can no longer abort by reverting to where we started, if any of the
   // shards of the distributeShardsLike group has already gone to new leader
   if (_isLeader) {
@@ -796,7 +796,7 @@ arangodb::Result MoveShard::abort() {
       }
     }
   }
-  
+
   Builder trx;  // to build the transaction
 
   // Now look after a PENDING job:
@@ -852,7 +852,7 @@ arangodb::Result MoveShard::abort() {
         _snapshot, _database, shardsLikeMe,
         [this, &trx](
           Slice plan, Slice current, std::string& planPath, std::string& curPath) {
-          // Current still as is 
+          // Current still as is
           trx.add(curPath, current);
         });
     }
