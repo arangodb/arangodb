@@ -35,6 +35,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
 #include "Aql/RemoteExecutor.h"
+#include "Aql/SortingGatherExecutor.h"
 #include "Aql/UnsortingGatherExecutor.h"
 #include "Transaction/Methods.h"
 
@@ -374,9 +375,9 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
   if (_elements.empty()) {
-    ExecutionNode const* previousNode = getFirstDependency();
-    TRI_ASSERT(previousNode != nullptr);
     ExecutorInfos infos(make_shared_unordered_set(), make_shared_unordered_set(),
                         getRegisterPlan()->nrRegs[previousNode->getDepth()],
                         getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
@@ -384,8 +385,17 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     return std::make_unique<ExecutionBlockImpl<UnsortingGatherExecutor>>(&engine, this,
                                                                          std::move(infos));
   }
+  std::vector<SortRegister> sortRegister;
+  SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
+  SortingGatherExecutorInfos infos(make_shared_unordered_set(),
+                                   make_shared_unordered_set(),
+                                   getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                                   getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                                   calcRegsToKeep(), std::move(sortRegister),
+                                   _plan->getAst()->query()->trx(), sortMode());
 
-  return std::make_unique<SortingGatherBlock>(engine, *this);
+  return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(&engine, this,
+                                                                       std::move(infos));
 }
 
 /// @brief estimateCost
