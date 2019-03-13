@@ -209,9 +209,11 @@ documents are the same, or for grouping values in queries.
 
 ### String-based hashing
 
-See the string functions [SHA1()](String.md#sha1),
-[SHA512()](String.md#sha512) and
-[MD5()](String.md#md5).
+See the following string functions:
+
+- [SHA1()](String.md#sha1)
+- [SHA512()](String.md#sha512)
+- [MD5()](String.md#md5)
 
 Function calling
 ----------------
