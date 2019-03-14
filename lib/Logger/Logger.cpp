@@ -55,6 +55,7 @@ Mutex Logger::_initializeMutex;
 std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 
+bool Logger::_showIds(false);
 bool Logger::_showLineNumber(false);
 bool Logger::_shortenFilenames(true);
 bool Logger::_showThreadIdentifier(false);
@@ -77,6 +78,10 @@ LogLevel Logger::logLevel() { return _level.load(std::memory_order_relaxed); }
 
 std::vector<std::pair<std::string, LogLevel>> Logger::logLevelTopics() {
   return LogTopic::logLevelTopics();
+}
+
+void Logger::setShowIds(bool show) {
+  _showIds = show;
 }
 
 void Logger::setLogLevel(LogLevel level) {

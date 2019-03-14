@@ -218,6 +218,7 @@ class Logger {
 
   static void setRole(char role);
   static void setOutputPrefix(std::string const&);
+  static void setShowIds(bool);
   static bool getShowIds() { return _showIds; };
   static void setShowLineNumber(bool);
   static void setShowRole(bool);
