@@ -289,11 +289,6 @@ void OptimizerRulesFeature::addRules() {
                  OptimizerRule::substituteSingleDocumentOperations,
                  DoesNotCreateAdditionalPlans, CanBeDisabled);
 
-#if 0
-    registerRule("optimize-cluster-single-shard", optimizeClusterSingleShardRule,
-                 OptimizerRule::optimizeClusterSingleShardRule, DoesNotCreateAdditionalPlans, CanBeDisabled);
-#endif
-
     // distribute operations in cluster
     registerRule("scatter-in-cluster", scatterInClusterRule, OptimizerRule::scatterInClusterRule,
                  DoesNotCreateAdditionalPlans, CanNotBeDisabled);

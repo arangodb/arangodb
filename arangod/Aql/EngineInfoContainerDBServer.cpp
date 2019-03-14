@@ -287,6 +287,8 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   // this clone does the translation collection => shardId implicitly
   // at the relevant parts of the query.
 
+  std::unordered_set<aql::Collection*> cleanup;
+  cleanup.emplace(_collection);
   _collection->setCurrentShard(id);
 
   ExecutionPlan plan(query.ast());
@@ -297,19 +299,29 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     auto clone = current->clone(&plan, false, false);
     auto const nodeType = clone->getType();
 
-    if (nodeType == ExecutionNode::INDEX || nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
-      auto x = dynamic_cast<CollectionAccessingNode*>(clone);
-      if (!x->distributeShardsLike.empty()) {
-        auto it = x->distributeShardsLike.find(id);
-        if (it != x->distributeShardsLike.end()) {
-          x->shardAlias = (*it).second;
-        }
-      }
-    }
-
     // we need to count nodes by type ourselves, as we will set the
     // "varUsageComputed" flag below (which will handle the counting)
     plan.increaseCounter(nodeType);
+    
+    if (nodeType == ExecutionNode::INDEX || nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
+      auto x = dynamic_cast<CollectionAccessingNode*>(clone);
+      auto const* prototype = x->prototype();
+      if (prototype != nullptr) {
+        auto s1 = prototype->shardIds();
+        auto s2 = x->collection()->shardIds();
+        if (s1->size() == s2->size()) {
+          for (size_t i = 0; i < s1->size(); ++i) {
+            if ((*s1)[i] == id) {
+              // inject shard id into collection
+              auto collection = const_cast<arangodb::aql::Collection*>(x->collection());
+              collection->setCurrentShard((*s2)[i]);
+              cleanup.emplace(collection);
+              break;
+            }
+          }
+        }
+      }
+    }
 
     if (ExecutionNode::REMOTE == nodeType) {
       auto rem = ExecutionNode::castTo<RemoteNode*>(clone);
@@ -339,7 +351,11 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   plan.setVarUsageComputed();
   const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
   plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/ false);
-  _collection->resetCurrentShard();
+ 
+  // remove shard id hack for all participating collections 
+  for (auto& it : cleanup) {
+    it->resetCurrentShard();
+  }
 }
 
 void EngineInfoContainerDBServer::CollectionInfo::mergeShards(
@@ -357,30 +373,19 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
   TRI_ASSERT(!_engineStack.empty());
   _engineStack.top()->addNode(node);
   switch (node->getType()) {
-    case ExecutionNode::ENUMERATE_COLLECTION: {
-      auto* scatter = findFirstScatter(*node);
-      auto const& colNode = *ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
-      auto const* col = colNode.collection();
-
-      std::unordered_set<std::string> restrictedShard;
-      if (colNode.isRestricted()) {
-        restrictedShard.emplace(colNode.restrictedShard());
-      }
-
-      handleCollection(col, AccessMode::Type::READ, scatter, restrictedShard);
-      updateCollection(col);
-      break;
-    }
+    case ExecutionNode::ENUMERATE_COLLECTION: 
     case ExecutionNode::INDEX: {
       auto* scatter = findFirstScatter(*node);
-      auto const& idxNode = *ExecutionNode::castTo<IndexNode const*>(node);
-      auto const* col = idxNode.collection();
-
+      auto const* colNode = dynamic_cast<CollectionAccessingNode const*>(node);
+      if (colNode == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast node to CollectionAccessingNode");
+      }
       std::unordered_set<std::string> restrictedShard;
-      if (idxNode.isRestricted()) {
-        restrictedShard.emplace(idxNode.restrictedShard());
+      if (colNode->isRestricted()) {
+        restrictedShard.emplace(colNode->restrictedShard());
       }
 
+      auto const* col = colNode->collection();
       handleCollection(col, AccessMode::Type::READ, scatter, restrictedShard);
       updateCollection(col);
       break;
@@ -462,8 +467,8 @@ void EngineInfoContainerDBServer::closeSnippet(QueryId coordinatorEngineId) {
     if (it == _collectionInfos.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
-          "Created a DBServer QuerySnippet without a Collection. This should "
-          "not happen. Please report this query to ArangoDB");
+          "created a DBServer QuerySnippet without a collection. This should "
+          "not happen");
     }
     it->second.engines.emplace_back(std::move(e));
   }

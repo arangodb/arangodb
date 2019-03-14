@@ -39,23 +39,22 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 CollectionAccessingNode::CollectionAccessingNode(aql::Collection const* collection)
-    : _collection(collection) {
+    : _collection(collection),
+      _prototype(nullptr) {
   TRI_ASSERT(_collection != nullptr);
 }
 
 CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
                                                  arangodb::velocypack::Slice slice)
     : _collection(plan->getAst()->query()->collections()->get(
-          slice.get("collection").copyString())) {
-
-  VPackSlice s = slice.get("distributeShardsLike");
-  if (s.isObject()) {
-    for (auto const& it : VPackObjectIterator(s)) {
-      distributeShardsLike.emplace(it.key.copyString(), it.value.copyString());
-    }
+          slice.get("collection").copyString())),
+      _prototype(nullptr) {
+    
+  if (slice.get("prototype").isString()) {
+    _prototype = plan->getAst()->query()->collections()->get(slice.get("prototype").copyString());
   }
 
-  TRI_ASSERT(_collection != nullptr || !distributeShardsLike.empty());
+  TRI_ASSERT(_collection != nullptr);
 
   if (_collection == nullptr) {
     std::string msg("collection '");
@@ -84,10 +83,9 @@ void CollectionAccessingNode::collection(aql::Collection const* collection) {
 
 void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("database", VPackValue(_collection->vocbase()->name()));
-  if (shardAlias.empty()) {
-    builder.add("collection", VPackValue(_collection->name()));
-  } else {
-    builder.add("collection", VPackValue(shardAlias));
+  builder.add("collection", VPackValue(_collection->name()));
+  if (_prototype != nullptr) {
+    builder.add("prototype", VPackValue(_prototype->name()));
   }
   builder.add("satellite", VPackValue(_collection->isSatellite()));
     
@@ -97,14 +95,6 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
 
   if (!_restrictedTo.empty()) {
     builder.add("restrictedTo", VPackValue(_restrictedTo));
-  }
-  
-  if (!distributeShardsLike.empty()) {
-    builder.add("distributeShardsLike", VPackValue(VPackValueType::Object));
-    for (auto const& it: distributeShardsLike) {
-      builder.add(it.first, VPackValue(it.second));
-    }
-    builder.close();
   }
 }
 

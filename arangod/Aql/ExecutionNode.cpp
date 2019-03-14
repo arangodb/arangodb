@@ -1234,8 +1234,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
                                                      outVariable, _random);
 
   c->projections(_projections);
-  c->distributeShardsLike = this->distributeShardsLike; 
-  c->shardAlias = this->shardAlias; 
+  c->_prototype = _prototype;
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
