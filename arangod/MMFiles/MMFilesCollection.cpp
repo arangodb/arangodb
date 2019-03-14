@@ -1966,9 +1966,7 @@ int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
   // pick up persistent id flag from state
   _hasAllPersistentLocalIds.store(openState._hasAllPersistentLocalIds);
   auto engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
-  LOG_TOPIC_IF(WARN, arangodb::Logger::ENGINES,
-               !openState._hasAllPersistentLocalIds && !engine->upgrading() &&
-                   !engine->inRecovery())
+  LOG_TOPIC_IF(WARN, arangodb::Logger::ENGINES, !openState._hasAllPersistentLocalIds && !engine->upgrading() && !engine->inRecovery())
       << "collection '" << _logicalCollection.name() << "' does not have all "
       << "persistent LocalDocumentIds; cannot be linked to an arangosearch "
          "view";
@@ -2241,9 +2239,9 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
     // definition shares an identifier with an existing index with a
     // different definition
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-                                   "duplicate value for `" + 
+                                   "duplicate value for `" +
                                        arangodb::StaticStrings::IndexId +
-                                       "` or `" + 
+                                       "` or `" +
                                        arangodb::StaticStrings::IndexName +
                                        "`");
   }
