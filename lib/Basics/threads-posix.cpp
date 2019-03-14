@@ -166,6 +166,10 @@ int TRI_JoinThread(TRI_thread_t* thread) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, int timeout) {
+  if (timeout == -1) {
+    return TRI_JoinThread(thread);
+  }
+  
   TRI_ASSERT(!TRI_IsSelfThread(thread));
   
   timespec ts;

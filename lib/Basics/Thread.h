@@ -144,6 +144,15 @@ class Thread {
   /// @brief the thread program
   virtual void run() = 0;
 
+  /// @brief return the max timeout (in ms) to wait for the thread to terminate.
+  ///
+  /// Failure to terminate within the specified time results in process abortion!
+  /// Return -1 to indicate that we want to wait forever instead of aborting the
+  /// process.
+  virtual int getTerminationTimeout() {
+    return 5 * 60 * 1000; // default: wait max 5min for the thread to terminate
+  }
+
   /// @brief optional notification call when thread gets unplanned exception
   virtual void crashNotification(std::exception const&) {}
 
