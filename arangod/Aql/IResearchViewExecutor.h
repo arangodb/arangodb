@@ -143,8 +143,6 @@ class IResearchViewExecutor {
  private:
   Infos const& infos() const noexcept;
 
-  // Copied from IResearchViewUnorderedBlock.
-  // TODO Should be removed later, or rewritten, as it does not fit the pattern.
   bool next(ReadContext& ctx);
 
   bool resetIterator();

@@ -99,8 +99,8 @@ IResearchViewExecutor<ordered>::IResearchViewExecutor(IResearchViewExecutor::Fet
       _execCtx(*infos.getQuery().trx(), _ctx),
       _inflight(0),
       _hasMore(true),  // has more data initially
-      _volatileSort(ordered), // TODO Seems to me this should just be replaced by ordered everywhere
-      _volatileFilter(true) // TODO Set this correctly. It's always true when ordered is true, but not necessarily when ordered is false.
+      _volatileSort(ordered),
+      _volatileFilter(true)
       {
   TRI_ASSERT(infos.getQuery().trx() != nullptr);
 
@@ -210,9 +210,7 @@ LocalDocumentId readPK(irs::doc_iterator& it,
 
 template <bool ordered>
 bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
-  // TODO This is just taken from the previous implementation, but maybe _filter
-  // shouldn't be a nullptr in either case?
-  TRI_ASSERT(ordered || _filter != nullptr);
+  TRI_ASSERT(_filter != nullptr);
 
   size_t const count = _reader->size();
   for (; _readerOffset < count; ++_readerOffset, _itr.reset()) {
@@ -417,6 +415,9 @@ void IResearchViewExecutor<ordered>::reset() {
     // compile filter
     _filter = root.prepare(*_reader, _order, irs::boost::no_boost(), _filterCtx);
 
+    // TODO Why is this done during every reset()? Seems to me it is fixed
+    // at the time the block is created, and thus both members could just be
+    // (template) parameters.
     auto const& volatility = viewNode.volatility();
     _volatileSort = volatility.second;
     _volatileFilter = _volatileSort || volatility.first;
