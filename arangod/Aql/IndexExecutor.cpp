@@ -112,7 +112,6 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _cursors(_infos.getIndexes().size()),
       _currentIndex(0),
       _alreadyReturned(),
-      _mmdr(std::make_unique<ManagedDocumentResult>()),
       _indexesExhausted(false),
       _isLastIndex(false) {
   TRI_ASSERT(!_infos.getIndexes().empty());
