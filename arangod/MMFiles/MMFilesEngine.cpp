@@ -281,7 +281,7 @@ std::unique_ptr<transaction::Manager> MMFilesEngine::createTransactionManager() 
 }
 
 std::unique_ptr<transaction::ContextData> MMFilesEngine::createTransactionContextData() {
-  return std::unique_ptr<transaction::ContextData>(new MMFilesTransactionContextData());
+  return std::make_unique<MMFilesTransactionContextData>();
 }
 
 std::unique_ptr<TransactionState> MMFilesEngine::createTransactionState(

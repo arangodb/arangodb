@@ -38,7 +38,9 @@
 namespace arangodb {
 class TransactionState;
 // to be derived by storage engines
-struct TransactionData {};
+struct TransactionData {
+  virtual ~TransactionData() = default;
+};
 
 namespace transaction {
 class Context;
