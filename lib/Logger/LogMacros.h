@@ -72,7 +72,7 @@
                                     << ::arangodb::Logger::LINE(__LINE__) \
                                     << ::arangodb::Logger::FILE(__FILE__) \
                                     << ::arangodb::Logger::FUNCTION(__FUNCTION__)) \
-                                    << ( ::arangodb::Logger::getShowIds() ? "["#c"]" : "" )
+                                    << ( ::arangodb::Logger::getShowIds() ? "["#c"] " : "" )
 
 // Can be used to pass the LogLevel in as variable
 #define LOG_TOPIC_RAW(c, a, b)                                                          \
@@ -82,7 +82,7 @@
                                     << (a) << (b) << ::arangodb::Logger::LINE(__LINE__) \
                                     << ::arangodb::Logger::FILE(__FILE__)               \
                                     << ::arangodb::Logger::FUNCTION(__FUNCTION__))      \
-                                    << ( ::arangodb::Logger::getShowIds() ? "["#c"]" : "" )
+                                    << ( ::arangodb::Logger::getShowIds() ? "["#c"] " : "" )
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic given that a condition is true
@@ -96,7 +96,7 @@
                                   << arangodb::Logger::LINE(__LINE__)    \
                                   << arangodb::Logger::FILE(__FILE__)    \
                                   << ::arangodb::Logger::FUNCTION(__FUNCTION__)) \
-                                  << ( ::arangodb::Logger::getShowIds() ? "["#c"]" : "" )
+                                  << ( ::arangodb::Logger::getShowIds() ? "["#c"] " : "" )
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message every N.the time
@@ -121,7 +121,7 @@
                                   << arangodb::Logger::LINE(__LINE__) \
                                   << arangodb::Logger::FILE(__FILE__) \
                                   << ::arangodb::Logger::FUNCTION(__FUNCTION__)) \
-                                  << ( ::arangodb::Logger::getShowIds() ? "["#c"]" : "" )
+                                  << ( ::arangodb::Logger::getShowIds() ? "["#c"] " : "" )
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for debugging during development
@@ -130,24 +130,24 @@
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #define LOG_DEVEL \
-  LOG_TOPIC("xxxxx", ERR, ::arangodb::Logger::FIXME) << "###### "
+  LOG_TOPIC(xxxxx, ERR, ::arangodb::Logger::FIXME) << "###### "
 
 #define LOG_DEVEL_IF(cond) \
-  LOG_TOPIC_IF("xxxxx", ERR, ::arangodb::Logger::FIXME, (cond)) << "###### "
+  LOG_TOPIC_IF(xxxxx, ERR, ::arangodb::Logger::FIXME, (cond)) << "###### "
 
 #define LOG_DEVEL_EVERY_N(a, n) \
-  LOG_TOPIC_EVERY_N("xxxxx", ERR, ::arangodb::Logger::FIXME, (n)) << "###### "
+  LOG_TOPIC_EVERY_N(xxxxx, ERR, ::arangodb::Logger::FIXME, (n)) << "###### "
 
 #else
 
 #define LOG_DEVEL \
-  LOG_TOPIC("xxxxx", DEBUG, ::arangodb::Logger::FIXME) << "###### "
+  LOG_TOPIC(xxxxx, DEBUG, ::arangodb::Logger::FIXME) << "###### "
 
 #define LOG_DEVEL_IF(cond) \
-  LOG_TOPIC_IF("xxxxx", DEBUG, ::arangodb::Logger::FIXME, (cond)) << "###### "
+  LOG_TOPIC_IF(xxxxx, DEBUG, ::arangodb::Logger::FIXME, (cond)) << "###### "
 
 #define LOG_DEVEL_EVERY_N(a, n) \
-  LOG_TOPIC_EVERY_N("xxxxx", DEBUG, ::arangodb::Logger::FIXME, (n)) << "###### "
+  LOG_TOPIC_EVERY_N(xxxxx, DEBUG, ::arangodb::Logger::FIXME, (n)) << "###### "
 
 #endif
 
