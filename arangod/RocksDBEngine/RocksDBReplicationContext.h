@@ -48,6 +48,9 @@ class Snapshot;
 }  // namespace rocksdb
 
 namespace arangodb {
+namespace basics {
+class StringBuffer;
+}
 
 class RocksDBReplicationContext {
  private:

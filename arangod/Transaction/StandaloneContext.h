@@ -24,8 +24,9 @@
 #ifndef ARANGOD_TRANSACTION_STANDALONE_CONTEXT_H
 #define ARANGOD_TRANSACTION_STANDALONE_CONTEXT_H 1
 
-#include "Basics/Common.h"
 #include "Context.h"
+
+#include "Basics/Common.h"
 #include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;

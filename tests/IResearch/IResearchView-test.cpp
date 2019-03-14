@@ -5221,9 +5221,9 @@ SECTION("test_update_partial") {
       "{ \"links\": { \"testCollection\": {} } }"
     );
 
-    auto before = StorageEngineMock::inRecoveryResult;
+    auto beforeRec = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+    auto restore = irs::make_finally([&beforeRec]()->void { StorageEngineMock::inRecoveryResult = beforeRec; });
     persisted = false;
     CHECK((view->properties(updateJson->slice(), true).ok()));
     CHECK((false == persisted));
