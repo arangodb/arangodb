@@ -76,11 +76,11 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _allowCoveringIndexOptimization(true),
       _cursorHasMore(false) {
-  _cursor =
+  _cursor = std::make_unique<OperationCursor>(
       _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
                                     (_infos.getRandom()
                                          ? transaction::Methods::CursorType::ANY
-                                         : transaction::Methods::CursorType::ALL));
+                                         : transaction::Methods::CursorType::ALL)));
 
   if (!waitForSatellites(_infos.getEngine(), _infos.getCollection())) {
     double maxWait = _infos.getEngine()->getQuery()->queryOptions().satelliteSyncWait;

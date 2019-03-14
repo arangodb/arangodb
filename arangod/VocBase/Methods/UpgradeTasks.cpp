@@ -20,7 +20,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "UpgradeTasks.h"
 #include "Agency/AgencyComm.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -31,6 +30,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesEngine.h"
@@ -39,6 +39,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
+#include "UpgradeTasks.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -162,7 +163,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
 
 bool UpgradeTasks::upgradeGeoIndexes(TRI_vocbase_t& vocbase,
                                      arangodb::velocypack::Slice const& slice) {
-  if (EngineSelectorFeature::engineName() != "rocksdb") {
+  if (EngineSelectorFeature::engineName() != RocksDBEngine::EngineName) {
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "No need to upgrade geo indexes!";
     return true;
   }
@@ -240,21 +241,24 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
     VPackSlice extra = slice.get("extra");
     Result res = um->storeUser(false, user, passwd, active, VPackSlice::noneSlice());
     if (res.fail() && !res.is(TRI_ERROR_USER_DUPLICATE)) {
-      LOG_TOPIC(WARN, Logger::STARTUP) << "could not add database user " << user << ": " << res.errorMessage();
+      LOG_TOPIC(WARN, Logger::STARTUP) << "could not add database user " << user
+                                       << ": " << res.errorMessage();
     } else if (extra.isObject() && !extra.isEmptyObject()) {
       um->updateUser(user, [&](auth::User& user) {
         user.setUserData(VPackBuilder(extra));
         return TRI_ERROR_NO_ERROR;
       });
     }
-  
+
     res = um->updateUser(user, [&](auth::User& entry) {
       entry.grantDatabase(vocbase.name(), auth::Level::RW);
       entry.grantCollection(vocbase.name(), "*", auth::Level::RW);
       return TRI_ERROR_NO_ERROR;
     });
     if (res.fail()) {
-      LOG_TOPIC(WARN, Logger::STARTUP) << "could not set permissions for new user " << user << ": " << res.errorMessage();
+      LOG_TOPIC(WARN, Logger::STARTUP)
+          << "could not set permissions for new user " << user << ": "
+          << res.errorMessage();
     }
   }
   return true;
@@ -332,30 +336,34 @@ bool UpgradeTasks::renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
   if (EngineSelectorFeature::engineName() == MMFilesEngine::EngineName) {
     return true;
   }
-  
+
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   std::string const path = engine->databasePath(&vocbase);
-  
-  std::string const source = arangodb::basics::FileUtils::buildFilename(
-      path, "REPLICATION-APPLIER-STATE");
-    
+
+  std::string const source =
+      arangodb::basics::FileUtils::buildFilename(path,
+                                                 "REPLICATION-APPLIER-STATE");
+
   if (!basics::FileUtils::isRegularFile(source)) {
     // source file does not exist
     return true;
   }
 
   bool result = true;
- 
-  // copy file REPLICATION-APPLIER-STATE to REPLICATION-APPLIER-STATE-<id> 
+
+  // copy file REPLICATION-APPLIER-STATE to REPLICATION-APPLIER-STATE-<id>
   Result res = basics::catchToResult([&vocbase, &path, &source, &result]() -> Result {
     std::string const dest = arangodb::basics::FileUtils::buildFilename(
         path, "REPLICATION-APPLIER-STATE-" + std::to_string(vocbase.id()));
 
-    LOG_TOPIC(TRACE, Logger::STARTUP) << "copying replication applier file '" << source << "' to '" << dest << "'";
+    LOG_TOPIC(TRACE, Logger::STARTUP) << "copying replication applier file '"
+                                      << source << "' to '" << dest << "'";
 
     std::string error;
     if (!TRI_CopyFile(source.c_str(), dest.c_str(), error)) {
-      LOG_TOPIC(WARN, Logger::STARTUP) << "could not copy replication applier file '" << source << "' to '" << dest << "'";
+      LOG_TOPIC(WARN, Logger::STARTUP)
+          << "could not copy replication applier file '" << source << "' to '"
+          << dest << "'";
       result = false;
     }
     return Result();

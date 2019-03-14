@@ -55,7 +55,7 @@ struct BucketPosition {
 template <class Element>
 class UniqueInserterTask final : public LocalTask {
  private:
-  typedef arangodb::basics::IndexBucket<Element, uint64_t, SIZE_MAX> Bucket;
+  typedef arangodb::basics::IndexBucket<Element, uint64_t> Bucket;
   typedef std::vector<std::pair<Element, uint64_t>> DocumentsPerBucket;
 
   std::function<void(void*)> _contextDestroyer;

@@ -40,7 +40,9 @@ var db = require("@arangodb").db;
 function ensureIndexSuite() {
   'use strict';
   var cn = "UnitTestsCollectionIdx";
+  var ecn = "UnitTestsEdgeCollectionIdx";
   var collection = null;
+  var edgeCollection = null;
 
   return {
 
@@ -51,6 +53,7 @@ function ensureIndexSuite() {
     setUp : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
+      edgeCollection = internal.db._createEdgeCollection(ecn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,10 +64,12 @@ function ensureIndexSuite() {
       // we need try...catch here because at least one test drops the collection itself!
       try {
         collection.drop();
+        edgeCollection.drop();
       }
       catch (err) {
       }
       collection = null;
+      edgeCollection = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,10 +92,6 @@ function ensureIndexSuite() {
       assertEqual(collection.name() + "/" + id, res.id);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ids
-////////////////////////////////////////////////////////////////////////////////
-
     testEnsureId2 : function () {
       var id = "2734752388";
       var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], id: id });
@@ -105,6 +106,132 @@ function ensureIndexSuite() {
       assertFalse(res.unique);
       assertEqual([ "b", "d" ], res.fields);
       assertEqual(collection.name() + "/" + id, res.id);
+    },
+
+    testEnsureId3 : function () {
+      var id = "2734752388";
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], id: id });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(collection.name() + "/" + id, idx.id);
+
+      // expect duplicate id with different definition to fail and error out
+      try {
+        collection.ensureIndex({ type: "hash", fields: [ "a", "c" ], id: id });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DUPLICATE_IDENTIFIER.code, err.errorNum);
+      }
+    },
+
+    testEnsureId4 : function () {
+      var id = "2734752388";
+      var name = "name";
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name, id: id });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(collection.name() + "/" + id, idx.id);
+      assertEqual(name, idx.name);
+
+      // expect duplicate id with same definition to return old index
+      idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], id: id });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(collection.name() + "/" + id, idx.id);
+      assertEqual(name, idx.name);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: names
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureNamePrimary : function () {
+      var res = collection.getIndexes()[0];
+
+      assertEqual("primary", res.type);
+      assertEqual("primary", res.name);
+    },
+
+    testEnsureNameEdge : function () {
+      var res = edgeCollection.getIndexes()[0];
+
+      assertEqual("primary", res.type);
+      assertEqual("primary", res.name);
+
+      res = edgeCollection.getIndexes()[1];
+
+      assertEqual("edge", res.type);
+      assertEqual("edge", res.name);
+    },
+
+    testEnsureName1 : function () {
+      var name = "byValue";
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(name, idx.name);
+
+      var res = collection.getIndexes()[collection.getIndexes().length - 1];
+
+      assertEqual("skiplist", res.type);
+      assertFalse(res.unique);
+      assertEqual([ "b", "d" ], res.fields);
+      assertEqual(name, idx.name);
+    },
+
+    testEnsureName2 : function () {
+      var name = "byValue";
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(name, idx.name);
+
+      // expect duplicate name to fail and error out
+      try {
+        collection.ensureIndex({ type: "hash", fields: [ "a", "c" ], name: name });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DUPLICATE_IDENTIFIER.code, err.errorNum);
+      }
+    },
+
+    testEnsureName3 : function () {
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ]});
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual("idx_", idx.name.substr(0,4));
+
+      var res = collection.getIndexes()[collection.getIndexes().length - 1];
+
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual("idx_", idx.name.substr(0,4));
+    },
+
+    testEnsureName4 : function () {
+      var id = "2734752388";
+      var name = "old";
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name, id: id });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(collection.name() + "/" + id, idx.id);
+      assertEqual(name, idx.name);
+
+      // expect duplicate id with same definition to return old index
+      idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(collection.name() + "/" + id, idx.id);
+      assertEqual(name, idx.name);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1101,4 +1228,3 @@ jsunity.run(ensureIndexSuite);
 jsunity.run(ensureIndexEdgesSuite);
 
 return jsunity.done();
-

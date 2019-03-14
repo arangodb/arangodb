@@ -157,6 +157,16 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(TRI_idx_iid_t idxId) cons
   return nullptr;
 }
 
+std::shared_ptr<Index> PhysicalCollection::lookupIndex(std::string const& idxName) const {
+  READ_LOCKER(guard, _indexesLock);
+  for (auto const& idx : _indexes) {
+    if (idx->name() == idxName) {
+      return idx;
+    }
+  }
+  return nullptr;
+}
+
 TRI_voc_rid_t PhysicalCollection::newRevisionId() const {
   return TRI_HybridLogicalClock();
 }

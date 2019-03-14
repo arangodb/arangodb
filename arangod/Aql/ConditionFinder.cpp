@@ -91,11 +91,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::CALCULATION: {
-      auto outvars = en->getVariablesSetHere();
-      TRI_ASSERT(outvars.size() == 1);
-
       _variableDefinitions.emplace(
-          outvars[0]->id,
+          ExecutionNode::castTo<CalculationNode const*>(en)->outVariable()->id,
           ExecutionNode::castTo<CalculationNode const*>(en)->expression()->node());
       TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

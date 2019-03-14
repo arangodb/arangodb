@@ -107,6 +107,11 @@ class PhysicalCollection {
 
   /// @brief Find index by iid
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
+
+  /// @brief Find index by name
+  std::shared_ptr<Index> lookupIndex(std::string const&) const;
+
+  /// @brief get list of all indices
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
   void getIndexesVPack(velocypack::Builder&, unsigned flags,
