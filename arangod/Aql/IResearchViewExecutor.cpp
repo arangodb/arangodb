@@ -114,43 +114,41 @@ template <bool ordered>
 std::pair<ExecutionState, typename IResearchViewExecutor<ordered>::Stats>
 IResearchViewExecutor<ordered>::produceRow(OutputAqlItemRow& output) {
   IResearchViewStats stats{};
+  bool documentWritten = false;
 
-  if (!_inputRow.isInitialized()) {
-    if (_upstreamState == ExecutionState::DONE) {
-      // There will be no more rows, stop fetching.
-      return {ExecutionState::DONE, stats};
-    }
-
-    std::tie(_upstreamState, _inputRow) = _fetcher.fetchRow();
-
-    if (_upstreamState == ExecutionState::WAITING) {
-      return {_upstreamState, stats};
-    }
-
+  while (!documentWritten) {
     if (!_inputRow.isInitialized()) {
-      return {ExecutionState::DONE, stats};
-    } else if (_upstreamState == ExecutionState::DONE) {
+      if (_upstreamState == ExecutionState::DONE) {
+        // There will be no more rows, stop fetching.
+        return {ExecutionState::DONE, stats};
+      }
+
+      std::tie(_upstreamState, _inputRow) = _fetcher.fetchRow();
+
+      if (_upstreamState == ExecutionState::WAITING) {
+        return {_upstreamState, stats};
+      }
+
+      if (!_inputRow.isInitialized()) {
+        return {ExecutionState::DONE, stats};
+      }
+
+      // reset must be called exactly after we've got a new and valid input row.
+      reset();
     }
 
-    // reset must be called exactly after we've got a new and valid input row.
-    reset();
+    ReadContext ctx(infos().getOutputRegister(), _inputRow, output);
+    documentWritten = next(ctx);
+
+    if (documentWritten) {
+      stats.incrScanned();
+    } else {
+      _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      // no document written, repeat.
+    }
   }
 
-  ReadContext ctx(infos().getOutputRegister(), _inputRow, output);
-  bool documentWritten = next(ctx);
-
-  if (documentWritten) {
-    stats.incrScanned();
-
-    return {ExecutionState::HASMORE, stats};
-  } else {
-    _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-
-    // While I do find this elegant, C++ does not guarantee any tail
-    // recursion optimization. Thus, to avoid overhead and stack overflows:
-    // TODO Remove the recursive call in favour of a loop
-    return produceRow(output);
-  }
+  return {ExecutionState::HASMORE, stats};
 }
 
 template <bool ordered>
