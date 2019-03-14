@@ -57,9 +57,10 @@ does not make sense. The default 3 allows for the failure of one agent.
 `addr` is the address under which this server is reachable from the
 outside.
 
-Usually, this option does not have to be specified. Only in the case
-that `--cluster.agency-size` is set to 1 (see below), the master has to know
-under which address it can be reached from the outside. If you specify
+Use this option only in the case that `--cluster.agency-size` is set to 1. 
+In a single agent setup, the sole starter has to start on its own with
+no reliable way to learn its own address. Using this option the master will 
+know under which address it can be reached from the outside. If you specify
 `localhost` here, then all instances must run on the local machine.
 
 - `--starter.host=addr`

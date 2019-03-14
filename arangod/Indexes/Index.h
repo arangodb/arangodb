@@ -77,7 +77,7 @@ class Index {
   Index(Index const&) = delete;
   Index& operator=(Index const&) = delete;
 
-  Index(TRI_idx_iid_t iid, LogicalCollection& collection,
+  Index(TRI_idx_iid_t iid, LogicalCollection& collection, std::string const& name,
         std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
         bool unique, bool sparse);
 
@@ -112,6 +112,17 @@ class Index {
  public:
   /// @brief return the index id
   inline TRI_idx_iid_t id() const { return _iid; }
+
+  /// @brief return the index name
+  inline std::string const& name() const {
+    if (_name == StaticStrings::IndexNameEdgeFrom || _name == StaticStrings::IndexNameEdgeTo) {
+      return StaticStrings::IndexNameEdge;
+    }
+    return _name;
+  }
+
+  /// @brief set the name, if it is currently unset
+  void name(std::string const&);
 
   /// @brief return the index fields
   inline std::vector<std::vector<arangodb::basics::AttributeName>> const& fields() const {
@@ -225,6 +236,9 @@ class Index {
   /// @brief generate a new index id
   static TRI_idx_iid_t generateId();
 
+  /// @brief check if two index definitions share any identifiers (_id, name)
+  static bool CompareIdentifiers(velocypack::Slice const& lhs, velocypack::Slice const& rhs);
+
   /// @brief index comparator, used by the coordinator to detect if two index
   /// contents are the same
   static bool Compare(velocypack::Slice const& lhs, velocypack::Slice const& rhs);
@@ -257,9 +271,10 @@ class Index {
   /// @brief return the selectivity estimate of the index
   /// must only be called if hasSelectivityEstimate() returns true
   ///
-  /// The extra arangodb::velocypack::StringRef is only used in the edge index as direction
-  /// attribute attribute, a Slice would be more flexible.
-  virtual double selectivityEstimate(arangodb::velocypack::StringRef const& extra = arangodb::velocypack::StringRef()) const;
+  /// The extra arangodb::velocypack::StringRef is only used in the edge index
+  /// as direction attribute attribute, a Slice would be more flexible.
+  virtual double selectivityEstimate(arangodb::velocypack::StringRef const& extra =
+                                         arangodb::velocypack::StringRef()) const;
 
   /// @brief update the cluster selectivity estimate
   virtual void updateClusterSelectivityEstimate(double /*estimate*/) {
@@ -365,7 +380,7 @@ class Index {
   /// it is only allowed to call this method if the index contains a
   /// single attribute
   std::string const& getAttribute() const;
- 
+
   /// @brief generate error result
   /// @param code the error key
   /// @param key the conflicting key
@@ -385,10 +400,12 @@ class Index {
   /// @brief extracts a timestamp value from a document
   /// returns a negative value if the document does not contain the specified
   /// attribute, or the attribute does not contain a valid timestamp or date string
-  double getTimestamp(arangodb::velocypack::Slice const& doc, std::string const& attributeName) const;
+  double getTimestamp(arangodb::velocypack::Slice const& doc,
+                      std::string const& attributeName) const;
 
   TRI_idx_iid_t const _iid;
   LogicalCollection& _collection;
+  std::string _name;
   std::vector<std::vector<arangodb::basics::AttributeName>> const _fields;
   bool const _useExpansion;
 
