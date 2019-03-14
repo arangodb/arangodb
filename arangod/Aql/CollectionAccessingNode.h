@@ -78,11 +78,21 @@ class CollectionAccessingNode {
    */
   std::string const& restrictedShard() const { return _restrictedTo; }
 
+  /// @brief set the prototype collection when using distributeShardsLike
+  void setPrototype(arangodb::aql::Collection const* prototype) {
+    _prototype = prototype;
+  }
+  
+  aql::Collection const* prototype() const { return _prototype; }
+
  protected:
   aql::Collection const* _collection;
 
   /// @brief A shard this node is restricted to, may be empty
   std::string _restrictedTo;
+  
+  /// @brief prototype collection when using distributeShardsLike
+  aql::Collection const* _prototype;
 };
 
 }  // namespace aql

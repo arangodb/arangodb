@@ -1328,6 +1328,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
                                                      outVariable, _random);
 
   c->projections(_projections);
+  c->_prototype = _prototype;
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }

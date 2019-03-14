@@ -60,6 +60,11 @@ std::unordered_map<std::string, std::string> getForwardableRequestHeaders(Genera
 bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& oldValue,
                       VPackSlice const& newValue, bool isPatch);
 
+/// @brief check if the value of the smartJoinAttribute has changed
+bool smartJoinAttributeChanged(LogicalCollection const& collection, 
+                               VPackSlice const& oldValue,
+                               VPackSlice const& newValue, bool isPatch);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////

@@ -360,11 +360,16 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
         LOG_TOPIC(ERR, Logger::STARTUP) << msg << " Aborting procedure.";
         return UpgradeResult(TRI_ERROR_INTERNAL, msg, vinfo.status);
       }
-    } catch (basics::Exception const& e) {
+    } catch (arangodb::basics::Exception const& e) {
       LOG_TOPIC(ERR, Logger::STARTUP)
-          << "Executing " << t.name << " (" << t.description << ") failed with "
-          << e.message() << ". Aborting procedure.";
+          << "Executing " << t.name << " (" << t.description << ") failed with error: "
+          << e.what() << ". Aborting procedure.";
       return UpgradeResult(e.code(), e.what(), vinfo.status);
+    } catch (std::exception const& e) {
+      LOG_TOPIC(ERR, Logger::STARTUP)
+          << "Executing " << t.name << " (" << t.description << ") failed with error: "
+          << e.what() << ". Aborting procedure.";
+      return UpgradeResult(TRI_ERROR_FAILED, e.what(), vinfo.status);
     }
 
     // remember we already executed this one
