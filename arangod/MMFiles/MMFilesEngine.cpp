@@ -22,6 +22,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "MMFiles/MMFilesEngine.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
@@ -38,7 +40,6 @@
 #include "MMFiles/MMFilesCompactorThread.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
-#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesIncrementalSync.h"
 #include "MMFiles/MMFilesIndexFactory.h"
 #include "MMFiles/MMFilesLogfileManager.h"

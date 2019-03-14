@@ -28,14 +28,13 @@
 #include "Basics/Result.h"
 #include "StorageEngine/TransactionState.h"
 
-#include "VocBase/LocalDocumentId.h"
-
 namespace rocksdb {
 class Transaction;
 }
 
 namespace arangodb {
 
+class LocalDocumentId;
 class LogicalCollection;
 struct MMFilesDocumentOperation;
 class MMFilesWalMarker;
