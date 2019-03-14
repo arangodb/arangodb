@@ -315,22 +315,26 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
 
 /// @brief rh-value at path vector. Check if TTL has expired.
 Node const& Node::operator()(std::vector<std::string> const& pv) const {
-  if (!pv.empty()) {
-    auto const& key = pv.front();
-    auto const it = _children.find(key);
-    if (it == _children.end() ||
-        (it->second->_ttl != std::chrono::system_clock::time_point() &&
-         it->second->_ttl < std::chrono::system_clock::now())) {
-      throw StoreException(std::string("Node ") + key + " not found!");
+
+  Node const* current = this;
+  
+  for (std::string const& key : pv) {
+
+    auto const& children = current->_children;
+    auto const  child = children.find(key);
+
+    if (child == children.end() ||
+        (child->second->_ttl != std::chrono::system_clock::time_point() &&
+         child->second->_ttl < std::chrono::system_clock::now())) {
+      throw StoreException(std::string("Node ") + uri() + "/" + key + " not found!");
+    }  else {
+      current = child->second.get();
     }
-    auto const& child = *_children.at(key);
-    TRI_ASSERT(child._parent == this);
-    auto pvc(pv);
-    pvc.erase(pvc.begin());
-    return child(pvc);
-  } else {
-    return *this;
+    
   }
+
+  return *current;
+    
 }
 
 /// @brief lh-value at path
