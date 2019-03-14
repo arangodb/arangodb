@@ -174,7 +174,7 @@ void LoggerFeature::prepare() {
 #endif
 
   Logger::setLogLevel(_levels);
-  Logger::setShowRole(_showIds);
+  Logger::setShowIds(_showIds);
   Logger::setShowRole(_showRole);
   Logger::setUseColor(_useColor);
   Logger::setUseLocalTime(_useLocalTime);
