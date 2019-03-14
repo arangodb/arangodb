@@ -85,6 +85,7 @@ protected:
   int _respError;
   std::string _errorMessage;
   VPackBuilder _result;
+  bool _isSingle;       // is single db server (not cluster)
 
   unsigned _timeoutSeconds; // used to stop transaction, used again to stop rocksdb
 
@@ -127,7 +128,7 @@ public:
   bool isCreate() const {return _isCreate;}
   const std::string & getTimestamp() const {return _timestamp;}
   const std::string & getUserString() const {return _userString;}
-
+  const std::string & getDirectory() const {return _directory;}
 protected:
   // @brief Execute the create operation
   void executeCreate();
@@ -213,6 +214,7 @@ public:
 
 protected:
   bool _isLock;
+  unsigned _unlockTimeoutSeconds;
 
 };// class RocksDBHotBackupLock
 

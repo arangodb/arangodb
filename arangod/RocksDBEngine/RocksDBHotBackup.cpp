@@ -52,6 +52,22 @@ const char * RocksDBHotBackup::dirRestoringString = "RESTORING";
 const char * RocksDBHotBackup::dirDownloadingString = "DOWNLOADING";
 const char * RocksDBHotBackup::dirFailsafeString = "FAILSAFE";
 
+//
+// @brief Serial numbers are used to match asynchronous LockCleaner
+//        callbacks to current instance of lock holder
+static Mutex serialNumberMutex;
+static std::atomic<uint64_t> lockingSerialNumber{0}; // zero when no lock held
+
+static std::atomic<uint64_t> nextSerialNumber{1};
+static uint64_t getSerialNumber() {
+  uint64_t temp;
+  temp = ++nextSerialNumber;
+  if (0 == temp) {
+    temp = ++nextSerialNumber;
+  } // if
+  return temp;
+} // getSerialNumber
+
 
 //
 // @brief static function to pick proper operation object and then have it
@@ -113,6 +129,7 @@ RocksDBHotBackup::RocksDBHotBackup(const VPackSlice body)
   : _body(body), _valid(false), _success(false), _respCode(rest::ResponseCode::BAD),
     _respError(TRI_ERROR_HTTP_BAD_PARAMETER), _timeoutSeconds(10)
 {
+  _isSingle = ServerState::instance()->isSingleServer();
   return;
 }
 
@@ -366,6 +383,7 @@ bool RocksDBHotBackup::holdRocksDBTransactions() {
 } // RocksDBHotBackup::holdRocksDBTransactions()
 
 
+/// WARNING:  this wrapper is NOT used in LockCleaner class
 void RocksDBHotBackup::releaseRocksDBTransactions() {
 
   TransactionManagerFeature::manager()->releaseTransactions();
@@ -402,7 +420,6 @@ RocksDBHotBackupCreate::~RocksDBHotBackupCreate() {
 
 
 void RocksDBHotBackupCreate::parseParameters(rest::RequestType const type) {
-  bool isSingle(ServerState::instance()->isSingleServer());
 
   _isCreate = (rest::RequestType::POST == type);
   _valid = _isCreate || (rest::RequestType::DELETE_REQ == type);
@@ -413,7 +430,7 @@ void RocksDBHotBackupCreate::parseParameters(rest::RequestType const type) {
   } // if
 
   // single server create, we generate the timestamp
-  if (isSingle && _isCreate) {
+  if (_isSingle && _isCreate) {
     _timestamp = timepointToString(std::chrono::system_clock::now());
   } else if (_isCreate) {
     getParamValue("timestamp", _timestamp, true);
@@ -497,10 +514,10 @@ void RocksDBHotBackupCreate::executeCreate() {
 
     // make sure the transaction hold is released
     {
-      auto guardHold = scopeGuard([&gotLock]()
-                                  { if (gotLock) TransactionManagerFeature::manager()->releaseTransactions(); });
-      // convert timeout from seconds to microseconds
-      gotLock = TransactionManagerFeature::manager()->holdTransactions(_timeoutSeconds * 1000000);
+      auto guardHold = scopeGuard([&gotLock,this]()
+                                  { if (gotLock && _isSingle) releaseRocksDBTransactions(); });
+
+      gotLock = (_isSingle ? holdRocksDBTransactions() : 0 != lockingSerialNumber);
 
       if (gotLock || _forceBackup) {
         EngineSelectorFeature::ENGINE->flushWal(true, true);
@@ -666,7 +683,7 @@ static std::string restoreExistingPath;  // path of 'engine-rocksdb'
 static std::string restoreReplacingPath; // path of restored rocksdb files
 static std::string restoreFailsafePath;  // temp location of engine-rocksdb in case of error
 
-static Mutex restoreMutex; // only one restore at a time
+static Mutex restoreMutex;
 
 /// @brief Routine called by RestServer/arangod.cpp after everything else
 ///        shutdown.
@@ -925,13 +942,50 @@ void RocksDBHotBackupList::execute() {
 } // RocksDBHotBackupList::execute
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief LockCleaner is a helper class to RocksDBHotBackupLock.  It insures
+///   that the rocksdb transaction lock is removed if DELETE lock is never called
+////////////////////////////////////////////////////////////////////////////////
+
+struct LockCleaner {
+  LockCleaner() = delete;
+  LockCleaner(uint64_t lockSerialNumber, unsigned timeoutSeconds)
+    : _lockSerialNumber(lockSerialNumber)
+  {
+    _timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
+    _timer->expires_after(std::chrono::seconds(timeoutSeconds));
+//    std::function<void(const asio_ns::error_code&)> func(this);
+    _timer->async_wait(*this);
+  };
+
+  void operator()(const asio_ns::error_code& ec) {
+    MUTEX_LOCKER (mLock, serialNumberMutex);
+    // only unlock if creation of this object instance was due to
+    //  the taking of current transaction lock
+    if (lockingSerialNumber == _lockSerialNumber) {
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "RocksDBHotBackup LockCleaner removing lost transaction lock.";
+      // would prefer virtual releaseRocksDBTransactions() ... but would
+      //   require copy of RocksDBHotBackupLock object used from RestHandler or unit test.
+      TransactionManagerFeature::manager()->releaseTransactions();
+      lockingSerialNumber = 0;
+    } // if
+  } // operator()
+
+  std::shared_ptr<asio_ns::steady_timer> _timer;
+  uint64_t _lockSerialNumber;
+};
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief RocksDBHotBackupLock
 ///        POST:  Initiate lock on transactions within rocksdb
 ///      DELETE:  Remove lock on transactions
 ////////////////////////////////////////////////////////////////////////////////
 RocksDBHotBackupLock::RocksDBHotBackupLock(const VPackSlice body)
-  : RocksDBHotBackup(body), _isLock(false)
+  : RocksDBHotBackup(body), _isLock(false), _unlockTimeoutSeconds(5)
 {
 }
 
@@ -946,6 +1000,7 @@ void RocksDBHotBackupLock::parseParameters(rest::RequestType const type) {
   _valid = _isLock || (rest::RequestType::DELETE_REQ == type);
 
   getParamValue("timeout", _timeoutSeconds, false);
+  getParamValue("unlockTimeout", _unlockTimeoutSeconds, false);
 
   if (!_valid) {
     try {
@@ -970,12 +1025,43 @@ void RocksDBHotBackupLock::parseParameters(rest::RequestType const type) {
 
 
 void RocksDBHotBackupLock::execute() {
+  MUTEX_LOCKER (mLock, serialNumberMutex);
 
-  if (_isLock) {
+  if (!_isSingle) {
+    if (_isLock) {
+      // make sure no one already locked for restore
+      if ( 0 == lockingSerialNumber ) {
+        _success = holdRocksDBTransactions();
+
+        // prepare emergency lock release in case of coordinator failure
+        if (_success) {
+          lockingSerialNumber = getSerialNumber();
+          // LockCleaner gets copied by async_wait during constructor
+          LockCleaner cleaner(lockingSerialNumber, _unlockTimeoutSeconds);
+        } else {
+          _respCode = rest::ResponseCode::REQUEST_TIMEOUT;
+          _respError = TRI_ERROR_LOCK_TIMEOUT;
+        } // else
+      } else {
+        _respCode = rest::ResponseCode::BAD;
+        _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+        _errorMessage = "RocksDBHotBackupLock: another restore in progress";
+      } // else
+    } else {
+      releaseRocksDBTransactions();
+      lockingSerialNumber = 0;
+      _success = true;
+    }  // else
   } else {
-  }  // else
+    // single server locks during executeCreate call
+    _success = true;
+  } // else
 
-  /// return codes?
+  /// return codes
+  if (_success) {
+    _respCode = rest::ResponseCode::OK;
+    _respError = TRI_ERROR_NO_ERROR;
+  } // if
 
   return;
 
