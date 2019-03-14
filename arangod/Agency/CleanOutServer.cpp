@@ -87,7 +87,7 @@ JOB_STATUS CleanOutServer::status() {
     std::string timeCreatedString = tmp_time.first;
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
-    if (now - timeCreated > std::chrono::duration<double>(7200.0)) {
+    if (now - timeCreated > std::chrono::duration<double>(86400.0)) { // 1 day
       abort();
       return FAILED;
     }
