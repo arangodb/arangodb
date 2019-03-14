@@ -10,7 +10,7 @@ class Operation(Enum):
 
 
 import re
-g_log_topic_pattern = re.compile("(?P<macro>(LOG_TOPIC|LOG_TOPIC_IF|LOG_TOPIC_EVERY_N))\((?P<params>[^)]*)\)")
+g_log_topic_pattern = re.compile("(?P<macro>LOG_TOPIC(_(RAW|IF|EVERY_N))?)\((?P<params>[^)]*)\)")
 
 import hashlib
 g_hash_algorithm = hashlib.md5()

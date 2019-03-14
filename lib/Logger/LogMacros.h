@@ -72,15 +72,17 @@
                                     << ::arangodb::Logger::LINE(__LINE__) \
                                     << ::arangodb::Logger::FILE(__FILE__) \
                                     << ::arangodb::Logger::FUNCTION(__FUNCTION__)) \
-                                    << ( ::arangodb::Logger::_showIds ? "["#c"]" : "" )
+                                    << ( ::arangodb::Logger::getShowIds() ? "["#c"]" : "" )
 
-//#define LOG_TOPIC_RAW(a, b)                                                             \
-//  !::arangodb::Logger::isEnabled((a), (b))                                              \
-//      ? (void)0                                                                         \
-//      : ::arangodb::LogVoidify() & (::arangodb::LoggerStream()                          \
-//                                    << (a) << (b) << ::arangodb::Logger::LINE(__LINE__) \
-//                                    << ::arangodb::Logger::FILE(__FILE__)               \
-//                                    << ::arangodb::Logger::FUNCTION(__FUNCTION__))
+// Can be used to pass the LogLevel in as variable
+#define LOG_TOPIC_RAW(c, a, b)                                                          \
+  !::arangodb::Logger::isEnabled((a), (b))                                              \
+      ? (void)0                                                                         \
+      : ::arangodb::LogVoidify() & (::arangodb::LoggerStream()                          \
+                                    << (a) << (b) << ::arangodb::Logger::LINE(__LINE__) \
+                                    << ::arangodb::Logger::FILE(__FILE__)               \
+                                    << ::arangodb::Logger::FUNCTION(__FUNCTION__))      \
+                                    << ( ::arangodb::Logger::getShowIds() ? "["#c"]" : "" )
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic given that a condition is true
@@ -94,7 +96,7 @@
                                   << arangodb::Logger::LINE(__LINE__)    \
                                   << arangodb::Logger::FILE(__FILE__)    \
                                   << ::arangodb::Logger::FUNCTION(__FUNCTION__)) \
-                                  << ( ::arangodb::Logger::_showIds ? "["#c"]" : "" )
+                                  << ( ::arangodb::Logger::getShowIds() ? "["#c"]" : "" )
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message every N.the time
@@ -119,7 +121,7 @@
                                   << arangodb::Logger::LINE(__LINE__) \
                                   << arangodb::Logger::FILE(__FILE__) \
                                   << ::arangodb::Logger::FUNCTION(__FUNCTION__)) \
-                                  << ( ::arangodb::Logger::_showIds ? "["#c"]" : "" )
+                                  << ( ::arangodb::Logger::getShowIds() ? "["#c"]" : "" )
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for debugging during development
