@@ -61,7 +61,7 @@
 #include "VocBase/Methods/Collections.h"
 
 #ifdef USE_IRESEARCH
-#include "IResearch/IResearchViewNode.h"
+#include "Aql/IResearchViewNode.h"
 #endif
 
 #include <boost/optional.hpp>

@@ -35,13 +35,12 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "search/boolean_filter.hpp"
 #include "search/score.hpp"
 
 // TODO Eliminate access to the node and the plan!
 #include "Aql/ExecutionPlan.h"
-#include "IResearch/IResearchViewNode.h"
-
-#include <3rdParty/iresearch/core/search/boolean_filter.hpp>
+#include "IResearchViewNode.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

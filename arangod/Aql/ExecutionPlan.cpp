@@ -48,7 +48,7 @@
 #include "VocBase/AccessMode.h"
 
 #ifdef USE_IRESEARCH
-#include "IResearch/IResearchViewNode.h"
+#include "IResearchViewNode.h"
 #endif
 
 #include <velocypack/Iterator.h>

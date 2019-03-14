@@ -24,7 +24,7 @@
 #include "catch.hpp"
 #include "common.h"
 
-#include "IResearch/IResearchViewNode.h"
+#include "Aql/IResearchViewNode.h"
 
 #include "../Mocks/StorageEngineMock.h"
 
@@ -38,6 +38,8 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/IResearchViewExecutor.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
@@ -50,8 +52,6 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewBlock.h"
-#include "IResearch/IResearchViewExecutor.h"
-#include "IResearch/IResearchViewNode.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"

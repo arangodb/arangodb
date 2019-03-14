@@ -42,7 +42,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #ifdef USE_IRESEARCH
-#include "IResearch/IResearchViewNode.h"
+#include "IResearchViewNode.h"
 #endif
 
 using namespace arangodb;

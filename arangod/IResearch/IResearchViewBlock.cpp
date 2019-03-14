@@ -37,7 +37,7 @@
 #include "IResearchFilterFactory.h"
 #include "IResearchOrderFactory.h"
 #include "IResearchView.h"
-#include "IResearchViewNode.h"
+#include "arangod/Aql/IResearchViewNode.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"

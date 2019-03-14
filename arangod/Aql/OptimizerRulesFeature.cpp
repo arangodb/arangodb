@@ -29,7 +29,7 @@
 #include "StorageEngine/StorageEngine.h"
 
 #ifdef USE_IRESEARCH
-#include "IResearch/IResearchViewOptimizerRules.h"
+#include "Aql/IResearchViewOptimizerRules.h"
 #endif
 
 #include <velocypack/StringRef.h>

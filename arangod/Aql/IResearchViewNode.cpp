@@ -22,27 +22,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchViewNode.h"
+
 #include "Aql/Ast.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/IResearchViewExecutor.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/types.h"
-#include "AqlHelper.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
-#include "IResearchCommon.h"
-#include "IResearchView.h"
-#include "IResearchViewBlock.h"
-#include "IResearchViewCoordinator.h"
-#include "IResearchViewExecutor.h"
+#include "IResearch/AqlHelper.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewBlock.h"
+#include "IResearch/IResearchViewCoordinator.h"
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
-#include "velocypack/Iterator.h"
+
+#include <velocypack/Iterator.h>
 
 namespace {
 
@@ -1004,7 +1006,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   TRI_ASSERT(writableOutputRegisters->size() == 1 + numScoreRegisters);
   TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->begin(),
                                                       writableOutputRegisters->end()));
-  // TODO Don't we have to set some input registers here?
+  // TODO We should set the input registers correctly.
   aql::ExecutorInfos infos = createRegisterInfos({}, std::move(writableOutputRegisters));
   // TODO Don't pass `this`, but only the necessary members.
   aql::IResearchViewExecutorInfos executorInfos{

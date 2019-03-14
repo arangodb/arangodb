@@ -56,6 +56,7 @@
 #endif
 
 #include "Agency/AgencyFeature.h"
+#include "Aql/IResearchViewNode.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -68,7 +69,6 @@
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewCoordinator.h"
-#include "IResearch/IResearchViewNode.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "Random/RandomFeature.h"

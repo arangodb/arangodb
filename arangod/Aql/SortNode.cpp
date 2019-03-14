@@ -39,7 +39,7 @@ std::string const Standard = "standard";
 }  // namespace
 
 #ifdef USE_IRESEARCH
-#include "IResearch/IResearchViewNode.h"
+#include "Aql/IResearchViewNode.h"
 #include "IResearch/IResearchOrderFactory.h"
 #endif
 

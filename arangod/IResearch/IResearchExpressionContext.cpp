@@ -21,10 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearch/IResearchExpressionContext.h"
+#include "IResearchExpressionContext.h"
+
 #include "Aql/AqlItemBlock.h"
+#include "Aql/IResearchViewNode.h"
 #include "Basics/StaticStrings.h"
-#include "IResearch/IResearchViewNode.h"
 
 namespace arangodb {
 namespace iresearch {

@@ -40,6 +40,7 @@
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
+#include "Aql/IResearchViewExecutor.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexExecutor.h"
 #include "Aql/LimitExecutor.h"
@@ -49,7 +50,6 @@
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/TraversalExecutor.h"
-#include "IResearch/IResearchViewExecutor.h"
 
 #include <type_traits>
 
