@@ -123,6 +123,24 @@ function indexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get index by name
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexByName : function () {
+      var id = collection.ensureGeoIndex("a");
+
+      var idx = collection.index(id.name);
+      assertEqual(id.id, idx.id);
+      assertEqual(id.name, idx.name);
+      
+      var fqn = `${collection.name()}/${id.name}`;
+      require('internal').print(fqn);
+      idx = internal.db._index(fqn);
+      assertEqual(id.id, idx.id);
+      assertEqual(id.name, idx.name);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drop index
 ////////////////////////////////////////////////////////////////////////////////
 
