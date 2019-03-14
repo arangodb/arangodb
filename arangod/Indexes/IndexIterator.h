@@ -83,7 +83,10 @@ class IndexIterator {
 
   virtual char const* typeName() const = 0;
 
+  /// @brief return the underlying collection
+  /// note: this may return a nullptr in case we are dealing with the EmptyIndexIterator! 
   LogicalCollection* collection() const { return _collection; }
+
   transaction::Methods* transaction() const { return _trx; }
 
   /// @brief whether or not the index iterator supports rearming
@@ -122,7 +125,7 @@ class IndexIterator {
   virtual void reset();
 
   virtual void skip(uint64_t count, uint64_t& skipped);
-
+  
  protected:
   LogicalCollection* _collection;
   transaction::Methods* _trx;

@@ -21,7 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MMFilesEdgeIndex.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
@@ -32,6 +31,7 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexLookupContext.h"
+#include "MMFilesEdgeIndex.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -174,7 +174,7 @@ void MMFilesEdgeIndexIterator::reset() {
 }
 
 MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection)
-    : MMFilesIndex(iid, collection,
+    : MMFilesIndex(iid, collection, StaticStrings::IndexNameEdge,
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(StaticStrings::FromString, false)},
                         {arangodb::basics::AttributeName(StaticStrings::ToString, false)}}),

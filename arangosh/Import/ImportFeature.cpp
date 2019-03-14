@@ -281,7 +281,6 @@ void ImportFeature::start() {
   }
 
   _httpClient->params().setLocationRewriter(static_cast<void*>(client),
-
                                             &rewriteLocation);
   _httpClient->params().setUserNamePassword("/", client->username(), client->password());
 
