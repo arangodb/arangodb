@@ -1,6 +1,14 @@
 devel
 -----
 
+* added "--log.ids" option to arangod
+
+  The default value for this option is `false`. Setting the option to `true`
+  will embed unique ids into all log messages generated in arangod code. This
+  allows for easy access to the location in the source code from which the
+  message originates. This should help support and development in identifying
+  problems.
+
 * renamed hidden startup option `--rocksdb.delayed_write_rate` to the more
   consistent `--rocksdb.delayed-write-rate`. When the old option name is
   used, the arangod startup will be aborted with a descriptive error message.
