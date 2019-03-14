@@ -75,7 +75,7 @@ class RocksDBMethods {
   /// @brief read options for use with iterators
   rocksdb::ReadOptions iteratorReadOptions();
 
-  virtual bool isIndexingDisbled() { return false; }
+  virtual bool isIndexingDisabled() const { return false; }
 
   /// @brief returns true if indexing was disabled by this call
   /// the default implementation is to do nothing
@@ -151,7 +151,7 @@ class RocksDBTrxMethods : public RocksDBMethods {
  public:
   explicit RocksDBTrxMethods(RocksDBTransactionState* state);
 
-  virtual bool isIndexingDisbled() { return _indexingDisabled; }
+  virtual bool isIndexingDisabled() const override{ return _indexingDisabled; }
 
   /// @brief returns true if indexing was disabled by this call
   bool DisableIndexing() override;

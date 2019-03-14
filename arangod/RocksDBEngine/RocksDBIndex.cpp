@@ -250,9 +250,9 @@ Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
 
   /// only if the insert needs to see the changes of the update, enable indexing:
-  IndexingEnabler enabler(mthd, mthd->isIndexingDisbled() && hasExpansion() && unique());
+  IndexingEnabler enabler(mthd, mthd->isIndexingDisabled() && hasExpansion() && unique());
 
-  TRI_ASSERT((hasExpansion() && unique()) ? !mthd->isIndexingDisbled() : true);
+  TRI_ASSERT((hasExpansion() && unique()) ? !mthd->isIndexingDisabled() : true);
 
   Result res = remove(trx, mthd, oldDocumentId, oldDoc, mode);
   if (!res.ok()) {
