@@ -236,7 +236,8 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   }
 
   // registers a transaction
-  int registerTransaction(TransactionState&);
+  int registerTransaction(TRI_voc_tid_t transactionId,
+                          bool isReadOnlyTransaction);
 
   // return the set of dropped collections
   /// this is used during recovery and not used afterwards

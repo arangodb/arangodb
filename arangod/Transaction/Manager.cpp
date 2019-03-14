@@ -122,6 +122,9 @@ std::unordered_set<TRI_voc_tid_t> Manager::getFailedTransactions() const {
 
 void Manager::iterateActiveTransactions(
     std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) {
+  if (!_keepTransactionData) {
+    return;
+  }
   WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
   // iterate over all active transactions
@@ -129,6 +132,7 @@ void Manager::iterateActiveTransactions(
     READ_LOCKER(locker, _transactions[bucket]._lock);
 
     for (auto const& it : _transactions[bucket]._activeTransactions) {
+      TRI_ASSERT(it.second != nullptr);
       callback(it.first, it.second.get());
     }
   }
