@@ -395,7 +395,7 @@ bool MoveShard::start(bool&) {
     return true;
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "Start precondition failed for MoveShard job " + _jobId;
   return false;
 }
