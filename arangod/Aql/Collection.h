@@ -76,6 +76,9 @@ struct Collection {
     // non-sharding case: simply return the name
     return _name;
   }
+  
+  /// @brief collection type
+  TRI_col_type_e type() const;
 
   /// @brief count the number of documents in the collection
   size_t count(transaction::Methods* trx) const;

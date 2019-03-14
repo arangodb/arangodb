@@ -58,6 +58,9 @@ void Collection::setExclusiveAccess() {
 /// @brief get the collection id
 TRI_voc_cid_t Collection::id() const { return getCollection()->id(); }
 
+/// @brief collection type
+TRI_col_type_e Collection::type() const { return getCollection()->type(); }
+
 /// @brief count the number of documents in the collection
 size_t Collection::count(transaction::Methods* trx) const {
   // estimate for the number of documents in the collection. may be outdated...

@@ -193,6 +193,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     if (hasSmartJoinAttribute()) {
       auto const& sk = _sharding->shardKeys();
       TRI_ASSERT(!sk.empty());
+
       if (sk.size() != 1) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
                                       "smartJoinAttribute can only be used for collections with a single shardKey value");
@@ -200,7 +201,20 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       TRI_ASSERT(!sk.front().empty());
       if (sk.front().back() != ':') {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
-                                      "smartJoinAttribute can only be used for shardKeys ending on ':'");
+                                      std::string("smartJoinAttribute can only be used for shardKeys ending on ':', got '") + sk.front() + "'");
+      }
+      
+      if (_isSmart) {
+        if (_type == TRI_COL_TYPE_EDGE) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
+                                         "cannot use smartJoinAttribute on a smart edge collection");
+        } else if (_type == TRI_COL_TYPE_DOCUMENT) {
+          VPackSlice sga = info.get(StaticStrings::GraphSmartGraphAttribute);
+          if (sga.isString() && sga.copyString() != info.get(StaticStrings::SmartJoinAttribute).copyString()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
+                                           "smartJoinAttribute must be equal to smartGraphAttribute");
+          }
+        }
       }
     }
   }
