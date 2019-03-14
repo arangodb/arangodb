@@ -265,8 +265,18 @@ bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
           ctx.outputRow.moveValueInto(scoreReg, ctx.inputRow, guard);
         }
 
+        // We should either have no _scrVals to evaluate, or all
+        TRI_ASSERT(begin == nullptr || !infos().isScoreReg(scoreReg));
+
+        while (infos().isScoreReg(scoreReg)) {
+          AqlValue value{};
+          ctx.outputRow.cloneValueInto(scoreReg, ctx.inputRow, value);
+          ++scoreReg;
+        }
+
         // we should have written exactly all score registers by now
         TRI_ASSERT(!infos().isScoreReg(scoreReg));
+        TRI_ASSERT(ctx.outputRow.produced());
       }
 
       // we read and wrote a document, return true. we don't know if there are more.
