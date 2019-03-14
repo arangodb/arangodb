@@ -58,6 +58,9 @@ struct OperationCursor {
     _hasMore = true;
   }
 
+  /// @brief return the logical collection used by the iterator.
+  /// note that the collection may be a nullptr in case we are dealing with
+  /// an EmptyIndexIterator!
   LogicalCollection* collection() const;
 
   inline bool hasMore() const { return _hasMore; }

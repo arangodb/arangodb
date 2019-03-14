@@ -97,7 +97,8 @@ function ReplicationSuite() {
     let applierConfiguration = {
       endpoint: masterEndpoint,
       username: "root",
-      password: "" 
+      password: "",
+      requireFromPresent: true 
     };
 
     connectToSlave();

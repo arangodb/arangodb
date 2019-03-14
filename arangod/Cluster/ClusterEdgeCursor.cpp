@@ -72,7 +72,7 @@ ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, b
                         *(leased.get()), _cache->insertedDocuments());
 }
 
-bool ClusterEdgeCursor::next(std::function<void(EdgeDocumentToken&&, VPackSlice, size_t)> callback) {
+bool ClusterEdgeCursor::next(EdgeCursor::Callback const& callback) {
   if (_position < _edgeList.size()) {
     VPackSlice edge = _edgeList[_position];
     callback(EdgeDocumentToken(edge), edge, _position);
@@ -82,7 +82,7 @@ bool ClusterEdgeCursor::next(std::function<void(EdgeDocumentToken&&, VPackSlice,
   return false;
 }
 
-void ClusterEdgeCursor::readAll(std::function<void(EdgeDocumentToken&&, VPackSlice, size_t)> callback) {
+void ClusterEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
   for (VPackSlice const& edge : _edgeList) {
     callback(EdgeDocumentToken(edge), edge, _position);
   }

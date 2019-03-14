@@ -666,7 +666,13 @@ function TtlSuite () {
       assertNotEqual(stats.runs, oldStats.runs);
       assertTrue(stats.limitReached > oldStats.limitReached);
       assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
-      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
+      // for debugging, can remove this later
+      let data = {
+        stats,
+        oldStats,
+        count: db._collection(cn).count()
+      };  
+      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0, data);
     },
     
     testRemovalsLimitsHitGlobalDate : function () {
@@ -705,7 +711,13 @@ function TtlSuite () {
       assertNotEqual(stats.runs, oldStats.runs);
       assertTrue(stats.limitReached > oldStats.limitReached);
       assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
-      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
+      // for debugging, can remove this later
+      let data = {
+        stats,
+        oldStats,
+        count: db._collection(cn).count()
+      };  
+      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0, data);
     },
     
     testRemovalsLimitsHitCollectionNumeric : function () {
@@ -744,7 +756,13 @@ function TtlSuite () {
       assertNotEqual(stats.runs, oldStats.runs);
       assertTrue(stats.limitReached > oldStats.limitReached);
       assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
-      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
+      // for debugging, can remove this later
+      let data = {
+        stats,
+        oldStats,
+        count: db._collection(cn).count()
+      };  
+      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0, data);
     },
     
     testRemovalsLimitsHitCollectionDate : function () {
@@ -783,7 +801,13 @@ function TtlSuite () {
       assertNotEqual(stats.runs, oldStats.runs);
       assertTrue(stats.limitReached > oldStats.limitReached);
       assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
-      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
+      // for debugging, can remove this later
+      let data = {
+        stats,
+        oldStats,
+        count: db._collection(cn).count()
+      };  
+      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0, data);
     },
   
   };

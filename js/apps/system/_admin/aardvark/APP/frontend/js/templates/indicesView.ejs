@@ -12,6 +12,7 @@
                 <th class="collectionInfoTh">Deduplicate</th>
                 <th class="collectionInfoTh">Selectivity Est.</th>
                 <th class="collectionInfoTh">Fields</th>
+                <th class="collectionInfoTh">Name</th>
                 <th class="collectionInfoTh">Action</th>
               </tr>
             </thead>
@@ -19,6 +20,7 @@
             </tbody>
             <tfoot>
               <tr>
+                <td></td>
                 <td></td>
                 <td></td>
                 <td></td>
@@ -76,6 +78,17 @@
                   </th>
                 </tr>
                 <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newGeoName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
                   <th class="collectionTh">Geo JSON:</th>
                   <th>
                     <input id="newGeoJson" type="checkbox" name="newGeoJson" value="true">
@@ -111,6 +124,17 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newPersistentName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -184,6 +208,17 @@
                   </th>
                 </tr>
                 <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newHashName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
                   <th class="collectionTh">Unique:</th>
                   <th>
                     <input id="newHashUnique" type="checkbox" name="newHashUnique" value="true">
@@ -251,6 +286,17 @@
                   </th>
                 </tr>
                 <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newFulltextName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
                   <th class="collectionTh">Min. length:</th>
                   <th><input type="text" id="newFulltextMinLength" value=""/></th>
                   <th class="tooltipInfoTh">
@@ -285,6 +331,17 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newSkiplistName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -352,6 +409,17 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A single attribute path containing a numeric datetime value. Example: createdAt">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newTtlName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>

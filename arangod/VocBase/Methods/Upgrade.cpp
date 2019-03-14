@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Upgrade.h"
 #include "Basics/Common.h"
+#include "Upgrade.h"
 
 #include "Agency/AgencyComm.h"
 #include "Basics/StringUtils.h"
