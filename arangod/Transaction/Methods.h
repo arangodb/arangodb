@@ -50,7 +50,6 @@ namespace arangodb {
 
 namespace basics {
 struct AttributeName;
-class StringBuffer;
 }  // namespace basics
 
 namespace velocypack {
@@ -199,9 +198,6 @@ class Methods {
 
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
-  bool hasHint(transaction::Hints::Hint hint) const {
-    return _localHints.has(hint);
-  }
 
   /// @brief whether or not the transaction consists of a single operation only
   bool isSingleOperationTransaction() const;
@@ -363,15 +359,17 @@ class Methods {
   /// @brief Gets the best fitting index for an AQL sort condition
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  ENTERPRISE_VIRT bool getIndexForSortCondition(
-      std::string const&, arangodb::aql::SortCondition const*,
-      arangodb::aql::Variable const*, size_t, std::vector<IndexHandle>&,
-      size_t& coveredAttributes);
+  ENTERPRISE_VIRT bool getIndexForSortCondition(std::string const&,
+                                                arangodb::aql::SortCondition const*,
+                                                arangodb::aql::Variable const*,
+                                                size_t, std::vector<IndexHandle>&,
+                                                size_t& coveredAttributes);
 
   /// @brief factory for IndexIterator objects from AQL
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  std::unique_ptr<IndexIterator> indexScanForCondition(IndexHandle const&, arangodb::aql::AstNode const*,
+  std::unique_ptr<IndexIterator> indexScanForCondition(IndexHandle const&,
+                                                       arangodb::aql::AstNode const*,
                                                        arangodb::aql::Variable const*,
                                                        IndexIteratorOptions const&);
 

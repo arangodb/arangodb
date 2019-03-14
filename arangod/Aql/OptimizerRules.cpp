@@ -58,6 +58,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
 
 #ifdef USE_IRESEARCH
