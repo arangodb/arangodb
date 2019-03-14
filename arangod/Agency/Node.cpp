@@ -326,7 +326,7 @@ Node const& Node::operator()(std::vector<std::string> const& pv) const {
     if (child == children.end() ||
         (child->second->_ttl != std::chrono::system_clock::time_point() &&
          child->second->_ttl < std::chrono::system_clock::now())) {
-      throw StoreException(std::string("Node ") + uri() + " not found!");
+      throw StoreException(std::string("Node ") + uri() + "/" + key + " not found!");
     }  else {
       current = child->second.get();
     }
