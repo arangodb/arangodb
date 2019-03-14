@@ -736,7 +736,7 @@ function ensureIndexSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ skiplist
+/// @brief test: ensure hash index on arrays
 ////////////////////////////////////////////////////////////////////////////////
 
     testEnsureUniqueHashOnArray : function () {
@@ -769,13 +769,13 @@ function ensureIndexSuite() {
         assertEqual(i, doc.value[0]);
       }
 
-      var query = "FOR doc IN " + collection.name() + " FILTER doc._key == 'test1' && doc.value[0] == 1 RETURN doc";
+      var query = "FOR doc IN " + collection.name() + " FILTER 1 IN doc.value RETURN doc";
       var st = db._createStatement({ query: query });
 
       var found = false;
       st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          assertTrue(node.indexes[0].type === "primary" || node.indexes[0].type === "hash");
+          assertTrue(node.indexes[0].type === "hash" && node.indexes[0].fields[0] === "value[*]");
           found = true;
         }
       });
@@ -786,7 +786,6 @@ function ensureIndexSuite() {
       collection.update("test1", {value: ['othervalue']});
       collection.update("test1", {value: ['othervalue', 'morevalues']});
     },
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: ensure w/ skiplist
