@@ -2537,7 +2537,7 @@ Result getTtlStatisticsFromAllDBServers(TtlStatistics& out) {
     cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::GET,
                      url, body, headers, nullptr, 120.0);
   }
-  
+
   // Now listen to the results:
   int count;
   int nrok = 0;
@@ -2593,7 +2593,7 @@ Result getTtlPropertiesFromAllDBServers(VPackBuilder& out) {
     cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::GET,
                      url, body, headers, nullptr, 120.0);
   }
-  
+
   // Now listen to the results:
   bool set = false;
   int count;
@@ -2653,7 +2653,7 @@ Result setTtlPropertiesOnAllDBServers(VPackSlice const& properties, VPackBuilder
     cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::PUT,
                      url, body, headers, nullptr, 120.0);
   }
-  
+
   // Now listen to the results:
   bool set = false;
   int count;

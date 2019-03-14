@@ -64,12 +64,15 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
+std::string const ClusterEngine::EngineName("Cluster");
+std::string const ClusterEngine::FeatureName("ClusterEngine");
+
 // fall back to the using the mock storage engine
 bool ClusterEngine::Mocking = false;
 
 // create the storage engine
 ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
-    : StorageEngine(server, "Cluster", "ClusterEngine",
+    : StorageEngine(server, EngineName, FeatureName,
                     std::unique_ptr<IndexFactory>(new ClusterIndexFactory())),
       _actualEngine(nullptr) {
   setOptional(true);

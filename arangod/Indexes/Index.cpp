@@ -21,17 +21,17 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Index.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
-#include "Basics/datetime.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HashSet.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/datetime.h"
 #include "Cluster/ServerState.h"
+#include "Index.h"
 
 #ifdef USE_IRESEARCH
 #include "IResearch/IResearchCommon.h"
@@ -98,14 +98,13 @@ bool canBeNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode const* a
   TRI_ASSERT(op != nullptr);
   TRI_ASSERT(access != nullptr);
 
-  if (access->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS && 
+  if (access->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS &&
       access->getMemberUnchecked(0)->type == arangodb::aql::NODE_TYPE_REFERENCE) {
     // a.b
     // now check if the accessed attribute is _key, _rev or _id.
     // all of these cannot be null
     auto attributeName = access->getStringRef();
-    if (attributeName == StaticStrings::KeyString ||
-        attributeName == StaticStrings::IdString ||
+    if (attributeName == StaticStrings::KeyString || attributeName == StaticStrings::IdString ||
         attributeName == StaticStrings::RevString) {
       return false;
     }
@@ -157,16 +156,42 @@ bool typeMatch(char const* type, size_t len, char const* expected) {
   return (len == ::strlen(expected)) && (::memcmp(type, expected, len) == 0);
 }
 
+std::string defaultIndexName(VPackSlice const& slice) {
+  auto type =
+      arangodb::Index::type(slice.get(arangodb::StaticStrings::IndexType).copyString());
+  if (type == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    return arangodb::StaticStrings::IndexNamePrimary;
+  } else if (type == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+    if (EngineSelectorFeature::isRocksDB()) {
+      auto fields = slice.get(arangodb::StaticStrings::IndexFields);
+      TRI_ASSERT(fields.isArray());
+      auto firstField = fields.at(0);
+      TRI_ASSERT(firstField.isString());
+      bool isFromIndex = firstField.isEqualString(arangodb::StaticStrings::FromString);
+      return isFromIndex ? arangodb::StaticStrings::IndexNameEdgeFrom
+                         : arangodb::StaticStrings::IndexNameEdgeTo;
+    }
+    return arangodb::StaticStrings::IndexNameEdge;
+  }
+
+  std::string idString = arangodb::basics::VelocyPackHelper::getStringValue(
+      slice, arangodb::StaticStrings::IndexId.c_str(),
+      std::to_string(TRI_NewTickServer()));
+  return std::string("idx_").append(idString);
+}
+
 }  // namespace
 
 // If the Index is on a coordinator instance the index may not access the
 // logical collection because it could be gone!
 
 Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
+             std::string const& name,
              std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
              bool unique, bool sparse)
     : _iid(iid),
       _collection(collection),
+      _name(name),
       _fields(fields),
       _useExpansion(::hasExpansion(_fields)),
       _unique(unique),
@@ -177,6 +202,8 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
 Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection, VPackSlice const& slice)
     : _iid(iid),
       _collection(collection),
+      _name(arangodb::basics::VelocyPackHelper::getStringValue(
+          slice, arangodb::StaticStrings::IndexName, ::defaultIndexName(slice))),
       _fields(::parseFields(slice.get(arangodb::StaticStrings::IndexFields),
                             Index::allowExpansion(Index::type(
                                 slice.get(arangodb::StaticStrings::IndexType).copyString())))),
@@ -187,6 +214,12 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection, VPackSl
                                                                   false)) {}
 
 Index::~Index() {}
+
+void Index::name(std::string const& newName) {
+  if (_name.empty()) {
+    _name = newName;
+  }
+}
 
 size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
   switch (node->type) {
@@ -380,6 +413,25 @@ bool Index::validateHandle(char const* key, size_t* split) {
 /// @brief generate a new index id
 TRI_idx_iid_t Index::generateId() { return TRI_NewTickServer(); }
 
+/// @brief check if two index definitions share any identifiers (_id, name)
+bool Index::CompareIdentifiers(velocypack::Slice const& lhs, velocypack::Slice const& rhs) {
+  VPackSlice lhsId = lhs.get(arangodb::StaticStrings::IndexId);
+  VPackSlice rhsId = rhs.get(arangodb::StaticStrings::IndexId);
+  if (lhsId.isString() && rhsId.isString() &&
+      arangodb::basics::VelocyPackHelper::compare(lhsId, rhsId, true) == 0) {
+    return true;
+  }
+
+  VPackSlice lhsName = lhs.get(arangodb::StaticStrings::IndexName);
+  VPackSlice rhsName = rhs.get(arangodb::StaticStrings::IndexName);
+  if (lhsName.isString() && rhsName.isString() &&
+      arangodb::basics::VelocyPackHelper::compare(lhsName, rhsName, true) == 0) {
+    return true;
+  }
+
+  return false;
+}
+
 /// @brief index comparator, used by the coordinator to detect if two index
 /// contents are the same
 bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
@@ -438,6 +490,7 @@ void Index::toVelocyPack(VPackBuilder& builder,
               arangodb::velocypack::Value(std::to_string(_iid)));
   builder.add(arangodb::StaticStrings::IndexType,
               arangodb::velocypack::Value(oldtypeName(type())));
+  builder.add(arangodb::StaticStrings::IndexName, arangodb::velocypack::Value(name()));
 
   builder.add(arangodb::velocypack::Value(arangodb::StaticStrings::IndexFields));
   builder.openArray();
@@ -944,22 +997,25 @@ std::ostream& operator<<(std::ostream& stream, arangodb::Index const& index) {
   return stream;
 }
 
-double Index::getTimestamp(arangodb::velocypack::Slice const& doc, std::string const& attributeName) const {
+double Index::getTimestamp(arangodb::velocypack::Slice const& doc,
+                           std::string const& attributeName) const {
   VPackSlice value = doc.get(attributeName);
 
   if (value.isString()) {
     // string value. we expect it to be YYYY-MM-DD etc.
     tp_sys_clock_ms tp;
     if (basics::parseDateTime(value.copyString(), tp)) {
-      return static_cast<double>(std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count());
-    } 
+      return static_cast<double>(
+          std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch())
+              .count());
+    }
     // invalid date format
     // fall-through intentional
   } else if (value.isNumber()) {
     // numeric value. we take it as it is
     return value.getNumericValue<double>();
   }
-  
+
   // attribute not found in document, or invalid type
   return -1.0;
 }
