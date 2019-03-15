@@ -1,6 +1,8 @@
 devel
 -----
 
+* added index hints feature to AQL
+
 * added "name" property for indices
 
   If a name is not specified on index creation, one will be auto-generated.
