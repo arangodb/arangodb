@@ -249,6 +249,13 @@ void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& build
 void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output) {
   // if we do not have initialized input, just return and do not write to any register
 
+  LOG_DEVEL << "coollect reg: " << infos.getCollectRegister();
+  for (auto& it : infos.getGroupRegisters()) {
+    LOG_DEVEL << it.first;
+    LOG_DEVEL << it.second;
+  }
+  LOG_DEVEL << "TRying to write ";
+  TRI_ASSERT(_lastInputRow.isInitialized());
   /*
   if (!input.isInitialized()) {
     return;
@@ -362,7 +369,10 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
       _currentGroup.addLine(input);
 
       if (_returnedDone) {
+        LOG_DEVEL << "returned done is true and we hit the last row.";
+        TRI_ASSERT(!output.produced());
         _currentGroup.writeToOutput(output);
+        TRI_ASSERT(output.produced());
         return {ExecutionState::DONE, {}};
       }
     } else {
@@ -399,6 +409,8 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
 
 // 4.) WE NEED A VALID INPUT ROW
 // 4.1) Still missing: Remember the last valid input row!!!
+
+// 5.) build up the aggregators correctly. this seems to be missing right now. they are empty!
 
 // use ./scripts/unittest shell_server_aql --test aql-optimizer-collect-aggregate.js for quick debuging,
 // later on all tests of course
