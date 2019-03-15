@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,70 +21,88 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MMFilesTransactionManager.h"
+#include "Manager.h"
+
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Logger/Logger.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
+#include "Transaction/SmartContext.h"
+#include "Utils/CollectionNameResolver.h"
 
-using namespace arangodb;
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+namespace arangodb {
+namespace transaction {
 
 // register a list of failed transactions
-void MMFilesTransactionManager::registerFailedTransactions(
-    std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
+void Manager::registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
+  TRI_ASSERT(_keepTransactionData);
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-
   for (auto const& it : failedTransactions) {
-    size_t bucket = getBucket(it);
-
+    const size_t bucket = getBucket(it);
     WRITE_LOCKER(locker, _transactions[bucket]._lock);
-
     _transactions[bucket]._failedTransactions.emplace(it);
   }
 }
 
 // unregister a list of failed transactions
-void MMFilesTransactionManager::unregisterFailedTransactions(
-    std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
+void Manager::unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
+  TRI_ASSERT(_keepTransactionData);
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
     WRITE_LOCKER(locker, _transactions[bucket]._lock);
-
     std::for_each(failedTransactions.begin(), failedTransactions.end(), [&](TRI_voc_tid_t id) {
       _transactions[bucket]._failedTransactions.erase(id);
     });
   }
 }
 
-void MMFilesTransactionManager::registerTransaction(TRI_voc_tid_t transactionId,
-                                                    std::unique_ptr<TransactionData> data) {
-  TRI_ASSERT(data != nullptr);
+void Manager::registerTransaction(TRI_voc_tid_t transactionId,
+                                  std::unique_ptr<TransactionData> data) {
+  _nrRunning.fetch_add(1, std::memory_order_relaxed);
 
-  size_t bucket = getBucket(transactionId);
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-
-  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-
-  // insert into currently running list of transactions
-  _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
+  if (_keepTransactionData) {
+    TRI_ASSERT(data != nullptr);
+    const size_t bucket = getBucket(transactionId);
+    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+    
+    try {
+      // insert into currently running list of transactions
+      _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
+    } catch (...) {
+      _nrRunning.fetch_sub(1, std::memory_order_relaxed);
+      throw;
+    }
+  }
 }
 
 // unregisters a transaction
-void MMFilesTransactionManager::unregisterTransaction(TRI_voc_tid_t transactionId,
-                                                      bool markAsFailed) {
-  size_t bucket = getBucket(transactionId);
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) {
+  uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
+  TRI_ASSERT(r > 0);
 
-  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+  if (_keepTransactionData) {
+    const size_t bucket = getBucket(transactionId);
+    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
-  _transactions[bucket]._activeTransactions.erase(transactionId);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
-  if (markAsFailed) {
-    _transactions[bucket]._failedTransactions.emplace(transactionId);
+    _transactions[bucket]._activeTransactions.erase(transactionId);
+    if (markAsFailed) {
+      _transactions[bucket]._failedTransactions.emplace(transactionId);
+    }
   }
 }
 
 // return the set of failed transactions
-std::unordered_set<TRI_voc_tid_t> MMFilesTransactionManager::getFailedTransactions() {
+std::unordered_set<TRI_voc_tid_t> Manager::getFailedTransactions() const {
   std::unordered_set<TRI_voc_tid_t> failedTransactions;
 
   {
@@ -102,8 +120,11 @@ std::unordered_set<TRI_voc_tid_t> MMFilesTransactionManager::getFailedTransactio
   return failedTransactions;
 }
 
-void MMFilesTransactionManager::iterateActiveTransactions(
+void Manager::iterateActiveTransactions(
     std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) {
+  if (!_keepTransactionData) {
+    return;
+  }
   WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
   // iterate over all active transactions
@@ -117,14 +138,9 @@ void MMFilesTransactionManager::iterateActiveTransactions(
   }
 }
 
-uint64_t MMFilesTransactionManager::getActiveTransactionCount() {
-  WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
-
-  uint64_t count = 0;
-  // iterate over all active transactions
-  for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    READ_LOCKER(locker, _transactions[bucket]._lock);
-    count += _transactions[bucket]._activeTransactions.size();
-  }
-  return count;
+uint64_t Manager::getActiveTransactionCount() {
+  return _nrRunning.load(std::memory_order_relaxed);
 }
+
+}  // namespace transaction
+}  // namespace arangodb

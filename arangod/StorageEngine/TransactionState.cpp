@@ -22,12 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TransactionState.h"
+
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
+#include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "Utils/ExecContext.h"
@@ -47,9 +49,9 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
       _collections{_arena},  // assign arena to vector
       _serverRole(ServerState::instance()->getRole()),
       _hints(),
+      _options(options),
       _nestingLevel(0),
-      _registeredTransaction(false),
-      _options(options) {}
+      _registeredTransaction(false) {}
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
@@ -124,7 +126,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cname,
                   "AccessMode::Type total order fail");
     // we may need to recheck permissions here
     if (trxCollection->accessType() < accessType) {
-      int res = checkCollectionPermission(cid, cname, accessType);
+      int res = checkCollectionPermission(cname, accessType);
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
@@ -146,7 +148,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cname,
   }
 
   // now check the permissions
-  int res = checkCollectionPermission(cid, cname, accessType);
+  int res = checkCollectionPermission(cname, accessType);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -179,11 +181,11 @@ Result TransactionState::ensureCollections(int nestingLevel) {
 }
 
 /// @brief run a callback on all collections
-void TransactionState::allCollections( // iterate
-    std::function<bool(TransactionCollection&)> const& cb // callback to invoke
+void TransactionState::allCollections(                     // iterate
+    std::function<bool(TransactionCollection&)> const& cb  // callback to invoke
 ) {
   for (auto& trxCollection : _collections) {
-    TRI_ASSERT(trxCollection); // ensured by addCollection(...)
+    TRI_ASSERT(trxCollection);  // ensured by addCollection(...)
     if (!cb(*trxCollection)) {
       // abort early
       return;
@@ -321,8 +323,9 @@ bool TransactionState::isOnlyExclusiveTransaction() const {
   return true;
 }
 
-int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid, std::string const& cname,
+int TransactionState::checkCollectionPermission(std::string const& cname,
                                                 AccessMode::Type accessType) const {
+  TRI_ASSERT(!cname.empty());
   ExecContext const* exec = ExecContext::CURRENT;
 
   // no need to check for superuser, cluster_sync tests break otherwise
@@ -376,10 +379,10 @@ void TransactionState::clearQueryCache() {
     std::vector<std::string> collections;
 
     for (auto& trxCollection : _collections) {
-      if (trxCollection // valid instance
-          && trxCollection->collection() // has a valid collection
-          && trxCollection->hasOperations() // may have been modified
-         ) {
+      if (trxCollection                      // valid instance
+          && trxCollection->collection()     // has a valid collection
+          && trxCollection->hasOperations()  // may have been modified
+      ) {
         // we're only interested in collections that may have been modified
         collections.emplace_back(trxCollection->collection()->guid());
       }

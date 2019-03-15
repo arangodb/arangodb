@@ -72,21 +72,22 @@ static void parseNodeInput(AstNode const* node, std::string& id, Variable const*
 }
 static ShortestPathExecutorInfos::InputVertex prepareVertexInput(ShortestPathNode const* node,
                                                                  bool isTarget) {
+  using InputVertex = ShortestPathExecutorInfos::InputVertex;
   if (isTarget) {
     if (node->usesTargetInVariable()) {
       auto it = node->getRegisterPlan()->varInfo.find(node->targetInVariable()->id);
       TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
-      return {it->second.registerId};
+      return InputVertex{it->second.registerId};
     } else {
-      return {node->getTargetVertex()};
+      return InputVertex{node->getTargetVertex()};
     }
   } else {
     if (node->usesStartInVariable()) {
       auto it = node->getRegisterPlan()->varInfo.find(node->startInVariable()->id);
       TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
-      return {it->second.registerId};
+      return InputVertex{it->second.registerId};
     } else {
-      return {node->getStartVertex()};
+      return InputVertex{node->getStartVertex()};
     }
   }
 }

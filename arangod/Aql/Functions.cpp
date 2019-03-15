@@ -1466,6 +1466,7 @@ AqlValue Functions::LevenshteinDistance(ExpressionContext*, transaction::Methods
   AqlValue const& value1 = extractFunctionParameterValue(parameters, 0);
   AqlValue const& value2 = extractFunctionParameterValue(parameters, 1);
 
+  // FIXME: there is only one shared stringbuffer instance
   transaction::StringBufferLeaser buffer1(trx);
   transaction::StringBufferLeaser buffer2(trx);
 
