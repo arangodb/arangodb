@@ -55,6 +55,56 @@ AQL now allows the usage of floating point values without leading zeros, e.g.
 `.1234`. Previous versions of ArangoDB required a leading zero in front of
 the decimal separator, i.e `0.1234`.
 
+
+Background Index Creation
+-------------------------
+
+Creating new indexes is by default done under an exclusive collection lock. This means
+that the collection (or the respective shards) are not available for write operations
+as long as the index is created. This "foreground" index creation can be undesirable, 
+if you have to perform it on a live system without a dedicated maintenance window.
+
+Starting with ArangoDB 3.5, indexes can also be created in "background", not using an 
+exclusive lock during the entire index creation. The collection remains basically available, 
+so that other CRUD operations can run on the collection while the index is being created.
+This can be achieved by setting the *inBackground* attribute when creating an index.
+
+To create an index in the background in *arangosh* just specify `inBackground: true`, 
+like in the following example:
+
+```js
+db.collection.ensureIndex({ type: "hash", fields: [ "value" ], inBackground: true });
+```
+
+Indexes that are still in the build process will not be visible via the ArangoDB APIs. 
+Nevertheless it is not possible to create the same index twice via the *ensureIndex* API 
+while an index is still begin created. AQL queries also will not use these indexes until
+the index reports back as fully created. Note that the initial *ensureIndex* call or HTTP 
+request will still block until the index is completely ready. Existing single-threaded 
+client programs can thus safely set the *inBackground* option to *true* and continue to 
+work as before.
+
+Should you be building an index in the background you cannot rename or drop the collection.
+These operations will block until the index creation is finished.
+{% endhint %}
+
+After an interrupted index build (i.e. due to a server crash) the partially built index
+will the removed. In the ArangoDB cluster the index might then be automatically recreated 
+on affected shards.
+
+Background index creation might be slower than the "foreground" index creation and require 
+more RAM. Under a write heavy load (specifically many remove, update or replace operations), 
+the background index creation needs to keep a list of removed documents in RAM. This might 
+become unsustainable if this list grows to tens of millions of entries.
+
+Building an index is always a write-heavy operation, so it is always a good idea to build 
+indexes during times with less load.
+
+Please note that background index creation is useful only in combination with the RocksDB 
+storage engine. With the MMFiles storage engine, creating an index will always block any
+other operations on the collection.
+
+
 TTL (time-to-live) Indexes
 --------------------------
 
@@ -64,17 +114,17 @@ from a collection.
 A TTL index can be set up by setting an `expireAfter` value and by picking a single 
 document attribute which contains the documents' creation date and time. Documents 
 are expired after `expireAfter` seconds after their creation time. The creation time
-is specified as a numeric timestamp with millisecond precision.
+is specified as either a numeric timestamp or a UTC datestring.
 
 For example, if `expireAfter` is set to 600 seconds (10 minutes) and the index
 attribute is "creationDate" and there is the following document:
 
-    { "creationDate" : 1550165973964 }
+    { "creationDate" : 1550165973 }
 
-This document will be indexed with a creation date time value of `1550165973964`,
-which translates to the human-readable date `2019-02-14T17:39:33.964Z`. The document
-will expire 600 seconds afterwards, which is at timestamp `1550166573964` (or
-`2019-02-14T17:49:33.964Z` in the human-readable version).
+This document will be indexed with a creation timestamp value of `1550165973`,
+which translates to the human-readable date string `2019-02-14T17:39:33.000Z`. The 
+document will expire 600 seconds afterwards, which is at timestamp `1550166573000` (or
+`2019-02-14T17:49:33.000Z` in the human-readable version).
 
 The actual removal of expired documents will not necessarily happen immediately. 
 Expired documents will eventually removed by a background thread that is periodically
@@ -86,18 +136,27 @@ will eventually be removed when the background thread kicks in and has capacity 
 remove the expired documents. It is guaranteed however that only documents which are 
 past their expiration time will actually be removed.
 
-Please note that the numeric date time values for the index attribute should be 
-specified in milliseconds since January 1st 1970 (Unix timestamp with millisecond
-precision). To calculate the current timestamp from JavaScript in this format, 
-there is `Date.now()`, to calculate it from an arbitrary date string, there is 
-`Date.getTime()`.
+Please note that the numeric timestamp values for the index attribute should be 
+specified in seconds since January 1st 1970 (Unix timestamp). To calculate the current 
+timestamp from JavaScript in this format, there is `Date.now() / 1000`, to calculate it 
+from an arbitrary Date instance, there is `Date.getTime() / 1000`.
 
-In case the index attribute does not contain a numeric value, the document will not
-be stored in the TTL index and thus will not become a candidate for expiration and 
-removal. Providing either a non-numeric value or even no value for the index attribute
-is a supported way of keeping documents from being expired and removed.
+Alternatively, the index attribute values can be specified as a date string in format
+`YYYY-MM-DDTHH:MM:SS` with optional milliseconds. All date strings will be interpreted 
+as UTC dates.
+    
+The above example document using a datestring attribute value would be
 
-There can at most be one TTL index per collection.
+    { "creationDate" : "2019-02-14T17:39:33.000Z" }
+
+In case the index attribute does not contain a numeric value nor a proper date string, 
+the document will not be stored in the TTL index and thus will not become a candidate 
+for expiration and removal. Providing either a non-numeric value or even no value for 
+the index attribute is a supported way of keeping documents from being expired and removed.
+
+There can at most be one TTL index per collection. It is not recommended to use
+TTL indexes for user-land AQL queries, as TTL indexes may store a transformed,
+always numerical version of the index attribute value.
 
 The frequency for invoking the background removal thread can be configured 
 using the `--ttl.frequency` startup option. 
@@ -108,6 +167,20 @@ The total maximum number of documents to be removed per thread invocation is
 controlled by the startup option `--ttl.max-total-removes`. The maximum number of
 documents in a single collection at once can be controlled by the startup option
 `--ttl.max-collection-removes`.
+
+
+HTTP API extensions
+-------------------
+
+The HTTP API for creating indexes at POST `/_api/index` has been extended two-fold:
+
+* to create a TTL (time-to-live) index, it is now possible to specify a value of `ttl`
+  in the `type` attribute. When creating a TTL index, the attribute `expireAfter` is 
+  also required. That attribute contains the expiration time (in seconds), which is
+  based on the documents' index attribute value.
+
+* to create an index in background, the attribute `inBackground` can be set to `true`.
+
 
 Web interface
 -------------

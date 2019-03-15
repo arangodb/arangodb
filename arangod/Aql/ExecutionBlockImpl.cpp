@@ -168,6 +168,8 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
   }
 
   auto outputBlock = _outputItemRow->stealBlock();
+  // we guarantee that we do return a valid pointer in the HASMORE case.
+  TRI_ASSERT(outputBlock != nullptr);
   // TODO OutputAqlItemRow could get "reset" and "isValid" methods and be reused
   _outputItemRow.reset(nullptr);
 
@@ -355,17 +357,15 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
       }
     }
 #endif
-  } else if (std::is_same<Executor, SortExecutor>::value) {
+  } else if /* constexpr */ (Executor::Properties::inputSizeRestrictsOutputSize) {
     // The SortExecutor should refetch a block to save memory in case if only few elements to sort
     ExecutionState state;
     size_t expectedRows = 0;
-    std::tie(state, expectedRows) = _rowFetcher.preFetchNumberOfRows();
+    std::tie(state, expectedRows) = _rowFetcher.preFetchNumberOfRows(nrItems);
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(expectedRows == 0);
       return {state, nullptr};
     }
-    // All Rows Fetcher cannot return HASMORE
-    TRI_ASSERT(state == ExecutionState::DONE);
     nrItems = (std::min)(expectedRows, nrItems);
     if (nrItems == 0) {
       TRI_ASSERT(state == ExecutionState::DONE);

@@ -1,5 +1,10 @@
-Getting started
-===============
+Using Traversal Objects
+=======================
+
+{% hint 'warning' %}
+The JavaScript module `@arangodb/graph/traversal` (*traversal module* for short)
+is deprecated from version 3.4.0 on. The preferred way to traverse graphs is with AQL.
+{% endhint %}
 
 To use a traversal object, we first need to require the *traversal* module:
 

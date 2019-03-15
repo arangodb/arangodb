@@ -45,6 +45,7 @@ struct ModificationBase {
   ModificationBase()
       : _operationResultIterator(VPackSlice::emptyArraySlice()) {}
 
+  std::size_t _defaultBlockSize = ExecutionBlock::DefaultBatchSize();
   velocypack::Builder _tmpBuilder;  // default
   bool _prepared = false;
   std::size_t _blockIndex = 0;  // cursor to the current positon
@@ -55,11 +56,15 @@ struct ModificationBase {
   velocypack::ArrayIterator _operationResultIterator;  // ctor init list
 
   std::vector<ModOperationType> _operations;
+  std::size_t _last_not_skip;
+  bool _justCopy = false;
 
   // SingleBlockFetcher<false>& _fetcher;
 
   void reset() {
     // MUST not reset _block
+    _justCopy = false;
+    _last_not_skip = std::numeric_limits<decltype(_last_not_skip)>::max();
     _prepared = false;
     _blockIndex = 0;
 
@@ -107,7 +112,9 @@ struct Upsert : ModificationBase {
   VPackSlice _operationResultArraySliceUpdate = VPackSlice::nullSlice();
   velocypack::ArrayIterator _operationResultUpdateIterator;  // ctor init list
 
-  Upsert() : _operationResultUpdateIterator(VPackSlice::emptyArraySlice()) {}
+  Upsert() : _operationResultUpdateIterator(VPackSlice::emptyArraySlice()) {
+    _defaultBlockSize = 1;
+  }
 
   VPackBuilder _updateBuilder;
   VPackBuilder _insertBuilder;

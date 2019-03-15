@@ -22,6 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "OptimizerRules.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
@@ -54,7 +55,6 @@
 #include "GeoIndex/Index.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
-#include "OptimizerRules.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
@@ -5884,14 +5884,19 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     // yet, as many traversal internals depend on the number of vertices
     // found/built
     auto outVariable = traversal->edgeOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
+    std::vector<Variable const*> pruneVars;
+    traversal->getPruneVariables(pruneVars);
+
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
+        std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
       // traversal edge outVariable not used later
       traversal->setEdgeOutput(nullptr);
       modified = true;
     }
 
     outVariable = traversal->pathOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
+        std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
       // traversal path outVariable not used later
       traversal->setPathOutput(nullptr);
       modified = true;
@@ -6038,8 +6043,11 @@ void arangodb::aql::removeTraversalPathVariable(Optimizer* opt,
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
 
+    std::vector<Variable const*> pruneVars;
+    traversal->getPruneVariables(pruneVars);
     auto outVariable = traversal->pathOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
+        std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
       // traversal path outVariable not used later
       traversal->setPathOutput(nullptr);
       modified = true;

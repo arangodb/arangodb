@@ -72,7 +72,7 @@ inline OperationOptions convertOptions(ModificationOptions const& in,
   out.isRestore = in.useIsRestore;
   // in.consultAqlWriteFilter;
   // in.exclusive;
-  // in.overwrite;
+  out.overwrite = in.overwrite;
   out.ignoreRevs = in.ignoreRevs;
 
   out.returnNew = (outVariableNew != nullptr);
@@ -108,11 +108,13 @@ class ModificationExecutorInfos : public ExecutorInfos {
                             transaction::Methods* trx, OperationOptions options,
                             aql::Collection const* aqlCollection, bool producesResults,
                             bool consultAqlWriteFilter, bool ignoreErrors,
-                            bool doCount, bool returnInheritedResults,
+                            bool doCount, /*bool returnInheritedResults,*/
                             bool isReplace, bool ignoreDocumentNotFound)
-      : ExecutorInfos(makeSet({wrap(input1RegisterId),wrap(input2RegisterId), wrap(input3RegisterId)}) /*input registers*/,
+      : ExecutorInfos(makeSet({wrap(input1RegisterId), wrap(input2RegisterId),
+                               wrap(input3RegisterId)}) /*input registers*/,
                       makeSet({wrap(outputOldRegisterId), wrap(outputNewRegisterId)}) /*output registers*/,
-                      nrInputRegisters, nrOutputRegisters, std::move(registersToClear), std::move(registersToKeep)),
+                      nrInputRegisters, nrOutputRegisters,
+                      std::move(registersToClear), std::move(registersToKeep)),
         _trx(trx),
         _options(options),
         _aqlCollection(aqlCollection),
@@ -120,15 +122,14 @@ class ModificationExecutorInfos : public ExecutorInfos {
         _consultAqlWriteFilter(consultAqlWriteFilter),
         _ignoreErrors(ignoreErrors),
         _doCount(doCount),
-        _returnInheritedResults(returnInheritedResults),
+        //_returnInheritedResults(returnInheritedResults),
         _isReplace(isReplace),
         _ignoreDocumentNotFound(ignoreDocumentNotFound),
         _input1RegisterId(input1RegisterId),
         _input2RegisterId(input2RegisterId),
         _input3RegisterId(input3RegisterId),
         _outputNewRegisterId(outputNewRegisterId),
-        _outputOldRegisterId(outputOldRegisterId)
-        {}
+        _outputOldRegisterId(outputOldRegisterId) {}
 
   ModificationExecutorInfos() = delete;
   ModificationExecutorInfos(ModificationExecutorInfos&&) = default;
@@ -143,9 +144,9 @@ class ModificationExecutorInfos : public ExecutorInfos {
   bool _consultAqlWriteFilter;
   bool _ignoreErrors;
   bool _doCount;  // count statisitics
-  bool _returnInheritedResults;
-  bool _isReplace; // needed for upsert
-  bool _ignoreDocumentNotFound; // needed for update replace
+  //bool _returnInheritedResults;
+  bool _isReplace;               // needed for upsert
+  bool _ignoreDocumentNotFound;  // needed for update replace
 
   // insert (singleinput) - upsert (inDoc) - update replace (inDoc)
   boost::optional<RegisterId> _input1RegisterId;
@@ -163,6 +164,9 @@ struct ModificationExecutorBase {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
+    static const bool inputSizeRestrictsOutputSize =
+        false;  // Disabled because prefetch does not work in the Cluster
+                // Maybe This should ask for a 1:1 relation.
   };
   using Infos = ModificationExecutorInfos;
   using Fetcher = SingleBlockFetcher<Properties::allowsBlockPassthrough>;
@@ -173,14 +177,7 @@ struct ModificationExecutorBase {
  protected:
   ModificationExecutorInfos& _infos;
   Fetcher& _fetcher;
-  bool _copyBlock;
   bool _prepared = false;
-
-  // /// @brief skips over the taken rows if the input value is no
-  // /// array or empty. updates dstRow in this case and returns true!
-  // bool skipEmptyValues(VPackSlice const& values, size_t n, AqlItemBlock const* src,
-  //                      AqlItemBlock* dst, size_t& dstRow);
-
 };
 
 template <typename Modifier>

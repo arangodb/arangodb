@@ -799,7 +799,16 @@ std::unique_ptr<AqlItemBlock> UpdateReplaceBlock::work() {
     }
 
     // perform update/replace
+    LOG_DEVEL << "TRANSACTION IN UPDATE BLOCK";
     OperationResult opRes = apply(toUpdate, options);
+    if (opRes.fail()) {
+      try {
+      LOG_DEVEL << toUpdate.toJson();
+      } catch (...) {
+      LOG_DEVEL << "could not show to update";
+
+      }
+    }
 
     handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toUpdate.length()),
                      ep->_options.ignoreErrors, ignoreDocumentNotFound);

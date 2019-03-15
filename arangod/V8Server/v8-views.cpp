@@ -42,16 +42,12 @@
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @return the specified object is granted 'level' access
+/// @return the specified vocbase is granted 'level' access
 ////////////////////////////////////////////////////////////////////////////////
-bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase,
-            std::string const* dataSource = nullptr  // nullptr == validate only vocbase
-) {
+bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase) {
   auto* execCtx = arangodb::ExecContext::CURRENT;
 
-  return !execCtx ||
-         (execCtx->canUseDatabase(vocbase.name(), level) &&
-          (!dataSource || execCtx->canUseCollection(vocbase.name(), *dataSource, level)));
+  return !execCtx || execCtx->canUseDatabase(vocbase.name(), level);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,11 +256,7 @@ static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
   auto view = CollectionNameResolver(vocbase).getView(name);
 
   if (view) {
-    if (!canUse(auth::Level::RW,
-                vocbase)) {  // as per
-                             // https://github.com/arangodb/backlog/issues/459
-      // if (!canUse(auth::Level::RW, vocbase, &view->name())) { // check auth
-      // after ensuring that the view exists
+    if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "insufficient rights to drop view");
     }
@@ -323,11 +315,7 @@ static void JS_DropViewVocbaseObj(v8::FunctionCallbackInfo<v8::Value> const& arg
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RW,
-              view->vocbase())) {  // as per
-                                   // https://github.com/arangodb/backlog/issues/459
-    // if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check
-    // auth after ensuring that the view exists
+  if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to drop view");
   }
@@ -373,10 +361,7 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RO,
-              vocbase)) {  // as per https://github.com/arangodb/backlog/issues/459
-    // if (!canUse(auth::Level::RO, vocbase, &view->name())) { // check auth
-    // after ensuring that the view exists
+  if (!view->canUse(auth::Level::RO)) { // check auth after ensuring that the view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to get view");
   }
@@ -450,10 +435,7 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   for (size_t i = 0; i < n; ++i) {
     auto view = views[i];
 
-    if (!canUse(auth::Level::RO,
-                vocbase)) {  // as per
-                             // https://github.com/arangodb/backlog/issues/459
-      // if (!canUse(auth::Level::RO, vocbase, &view->name())) {
+    if (!view || !view->canUse(auth::Level::RO)) { // check auth after ensuring that the view exists
       continue;  // skip views that are not authorized to be read
     }
 
@@ -504,11 +486,7 @@ static void JS_NameViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RO,
-              view->vocbase())) {  // as per
-                                   // https://github.com/arangodb/backlog/issues/459
-    // if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) { // check
-    // auth after ensuring that the view exists
+  if (!view->canUse(auth::Level::RO)) { // check auth after ensuring that the view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to get view");
   }
@@ -564,11 +542,7 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
     // end of parameter parsing
     // ...........................................................................
 
-    if (!canUse(auth::Level::RW,
-                viewPtr->vocbase())) {  // as per
-                                        // https://github.com/arangodb/backlog/issues/459
-      // if (!canUse(auth::Level::RW, viewPtr->vocbase(), &viewPtr->name())) {
-      // // check auth after ensuring that the view exists
+    if (!viewPtr->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "insufficient rights to modify view");
     }
@@ -609,11 +583,7 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RO,
-              view->vocbase())) {  // as per
-                                   // https://github.com/arangodb/backlog/issues/459
-    // if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) { // check
-    // auth after ensuring that the view exists
+  if (!view->canUse(auth::Level::RO)) { // check auth after ensuring that the view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to get view");
   }
@@ -668,11 +638,7 @@ static void JS_RenameViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RW,
-              view->vocbase())) {  // as per
-                                   // https://github.com/arangodb/backlog/issues/459
-    // if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check
-    // auth after ensuring that the view exists
+  if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to rename view");
   }
@@ -717,11 +683,7 @@ static void JS_TypeViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RO,
-              view->vocbase())) {  // as per
-                                   // https://github.com/arangodb/backlog/issues/459
-    // if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) { // check
-    // auth after ensuring that the view exists
+  if (!view->canUse(auth::Level::RO)) { // check auth after ensuring that the view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to get view");
   }

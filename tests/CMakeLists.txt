@@ -35,6 +35,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchIndex-test.cpp
     IResearch/IResearchLink-test.cpp
     IResearch/IResearchLinkCoordinator-test.cpp
+    IResearch/IResearchLinkHelper-test.cpp
     IResearch/IResearchLinkMeta-test.cpp
     IResearch/IResearchQuery-test.cpp
     IResearch/IResearchQueryAnd-test.cpp
@@ -66,6 +67,7 @@ if (USE_IRESEARCH)
     V8Server/v8-users-test.cpp
     V8Server/v8-views-test.cpp
     VocBase/LogicalDataSource-test.cpp
+    VocBase/LogicalView-test.cpp
     VocBase/vocbase-test.cpp
   )
 endif ()

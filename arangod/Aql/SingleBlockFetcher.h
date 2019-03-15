@@ -50,7 +50,8 @@ template <bool pass>
 class SingleBlockFetcher {
  public:
   explicit SingleBlockFetcher(BlockFetcher<pass>& executionBlock)
-      : _blockFetcher(&executionBlock),
+      : _prefetched(false),
+        _blockFetcher(&executionBlock),
         _currentBlock(nullptr),
         _upstreamState(ExecutionState::HASMORE) {}
 
@@ -83,15 +84,26 @@ class SingleBlockFetcher {
   // there are no executors that could use this and not better use
   // SingleRowFetcher instead.
 
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock() {
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock(std::size_t limit = ExecutionBlock::DefaultBatchSize(), bool prefetch = false) {
+    if (_prefetched) {
+      TRI_ASSERT(!prefetch);
+      _prefetched = false;
+      return {_upstreamState, _currentBlock};
+    }
+
     if (_upstreamState == ExecutionState::DONE) {
       TRI_ASSERT(_currentBlock == nullptr);
       return {_upstreamState, _currentBlock};
     }
 
-    auto res = _blockFetcher->fetchBlock();
+    auto res = _blockFetcher->fetchBlock(limit);
     _upstreamState = res.first;
     _currentBlock = res.second;
+
+    if (prefetch && _currentBlock && _currentBlock->hasBlock()) {
+      _prefetched = prefetch;
+    }
+
     return res;
   }
 
@@ -99,9 +111,9 @@ class SingleBlockFetcher {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   };
 
-  std::pair<ExecutionState, std::size_t> preFetchNumberOfRows() {
-    TRI_ASSERT(false);
-    return {ExecutionState::DONE, 0};
+  std::pair<ExecutionState, std::size_t> preFetchNumberOfRows(std::size_t) {
+    fetchBlock(true);
+    return {_upstreamState, _currentBlock != nullptr ? _currentBlock->block().size() : 0};
   }
 
   InputAqlItemRow accessRow(std::size_t index) {
@@ -114,6 +126,8 @@ class SingleBlockFetcher {
   std::shared_ptr<AqlItemBlockShell> currentBlock() const {
     return _currentBlock;
   }
+
+  bool _prefetched;
 
  private:
   BlockFetcher<pass>* _blockFetcher;

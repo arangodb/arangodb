@@ -1,6 +1,62 @@
 devel
 -----
 
+* added "random" masking to mask any data type, added wildcard masking
+
+* fixed overflow in Windows NowNanos in RocksDB
+
+* Allow MoveShard from leader to a follower, thus swapping the two
+
+* Supervision fix: Satellite collections, various fixes
+
+* Add coordinator route for agency dump
+
+* Supervision fix: abort MoveShard job does not leave a lock behind,
+
+* Supervision fix: abort MoveShard (leader) job moves forwards when point
+  of no return has been reached,
+
+* Supervision fix: abort CleanOutServer job does not leave server in
+  ToBeCleanedServers,
+
+* Supervision fix: move shard with data stopped to early due to wrong usage 
+  of compare function
+
+* Supervision fix: AddFollower only counts good followers, fixing a
+  situation after a FailedLeader job could not find a new working
+  follower
+
+* Supervision fix: FailedLeader now also considers temporarily BAD
+  servers as replacement followers and does not block servers which
+  currently receive a new shard
+
+* Supervision fix: Servers in ToBeCleanedServers are no longer considered
+  as replacement servers
+
+* Maintenance fix: added precondition of unchanged Plan in phase2
+
+* add "PRUNE <condition>" to AQL Traversals. This allows to early abort searching of
+  unnecessary branches within a traversal.
+  PRUNE is only allowed in the Traversal statement and only between the graph
+  definition and the options of the traversal.
+  e.g.:
+  FOR v, e, p IN 1..3 OUTBOUND @source GRAPH "myGraph"
+    PRUNE v.value == "bar"
+    OPTIONS {} /* These options remain optional */
+    RETURN v
+  for more details refer to the documentation chapter.
+
+* fixed a display issue when editing a graph within the web UI
+
+* fixed some escaping issues within the web UI
+
+* follow up to fix JWT authentication in arangosh (#7530):
+  also fix reconnect
+
+* now also syncing _jobs and _queues collections in active failover mode
+
+* upgraded lodash to 4.17.11 because of CVE-2018-16487
+
 * `--query.registry-ttl` is now honored in single-server mode, and cursor TTLs
   are now honored on DBServers in cluster mode
   
@@ -25,7 +81,6 @@ devel
     new semantics, following ChakraCore and SpiderMonkey (though JSC
     implements V8's previous semantics).
  
-
 * fixed JS AQL query objects with empty query strings not being recognized as AQL queries
 
 * report run-time openssl version (for dynamically linked executables)

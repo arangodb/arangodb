@@ -36,38 +36,10 @@ using namespace arangodb::aql;
 ModificationExecutorBase::ModificationExecutorBase(Fetcher& fetcher, Infos& infos)
     : _infos(infos), _fetcher(fetcher), _prepared(false){};
 
-// /// @brief skips over the taken rows if the input value is no
-// /// array or empty. updates dstRow in this case and returns true!
-// bool ModificationExecutorBase::skipEmptyValues(VPackSlice const& values,
-//                                                size_t n, AqlItemBlock const* src,
-//                                                AqlItemBlock* dst, size_t& dstRow) {
-//   // TRI_ASSERT(src != nullptr);
-//   // TRI_ASSERT(_operations.size() == n);
-//
-//   // if (values.isArray() && values.length() > 0) {
-//   //  return false;
-//   //}
-//
-//   // if (dst == nullptr) {
-//   //  // fast-track exit. we don't have any output to write, so we
-//   //  // better try not to copy any of the register values from src to dst
-//   //  return true;
-//   //}
-//
-//   // for (size_t i = 0; i < n; ++i) {
-//   //  if (_operations[i] != IGNORE_SKIP) {
-//   //    inheritRegisters(src, dst, i, dstRow);
-//   //    ++dstRow;
-//   //  }
-//   //}
-//
-//   return true;
-// }
-
 template <typename Modifier>
 ModificationExecutor<Modifier>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
     : ModificationExecutorBase(fetcher, infos), _modifier() {
-  _infos._trx->pinData(_infos._aqlCollection->id()); //important for mmfiles
+  _infos._trx->pinData(_infos._aqlCollection->id());  // important for mmfiles
 };
 
 template <typename Modifier>
@@ -79,9 +51,14 @@ ModificationExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
   ExecutionState state = ExecutionState::HASMORE;
   ModificationExecutor::Stats stats;
 
-  while (!_prepared && _fetcher.upstreamState() != ExecutionState::DONE) {
+  // TODO - fix / improve prefetching if possible
+  while (!_prepared &&
+         (_fetcher.upstreamState() != ExecutionState::DONE || _fetcher._prefetched)) {
     std::shared_ptr<AqlItemBlockShell> block;
-    std::tie(state, block) = _fetcher.fetchBlock();
+    std::tie(state, block) = _fetcher.fetchBlock(
+        _modifier._defaultBlockSize);  // Upsert must use blocksize of one!
+                                       // Otherwise it could happen that an insert
+                                       // is not seen by subsequent opererations.
     _modifier._block = block;
 
     if (state == ExecutionState::WAITING) {
@@ -109,13 +86,12 @@ ModificationExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
     }
   }
 
-  // LOG_DEVEL << "prepared: " << _prepared;
-
   if (_prepared) {
     TRI_ASSERT(_modifier._block);
     TRI_ASSERT(_modifier._block->hasBlock());
 
     // LOG_DEVEL << "call doOutput";
+    // Produces the output
     bool thisBlockHasMore = _modifier.doOutput(this->_infos, output);
 
     if (thisBlockHasMore) {

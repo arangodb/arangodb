@@ -66,6 +66,7 @@ class IRESEARCH_API segment_reader final
 
   virtual const sub_reader& operator[](size_t i) const NOEXCEPT override {
     assert(!i);
+    UNUSED(i);
     return *this;
   }
 
