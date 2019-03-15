@@ -68,7 +68,7 @@ struct HealthRecord {
         engine(en),
         version(0) {}
 
-  explicit HealthRecord(Node const& node) { *this = node; }
+  HealthRecord(Node const& node) { *this = node; }
 
   HealthRecord& operator=(Node const& node) {
     version = 0;
@@ -168,12 +168,13 @@ Supervision::Supervision()
       _okThreshold(5.),
       _jobId(0),
       _jobIdMax(0),
-      _haveAborts(false),
       _selfShutdown(false),
       _upgraded(false) {}
 
 Supervision::~Supervision() {
-  shutdown();
+  if (!isStopping()) {
+    shutdown();
+  }
 }
 
 static std::string const syncPrefix = "/Sync/ServerStates/";
@@ -244,7 +245,7 @@ void Supervision::upgradeHealthRecords(Builder& builder) {
     HealthRecord hr;
     {
       VPackObjectBuilder oo(&b);
-      for (auto recPair : _snapshot.hasAsChildren(healthPrefix).first) {
+      for (auto const& recPair : _snapshot.hasAsChildren(healthPrefix).first) {
         if (recPair.second->has("ShortName") &&
             recPair.second->has("Endpoint")) {
           hr = *recPair.second;
@@ -854,8 +855,7 @@ void Supervision::run() {
       index_t leaderIndex = _agent->index();
       
       if (leaderIndex != 0) {
-        // No point in progressing, if indexes cannot be advanced
-        while (!this->isStopping() && _agent->leading()) { 
+        while (!this->isStopping() && _agent->leading()) { // No point in progressing, if indexes cannot be advanced
 
           auto result = _agent->waitFor(leaderIndex);
           if (result == Agent::raft_commit_t::TIMEOUT) { // Oh snap
@@ -1139,7 +1139,7 @@ void Supervision::workJobs() {
     }
   }
 
-  auto pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  auto const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
   for (auto const& pendEnt : pends) {
     auto jobNode = *(pendEnt.second);
     JobContext(PENDING, jobNode.hasAsString("jobId").first, _snapshot, _agent)
@@ -1169,8 +1169,7 @@ void Supervision::readyOrphanedIndexCreations() {
           indexes = collection("indexes").getArray();
           if (indexes.length() > 0) {
             for (auto const& planIndex : VPackArrayIterator(indexes)) {
-              if (planIndex.hasKey(StaticStrings::IndexIsBuilding) &&
-                  collection.has("shards")) {
+              if (planIndex.hasKey("isBuilding") && collection.has("shards")) {
                 auto const& planId = planIndex.get("id");
                 auto const& shards = collection("shards");
                 if (collection.has("numberOfShards") &&
@@ -1225,7 +1224,7 @@ void Supervision::readyOrphanedIndexCreations() {
                       VPackObjectBuilder props(envelope.get());
                       for (auto const& prop : VPackObjectIterator(planIndex)) {
                         auto const& key = prop.key.copyString();
-                        if (key != StaticStrings::IndexIsBuilding) {
+                        if (key != "isBuilding") {
                           envelope->add(key, prop.value);
                         }
                       }
