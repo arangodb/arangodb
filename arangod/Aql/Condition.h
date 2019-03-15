@@ -214,7 +214,9 @@ class Condition {
 
   /// @brief normalize the condition
   /// this will convert the condition into its disjunctive normal form
-  void normalize(ExecutionPlan*);
+  /// @param mutlivalued attributes may have more than one value
+  ///                    (ArangoSearch view case)
+  void normalize(ExecutionPlan*, bool multivalued = false);
 
   /// @brief normalize the condition
   /// this will convert the condition into its disjunctive normal form
@@ -250,7 +252,7 @@ class Condition {
   bool sortOrs(Variable const*, std::vector<Index const*>&);
 
   /// @brief optimize the condition expression tree
-  void optimize(ExecutionPlan*);
+  void optimize(ExecutionPlan*, bool multivalued);
 
   /// @brief registers an attribute access for a particular (collection)
   /// variable

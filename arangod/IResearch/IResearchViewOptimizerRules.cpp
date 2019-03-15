@@ -258,7 +258,7 @@ bool IResearchViewConditionHandler::before(ExecutionNode* en) {
 bool IResearchViewConditionHandler::handleFilterCondition(ExecutionNode* en,
                                                           Condition& condition) {
   // normalize the condition
-  condition.normalize(_plan);
+  condition.normalize(_plan, true);
   TRI_IF_FAILURE("ConditionFinder::normalizePlan") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

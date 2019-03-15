@@ -43,6 +43,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryNullTerm-test.cpp
     IResearch/IResearchQueryNumericTerm-test.cpp
     IResearch/IResearchQueryOr-test.cpp
+    IResearch/IResearchQueryOptimization-test.cpp
     IResearch/IResearchQueryPhrase-test.cpp
     IResearch/IResearchQuerySelectAll-test.cpp
     IResearch/IResearchQueryStartsWith-test.cpp

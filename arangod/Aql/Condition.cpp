@@ -517,7 +517,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
 
 /// @brief normalize the condition
 /// this will convert the condition into its disjunctive normal form
-void Condition::normalize(ExecutionPlan* plan) {
+void Condition::normalize(ExecutionPlan* plan, bool multivalued /*= false*/) {
   if (_isNormalized) {
     // already normalized
     return;
@@ -527,7 +527,7 @@ void Condition::normalize(ExecutionPlan* plan) {
   _root = transformNodePostorder(_root);
   _root = fixRoot(_root, 0);
 
-  optimize(plan);
+  optimize(plan, multivalued);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_root != nullptr) {
@@ -798,7 +798,7 @@ bool Condition::removeInvalidVariables(std::unordered_set<Variable const*> const
 }
 
 /// @brief optimize the condition expression tree
-void Condition::optimize(ExecutionPlan* plan) {
+void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
   if (_root == nullptr) {
     return;
   }
@@ -1038,6 +1038,10 @@ void Condition::optimize(ExecutionPlan* plan) {
 
           switch (res) {
             case CompareResult::IMPOSSIBLE: {
+              if (multivalued) {
+                break;
+              }
+
               // impossible condition
               // j = positions.size();
               // we remove this one, so fast forward the loops to their end:
