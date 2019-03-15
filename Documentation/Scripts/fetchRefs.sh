@@ -9,7 +9,7 @@ GITAUTH="$1"
 for book in ${ALLBOOKS}; do
 
     repos=$(grep '^ *<!-- SYNC: ' "../Books/${book}/SUMMARY.md" |sed -r 's;^ *<!-- SYNC: (.+) -->$;\1;')
-    reposUnique=$(awk '!seen[$0]++' <(for oneRepo in ${repos}; do echo ${oneRepo}; done))
+    reposUnique=$(awk '!seen[$0]++' <(for oneRepo in ${repos}; do echo "${oneRepo}"; done))
 
     for oneRepo in ${reposUnique}; do
 
