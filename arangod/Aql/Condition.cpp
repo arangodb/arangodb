@@ -467,7 +467,8 @@ std::pair<bool, bool> Condition::findIndexes(EnumerateCollectionNode const* node
   }
 
   return trx->getBestIndexHandlesForFilterCondition(collectionName, _ast, _root,
-                                                    reference, sortCondition, itemsInIndex,
+                                                    reference, sortCondition,
+                                                    itemsInIndex, node->hint(),
                                                     usedIndexes, _isSorted);
 }
 
