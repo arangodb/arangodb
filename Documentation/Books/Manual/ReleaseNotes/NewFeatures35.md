@@ -198,7 +198,7 @@ Client tools
 ### arangodump
 
 arangodump got an option `--all-databases` to make it dump all available databases
-instead of just the single specified database.
+instead of just a single database specified via the option `--server.database`.
 
 When set to true, this makes arangodump dump all available databases the current 
 user has access to. The option `--all-databases` cannot be used in combination with 
@@ -211,6 +211,23 @@ using multiple threads.
 When dumping all databases, the consistency guarantees of arangodump are the same
 as when dumping multiple single database individually, so the dump does not provide
 cross-database consistency of the data.
+
+### arangorestore
+
+arangorestore got an option `--all-databases` to make it restore all databases from
+inside the subdirectories of the specified dump directory, instead of just the
+single database specified via the option `--server.database`.
+
+Using the option for arangorestore only makes sense for dumps created with arangodump 
+and the `--all-databases` option. As for arangodump, arangorestore cannot be invoked 
+with the both options `--all-databases` and `--server.database` at the same time. 
+Additionally, the option `--force-same-database` cannot be used together with 
+`--all-databases`.
+  
+If the to-be-restored databases do not exist on the target server, then restoring data 
+into them will fail unless the option `--create-database` is also specified for
+arangorestore. Please note that in this case a database user must be used that has 
+access to the `_system` database, in order to create the databases on restore. 
 
 
 Miscellaneous

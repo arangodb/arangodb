@@ -1,7 +1,7 @@
 devel
 -----
 
-* added option `--all-databases` to arangodump
+* added option `--all-databases` to arangodump and arangorestore
 
   When set to true, this makes arangodump dump all available databases
   the current user has access to. The option `--all-databases` cannot be
@@ -11,6 +11,20 @@ devel
   with the data of each dumped database. Databases will be dumped one 
   after the other. However, inside each database, the collections of the
   database can be dumped in parallel using multiple threads.
+  
+  For arangorestore, this makes it restore all databases from inside the
+  subdirectories of the specified dump directory. Using the option for
+  arangorestore only makes sense for dumps created with arangodump and
+  the `--all-databases` option. As for arangodump, arangorestore cannot
+  be invoked with the options `--all-databases` and `--server.database`
+  at the same time. Additionally, the option `--force-same-database` cannot
+  be used together with `--all-databases`.
+  
+  If the to-be-restored databases do not exist on the target server, then
+  restoring data into them will fail unless the option `--create-database`
+  is also specified. Please note that in this case a database user must
+  be used that has access to the `_system` database, in order to create
+  the databases on restore. 
 
 * added "name" property for indices
 
@@ -23,7 +37,6 @@ devel
 
   The client tools arangosh, arangodump and arangorestore will now emit 
   a warning when connecting with them to a database server node in a cluster.
->>>>>>> 0c6de0c6a806530f67f16ecc2f4c612893e5ae55
 
 * fix compation behavior of followers
 

@@ -148,6 +148,16 @@ std::pair<arangodb::Result, std::vector<std::string>> getDatabases(arangodb::htt
       databases.push_back(it.copyString());
     }
   }
+ 
+  // sort by name, with _system first   
+  std::sort(databases.begin(), databases.end(), [](std::string const& lhs, std::string const& rhs) {
+    if (lhs == "_system" && rhs != "_system") {
+      return true;
+    } else if (rhs == "_system" && lhs != "_system") {
+      return false;
+    }
+    return lhs < rhs;
+  });
 
   return {{TRI_ERROR_NO_ERROR}, databases};
 }
@@ -647,7 +657,7 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
   if (1 == n) {
     _options.outputPath = positionals[0];
   } else if (1 < n) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC(FATAL, arangodb::Logger::DUMP)
         << "expecting at most one directory, got " +
                arangodb::basics::StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
@@ -660,14 +670,14 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
       boost::algorithm::clamp(_options.maxChunkSize, _options.initialChunkSize, ::MaxChunkSize);
 
   if (_options.tickEnd < _options.tickStart) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC(FATAL, arangodb::Logger::DUMP)
         << "invalid values for --tick-start or --tick-end";
     FATAL_ERROR_EXIT();
   }
   
   if (options->processingResult().touched("server.database") &&
       _options.allDatabases) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC(FATAL, arangodb::Logger::DUMP)
         << "cannot use --server.database and --all-databases at the same time";
     FATAL_ERROR_EXIT();
   }
@@ -683,7 +693,7 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
       boost::algorithm::clamp(_options.threadCount, 1,
                               4 * static_cast<uint32_t>(TRI_numberProcessors()));
   if (_options.threadCount != clamped) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "capping --threads value to " << clamped;
+    LOG_TOPIC(WARN, Logger::DUMP) << "capping --threads value to " << clamped;
     _options.threadCount = clamped;
   }
 }
@@ -1065,18 +1075,18 @@ void DumpFeature::start() {
   if (_directory->status().fail()) {
     switch (_directory->status().errorNumber()) {
       case TRI_ERROR_FILE_EXISTS:
-        LOG_TOPIC(FATAL, Logger::FIXME) << "cannot write to output directory '"
-                                        << _options.outputPath << "'";
+        LOG_TOPIC(FATAL, Logger::DUMP) << "cannot write to output directory '"
+                                       << _options.outputPath << "'";
 
         break;
       case TRI_ERROR_CANNOT_OVERWRITE_FILE:
-        LOG_TOPIC(FATAL, Logger::FIXME)
+        LOG_TOPIC(FATAL, Logger::DUMP)
             << "output directory '" << _options.outputPath
             << "' already exists. use \"--overwrite true\" to "
                "overwrite data in it";
         break;
       default:
-        LOG_TOPIC(ERR, Logger::FIXME) << _directory->status().errorMessage();
+        LOG_TOPIC(ERR, Logger::DUMP) << _directory->status().errorMessage();
         break;
     }
     FATAL_ERROR_EXIT();
@@ -1107,7 +1117,7 @@ void DumpFeature::start() {
   // special cluster-mode parameter checks
   if (_options.clusterMode) {
     if (_options.tickStart != 0 || _options.tickEnd != 0) {
-      LOG_TOPIC(ERR, Logger::FIXME)
+      LOG_TOPIC(ERR, Logger::DUMP)
           << "Error: cannot use tick-start or tick-end on a cluster";
       FATAL_ERROR_EXIT();
     }
@@ -1142,7 +1152,7 @@ void DumpFeature::start() {
     for (auto const& db : databases) {
       if (_options.allDatabases) {
         // inject current database
-        LOG_TOPIC(INFO, Logger::DUMP) << "Dumping database " << db;
+        LOG_TOPIC(INFO, Logger::DUMP) << "Dumping database '" << db << "'";
         client->setDatabaseName(db);
         httpClient = _clientManager.getConnectedClient(_options.force, false, true);
   
@@ -1151,7 +1161,7 @@ void DumpFeature::start() {
   
         if (_directory->status().fail()) {
           res = _directory->status();
-          LOG_TOPIC(ERR, Logger::FIXME) << _directory->status().errorMessage();
+          LOG_TOPIC(ERR, Logger::DUMP) << _directory->status().errorMessage();
           break;
         }
       }
@@ -1180,7 +1190,7 @@ void DumpFeature::start() {
   }
   
   if (res.fail()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "An error occurred: " + res.errorMessage();
+    LOG_TOPIC(ERR, Logger::DUMP) << "An error occurred: " + res.errorMessage();
     _exitCode = EXIT_FAILURE;
   }
 
