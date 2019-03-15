@@ -1,5 +1,5 @@
-Type cast
-=========
+Type check and cast functions
+=============================
 
 Some operators expect their operands to have a certain data type. For example,
 logical operators expect their operands to be boolean values, and the arithmetic
@@ -146,33 +146,128 @@ following type check functions are available. Each of these functions takes an
 argument of any data type and returns true if the value has the type that is
 checked for, and false otherwise.
 
-The following type check functions are available:
+### IS_NULL()
 
-- `IS_NULL(value) → bool`: Check whether *value* is a *null* value, also see
-  [HAS()](Document.md#has)
+`IS_NULL(value) → bool`
 
-- `IS_BOOL(value) → bool`: Check whether *value* is a *boolean* value
+Check whether *value* is *null*. Identical to `value == null`.
 
-- `IS_NUMBER(value) → bool`: Check whether *value* is a *numeric* value
+To test if an attribute exists, see [HAS()](Document.md#has) instead.
 
-- `IS_STRING(value) → bool`: Check whether *value* is a *string* value
+- **value** (any): value to test
+- returns **bool** (boolean): *true* if *value* is `null`,
+  *false* otherwise
 
-- `IS_ARRAY(value) → bool`: Check whether *value* is an *array* value
+### IS_BOOL()
 
-- `IS_LIST(value) → bool`: This is an alias for *IS_ARRAY()*
+`IS_BOOL(value) → bool`
 
-- `IS_OBJECT(value) → bool`: Check whether *value* is an *object* /
-  *document* value
+Check whether *value* is a *boolean* value
 
-- `IS_DOCUMENT(value) → bool`: This is an alias for *IS_OBJECT()*
+- **value** (any): value to test
+- returns **bool** (boolean): *true* if *value* is `true` or `false`,
+  *false* otherwise
 
-- `IS_DATESTRING(value) → bool`: Check whether *value* is a string that can be used
-  in a date function. This includes partial dates such as *"2015"* or *"2015-10"* and
-  strings containing invalid dates such as *"2015-02-31"*. The function will return 
-  false for all non-string values, even if some of them may be usable in date functions.
+### IS_NUMBER()
 
-- `IS_KEY(value) → bool`: Check whether *value* is a string that can be used as a
-  document key, i.e. as the value of the *_key* attribute.
+`IS_NUMBER(value) → bool`
 
-- `TYPENAME(value) → typeName`: Return the data type name of *value*. The data type
-  name can be either *"null"*, *"bool"*, *"number"*, *"string"*, *"array"* or *"object"*.
+Check whether *value* is a number
+
+- **value** (any): value to test
+- returns **bool** (boolean): *true* if *value* is a number,
+  *false* otherwise
+
+### IS_STRING()
+
+`IS_STRING(value) → bool`
+
+Check whether *value* is a string
+
+- **value** (any): value to test
+- returns **bool** (boolean): *true* if *value* is a string,
+  *false* otherwise
+
+### IS_ARRAY()
+
+`IS_ARRAY(value) → bool`
+
+Check whether *value* is an array / list
+
+- **value** (any): value to test
+- returns **bool** (boolean): *true* if *value* is an array / list,
+  *false* otherwise
+
+### IS_LIST()
+
+`IS_LIST(value) → bool`
+
+This is an alias for [IS_ARRAY()](#isarray)
+
+### IS_OBJECT()
+
+`IS_OBJECT(value) → bool`
+
+Check whether *value* is an object / document
+
+- **value** (any): value to test
+- returns **bool** (boolean): *true* if *value* is an object / document,
+  *false* otherwise
+
+### IS_DOCUMENT()
+
+`IS_DOCUMENT(value) → bool`
+
+This is an alias for [IS_OBJECT()](#isobject)
+
+### IS_DATESTRING()
+
+`IS_DATESTRING(str) → bool`
+
+Check whether *value* is a string that can be used in a date function.
+This includes partial dates such as *"2015"* or *"2015-10"* and strings
+containing properly formatted but invalid dates such as *"2015-02-31"*.
+
+- **str** (string): date string to test
+- returns **bool** (boolean): *true* if *str* is a correctly formatted date string,
+  *false* otherwise including all non-string values, even if some of them may be usable
+  in date functions (numeric timestamps)
+
+### IS_KEY()
+
+`IS_KEY(str) → bool`
+
+Check whether *value* is a string that can be used as a
+document key, i.e. as the value of the *_key* attribute.
+See [Naming Conventions for Document Keys](../../Manual/DataModeling/NamingConventions/DocumentKeys.html).
+
+- **str** (string): document key to test
+- returns **bool** (boolean): whether *str* can be used as document key
+
+### TYPENAME()
+
+`TYPENAME(value) → typeName`
+
+Return the data type name of *value*.
+
+- **value** (any): input of arbitrary type
+- returns **typeName** (string): data type name of *value*
+  (`"null"`, `"bool"`, `"number"`, `"string"`, `"array"` or `"object"`)
+
+Example Value   | Data Type Name
+---------------:|---------------
+`null`          | `"null"`
+`true`          | `"bool"`
+`false`         | `"bool"`
+`123`           | `"number"`
+`-4.56`         | `"number"`
+`0`             | `"number"`
+`"foobar"`      | `"string"`
+`"123"`         | `"string"`
+`""`            | `"string"`
+`[ 1, 2, 3 ]`   | `"array"`
+`["foo",true]`  | `"array"`
+`[ ]`           | `"array"`
+`{"foo":"bar"}` | `"object"`
+`{"foo": null}` | `"object"`
+`{ }`           | `"object"`
