@@ -49,18 +49,18 @@ class SingleRowFetcher;
 
 class SortedCollectExecutorInfos : public ExecutorInfos {
  public:
-  SortedCollectExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                             std::unordered_set<RegisterId> registersToClear,
-                             std::unordered_set<RegisterId> registersToKeep,
-                             std::unordered_set<RegisterId>&& readableInputRegisters,
-                             std::unordered_set<RegisterId>&& writeableOutputRegisters,
-                             std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
-                             RegisterId collectRegister, RegisterId expressionRegister,
-                             Variable const* expressionVariable,
-                             std::vector<std::string>&& aggregateTypes,
-                             std::vector<std::string>&& variableNames,
-                             std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-                             transaction::Methods* trxPtr, bool count);
+  SortedCollectExecutorInfos(
+      RegisterId nrInputRegisters,
+      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+      std::unordered_set<RegisterId> registersToKeep,
+      std::unordered_set<RegisterId>&& readableInputRegisters,
+      std::unordered_set<RegisterId>&& writeableOutputRegisters,
+      std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
+      RegisterId collectRegister, RegisterId expressionRegister,
+      Variable const* expressionVariable, std::vector<std::string>&& aggregateTypes,
+      std::vector<std::string>&& variableNames,
+      std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
+      transaction::Methods* trxPtr, bool count);
 
   SortedCollectExecutorInfos() = delete;
   SortedCollectExecutorInfos(SortedCollectExecutorInfos&&) = default;
@@ -77,7 +77,6 @@ class SortedCollectExecutorInfos : public ExecutorInfos {
   std::vector<std::string> getAggregateTypes() const { return _aggregateTypes; }
   bool getCount() const noexcept { return _count; };
   transaction::Methods* getTransaction() const { return _trxPtr; }
-  RegisterId getInputRegister() const noexcept { return _inputRegister; };
   RegisterId getCollectRegister() const noexcept { return _collectRegister; };
   RegisterId getExpressionRegister() const noexcept {
     return _expressionRegister;
@@ -88,10 +87,6 @@ class SortedCollectExecutorInfos : public ExecutorInfos {
   }
 
  private:
-  // This is exactly the value in the parent member ExecutorInfo::_inRegs,
-  // respectively getInputRegisters().
-  RegisterId _inputRegister;
-
   /// @brief aggregate types
   std::vector<std::string> _aggregateTypes;
 
@@ -193,7 +188,8 @@ class SortedCollectExecutor {
   /// @brief details about the current group
   CollectGroup _currentGroup;
 
-  bool _fetchedFirstRow;
+  bool _fetchedFirstRow; // indicator that we fetched the first row (we do not write in the first passing)
+  bool _returnedDone; // indicator that we fetched all rows, we need one more loop passthrough
 };
 
 }  // namespace aql

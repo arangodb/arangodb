@@ -141,7 +141,6 @@ void CollectNode::calcCollectRegister(arangodb::aql::RegisterId& collectRegister
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     collectRegister = (*it).second.registerId;
     TRI_ASSERT(collectRegister > 0 && collectRegister < ExecutionNode::MaxRegisterId);
-    LOG_DEVEL << "wrote collect : " << collectRegister;
     writeableOutputRegisters.insert((*it).second.registerId);
   }
 }
@@ -297,7 +296,6 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
 
       RegisterId collectRegister;
       calcCollectRegister(collectRegister, writeableOutputRegisters);
-      LOG_DEVEL << "NODE COLL REG: " << collectRegister;
 
       RegisterId expressionRegister;
       calcExpressionRegister(expressionRegister, writeableOutputRegisters);
