@@ -116,20 +116,25 @@ class CollectNode : public ExecutionNode {
   void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
   /// @brief calculate the collect register
+  void calcExpressionRegister(RegisterId& expressionRegister,
+                              std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+
+  /// @brief calculate the collect register
   void calcCollectRegister(RegisterId& collectRegister,
                            std::unordered_set<RegisterId>& writeableOutputRegisters) const;
 
   /// @brief calculate the group registers
-  void calcGroupRegisters(
-      std::vector<std::pair<RegisterId, RegisterId>>& groupRegisters,
-      std::unordered_set<RegisterId>& readableInputRegisters,
-      std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+  void calcGroupRegisters(std::vector<std::pair<RegisterId, RegisterId>>& groupRegisters,
+                          std::unordered_set<RegisterId>& readableInputRegisters,
+                          std::unordered_set<RegisterId>& writeableOutputRegisters) const;
 
   /// @brief calculate the aggregate registers
-  void calcAggregateRegisters(
-      std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
-      std::unordered_set<RegisterId>& readableInputRegisters,
-      std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+  void calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
+                              std::unordered_set<RegisterId>& readableInputRegisters,
+                              std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+
+  void calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
+  void calcVariableNames(std::vector<std::string>& variableNames) const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

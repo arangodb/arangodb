@@ -29,6 +29,7 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/HashedCollectExecutor.h"
+#include "Aql/SortedCollectExecutor.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/WalkerWorker.h"
 
@@ -122,12 +123,25 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const 
   nodes.close();
 }
 
+void CollectNode::calcExpressionRegister(
+    arangodb::aql::RegisterId& expressionRegister,
+    std::unordered_set<arangodb::aql::RegisterId>& writeableOutputRegisters) const {
+  if (_expressionVariable != nullptr) {
+    auto it = getRegisterPlan()->varInfo.find(_expressionVariable->id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    expressionRegister = (*it).second.registerId;
+    writeableOutputRegisters.insert((*it).second.registerId);
+  }
+}
+
 void CollectNode::calcCollectRegister(arangodb::aql::RegisterId& collectRegister,
                                       std::unordered_set<arangodb::aql::RegisterId>& writeableOutputRegisters) const {
   if (_outVariable != nullptr) {
     auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     collectRegister = (*it).second.registerId;
+    TRI_ASSERT(collectRegister > 0 && collectRegister < ExecutionNode::MaxRegisterId);
+    LOG_DEVEL << "wrote collect : " << collectRegister;
     writeableOutputRegisters.insert((*it).second.registerId);
   }
 }
@@ -181,6 +195,57 @@ void CollectNode::calcAggregateRegisters(
   TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
 }
 
+void CollectNode::calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const {
+  for (auto const& p : _aggregateVariables) {
+    aggregateTypes.emplace_back(
+        Aggregator::fromTypeString(_plan->getAst()->query()->trx(), p.second.second));
+  }
+}
+
+void CollectNode::calcVariableNames(std::vector<std::string>& variableNames) const {
+  if (_outVariable != nullptr) {
+    auto const& registerPlan = getRegisterPlan()->varInfo;
+    auto it = registerPlan.find(_outVariable->id);
+    TRI_ASSERT(it != registerPlan.end());
+
+    for (size_t i = 0; i < registerPlan.size(); ++i) {
+      variableNames.emplace_back("");  // initialize with default value
+    }
+
+    // iterate over all our variables
+    if (_keepVariables.empty()) {
+      auto usedVariableIds(getVariableIdsUsedHere());
+
+      for (auto const& vi : registerPlan) {
+        if (vi.second.depth > 0 || getDepth() == 1) {
+          // Do not keep variables from depth 0, unless we are depth 1 ourselves
+          // (which means no FOR in which we are contained)
+
+          if (usedVariableIds.find(vi.first) == usedVariableIds.end()) {
+            // variable is not visible to the CollectBlock
+            continue;
+          }
+
+          // find variable in the global variable map
+          auto itVar = _variableMap.find(vi.first);
+
+          if (itVar != _variableMap.end()) {
+            variableNames[vi.second.registerId] = (*itVar).second;
+          }
+        }
+      }
+    } else {
+      for (auto const& x : _keepVariables) {
+        auto it = registerPlan.find(x->id);
+
+        if (it != registerPlan.end()) {
+          variableNames[(*it).second.registerId] = x->name;
+        }
+      }
+    }
+  }
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
@@ -223,8 +288,58 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       return std::make_unique<ExecutionBlockImpl<HashedCollectExecutor>>(&engine, this,
                                                                          std::move(infos));
     }
-    case CollectOptions::CollectMethod::SORTED:
-      return std::make_unique<SortedCollectBlock>(&engine, this);
+    case CollectOptions::CollectMethod::SORTED: {
+      ExecutionNode const* previousNode = getFirstDependency();
+      TRI_ASSERT(previousNode != nullptr);
+
+      std::unordered_set<RegisterId> readableInputRegisters;
+      std::unordered_set<RegisterId> writeableOutputRegisters;
+
+      RegisterId collectRegister;
+      calcCollectRegister(collectRegister, writeableOutputRegisters);
+      LOG_DEVEL << "NODE COLL REG: " << collectRegister;
+
+      RegisterId expressionRegister;
+      calcExpressionRegister(expressionRegister, writeableOutputRegisters);
+
+      // calculate the group registers
+      std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
+      calcGroupRegisters(groupRegisters, readableInputRegisters, writeableOutputRegisters);
+
+      // calculate the aggregate registers
+      std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
+      calcAggregateRegisters(aggregateRegisters, readableInputRegisters, writeableOutputRegisters);
+
+      // calculate the aggregate type // TODO refactor nicely
+      std::vector<std::unique_ptr<Aggregator>> aggregateValues;
+      calcAggregateTypes(aggregateValues);
+
+      // calculate the variable names
+      std::vector<std::string> variableNames;
+      calcVariableNames(variableNames);
+
+      TRI_ASSERT(groupRegisters.size() == _groupVariables.size());
+      TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
+
+      std::vector<std::string> aggregateTypes;
+      std::transform(aggregateVariables().begin(), aggregateVariables().end(),
+                     std::back_inserter(aggregateTypes),
+                     [](auto& it) { return it.second.second; });
+      TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
+
+      transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
+      SortedCollectExecutorInfos infos(
+          getRegisterPlan()->nrRegs[previousNode->getDepth()],
+          getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
+          std::move(readableInputRegisters), std::move(writeableOutputRegisters),
+          std::move(groupRegisters), collectRegister, expressionRegister,
+          _expressionVariable, std::move(aggregateTypes),
+          std::move(variableNames), std::move(aggregateRegisters), trxPtr, _count);
+
+      return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(&engine, this,
+                                                                         std::move(infos));
+      // return std::make_unique<SortedCollectBlock>(&engine, this);
+    }
     case CollectOptions::CollectMethod::COUNT: {
       ExecutionNode const* previousNode = getFirstDependency();
       TRI_ASSERT(previousNode != nullptr);

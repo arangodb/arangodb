@@ -269,6 +269,7 @@ SET(ARANGOD_SOURCES
   Aql/ShortestPathNode.cpp
   Aql/SingleRowFetcher.cpp
   Aql/SortCondition.cpp
+  Aql/SortedCollectExecutor.cpp
   Aql/SortExecutor.cpp
   Aql/SortNode.cpp
   Aql/SortRegister.cpp
