@@ -101,7 +101,7 @@ bool RestHotBackupHandler::verifyPermitted() {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     TRI_ASSERT(engine != nullptr);
     if (0!=engine->typeName().compare(arangodb::RocksDBEngine::EngineName)) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
                     "hotbackup current supports only the rocksdb storage engine");
       retFlag = false;
     } // if
