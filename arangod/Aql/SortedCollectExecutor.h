@@ -58,7 +58,7 @@ class SortedCollectExecutorInfos : public ExecutorInfos {
       std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
       RegisterId collectRegister, RegisterId expressionRegister,
       Variable const* expressionVariable, std::vector<std::string>&& aggregateTypes,
-      std::vector<std::string>&& variableNames,
+      std::vector<std::pair<std::string, RegisterId>>&& variables,
       std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
       transaction::Methods* trxPtr, bool count);
 
@@ -82,8 +82,8 @@ class SortedCollectExecutorInfos : public ExecutorInfos {
     return _expressionRegister;
   };
   Variable const* getExpressionVariable() const { return _expressionVariable; }
-  std::vector<std::string> const getVariableNames() const {
-    return _variableNames;
+  std::vector<std::pair<std::string, RegisterId>> const& getVariables() const {
+    return _variables;
   }
 
  private:
@@ -107,7 +107,7 @@ class SortedCollectExecutorInfos : public ExecutorInfos {
   RegisterId _expressionRegister;
 
   /// @brief list of variables names for the registers
-  std::vector<std::string> _variableNames;
+  std::vector<std::pair<std::string, RegisterId>> _variables;
 
   /// @brief input expression variable (might be null)
   Variable const* _expressionVariable;
@@ -135,6 +135,9 @@ class SortedCollectExecutor {
     size_t groupLength;
     bool const count;
     Infos& infos;
+    InputAqlItemRow _lastInputRow;
+    arangodb::velocypack::Builder _builder;
+    bool _shouldDeleteBuilderBuffer;
 
     CollectGroup() = delete;
     CollectGroup(CollectGroup const&) = delete;
@@ -146,11 +149,15 @@ class SortedCollectExecutor {
     void initialize(size_t capacity);
     void reset(InputAqlItemRow& input);
 
+    bool isValid() const{
+      return _lastInputRow.isInitialized();
+    }
+
     void addValues(InputAqlItemRow& input, RegisterId groupRegister);
     void addLine(InputAqlItemRow& input);
     bool isSameGroup(InputAqlItemRow& input);
     void groupValuesToArray(VPackBuilder& builder);
-    void writeToOutput(InputAqlItemRow& input, OutputAqlItemRow& output);
+    void writeToOutput(OutputAqlItemRow& output);
   };
 
  public:

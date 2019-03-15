@@ -201,15 +201,11 @@ void CollectNode::calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& a
   }
 }
 
-void CollectNode::calcVariableNames(std::vector<std::string>& variableNames) const {
+void CollectNode::calcVariableNames(std::vector<std::pair<std::string, RegisterId>>& variableNames) const {
   if (_outVariable != nullptr) {
     auto const& registerPlan = getRegisterPlan()->varInfo;
     auto it = registerPlan.find(_outVariable->id);
     TRI_ASSERT(it != registerPlan.end());
-
-    for (size_t i = 0; i < registerPlan.size(); ++i) {
-      variableNames.emplace_back("");  // initialize with default value
-    }
 
     // iterate over all our variables
     if (_keepVariables.empty()) {
@@ -229,7 +225,7 @@ void CollectNode::calcVariableNames(std::vector<std::string>& variableNames) con
           auto itVar = _variableMap.find(vi.first);
 
           if (itVar != _variableMap.end()) {
-            variableNames[vi.second.registerId] = (*itVar).second;
+            variableNames.emplace_back(std::make_pair((*itVar).second, vi.second.registerId));
           }
         }
       }
@@ -238,7 +234,7 @@ void CollectNode::calcVariableNames(std::vector<std::string>& variableNames) con
         auto it = registerPlan.find(x->id);
 
         if (it != registerPlan.end()) {
-          variableNames[(*it).second.registerId] = x->name;
+          variableNames.emplace_back(std::make_pair(x->name, (*it).second.registerId));
         }
       }
     }
@@ -256,7 +252,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       std::unordered_set<RegisterId> readableInputRegisters;
       std::unordered_set<RegisterId> writeableOutputRegisters;
 
-      RegisterId collectRegister;
+      RegisterId collectRegister = ExecutionNode::MaxRegisterId;
       calcCollectRegister(collectRegister, writeableOutputRegisters);
 
       // calculate the group registers
@@ -294,7 +290,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       std::unordered_set<RegisterId> readableInputRegisters;
       std::unordered_set<RegisterId> writeableOutputRegisters;
 
-      RegisterId collectRegister;
+      RegisterId collectRegister = ExecutionNode::MaxRegisterId;
       calcCollectRegister(collectRegister, writeableOutputRegisters);
 
       RegisterId expressionRegister;
@@ -313,8 +309,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       calcAggregateTypes(aggregateValues);
 
       // calculate the variable names
-      std::vector<std::string> variableNames;
-      calcVariableNames(variableNames);
+      std::vector<std::pair<std::string, RegisterId>> variables;
+      calcVariableNames(variables);
 
       TRI_ASSERT(groupRegisters.size() == _groupVariables.size());
       TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
@@ -332,7 +328,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
           std::move(readableInputRegisters), std::move(writeableOutputRegisters),
           std::move(groupRegisters), collectRegister, expressionRegister,
           _expressionVariable, std::move(aggregateTypes),
-          std::move(variableNames), std::move(aggregateRegisters), trxPtr, _count);
+          std::move(variables), std::move(aggregateRegisters), trxPtr, _count);
 
       return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(&engine, this,
                                                                          std::move(infos));

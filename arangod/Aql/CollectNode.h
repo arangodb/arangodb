@@ -134,7 +134,7 @@ class CollectNode : public ExecutionNode {
                               std::unordered_set<RegisterId>& writeableOutputRegisters) const;
 
   void calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
-  void calcVariableNames(std::vector<std::string>& variableNames) const;
+  void calcVariableNames(std::vector<std::pair<std::string, RegisterId>>& variableNames) const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

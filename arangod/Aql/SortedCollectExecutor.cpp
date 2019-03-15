@@ -40,8 +40,13 @@ using namespace arangodb::aql;
 
 static const AqlValue EmptyValue;
 
+// TODO: MOVE THE COLLECT GROUP TO cpp file completely
+
 SortedCollectExecutor::CollectGroup::CollectGroup(bool count, Infos& infos)
-    : groupLength(0), count(count), infos(infos) {}
+    : groupLength(0),
+      count(count),
+      infos(infos),
+      _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}){};
 
 SortedCollectExecutor::CollectGroup::~CollectGroup() {
   for (auto& it : groupValues) {
@@ -69,6 +74,11 @@ void SortedCollectExecutor::CollectGroup::initialize(size_t capacity) {
 }
 
 void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow& input) {
+  _shouldDeleteBuilderBuffer = true;
+  ConditionalDeleter<VPackBuffer<uint8_t>> deleter(_shouldDeleteBuilderBuffer);
+  std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
+  _builder = VPackBuilder(buffer);
+
   if (!groupValues.empty()) {
     for (auto& it : groupValues) {
       it.destroy();
@@ -77,8 +87,7 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow& input) {
     // only copies of references anyway
   }
 
-  // TODO: GROUP LENGTH 1 only if initliza
-  groupLength = 1;  // TODO fix groupLength set
+  _lastInputRow = input;
 
   // reset all aggregators
   for (auto& it : aggregators) {
@@ -88,10 +97,13 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow& input) {
   if (input.isInitialized()) {
     // construct the new group
     size_t i = 0;
+    _builder.openArray();
     for (auto& it : infos.getGroupRegisters()) {
       this->groupValues[i] = input.getValue(it.second).clone();
       ++i;
     }
+
+    addLine(input);
   }
 }
 
@@ -137,7 +149,7 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
     RegisterId collectRegister, RegisterId expressionRegister,
     Variable const* expressionVariable, std::vector<std::string>&& aggregateTypes,
-    std::vector<std::string>&& variableNames,
+    std::vector<std::pair<std::string, RegisterId>>&& variables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
     transaction::Methods* trxPtr, bool count)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
@@ -149,7 +161,7 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
       _groupRegisters(groupRegisters),
       _collectRegister(collectRegister),
       _expressionRegister(expressionRegister),
-      _variableNames(variableNames),
+      _variables(variables),
       _expressionVariable(expressionVariable),
       _count(count),
       _trxPtr(trxPtr) {}
@@ -163,13 +175,35 @@ SortedCollectExecutor::SortedCollectExecutor(Fetcher& fetcher, Infos& infos)
 };
 
 void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
+  // remember the last valid row we had
+  _lastInputRow = input;
+
+  // calculate aggregate functions
   size_t j = 0;
   for (auto& it : this->aggregators) {
     RegisterId const reg = infos.getAggregatedRegisters()[j].second;
     it->reduce(input.getValue(reg));
     ++j;
   }
-  // _currentGroup.addValues(block, _collectRegister); TODO: Do we need to add values from row?
+
+  if (infos.getCollectRegister() != ExecutionNode::MaxRegisterId) {
+    if (count) {
+      // increase the count
+      groupLength++;
+    } else if (infos.getExpressionVariable() != nullptr) {
+      // compute the expression
+      input.getValue(infos.getExpressionRegister()).toVelocyPack(infos.getTransaction(), _builder, false);
+    } else {
+      // copy variables / keep variables into result register
+
+      _builder.openObject();
+      for (auto const& pair : infos.getVariables()) {
+        _builder.add(VPackValue(pair.first));
+        input.getValue(pair.second).toVelocyPack(infos.getTransaction(), _builder, false);
+      }
+      _builder.close();
+    }
+  }
   this->addValues(input, infos.getCollectRegister());
 }
 
@@ -212,11 +246,8 @@ void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& build
   builder.close();
 }
 
-void SortedCollectExecutor::CollectGroup::writeToOutput(InputAqlItemRow& input,  // TODO INPUT
-                                                        OutputAqlItemRow& output) {
+void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output) {
   // if we do not have initialized input, just return and do not write to any register
-
-  InputAqlItemRow testInput = InputAqlItemRow{CreateInvalidInputRowHint{}};
 
   /*
   if (!input.isInitialized()) {
@@ -229,7 +260,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(InputAqlItemRow& input, 
     AqlValueGuard guard{val, true};
 
     LOG_DEVEL << "Output NR1";
-    output.moveValueInto(it.first, testInput, guard);
+    output.moveValueInto(it.first, _lastInputRow, guard);
     // ownership of value is transferred into res
     this->groupValues[i].erase();  // TODO: maybe remove, check with reset function // TODO2: DO NOT DESTORY
     ++i;
@@ -244,53 +275,40 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(InputAqlItemRow& input, 
     AqlValue val = it->stealValue();
     AqlValueGuard guard{val, true};
     LOG_DEVEL << "Output NR2";
-    output.moveValueInto(infos.getAggregatedRegisters()[j].first, testInput, guard);
+    output.moveValueInto(infos.getAggregatedRegisters()[j].first, _lastInputRow, guard);
     ++j;
   }
 
   // set the group values
   if (infos.getCollectRegister() != ExecutionNode::MaxRegisterId) {
-    this->addValues(testInput, infos.getCollectRegister());
+    //  this->addValues(_lastInputRow, infos.getCollectRegister());
 
     if (infos.getCount()) {
       // only set group count in result register
       LOG_DEVEL << "Output NR3";
-      output.cloneValueInto(infos.getCollectRegister(), testInput,  // TODO check move
+      output.cloneValueInto(infos.getCollectRegister(), _lastInputRow,  // TODO check move
                             AqlValue(AqlValueHintUInt(static_cast<uint64_t>(this->groupLength))));
-    } else if (infos.getExpressionVariable() != nullptr) {
+    } else if (infos.getExpressionVariable() != nullptr) { // TODO LATER, remove else because same functionality
       // copy expression result into result register
-      bool shouldDelete = true;
-      ConditionalDeleter<VPackBuffer<uint8_t>> deleter(shouldDelete);
-      std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
+      LOG_DEVEL << "Output NR4";
+      TRI_ASSERT(_builder.isOpenArray());
+      _builder.close();
 
-      VPackBuilder builder(buffer);
-      groupValuesToArray(builder);
-      AqlValue val = AqlValue(buffer.get(), shouldDelete);
+      auto buffer = _builder.steal();
+      AqlValue val(buffer.get(), _shouldDeleteBuilderBuffer);
       AqlValueGuard guard{val, true};
 
-      LOG_DEVEL << "Output NR4";
-      output.moveValueInto(infos.getCollectRegister(), testInput, guard);
-      // output.cloneValueInto(infos.getCollectRegister(), input,  // TODO check move
-      //                    this->currentInput.getValue(infos.getExpressionRegister())); // TODO REMOVE INPUT
+      output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
     } else {
-      LOG_DEVEL << "Output NR5"; // TODO CHECK if builder object is properly and correctly filled!
-      bool shouldDelete = true;
-      ConditionalDeleter<VPackBuffer<uint8_t>> deleter(shouldDelete);
-      std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
+      LOG_DEVEL << "Output NR5";  // TODO CHECK if builder object is properly and correctly filled!
+      TRI_ASSERT(_builder.isOpenArray());
+      _builder.close();
 
-      VPackBuilder builder(buffer);
-      builder.openObject(); // TODO build object properly - see original CreateFromBlocks -> AqlValue.cpp:1093
-      for (std::string name : infos.getVariableNames()) {
-        builder.add(VPackValue(name));
-      }
-      builder.close();
-      // copy variables / keep variables into result register
-      /*
-      output.cloneValueInto(_infos.getCollectRegister(), input,  // TODO check
-      move _currentGroup.currentInput.getValue()
-                                AqlValue::CreateFromBlocks(_infos.getTransaction(),
-                                                           _currentGroup.groupBlocks,
-                                                           _infos.getVariableNames()));*/
+      auto buffer = _builder.steal();
+      AqlValue val(buffer.get(), _shouldDeleteBuilderBuffer);
+      AqlValueGuard guard{val, true};
+
+      output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
     }
   }
   //}
@@ -307,6 +325,12 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
   while (true) {
     if (_returnedDone) {
       LOG_DEVEL << "We're finally done.";
+
+      if (_currentGroup.isValid()) {
+        _currentGroup.writeToOutput(output);
+        _currentGroup.reset(input);
+      }
+
       return {ExecutionState::DONE, {}};
     }
 
@@ -329,34 +353,35 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
     if (!_fetchedFirstRow) {
       _currentGroup.reset(input);  // reset and recreate new group
       _fetchedFirstRow = true;
-      break;
+      continue;
     }
 
     // if we are in the same group, we need to add lines to the current group
-    if (_currentGroup.isSameGroup(input) && !_returnedDone) { // << returnedDone to check wheter we hit the last row
+    if (_currentGroup.isSameGroup(input)) {  // << returnedDone to check wheter we hit the last row
       LOG_DEVEL << "we found same group";
       _currentGroup.addLine(input);
+
+      if (_returnedDone) {
+        _currentGroup.writeToOutput(output);
+        return {ExecutionState::DONE, {}};
+      }
     } else {
       LOG_DEVEL << "we found another group, write output now";
-      _currentGroup.writeToOutput(input, output);
+      _currentGroup.writeToOutput(output);
       _currentGroup.reset(input);  // reset and recreate new group
-      break;
+      if (input.isInitialized()) {
+        return {ExecutionState::HASMORE, {}};
+      } else {
+        return {ExecutionState::DONE, {}};
+      }
     }
-
-    // This step is to check wheter we are in the last available input row to come
-    // We could reduce / optimize this later on
-    if (_returnedDone) {
-      _currentGroup.writeToOutput(input, output);
-      _currentGroup.reset(input);  // reset and recreate new group
-    }
-
 
     // TODO: store last or first input row, (last iteration)
+    // - OR - we could use invalid row (if it is allowed) to write to output, would be better
     // TODO !!! use invalid row for writing to the output !!!!
 
-    /* // I think we step out here too early, we need to loop 1x more, then quit with done
-    if (state == ExecutionState::DONE) {
-      LOG_DEVEL << "returned done";
+    /* // I think we step out here too early, we need to loop 1x more, then quit
+    with done if (state == ExecutionState::DONE) { LOG_DEVEL << "returned done";
       return {state, {}};
     }*/
 
@@ -366,11 +391,14 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
 }
 
 // TODOS:
+// 0) There is an issue with the _collectRegister! Something due setting the parameter is wrong. Need to inspect :(
 // 1.) Verify that addValues() is emplacing/inserting the correct values to groupValues!
 // 2.) Check if we can use an empty InputAqlItemRow for writing to the output (last row / write will
 // not have an initialized rw
 // 3.) IMPORTANT: Somewhere right now, we're writing the wrong data to the output rows..
 
+// 4.) WE NEED A VALID INPUT ROW
+// 4.1) Still missing: Remember the last valid input row!!!
 
 // use ./scripts/unittest shell_server_aql --test aql-optimizer-collect-aggregate.js for quick debuging,
 // later on all tests of course
