@@ -194,8 +194,7 @@ bool RestEdgesHandler::readEdges() {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder resultDocument(buffer);
     resultDocument.openObject();
-    int res = getFilteredEdgesOnCoordinator(_vocbase.name(), collectionName,
-                                            *(trx.get()), vertexString, direction,
+    int res = getFilteredEdgesOnCoordinator(*trx, collectionName, vertexString, direction,
                                             responseCode, resultDocument);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -335,8 +334,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     for (auto const& it : VPackArrayIterator(body)) {
       if (it.isString()) {
         std::string vertexString(it.copyString());
-        int res = getFilteredEdgesOnCoordinator(_vocbase.name(), collectionName,
-                                                *(trx.get()), vertexString, direction,
+        int res = getFilteredEdgesOnCoordinator(*trx, collectionName, vertexString, direction,
                                                 responseCode, resultDocument);
 
         if (res != TRI_ERROR_NO_ERROR) {

@@ -30,7 +30,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "MMFiles/MMFilesWalLogfile.h"
 #include "MMFiles/MMFilesWalSlots.h"
-#include "StorageEngine/TransactionManager.h"
+#include "Transaction/Manager.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -236,7 +236,8 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   }
 
   // registers a transaction
-  int registerTransaction(TRI_voc_tid_t id, bool isReadOnlyTransaction);
+  int registerTransaction(TRI_voc_tid_t transactionId,
+                          bool isReadOnlyTransaction);
 
   // return the set of dropped collections
   /// this is used during recovery and not used afterwards

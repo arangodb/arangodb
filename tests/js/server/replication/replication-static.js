@@ -104,7 +104,8 @@ const compare = function (masterFunc, slaveFunc, applierConfiguration) {
     includeSystem: includeSystem,
     restrictType: restrictType,
     restrictCollections: restrictCollections,
-    waitForSyncTimeout: 120
+    waitForSyncTimeout: 120,
+    keepBarrier: true
   });
 
   db._flushCache();
@@ -117,13 +118,14 @@ const compare = function (masterFunc, slaveFunc, applierConfiguration) {
   applierConfiguration.username = replicatorUser;
   applierConfiguration.password = replicatorPassword;
   applierConfiguration.includeSystem = includeSystem;
+  applierConfiguration.requireFromPresent = true; 
 
   if (!applierConfiguration.hasOwnProperty('chunkSize')) {
     applierConfiguration.chunkSize = 16384;
   }
 
   replication.applier.properties(applierConfiguration);
-  replication.applier.start(syncResult.lastLogTick);
+  replication.applier.start(syncResult.lastLogTick, syncResult.barrierId);
 
   var printed = false;
 

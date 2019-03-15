@@ -40,7 +40,10 @@ using namespace arangodb::aql;
 
 CountCollectExecutorInfos::CountCollectExecutorInfos(
     RegisterId collectRegister, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+    RegisterId nrOutputRegisters,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToClear,
+    // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
                     make_shared_unordered_set({collectRegister}),

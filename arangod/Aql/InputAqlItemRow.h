@@ -58,7 +58,9 @@ class InputAqlItemRow {
   explicit InputAqlItemRow(CreateInvalidInputRowHint)
       : _blockShell(nullptr), _baseIndex(0) {}
 
-  InputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell, size_t baseIndex)
+  InputAqlItemRow(
+    // cppcheck-suppress passedByValue
+    std::shared_ptr<AqlItemBlockShell> blockShell, size_t baseIndex)
       : _blockShell(std::move(blockShell)), _baseIndex(baseIndex) {
     TRI_ASSERT(_blockShell != nullptr);
   }

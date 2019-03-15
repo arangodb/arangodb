@@ -35,6 +35,8 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
@@ -55,7 +57,8 @@ ShortestPathExecutorInfos::ShortestPathExecutorInfos(
     std::unique_ptr<graph::ShortestPathFinder>&& finder,
     std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
     InputVertex&& source, InputVertex&& target)
-    : ExecutorInfos(inputRegisters, outputRegisters, nrInputRegisters, nrOutputRegisters,
+    : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
+                    nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _finder(std::move(finder)),
       _registerMapping(std::move(registerMapping)),

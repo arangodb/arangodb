@@ -298,3 +298,17 @@ void FollowerInfo::clear() {
   auto v = std::make_shared<std::vector<ServerID>>();
   _followers = v;  // will cast to std::vector<ServerID> const
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the given server is a follower
+//////////////////////////////////////////////////////////////////////////////
+
+bool FollowerInfo::contains(ServerID const& sid) const {
+  MUTEX_LOCKER(locker, _mutex);
+  for (auto const& s : *_followers) {
+    if (s == sid) {
+      return true;
+    }
+  }
+  return false;
+}

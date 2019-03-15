@@ -1007,17 +1007,21 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
           || TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE ==
                  result.errorNumber()) {
         // some collections must not be dropped
-        auto res = truncateCollectionOnCoordinator(dbName, name);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          return Result(
-              res,
-              std::string(
-                  "unable to truncate collection (dropping is forbidden): '") +
-                  name + "'");
+        auto ctx = transaction::StandaloneContext::Create(_vocbase);
+        SingleCollectionTransaction trx(ctx, name, AccessMode::Type::EXCLUSIVE);
+        
+        Result res = trx.begin();
+        if (res.fail()) {
+          return res;
         }
-
-        return Result(res);
+        
+        OperationOptions options;
+        OperationResult result = trx.truncate(name, options);
+        res = trx.finish(result.result);
+        if (res.fail()) {
+          res.appendErrorMessage(". Unable to truncate collection (dropping is forbidden)");
+        }
+        return res;
       }
 
       if (!result.ok()) {

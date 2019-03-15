@@ -348,6 +348,14 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
            << "', username: '" << v8connection->username() << "'";
 
         _console->printLine(is.str());
+
+        if (v8connection->role() == "PRIMARY" || v8connection->role() == "DBSERVER") {
+          std::string msg("WARNING: You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator");
+          if (_console->colors()) {
+            msg = ShellColorsFeature::SHELL_COLOR_RED + msg + ShellColorsFeature::SHELL_COLOR_RESET;
+          }
+          _console->printErrorLine(msg);
+        }
       } else {
         std::ostringstream is;
 
