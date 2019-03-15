@@ -165,8 +165,8 @@ int TRI_JoinThread(TRI_thread_t* thread) {
 /// @brief waits for a thread to finish within the specified timeout (in ms).
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, int timeout) {
-  if (timeout == -1) {
+int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout) {
+  if (timeout == INFINITE) {
     return TRI_JoinThread(thread);
   }
   
