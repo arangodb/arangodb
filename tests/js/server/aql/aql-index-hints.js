@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE */
+/*global fail, assertEqual, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for Ahuacatl, skiplist index queries
@@ -39,7 +39,7 @@ var errors = internal.errors;
 function ahuacatlSkiplistOverlappingTestSuite () {
   const getIndexNames = function (query) {
     return AQL_EXPLAIN(query, {}, { optimizer: { rules: [ "-all", "+use-indexes" ] } })
-              .plan.nodes.filter(node => (node.type == 'IndexNode'))
+              .plan.nodes.filter(node => (node.type === 'IndexNode'))
               .map(node => node.indexes.map(index => index.name));
   };
 
@@ -126,7 +126,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
         const usedIndexes = getIndexNames(query);
         fail();
       } catch (err) {
-        assertEqual(errors.ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE.code, err.errorNum)
+        assertEqual(errors.ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE.code, err.errorNum);
       }
     },
 
@@ -152,7 +152,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
         const usedIndexes = getIndexNames(query);
         fail();
       } catch (err) {
-        assertEqual(errors.ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE.code, err.errorNum)
+        assertEqual(errors.ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE.code, err.errorNum);
       }
     },
     
