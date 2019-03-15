@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var db = internal.db;
 var jsunity = require("jsunity");
 var errors = internal.errors;
 
@@ -45,6 +46,8 @@ function ahuacatlSkiplistOverlappingTestSuite () {
 
   const cn = 'UnitTestsIndexHints';
   let collection;
+  let defaultIndex;
+  let alternateIndex;
 
   return {
 
@@ -62,6 +65,10 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       collection.ensureIndex({type: 'skiplist', name: 'skip_a', fields: ['a']});
       collection.ensureIndex({type: 'skiplist', name: 'skip_a_b', fields: ['a', 'b']});
       collection.ensureIndex({type: 'skiplist', name: 'skip_b_a', fields: ['b', 'a']});
+      
+      const isMMFiles = db._engine().name === "mmfiles";
+      defaultIndex = isMMFiles ? 'skip_a' : 'hash_a';
+      alternateIndex = isMMFiles ? 'hash_a' : 'skip_a';
     },
 
     tearDown : function () {
@@ -77,31 +84,31 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 1);
       assertEqual(usedIndexes[0].length, 1);
-      assertEqual(usedIndexes[0][0], 'hash_a');
+      assertEqual(usedIndexes[0][0], defaultIndex);
     },
 
     testDefaultHint : function () {
       const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: 'hash_a'}
+        FOR doc IN ${cn} OPTIONS {indexHint: '${defaultIndex}'}
           FILTER doc.a == 1
           RETURN doc
       `;
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 1);
       assertEqual(usedIndexes[0].length, 1);
-      assertEqual(usedIndexes[0][0], 'hash_a');
+      assertEqual(usedIndexes[0][0], defaultIndex);
     },
 
     testDefaultHintForced : function () {
       const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: 'hash_a', forceIndexHint: true}
+        FOR doc IN ${cn} OPTIONS {indexHint: '${defaultIndex}', forceIndexHint: true}
           FILTER doc.a == 1
           RETURN doc
       `;
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 1);
       assertEqual(usedIndexes[0].length, 1);
-      assertEqual(usedIndexes[0][0], 'hash_a');
+      assertEqual(usedIndexes[0][0], defaultIndex);
     },
 
     testNonexistentIndexHint : function () {
@@ -113,7 +120,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 1);
       assertEqual(usedIndexes[0].length, 1);
-      assertEqual(usedIndexes[0][0], 'hash_a');
+      assertEqual(usedIndexes[0][0], defaultIndex);
     },
 
     testNonexistentIndexHintForced : function () {
@@ -132,14 +139,14 @@ function ahuacatlSkiplistOverlappingTestSuite () {
 
     testUnusableHint : function () {
       const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: 'hash_b'}
+        FOR doc IN ${cn} OPTIONS {indexHint: 'hash_b_a'}
           FILTER doc.a == 1
           RETURN doc
       `;
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 1);
       assertEqual(usedIndexes[0].length, 1);
-      assertEqual(usedIndexes[0][0], 'hash_a');
+      assertEqual(usedIndexes[0][0], defaultIndex);
     },
 
     testUnusableHintForced : function () {
@@ -158,14 +165,14 @@ function ahuacatlSkiplistOverlappingTestSuite () {
     
     testTypeHint : function () {
       const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: 'skip_a'}
+        FOR doc IN ${cn} OPTIONS {indexHint: '${alternateIndex}'}
           FILTER doc.a == 1
           RETURN doc
       `;
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 1);
       assertEqual(usedIndexes[0].length, 1);
-      assertEqual(usedIndexes[0][0], 'skip_a');
+      assertEqual(usedIndexes[0][0], alternateIndex);
     },
 
     testPartialCoverageHint : function () {
@@ -182,56 +189,56 @@ function ahuacatlSkiplistOverlappingTestSuite () {
 
     testListFirstHint : function () {
       const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: ['skip_a_b', 'skip_a']}
+        FOR doc IN ${cn} OPTIONS {indexHint: ['skip_a_b', '${alternateIndex}']}
           FILTER doc.a == 1
           RETURN doc
       `;
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 1);
       assertEqual(usedIndexes[0].length, 1);
-      assertEqual(usedIndexes[0][0], 'skip_a_b');
+      assertEqual(usedIndexes[0][0], `skip_a_b`);
     },
 
     testListLastHint : function () {
       const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: ['skip_b_a', 'skip_a']}
+        FOR doc IN ${cn} OPTIONS {indexHint: ['skip_b_a', '${alternateIndex}']}
           FILTER doc.a == 1
           RETURN doc
       `;
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 1);
       assertEqual(usedIndexes[0].length, 1);
-      assertEqual(usedIndexes[0][0], 'skip_a');
+      assertEqual(usedIndexes[0][0], alternateIndex);
     },
 
     testNestedMatchedHint : function () {
       const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: ['skip_a']}
+        FOR doc IN ${cn} OPTIONS {indexHint: '${alternateIndex}'}
           FILTER doc.a == 1
-          FOR sub IN ${cn} OPTIONS {indexHint: ['skip_a']}
+          FOR sub IN ${cn} OPTIONS {indexHint: '${alternateIndex}'}
             FILTER sub.a == 2
             RETURN [doc, sub]
       `;
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 2);
       assertEqual(usedIndexes[0].length, 1);
-      assertEqual(usedIndexes[0][0], 'skip_a');
+      assertEqual(usedIndexes[0][0], alternateIndex);
       assertEqual(usedIndexes[1].length, 1);
-      assertEqual(usedIndexes[1][0], 'skip_a');
+      assertEqual(usedIndexes[1][0], alternateIndex);
     },
 
     testNestedUnmatchedHint : function () {
       const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: ['skip_a']}
+        FOR doc IN ${cn} OPTIONS {indexHint: '${alternateIndex}'}
           FILTER doc.a == 1
-          FOR sub IN ${cn} OPTIONS {indexHint: ['skip_a_b']}
+          FOR sub IN ${cn} OPTIONS {indexHint: 'skip_a_b'}
             FILTER sub.a == 2
             RETURN [doc, sub]
       `;
       const usedIndexes = getIndexNames(query);
       assertEqual(usedIndexes.length, 2);
       assertEqual(usedIndexes[0].length, 1);
-      assertEqual(usedIndexes[0][0], 'skip_a');
+      assertEqual(usedIndexes[0][0], alternateIndex);
       assertEqual(usedIndexes[1].length, 1);
       assertEqual(usedIndexes[1][0], 'skip_a_b');
     },
