@@ -1,6 +1,10 @@
 v3.4.5 (XXXX-XX-XX)
 -------------------
 
+* fixed some escaping issues within the web ui.
+
+* fixed issue #8165: AQL optimizer does not pick up multiple Geo index
+
 * fix uniq array indices not accepting document updates
 
 * when restarting a follower in active failover mode, try an incremental sync instead
