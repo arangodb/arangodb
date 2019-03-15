@@ -325,7 +325,7 @@ void MMFilesEdgeIndex::batchInsert(transaction::Methods& trx,
   toElements->reserve(documents.size());
 
   // functions that will be called for each thread
-  auto creator = [&trx, this]() -> void* {
+  auto creator = [this]() -> void* {
     return new MMFilesIndexLookupContext(&_collection, nullptr, 1);
   };
   auto destroyer = [](void* userData) {

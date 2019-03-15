@@ -354,8 +354,8 @@
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
   <!-- SYNC: https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ -->
   * [ArangoDB Starter Administration](Administration/Starter/README.md)
-    * [ArangoDB Starter Removal Procedure](Administration/Starter/Removal.md)
-    * [ArangoDB Starter Recovery Procedure](Administration/Starter/Recovery.md)
+    * [Removal Procedure](Administration/Starter/Removal.md)
+    * [Recovery Procedure](Administration/Starter/Recovery.md)
 * [Security](Security/README.md)
   * [Change Root Password](Security/ChangeRootPassword.md)
   * [Encryption at Rest](Security/Encryption/README.md)

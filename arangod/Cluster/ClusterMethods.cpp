@@ -21,6 +21,8 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ClusterMethods.h"
+
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -50,6 +52,7 @@
 #include <numeric>
 #include <vector>
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -173,32 +176,6 @@ static std::unique_ptr<std::unordered_map<std::string, std::string>> CreateNoLoc
 }  // namespace
 
 namespace arangodb {
-
-static int handleGeneralCommErrors(ClusterCommResult const* res) {
-  // This function creates an error code from a ClusterCommResult,
-  // but only if it is a communication error. If the communication
-  // was successful and there was an HTTP error code, this function
-  // returns TRI_ERROR_NO_ERROR.
-  // If TRI_ERROR_NO_ERROR is returned, then the result was CL_COMM_RECEIVED
-  // and .answer can safely be inspected.
-  if (res->status == CL_COMM_TIMEOUT) {
-    // No reply, we give up:
-    return TRI_ERROR_CLUSTER_TIMEOUT;
-  } else if (res->status == CL_COMM_ERROR) {
-    return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-  } else if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
-    if (res->result == nullptr) {
-      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-    }
-    if (!res->result->isComplete()) {
-      // there is no result
-      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-    }
-    return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a numeric value from an hierarchical VelocyPack
@@ -636,6 +613,33 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
   }
   return result;
 }
+  
+/// @brief convert ClusterComm error into arango error code
+int handleGeneralCommErrors(arangodb::ClusterCommResult const* res) {
+  // This function creates an error code from a ClusterCommResult,
+  // but only if it is a communication error. If the communication
+  // was successful and there was an HTTP error code, this function
+  // returns TRI_ERROR_NO_ERROR.
+  // If TRI_ERROR_NO_ERROR is returned, then the result was CL_COMM_RECEIVED
+  // and .answer can safely be inspected.
+  if (res->status == CL_COMM_TIMEOUT) {
+    // No reply, we give up:
+    return TRI_ERROR_CLUSTER_TIMEOUT;
+  } else if (res->status == CL_COMM_ERROR) {
+    return TRI_ERROR_CLUSTER_CONNECTION_LOST;
+  } else if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
+    if (res->result == nullptr) {
+      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
+    }
+    if (!res->result->isComplete()) {
+      // there is no result
+      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
+    }
+    return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+  }
+  
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a copy of all HTTP headers to forward
@@ -742,7 +746,7 @@ int revisionOnCoordinator(std::string const& dbname,
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
-  auto shards = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
   std::unordered_map<std::string, std::string> headers;
@@ -810,7 +814,7 @@ int warmupOnCoordinator(std::string const& dbname, std::string const& cid) {
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
-  auto shards = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
   std::unordered_map<std::string, std::string> headers;
@@ -855,7 +859,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
-  auto shards = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
   std::unordered_map<std::string, std::string> headers;
@@ -902,8 +906,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 /// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
-int countOnCoordinator(std::string const& dbname, std::string const& cname,
-                       transaction::Methods const& trx,
+int countOnCoordinator(transaction::Methods& trx, std::string const& cname,
                        std::vector<std::pair<std::string, uint64_t>>& result) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -915,17 +918,18 @@ int countOnCoordinator(std::string const& dbname, std::string const& cname,
 
   result.clear();
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, cname);
   if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-
-  auto shards = collinfo->shardIds();
+  
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>();
-  for (auto const& p : *shards) {
+  for (std::pair<ShardID, std::vector<ServerID>> const& p : *shards) {
     requests.emplace_back("shard:" + p.first, arangodb::rest::RequestType::GET,
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               "/_api/collection/" +
@@ -983,7 +987,7 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  auto shards = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
   std::vector<ClusterCommRequest> requests;
   std::string requestsUrl;
   auto body = std::make_shared<std::string>();
@@ -1082,8 +1086,7 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 /// for their documents.
 ////////////////////////////////////////////////////////////////////////////////
 
-Result createDocumentOnCoordinator(std::string const& dbname, std::string const& collname,
-                                   transaction::Methods const& trx,
+Result createDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
                                    arangodb::OperationOptions const& options,
                                    VPackSlice const& slice,
                                    arangodb::rest::ResponseCode& responseCode,
@@ -1098,6 +1101,7 @@ Result createDocumentOnCoordinator(std::string const& dbname, std::string const&
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(ci != nullptr);
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, collname);
@@ -1105,6 +1109,7 @@ Result createDocumentOnCoordinator(std::string const& dbname, std::string const&
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   auto collid = std::to_string(collinfo->id());
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
 
   // create vars used in this function
   bool const useMultiple = slice.isArray();  // insert more than one document
@@ -1224,9 +1229,8 @@ Result createDocumentOnCoordinator(std::string const& dbname, std::string const&
 /// @brief deletes a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& collname,
-                                arangodb::transaction::Methods const& trx,
-                                VPackSlice const slice,
+int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
+                                std::string const& collname, VPackSlice const slice,
                                 arangodb::OperationOptions const& options,
                                 arangodb::rest::ResponseCode& responseCode,
                                 std::unordered_map<int, size_t>& errorCounter,
@@ -1239,6 +1243,7 @@ int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& co
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, collname);
@@ -1247,6 +1252,7 @@ int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& co
   }
   bool useDefaultSharding = collinfo->usesDefaultShardKeys();
   auto collid = std::to_string(collinfo->id());
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
   bool useMultiple = slice.isArray();
 
   std::string const baseUrl =
@@ -1458,7 +1464,7 @@ int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& co
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int truncateCollectionOnCoordinator(std::string const& dbname, std::string const& collname) {
+Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string const& collname) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
@@ -1467,6 +1473,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname, std::string const
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, collname);
@@ -1476,7 +1483,8 @@ int truncateCollectionOnCoordinator(std::string const& dbname, std::string const
 
   // Some stuff to prepare cluster-intern requests:
   // We have to contact everybody:
-  auto shards = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
+
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
@@ -1494,6 +1502,11 @@ int truncateCollectionOnCoordinator(std::string const& dbname, std::string const
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
         nrok++;
+      } else if (res.answer->payload().isObject()) {
+        VPackSlice answer = res.answer->payload();
+        return Result(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
+                                                         TRI_ERROR_TRANSACTION_INTERNAL),
+                      VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage, ""));
       }
     }
   }
@@ -1502,15 +1515,14 @@ int truncateCollectionOnCoordinator(std::string const& dbname, std::string const
   if (nrok < shards->size()) {
     return TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION;
   }
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int getDocumentOnCoordinator(std::string const& dbname, std::string const& collname,
-                             arangodb::transaction::Methods const& trx,
+int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string const& collname,
                              VPackSlice slice, OperationOptions const& options,
                              arangodb::rest::ResponseCode& responseCode,
                              std::unordered_map<int, size_t>& errorCounter,
@@ -1523,6 +1535,7 @@ int getDocumentOnCoordinator(std::string const& dbname, std::string const& colln
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, collname);
@@ -1531,6 +1544,7 @@ int getDocumentOnCoordinator(std::string const& dbname, std::string const& colln
   }
 
   auto collid = std::to_string(collinfo->id());
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
 
   // If _key is the one and only sharding attribute, we can do this quickly,
   // because we can easily determine which shard is responsible for the
@@ -2057,9 +2071,8 @@ void fetchVerticesFromEngines(
 /// @brief get all edges on coordinator using a Traverser Filter
 ////////////////////////////////////////////////////////////////////////////////
 
-int getFilteredEdgesOnCoordinator(std::string const& dbname, std::string const& collname,
-                                  arangodb::transaction::Methods const& trx,
-                                  std::string const& vertex,
+int getFilteredEdgesOnCoordinator(arangodb::transaction::Methods const& trx,
+                                  std::string const& collname, std::string const& vertex,
                                   TRI_edge_direction_e const& direction,
                                   arangodb::rest::ResponseCode& responseCode,
                                   VPackBuilder& result) {
@@ -2073,8 +2086,12 @@ int getFilteredEdgesOnCoordinator(std::string const& dbname, std::string const& 
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo = ci->getCollection(dbname, collname);
+  std::shared_ptr<LogicalCollection> collinfo = ci->getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
 
   std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> shards;
   if (collinfo->isSmart() && collinfo->type() == TRI_COL_TYPE_EDGE) {
@@ -2181,8 +2198,7 @@ int getFilteredEdgesOnCoordinator(std::string const& dbname, std::string const& 
 ////////////////////////////////////////////////////////////////////////////////
 
 int modifyDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    arangodb::transaction::Methods const& trx, VPackSlice const& slice,
+    transaction::Methods& trx, std::string const& collname, VPackSlice const& slice,
     arangodb::OperationOptions const& options, bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::rest::ResponseCode& responseCode, std::unordered_map<int, size_t>& errorCounter,
@@ -2195,9 +2211,11 @@ int modifyDocumentOnCoordinator(
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo = ci->getCollection(dbname, collname);
   auto collid = std::to_string(collinfo->id());
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
 
   // We have a fast path and a slow path. The fast path only asks one shard
   // to do the job and the slow path asks them all and expects to get
@@ -2482,7 +2500,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
         if (resSlice.isObject()) {
           int code = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
               resSlice, "errorNum", TRI_ERROR_INTERNAL);
-
+ 
           if (code != TRI_ERROR_NO_ERROR) {
             globalErrorCode = code;
           }

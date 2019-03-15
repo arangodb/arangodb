@@ -32,7 +32,9 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
+                                 // cppcheck-suppress passedByValue
                                  std::unordered_set<RegisterId> toKeep,
+                                 // cppcheck-suppress passedByValue
                                  std::unordered_set<RegisterId> registersToClear)
     : ExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
                     nrInOutRegisters, nrInOutRegisters,

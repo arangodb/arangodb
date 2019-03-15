@@ -52,8 +52,6 @@ class ReturnExecutorInfos : public ExecutorInfos {
   ReturnExecutorInfos(ReturnExecutorInfos const&) = delete;
   ~ReturnExecutorInfos() = default;
 
-  Variable const& inVariable() const { return *_inVariable; }
-
   RegisterId getInputRegisterId() const { return _inputRegisterId; }
 
   RegisterId getOutputRegisterId() const {
@@ -68,7 +66,6 @@ class ReturnExecutorInfos : public ExecutorInfos {
 
  private:
   /// @brief the variable produced by Return
-  Variable const* _inVariable;
   RegisterId _inputRegisterId;
   bool _doCount;
   bool _returnInheritedResults;

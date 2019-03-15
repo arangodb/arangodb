@@ -65,8 +65,6 @@
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBThrottle.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
-#include "RocksDBEngine/RocksDBTransactionContextData.h"
-#include "RocksDBEngine/RocksDBTransactionManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBUpgrade.h"
@@ -74,6 +72,8 @@
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "Transaction/Context.h"
+#include "Transaction/ContextData.h"
+#include "Transaction/Manager.h"
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalView.h"
@@ -503,6 +503,7 @@ void RocksDBEngine::start() {
                              static_cast<int>(opts->_blockCacheShardBits),
                              /*strict_capacity_limit*/ opts->_enforceBlockCacheSizeLimit);
     // tableOptions.cache_index_and_filter_blocks =
+    // tableOptions.pin_l0_filter_and_index_blocks_in_cache
     // opts->_compactionReadaheadSize > 0;
   } else {
     tableOptions.no_block_cache = true;
@@ -783,18 +784,17 @@ void RocksDBEngine::unprepare() {
   shutdownRocksDBInstance();
 }
 
-std::unique_ptr<TransactionManager> RocksDBEngine::createTransactionManager() {
-  return std::unique_ptr<TransactionManager>(new RocksDBTransactionManager());
+std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager() {
+  return std::make_unique<transaction::Manager>(/*keepData*/ false);
 }
 
 std::unique_ptr<transaction::ContextData> RocksDBEngine::createTransactionContextData() {
-  return std::unique_ptr<transaction::ContextData>(new RocksDBTransactionContextData());
+  return std::unique_ptr<transaction::ContextData>(nullptr); // not used by rocksdb
 }
 
 std::unique_ptr<TransactionState> RocksDBEngine::createTransactionState(
-    TRI_vocbase_t& vocbase, transaction::Options const& options) {
-  return std::unique_ptr<TransactionState>(
-      new RocksDBTransactionState(vocbase, TRI_NewTickServer(), options));
+    TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, transaction::Options const& options) {
+  return std::make_unique<RocksDBTransactionState>(vocbase, tid, options);
 }
 
 std::unique_ptr<TransactionCollection> RocksDBEngine::createTransactionCollection(

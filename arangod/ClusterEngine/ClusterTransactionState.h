@@ -23,35 +23,16 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_TRANSACTION_STATE_H
 #define ARANGOD_CLUSTER_CLUSTER_TRANSACTION_STATE_H 1
 
-#include "Basics/Common.h"
-#include "Basics/SmallVector.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Hints.h"
-#include "Transaction/Methods.h"
-#include "VocBase/AccessMode.h"
-#include "VocBase/voc-types.h"
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
-
-class LogicalCollection;
-
-namespace transaction {
-
-class Methods;
-struct Options;
-
-}  // namespace transaction
-
-class TransactionCollection;
 
 /// @brief transaction type
 class ClusterTransactionState final : public TransactionState {
  public:
   ClusterTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                           transaction::Options const& options);
-  ~ClusterTransactionState();
+  ~ClusterTransactionState() {}
 
   /// @brief begin a transaction
   Result beginTransaction(transaction::Hints hints) override;
