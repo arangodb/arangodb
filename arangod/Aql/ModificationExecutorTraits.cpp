@@ -201,10 +201,6 @@ bool Insert::doModifications(ModificationExecutorInfos& info,
     _justCopy = true;
     return _last_not_skip != std::numeric_limits<decltype(_last_not_skip)>::max();
   }
-  try {
-  LOG_DEVEL << "doModifications(Insert)  UUU  " << info._aqlCollection->name();
-  LOG_DEVEL << toInsert.toJson() << "  UUU  " << info._aqlCollection->name();
-  } catch (...) {}
 
   // execute insert
   TRI_ASSERT(info._trx);
@@ -642,7 +638,6 @@ bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 template <typename ModType>
 bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
                                              ModificationExecutorBase::Stats& stats) {
-  LOG_DEVEL << "enter doModifications (UpdateReplace)";
   OperationOptions& options = info._options;
 
   // check if we're a DB server in a cluster
@@ -731,7 +726,6 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
 
   if (toUpdateOrReplace.length() == 0) {
     _justCopy = true;
-    LOG_DEVEL << "_justCopy true";
     return _last_not_skip != std::numeric_limits<decltype(_last_not_skip)>::max();
   }
 
@@ -747,28 +741,8 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
       THROW_ARANGO_EXCEPTION(_operationResult.result);
     }
 
-    try {
-
-      LOG_DEVEL << " OOOOOO Start OperationResult";
-      LOG_DEVEL << _operationResult.slice().toJson();
-    } catch(...){}
-
-    try {
     handleBabyStats(stats, info, _operationResult.countErrorCodes,
                     toUpdateOrReplace.length(), info._ignoreErrors, info._ignoreDocumentNotFound);
-    } catch(std::exception const& e){
-      LOG_DEVEL << " OOOOOO Start" << "error count not empty in: " << info._aqlCollection->name();
-      LOG_DEVEL << e.what() << "  ---   " << info._aqlCollection->name();
-      LOG_DEVEL << toUpdateOrReplace.toJson() << "  ---   " << info._aqlCollection->name();
-      LOG_DEVEL << " OOOOOO End";
-      throw e;
-    } catch(...){
-      LOG_DEVEL << "$#$@#$" << "error count not empty in: " << info._aqlCollection->name();
-      LOG_DEVEL << "unknown  ---   " << info._aqlCollection->name();
-      LOG_DEVEL << toUpdateOrReplace.toJson() << "  ---   " << info._aqlCollection->name();
-      LOG_DEVEL << " OOOOOO End";
-      throw ;
-    }
   }
 
   _tmpBuilder.clear();
