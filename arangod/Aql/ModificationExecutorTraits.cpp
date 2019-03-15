@@ -244,12 +244,6 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 
   OperationOptions& options = info._options;
 
-  if (_justCopy) {
-    InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
-    output.copyRow(input);
-   return (++_blockIndex < blockSize);
-  }
-
   // ignore-skip values
   while (_blockIndex < _operations.size() && _operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
     _blockIndex++;
