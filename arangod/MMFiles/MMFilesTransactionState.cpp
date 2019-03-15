@@ -103,7 +103,7 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
     _hints = hints;
 
     // register a protector
-    int res = logfileManager->registerTransaction(*this);
+    int res = logfileManager->registerTransaction(id(), isReadOnlyTransaction());
     result.reset(res);
 
     if (!result.ok()) {

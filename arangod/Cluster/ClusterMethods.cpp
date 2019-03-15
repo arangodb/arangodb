@@ -161,9 +161,9 @@ void recursiveAdd(VPackSlice const& value, std::shared_ptr<VPackBuilder>& builde
   TRI_ASSERT(builder->isClosed());
 }
 
-/// @brief begin a transaction on shard leader
+/// @brief begin a transaction on some leader shards
 template <typename ShardDocsMap>
-Result beginTransactionOnCoordinator(TransactionState& state,
+Result beginTransactionOnSomeLeaders(TransactionState& state,
                                      std::shared_ptr<LogicalCollection> const& coll,
                                      ShardDocsMap const& shards) {
   TRI_ASSERT(state.isCoordinator());
@@ -187,14 +187,26 @@ Result beginTransactionOnCoordinator(TransactionState& state,
   return ClusterTrxMethods::beginTransactionOnLeaders(state, leaders);
 }
   
+// begin transaction on shard leaders
+static Result beginTransactionOnAllLeaders(transaction::Methods& trx,
+                                           ShardMap const& shards) {
+  TRI_ASSERT(trx.state()->isCoordinator());
+  TRI_ASSERT(trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
+  std::vector<ServerID> leaders;
+  for (auto const& shardServers : shards) {
+    if (!trx.state()->knowsServer(shardServers.second.at(0))) {
+      leaders.emplace_back(shardServers.second.at(0));
+    }
+  }
+  return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), leaders);
+}
+  
 /// @brief add the correct header for the shard
 static void addTransactionHeaderForShard(transaction::Methods& trx,
                                          ShardMap const& shardMap, ShardID const& shard,
                                          std::unordered_map<std::string, std::string>& headers) {
   TRI_ASSERT(trx.state()->isCoordinator());
-  if (trx.state()->hasHint(transaction::Hints::Hint::SINGLE_OPERATION) ||
-      !(trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
-        trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL))) {
+  if (!ClusterTrxMethods::isElCheapo(trx)) {
     return; // no need
   }
   
@@ -963,10 +975,18 @@ int countOnCoordinator(transaction::Methods& trx, std::string const& cname,
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   
-  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
+  const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  if (isManaged) {
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    if (res.fail()) {
+      return res.errorNumber();
+    }
+  }
+  
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>();
-  for (std::pair<ShardID, std::vector<ServerID>> const& p : *shards) {
+  for (std::pair<ShardID, std::vector<ServerID>> const& p : *shardIds) {
     auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
     ClusterTrxMethods::addTransactionHeader(trx, /*leader*/p.second[0], *headers);
     requests.emplace_back("shard:" + p.first, arangodb::rest::RequestType::GET,
@@ -975,8 +995,9 @@ int countOnCoordinator(transaction::Methods& trx, std::string const& cname,
                               StringUtils::urlEncode(p.first) + "/count",
                           body, std::move(headers));
   }
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::QUERIES, true);
+
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::QUERIES,
+                      /*retryOnCollNotFound*/true, /*retryOnBackUnvlbl*/!isManaged);
   for (auto& req : requests) {
     auto& res = req.result;
     if (res.status == CL_COMM_RECEIVED) {
@@ -1061,8 +1082,8 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
   //                 }
   // }
 
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::QUERIES, true);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::QUERIES,
+                      /*retryOnCollNotFound*/true);
 
   std::map<std::string, std::vector<double>> indexEstimates;
 
@@ -1176,8 +1197,9 @@ Result createDocumentOnCoordinator(transaction::Methods& trx, std::string const&
   }
 
   // lazily begin transactions on leaders
-  if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    Result res = beginTransactionOnCoordinator(*trx.state(), collinfo, shardMap);
+  const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  if (isManaged) {
+    Result res = beginTransactionOnSomeLeaders(*trx.state(), collinfo, shardMap);
     if (res.fail()) {
       return res.errorNumber();
     }
@@ -1238,8 +1260,8 @@ Result createDocumentOnCoordinator(transaction::Methods& trx, std::string const&
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, Logger::COMMUNICATION,
+                      /*retryOnCollNotFound*/true, /*retryOnBackUnavai*/!isManaged);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -1251,6 +1273,8 @@ Result createDocumentOnCoordinator(transaction::Methods& trx, std::string const&
     if (commError != TRI_ERROR_NO_ERROR) {
       return commError;
     }
+    
+    
 
     responseCode = res.answer_code;
     TRI_ASSERT(res.answer != nullptr);
@@ -1379,8 +1403,9 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
     // We sorted the shards correctly.
 
     // lazily begin transactions on leaders
-    if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-      Result res = beginTransactionOnCoordinator(*trx.state(), collinfo, shardMap);
+    const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+    if (isManaged) {
+      Result res = beginTransactionOnSomeLeaders(*trx.state(), collinfo, shardMap);
       if (res.fail()) {
         return res.errorNumber();
       }
@@ -1410,9 +1435,8 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
     }
 
     // Perform the requests
-    size_t nrDone = 0;
-    cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone,
-                        Logger::COMMUNICATION, true);
+    cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, Logger::COMMUNICATION,
+                        /*retryOnCollNotFound*/true, /*retryOnBackUnvlbl*/!isManaged);
 
     // Now listen to the results:
     if (!useMultiple) {
@@ -1442,6 +1466,16 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
 
   // slowpath we do not know which server is responsible ask all of them.
 
+  std::shared_ptr<ShardMap> shardMap = collinfo->shardIds();
+  // lazily begin transactions on leaders
+  const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  if (isManaged) {
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardMap);
+    if (res.fail()) {
+      return res.errorNumber();
+    }
+  }
+  
   // We simply send the body to all shards and await their results.
   // As soon as we have the results we merge them in the following way:
   // For 1 .. slice.length()
@@ -1449,21 +1483,21 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
   //      if res != NOT_FOUND => insert this result. skip other results
   //    end
   //    if (!skipped) => insert NOT_FOUND
-
+  
   auto body = std::make_shared<std::string>(slice.toJson());
   std::vector<ClusterCommRequest> requests;
-  auto shardList = ci->getShardList(collid);
-  for (auto const& shard : *shardList) {
+  for (auto const& shardServers : *shardMap) {
+    ShardID const& shard = shardServers.second.at(0);
     auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-    addTransactionHeaderForShard(trx, *shards, shard, *headers);
+    addTransactionHeaderForShard(trx, *shardMap, shard, *headers);
     requests.emplace_back("shard:" + shard, arangodb::rest::RequestType::DELETE_REQ,
                           baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
                           body, std::move(headers));
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, Logger::COMMUNICATION,
+                      /*retryOnCollNotFound*/true, /*retryOnBackUnvlbl*/!isManaged);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -1496,7 +1530,7 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
 
   // We select all results from all shards an merge them back again.
   std::vector<std::shared_ptr<VPackBuilder>> allResults;
-  allResults.reserve(shardList->size());
+  allResults.reserve(shardMap->size());
   // If no server responds we return 500
   responseCode = rest::ResponseCode::SERVER_ERROR;
   for (auto const& req : requests) {
@@ -1515,7 +1549,7 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
-  TRI_ASSERT(allResults.size() == shardList->size());
+  TRI_ASSERT(allResults.size() == shardMap->size());
   mergeResultsAllShards(allResults, resultBody, errorCounter,
                         static_cast<size_t>(slice.length()));
   return TRI_ERROR_NO_ERROR;
@@ -1526,12 +1560,14 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string const& collname) {
+  Result res;
+  
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
-    return TRI_ERROR_SHUTTING_DOWN;
+    return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
 
   std::string const& dbname = trx.vocbase().name();
@@ -1539,23 +1575,16 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string co
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+    return res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   // Some stuff to prepare cluster-intern requests:
   // We have to contact everybody:
-  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shardMap = collinfo->shardIds();
 
-  const bool global = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-  // lazily begin transactions on leaders
-  if (global) {
-    std::vector<ServerID> leaders;
-    for (auto const& shardServers : *shards) {
-      if (!trx.state()->knowsServer(shardServers.second[0])) {
-        leaders.emplace_back(shardServers.second[0]);
-      }
-    }
-    Result res = ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), leaders);
+  // lazily begin transactions on all leader shards
+  if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    res = ::beginTransactionOnAllLeaders(trx, *shardMap);
     if (res.fail()) {
       return res;
     }
@@ -1563,11 +1592,9 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string co
 
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   std::unordered_map<std::string, std::string> headers;
-  for (auto const& p : *shards) {
+  for (auto const& p : *shardMap) {
     std::unordered_map<std::string, std::string> headers;
-    if (global) {
-      addTransactionHeaderForShard(trx, *shards, /*shard*/p.first, headers);
-    }
+    addTransactionHeaderForShard(trx, *shardMap, /*shard*/p.first, headers);
     cc->asyncRequest(coordTransactionID, "shard:" + p.first,
                      arangodb::rest::RequestType::PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
@@ -1577,14 +1604,14 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string co
   // Now listen to the results:
   unsigned int count;
   unsigned int nrok = 0;
-  for (count = (unsigned int)shards->size(); count > 0; count--) {
-    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
-    if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
+  for (count = (unsigned int)shardMap->size(); count > 0; count--) {
+    auto ccRes = cc->wait(coordTransactionID, 0, "", 0.0);
+    if (ccRes.status == CL_COMM_RECEIVED) {
+      if (ccRes.answer_code == arangodb::rest::ResponseCode::OK) {
         nrok++;
-      } else if (res.answer->payload().isObject()) {
-        VPackSlice answer = res.answer->payload();
-        return Result(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
+      } else if (ccRes.answer->payload().isObject()) {
+        VPackSlice answer = ccRes.answer->payload();
+        return res.reset(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
                                                          TRI_ERROR_TRANSACTION_INTERNAL),
                       VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage, ""));
       }
@@ -1592,10 +1619,10 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string co
   }
 
   // Note that nrok is always at least 1!
-  if (nrok < shards->size()) {
-    return TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION;
+  if (nrok < shardMap->size()) {
+    return res.reset(TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION);
   }
-  return Result();
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1624,7 +1651,7 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
   }
 
   auto collid = std::to_string(collinfo->id());
-  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
 
   // If _key is the one and only sharding attribute, we can do this quickly,
   // because we can easily determine which shard is responsible for the
@@ -1658,12 +1685,7 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
   }
 
   // lazily begin transactions on leaders
-  if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    Result res = beginTransactionOnCoordinator(*trx.state(), collinfo, shardMap);
-    if (res.fail()) {
-      return res.errorNumber();
-    }
-  }
+  const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   
   // Some stuff to prepare cluster-internal requests:
 
@@ -1690,6 +1712,13 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
   if (canUseFastPath) {
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
+    
+    if (isManaged) { // lazily begin the transaction
+      Result res = beginTransactionOnSomeLeaders(*trx.state(), collinfo, shardMap);
+      if (res.fail()) {
+        return res.errorNumber();
+      }
+    }
 
     VPackBuilder reqBuilder;
 
@@ -1700,7 +1729,7 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
         auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-        addTransactionHeaderForShard(trx, *shards, /*shard*/it.first, *headers);
+        addTransactionHeaderForShard(trx, *shardIds, /*shard*/it.first, *headers);
         if (!options.ignoreRevs && slice.hasKey(StaticStrings::RevString)) {
           headers->emplace("if-match", slice.get(StaticStrings::RevString).copyString());
         }
@@ -1724,7 +1753,7 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
         reqBuilder.close();
         body = std::make_shared<std::string>(reqBuilder.slice().toJson());
         auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-        addTransactionHeaderForShard(trx, *shards, /*shard*/it.first, *headers);
+        addTransactionHeaderForShard(trx, *shardIds, /*shard*/it.first, *headers);
         // We send to Babies endpoint
         requests.emplace_back("shard:" + it.first, reqType,
                               baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
@@ -1733,8 +1762,8 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
     }
 
     // Perform the requests
-    size_t nrDone = 0;
-    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
+                        /*retryOnCollNotFound*/true, /*retryOnBackUnvlbl*/!isManaged);
 
     // Now listen to the results:
     if (!useMultiple) {
@@ -1768,18 +1797,25 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
 
   // Not all shard keys are known in all documents.
   // We contact all shards with the complete body and ignore NOT_FOUND
-
+  
+  if (isManaged) { // lazily begin the transaction
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    if (res.fail()) {
+      return res.errorNumber();
+    }
+  }
+  
   std::vector<ClusterCommRequest> requests;
-  auto shardList = ci->getShardList(collid);
   if (!useMultiple) {
     const bool addMatch = !options.ignoreRevs && slice.hasKey(StaticStrings::RevString);
-    for (auto const& shard : *shardList) {
+    for (auto const& shardServers : *shardIds) {
       VPackSlice keySlice = slice;
       if (slice.isObject()) {
         keySlice = slice.get(StaticStrings::KeyString);
       }
+      ShardID const& shard = shardServers.second.at(0);
       auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-      addTransactionHeaderForShard(trx, *shards, shard, *headers);
+      addTransactionHeaderForShard(trx, *shardIds, shard, *headers);
       if (addMatch) {
         headers->emplace("if-match", slice.get(StaticStrings::RevString).copyString());
       }
@@ -1790,9 +1826,10 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
     }
   } else {
     auto body = std::make_shared<std::string>(slice.toJson());
-    for (auto const& shard : *shardList) {
+    for (auto const& shardServers : *shardIds) {
+      ShardID const& shard = shardServers.second.at(0);
       auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-      addTransactionHeaderForShard(trx, *shards, shard, *headers);
+      addTransactionHeaderForShard(trx, *shardIds, shard, *headers);
       requests.emplace_back("shard:" + shard, reqType,
                             baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
                             body, std::move(headers));
@@ -1800,8 +1837,8 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
+                      /*retryOnCollNotFound*/true, /*retryOnBackUnvlbl*/!isManaged);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -1838,7 +1875,7 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
 
   // We select all results from all shards and merge them back again.
   std::vector<std::shared_ptr<VPackBuilder>> allResults;
-  allResults.reserve(shardList->size());
+  allResults.reserve(shardIds->size());
   // If no server responds we return 500
   responseCode = rest::ResponseCode::SERVER_ERROR;
   for (auto const& req : requests) {
@@ -1857,7 +1894,7 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
-  TRI_ASSERT(allResults.size() == shardList->size());
+  TRI_ASSERT(allResults.size() == shardIds->size());
   mergeResultsAllShards(allResults, resultBody, errorCounter,
                         static_cast<size_t>(slice.length()));
   return TRI_ERROR_NO_ERROR;
@@ -1909,8 +1946,8 @@ int fetchEdgesFromEngines(std::string const& dbname,
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
+                      /*retryOnCollNotFound*/false);
 
   result.clear();
   // Now listen to the results:
@@ -2006,8 +2043,7 @@ void fetchVerticesFromEngines(
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION, false);
 
   // Now listen to the results:
   for (auto const& req : requests) {
@@ -2111,8 +2147,8 @@ void fetchVerticesFromEngines(
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
+                      /*retryOnCollNotFound*/false);
 
   // Now listen to the results:
   for (auto const& req : requests) {
@@ -2219,8 +2255,8 @@ int getFilteredEdgesOnCoordinator(arangodb::transaction::Methods const& trx,
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
+                      /*retryOnCollNotFound*/true);
 
   size_t filtered = 0;
   size_t scannedIndex = 0;
@@ -2309,7 +2345,7 @@ int modifyDocumentOnCoordinator(
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo = ci->getCollection(dbname, collname);
   auto collid = std::to_string(collinfo->id());
-  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
 
   // We have a fast path and a slow path. The fast path only asks one shard
   // to do the job and the slow path asks them all and expects to get
@@ -2363,14 +2399,6 @@ int modifyDocumentOnCoordinator(
       canUseFastPath = false;
     }
   }
-  
-  // lazily begin transactions on leaders
-  if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    Result res = beginTransactionOnCoordinator(*trx.state(), collinfo, shardMap);
-    if (res.fail()) {
-      return res.errorNumber();
-    }
-  }
 
   // Some stuff to prepare cluster-internal requests:
 
@@ -2402,16 +2430,26 @@ int modifyDocumentOnCoordinator(
   if (options.returnOld) {
     optsUrlPart += "&returnOld=true";
   }
+  
+  const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   if (canUseFastPath) {
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
+    
+    if (isManaged) {  // lazily begin transactions on leaders
+      Result res = beginTransactionOnSomeLeaders(*trx.state(), collinfo, shardMap);
+      if (res.fail()) {
+        return res.errorNumber();
+      }
+    }
+    
     std::vector<ClusterCommRequest> requests;
     VPackBuilder reqBuilder;
     auto body = std::make_shared<std::string>();
     for (auto const& it : shardMap) {
       auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-      addTransactionHeaderForShard(trx, *shards, /*shard*/it.first, *headers);
+      addTransactionHeaderForShard(trx, *shardIds, /*shard*/it.first, *headers);
       
 
       if (!useMultiple) {
@@ -2445,9 +2483,8 @@ int modifyDocumentOnCoordinator(
     }
 
     // Perform the requests
-    size_t nrDone = 0;
-    cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone,
-                        Logger::COMMUNICATION, true);
+    cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, Logger::COMMUNICATION,
+                        /*retryOnCollNotFound*/true, /*retryOnBackUnvlbl*/!isManaged);
 
     // Now listen to the results:
     if (!useMultiple) {
@@ -2479,23 +2516,31 @@ int modifyDocumentOnCoordinator(
 
   // Not all shard keys are known in all documents.
   // We contact all shards with the complete body and ignore NOT_FOUND
-
+  
+  if (isManaged) { // lazily begin the transaction
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    if (res.fail()) {
+      return res.errorNumber();
+    }
+  }
+  
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>(slice.toJson());
-  auto shardList = ci->getShardList(collid);
   if (!useMultiple) {
     std::string key = slice.get(StaticStrings::KeyString).copyString();
-    for (auto const& shard : *shardList) {
+    for (auto const& shardServers : *shardIds) {
+      ShardID const& shard = shardServers.second.at(0);
       auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-      addTransactionHeaderForShard(trx, *shards, /*shard*/shard, *headers);
+      addTransactionHeaderForShard(trx, *shardIds, /*shard*/shard, *headers);
       requests.emplace_back("shard:" + shard, reqType,
                             baseUrl + StringUtils::urlEncode(shard) + "/" + key + optsUrlPart,
                             body, std::move(headers));
     }
   } else {
-    for (auto const& shard : *shardList) {
+    for (auto const& shardServers : *shardIds) {
+      ShardID const& shard = shardServers.second.at(0);
       auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-      addTransactionHeaderForShard(trx, *shards, /*shard*/shard, *headers);
+      addTransactionHeaderForShard(trx, *shardIds, /*shard*/shard, *headers);
       requests.emplace_back("shard:" + shard, reqType,
                             baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
                             body, std::move(headers));
@@ -2503,15 +2548,15 @@ int modifyDocumentOnCoordinator(
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, Logger::COMMUNICATION,
+                      /*retryOnCollNotFound*/true, /*retryOnBackUnvlbl*/!isManaged);
 
   // Now listen to the results:
   if (!useMultiple) {
     // Only one can answer, we react a bit differently
     int nrok = 0;
     int commError = TRI_ERROR_NO_ERROR;
-    for (size_t count = shardList->size(); count > 0; count--) {
+    for (size_t count = shardIds->size(); count > 0; count--) {
       auto const& req = requests[count - 1];
       auto res = req.result;
       if (res.status == CL_COMM_RECEIVED) {
@@ -2559,7 +2604,7 @@ int modifyDocumentOnCoordinator(
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
-  TRI_ASSERT(allResults.size() == shardList->size());
+  TRI_ASSERT(allResults.size() == shardIds->size());
   mergeResultsAllShards(allResults, resultBody, errorCounter,
                         static_cast<size_t>(slice.length()));
   return TRI_ERROR_NO_ERROR;
@@ -2819,367 +2864,6 @@ std::shared_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator
                                    enforceReplicationFactor, parameters);
 }
 #endif
-  
-/*
-namespace {
-
-void buildTransactionBody(TransactionState& state, ServerID const& server,
-                          VPackBuilder& builder) {
-  // std::vector<ServerID> DBservers = ci->getCurrentDBServers();
-  builder.openObject();
-  state.options().toVelocyPack(builder);
-  builder.add("collections", VPackValue(VPackValueType::Object));
-  auto addCollections = [&](std::string const& key, AccessMode::Type t) {
-    builder.add(key, VPackValue(VPackValueType::Array));
-    state.allCollections([&](TransactionCollection& col) {
-      if (col.accessType() == t) {
-        if (state.isCoordinator()) {
-          std::shared_ptr<ShardMap> shardMap = col.collection()->shardIds();
-          // coordinator starts transaction on shard leader
-          for (auto const& pair : *shardMap) {
-            TRI_ASSERT(!pair.second.empty());
-            // only add shard where server is leader
-            if (!pair.second.empty() && pair.second[0] == server) {
-              builder.add(VPackValue(pair.first));
-            }
-          }
-        } else {
-          if (col.collection()->followers()->contains(server)) {
-            builder.add(VPackValue(col.collectionName()));
-          }
-        }
-      }
-      return true;
-    });
-    builder.close();
-  };
-  addCollections("read", AccessMode::Type::READ);
-  addCollections("write", AccessMode::Type::WRITE);
-  addCollections("exclusive", AccessMode::Type::EXCLUSIVE);
-  
-  builder.close();  // </collections>
-  builder.close();  // </openObject>
-}
-  
-/// @brief lazy begin a transaction on subordinate servers
-ClusterCommRequest beginTransactionRequest(transaction::Methods const* trx,
-                                           TransactionState& state,
-                                           ServerID const& server) {
-  TRI_voc_tid_t tid = state.id() + 1;
-  TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
-  
-  VPackBuilder builder;
-  buildTransactionBody(state, server, builder);
-  
-  const std::string url = "/_db/" + StringUtils::urlEncode(state.vocbase().name()) +
-  "/_api/transaction/begin";
-  auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-  headers->emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeJson);
-  headers->emplace(StaticStrings::TransactionId, std::to_string(tid));
-  auto body = std::make_shared<std::string>(builder.slice().toJson());
-  return ClusterCommRequest("server:" + server, RequestType::POST, url, body,
-                            std::move(headers));
-}
-
-Result checkTransactionResult(TransactionState const& state,
-                              transaction::Status desiredStatus,
-                              ClusterCommRequest const& request) {
-  Result result;
-  
-  ClusterCommResult const& res = request.result;
-  
-  int commError = handleGeneralCommErrors(&res);
-  if (commError != TRI_ERROR_NO_ERROR) {
-    // oh-oh cluster is in a bad state
-    return result.reset(commError);
-  }
-  TRI_ASSERT(res.status == CL_COMM_RECEIVED);
-  
-  VPackSlice answer = res.answer->payload();
-  if ((res.answer_code == rest::ResponseCode::OK ||
-       res.answer_code == rest::ResponseCode::CREATED) && answer.isObject()) {
-    
-    VPackSlice idSlice = answer.get(std::vector<std::string>{"result", "id"});
-    VPackSlice statusSlice = answer.get(std::vector<std::string>{"result", "status"});
-
-    if (!idSlice.isString() || !statusSlice.isString()) {
-      return result.reset(TRI_ERROR_TRANSACTION_INTERNAL, "transaction has wrong format");
-    }
-    TRI_voc_tid_t tid = StringUtils::uint64(idSlice.copyString());
-    VPackValueLength len = 0;
-    const char* str = statusSlice.getStringUnchecked(len);
-    if (tid == state.id() + 1 &&
-        transaction::statusFromString(str, len) == desiredStatus) {
-      return result;  // success
-    }
-  } else if (answer.isObject()) {
-    return result.reset(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
-                                                     TRI_ERROR_TRANSACTION_INTERNAL),
-                  VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage, ""));
-  }
-  LOG_TOPIC(DEBUG, Logger::TRANSACTIONS) << " failed to begin transaction on " << res.endpoint;
-
-  return result.reset(TRI_ERROR_TRANSACTION_INTERNAL);  // unspecified error
-}
-  
-Result commitAbortTransaction(transaction::Methods& trx, transaction::Status status) {
-  Result res;
-  arangodb::TransactionState& state = *trx.state();
-  TRI_ASSERT(state.isRunning());
-  
-  if (state.knownServers().empty()) {
-    return res;
-  }
-  
-  // only commit managed transactions, and AQL leader transactions (on DBServers)
-  if ((!state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) &&
-       !state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) ||
-      (state.isCoordinator() && state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL))) {
-    return res;
-  }
-  TRI_ASSERT(!state.isDBServer() || !transaction::isFollowerTransactionId(state.id()));
-  
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr happens only during controlled shutdown
-    return TRI_ERROR_SHUTTING_DOWN;
-  }
-  // std::vector<ServerID> DBservers = ci->getCurrentDBServers();
-  const std::string url = "/_db/" + StringUtils::urlEncode(state.vocbase().name()) +
-  "/_api/transaction/" + std::to_string(state.id() + 1);
-  
-  RequestType rtype;
-  if (status == transaction::Status::COMMITTED) {
-    rtype = RequestType::PUT;
-  } else if (status == transaction::Status::ABORTED) {
-    rtype = RequestType::DELETE_REQ;
-  } else {
-    TRI_ASSERT(false);
-  }
-  
-  std::shared_ptr<std::string> body;
-  std::vector<ClusterCommRequest> requests;
-  for (std::string const& server : state.knownServers()) {
-    LOG_TOPIC(DEBUG, Logger::TRANSACTIONS) << transaction::statusString(status)
-      << " on " << server;
-    requests.emplace_back("server:" + server, rtype, url, body);
-  }
-  
-  // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
-  
-  if (state.isCoordinator()) {
-    TRI_ASSERT(transaction::isCoordinatorTransactionId(state.id()));
-    
-    for (size_t i = 0; i < requests.size(); ++i) {
-      Result res = ::checkTransactionResult(state, status, requests[i]);
-      if (res.fail()) {
-        return res;
-      }
-    }
-    
-    return res;
-  } else {
-    TRI_ASSERT(state.isDBServer());
-    TRI_ASSERT(transaction::isLeaderTransactionId(state.id()));
-    
-    // Drop all followers that were not successful:
-    for (size_t i = 0; i < requests.size(); ++i) {
-      Result res = ::checkTransactionResult(state, status, requests[i]);
-      if (res.fail()) {  // remove follower from all collections
-        ServerID const& follower = requests[i].result.serverID;
-        state.allCollections([&](TransactionCollection& tc) {
-          auto cc = tc.collection();
-          if (cc) {
-            if (cc->followers()->remove(follower)) {
-              // TODO: what happens if a server is re-added during a transaction ?
-              LOG_TOPIC(WARN, Logger::REPLICATION)
-              << "synchronous replication: dropping follower " << follower
-              << " for shard " << tc.collectionName();
-            } else {
-              LOG_TOPIC(ERR, Logger::REPLICATION)
-              << "synchronous replication: could not drop follower "
-              << follower << " for shard " << tc.collectionName();
-              res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
-              return false; // cancel transaction
-            }
-          }
-          return true;
-        });
-      }
-    }
-    
-    return res; // succeed even if some followers did not commit
-  }
-}
-}  // namespace
-  
-/// @brief begin a transaction on all leaders
-arangodb::Result ClusterMethods::beginTransactionOnLeaders(TransactionState& state,
-                                                           std::vector<ServerID> const& leaders) {
-  TRI_ASSERT(state.isCoordinator());
-  TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
-  Result res;
-  if (leaders.empty()) {
-    return res;
-  }
-
-  std::vector<ClusterCommRequest> requests;
-  for (ServerID const& leader : leaders) {
-    if (state.knowsServer(leader)) {
-      continue;  // already send a begin transaction there
-    }
-    state.addKnownServer(leader);
-    
-    LOG_DEVEL << "Begin transaction " << state.id() << " on " << leader;
-    requests.emplace_back(::beginTransactionRequest(nullptr, state, leader));
-  }
-
-  if (requests.empty()) {
-    return res;
-  }
-
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr happens only during controlled shutdown
-    return res.reset(TRI_ERROR_SHUTTING_DOWN);
-  }
-
-  // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
-  
-  for (size_t i = 0; i < requests.size(); ++i) {
-    res = ::checkTransactionResult(state, transaction::Status::RUNNING, requests[i]);
-    if (res.fail()) {  // remove follower from all collections
-      return res;
-    }
-  }
-  return res;  // all good
-}
-
-/// @brief begin a transaction on all followers
-Result ClusterMethods::beginTransactionOnFollowers(transaction::Methods& trx,
-                                                   arangodb::FollowerInfo& info,
-                                                   std::vector<ServerID> const& followers) {
-  TransactionState& state = *trx.state();
-  TRI_ASSERT(state.isDBServer());
-  TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
-  TRI_ASSERT(transaction::isLeaderTransactionId(state.id()));
-
-  // prepare the requests:
-  std::vector<ClusterCommRequest> requests;
-  for (ServerID const& follower : followers) {
-    if (state.knowsServer(follower)) {
-      continue;  // already send a begin transaction there
-    }
-    state.addKnownServer(follower);
-    requests.emplace_back(::beginTransactionRequest(&trx, state, follower));
-  }
-
-  if (requests.empty()) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr happens only during controlled shutdown
-    return TRI_ERROR_SHUTTING_DOWN;
-  }
-
-  // Perform the requests
-  size_t nrDone = 0;
-  size_t nrGood = cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone,
-                                      Logger::COMMUNICATION, false);
-
-  if (nrGood < followers.size()) {
-    // Otherwise we drop all followers that were not successful:
-    for (size_t i = 0; i < followers.size(); ++i) {
-      Result res = ::checkTransactionResult(state, transaction::Status::RUNNING, requests[i]);
-      if (res.fail()) {
-        LOG_DEVEL << "dropping follower because it did not start trx " << state.id()
-                  << ", error: '" << res.errorMessage() << "'";
-        info.remove(followers[i]);
-      }
-    }
-  }
-  // FIXME dropping followers is not
-  return TRI_ERROR_NO_ERROR; //nrGood > 0 ? TRI_ERROR_NO_ERROR : TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
-}
-
-/// @brief commit a transaction on a subordinate
-Result ClusterMethods::commitTransaction(transaction::Methods& trx) {
-  return commitAbortTransaction(trx, transaction::Status::COMMITTED);
-}
-
-/// @brief commit a transaction on a subordinate
-Result ClusterMethods::abortTransaction(transaction::Methods& trx) {
-  return commitAbortTransaction(trx, transaction::Status::ABORTED);
-}
-
-/// @brief set the transaction ID header
-void ClusterMethods::addTransactionHeader(transaction::Methods const& trx,
-                                          ServerID const& server,
-                                          std::unordered_map<std::string, std::string>& headers) {
-  TransactionState& state = *trx.state();
-  TRI_ASSERT(state.isRunningInCluster());
-  if (!(state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
-        state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL))) {
-    return; // no need
-  }
-  TRI_voc_tid_t tidPlus = state.id() + 1;
-  TRI_ASSERT(!transaction::isLegacyTransactionId(tidPlus));
-  TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
-  
-  const bool addBegin = !state.knowsServer(server);
-  if (addBegin) {
-    TRI_ASSERT(state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
-    if (state.isCoordinator()) {
-      return; // do not add header to server without a snippet
-    } else if (transaction::isLeaderTransactionId(state.id())) {
-      TRI_ASSERT(state.isDBServer());
-      transaction::BuilderLeaser builder(trx.transactionContextPtr());
-      ::buildTransactionBody(state, server, *builder.get());
-      headers.emplace(StaticStrings::TransactionBody, builder->toJson());
-      headers.emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus).append(" begin"));
-    }
-    // FIXME: only add server on a successful response ?
-    state.addKnownServer(server);  // remember server
-  } else {
-    headers.emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus));
-  }
-}
-  
-/// @brief add transaction ID header for setting up AQL snippets
-void ClusterMethods::addAQLTransactionHeader(transaction::Methods const& trx,
-                                             ServerID const& server,
-                                             std::unordered_map<std::string, std::string>& headers) {
-  TransactionState& state = *trx.state();
-  TRI_ASSERT(state.isRunningInCluster());
-  
-  TRI_voc_tid_t tidPlus = state.id() + 1;
-  TRI_ASSERT(!transaction::isLegacyTransactionId(tidPlus));
-  TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
-  
-  std::string value = std::to_string(tidPlus);
-  const bool addBegin = !state.knowsServer(server);
-  if (addBegin) {
-    TRI_ASSERT(state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
-    if (state.isCoordinator()) {
-      value.append(" aql"); // This is a single AQL query
-    } else if (transaction::isLeaderTransactionId(state.id())) {
-      TRI_ASSERT(state.isDBServer());
-      value.append(" begin");
-      transaction::BuilderLeaser builder(trx.transactionContextPtr());
-      ::buildTransactionBody(state, server, *builder.get());
-      headers.emplace(StaticStrings::TransactionBody, builder->toJson());
-    }
-    // FIXME: only add server on a successful response ?
-    state.addKnownServer(server);  // remember server
-  }
-  headers.emplace(arangodb::StaticStrings::TransactionId, std::move(value));
-}*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Persist collection in Agency and trigger shard creation process
@@ -3333,8 +3017,7 @@ int fetchEdgesFromEngines(std::string const& dbname,
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION, false);
 
   result.clear();
   // Now listen to the results:

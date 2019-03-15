@@ -575,7 +575,8 @@ void MMFilesLogfileManager::unprepare() {
 }
 
 // registers a transaction
-int MMFilesLogfileManager::registerTransaction(TransactionState& state) {
+int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId,
+                                               bool isReadOnlyTransaction) {
   auto lastCollectedId = _lastCollectedId.load();
   auto lastSealedId = _lastSealedId.load();
 
@@ -586,7 +587,7 @@ int MMFilesLogfileManager::registerTransaction(TransactionState& state) {
 
   TRI_ASSERT(lastCollectedId <= lastSealedId);
 
-  if (state.isReadOnlyTransaction()) {
+  if (isReadOnlyTransaction) {
     // in case this is a read-only transaction, we are sure that the transaction
     // can only see committed data (as itself it will not write anything, and
     // write transactions run exclusively). we thus can allow the WAL collector
@@ -598,7 +599,8 @@ int MMFilesLogfileManager::registerTransaction(TransactionState& state) {
 
   try {
     auto data = std::make_unique<MMFilesTransactionData>(lastCollectedId, lastSealedId);
-    transaction::ManagerFeature::manager()->registerTransaction(state.id(), std::move(data));
+    transaction::ManagerFeature::manager()->registerTransaction(transactionId,
+                                                                std::move(data));
     return TRI_ERROR_NO_ERROR;
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;

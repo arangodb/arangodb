@@ -65,6 +65,10 @@ class ClusterTrxMethods {
   static void addAQLTransactionHeader(transaction::Methods const& trx,
                                       ServerID const& server,
                                       std::unordered_map<std::string, std::string>& headers);
+  
+  /// @brief check whether this is any kind el cheapo transaction
+  static bool isElCheapo(transaction::Methods const& trx);
+  static bool isElCheapo(TransactionState const& state);
 };
 
 }  // namespace arangodb

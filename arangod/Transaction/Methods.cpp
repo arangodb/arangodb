@@ -2583,14 +2583,14 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
   if (replicationType == ReplicationType::LEADER) {
     TRI_ASSERT(followers != nullptr);
     
-    TRI_ASSERT(!_state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL)); // truncate from AQL ?!!
-    if (_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-      auto const& followerInfo = collection->followers();
-      res = ClusterTrxMethods::beginTransactionOnFollowers(*this, *followerInfo, *followers);
-      if (res.fail()) {
-        return OperationResult(res);
-      }
-    }
+    TRI_ASSERT(!_state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL));
+//    if (_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+//      auto const& followerInfo = collection->followers();
+//      res = ClusterTrxMethods::beginTransactionOnFollowers(*this, *followerInfo, *followers);
+//      if (res.fail()) {
+//        return OperationResult(res);
+//      }
+//    }
 
     // Now replicate the good operations on all followers:
     auto cc = arangodb::ClusterComm::instance();
@@ -2613,8 +2613,8 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
         requests.emplace_back("server:" + f, arangodb::rest::RequestType::PUT, path, body, std::move(headers));
       }
 
-      size_t nrDone = 0;
-      cc->performRequests(requests, 120.0, nrDone, Logger::REPLICATION, false);
+
+      cc->performRequests(requests, 120.0, Logger::REPLICATION, false);
       // If any would-be-follower refused to follow there must be a
       // new leader in the meantime, in this case we must not allow
       // this operation to succeed, we simply return with a refusal
@@ -3397,9 +3397,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
 
   double const timeout = chooseTimeout(count, body->size() * followers->size());
 
-  size_t nrDone = 0;
-
-  cc->performRequests(requests, timeout, nrDone, Logger::REPLICATION, false);
+  cc->performRequests(requests, timeout, Logger::REPLICATION, false);
   // If any would-be-follower refused to follow there are two possiblities:
   // (1) there is a new leader in the meantime, or
   // (2) the follower was restarted and forgot that it is a follower.
@@ -3441,7 +3439,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
     }
   }
 
-  if (findRefusal(requests)) {
+  if (findRefusal(requests)) {  // case (1), caller may abort this transaction
     return res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
   }
 

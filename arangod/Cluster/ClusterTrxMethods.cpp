@@ -195,8 +195,8 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
   }
   
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, ::CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
+  cc->performRequests(requests, ::CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
+                      /*retryOnCollNotFound*/false, /*retryOnBackUnvlbl*/ true);
   
   if (state.isCoordinator()) {
     TRI_ASSERT(transaction::isCoordinatorTransactionId(state.id()));
@@ -278,8 +278,8 @@ arangodb::Result ClusterTrxMethods::beginTransactionOnLeaders(TransactionState& 
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, ::CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
+  cc->performRequests(requests, ::CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
+                      /*retryOnCollNotFound*/false, /*retryOnBackUnvlbl*/ true);
   
   for (size_t i = 0; i < requests.size(); ++i) {
     res = ::checkTransactionResult(state, transaction::Status::RUNNING, requests[i]);
@@ -294,6 +294,7 @@ arangodb::Result ClusterTrxMethods::beginTransactionOnLeaders(TransactionState& 
 Result ClusterTrxMethods::beginTransactionOnFollowers(transaction::Methods& trx,
                                                    arangodb::FollowerInfo& info,
                                                    std::vector<ServerID> const& followers) {
+  Result res;
   TransactionState& state = *trx.state();
   TRI_ASSERT(state.isDBServer());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
@@ -310,33 +311,40 @@ Result ClusterTrxMethods::beginTransactionOnFollowers(transaction::Methods& trx,
   }
 
   if (requests.empty()) {
-    return TRI_ERROR_NO_ERROR;
+    return res;
   }
 
   auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr happens only during controlled shutdown
-    return TRI_ERROR_SHUTTING_DOWN;
+  if (cc == nullptr) {  // nullptr happens only during controlled shutdown
+    return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  size_t nrGood = cc->performRequests(requests, ::CL_DEFAULT_TIMEOUT, nrDone,
-                                      Logger::COMMUNICATION, false);
+  size_t nrGood = cc->performRequests(requests, ::CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
+                                      /*retryOnCollNotFound*/false);
 
   if (nrGood < followers.size()) {
     // Otherwise we drop all followers that were not successful:
     for (size_t i = 0; i < followers.size(); ++i) {
-      Result res = ::checkTransactionResult(state, transaction::Status::RUNNING, requests[i]);
-      if (res.fail()) {
+      Result r = ::checkTransactionResult(state, transaction::Status::RUNNING, requests[i]);
+      if (r.fail()) {
         LOG_DEVEL << "dropping follower because it did not start trx " << state.id()
-                  << ", error: '" << res.errorMessage() << "'";
-        info.remove(followers[i]);
+                  << ", error: '" << r.errorMessage() << "'";
+        if (info.remove(followers[i])) {
+          // TODO: what happens if a server is re-added during a transaction ?
+          LOG_TOPIC(WARN, Logger::REPLICATION)
+          << "synchronous replication: dropping follower " << followers[i];
+        } else {
+          LOG_TOPIC(ERR, Logger::REPLICATION)
+          << "synchronous replication: could not drop follower "
+          << followers[i] ;
+          res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+        }
       }
     }
   }
-  // FIXME dropping followers is not
-  return TRI_ERROR_NO_ERROR; //nrGood > 0 ? TRI_ERROR_NO_ERROR : TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+  // FIXME dropping followers is not asynchronous
+  return res;
 }
 
 /// @brief commit a transaction on a subordinate
@@ -351,12 +359,11 @@ Result ClusterTrxMethods::abortTransaction(transaction::Methods& trx) {
 
 /// @brief set the transaction ID header
 void ClusterTrxMethods::addTransactionHeader(transaction::Methods const& trx,
-                                          ServerID const& server,
-                                          std::unordered_map<std::string, std::string>& headers) {
+                                             ServerID const& server,
+                                             std::unordered_map<std::string, std::string>& headers) {
   TransactionState& state = *trx.state();
   TRI_ASSERT(state.isRunningInCluster());
-  if (!(state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
-        state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL))) {
+  if (!ClusterTrxMethods::isElCheapo(trx)) {
     return; // no need
   }
   TRI_voc_tid_t tidPlus = state.id() + 1;
@@ -365,18 +372,19 @@ void ClusterTrxMethods::addTransactionHeader(transaction::Methods const& trx,
   
   const bool addBegin = !state.knowsServer(server);
   if (addBegin) {
-    TRI_ASSERT(state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
     if (state.isCoordinator()) {
-      return; // do not add header to server without a snippet
+      TRI_ASSERT(state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+      return; // do not add header to servers without a snippet
     } else if (transaction::isLeaderTransactionId(state.id())) {
       TRI_ASSERT(state.isDBServer());
       transaction::BuilderLeaser builder(trx.transactionContextPtr());
       ::buildTransactionBody(state, server, *builder.get());
       headers.emplace(StaticStrings::TransactionBody, builder->toJson());
       headers.emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus).append(" begin"));
+      state.addKnownServer(server);  // remember server
+    } else { // broken logic
+      TRI_ASSERT(false);
     }
-    // FIXME: only add server on a successful response ?
-    state.addKnownServer(server);  // remember server
   } else {
     headers.emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus));
   }
@@ -384,32 +392,28 @@ void ClusterTrxMethods::addTransactionHeader(transaction::Methods const& trx,
   
 /// @brief add transaction ID header for setting up AQL snippets
 void ClusterTrxMethods::addAQLTransactionHeader(transaction::Methods const& trx,
-                                             ServerID const& server,
-                                             std::unordered_map<std::string, std::string>& headers) {
+                                                ServerID const& server,
+                                                std::unordered_map<std::string, std::string>& headers) {
   TransactionState& state = *trx.state();
-  TRI_ASSERT(state.isRunningInCluster());
-  
-  TRI_voc_tid_t tidPlus = state.id() + 1;
-  TRI_ASSERT(!transaction::isLegacyTransactionId(tidPlus));
-  TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
-  
-  std::string value = std::to_string(tidPlus);
+  TRI_ASSERT(state.isCoordinator());
+  TRI_ASSERT(ClusterTrxMethods::isElCheapo(trx));
+
+  std::string value = std::to_string(state.id() + 1);
   const bool addBegin = !state.knowsServer(server);
   if (addBegin) {
-    TRI_ASSERT(state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
-    if (state.isCoordinator()) {
-      value.append(" aql"); // This is a single AQL query
-    } else if (transaction::isLeaderTransactionId(state.id())) {
-      TRI_ASSERT(state.isDBServer());
-      value.append(" begin");
-      transaction::BuilderLeaser builder(trx.transactionContextPtr());
-      ::buildTransactionBody(state, server, *builder.get());
-      headers.emplace(StaticStrings::TransactionBody, builder->toJson());
-    }
-    // FIXME: only add server on a successful response ?
+    value.append(" aql"); // This is a single AQL query
     state.addKnownServer(server);  // remember server
   }
   headers.emplace(arangodb::StaticStrings::TransactionId, std::move(value));
+}
+
+bool ClusterTrxMethods::isElCheapo(transaction::Methods const& trx) {
+  return ClusterTrxMethods::isElCheapo(*trx.state());
+}
+  
+bool ClusterTrxMethods::isElCheapo(TransactionState const& state) {
+  return state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
+         state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
 }
 
 }  // namespace arangodb
