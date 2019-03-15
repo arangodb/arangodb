@@ -1561,7 +1561,6 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
 
 Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string const& collname) {
   Result res;
-  
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
@@ -1580,11 +1579,11 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string co
 
   // Some stuff to prepare cluster-intern requests:
   // We have to contact everybody:
-  std::shared_ptr<ShardMap> shardMap = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
 
   // lazily begin transactions on all leader shards
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    res = ::beginTransactionOnAllLeaders(trx, *shardMap);
+    res = ::beginTransactionOnAllLeaders(trx, *shardIds);
     if (res.fail()) {
       return res;
     }
@@ -1592,9 +1591,9 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string co
 
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   std::unordered_map<std::string, std::string> headers;
-  for (auto const& p : *shardMap) {
+  for (auto const& p : *shardIds) {
     std::unordered_map<std::string, std::string> headers;
-    addTransactionHeaderForShard(trx, *shardMap, /*shard*/p.first, headers);
+    addTransactionHeaderForShard(trx, *shardIds, /*shard*/p.first, headers);
     cc->asyncRequest(coordTransactionID, "shard:" + p.first,
                      arangodb::rest::RequestType::PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
@@ -1604,7 +1603,7 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string co
   // Now listen to the results:
   unsigned int count;
   unsigned int nrok = 0;
-  for (count = (unsigned int)shardMap->size(); count > 0; count--) {
+  for (count = (unsigned int)shardIds->size(); count > 0; count--) {
     auto ccRes = cc->wait(coordTransactionID, 0, "", 0.0);
     if (ccRes.status == CL_COMM_RECEIVED) {
       if (ccRes.answer_code == arangodb::rest::ResponseCode::OK) {
@@ -1619,7 +1618,7 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string co
   }
 
   // Note that nrok is always at least 1!
-  if (nrok < shardMap->size()) {
+  if (nrok < shardIds->size()) {
     return res.reset(TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION);
   }
   return res;
@@ -2346,7 +2345,7 @@ int modifyDocumentOnCoordinator(
   std::shared_ptr<LogicalCollection> collinfo = ci->getCollection(dbname, collname);
   auto collid = std::to_string(collinfo->id());
   std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
-
+  
   // We have a fast path and a slow path. The fast path only asks one shard
   // to do the job and the slow path asks them all and expects to get
   // "not found" from all but one shard. We have to cover the following
@@ -2693,7 +2692,7 @@ Result getTtlStatisticsFromAllDBServers(TtlStatistics& out) {
     cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::GET,
                      url, body, headers, nullptr, 120.0);
   }
-  
+
   // Now listen to the results:
   int count;
   int nrok = 0;
@@ -2749,7 +2748,7 @@ Result getTtlPropertiesFromAllDBServers(VPackBuilder& out) {
     cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::GET,
                      url, body, headers, nullptr, 120.0);
   }
-  
+
   // Now listen to the results:
   bool set = false;
   int count;
@@ -2809,7 +2808,7 @@ Result setTtlPropertiesOnAllDBServers(VPackSlice const& properties, VPackBuilder
     cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::PUT,
                      url, body, headers, nullptr, 120.0);
   }
-  
+
   // Now listen to the results:
   bool set = false;
   int count;

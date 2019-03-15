@@ -49,6 +49,7 @@ class ManagerFeature final : public application_features::ApplicationFeature {
  private:
   static std::unique_ptr<transaction::Manager> MANAGER;
   
+ private:
   Scheduler::WorkHandle _workItem;
   std::function<void(bool)> _gcfunc;
 };

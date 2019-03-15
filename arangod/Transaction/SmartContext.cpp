@@ -21,14 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SmartContext.h"
+
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/ticks.h"
-
-#include "Logger/Logger.h"
 
 struct TRI_vocbase_t;
 

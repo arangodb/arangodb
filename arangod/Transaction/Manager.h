@@ -25,12 +25,12 @@
 #define ARANGOD_TRANSACTION_MANAGER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Result.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadWriteSpinLock.h"
+#include "Basics/Result.h"
 #include "Transaction/Status.h"
-#include "VocBase/voc-types.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/voc-types.h"
 
 #include <atomic>
 #include <vector>
@@ -38,19 +38,20 @@
 namespace arangodb {
 class TransactionState;
 // to be derived by storage engines
-struct TransactionData {};
-  
+struct TransactionData {
+  virtual ~TransactionData() = default;
+};
+
 namespace transaction {
 class Context;
 
 class Manager final {
   static constexpr size_t numBuckets = 16;
-  static constexpr double defaultTTL  = 10.0 * 60.0; // 10 minutes
-  static constexpr double tombstoneTTL = 5.0 * 60.0; // 5 minutes
+  static constexpr double defaultTTL = 10.0 * 60.0;   // 10 minutes
+  static constexpr double tombstoneTTL = 5.0 * 60.0;  // 5 minutes
 
  public:
-  Manager(bool keepData)
-    : _keepTransactionData(keepData), _nrRunning(0) {}
+  explicit Manager(bool keepData) : _keepTransactionData(keepData), _nrRunning(0) {}
 
  public:
   typedef std::function<void(TRI_voc_tid_t, TransactionData const*)> TrxCallback;
@@ -103,7 +104,7 @@ class Manager final {
   /// @brief abort all transactions on a given shard
   void abortAllManagedTrx(TRI_voc_cid_t, bool leader);
   
-#ifdef USE_CATCH_TESTS
+#ifdef ARANGODB_USE_CATCH_TESTS
   /// statistics struct
   struct TrxCounts {
     uint32_t numManaged;

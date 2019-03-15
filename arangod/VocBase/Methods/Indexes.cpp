@@ -62,20 +62,25 @@ using namespace arangodb::methods;
 Result Indexes::getIndex(LogicalCollection const* collection,
                          VPackSlice const& indexId, VPackBuilder& out) {
   // do some magic to parse the iid
-  std::string name;
-  VPackSlice id = indexId;
-  if (id.isObject() && id.hasKey(StaticStrings::IndexId)) {
-    id = id.get(StaticStrings::IndexId);
+  std::string id;  // will (eventually) be fully-qualified; "collection/identifier"
+  std::string name;  // will be just name or id (no "collection/")
+  VPackSlice idSlice = indexId;
+  if (idSlice.isObject() && idSlice.hasKey(StaticStrings::IndexId)) {
+    idSlice = idSlice.get(StaticStrings::IndexId);
   }
-  if (id.isString()) {
-    std::regex re = std::regex("^([a-zA-Z0-9\\-_]+)\\/([0-9]+)$", std::regex::ECMAScript);
-    if (std::regex_match(id.copyString(), re)) {
-      name = id.copyString();
+  if (idSlice.isString()) {
+    std::regex re = std::regex("^([a-zA-Z0-9\\-_]+)\\/([a-zA-Z0-9\\-_]+)$",
+                               std::regex::ECMAScript);
+    if (std::regex_match(idSlice.copyString(), re)) {
+      id = idSlice.copyString();
+      name = id.substr(id.find_first_of("/") + 1);
     } else {
-      name = collection->name() + "/" + id.copyString();
+      name = idSlice.copyString();
+      id = collection->name() + "/" + name;
     }
-  } else if (id.isInteger()) {
-    name = collection->name() + "/" + StringUtils::itoa(id.getUInt());
+  } else if (idSlice.isInteger()) {
+    name = StringUtils::itoa(idSlice.getUInt());
+    id = collection->name() + "/" + name;
   } else {
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   }
@@ -84,7 +89,8 @@ Result Indexes::getIndex(LogicalCollection const* collection,
   Result res = Indexes::getAll(collection, Index::makeFlags(), /*withHidden*/ true, tmp);
   if (res.ok()) {
     for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
-      if (index.get(StaticStrings::IndexId).compareString(name) == 0) {
+      if (index.get(StaticStrings::IndexId).compareString(id) == 0 ||
+          index.get(StaticStrings::IndexName).compareString(name) == 0) {
         out.add(index);
         return Result();
       }
@@ -259,11 +265,11 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
                                VPackSlice const& definition, bool create,
                                VPackBuilder& output) {
   TRI_ASSERT(collection != nullptr);
-    
+
   Result res;
   bool created = false;
   std::shared_ptr<arangodb::Index> idx;
-  
+
   READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
 
   if (create) {
@@ -334,8 +340,8 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
   TRI_ASSERT(collection);
   VPackBuilder normalized;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto res = engine->indexFactory().enhanceIndexDefinition( // normalize definition
-    input, normalized, create, collection->vocbase() // args
+  auto res = engine->indexFactory().enhanceIndexDefinition(  // normalize definition
+      input, normalized, create, collection->vocbase()       // args
   );
 
   if (res.fail()) {
@@ -427,7 +433,8 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
     std::string iid = tmp.slice().get(StaticStrings::IndexId).copyString();
     VPackBuilder b;
     b.openObject();
-    b.add(StaticStrings::IndexId, VPackValue(collection->name() + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+    b.add(StaticStrings::IndexId,
+          VPackValue(collection->name() + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
     b.close();
     output = VPackCollection::merge(tmp.slice(), b.slice(), false);
     return res;

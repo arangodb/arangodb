@@ -61,6 +61,8 @@ static inline char const* statusString(Status status) {
   
 Status statusFromString(char const* str, size_t len);
 
+Status statusFromString(char const* str, size_t len);
+
 }  // namespace transaction
 }  // namespace arangodb
 

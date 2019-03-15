@@ -233,9 +233,10 @@ class TransactionState {
   
 protected:
 
-  TRI_vocbase_t& _vocbase; /// @brief vocbase for this transaction
+ protected:
+  TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
   TRI_voc_tid_t const _id;  /// @brief local trx id
-  
+
   /// @brief access type (read|write)
   AccessMode::Type _type;
   /// @brief current status

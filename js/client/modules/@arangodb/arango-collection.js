@@ -31,7 +31,7 @@
 var internal = require('internal');
 var arangosh = require('@arangodb/arangosh');
 var engine = null;
- 
+
 function getEngine(db) {
   if (engine === null) {
     try {
@@ -304,8 +304,8 @@ ArangoCollection.prototype.name = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.status = function () {
-  if (this._status === null || 
-      this._status === ArangoCollection.STATUS_UNLOADING || 
+  if (this._status === null ||
+      this._status === ArangoCollection.STATUS_UNLOADING ||
       this._status === ArangoCollection.STATUS_UNLOADED) {
     this._status = null;
     this.refresh();
@@ -476,7 +476,7 @@ ArangoCollection.prototype.drop = function (options) {
     requestResult = this._database._connection.DELETE(this._baseurl());
   }
 
-  if (requestResult !== null 
+  if (requestResult !== null
     && requestResult !== undefined
     && requestResult.error === true
     && requestResult.errorNum !== internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
@@ -518,16 +518,16 @@ ArangoCollection.prototype.truncate = function (options) {
 
   arangosh.checkRequestResult(requestResult);
   this._status = null;
- 
+
   if (!options.compact) {
     return;
   }
-  
+
   // fetch storage engine type
   var engine = getEngine(this._database);
 
   if (engine === 'mmfiles') {
-    try {  
+    try {
       // after we are done with the truncation, we flush the WAL to move out all
       // remove operations
       this._database._connection.PUT(this._prefixurl('/_admin/wal/flush?waitForSync=true&waitForCollector=true&maxWaitTime=5'), null);
@@ -630,6 +630,8 @@ ArangoCollection.prototype.getIndexes = ArangoCollection.prototype.indexes = fun
 ArangoCollection.prototype.index = function (id) {
   if (id.hasOwnProperty('id')) {
     id = id.id;
+  } else if (id.hasOwnProperty('name')) {
+    id = id.name;
   }
 
   var requestResult = this._database._connection.GET(this._database._indexurl(id, this.name()));

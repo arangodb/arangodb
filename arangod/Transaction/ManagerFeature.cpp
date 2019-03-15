@@ -71,9 +71,7 @@ void ManagerFeature::beginShutdown() {
   _workItem.reset();
 }
 
-void ManagerFeature::unprepare() {
-  MANAGER.reset();
-}
+void ManagerFeature::unprepare() { MANAGER.reset(); }
 
 }  // namespace transaction
 }  // namespace arangodb

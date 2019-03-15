@@ -53,7 +53,7 @@ namespace {
   
 // register a list of failed transactions
 void Manager::registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
-  TRI_ASSERT(!_keepTransactionData);
+  TRI_ASSERT(_keepTransactionData);
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
   for (auto const& it : failedTransactions) {
     const size_t bucket = getBucket(it);
@@ -64,7 +64,7 @@ void Manager::registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const
 
 // unregister a list of failed transactions
 void Manager::unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
-  TRI_ASSERT(!_keepTransactionData);
+  TRI_ASSERT(_keepTransactionData);
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
     WRITE_LOCKER(locker, _transactions[bucket]._lock);
@@ -82,11 +82,15 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
     TRI_ASSERT(data != nullptr);
     const size_t bucket = getBucket(transactionId);
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-    
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
     
-    // insert into currently running list of transactions
-    _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
+    try {
+      // insert into currently running list of transactions
+      _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
+    } catch (...) {
+      _nrRunning.fetch_sub(1, std::memory_order_relaxed);
+      throw;
+    }
   }
 }
 
@@ -94,13 +98,13 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) {
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
-  
+
   if (_keepTransactionData) {
     const size_t bucket = getBucket(transactionId);
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-    
+
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-    
+
     _transactions[bucket]._activeTransactions.erase(transactionId);
     if (markAsFailed) {
       _transactions[bucket]._failedTransactions.emplace(transactionId);
@@ -129,6 +133,9 @@ std::unordered_set<TRI_voc_tid_t> Manager::getFailedTransactions() const {
 
 void Manager::iterateActiveTransactions(
     std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) {
+  if (!_keepTransactionData) {
+    return;
+  }
   WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
   // iterate over all active transactions
@@ -136,6 +143,7 @@ void Manager::iterateActiveTransactions(
     READ_LOCKER(locker, _transactions[bucket]._lock);
 
     for (auto const& it : _transactions[bucket]._activeTransactions) {
+      TRI_ASSERT(it.second != nullptr);
       callback(it.first, it.second.get());
     }
   }
@@ -143,14 +151,6 @@ void Manager::iterateActiveTransactions(
 
 uint64_t Manager::getActiveTransactionCount() {
   return _nrRunning.load(std::memory_order_relaxed);
-  /*WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
-  uint64_t count = 0;
-  // iterate over all active transactions
-  for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    READ_LOCKER(locker, _transactions[bucket]._lock);
-    count += _transactions[bucket]._activeTransactions.size();
-  }
-  return count;*/
 }
 
 Manager::ManagedTrx::~ManagedTrx() {
@@ -607,7 +607,7 @@ void Manager::abortAllManagedTrx(TRI_voc_cid_t cid, bool leader) {
   }
 }
   
-#ifdef USE_CATCH_TESTS
+#ifdef ARANGODB_USE_CATCH_TESTS
 Manager::TrxCounts Manager::getManagedTrxCount() const {
   TrxCounts counts;
   
@@ -629,5 +629,5 @@ Manager::TrxCounts Manager::getManagedTrxCount() const {
 }
 #endif
 
-} // namespace transaction
-} // namespace arangodb
+}  // namespace transaction
+}  // namespace arangodb

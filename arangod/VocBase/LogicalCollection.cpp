@@ -190,6 +190,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   TRI_ASSERT(_physical != nullptr);
   // This has to be called AFTER _phyiscal and _logical are properly linked
   // together.
+
   prepareIndexes(info.get("indexes"));
 }
 
@@ -791,6 +792,10 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(TRI_idx_iid_t idxId) const
   return getPhysical()->lookupIndex(idxId);
 }
 
+std::shared_ptr<Index> LogicalCollection::lookupIndex(std::string const& idxName) const {
+  return getPhysical()->lookupIndex(idxName);
+}
+
 std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice const& info) const {
   if (!info.isObject()) {
     // Compatibility with old v8-vocindex.
@@ -853,7 +858,8 @@ void LogicalCollection::deferDropCollection(std::function<bool(LogicalCollection
 }
 
 /// @brief reads an element from the document collection
-Result LogicalCollection::read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
+Result LogicalCollection::read(transaction::Methods* trx,
+                               arangodb::velocypack::StringRef const& key,
                                ManagedDocumentResult& result, bool lock) {
   TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
   return getPhysical()->read(trx, key, result, lock);

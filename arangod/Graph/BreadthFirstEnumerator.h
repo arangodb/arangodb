@@ -186,6 +186,8 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
 
   aql::AqlValue pathToIndexToAqlValue(arangodb::velocypack::Builder& result, size_t index);
 
+  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index);
+
   bool shouldPrune();
 };
 }  // namespace graph

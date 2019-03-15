@@ -64,12 +64,15 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
+std::string const ClusterEngine::EngineName("Cluster");
+std::string const ClusterEngine::FeatureName("ClusterEngine");
+
 // fall back to the using the mock storage engine
 bool ClusterEngine::Mocking = false;
 
 // create the storage engine
 ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
-    : StorageEngine(server, "Cluster", "ClusterEngine",
+    : StorageEngine(server, EngineName, FeatureName,
                     std::unique_ptr<IndexFactory>(new ClusterIndexFactory())),
       _actualEngine(nullptr) {
   setOptional(true);
@@ -128,7 +131,7 @@ std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager() 
 }
 
 std::unique_ptr<transaction::ContextData> ClusterEngine::createTransactionContextData() {
-  return std::unique_ptr<transaction::ContextData>(nullptr); // not used by coordinator
+  return std::unique_ptr<transaction::ContextData>(); // not used by coordinator
 }
 
 std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(TRI_vocbase_t& vocbase,

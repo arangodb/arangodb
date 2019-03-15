@@ -114,20 +114,19 @@ class StringBufferLeaser {
 
 /// @brief std::string leaser
 class StringLeaser {
-public:
+ public:
   explicit StringLeaser(Methods*);
   explicit StringLeaser(transaction::Context*);
   ~StringLeaser();
   std::string* string() const { return _string; }
   std::string* operator->() const { return _string; }
   std::string* get() const { return _string; }
-  
-private:
+
+ private:
   transaction::Context* _transactionContext;
   std::string* _string;
 };
 
-  
 class BuilderLeaser {
  public:
   explicit BuilderLeaser(transaction::Methods*);

@@ -766,9 +766,7 @@ endif ()
 
 option(USE_CATCH_TESTS "Compile catch C++ tests" ON)
 if (USE_CATCH_TESTS)
-  add_definitions("-DTEST_VIRTUAL=virtual")
-else()
-  add_definitions("-DTEST_VIRTUAL=")
+  add_definitions("-DARANGODB_USE_CATCH_TESTS=1")
 endif()
 
 include(debugInformation)
