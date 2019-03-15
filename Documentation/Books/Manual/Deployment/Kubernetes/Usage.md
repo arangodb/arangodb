@@ -61,6 +61,43 @@ kubectl apply -f $URLPREFIX/arango-deployment-replication.yaml
 You can find the latest release of the ArangoDB Kubernetes Operator
 [in the kube-arangodb repository](https://github.com/arangodb/kube-arangodb/releases/latest).
 
+#### Installation into a non-default namespace
+
+If you want to use the ArangoDB Kubernetes Operator in a non-default namespace,
+you have to adapt the manifest files before you apply them or install the
+operator with `Helm` (preferred solution). If you do not want to use helm you
+have to replace any occurrence of `namespace: default` in the manifest files
+with the namespace declaration of your choice, e.g. `namespace: my-namespace`.
+You can do this either manually or on macOS / Linux automated using `sed`
+(replace `<version>` with the version of the operator that you want to install
+and `<namespace>`with the namespace you want to use):
+
+```bash
+export URLPREFIX="https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests"
+export NAMESPACE="<namespace>"
+
+kubectl apply -f $URLPREFIX/arango-crd.yaml
+curl -s "${URLPREFIX}/arango-deployment.yaml" \
+        | sed "s/namespace: default/namespace: $NAMESPACE/" \
+        | kubectl apply -f -
+```
+
+To use `ArangoLocalStorage` resources, also run:
+
+```bash
+curl -s "${URLPREFIX}/arango-storage.yaml" \
+        | sed "s/namespace: default/namespace: $NAMESPACE/" \
+        | kubectl apply -f -
+```
+
+To use `ArangoDeploymentReplication` resources, also run:
+
+```bash
+curl -s "${URLPREFIX}/arango-deployment-replication.yaml" \
+        | sed "s/namespace: default/namespace: $NAMESPACE/" \
+        | kubectl apply -f -
+```
+
 ## ArangoDB deployment creation
 
 Once the operator is running, you can create your ArangoDB database deployment
