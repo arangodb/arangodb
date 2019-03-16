@@ -350,6 +350,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'waitForSync': true,
     'shardKeys': false,
     'smartGraphAttribute': false,
+    'smartJoinAttribute': false,
     'numberOfShards': false,
     'keyOptions': false,
     'indexBuckets': true,

@@ -299,8 +299,9 @@ void RestCollectionHandler::handleCommandPost() {
                 "indexBuckets", "keyOptions", StaticStrings::WaitForSyncString,
                 "cacheEnabled", StaticStrings::ShardKeys, StaticStrings::NumberOfShards,
                 StaticStrings::DistributeShardsLike, "avoidServers", StaticStrings::IsSmart,
-                "shardingStrategy", StaticStrings::GraphSmartGraphAttribute,
-                StaticStrings::ReplicationFactor, "servers"});
+                "shardingStrategy", StaticStrings::GraphSmartGraphAttribute, 
+                StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,
+                "servers"});
   VPackSlice const parameters = filtered.slice();
 
   // now we can create the collection
