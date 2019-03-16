@@ -96,6 +96,17 @@
             </tr>
           <% } %>
           
+          <% if (figuresData.smartJoinAttribute) { %>
+            <tr>
+              <th class="collectionInfoTh2">Smart join attribute:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.smartJoinAttribute%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
+          
           <% if (figuresData.replicationFactor) { %>
             <tr>
               <th class="collectionInfoTh2">Replication factor:</th>
