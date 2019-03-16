@@ -1275,7 +1275,7 @@ class PropagateConstantAttributesHelper {
 
     for (auto const& node : nodes) {
       auto fn = ExecutionNode::castTo<FilterNode const*>(node);
-      auto setter = plan->getVarSetBy(fn->inVariable()->id);
+      auto setter = _plan->getVarSetBy(fn->inVariable()->id);
       if (setter != nullptr && setter->getType() == EN::CALCULATION) {
         auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
         auto expression = cn->expression();
@@ -1289,7 +1289,7 @@ class PropagateConstantAttributesHelper {
     if (!_constants.empty()) {
       for (auto const& node : nodes) {
         auto fn = ExecutionNode::castTo<FilterNode const*>(node);
-        auto setter = plan->getVarSetBy(fn->inVariable()->id);
+        auto setter = _plan->getVarSetBy(fn->inVariable()->id);
         if (setter != nullptr && setter->getType() == EN::CALCULATION) {
           auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
           auto expression = cn->expression();
