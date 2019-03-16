@@ -305,7 +305,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     
     if (nodeType == ExecutionNode::INDEX || nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
       auto x = dynamic_cast<CollectionAccessingNode*>(clone);
-      auto const* prototype = x->prototype();
+      auto const* prototype = x->prototypeCollection();
       if (prototype != nullptr) {
         auto s1 = prototype->shardIds();
         auto s2 = x->collection()->shardIds();

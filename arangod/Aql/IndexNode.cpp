@@ -225,7 +225,8 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->projections(_projections);
   c->needsGatherNodeSort(_needsGatherNodeSort);
   c->initIndexCoversProjections();
-  c->_prototype = _prototype;
+  c->_prototypeCollection = _prototypeCollection;
+  c->_prototypeOutVariable = _prototypeOutVariable;
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }

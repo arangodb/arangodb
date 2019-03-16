@@ -40,7 +40,8 @@ using namespace arangodb::aql;
 
 CollectionAccessingNode::CollectionAccessingNode(aql::Collection const* collection)
     : _collection(collection),
-      _prototype(nullptr) {
+      _prototypeCollection(nullptr),
+      _prototypeOutVariable(nullptr) {
   TRI_ASSERT(_collection != nullptr);
 }
 
@@ -48,10 +49,11 @@ CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
                                                  arangodb::velocypack::Slice slice)
     : _collection(plan->getAst()->query()->collections()->get(
           slice.get("collection").copyString())),
-      _prototype(nullptr) {
+      _prototypeCollection(nullptr),
+      _prototypeOutVariable(nullptr) {
     
   if (slice.get("prototype").isString()) {
-    _prototype = plan->getAst()->query()->collections()->get(slice.get("prototype").copyString());
+    _prototypeCollection = plan->getAst()->query()->collections()->get(slice.get("prototype").copyString());
   }
 
   TRI_ASSERT(_collection != nullptr);
@@ -84,8 +86,8 @@ void CollectionAccessingNode::collection(aql::Collection const* collection) {
 void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("database", VPackValue(_collection->vocbase()->name()));
   builder.add("collection", VPackValue(_collection->name()));
-  if (_prototype != nullptr) {
-    builder.add("prototype", VPackValue(_prototype->name()));
+  if (_prototypeCollection != nullptr) {
+    builder.add("prototype", VPackValue(_prototypeCollection->name()));
   }
   builder.add("satellite", VPackValue(_collection->isSatellite()));
     

@@ -1234,7 +1234,8 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
                                                      outVariable, _random);
 
   c->projections(_projections);
-  c->_prototype = _prototype;
+  c->_prototypeCollection = _prototypeCollection;
+  c->_prototypeOutVariable = _prototypeOutVariable;
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
