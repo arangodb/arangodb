@@ -323,6 +323,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   auto state = engine->createTransactionState(vocbase, tid, options);
   TRI_ASSERT(state != nullptr);
+  TRI_ASSERT(state->id() == tid);
   
   // lock collections
   CollectionNameResolver resolver(vocbase);
@@ -364,7 +365,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL, "transaction ID already used");
     }
     _transactions[bucket]._managed.emplace(std::piecewise_construct,
-                                           std::forward_as_tuple(state->id()),
+                                           std::forward_as_tuple(tid),
                                            std::forward_as_tuple(MetaType::Managed, state.release(),
                                                                  (defaultTTL + TRI_microtime())));
   }

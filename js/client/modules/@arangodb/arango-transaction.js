@@ -105,8 +105,6 @@ ArangoTransaction.prototype.begin = function() {
   var requestResult = this._database._connection.POST(url, body);
 
   arangosh.checkRequestResult(requestResult);
-  print(requestResult);
-
   this._id = requestResult.result.id;
 };
 
