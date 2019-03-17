@@ -95,8 +95,19 @@ function ArangoTransactionCollection(coll) {
   this._collection = coll;
 }
 
-ArangoTransaction.prototype.begin = function() {
+ArangoTransaction.prototype._url = function () {
+  return this._dbPrefix + '/_api/transaction';
+};
 
+ArangoTransaction.prototype.begin = function() {
+  let url = this._url() + '/begin';
+  let body = {collections: this._collections};
+  var requestResult = this._database._connection.POST(url, body);
+
+  arangosh.checkRequestResult(requestResult);
+  print(requestResult);
+
+  this._id = requestResult.result.id;
 };
 
 ArangoTransaction.prototype.collection = function(col) {
@@ -107,11 +118,17 @@ ArangoTransaction.prototype.collection = function(col) {
 };
 
 ArangoTransaction.prototype.commit = function() {
-  
+  let url = this._url() + '/' + this._id;
+  var requestResult = this._database._connection.PUT(url, "");
+  arangosh.checkRequestResult(requestResult);
+  this._id = 0;
 };
 
 ArangoTransaction.prototype.abort = function() {
-
+  let url = this._url() + '/' + this._id;
+  var requestResult = this._database._connection.DELETE(url, "");
+  arangosh.checkRequestResult(requestResult);
+  this._id = 0;
 };
 
 ArangoTransactionCollection.prototype.save = 
@@ -121,7 +138,7 @@ ArangoTransactionCollection.prototype.insert = function(data, opts) {
       error: true,
       code: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
       errorNum: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
-      errorMessage: 'transaction not started yet'
+      errorMessage: 'transaction not running'
     });
   }
   opts = opts || {};
@@ -135,7 +152,7 @@ ArangoTransactionCollection.prototype.remove = function(id, opts) {
       error: true,
       code: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
       errorNum: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
-      errorMessage: 'transaction not started yet'
+      errorMessage: 'transaction not running'
     });
   }
   opts = opts || {};

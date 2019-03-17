@@ -2585,13 +2585,6 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
     TRI_ASSERT(followers != nullptr);
     
     TRI_ASSERT(!_state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL));
-//    if (_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-//      auto const& followerInfo = collection->followers();
-//      res = ClusterTrxMethods::beginTransactionOnFollowers(*this, *followerInfo, *followers);
-//      if (res.fail()) {
-//        return OperationResult(res);
-//      }
-//    }
 
     // Now replicate the good operations on all followers:
     auto cc = arangodb::ClusterComm::instance();
@@ -3291,16 +3284,6 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
   if (followers->empty()) {
     return res;
   }
-  
-//  // begin a consistent transaction on all followers
-//  if (_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-//    // FIXME: we should be able to begin a transaction via a header
-//    auto const& followerInfo = collection.followers();
-//    res = ClusterTrxMethods::beginTransactionOnFollowers(*this, *followerInfo, *followers);
-//    if (res.fail()) {
-//      return res;
-//    }
-//  }
 
   // nullptr only happens on controlled shutdown
   auto cc = arangodb::ClusterComm::instance();

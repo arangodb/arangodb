@@ -644,7 +644,6 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createAQLTransacti
 
 void RestVocbaseBaseHandler::prepareExecute(bool isContinue) {
   RestBaseHandler::prepareExecute(isContinue);
-//  pickupNoLockHeaders();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -652,39 +651,5 @@ void RestVocbaseBaseHandler::prepareExecute(bool isContinue) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::shutdownExecute(bool isFinalized) noexcept {
-//  clearNoLockHeaders();
   RestBaseHandler::shutdownExecute(isFinalized);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief picks up X-Arango-Nolock headers and stores them in a tls variable
-////////////////////////////////////////////////////////////////////////////////
-
-//void RestVocbaseBaseHandler::pickupNoLockHeaders() {
-//  if (ServerState::instance()->isDBServer()) {
-//    // Only DBServer needs to react to them!
-//    bool found;
-//    std::string const& shardId = _request->header(StaticStrings::XArangoNoLock, found);
-//
-//    if (!found) {
-//      return;
-//    }
-//
-//    TRI_ASSERT(_nolockHeaderSet == nullptr);
-//    _nolockHeaderSet = std::make_unique<std::unordered_set<std::string>>();
-//
-//    // Split value at commas, if there are any, otherwise take full value:
-//    size_t pos = shardId.find(',');
-//    size_t oldpos = 0;
-//    while (pos != std::string::npos) {
-//      _nolockHeaderSet->emplace(shardId.substr(oldpos, pos - oldpos));
-//      oldpos = pos + 1;
-//      pos = shardId.find(',', oldpos);
-//    }
-//    _nolockHeaderSet->emplace(shardId.substr(oldpos));
-//  }
-//}
-//
-//void RestVocbaseBaseHandler::clearNoLockHeaders() noexcept {
-//  _nolockHeaderSet.reset();
-//}

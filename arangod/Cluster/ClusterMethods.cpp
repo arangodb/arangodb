@@ -1388,7 +1388,6 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
 
     if (useMultiple) {  // slice is array of document values
       for (VPackSlice value : VPackArrayIterator(slice)) {
-        LOG_DEVEL << value;
         int res = workOnOneNode(value);
         if (res != TRI_ERROR_NO_ERROR) {
           // Is early abortion correct?

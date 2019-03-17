@@ -239,8 +239,6 @@ void Manager::registerAQLTrx(TransactionState* state) {
                                    "transaction ID already used");
   }
   
-//  LOG_DEVEL << "adding managed AQL query " << state->id();
-
   buck._managed.emplace(std::piecewise_construct,
                         std::forward_as_tuple(state->id()),
                         std::forward_as_tuple(MetaType::StandaloneAQL, state,
@@ -337,7 +335,6 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
         cid = resolver.getCollectionIdLocal(cname);
       }
       if (cid == 0) {
-        LOG_DEVEL << "collection " << cname << " not found";
         return false;
       }
       state->addCollection(cid, cname, mode, /*nestingLevel*/0, false);
