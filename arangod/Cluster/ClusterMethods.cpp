@@ -210,6 +210,18 @@ static void addTransactionHeaderForShard(transaction::Methods& trx,
   if (!ClusterTrxMethods::isElCheapo(trx)) {
     return; // no need
   }
+#if USE_ENTERPRISE
+  if (shardMap.empty()) { // happens for smart collections
+    std::shared_ptr<std::vector<ServerID>> resp
+      = ClusterInfo::instance()->getResponsibleServer(shard);
+    if (!resp->empty()) {
+      ClusterTrxMethods::addTransactionHeader(trx, /*leader*/(*resp)[0], headers);
+      return;
+    }
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+#endif
   
   auto const& it = shardMap.find(shard);
   if (it != shardMap.end()) {
