@@ -448,7 +448,8 @@ class Methods {
                               TRI_voc_document_operation_e operation);
 
   OperationResult removeCoordinator(std::string const& collectionName,
-                                    VPackSlice const value, OperationOptions& options);
+                                    VPackSlice const value,
+                                    OperationOptions const& options);
 
   OperationResult removeLocal(std::string const& collectionName,
                               VPackSlice const value, OperationOptions& options);

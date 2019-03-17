@@ -126,6 +126,9 @@ class Context {
 
   /// @brief generate persisted transaction ID
   virtual TRI_voc_tid_t generateId() const;
+  
+  /// @brief generates correct ID based on server type
+  static TRI_voc_tid_t makeTransactionId();
 
  protected:
   /// @brief create a resolver

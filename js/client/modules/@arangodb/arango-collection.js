@@ -1025,7 +1025,7 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     headers['if-match'] = JSON.stringify(rev);
   }
 
-  let requestResult = this._database._connection.DELETE(url, headers, body);
+  let requestResult = this._database._connection.DELETE(url, body, headers);
   if (requestResult !== null && requestResult.error === true) {
     if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
       requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;

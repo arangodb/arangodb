@@ -193,9 +193,10 @@ static Result beginTransactionOnAllLeaders(transaction::Methods& trx,
   TRI_ASSERT(trx.state()->isCoordinator());
   TRI_ASSERT(trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
   std::vector<ServerID> leaders;
-  for (auto const& shardServers : shards) {
-    if (!trx.state()->knowsServer(shardServers.second.at(0))) {
-      leaders.emplace_back(shardServers.second.at(0));
+  for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : shards) {
+    ServerID const& srv = shardServers.second.at(0);
+    if (!trx.state()->knowsServer(srv)) {
+      leaders.emplace_back(srv);
     }
   }
   return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), leaders);
@@ -1315,7 +1316,7 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
     // nullptr happens only during controlled shutdown
     return TRI_ERROR_SHUTTING_DOWN;
   }
-
+  
   std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
@@ -1387,6 +1388,7 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
 
     if (useMultiple) {  // slice is array of document values
       for (VPackSlice value : VPackArrayIterator(slice)) {
+        LOG_DEVEL << value;
         int res = workOnOneNode(value);
         if (res != TRI_ERROR_NO_ERROR) {
           // Is early abortion correct?
@@ -1413,8 +1415,8 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
 
     // Now prepare the requests:
     std::vector<ClusterCommRequest> requests;
-    auto body = std::make_shared<std::string>();
     for (auto const& it : shardMap) {
+      std::shared_ptr<std::string> body;
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
         body = std::make_shared<std::string>(slice.toJson());
@@ -1486,8 +1488,8 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
   
   auto body = std::make_shared<std::string>(slice.toJson());
   std::vector<ClusterCommRequest> requests;
-  for (auto const& shardServers : *shardMap) {
-    ShardID const& shard = shardServers.second.at(0);
+  for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardMap) {
+    ShardID const& shard = shardServers.first;
     auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
     addTransactionHeaderForShard(trx, *shardMap, shard, *headers);
     requests.emplace_back("shard:" + shard, arangodb::rest::RequestType::DELETE_REQ,
@@ -1807,12 +1809,12 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
   std::vector<ClusterCommRequest> requests;
   if (!useMultiple) {
     const bool addMatch = !options.ignoreRevs && slice.hasKey(StaticStrings::RevString);
-    for (auto const& shardServers : *shardIds) {
+    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
       VPackSlice keySlice = slice;
       if (slice.isObject()) {
         keySlice = slice.get(StaticStrings::KeyString);
       }
-      ShardID const& shard = shardServers.second.at(0);
+      ShardID const& shard = shardServers.first;
       auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
       addTransactionHeaderForShard(trx, *shardIds, shard, *headers);
       if (addMatch) {
@@ -1825,8 +1827,8 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
     }
   } else {
     auto body = std::make_shared<std::string>(slice.toJson());
-    for (auto const& shardServers : *shardIds) {
-      ShardID const& shard = shardServers.second.at(0);
+    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
+      ShardID const& shard = shardServers.first;
       auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
       addTransactionHeaderForShard(trx, *shardIds, shard, *headers);
       requests.emplace_back("shard:" + shard, reqType,
@@ -2527,8 +2529,8 @@ int modifyDocumentOnCoordinator(
   auto body = std::make_shared<std::string>(slice.toJson());
   if (!useMultiple) {
     std::string key = slice.get(StaticStrings::KeyString).copyString();
-    for (auto const& shardServers : *shardIds) {
-      ShardID const& shard = shardServers.second.at(0);
+    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
+      ShardID const& shard = shardServers.first;
       auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
       addTransactionHeaderForShard(trx, *shardIds, /*shard*/shard, *headers);
       requests.emplace_back("shard:" + shard, reqType,
@@ -2536,8 +2538,8 @@ int modifyDocumentOnCoordinator(
                             body, std::move(headers));
     }
   } else {
-    for (auto const& shardServers : *shardIds) {
-      ShardID const& shard = shardServers.second.at(0);
+    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
+      ShardID const& shard = shardServers.first;
       auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
       addTransactionHeaderForShard(trx, *shardIds, /*shard*/shard, *headers);
       requests.emplace_back("shard:" + shard, reqType,

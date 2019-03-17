@@ -73,7 +73,6 @@ CollectionNameResolver const& transaction::SmartContext::resolver() {
 }
 
 TRI_voc_tid_t transaction::SmartContext::generateId() const {
-  TRI_ASSERT(!transaction::isLegacyTransactionId(_globalId));
   return _globalId;
 }
   
@@ -130,6 +129,29 @@ void AQLStandaloneContext::unregisterTransaction() noexcept {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
   mgr->unregisterAQLTrx(_globalId);
+}
+  
+// ============= SimpleSmartContext =============
+  
+  
+SimpleSmartContext::SimpleSmartContext(TRI_vocbase_t& vocbase)
+  : SmartContext(vocbase, Context::makeTransactionId(), nullptr) {}
+  
+/// @brief get parent transaction (if any)
+TransactionState* SimpleSmartContext::getParentTransaction() const {
+  return _state;
+}
+
+/// @brief register the transaction,
+void SimpleSmartContext::registerTransaction(TransactionState* state) {
+  TRI_ASSERT(_state == nullptr);
+  _state = state;
+}
+
+/// @brief unregister the transaction
+void SimpleSmartContext::unregisterTransaction() noexcept {
+  TRI_ASSERT(_state != nullptr);
+  _state = nullptr;
 }
 
 }  // namespace transaction

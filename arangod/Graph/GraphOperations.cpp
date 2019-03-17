@@ -786,9 +786,8 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
     trxCollections.emplace_back(it);  // add to trx collections
     edgeCollections.emplace(it);  // but also to edgeCollections for later iteration
   }
-
-  TRI_voc_tid_t tid = TRI_NewTickServer() << 1; // (tid mod 4 != 3)
-  auto ctx = std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
+  
+  auto ctx = std::make_shared<transaction::SimpleSmartContext>(_vocbase);
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
   UserTransaction trx{ctx, {}, trxCollections, {}, trxOptions};

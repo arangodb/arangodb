@@ -109,6 +109,23 @@ struct AQLStandaloneContext final : public SmartContext {
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;
 };
+  
+/// Can be used to reuse transaction state between multiple
+/// transaction::Methods instances. Mainly for legacy clients
+/// that do not send the transaction ID header
+struct SimpleSmartContext final : public SmartContext {
+  
+  SimpleSmartContext(TRI_vocbase_t& vocbase);
+  
+  /// @brief get parent transaction (if any)
+  TransactionState* getParentTransaction() const override;
+  
+  /// @brief register the transaction,
+  void registerTransaction(TransactionState*) override;
+  
+  /// @brief unregister the transaction
+  void unregisterTransaction() noexcept override;
+};
 
 }  // namespace transaction
 }  // namespace arangodb

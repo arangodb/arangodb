@@ -597,7 +597,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createAQLTransacti
   bool found = false;
   std::string value = _request->header(StaticStrings::TransactionId, found);
   if (!found) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "missing transaction ID");
+    return std::make_shared<transaction::SimpleSmartContext>(_vocbase);
   }
     
   TRI_voc_tid_t tid = 0;

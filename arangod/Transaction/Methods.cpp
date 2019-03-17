@@ -2201,12 +2201,11 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
     return emptyResult(options);
   }
 
-  OperationOptions optionsCopy = options;
-
   if (_state->isCoordinator()) {
-    return removeCoordinator(collectionName, value, optionsCopy);
+    return removeCoordinator(collectionName, value, options);
   }
 
+  OperationOptions optionsCopy = options;
   return removeLocal(collectionName, value, optionsCopy);
 }
 
@@ -2216,7 +2215,7 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::removeCoordinator(std::string const& collectionName,
                                                         VPackSlice const value,
-                                                        OperationOptions& options) {
+                                                        OperationOptions const& options) {
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();

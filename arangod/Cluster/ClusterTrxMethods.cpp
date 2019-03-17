@@ -30,11 +30,11 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
+#include "StorageEngine/TransactionCollection.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "StorageEngine/TransactionCollection.h"
-#include "StorageEngine/TransactionState.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -45,13 +45,12 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-  
+
 namespace {
 
-  // Timeout for read operations:
-  static double const CL_DEFAULT_TIMEOUT = 120.0;
-  
-  
+// Timeout for read operations:
+static double const CL_DEFAULT_TIMEOUT = 120.0;
+
 void buildTransactionBody(TransactionState& state, ServerID const& server,
                           VPackBuilder& builder) {
   // std::vector<ServerID> DBservers = ci->getCurrentDBServers();
@@ -85,23 +84,22 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
   addCollections("read", AccessMode::Type::READ);
   addCollections("write", AccessMode::Type::WRITE);
   addCollections("exclusive", AccessMode::Type::EXCLUSIVE);
-  
+
   builder.close();  // </collections>
   builder.close();  // </openObject>
 }
-  
+
 /// @brief lazy begin a transaction on subordinate servers
 ClusterCommRequest beginTransactionRequest(transaction::Methods const* trx,
-                                           TransactionState& state,
-                                           ServerID const& server) {
+                                           TransactionState& state, ServerID const& server) {
   TRI_voc_tid_t tid = state.id() + 1;
   TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
-  
+
   VPackBuilder builder;
   buildTransactionBody(state, server, builder);
-  
+
   const std::string url = "/_db/" + StringUtils::urlEncode(state.vocbase().name()) +
-  "/_api/transaction/begin";
+                          "/_api/transaction/begin";
   auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
   headers->emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeJson);
   headers->emplace(StaticStrings::TransactionId, std::to_string(tid));
@@ -110,64 +108,64 @@ ClusterCommRequest beginTransactionRequest(transaction::Methods const* trx,
                             std::move(headers));
 }
 
-Result checkTransactionResult(TransactionState const& state,
-                              transaction::Status desiredStatus,
+Result checkTransactionResult(TransactionState const& state, transaction::Status desiredStatus,
                               ClusterCommRequest const& request) {
   Result result;
-  
+
   ClusterCommResult const& res = request.result;
-  
+
   int commError = ::handleGeneralCommErrors(&res);
   if (commError != TRI_ERROR_NO_ERROR) {
     // oh-oh cluster is in a bad state
     return result.reset(commError);
   }
   TRI_ASSERT(res.status == CL_COMM_RECEIVED);
-  
+
   VPackSlice answer = res.answer->payload();
-  if ((res.answer_code == rest::ResponseCode::OK ||
-       res.answer_code == rest::ResponseCode::CREATED) && answer.isObject()) {
-    
+  if ((res.answer_code == rest::ResponseCode::OK || res.answer_code == rest::ResponseCode::CREATED) &&
+      answer.isObject()) {
     VPackSlice idSlice = answer.get(std::vector<std::string>{"result", "id"});
-    VPackSlice statusSlice = answer.get(std::vector<std::string>{"result", "status"});
+    VPackSlice statusSlice =
+        answer.get(std::vector<std::string>{"result", "status"});
 
     if (!idSlice.isString() || !statusSlice.isString()) {
-      return result.reset(TRI_ERROR_TRANSACTION_INTERNAL, "transaction has wrong format");
+      return result.reset(TRI_ERROR_TRANSACTION_INTERNAL,
+                          "transaction has wrong format");
     }
     TRI_voc_tid_t tid = StringUtils::uint64(idSlice.copyString());
     VPackValueLength len = 0;
     const char* str = statusSlice.getStringUnchecked(len);
-    if (tid == state.id() + 1 &&
-        transaction::statusFromString(str, len) == desiredStatus) {
+    if (tid == state.id() + 1 && transaction::statusFromString(str, len) == desiredStatus) {
       return result;  // success
     }
   } else if (answer.isObject()) {
     return result.reset(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
-                                                     TRI_ERROR_TRANSACTION_INTERNAL),
-                  VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage, ""));
+                                                           TRI_ERROR_TRANSACTION_INTERNAL),
+                        VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage,
+                                                         ""));
   }
-  LOG_TOPIC(DEBUG, Logger::TRANSACTIONS) << " failed to begin transaction on " << res.endpoint;
+  LOG_TOPIC(DEBUG, Logger::TRANSACTIONS)
+      << " failed to begin transaction on " << res.endpoint;
 
   return result.reset(TRI_ERROR_TRANSACTION_INTERNAL);  // unspecified error
 }
-  
+
 Result commitAbortTransaction(transaction::Methods& trx, transaction::Status status) {
   Result res;
   arangodb::TransactionState& state = *trx.state();
   TRI_ASSERT(state.isRunning());
-  
+
   if (state.knownServers().empty()) {
     return res;
   }
   
   // only commit managed transactions, and AQL leader transactions (on DBServers)
-  if ((!state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) &&
-       !state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) ||
+  if (!ClusterTrxMethods::isElCheapo(state) ||
       (state.isCoordinator() && state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL))) {
     return res;
   }
   TRI_ASSERT(!state.isDBServer() || !transaction::isFollowerTransactionId(state.id()));
-  
+
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
@@ -175,8 +173,8 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
   }
   // std::vector<ServerID> DBservers = ci->getCurrentDBServers();
   const std::string url = "/_db/" + StringUtils::urlEncode(state.vocbase().name()) +
-  "/_api/transaction/" + std::to_string(state.id() + 1);
-  
+                          "/_api/transaction/" + std::to_string(state.id() + 1);
+
   RequestType rtype;
   if (status == transaction::Status::COMMITTED) {
     rtype = RequestType::PUT;
@@ -185,34 +183,34 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
   } else {
     TRI_ASSERT(false);
   }
-  
+
   std::shared_ptr<std::string> body;
   std::vector<ClusterCommRequest> requests;
   for (std::string const& server : state.knownServers()) {
-    LOG_TOPIC(DEBUG, Logger::TRANSACTIONS) << transaction::statusString(status)
-      << " on " << server;
+    LOG_TOPIC(DEBUG, Logger::TRANSACTIONS)
+        << transaction::statusString(status) << " on " << server;
     requests.emplace_back("server:" + server, rtype, url, body);
   }
-  
+
   // Perform the requests
   cc->performRequests(requests, ::CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
-                      /*retryOnCollNotFound*/false, /*retryOnBackUnvlbl*/ true);
-  
+                      /*retryOnCollNotFound*/ false, /*retryOnBackUnvlbl*/ true);
+
   if (state.isCoordinator()) {
     TRI_ASSERT(transaction::isCoordinatorTransactionId(state.id()));
-    
+
     for (size_t i = 0; i < requests.size(); ++i) {
       Result res = ::checkTransactionResult(state, status, requests[i]);
       if (res.fail()) {
         return res;
       }
     }
-    
+
     return res;
   } else {
     TRI_ASSERT(state.isDBServer());
     TRI_ASSERT(transaction::isLeaderTransactionId(state.id()));
-    
+
     // Drop all followers that were not successful:
     for (size_t i = 0; i < requests.size(); ++i) {
       Result res = ::checkTransactionResult(state, status, requests[i]);
@@ -224,31 +222,31 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
             if (cc->followers()->remove(follower)) {
               // TODO: what happens if a server is re-added during a transaction ?
               LOG_TOPIC(WARN, Logger::REPLICATION)
-              << "synchronous replication: dropping follower " << follower
-              << " for shard " << tc.collectionName();
+                  << "synchronous replication: dropping follower " << follower
+                  << " for shard " << tc.collectionName();
             } else {
               LOG_TOPIC(ERR, Logger::REPLICATION)
-              << "synchronous replication: could not drop follower "
-              << follower << " for shard " << tc.collectionName();
+                  << "synchronous replication: could not drop follower "
+                  << follower << " for shard " << tc.collectionName();
               res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
-              return false; // cancel transaction
+              return false;  // cancel transaction
             }
           }
           return true;
         });
       }
     }
-    
-    return res; // succeed even if some followers did not commit
+
+    return res;  // succeed even if some followers did not commit
   }
 }
 }  // namespace
 
 namespace arangodb {
-  
+
 /// @brief begin a transaction on all leaders
 arangodb::Result ClusterTrxMethods::beginTransactionOnLeaders(TransactionState& state,
-                                                           std::vector<ServerID> const& leaders) {
+                                                              std::vector<ServerID> const& leaders) {
   TRI_ASSERT(state.isCoordinator());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
   Result res;
@@ -262,7 +260,7 @@ arangodb::Result ClusterTrxMethods::beginTransactionOnLeaders(TransactionState& 
       continue;  // already send a begin transaction there
     }
     state.addKnownServer(leader);
-    
+
     LOG_DEVEL << "Begin transaction " << state.id() << " on " << leader;
     requests.emplace_back(::beginTransactionRequest(nullptr, state, leader));
   }
@@ -279,8 +277,8 @@ arangodb::Result ClusterTrxMethods::beginTransactionOnLeaders(TransactionState& 
 
   // Perform the requests
   cc->performRequests(requests, ::CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
-                      /*retryOnCollNotFound*/false, /*retryOnBackUnvlbl*/ true);
-  
+                      /*retryOnCollNotFound*/ false, /*retryOnBackUnvlbl*/ true);
+
   for (size_t i = 0; i < requests.size(); ++i) {
     res = ::checkTransactionResult(state, transaction::Status::RUNNING, requests[i]);
     if (res.fail()) {  // remove follower from all collections
@@ -292,8 +290,8 @@ arangodb::Result ClusterTrxMethods::beginTransactionOnLeaders(TransactionState& 
 
 /// @brief begin a transaction on all followers
 Result ClusterTrxMethods::beginTransactionOnFollowers(transaction::Methods& trx,
-                                                   arangodb::FollowerInfo& info,
-                                                   std::vector<ServerID> const& followers) {
+                                                      arangodb::FollowerInfo& info,
+                                                      std::vector<ServerID> const& followers) {
   Result res;
   TransactionState& state = *trx.state();
   TRI_ASSERT(state.isDBServer());
@@ -321,23 +319,23 @@ Result ClusterTrxMethods::beginTransactionOnFollowers(transaction::Methods& trx,
 
   // Perform the requests
   size_t nrGood = cc->performRequests(requests, ::CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
-                                      /*retryOnCollNotFound*/false);
+                                      /*retryOnCollNotFound*/ false);
 
   if (nrGood < followers.size()) {
     // Otherwise we drop all followers that were not successful:
     for (size_t i = 0; i < followers.size(); ++i) {
-      Result r = ::checkTransactionResult(state, transaction::Status::RUNNING, requests[i]);
+      Result r =
+          ::checkTransactionResult(state, transaction::Status::RUNNING, requests[i]);
       if (r.fail()) {
-        LOG_DEVEL << "dropping follower because it did not start trx " << state.id()
-                  << ", error: '" << r.errorMessage() << "'";
+        LOG_DEVEL << "dropping follower because it did not start trx "
+                  << state.id() << ", error: '" << r.errorMessage() << "'";
         if (info.remove(followers[i])) {
           // TODO: what happens if a server is re-added during a transaction ?
           LOG_TOPIC(WARN, Logger::REPLICATION)
-          << "synchronous replication: dropping follower " << followers[i];
+              << "synchronous replication: dropping follower " << followers[i];
         } else {
           LOG_TOPIC(ERR, Logger::REPLICATION)
-          << "synchronous replication: could not drop follower "
-          << followers[i] ;
+              << "synchronous replication: could not drop follower " << followers[i];
           res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
         }
       }
@@ -364,44 +362,47 @@ void ClusterTrxMethods::addTransactionHeader(transaction::Methods const& trx,
   TransactionState& state = *trx.state();
   TRI_ASSERT(state.isRunningInCluster());
   if (!ClusterTrxMethods::isElCheapo(trx)) {
-    return; // no need
+    return;  // no need
   }
   TRI_voc_tid_t tidPlus = state.id() + 1;
   TRI_ASSERT(!transaction::isLegacyTransactionId(tidPlus));
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
-  
+
   const bool addBegin = !state.knowsServer(server);
   if (addBegin) {
     if (state.isCoordinator()) {
       TRI_ASSERT(state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
-      return; // do not add header to servers without a snippet
+      return;  // do not add header to servers without a snippet
     } else if (transaction::isLeaderTransactionId(state.id())) {
       TRI_ASSERT(state.isDBServer());
       transaction::BuilderLeaser builder(trx.transactionContextPtr());
       ::buildTransactionBody(state, server, *builder.get());
       headers.emplace(StaticStrings::TransactionBody, builder->toJson());
-      headers.emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus).append(" begin"));
+      headers.emplace(arangodb::StaticStrings::TransactionId,
+                      std::to_string(tidPlus).append(" begin"));
       state.addKnownServer(server);  // remember server
-    } else { // broken logic
+    } else {                         // broken logic
       TRI_ASSERT(false);
     }
   } else {
     headers.emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus));
   }
 }
-  
+
 /// @brief add transaction ID header for setting up AQL snippets
 void ClusterTrxMethods::addAQLTransactionHeader(transaction::Methods const& trx,
                                                 ServerID const& server,
                                                 std::unordered_map<std::string, std::string>& headers) {
   TransactionState& state = *trx.state();
   TRI_ASSERT(state.isCoordinator());
-  TRI_ASSERT(ClusterTrxMethods::isElCheapo(trx));
+  if (!ClusterTrxMethods::isElCheapo(trx)) {
+    return;
+  }
 
   std::string value = std::to_string(state.id() + 1);
   const bool addBegin = !state.knowsServer(server);
   if (addBegin) {
-    value.append(" aql"); // This is a single AQL query
+    value.append(" aql");          // This is a single AQL query
     state.addKnownServer(server);  // remember server
   }
   headers.emplace(arangodb::StaticStrings::TransactionId, std::move(value));
@@ -410,10 +411,11 @@ void ClusterTrxMethods::addAQLTransactionHeader(transaction::Methods const& trx,
 bool ClusterTrxMethods::isElCheapo(transaction::Methods const& trx) {
   return ClusterTrxMethods::isElCheapo(*trx.state());
 }
-  
+
 bool ClusterTrxMethods::isElCheapo(TransactionState const& state) {
-  return state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
-         state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
+  return !transaction::isLegacyTransactionId(state.id()) &&
+         (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
+          state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
 }
 
 }  // namespace arangodb

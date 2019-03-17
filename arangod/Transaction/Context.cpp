@@ -230,10 +230,15 @@ void transaction::Context::storeTransactionResult(TRI_voc_tid_t id, bool hasFail
 }
 
 TRI_voc_tid_t transaction::Context::generateId() const {
+  return Context::makeTransactionId();
+}
+
+/*static*/ TRI_voc_tid_t transaction::Context::makeTransactionId() {
   auto role = ServerState::instance()->getRole();
   if (ServerState::isCoordinator(role)) {
     return TRI_NewServerSpecificTickMod4();
   } else if (ServerState::isDBServer(role)) {
     return TRI_NewServerSpecificTickMod4() + 3; // legacy
   }
+  return TRI_NewTickServer(); // single-server
 }
