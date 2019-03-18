@@ -78,12 +78,14 @@ class RocksDBMethods {
   /// @brief read options for use with iterators
   rocksdb::ReadOptions iteratorReadOptions();
 
+  virtual bool isIndexingDisabled() const { return false; }
+
   /// @brief returns true if indexing was disabled by this call
   /// the default implementation is to do nothing
   virtual bool DisableIndexing() { return false; }
 
   // the default implementation is to do nothing
-  virtual void EnableIndexing() {}
+  virtual bool EnableIndexing() { return false; }
 
   virtual bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) = 0;
   virtual arangodb::Result Get(rocksdb::ColumnFamilyHandle*,
@@ -151,10 +153,12 @@ class RocksDBTrxMethods : public RocksDBMethods {
  public:
   explicit RocksDBTrxMethods(RocksDBTransactionState* state);
 
+  virtual bool isIndexingDisabled() const override{ return _indexingDisabled; }
+
   /// @brief returns true if indexing was disabled by this call
   bool DisableIndexing() override;
 
-  void EnableIndexing() override;
+  bool EnableIndexing() override;
 
   bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
   arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
@@ -271,6 +275,35 @@ struct IndexingDisabler {
   ~IndexingDisabler() {
     if (_meth) {
       _meth->EnableIndexing();
+    }
+  }
+
+ private:
+  RocksDBMethods* _meth;
+};
+
+// if only single indices should be enabled during operations
+struct IndexingEnabler {
+  // will only be active if condition is true
+
+  IndexingEnabler() = delete;
+  IndexingEnabler(IndexingEnabler&&) = delete;
+  IndexingEnabler(IndexingEnabler const&) = delete;
+  IndexingEnabler& operator=(IndexingEnabler const&) = delete;
+  IndexingEnabler& operator=(IndexingEnabler&&) = delete;
+
+  IndexingEnabler(RocksDBMethods* meth, bool condition) : _meth(nullptr) {
+    if (condition) {
+      bool enableHere = meth->EnableIndexing();
+      if (enableHere) {
+        _meth = meth;
+      }
+    }
+  }
+
+  ~IndexingEnabler() {
+    if (_meth) {
+      _meth->DisableIndexing();
     }
   }
 

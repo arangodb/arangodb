@@ -416,7 +416,7 @@ struct cookie : irs::seek_term_iterator::seek_cookie {
 ///////////////////////////////////////////////////////////////////////////////
 /// @class term_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class term_iterator : public irs::seek_term_iterator {
+class term_iterator final : public irs::seek_term_iterator {
  public:
   explicit term_iterator(const term_reader* owner);
 
@@ -427,7 +427,9 @@ class term_iterator : public irs::seek_term_iterator {
   }
   const bytes_ref& value() const override { return term_; }
   virtual SeekResult seek_ge(const bytes_ref& term) override;
-  virtual bool seek(const bytes_ref& term) override;
+  virtual bool seek(const bytes_ref& term) override {
+    return SeekResult::FOUND == seek_equal(term);
+  }
   virtual bool seek(
       const bytes_ref& term,
       const irs::seek_term_iterator::seek_cookie& cookie) override {
@@ -493,6 +495,11 @@ class term_iterator : public irs::seek_term_iterator {
     size_t& prefix, arc::stateid_t& state,
     byte_weight& weight, const bytes_ref& term
   );
+
+  /// @brief Seek to the closest block which contain a specified term
+  /// @param prefix size of the common term/block prefix
+  /// @returns true if we're already at a requested term
+  bool seek_to_block(const bytes_ref& term, size_t& prefix);
 
   /* Seeks to the specified term using FST
    * There may be several sutuations: 
@@ -1006,33 +1013,33 @@ ptrdiff_t term_iterator::seek_cached(
   return cmp;
 }
 
-SeekResult term_iterator::seek_equal(const bytes_ref& term) {
+bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
   assert(owner_->fst_);
 
   typedef fst_t::Weight weight_t;
 
   const auto& fst = *owner_->fst_;
 
-  size_t prefix = 0; // number of current symbol to process
+  prefix = 0; // number of current symbol to process
   arc::stateid_t state = fst.Start(); // start state
   weight_.Clear(); // clear aggregated fst output
 
   if (cur_block_) {
     const auto cmp = seek_cached(prefix, state, weight_, term);
     if (cmp > 0) {
-      /* target term is before the current term */
+      // target term is before the current term
       cur_block_->reset();
     } else if (0 == cmp) {
-      /* we already at current term */
-      return SeekResult::FOUND;
+      // we're already at current term
+      return true;
     }
   } else {
     cur_block_ = push_block(fst.Final(state), prefix);
   }
 
   term_.oversize(term.size());
-  term_.reset(prefix); /* reset to common seek prefix */
-  sstate_.resize(prefix); /* remove invalid cached arcs */
+  term_.reset(prefix); // reset to common seek prefix
+  sstate_.resize(prefix); // remove invalid cached arcs
 
   bool found = fst_byte_builder::final != state;
   while (found && prefix < term.size()) {
@@ -1051,8 +1058,8 @@ SeekResult term_iterator::seek_equal(const bytes_ref& term) {
         found = false;
       }
 
-      /* cache found arcs, we can reuse it in further seek's, 
-       * avoiding expensive FST lookups */
+      // cache found arcs, we can reuse it in further seeks
+      // avoiding relatively expensive FST lookups
       sstate_.emplace_back(state, arc.weight, cur_block_);
     }
   }
@@ -1060,50 +1067,65 @@ SeekResult term_iterator::seek_equal(const bytes_ref& term) {
   assert(cur_block_);
   sstate_.resize(cur_block_->prefix());
   cur_block_->scan_to_block(term);
+
+  return false;
+}
+
+SeekResult term_iterator::seek_equal(const bytes_ref& term) {
+  size_t prefix;
+  if (seek_to_block(term, prefix)) {
+    return SeekResult::FOUND;
+  }
+
+  assert(cur_block_);
+
   if (!block_meta::terms(cur_block_->meta())) {
-    /* current block does not contain terms */
+    // current block has no terms
     term_.reset(prefix);
     return SeekResult::NOT_FOUND;
   }
+
   cur_block_->load();
   return cur_block_->scan_to_term(term);
 }
 
 SeekResult term_iterator::seek_ge(const bytes_ref& term) {
-  switch (seek_equal(term)) {
+  size_t prefix;
+  if (seek_to_block(term, prefix)) {
+    return SeekResult::FOUND;
+  }
+  UNUSED(prefix);
+
+  assert(cur_block_);
+
+  cur_block_->load();
+  switch (cur_block_->scan_to_term(term)) {
     case SeekResult::FOUND:
-      // we have found the specified term
+      assert(ET_TERM == cur_block_->type());
       return SeekResult::FOUND;
     case SeekResult::NOT_FOUND:
-      assert(cur_block_);
-      // in case of dirty block we should just load it and call next,
-      // block may be dirty here if it was denied by seek_equal 
-      // when it has no terms
-      if (!cur_block_->dirty()) {
-        // we are on the term or block after the specified term 
-        if (ET_TERM == cur_block_->type()) {
-          // we already on the greater term 
+      switch (cur_block_->type()) {
+        case ET_TERM:
+          // we're already at greater term
           return SeekResult::NOT_FOUND;
-        }
-
-        // in case of block entry we should step into 
-        // and move to the next term 
-        cur_block_ = push_block(cur_block_->sub_start(), term_.size());
+        case ET_BLOCK:
+          // we're at the greater block, load it and call next
+          cur_block_ = push_block(cur_block_->sub_start(), term_.size());
+          cur_block_->load();
+          break;
+        default:
+          assert(false);
+          return SeekResult::END;
       }
-      cur_block_->load();
+      // intentional fallthrough
     case SeekResult::END:
-      /* we are in the end of the block */
       return next()
-        ? SeekResult::NOT_FOUND /* have moved to the next entry*/
-        : SeekResult::END; /* have no more terms */
+        ? SeekResult::NOT_FOUND // have moved to the next entry
+        : SeekResult::END; // have no more terms
   }
 
   assert(false);
   return SeekResult::END;
-}
-
-bool term_iterator::seek(const bytes_ref& term) {
-  return SeekResult::FOUND == seek_equal(term);
 }
 
 #if defined(_MSC_VER)
