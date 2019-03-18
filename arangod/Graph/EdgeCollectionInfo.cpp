@@ -36,7 +36,6 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
       _collectionName(collectionName),
       _searchBuilder(),
       _weightAttribute(weightAttribute),
-      _defaultWeight(defaultWeight),
       _dir(direction) {
   TRI_ASSERT(_dir == TRI_EDGE_OUT || _dir == TRI_EDGE_IN);
 
@@ -83,81 +82,6 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
   IndexIteratorOptions opts;
   return std::make_unique<OperationCursor>(_trx->indexScanForCondition(
       _forwardIndexId, cond, _searchBuilder.getVariable(), opts));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get edges for the given direction and start vertex. On Coordinator.
-////////////////////////////////////////////////////////////////////////////////
-
-int EdgeCollectionInfo::getEdgesCoordinator(VPackSlice const& vertexId, VPackBuilder& result) {
-  TRI_ASSERT(result.isEmpty());
-  arangodb::rest::ResponseCode responseCode;
-
-  result.openObject();
-
-  int res = getFilteredEdgesOnCoordinator(_trx->vocbase().name(), _collectionName,
-                                          *_trx, vertexId.copyString(), _dir,
-                                          responseCode, result);
-
-  result.close();
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get edges for the given direction and start vertex. Reverse version
-////////////////////////////////////////////////////////////////////////////////
-
-std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
-    std::string const& vertexId) {
-  _searchBuilder.setVertexId(vertexId);
-  arangodb::aql::AstNode const* cond;
-  if (_dir == TRI_EDGE_OUT) {
-    cond = _searchBuilder.getInboundCondition();
-  } else {
-    cond = _searchBuilder.getOutboundCondition();
-  }
-    
-  IndexIteratorOptions opts;
-  return std::make_unique<OperationCursor>(_trx->indexScanForCondition(
-      _backwardIndexId, cond, _searchBuilder.getVariable(), opts));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get edges for the given direction and start vertex. Reverse version
-/// on Coordinator.
-////////////////////////////////////////////////////////////////////////////////
-
-int EdgeCollectionInfo::getReverseEdgesCoordinator(VPackSlice const& vertexId,
-                                                   VPackBuilder& result) {
-  TRI_ASSERT(result.isEmpty());
-  arangodb::rest::ResponseCode responseCode;
-
-  result.openObject();
-
-  TRI_edge_direction_e dir = TRI_EDGE_OUT;
-
-  if (_dir == TRI_EDGE_OUT) {
-    dir = TRI_EDGE_IN;
-  }
-
-  int res = getFilteredEdgesOnCoordinator(_trx->vocbase().name(), _collectionName,
-                                          *_trx, vertexId.copyString(), dir,
-                                          responseCode, result);
-
-  result.close();
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Compute the weight of an edge
-////////////////////////////////////////////////////////////////////////////////
-
-double EdgeCollectionInfo::weightEdge(VPackSlice const edge) {
-  TRI_ASSERT(!_weightAttribute.empty());
-  return arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-      edge, _weightAttribute.c_str(), _defaultWeight);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

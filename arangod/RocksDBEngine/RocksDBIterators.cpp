@@ -244,11 +244,11 @@ void RocksDBAnyIndexIterator::reset() {
     return;
   }
   uint64_t steps = RandomGenerator::interval(_total - 1) % 500;
-  auto initialKey = RocksDBKey();
-
-  initialKey.constructDocument(_objectId,
-                               LocalDocumentId(RandomGenerator::interval(UINT64_MAX)));
-  _iterator->Seek(initialKey.string());
+  
+  RocksDBKeyLeaser key(_trx);
+  key->constructDocument(_objectId,
+                         LocalDocumentId(RandomGenerator::interval(UINT64_MAX)));
+  _iterator->Seek(key->string());
 
   if (checkIter()) {
     if (_forward) {

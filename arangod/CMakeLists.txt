@@ -496,7 +496,6 @@ SET(ARANGOD_SOURCES
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
-  RestServer/TransactionManagerFeature.cpp
   RestServer/TraverserEngineRegistryFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
@@ -529,6 +528,8 @@ SET(ARANGOD_SOURCES
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
+  Transaction/Manager.cpp
+  Transaction/ManagerFeature.cpp
   Transaction/V8Context.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp

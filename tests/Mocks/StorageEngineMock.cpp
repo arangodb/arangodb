@@ -37,8 +37,8 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "RestServer/FlushFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/TransactionManager.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Manager.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -433,16 +433,6 @@ struct IndexFactoryMock : arangodb::IndexFactory {
 };
 
 }  // namespace
-
-void ContextDataMock::pinData(arangodb::LogicalCollection* collection) {
-  if (collection) {
-    pinned.emplace(collection->id());
-  }
-}
-
-bool ContextDataMock::isPinned(TRI_voc_cid_t cid) const {
-  return pinned.find(cid) != pinned.end();
-}
 
 std::function<void()> PhysicalCollectionMock::before = []() -> void {};
 
@@ -1061,18 +1051,22 @@ std::unique_ptr<arangodb::TransactionCollection> StorageEngineMock::createTransa
 }
 
 std::unique_ptr<arangodb::transaction::ContextData> StorageEngineMock::createTransactionContextData() {
-  before();
-  return std::unique_ptr<arangodb::transaction::ContextData>(new ContextDataMock());
+  return std::unique_ptr<arangodb::transaction::ContextData>();
 }
 
-std::unique_ptr<arangodb::TransactionManager> StorageEngineMock::createTransactionManager() {
+std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransactionManager() {
   TRI_ASSERT(false);
   return nullptr;
 }
 
 std::unique_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
-    TRI_vocbase_t& vocbase, arangodb::transaction::Options const& options) {
-  return std::unique_ptr<arangodb::TransactionState>(new TransactionStateMock(vocbase, options));
+    TRI_vocbase_t& vocbase,
+    TRI_voc_tid_t tid,
+    arangodb::transaction::Options const& options
+) {
+  return std::unique_ptr<arangodb::TransactionState>(
+    new TransactionStateMock(vocbase, options)
+  );
 }
 
 arangodb::Result StorageEngineMock::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
@@ -1406,7 +1400,9 @@ int TransactionCollectionMock::use(int nestingLevel) {
     }
   }
 
-  _collection = _transaction->vocbase().useCollection(_cid, status);
+  if (!_collection) {
+    _collection = _transaction->vocbase().useCollection(_cid, status);
+  }
 
   return _collection ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL;
 }
@@ -1443,9 +1439,9 @@ TransactionStateMock::TransactionStateMock(TRI_vocbase_t& vocbase,
 arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::Methods* trx) {
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
-  unuseCollections(_nestingLevel);
-  const_cast<TRI_voc_tid_t&>(_id) =
-      0;  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+  unuseCollections(nestingLevel());
+  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+  const_cast<TRI_voc_tid_t&>(_id) = 0;
 
   return arangodb::Result();
 }
@@ -1455,7 +1451,7 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
   ++beginTransactionCount;
   _hints = hints;
 
-  auto res = useCollections(_nestingLevel);
+  auto res = useCollections(nestingLevel());
 
   if (!res.ok()) {
     updateStatus(arangodb::transaction::Status::ABORTED);
@@ -1474,9 +1470,9 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
 arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
-  unuseCollections(_nestingLevel);
-  const_cast<TRI_voc_tid_t&>(_id) =
-      0;  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+  unuseCollections(nestingLevel());
+  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+  const_cast<TRI_voc_tid_t&>(_id) = 0;
 
   return arangodb::Result();
 }

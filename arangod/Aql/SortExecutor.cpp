@@ -81,12 +81,14 @@ static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegiste
   return set;
 }
 
-SortExecutorInfos::SortExecutorInfos(std::vector<SortRegister> sortRegisters,
-                                     std::size_t limit, AqlItemBlockManager& manager,
-                                     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                                     std::unordered_set<RegisterId> registersToClear,
-                                     std::unordered_set<RegisterId> registersToKeep,
-                                     transaction::Methods* trx, bool stable)
+SortExecutorInfos::SortExecutorInfos(
+    // cppcheck-suppress passedByValue
+    std::vector<SortRegister> sortRegisters, std::size_t limit,
+    AqlItemBlockManager& manager, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToClear,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToKeep, transaction::Methods* trx, bool stable)
     : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), nullptr,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),

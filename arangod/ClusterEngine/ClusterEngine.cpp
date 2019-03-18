@@ -36,8 +36,6 @@
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/ClusterRestHandlers.h"
 #include "ClusterEngine/ClusterTransactionCollection.h"
-#include "ClusterEngine/ClusterTransactionContextData.h"
-#include "ClusterEngine/ClusterTransactionManager.h"
 #include "ClusterEngine/ClusterTransactionState.h"
 #include "ClusterEngine/ClusterV8Functions.h"
 #include "GeneralServer/RestHandlerFactory.h"
@@ -53,6 +51,8 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
+#include "Transaction/ContextData.h"
+#include "Transaction/Manager.h"
 #include "Transaction/Options.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ticks.h"
@@ -126,17 +126,18 @@ void ClusterEngine::start() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 }
 
-std::unique_ptr<TransactionManager> ClusterEngine::createTransactionManager() {
-  return std::unique_ptr<TransactionManager>(new ClusterTransactionManager());
+std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager() {
+  return std::make_unique<transaction::Manager>(/*keepData*/ false);
 }
 
 std::unique_ptr<transaction::ContextData> ClusterEngine::createTransactionContextData() {
-  return std::unique_ptr<transaction::ContextData>(new ClusterTransactionContextData());
+  return std::unique_ptr<transaction::ContextData>(); // not used by coordinator
 }
 
-std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(
-    TRI_vocbase_t& vocbase, transaction::Options const& options) {
-  return std::make_unique<ClusterTransactionState>(vocbase, TRI_NewTickServer(), options);
+std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(TRI_vocbase_t& vocbase,
+                                                                        TRI_voc_tid_t tid,
+                                                                        transaction::Options const& options) {
+  return std::make_unique<ClusterTransactionState>(vocbase, tid, options);
 }
 
 std::unique_ptr<TransactionCollection> ClusterEngine::createTransactionCollection(
