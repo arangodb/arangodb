@@ -397,10 +397,7 @@ class Methods {
 
   /// @brief Lock all collections. Only works for selected sub-classes
   virtual int lockCollections();
-
-  /// @brief Clone this transaction. Only works for selected sub-classes
-  virtual transaction::Methods* clone(transaction::Options const&) const;
-
+  
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
 

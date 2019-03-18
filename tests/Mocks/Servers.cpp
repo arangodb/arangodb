@@ -142,13 +142,13 @@ MockAqlServer::~MockAqlServer() {
   arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
 }
 
-arangodb::transaction::Methods* MockAqlServer::createFakeTransaction() const {
+std::shared_ptr<arangodb::transaction::Methods> MockAqlServer::createFakeTransaction() const {
   std::vector<std::string> noCollections{};
   transaction::Options opts;
-  return new arangodb::transaction::Methods(transaction::StandaloneContext::Create(
-                                                getSystemDatabase()),
-                                            noCollections, noCollections,
-                                            noCollections, opts);
+  auto ctx = transaction::StandaloneContext::Create(getSystemDatabase());
+  return std::make_shared<arangodb::transaction::Methods>(ctx,
+                                                          noCollections, noCollections,
+                                                          noCollections, opts);
 }
 
 std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery() const {

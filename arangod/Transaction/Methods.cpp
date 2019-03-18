@@ -3163,11 +3163,6 @@ int transaction::Methods::lockCollections() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-/// @brief Clone this transaction. Only works for selected sub-classes
-transaction::Methods* transaction::Methods::clone(transaction::Options const&) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 /// @brief Get all indexes for a collection name, coordinator case
 std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
     std::string const& name, std::string const& id) const {

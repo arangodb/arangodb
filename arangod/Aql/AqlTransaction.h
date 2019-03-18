@@ -39,7 +39,8 @@ class AqlTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction and add all collections
   /// from the query context
-  static AqlTransaction* create(std::shared_ptr<transaction::Context> const& transactionContext,
+  static std::shared_ptr<AqlTransaction>
+    create(std::shared_ptr<transaction::Context> const& transactionContext,
                                 std::map<std::string, aql::Collection*> const* collections,
                                 transaction::Options const& options, bool isMainTransaction,
                                 std::unordered_set<std::string> inaccessibleCollections =
@@ -67,10 +68,6 @@ class AqlTransaction : public transaction::Methods {
   /// @brief documentCollection
   LogicalCollection* documentCollection(TRI_voc_cid_t cid);
 
-  /// @brief clone, used to make daughter transactions for parts of a
-  /// distributed AQL query running on the coordinator
-  transaction::Methods* clone(transaction::Options const&) const override;
-
   /// @brief lockCollections, this is needed in a corner case in AQL: we need
   /// to lock all shards in a controlled way when we set up a distributed
   /// execution engine. To this end, we prevent the standard mechanism to
@@ -79,7 +76,6 @@ class AqlTransaction : public transaction::Methods {
   /// order via an HTTP call. This method is used to implement that HTTP action.
   int lockCollections() override;
 
- protected:
   AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
                  transaction::Options const& options)
       : transaction::Methods(transactionContext, options) {
