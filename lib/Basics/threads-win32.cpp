@@ -130,6 +130,10 @@ int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout) {
           << "could not join thread --> WAIT_FAILED - reason -->" << result;
       return TRI_ERROR_FAILED;
     }
+
+    default:
+      TRI_ASSERT(false);
+      return TRI_ERROR_FAILED;
   }
 }
 
