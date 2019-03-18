@@ -782,17 +782,12 @@ void Supervision::run() {
         }
       }
 
-      // If anything was rafted, we need to
-      index_t leaderIndex = _agent->index();
-      
-      if (leaderIndex != 0) {
-        while (true) { // No point in progressing, if indexes cannot be advanced
+      //Leader: no point in progressing, if indexes cannot be advanced
+      while (!this->isStopping() && _agent->leading()) { 
 
-          // avoid getting trapped as last agent standing
-          if (this->isStopping()) {
-            break;
-          }
-
+        // If anything was rafted, we need to
+        index_t leaderIndex = _agent->index();
+        if (leaderIndex != 0) {
           auto result = _agent->waitFor(leaderIndex);
           if (result == Agent::raft_commit_t::TIMEOUT) { // Oh snap
             // Note that we can get UNKNOWN if we have lost leadership or
@@ -805,7 +800,7 @@ void Supervision::run() {
 
         }
       }
-      
+
       auto lapTime = std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::steady_clock::now() - lapStart).count();
       
