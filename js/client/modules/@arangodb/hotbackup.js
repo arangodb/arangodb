@@ -49,8 +49,12 @@ exports.get =  function () {
 // / @brief trigger a new hot backu
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.create = function () {
-  let reply = internal.db._connection.POST('_admin/hotbackup/create', null);
+exports.create = function (userString = undefined) {
+  let postData = {};
+  if (userString !== undefined) {
+    postData['userString'] = userString;
+  }
+  let reply = internal.db._connection.POST('_admin/hotbackup/create', postData);
   if (!reply.error && reply.code === 200) {
     return reply.result;
   }
