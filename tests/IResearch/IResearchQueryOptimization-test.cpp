@@ -69,6 +69,9 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
+#include "search/boolean_filter.hpp"
+#include "search/term_filter.hpp"
+#include "search/range_filter.hpp"
 #include "utils/utf8_path.hpp"
 
 #include <velocypack/Iterator.h>
@@ -334,14 +337,21 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
-
-
 
     auto result = queryResult.result->slice();
     CHECK(result.isArray());
@@ -372,6 +382,14 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -410,6 +428,15 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
@@ -437,7 +464,7 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
   // a == x && a != y, x < y
   {
     std::string const query =
-      "FOR d IN testView SEARCH d.values == 'C' AND d.values != 'B' RETURN d";
+      "FOR d IN testView SEARCH d.values == 'A' AND d.values != 'B' RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query, {
@@ -447,8 +474,16 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
-      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -476,14 +511,14 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     std::string const query =
       "FOR d IN testView SEARCH d.values == 'C' AND d.values != 'C' RETURN d";
 
-    CHECK(arangodb::tests::assertRules(
-      vocbase, query, {
-        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
-      }
-    ));
-
     //FIXME
-    //CHECK(findEmptyNodes(vocbase, query));
+    //CHECK(arangodb::tests::assertRules(
+    //  vocbase, query, {
+    //    arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+    //  }
+    //));
+
+    CHECK(findEmptyNodes(vocbase, query));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
@@ -521,8 +556,16 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
-      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -557,6 +600,14 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -595,6 +646,15 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
@@ -631,6 +691,15 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -669,6 +738,14 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
@@ -705,6 +782,14 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -743,6 +828,15 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
@@ -779,6 +873,15 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("B");
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -817,6 +920,14 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
@@ -853,6 +964,14 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -891,6 +1010,15 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
@@ -927,6 +1055,15 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -965,6 +1102,60 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a != x && a == y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values != '@' AND d.values == 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("@");
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
@@ -1002,8 +1193,16 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
-      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1031,16 +1230,62 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     std::string const query =
       "FOR d IN testView SEARCH d.values != 'A' AND d.values == 'A' RETURN d";
 
+    //FIXME
+    //CHECK(arangodb::tests::assertRules(
+    //  vocbase, query, {
+    //    arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+    //  }
+    //));
+
+    CHECK(findEmptyNodes(vocbase, query));
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a != x && a == y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values != 'D' AND d.values == 'A' RETURN d";
+
     CHECK(arangodb::tests::assertRules(
       vocbase, query, {
         arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
       }
     ));
 
-    //FIXME
-    //CHECK(findEmptyNodes(vocbase, query));
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1075,6 +1320,60 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a != x && a != y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values != '@' AND d.values != 'D' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("@");
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -1113,7 +1412,61 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a != x && a != y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values != 'D' AND d.values != 'D' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1148,6 +1501,14 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
@@ -1185,6 +1546,15 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
 
@@ -1220,6 +1590,106 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("0");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a != x && a < y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values != 'A' AND d.values < 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a != x && a < y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values != '@' AND d.values < 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("@");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -1258,6 +1728,15 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("D");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
@@ -1295,8 +1774,62 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a != x && a < y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values != 'C' AND d.values < 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1332,8 +1865,62 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("0");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a != x && a <= y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values != 'A' AND d.values <= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1369,8 +1956,62 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("D");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a != x && a <= y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values != 'B' AND d.values <= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1406,8 +2047,62 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a != x && a <= y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values != 'C' AND d.values <= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1443,8 +2138,62 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("0");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a != x && a >= y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values != 'A' AND d.values >= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1480,8 +2229,62 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("0");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("0");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a != x && a >= y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values != 'A' AND d.values >= 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1517,8 +2320,62 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a != x && a >= y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values != 'C' AND d.values >= 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1554,8 +2411,62 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("0");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a != x && a > y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values != 'A' AND d.values > 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1591,8 +2502,62 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("0");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("0");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a != x && a > y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values != 'A' AND d.values > 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1628,8 +2593,62 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a != x && a > y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values != 'C' AND d.values > 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1664,6 +2683,15 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -1702,6 +2730,15 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
@@ -1738,6 +2775,14 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -1776,8 +2821,62 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a < x && a != y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values < 'B' AND d.values != 'C' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1813,8 +2912,62 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("D");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a < x && a != y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values < 'B' AND d.values != 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1850,8 +3003,62 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("0");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a < x && a != y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values < 'C' AND d.values != 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1886,6 +3093,14 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -1923,6 +3138,14 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -1965,6 +3188,14 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -1997,6 +3228,14 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -2035,6 +3274,14 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
@@ -2072,6 +3319,14 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
 
     CHECK(!findEmptyNodes(vocbase, query));
 
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
@@ -2107,10 +3362,19 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
       }
     ));
 
-    //FIXME
-    //CHECK(findEmptyNodes(vocbase, query));
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("C");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -2144,10 +3408,19 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
       }
     ));
 
-    //FIXME
-    //CHECK(findEmptyNodes(vocbase, query));
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -2182,6 +3455,15 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -2218,8 +3500,16 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
       }
     ));
 
-    //FIXME
-    //CHECK(findEmptyNodes(vocbase, query));
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("C");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
     };
@@ -2255,10 +3545,19 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
       }
     ));
 
-    //FIXME
-    //CHECK(findEmptyNodes(vocbase, query));
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -2293,6 +3592,2880 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     ));
 
     CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a == y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'A' AND d.values == 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a == y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'A' AND d.values == 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a == y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'B' AND d.values == 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a != y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'A' AND d.values != 'D' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a != y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'A' AND d.values != 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a != y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'B' AND d.values != 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a != y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'D' AND d.values != 'D' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("D");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a != y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'C' AND d.values != '@' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("@");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a != y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'C' AND d.values != 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a < y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'A' AND d.values < 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a < y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'B' AND d.values < 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a < y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'C' AND d.values < 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a <= y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'A' AND d.values <= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a <= y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'B' AND d.values <= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a <= y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'C' AND d.values <= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a >= y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'A' AND d.values >= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a >= y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'A' AND d.values >= 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a >= y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'C' AND d.values >= 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a > y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'A' AND d.values > 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a > y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'A' AND d.values > 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a <= x && a > y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values <= 'C' AND d.values > 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a == y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'A' AND d.values == 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a == y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'A' AND d.values == 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a == y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'B' AND d.values == 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("B");
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a != y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'A' AND d.values != 'D' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a != y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'A' AND d.values != 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a != y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= '@' AND d.values != '@' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("@");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("@");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a != y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'A' AND d.values != 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a != y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'B' AND d.values != 'D' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a != y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'B' AND d.values != 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a < y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'A' AND d.values < 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a < y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'B' AND d.values < 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a < y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'C' AND d.values < 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("C");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a <= y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'A' AND d.values <= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a <= y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'B' AND d.values <= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a <= y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'C' AND d.values <= 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("C");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a >= y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'A' AND d.values >= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a >= y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'B' AND d.values >= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a >= y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'C' AND d.values >= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a > y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'A' AND d.values > 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a > y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'B' AND d.values > 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a >= x && a > y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values >= 'B' AND d.values > 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a == y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'A' AND d.values == 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a == y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'B' AND d.values == 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a == y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'B' AND d.values == 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a != y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'A' AND d.values != 'D' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a != y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'A' AND d.values != 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a != y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > '@' AND d.values != '@' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("@");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("@");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a != y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'A' AND d.values != 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a != y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'B' AND d.values != '@' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("@");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a != y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'B' AND d.values != 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a < y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'A' AND d.values < 'C' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("C");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a < y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'B' AND d.values < 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a < y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'C' AND d.values < 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("C");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a <= y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'A' AND d.values <= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("A");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a <= y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'B' AND d.values <= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a <= y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'B' AND d.values <= 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("A");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a >= y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'A' AND d.values >= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a >= y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'B' AND d.values >= 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a >= y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'B' AND d.values >= 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a > y, x < y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'A' AND d.values > 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a > y, x == y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'B' AND d.values > 'B' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // a > x && a > y, x > y
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH d.values > 'B' AND d.values > 'A' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    CHECK(!findEmptyNodes(vocbase, query));
+
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>().field(mangleStringIdentity("values")).include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("B");
+      assertFilterOptimized(vocbase, query, expected);
+    }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),

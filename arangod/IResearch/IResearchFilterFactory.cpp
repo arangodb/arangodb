@@ -1030,11 +1030,11 @@ bool fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
 
   // Note: cannot optimize for single member in AND/OR since 'a OR NOT b' translates to 'a OR (OR NOT b)'
 
-  if (std::is_same<Filter, irs::And>::value && 2 == n &&
-      rangeFromBinaryAnd(filter, ctx, filterCtx, node)) {
-    // range case
-    return true;
-  }
+//  if (std::is_same<Filter, irs::And>::value && 2 == n &&
+//      rangeFromBinaryAnd(filter, ctx, filterCtx, node)) {
+//    // range case
+//    return true;
+//  }
 
   if (filter) {
     filter = &filter->add<Filter>();

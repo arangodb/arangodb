@@ -55,8 +55,6 @@ enum ConditionPartCompareResult {
 enum AttributeSideType { ATTRIBUTE_LEFT, ATTRIBUTE_RIGHT };
 
 struct ConditionPart {
-  static ConditionPartCompareResult const ResultsTable[3][7][7];
-
   ConditionPart() = delete;
 
   ConditionPart(Variable const*, std::string const&, AstNode const*,
