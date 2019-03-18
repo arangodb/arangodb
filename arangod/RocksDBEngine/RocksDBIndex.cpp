@@ -21,7 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBIndex.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
@@ -33,6 +32,7 @@
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "RocksDBIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -59,10 +59,11 @@ inline uint64_t ensureObjectId(uint64_t oid) {
 }  // namespace
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
+                           std::string const& name,
                            std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                            bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
                            uint64_t objectId, bool useCache)
-    : Index(id, collection, attributes, unique, sparse),
+    : Index(id, collection, name, attributes, unique, sparse),
       _objectId(::ensureObjectId(objectId)),
       _cf(cf),
       _cache(nullptr),
@@ -241,13 +242,16 @@ void RocksDBIndex::afterTruncate(TRI_voc_tick_t) {
 
 Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
                             LocalDocumentId const& oldDocumentId,
-                            velocypack::Slice const& oldDoc,
-                            LocalDocumentId const& newDocumentId,
-                            velocypack::Slice const& newDoc,
-                            Index::OperationMode mode) {
+                            velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
+                            velocypack::Slice const& newDoc, Index::OperationMode mode) {
   // It is illegal to call this method on the primary index
   // RocksDBPrimaryIndex must override this method accordingly
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
+
+  /// only if the insert needs to see the changes of the update, enable indexing:
+  IndexingEnabler enabler(mthd, mthd->isIndexingDisabled() && hasExpansion() && unique());
+
+  TRI_ASSERT((hasExpansion() && unique()) ? !mthd->isIndexingDisabled() : true);
 
   Result res = remove(trx, mthd, oldDocumentId, oldDoc, mode);
   if (!res.ok()) {

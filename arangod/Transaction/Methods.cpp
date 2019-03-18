@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Methods.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -343,7 +344,7 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
 
   std::vector<arangodb::aql::ConditionPart> parts;
   parts.reserve(n);
-      
+
   std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> result;
 
   for (size_t i = 0; i < n; ++i) {
@@ -431,7 +432,7 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
 
   for (size_t i = 0; i < n; ++i) {
     auto& p = parts[i];
-        
+
     if (p.operatorType == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN &&
         p.valueNode->isArray()) {
       TRI_ASSERT(p.valueNode->isConstant());
@@ -442,15 +443,15 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
         auto emptyArray = ast->createNodeArray();
         auto mergedIn =
             ast->createNodeUnionizedArray(parts[previousIn].valueNode, p.valueNode);
-    
+
         arangodb::aql::AstNode* clone = ast->clone(root->getMember(previousIn));
         root->changeMember(previousIn, clone);
         static_cast<ConditionData*>(parts[previousIn].data)->first = clone;
-        
+
         clone = ast->clone(root->getMember(i));
         root->changeMember(i, clone);
         static_cast<ConditionData*>(parts[i].data)->first = clone;
-            
+
         // can now edit nodes in place...
         parts[previousIn].valueNode = mergedIn;
         {
@@ -459,7 +460,7 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
           TEMPORARILY_UNLOCK_NODE(n1);
           n1->changeMember(1, mergedIn);
         }
-            
+
         p.valueNode = emptyArray;
         {
           auto n2 = root->getMember(i)->getMember(0);
@@ -467,14 +468,14 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
           TEMPORARILY_UNLOCK_NODE(n2);
           n2->changeMember(1, emptyArray);
         }
-    
+
       } else {
         // note first IN
         previousIn = i;
       }
     }
   }
-            
+
   // now sort all conditions by variable name, attribute name, attribute value
   std::sort(parts.begin(), parts.end(),
             [](arangodb::aql::ConditionPart const& lhs,
@@ -526,7 +527,7 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
             });
 
   TRI_ASSERT(parts.size() == conditionData.size());
-    
+
   // clean up
   while (root->numMembers()) {
     root->removeMemberUnchecked(0);
@@ -567,7 +568,7 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
       usedIndexes.emplace_back(conditionData->second);
     }
   }
-    
+
   return true;
 }
 
@@ -764,7 +765,6 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
     }
 
     _state = parent;
-
     TRI_ASSERT(_state != nullptr);
     _state->increaseNesting();
   } else {  // non-embedded
@@ -772,10 +772,10 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
     _state = engine
-                 ->createTransactionState(_transactionContextPtr->vocbase(), options)
+                 ->createTransactionState(_transactionContextPtr->vocbase(),
+                                          _transactionContextPtr->generateId(), options)
                  .release();
-    TRI_ASSERT(_state != nullptr);
-    TRI_ASSERT(_state->isTopLevelTransaction());
+    TRI_ASSERT(_state != nullptr && _state->isTopLevelTransaction());
 
     // register the transaction in the context
     _transactionContextPtr->registerTransaction(_state);
@@ -806,9 +806,10 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
 
 /// @brief destroy the transaction
 transaction::Methods::~Methods() {
-  if (_state->isEmbeddedTransaction()) {
-    _state->decreaseNesting();
-  } else {
+  if (_state->isTopLevelTransaction()) {  // _nestingLevel == 0
+    // unregister transaction from context
+    _transactionContextPtr->unregisterTransaction();
+
     if (_state->status() == transaction::Status::RUNNING) {
       // auto abort a running transaction
       try {
@@ -821,14 +822,16 @@ transaction::Methods::~Methods() {
 
     // free the state associated with the transaction
     TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
-    // store result
+
+    // store result in context
     _transactionContextPtr->storeTransactionResult(_state->id(),
                                                    _state->hasFailedOperations(),
                                                    _state->wasRegistered());
-    _transactionContextPtr->unregisterTransaction();
 
     delete _state;
     _state = nullptr;
+  } else {
+    _state->decreaseNesting();  // return transaction
   }
 }
 
@@ -1078,10 +1081,9 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
     return OperationResult(lockResult);
   }
 
-  std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, transaction::Methods::CursorType::ANY);
+  OperationCursor cursor(indexScan(collectionName, transaction::Methods::CursorType::ANY));
 
-  cursor->nextDocument(
+  cursor.nextDocument(
       [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
         resultBuilder.add(slice);
       },
@@ -1461,9 +1463,8 @@ OperationResult transaction::Methods::documentCoordinator(std::string const& col
     }
   }
 
-  int res = arangodb::getDocumentOnCoordinator(vocbase().name(), collectionName,
-                                               *this, value, options, responseCode,
-                                               errorCounter, resultBody);
+  int res = arangodb::getDocumentOnCoordinator(*this, collectionName, value, options,
+                                               responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultDocument(responseCode, resultBody, errorCounter);
@@ -1588,8 +1589,8 @@ OperationResult transaction::Methods::insertCoordinator(std::string const& colle
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
 
-  Result res = arangodb::createDocumentOnCoordinator(vocbase().name(), collectionName,
-                                                     *this, options, value, responseCode,
+  Result res = arangodb::createDocumentOnCoordinator(*this, collectionName,
+                                                     options, value, responseCode,
                                                      errorCounter, resultBody);
 
   if (res.ok()) {
@@ -1678,7 +1679,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
   std::function<Result(void)> updateFollowers = nullptr;
 
   if (needsToGetFollowersUnderLock) {
-    auto const& followerInfo = *collection->followers();
+    FollowerInfo const& followerInfo = *collection->followers();
 
     updateFollowers = [&followerInfo, &followers]() -> Result {
       TRI_ASSERT(followers == nullptr);
@@ -1891,10 +1892,9 @@ OperationResult transaction::Methods::updateCoordinator(std::string const& colle
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::modifyDocumentOnCoordinator(vocbase().name(), collectionName,
-                                                  *this, newValue, options,
-                                                  true /* isPatch */, headers, responseCode,
-                                                  errorCounter, resultBody);
+  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName, newValue,
+                                                  options, true /* isPatch */, headers,
+                                                  responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultModify(responseCode, resultBody, errorCounter);
@@ -1940,9 +1940,9 @@ OperationResult transaction::Methods::replaceCoordinator(std::string const& coll
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::modifyDocumentOnCoordinator(vocbase().name(), collectionName,
-                                                  *this, newValue, options,
-                                                  false /* isPatch */, headers, responseCode,
+  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName, newValue,
+                                                  options, false /* isPatch */,
+                                                  headers, responseCode,
                                                   errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -2215,8 +2215,8 @@ OperationResult transaction::Methods::removeCoordinator(std::string const& colle
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::deleteDocumentOnCoordinator(vocbase().name(), collectionName,
-                                                  *this, value, options, responseCode,
+  int res = arangodb::deleteDocumentOnCoordinator(*this, collectionName, value,
+                                                  options, responseCode,
                                                   errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -2472,17 +2472,12 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
     return OperationResult(lockResult);
   }
 
-  std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, transaction::Methods::CursorType::ALL);
-
-  if (cursor->fail()) {
-    return OperationResult(cursor->code);
-  }
+  OperationCursor cursor(indexScan(collectionName, transaction::Methods::CursorType::ALL));
 
   auto cb = [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
   };
-  cursor->allDocuments(cb, 1000);
+  cursor.allDocuments(cb, 1000);
 
   if (lockResult.is(TRI_ERROR_LOCKED)) {
     Result res = unlockRecursive(cid, AccessMode::Type::READ);
@@ -2520,8 +2515,7 @@ OperationResult transaction::Methods::truncate(std::string const& collectionName
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::truncateCoordinator(std::string const& collectionName,
                                                           OperationOptions& options) {
-  return OperationResult(
-      arangodb::truncateCollectionOnCoordinator(vocbase().name(), collectionName));
+  return OperationResult(arangodb::truncateCollectionOnCoordinator(*this, collectionName));
 }
 #endif
 
@@ -2702,7 +2696,7 @@ OperationResult transaction::Methods::countCoordinatorHelper(
   if (documents == CountCache::NotPopulated) {
     // no cache hit, or detailed results requested
     std::vector<std::pair<std::string, uint64_t>> count;
-    auto res = arangodb::countOnCoordinator(vocbase().name(), collectionName, *this, count);
+    auto res = arangodb::countOnCoordinator(*this, collectionName, count);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return OperationResult(res);
@@ -2875,7 +2869,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> transaction::Methods::
 /// @brief Gets the best fitting index for an AQL sort condition
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-std::pair<bool, bool> transaction::Methods::getIndexForSortCondition(
+bool transaction::Methods::getIndexForSortCondition(
     std::string const& collectionName, arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     std::vector<IndexHandle>& usedIndexes, size_t& coveredAttributes) {
@@ -2909,22 +2903,21 @@ std::pair<bool, bool> transaction::Methods::getIndexForSortCondition(
       usedIndexes.emplace_back(bestIndex);
     }
 
-    return std::make_pair(false, bestIndex != nullptr);
+    return bestIndex != nullptr;
   }
 
   // No Index and no sort condition that
   // can be supported by an index.
   // Nothing to do here.
-  return std::make_pair(false, false);
+  return false;
 }
 
-/// @brief factory for OperationCursor objects from AQL
+/// @brief factory for IndexIterator objects from AQL
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-OperationCursor* transaction::Methods::indexScanForCondition(
+std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
     IndexHandle const& indexId, arangodb::aql::AstNode const* condition,
-    arangodb::aql::Variable const* var, ManagedDocumentResult* mmdr,
-    IndexIteratorOptions const& opts) {
+    arangodb::aql::Variable const* var, IndexIteratorOptions const& opts) {
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
@@ -2937,22 +2930,14 @@ OperationCursor* transaction::Methods::indexScanForCondition(
   }
 
   // Now create the Iterator
-  std::unique_ptr<IndexIterator> iterator(
-      idx->iteratorForCondition(this, mmdr, condition, var, opts));
-
-  if (iterator == nullptr) {
-    // We could not create an ITERATOR and it did not throw an error itself
-    return new OperationCursor(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  return new OperationCursor(iterator.release(), defaultBatchSize());
+  return std::unique_ptr<IndexIterator>(idx->iteratorForCondition(this, condition, var, opts));
 }
 
-/// @brief factory for OperationCursor objects
+/// @brief factory for IndexIterator objects
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-std::unique_ptr<OperationCursor> transaction::Methods::indexScan(std::string const& collectionName,
-                                                                 CursorType cursorType) {
+std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const& collectionName,
+                                                               CursorType cursorType) {
   // For now we assume indexId is the iid part of the index.
 
   if (_state->isCoordinator()) {
@@ -2972,7 +2957,7 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(std::string con
   // will throw when it fails
   _transactionContextPtr->pinData(logical);
 
-  std::unique_ptr<IndexIterator> iterator = nullptr;
+  std::unique_ptr<IndexIterator> iterator;
   switch (cursorType) {
     case CursorType::ANY: {
       iterator = logical->getAnyIterator(this);
@@ -2983,12 +2968,10 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(std::string con
       break;
     }
   }
-  if (iterator == nullptr) {
-    // We could not create an ITERATOR and it did not throw an error itself
-    return std::make_unique<OperationCursor>(TRI_ERROR_OUT_OF_MEMORY);
-  }
 
-  return std::make_unique<OperationCursor>(iterator.release(), defaultBatchSize());
+  // the above methods must always return a valid iterator or throw!
+  TRI_ASSERT(iterator != nullptr);
+  return iterator;
 }
 
 /// @brief return the collection
@@ -3169,14 +3152,11 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
   LogicalCollection* document = documentCollection(trxCollection(cid));
   std::vector<std::shared_ptr<Index>> indexes = document->getIndexes();
   if (!withHidden) {
-    auto it = indexes.begin();
-    while (it != indexes.end()) {
-      if ((*it)->isHidden()) {
-        it = indexes.erase(it);
-      } else {
-        it++;
-      }
-    }
+    indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
+                                 [](std::shared_ptr<Index> x) {
+                                   return x->isHidden();
+                                 }),
+                  indexes.end());
   }
   return indexes;
 }
@@ -3303,14 +3283,15 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
                                     VPackBuilder& resultBuilder) {
   TRI_ASSERT(followers != nullptr);
 
+  Result res;
   if (followers->empty()) {
-    return Result{};
+    return res;
   }
 
   // nullptr only happens on controlled shutdown
   auto cc = arangodb::ClusterComm::instance();
   if (cc == nullptr) {
-    return Result{};
+    return res.reset(TRI_ERROR_SHUTTING_DOWN);
   };
 
   // path and requestType are different for insert/remove/modify.
@@ -3387,7 +3368,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
 
   if (count == 0) {
     // nothing to do
-    return Result{};
+    return res;
   }
 
   auto body = std::make_shared<std::string>();
@@ -3446,8 +3427,8 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
   }
 
   if (findRefusal(requests)) {
-    return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
+    return res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
   }
 
-  return Result{};
+  return res;
 }

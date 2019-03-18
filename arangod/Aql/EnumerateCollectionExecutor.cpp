@@ -45,8 +45,10 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
-    RegisterId outputRegister, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+    RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToClear,
+    // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     std::vector<std::string> const& projections, transaction::Methods* trxPtr,
@@ -74,11 +76,11 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _allowCoveringIndexOptimization(true),
       _cursorHasMore(false) {
-  _cursor =
+  _cursor = std::make_unique<OperationCursor>(
       _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
                                     (_infos.getRandom()
                                          ? transaction::Methods::CursorType::ANY
-                                         : transaction::Methods::CursorType::ALL));
+                                         : transaction::Methods::CursorType::ALL)));
 
   if (!waitForSatellites(_infos.getEngine(), _infos.getCollection())) {
     double maxWait = _infos.getEngine()->getQuery()->queryOptions().satelliteSyncWait;

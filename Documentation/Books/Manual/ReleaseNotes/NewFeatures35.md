@@ -85,8 +85,8 @@ client programs can thus safely set the *inBackground* option to *true* and cont
 work as before.
 
 Should you be building an index in the background you cannot rename or drop the collection.
-These operations will block until the index creation is finished.
-{% endhint %}
+These operations will block until the index creation is finished. This is equally the case
+with foreground indexing.
 
 After an interrupted index build (i.e. due to a server crash) the partially built index
 will the removed. In the ArangoDB cluster the index might then be automatically recreated 
@@ -213,6 +213,27 @@ Existing `_routing` collections will not be touched as they may contain user-def
 entries, and will continue to work.
 
 Existing `_modules` collections will also remain functional.
+
+### Named indices
+
+Indices now have an additional `name` field, which allows for more useful
+identifiers. System indices, like the primary and edge indices, have default 
+names (`primary` and `edge`, respectively). If no `name` value is specified
+on index creation, one will be auto-generated (e.g. `idx_13820395`). The index
+name _cannot_ be changed after index creation. No two indices on the same
+collection may share the same name, but two indices on different collections 
+may.
+
+Client tools
+------------
+
+Under normal circumstances there should be no need to connect to a 
+database server in a cluster with one of the client tools, and it is 
+likely that any user operations carried out there with one of the client
+tools may cause trouble. 
+
+The client tools arangosh, arangodump and arangorestore will now emit 
+a warning when connecting with them to a database server node in a cluster.
 
 
 Internal

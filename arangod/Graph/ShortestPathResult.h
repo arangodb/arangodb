@@ -30,8 +30,6 @@
 
 namespace arangodb {
 
-class ManagedDocumentResult;
-
 namespace aql {
 struct AqlValue;
 }

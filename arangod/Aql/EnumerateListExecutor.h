@@ -50,6 +50,7 @@ class SingleRowFetcher;
 
 class EnumerateListExecutorInfos : public ExecutorInfos {
  public:
+  // cppcheck-suppress passedByValue
   EnumerateListExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
                              RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                              std::unordered_set<RegisterId> registersToClear,

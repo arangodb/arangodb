@@ -31,7 +31,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -76,19 +75,12 @@ void RestEdgesHandler::readCursor(aql::AstNode* condition, aql::Variable const* 
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_ARANGO_NO_INDEX,
-        "Unable to find an edge-index to identify matching edges.");
+        "Unable to find an edge index to identify matching edges.");
   }
 
-  ManagedDocumentResult mmdr;
   IndexIteratorOptions opts;
-  std::unique_ptr<OperationCursor> cursor(
-      trx.indexScanForCondition(indexId, condition, var, &mmdr, opts));
-
-  if (cursor->fail()) {
-    THROW_ARANGO_EXCEPTION(cursor->code);
-  }
-
-  cursor->all(cb);
+  OperationCursor cursor(trx.indexScanForCondition(indexId, condition, var, opts));
+  cursor.all(cb);
 }
 
 bool RestEdgesHandler::getEdgesForVertex(
@@ -202,8 +194,7 @@ bool RestEdgesHandler::readEdges() {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder resultDocument(buffer);
     resultDocument.openObject();
-    int res = getFilteredEdgesOnCoordinator(_vocbase.name(), collectionName,
-                                            *(trx.get()), vertexString, direction,
+    int res = getFilteredEdgesOnCoordinator(*trx, collectionName, vertexString, direction,
                                             responseCode, resultDocument);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -343,8 +334,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     for (auto const& it : VPackArrayIterator(body)) {
       if (it.isString()) {
         std::string vertexString(it.copyString());
-        int res = getFilteredEdgesOnCoordinator(_vocbase.name(), collectionName,
-                                                *(trx.get()), vertexString, direction,
+        int res = getFilteredEdgesOnCoordinator(*trx, collectionName, vertexString, direction,
                                                 responseCode, resultDocument);
 
         if (res != TRI_ERROR_NO_ERROR) {

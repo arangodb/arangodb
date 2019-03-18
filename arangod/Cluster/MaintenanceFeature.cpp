@@ -446,10 +446,6 @@ void MaintenanceFeature::toVelocyPack(VPackBuilder& vb) const {
   }
 
 }  // MaintenanceFeature::toVelocyPack
-#if 0
-std::string MaintenanceFeature::toJson(VPackBuilder & builder) {
-} // MaintenanceFeature::toJson
-#endif
 
 std::string const SLASH("/");
 

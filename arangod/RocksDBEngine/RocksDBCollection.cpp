@@ -20,7 +20,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBCollection.h"
 #include "Aql/PlanCache.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
@@ -36,6 +35,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -269,10 +269,13 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
   WRITE_LOCKER(guard, _indexesLock);
   TRI_ASSERT(_indexes.empty());
   for (std::shared_ptr<Index>& idx : indexes) {
+    TRI_ASSERT(idx != nullptr);
     auto const id = idx->id();
     for (auto const& it : _indexes) {
+      TRI_ASSERT(it != nullptr);
       if (it->id() == id) {  // index is there twice
         idx.reset();
+        break;
       }
     }
 
@@ -288,14 +291,15 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
 
   if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
       (TRI_COL_TYPE_EDGE == _logicalCollection.type() &&
-       (_indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
-        _indexes[2]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX))) {
+       (_indexes.size() < 3 ||
+        (_indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
+         _indexes[2]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
     std::string msg =
         "got invalid indexes for collection '" + _logicalCollection.name() + "'";
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << msg;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto it : _indexes) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "- " << it.get();
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "- " << it->context();
     }
 #endif
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
@@ -332,10 +336,12 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     if ((idx = findIndex(info, _indexes)) != nullptr) {
       // We already have this index.
       if (idx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "there can only be one ttl index per collection");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "there can only be one ttl index per collection");
       }
 
-      created = false;  
+      created = false;
       return idx;
     }
   }
@@ -358,8 +364,15 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   {
     READ_LOCKER(guard, _indexesLock);
     for (auto const& other : _indexes) {  // conflicting index exists
-      if (other->id() == idx->id()) {
-        return other;  // index already exists
+      if (other->id() == idx->id() || other->name() == idx->name()) {
+        // definition shares an identifier with an existing index with a
+        // different definition
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+                                       "duplicate value for `" + 
+                                           arangodb::StaticStrings::IndexId +
+                                           "` or `" + 
+                                           arangodb::StaticStrings::IndexName +
+                                           "`");
       }
     }
   }
@@ -382,7 +395,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
       VPackBuilder builder;
       builder.openObject();
       for (auto const& pair : VPackObjectIterator(VPackSlice(value.data()))) {
-        if (pair.key.isEqualString("indexes")) {  // append new index 
+        if (pair.key.isEqualString("indexes")) {  // append new index
           VPackArrayBuilder arrGuard(&builder, "indexes");
           builder.add(VPackArrayIterator(pair.value));
           buildIdx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Internals));
@@ -411,7 +424,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   }
   TRI_ASSERT(res.fail() || locker.isLocked());  // always lock to avoid inconsistencies
   locker.lock();
-  
+
   // Step 5. cleanup
   if (res.ok()) {
     {
@@ -531,13 +544,11 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(transaction::Methods* trx) const {
-  return std::unique_ptr<IndexIterator>(
-      new RocksDBAllIndexIterator(&_logicalCollection, trx, primaryIndex()));
+  return std::make_unique<RocksDBAllIndexIterator>(&_logicalCollection, trx, primaryIndex());
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(transaction::Methods* trx) const {
-  return std::unique_ptr<IndexIterator>(
-      new RocksDBAnyIndexIterator(&_logicalCollection, trx, primaryIndex()));
+  return std::make_unique<RocksDBAnyIndexIterator>(&_logicalCollection, trx, primaryIndex());
 }
 
 void RocksDBCollection::invokeOnAllElements(transaction::Methods* trx,
@@ -562,6 +573,8 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   TRI_ASSERT(_objectId != 0);
   auto state = RocksDBTransactionState::toState(&trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
+  // don't compact on restore
+  bool const doCompact = !options.isRestore;
 
   if (state->isOnlyExclusiveTransaction() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
@@ -645,7 +658,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
     guard.fire();  // remove blocker
 
-    if (numDocs > 64 * 1024) {
+    if (numDocs > 64 * 1024 && doCompact) {
       // also compact the ranges in order to speed up all further accesses
       compact();
     }
@@ -716,7 +729,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   // reset to previous value after truncate is finished
   state->options().intermediateCommitCount = prvICC;
 
-  if (found > 64 * 1024) {
+  if (found > 64 * 1024 && doCompact) {
     // also compact the ranges in order to speed up all further accesses
     compact();
   }
@@ -752,7 +765,8 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
   LocalDocumentId documentId;
   revisionId = 0;
   // lookup the revision id in the primary index
-  if (!primaryIndex()->lookupRevision(trx, arangodb::velocypack::StringRef(key), documentId, revisionId)) {
+  if (!primaryIndex()->lookupRevision(trx, arangodb::velocypack::StringRef(key),
+                                      documentId, revisionId)) {
     // document not found
     TRI_ASSERT(revisionId == 0);
     return false;
@@ -769,7 +783,8 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
   });
 }
 
-Result RocksDBCollection::read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
+Result RocksDBCollection::read(transaction::Methods* trx,
+                               arangodb::velocypack::StringRef const& key,
                                ManagedDocumentResult& result, bool) {
   LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key);
   if (documentId.isSet()) {
@@ -1331,8 +1346,8 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId, newDoc,
-                       options.indexOperationMode);
+    res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId,
+                       newDoc, options.indexOperationMode);
 
     if (res.fail()) {
       break;
