@@ -69,8 +69,8 @@ class AqlItemBlockShell {
  public:
   using SmartAqlItemBlockPtr = std::unique_ptr<AqlItemBlock, AqlItemBlockDeleter>;
 
-  AqlItemBlock const& block() const { return *_block; };
-  AqlItemBlock& block() { return *_block; };
+  inline AqlItemBlock const& block() const { return *_block; }
+  inline AqlItemBlock& block() { return *_block; }
 
   AqlItemBlockShell(AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block);
 
@@ -88,7 +88,6 @@ class AqlItemBlockShell {
  private:
   SmartAqlItemBlockPtr _block;
 };
-
 
 }  // namespace aql
 }  // namespace arangodb
