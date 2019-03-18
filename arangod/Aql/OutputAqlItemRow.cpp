@@ -58,9 +58,10 @@ OutputAqlItemRow::OutputAqlItemRow(
   TRI_ASSERT(_blockShell != nullptr);
 }
 
-void OutputAqlItemRow::doCopyRow(const InputAqlItemRow& sourceRow, bool ignoreMissing) {
+void OutputAqlItemRow::doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing) {
   // Note that _lastSourceRow is invalid right after construction. However, when
   // _baseIndex > 0, then we must have seen one row already.
+  TRI_ASSERT(!_doNotCopyInputRow);
   TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
   bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
 
@@ -100,7 +101,7 @@ std::unique_ptr<AqlItemBlock> OutputAqlItemRow::stealBlock() {
   std::unique_ptr<AqlItemBlock> block = blockShell().stealBlockCompat();
   if (numRowsWritten() == 0) {
     // blocks may not be empty
-    block.reset(nullptr);
+    block.reset();
   } else {
     // numRowsWritten() returns the exact number of rows that were fully
     // written and takes into account whether the current row was written.
