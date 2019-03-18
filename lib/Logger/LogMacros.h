@@ -64,92 +64,55 @@
 /// @brief logs a message for a topic
 ////////////////////////////////////////////////////////////////////////////////
 
-#define LOG_TOPIC(c, a, b)                                                \
-  !::arangodb::Logger::isEnabled((::arangodb::LogLevel::a), (b))          \
-      ? (void)0                                                           \
-      : ::arangodb::LogVoidify() & (::arangodb::LoggerStream()            \
-                                    << (::arangodb::LogLevel::a) << (b)   \
-                                    << ::arangodb::Logger::LINE(__LINE__) \
-                                    << ::arangodb::Logger::FILE(__FILE__) \
-                                    << ::arangodb::Logger::FUNCTION(__FUNCTION__)) \
-                                    << ( ::arangodb::Logger::getShowIds() ? "["#c"] " : "" )
+#define ARANGO_INTERNAL_LOG_HELPER(id)                        \
+  ::arangodb::Logger::LINE(__LINE__)                          \
+  << ::arangodb::Logger::FILE(__FILE__)                       \
+  << ::arangodb::Logger::FUNCTION(__FUNCTION__)               \
+  << ( ::arangodb::Logger::getShowIds() ? "["#id"] " : "" ))
+
+#define LOG_TOPIC(id, level, logger)                                        \
+  !::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (logger))   \
+    ? (void)nullptr                                                         \
+    : ::arangodb::LogVoidify() & (::arangodb::LoggerStream()                \
+      << (::arangodb::LogLevel::level) << (logger)                          \
+      << ARANGO_INTERNAL_LOG_HELPER(id)
+
 
 // Can be used to pass the LogLevel in as variable
-#define LOG_TOPIC_RAW(c, a, b)                                                          \
-  !::arangodb::Logger::isEnabled((a), (b))                                              \
-      ? (void)0                                                                         \
-      : ::arangodb::LogVoidify() & (::arangodb::LoggerStream()                          \
-                                    << (a) << (b) << ::arangodb::Logger::LINE(__LINE__) \
-                                    << ::arangodb::Logger::FILE(__FILE__)               \
-                                    << ::arangodb::Logger::FUNCTION(__FUNCTION__))      \
-                                    << ( ::arangodb::Logger::getShowIds() ? "["#c"] " : "" )
+#define LOG_TOPIC_RAW(id, level, logger)                      \
+  !::arangodb::Logger::isEnabled((level), (logger))           \
+    ? (void)nullptr                                           \
+    : ::arangodb::LogVoidify() & (::arangodb::LoggerStream()  \
+      << (level) << (logger)                                  \
+      << ARANGO_INTERNAL_LOG_HELPER(id)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic given that a condition is true
 ////////////////////////////////////////////////////////////////////////////////
 
-#define LOG_TOPIC_IF(c, a, b, cond)                                      \
-  !(arangodb::Logger::isEnabled((arangodb::LogLevel::a), (b)) && (cond)) \
-      ? (void)0                                                          \
-      : arangodb::LogVoidify() & (arangodb::LoggerStream()               \
-                                  << (arangodb::LogLevel::a) << (b)      \
-                                  << arangodb::Logger::LINE(__LINE__)    \
-                                  << arangodb::Logger::FILE(__FILE__)    \
-                                  << ::arangodb::Logger::FUNCTION(__FUNCTION__)) \
-                                  << ( ::arangodb::Logger::getShowIds() ? "["#c"] " : "" )
+#define LOG_TOPIC_IF(id, level, logger, cond)                                       \
+  !(arangodb::Logger::isEnabled((arangodb::LogLevel::level), (logger)) && (cond))   \
+    ? (void)nullptr                                                                 \
+    : ::arangodb::LogVoidify() & (arangodb::LoggerStream()                          \
+      << (arangodb::LogLevel::level) << (logger)                                    \
+      << ARANGO_INTERNAL_LOG_HELPER(id)
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs a message every N.the time
-////////////////////////////////////////////////////////////////////////////////
-
-#define LOG_EVERY_N_VARNAME(base, line) LOG_EVERY_N_VARNAME_CONCAT(base, line)
-#define LOG_EVERY_N_VARNAME_CONCAT(base, line) base##line
-
-#define LOG_OCCURRENCES LOG_EVERY_N_VARNAME(occurrences_, __LINE__)
-#define LOG_OCCURRENCES_MOD_N LOG_EVERY_N_VARNAME(occurrences_mod_n_, __LINE__)
-
-#define LOG_TOPIC_EVERY_N(c, a, b, n)                                 \
-  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;          \
-  ++LOG_OCCURRENCES;                                                  \
-  if (++LOG_OCCURRENCES_MOD_N > n) LOG_OCCURRENCES_MOD_N -= n;        \
-  if (LOG_OCCURRENCES_MOD_N == 1)                                     \
-  !(arangodb::Logger::isEnabled((arangodb::LogLevel::a), (b)) &&      \
-    (LOG_OCCURRENCES_MOD_N == 1))                                     \
-      ? (void)0                                                       \
-      : arangodb::LogVoidify() & (arangodb::LoggerStream()            \
-                                  << (arangodb::LogLevel::a) << (b)   \
-                                  << arangodb::Logger::LINE(__LINE__) \
-                                  << arangodb::Logger::FILE(__FILE__) \
-                                  << ::arangodb::Logger::FUNCTION(__FUNCTION__)) \
-                                  << ( ::arangodb::Logger::getShowIds() ? "["#c"] " : "" )
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for debugging during development
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-#define LOG_DEVEL \
-  LOG_TOPIC(xxxxx, ERR, ::arangodb::Logger::FIXME) << "###### "
-
-#define LOG_DEVEL_IF(cond) \
-  LOG_TOPIC_IF(xxxxx, ERR, ::arangodb::Logger::FIXME, (cond)) << "###### "
-
-#define LOG_DEVEL_EVERY_N(a, n) \
-  LOG_TOPIC_EVERY_N(xxxxx, ERR, ::arangodb::Logger::FIXME, (n)) << "###### "
-
+  #define LOG_DEVEL_LEVEL ERR
 #else
+  #define LOG_DEVEL_LEVEL DEBUG
+#endif
 
 #define LOG_DEVEL \
-  LOG_TOPIC(xxxxx, DEBUG, ::arangodb::Logger::FIXME) << "###### "
+  LOG_TOPIC(xxxxx, LOG_DEVEL_LEVEL, ::arangodb::Logger::FIXME) << "###### "
 
 #define LOG_DEVEL_IF(cond) \
-  LOG_TOPIC_IF(xxxxx, DEBUG, ::arangodb::Logger::FIXME, (cond)) << "###### "
-
-#define LOG_DEVEL_EVERY_N(a, n) \
-  LOG_TOPIC_EVERY_N(xxxxx, DEBUG, ::arangodb::Logger::FIXME, (n)) << "###### "
-
-#endif
+  LOG_TOPIC_IF(xxxxx, LOG_DEVEL_LEVEL, ::arangodb::Logger::FIXME, (cond)) << "###### "
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper class for macros
