@@ -46,9 +46,11 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/Methods/Indexes.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -1280,6 +1282,37 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             if (type.isString()) {
               _config.progress.set("creating index of type " +
                                    type.copyString() + " for " + collectionMsg);
+            }
+          }
+
+          // delete any conflicts first
+          {
+            // check ID first
+            TRI_idx_iid_t iid = 0;
+            CollectionNameResolver resolver(_config.vocbase);
+            Result res = methods::Indexes::extractHandle(col, &resolver, idxDef, iid);
+            if (res.ok() && iid != 0) {
+              // lookup by id
+              auto byId = physical->lookupIndex(iid);
+              auto byDef = physical->lookupIndex(idxDef);
+              if (byId != nullptr && byId != byDef) {
+                // drop existing byId
+                physical->dropIndex(byId->id());
+              }
+            }
+
+            // now check name;
+            std::string name =
+                basics::VelocyPackHelper::getStringValue(idxDef, StaticStrings::IndexName,
+                                                         "");
+            if (!name.empty()) {
+              // lookup by name
+              auto byName = physical->lookupIndex(name);
+              auto byDef = physical->lookupIndex(idxDef);
+              if (byName != nullptr && byName != byDef) {
+                // drop existing byName
+                physical->dropIndex(byName->id());
+              }
             }
           }
 
