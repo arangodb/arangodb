@@ -230,7 +230,6 @@ SET(ARANGOD_SOURCES
   Aql/IndexNode.cpp
   Aql/InputAqlItemRow.cpp
   Aql/LimitExecutor.cpp
-  Aql/ModificationBlocks.cpp
   Aql/ModificationExecutor.cpp
   Aql/ModificationExecutorTraits.cpp
   Aql/ModificationNodes.cpp
