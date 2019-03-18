@@ -36,6 +36,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 std::vector<std::tuple<int, std::string, LogAppenderFile*>> LogAppenderFile::_fds = {};
+int LogAppenderFile::_fileMode = S_IRUSR | S_IWUSR | S_IRGRP;
+int LogAppenderFile::_fileGroup = 0;
 
 LogAppenderStream::LogAppenderStream(std::string const& filename,
                                      std::string const& filter, int fd)
@@ -128,7 +130,7 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
       // no existing appender found yet
       int fd = TRI_TRACKED_CREATE_FILE(_filename.c_str(),
                                        O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
-                                       S_IRUSR | S_IWUSR | S_IRGRP);
+                                       _fileMode);
 
       if (fd < 0) {
         TRI_ERRORBUF;
@@ -137,6 +139,10 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
                   << "': " << TRI_GET_ERRORBUF << std::endl;
 
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
+      }
+
+      if (_fileGroup != 0) {
+        /* ignore = */ fchown(fd, -1, _fileGroup);
       }
 
       _fds.emplace_back(std::make_tuple(fd, _filename, this));
@@ -211,11 +217,15 @@ void LogAppenderFile::reopenAll() {
     // open new log file
     int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
                                      O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
-                                     S_IRUSR | S_IWUSR | S_IRGRP);
+                                     _fileMode);
 
     if (fd < 0) {
       TRI_RenameFile(backup.c_str(), filename.c_str());
       continue;
+    }
+
+    if (_fileGroup != 0) {
+      /* ignore = */ fchown(fd, -1, _fileGroup);
     }
 
     if (!Logger::_keepLogRotate) {
