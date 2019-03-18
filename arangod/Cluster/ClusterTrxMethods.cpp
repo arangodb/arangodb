@@ -60,21 +60,43 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
   auto addCollections = [&](std::string const& key, AccessMode::Type t) {
     builder.add(key, VPackValue(VPackValueType::Array));
     state.allCollections([&](TransactionCollection& col) {
-      if (col.accessType() == t) {
-        if (state.isCoordinator()) {
-          std::shared_ptr<ShardMap> shardMap = col.collection()->shardIds();
-          // coordinator starts transaction on shard leader
-          for (auto const& pair : *shardMap) {
-            TRI_ASSERT(!pair.second.empty());
-            // only add shard where server is leader
-            if (!pair.second.empty() && pair.second[0] == server) {
-              builder.add(VPackValue(pair.first));
+      if (col.accessType() != t) {
+        return true;
+      }
+      if (!state.isCoordinator()) {
+        if (col.collection()->followers()->contains(server)) {
+          builder.add(VPackValue(col.collectionName()));
+        }
+        return true;
+      }
+      
+      // coordinator starts transaction on shard leaders
+#ifdef USE_ENTERPRISE
+      if (col.collection()->isSmart() && col.collection()->type() == TRI_COL_TYPE_EDGE) {
+        auto names = col.collection()->realNames();
+        auto* ci = ClusterInfo::instance();
+        for (std::string const& name : names) {
+          auto cc = ci->getCollectionNT(state.vocbase().name(), name);
+          if (!cc) {
+            continue;
+          }
+          auto shards = ci->getShardList(std::to_string(cc->id()));
+          for (ShardID const& shard : *shards) {
+            auto sss = ci->getResponsibleServer(shard);
+            if (server == sss->at(0)) {
+              builder.add(VPackValue(shard));
             }
           }
-        } else {
-          if (col.collection()->followers()->contains(server)) {
-            builder.add(VPackValue(col.collectionName()));
-          }
+        }
+        return true;
+      }
+#endif
+      std::shared_ptr<ShardMap> shardIds = col.collection()->shardIds();
+      for (auto const& pair : *shardIds) {
+        TRI_ASSERT(!pair.second.empty());
+        // only add shard where server is leader
+        if (!pair.second.empty() && pair.second[0] == server) {
+          builder.add(VPackValue(pair.first));
         }
       }
       return true;

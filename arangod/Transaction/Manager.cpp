@@ -214,6 +214,10 @@ void Manager::garbageCollect() {
     }
   }
   
+  if (!gcBuffer.empty()) {
+    LOG_TOPIC(INFO, Logger::TRANSACTIONS) << "collecting expired transactions";
+  }
+  
   for (TRI_voc_tid_t tid : gcBuffer) {
     Result res = abortManagedTrx(tid);
     if (res.fail()) {
