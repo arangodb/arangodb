@@ -690,7 +690,9 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     }
 
     if (hint.isForced() && bestIndex == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
+          "could not use index hint to serve query; " + hint.toString());
     }
   }
 
@@ -776,7 +778,9 @@ bool transaction::Methods::findIndexHandleForAndNode(
     }
 
     if (hint.isForced() && bestIndex == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
+          "could not use index hint to serve query; " + hint.toString());
     }
   }
 
@@ -2936,20 +2940,20 @@ std::vector<std::vector<arangodb::basics::AttributeName>> transaction::Methods::
 bool transaction::Methods::getIndexForSortCondition(
     std::string const& collectionName, arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    std::vector<IndexHandle>& usedIndexes, size_t& coveredAttributes) {
+    aql::IndexHint const& hint, std::vector<IndexHandle>& usedIndexes,
+    size_t& coveredAttributes) {
   // We do not have a condition. But we have a sort!
   if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess() &&
       sortCondition->isUnidirectional()) {
     double bestCost = 0.0;
     std::shared_ptr<Index> bestIndex;
 
-    auto indexes = indexesForCollection(collectionName);
-
-    for (auto const& idx : indexes) {
+    auto considerIndex = [reference, sortCondition, itemsInIndex, &bestCost, &bestIndex,
+                          &coveredAttributes](std::shared_ptr<Index> const& idx) -> void {
       if (idx->sparse()) {
         // a sparse index may exclude some documents, so it can't be used to
         // get a sorted view of the ENTIRE collection
-        continue;
+        return;
       }
       double sortCost = 0.0;
       size_t covered = 0;
@@ -2960,6 +2964,40 @@ bool transaction::Methods::getIndexForSortCondition(
           bestIndex = idx;
           coveredAttributes = covered;
         }
+      }
+    };
+
+    auto indexes = indexesForCollection(collectionName);
+
+    if (hint.type() == aql::IndexHint::HintType::Simple) {
+      std::vector<std::string> const& hintedIndices = hint.hint();
+      for (std::string const& hinted : hintedIndices) {
+        std::shared_ptr<Index> matched;
+        for (std::shared_ptr<Index> const& idx : indexes) {
+          if (idx->name() == hinted) {
+            matched = idx;
+            break;
+          }
+        }
+
+        if (matched != nullptr) {
+          considerIndex(matched);
+          if (bestIndex != nullptr) {
+            break;
+          }
+        }
+      }
+
+      if (hint.isForced() && bestIndex == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
+            "could not use index hint to serve query; " + hint.toString());
+      }
+    }
+
+    if (bestIndex == nullptr) {
+      for (auto const& idx : indexes) {
+        considerIndex(idx);
       }
     }
 

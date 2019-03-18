@@ -41,9 +41,9 @@ class IndexHint {
   enum HintType : uint8_t { Illegal, None, Simple };
 
  public:
-  IndexHint();
-  IndexHint(AstNode const* node);
-  IndexHint(VPackSlice const& slice);
+  explicit IndexHint();
+  explicit IndexHint(AstNode const* node);
+  explicit IndexHint(VPackSlice const& slice);
 
  public:
   HintType type() const;

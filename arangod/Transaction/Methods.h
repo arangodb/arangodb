@@ -362,7 +362,8 @@ class Methods {
   ENTERPRISE_VIRT bool getIndexForSortCondition(std::string const&,
                                                 arangodb::aql::SortCondition const*,
                                                 arangodb::aql::Variable const*,
-                                                size_t, std::vector<IndexHandle>&,
+                                                size_t, aql::IndexHint const&,
+                                                std::vector<IndexHandle>&,
                                                 size_t& coveredAttributes);
 
   /// @brief factory for IndexIterator objects from AQL

@@ -462,8 +462,9 @@ std::pair<bool, bool> Condition::findIndexes(EnumerateCollectionNode const* node
   }
   if (_root == nullptr) {
     size_t dummy;
-    return std::make_pair<bool, bool>(false, trx->getIndexForSortCondition(collectionName, sortCondition, reference,
-                                         itemsInIndex, usedIndexes, dummy));
+    return std::make_pair<bool, bool>(
+        false, trx->getIndexForSortCondition(collectionName, sortCondition, reference, itemsInIndex,
+                                             node->hint(), usedIndexes, dummy));
   }
 
   return trx->getBestIndexHandlesForFilterCondition(collectionName, _ast, _root,
