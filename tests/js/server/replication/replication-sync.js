@@ -225,7 +225,7 @@ function BaseTestConfig () {
           const c = db._create(cn);
           state.indexDef = {type: 'skiplist', id: '1234567', fields: ['value']};
           c.ensureIndex(state.indexDef);
-          state.indexProps = c.index(state.indexDef.id);
+          state.masterProps = c.index(state.indexDef.id);
         },
         function (state) {
           //  already create the collection and index on the slave
@@ -235,7 +235,8 @@ function BaseTestConfig () {
         function (state) {
           const c = db._collection(cn);
           const i = c.index(state.indexDef.id);
-          assertEqual(state.indexProps.id, i.id);
+          assertEqual(state.masterProps.id, i.id);
+          assertEqual(state.masterProps.name, i.name);
         },
         true
       );
@@ -249,6 +250,7 @@ function BaseTestConfig () {
           const c = db._create(cn);
           state.indexDef = {type: 'hash', id: '1234567', fields: ['value']};
           c.ensureIndex(state.indexDef);
+          state.masterProps = c.index(state.indexDef.id);
         },
         function (state) {
           //  already create the collection and index on the slave
@@ -260,6 +262,8 @@ function BaseTestConfig () {
           const c = db._collection(cn);
           const i = c.index(state.indexDef.id);
           assertEqual(state.indexDef.type, i.type);
+          assertEqual(state.masterProps.id, i.id);
+          assertEqual(state.masterProps.name, i.name);
         },
         true
       );
@@ -273,7 +277,7 @@ function BaseTestConfig () {
           const c = db._create(sysCn, {isSystem: true});
           state.indexDef = {type: 'hash', id: '1234567', fields: ['value']};
           c.ensureIndex(state.indexDef);
-          state.indexProps = c.index(state.indexDef.id);
+          state.masterProps = c.index(state.indexDef.id);
         },
         function (state) {
           //  already create the index on the slave
@@ -285,6 +289,8 @@ function BaseTestConfig () {
           const c = db._collection(sysCn);
           const i = c.index(state.indexDef.id);
           assertEqual(state.indexDef.type, i.type);
+          assertEqual(state.masterProps.id, i.id);
+          assertEqual(state.masterProps.name, i.name);
         },
         true, true
       );
@@ -298,7 +304,7 @@ function BaseTestConfig () {
           const c = db._create(cn);
           state.indexDef = {type: 'skiplist', name: 'foo', fields: ['value']};
           c.ensureIndex(state.indexDef);
-          state.indexProps = c.index(state.indexDef.name);
+          state.masterProps = c.index(state.indexDef.id);
         },
         function (state) {
           //  already create the collection and index on the slave
@@ -308,7 +314,8 @@ function BaseTestConfig () {
         function (state) {
           const c = db._collection(cn);
           const i = c.index(state.indexDef.name);
-          assertEqual(state.indexProps._id, i._id);
+          assertEqual(state.masterProps.id, i.id);
+          assertEqual(state.masterProps.name, i.name);
         },
         true
       );
@@ -322,7 +329,7 @@ function BaseTestConfig () {
           const c = db._create(cn);
           state.indexDef = {type: 'hash', name: 'foo', fields: ['value']};
           c.ensureIndex(state.indexDef);
-          state.indexProps = c.index(state.indexDef.name);
+          state.masterProps = c.index(state.indexDef.id);
         },
         function (state) {
           //  already create the collection and index on the slave
@@ -347,7 +354,7 @@ function BaseTestConfig () {
           const c = db._create(sysCn, {isSystem: true});
           state.indexDef = {type: 'hash', name: 'foo', fields: ['value3']};
           c.ensureIndex(state.indexDef);
-          state.indexProps = c.index(state.indexDef.name);
+          state.masterProps = c.index(state.indexDef.id);
         },
         function (state) {
           //  already create the index on the slave
