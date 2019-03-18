@@ -49,10 +49,10 @@ FilterExecutorInfos::FilterExecutorInfos(RegisterId inputRegister, RegisterId nr
                     std::move(registersToClear), std::move(registersToKeep)),
       _inputRegister(inputRegister) {}
 
-FilterExecutor::FilterExecutor(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher){};
+FilterExecutor::FilterExecutor(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher) {}
 FilterExecutor::~FilterExecutor() = default;
 
-std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemRow &output) {
+std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("FilterExecutor::produceRow") {
      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

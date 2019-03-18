@@ -174,11 +174,10 @@ bool arangodb::traverser::Traverser::vertexMatchesConditions(arangodb::velocypac
   if (_opts->vertexHasFilter(depth)) {
     // We always need to destroy this vertex
     aql::AqlValue vertex = fetchVertexData(v);
+    aql::AqlValueGuard guard{vertex, true};
     if (!_opts->evaluateVertexExpression(vertex.slice(), depth)) {
-      vertex.destroy();
       return false;
     }
-    vertex.destroy();
   }
   return true;
 }
