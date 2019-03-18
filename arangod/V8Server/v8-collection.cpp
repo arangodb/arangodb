@@ -908,7 +908,7 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  auto res = methods::Collections::drop(&vocbase, collection, allowDropSystem, timeout);
+  auto res = methods::Collections::drop(*collection, allowDropSystem, timeout);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1105,7 +1105,9 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
   // properties, which will break tests. We need an extra lookup
   VPackBuilder builder;
 
-  methods::Collections::lookup(&(consoleColl->vocbase()), consoleColl->name(),
+  methods::Collections::lookup(
+    consoleColl->vocbase(), // vocbase to search
+    consoleColl->name(), // collection to find
                                [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
                                  TRI_ASSERT(coll);
 
