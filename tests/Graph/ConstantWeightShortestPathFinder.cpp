@@ -342,7 +342,6 @@ TEST_CASE("ConstantWeightShortestPathFinder", "[graph]") {
 
   auto finder = new ConstantWeightShortestPathFinder(*spo);
 
-  // FIXME: passes even if vertex doesn't exist?
   SECTION("path from vertex to itself") {
     auto start = velocypack::Parser::fromJson("\"v/0\"");
     auto end = velocypack::Parser::fromJson("\"v/0\"");
