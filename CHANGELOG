@@ -6,8 +6,10 @@ devel
   The default value for this option is `false`. Setting the option to `true`
   will embed unique ids into all log messages generated in arangod code. This
   allows for easy access to the location in the source code from which the
-  message originates. This should help support and development in identifying
-  problems.
+  message originates. This should help customers to configure custom
+  monitoring/alerting based on specific log id occurrences and will also be
+  helpful for support and development in identifying problems.
+
 
 * renamed hidden startup option `--rocksdb.delayed_write_rate` to the more
   consistent `--rocksdb.delayed-write-rate`. When the old option name is
