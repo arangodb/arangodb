@@ -851,7 +851,7 @@ void Supervision::run() {
         }
       }
 
-      // No point in progressing, if indexes cannot be advanced
+      // Leader: no point in progressing, if indexes cannot be advanced
       while (!this->isStopping() && _agent->leading()) { 
         
         // If anything was rafted, we need to
