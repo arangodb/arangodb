@@ -3595,8 +3595,16 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 }
 
 
-arangodb::Result ClusterInfo::agencyHotBackupLock(uint64_t const& timeout) {
+arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId) {
+  return Result();
+}
+  
+arangodb::Result ClusterInfo::agencyHotBackupLock(
+  std::string const& backupId, uint64_t const& timeout) {
 
+  auto const endTime =
+    std::chrono::steady_clock::now() + std::chrono::seconds(timeout);
+  
   // 1. Create /arango/Target/HotBackup/UUID = 0 TTL 60,
   //    If /arango/Target/HotBackup does not exist
   //    Else report error
@@ -3605,9 +3613,8 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(uint64_t const& timeout) {
   //    If lock obtained -> Send create
   //    Else report error
 
-  static string const hotBackupPrefix("Target/HotBackup");
-  std::string backupURL(
-    hotBackupPrefix + "/" + to_string(boost::uuids::random_generator()()));
+  std::string const hotBackupPrefix("Target/HotBackup");
+  std::string const backupURL(hotBackupPrefix + "/" + backupId);
 
   AgencyComm ac;
   VPackBuilder lock;
@@ -3624,11 +3631,11 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(uint64_t const& timeout) {
     [=](VPackSlice const& hotBackup) {
 
       if (!hotBackup.isNumber()) {
-        errMsg = "hotbackup entry is not a number: ";
+        *errMsg = "hotbackup entry is not a number: ";
         try {
-          errMsg += hotBackup.toJson();
+          *errMsg += hotBackup.toJson();
         } catch(std::exception const& e) {
-          errMsg += e.what();
+          *errMsg += e.what();
           return false;
         }
       }
@@ -3637,14 +3644,14 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(uint64_t const& timeout) {
       try {
         n = hotBackup.getNumber<short>();
       } catch (std::exception const& e) {
-        errMsg = "hotbackup entry is not convertible to short int: ";
-        errMsg += e.what();
+        *errMsg = "hotbackup entry is not convertible to short int: ";
+        *errMsg += e.what();
         return false;
       }
       
       if (n == 0) {
         *agencyResult = 0;
-        errMsg = "agency failed to acknowledge that we are recognised as hot backup entry point in time. will retry.";
+        *errMsg = "agency failed to acknowledge that we are recognised as hot backup entry point in time. will retry.";
         return false;
       }
 
@@ -3658,7 +3665,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(uint64_t const& timeout) {
     };
 
   auto agencyCallback =
-      std::make_shared<AgencyCallback>(ac, where, agencyChanged, true, false);
+      std::make_shared<AgencyCallback>(ac, backupURL, agencyChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard(
       [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
@@ -3668,11 +3675,11 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(uint64_t const& timeout) {
 
   // Try to establish hot backup lock in agency
   auto casTimeout = std::chrono::steady_clock::now() + std::chrono::seconds(60);
-  auto result = _agency.casValue(backupURL, lock, false, 60, 1);
+  auto result = _agency.casValue(backupURL, lock.slice(), false, 60.0, 1.0);
   if (!result.successful()) {
     LOG_TOPIC(ERR, Logger::HOTBACKUP)
       << "Failed to acquire cluster-wide hotbackup lock " + backupURL + result.errorDetails();
-    break;
+    return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT, "Failed to acquire cluster-wide hotbackup lock");
   }
   
   {
@@ -3682,22 +3689,22 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(uint64_t const& timeout) {
 
       // Shutting down
       if (application_features::ApplicationServer::isStopping()) {
-        return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
+        return arangodb::Result(TRI_ERROR_SHUTTING_DOWN, *errMsg);
       }
 
       // Failed to get agency lock for hot backup
       if (!*agencyResult) {
         cbGuard.fire();  // unregister cb before accessing errMsg
-        errorMsg = *errMsg;
-        return *agencyResult;
+        return arangodb::Result(TRI_ERROR_INTERNAL, "Failed to acquire hotbackup lock in agency");
       }
       
       if (std::chrono::steady_clock::now() > endTime) {
         // Don't need to remove key in agency, TTL takes care of that
-        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+        return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT, "Timed out waiting for hotbackup lock in agency");
       }
       
-      agencyCallback->executeByCallbackOrTimeout(interval);
+      agencyCallback->executeByCallbackOrTimeout(
+        std::chrono::duration_cast<double>(endTime - std::chrono::steady_clock::now()).count());
         
     }
   }

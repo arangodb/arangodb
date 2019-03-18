@@ -2720,76 +2720,142 @@ int fetchEdgesFromEngines(std::string const& dbname,
 arangodb::Result hotBackupCoordinator(
   HotBackupMode const& mode, uint64_t const& wait) {
 
+  using namespace std::chrono;
+
+  // backup's UUID
+  std::string const backupId = to_string(boost::uuids::random_generator()());
+    VPackBuilder lock;
+    {
+      VPackObjectBuilder o(&lock);
+      lock.add("backupId", VPackValue(backupId));
+    }
+  
+  // Record when we need to bail out
+  if (wait > 60) {
+    LOG_TOPIC(INFO, Logger::HOTBACKUP) <<
+      "Potentially hazardous long hot backup timeout " << wait << " s";
+  }
+  auto end = steady_clock::now() + seconds(wait);
+  
+  // Cluster info instance for agency operations
   ClusterInfo* ci = ClusterInfo::instance();
 
   // Go to backup mode for 5 minutes if and only if not already in
-  // backup mode. Otherwise we cannot know, why the supervision was
-  // disable and might be enabled any time. This seems enough to make sure that
-  // no other backup is going on?
-
-  auto hlRes = ci->agencyHotBackupLock(wait);
-  if (!hlRes.successful()) {
-    return hlRes;
+  // backup mode. Otherwise we cannot know, why backup mode was activated
+  // We specifically want to make sure that no other backup is going on.
+  auto hlRes = ci->agencyHotBackupLock(backupId, wait);
+  if (!hlRes.ok()) {
+    return hlRes; // Failed to go to backup mode 
+  }
+  
+  if (end < steady_clock::now()) {
+    LOG_TOPIC(INFO, Logger::HOTBACKUP)
+      << "Hot backup didn't get to locking phase in within timeout " << wait
+      << "s. Unlocking hot backups in agency.";
+    auto hlRes = ci->agencyHotBackupUnlock(backupId);
+    return arangodb::Result(
+      TRI_ERROR_CLUSTER_TIMEOUT, "Hot bckup timeout before locking phase");
   }
 
   // acquire agency dump
-  auto agency = std::make_shared<VPackBuilder>;
+  auto agency = std::make_shared<VPackBuilder>();
   arangodb::Result dumpRes = ci->agencyDump(agency);
-  if (!dumpRes.successful()) {
+  if (!dumpRes.ok()) {
     LOG_TOPIC(ERR, Logger::HOTBACKUP)
       << "Failed to acquire agency dump: " << dumpRes.errorMessage();
-    return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
+    return arangodb::Result(
+      TRI_ERROR_CLUSTER_TIMEOUT,
+      std::string("Failed to acquire agency dump: ") + dumpRes.errorMessage());
   }
 
-
-  
-  
-  auto adRes = ci->agencuDump()
-  
-  auto result = _agency.casValue(
-    "Target/Backup", off.slice(), on.slice(), 300, 10);
-
-  while (true) {
-    0;
-  }
-  
-  // We need to stop right here! Failure:
-  if (!result.successful()) {
-    return arangodb::Result(result.errorCode(), result.errorMessage());
+  // Call lock on all database servers 
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
   }
 
-  // Now try to lock down the db servers
-  std::vector<arangodb::ClusterCommRequest> locks;
-  static std::string const lockURL = "/_admin/hot-backup/lock";
-  for (auto const& dbServer : _DBServers) {
-    locks.emplace_back("server:" + dbServer.first, body);
-  }
+  double lockWait = 1.0;
+  std::vector<ServerID> dbServers = ci->getCurrentDBServers();
   
-
-/*  AgencyOperation newVal("Supervision/Maintenance", );
-  AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
-  AgencyPrecondition precondition("Plan/Databases/" + name,
-                                  AgencyPrecondition::Type::EMPTY, true);
-  AgencyWriteTransaction trx({newVal, incrementVersion}, precondition);
-
-  res = ac.sendTransactionWithFailover(trx, realTimeout);
-      operations['/arango/Supervision/Maintenance'] =
-        {"op":"set","new":true,"ttl":3600};
-
-  std::vector<ClusterCommRequest> rqs;
-  for (auto const& dbserver : _DBServers) {
+  while (cc != nullptr && end < steady_clock::now()) {
     
-  }
-*/
-/*  auto it = _shardServers.find(shardId);
-  if (it != _shardServers.end()) {
-    servers = (*it).second;
-    return arangodb::Result();
+    CoordTransactionID coordTransactionID = TRI_NewTickServer();
+    std::string const lockUrl =
+      std::string("/_admin/hotbackup/lock?timeout=") + std::to_string(lockWait);
+
+    auto body = std::make_shared<std::string const>(lock.toJson());
+    std::unordered_map<std::string, std::string> headers;
+
+    auto lockWaitEnd = steady_clock::now() + seconds((uint64_t)lockWait);
+    
+    std::unordered_map<std::string, OperationID> lockRes;
+    for (auto const& dbServer : dbServers) {
+      cc->asyncRequest(
+        "", coordTransactionID, "server:" + dbServer, RequestType::POST, lockUrl, body,
+        headers, nullptr, lockWait);
+    }
+
+    // not stopping && not timed out
+    uint64_t nLocks;
+    while (cc != nullptr && lockWaitEnd < steady_clock::now()) {
+
+      auto const waitRes = cc->wait(
+        coordTransactionID, 0, "",
+        duration<double>(lockWaitEnd - steady_clock::now()).count());
+
+      if (waitRes.status == CL_COMM_SENT) {
+        auto body = waitRes.result->getBodyVelocyPack();
+        VPackSlice slc = body->slice();
+        // Sanity check
+        if (slc.isObject()
+            && slc.hasKey("backupId") && slc.get("backupId").isString()
+            && slc.hasKey("locked")   && slc.get("locked").isBoolean()) {
+          std::string otherBackupId = slc.get("backupId").copyString();
+          bool locked = (slc.get("locked").getBool());
+          if (backupId != otherBackupId) {
+            std::stringstream s;
+            s << std::string("Lock result contains wrong backup ID. Mine:");
+            s << backupId + " " + waitRes.destination + "'s " + otherBackupId + ". Failing!";
+            LOG_TOPIC(ERR, Logger::HOTBACKUP) << s.str();
+            return arangodb::Result(TRI_ERROR_INTERNAL, s.str());
+          }
+          if (!locked) {
+            std::stringstream s;
+            s += std::string("Lock attempt rejected by ") + waitRes.destination + ". Failing!";
+            LOG_TOPIC(ERR, Logger::HOTBACKUP) << s.str();
+            return arangodb::Result(TRI_ERROR_INTERNAL, s.str());
+          }
+        }
+        if (++nLocks == dbServers.size()) {
+          break;
+        }
+      } else {
+        std::stringstream s;
+        s += "Invalid response from ";
+        s += backupId + ": " + slc.toJson() + ".Failing!"; 
+        LOG_TOPIC(ERR, Logger::HOTBACKUP) << s.str();
+        return arangodb::Result(TRI_ERROR_INTERNAL, s.str());
+      }
+    }
+
+    if (++nLocks == dbServers.size()) {
+      LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Got global transaction lock ...";
+      break;
+    }
+
+    // Busy loop? Think!
+    
+    lockWait = (lockWait < 5.0) ? 1.1 * lockWait : 5.0;
   }
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER)
-  << "Strange, did not find shard in _shardServers: " << shardId;*/
+  std::string const backupUrl = std::string("/_admin/hotbackup/create");
+  for (auto const& dbServer : dbServers) {
+    cc->asyncRequest(
+      "", coordTransactionID, "server:" + dbServer, RequestType::POST, url, body,
+      headers, nullptr, lockWait);
+  }
+
   return arangodb::Result();
-}
-
+  
 }  // namespace arangodb

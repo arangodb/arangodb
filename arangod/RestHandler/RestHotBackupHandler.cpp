@@ -25,7 +25,7 @@
 
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Utils/ExecContext.h"
 
@@ -51,7 +51,7 @@ RestStatus RestHotBackupHandler::execute() {
       // 1. Make mark in agency & Kill supervision in one transaction
       // 2. Try to get global lock
       // 3. Make backup
-      Result result = ClusterInfo::instance()->hotBackupCoordinator();
+      Result result = hotBackupCoordinator(arangodb::CONSISTENT, 60.0);
       if (result.ok()) {
         generateResult(rest::ResponseCode::OK, VPackSlice());
       }
@@ -75,46 +75,47 @@ RestStatus RestHotBackupHandler::execute() {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
       } // else
       
-    }
 
-    /// add test for rocksdb engine
+      /// add test for rocksdb engine
     
-    auto reportError = [&]() {
-      if (!operation->result().isEmpty()) {
-        std::string msg = "Error, details: ";
-        msg += operation->resultSlice().toJson();
-        generateError(operation->restResponseCode(),
-                      operation->restResponseError(), msg);
-      } else if (operation->errorMessage().empty()) {
-        generateError(operation->restResponseCode(),
-                      operation->restResponseError());
-      } else {
-        generateError(operation->restResponseCode(),
-                      operation->restResponseError(),
-                      operation->errorMessage());
-      }
-    };
+      auto reportError = [&]() {
+                           if (!operation->result().isEmpty()) {
+                             std::string msg = "Error, details: ";
+                             msg += operation->resultSlice().toJson();
+                             generateError(operation->restResponseCode(),
+                                           operation->restResponseError(), msg);
+                           } else if (operation->errorMessage().empty()) {
+                             generateError(operation->restResponseCode(),
+                                           operation->restResponseError());
+                           } else {
+                             generateError(operation->restResponseCode(),
+                                           operation->restResponseError(),
+                                           operation->errorMessage());
+                           }
+                         };
 
-    if (operation) {
-      if (!operation->valid()) {
-        reportError();
-        return RestStatus::DONE;
-      }
-      operation->execute();
+      if (operation) {
+        if (!operation->valid()) {
+          reportError();
+          return RestStatus::DONE;
+        }
+        operation->execute();
 
-      if (operation->success()) {
-        generateOk(rest::ResponseCode::OK, operation->resultSlice());
+        if (operation->success()) {
+          generateOk(rest::ResponseCode::OK, operation->resultSlice());
+        } else {
+          reportError();
+        }
       } else {
-        reportError();
-      }
-    } else {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-    } // else
-//>>>>>>> a67fb59d8e5af66a37481c3cd3a3b562ddcb97fe
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+      } // else
+    }
+    
   } else {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "you need admin rights for hotbackup operations");
   } // else
+
   return RestStatus::DONE;
   
 } // RestHotBackupHandler::execute

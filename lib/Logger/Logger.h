@@ -141,6 +141,7 @@ class Logger {
   static LogTopic FLUSH;
   static LogTopic GRAPHS;
   static LogTopic HEARTBEAT;
+  static LogTopic HOTBACKUP;
   static LogTopic HTTPCLIENT;
   static LogTopic MAINTENANCE;
   static LogTopic MEMORY;
