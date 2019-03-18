@@ -96,7 +96,8 @@ value will be applied as well.
 If you specify `--log.file-group name` then any newly created log file
 will try to use "name" as group name. Please note that you have to be
 a member of that group. Otherwise the group ownership will not be
-changed.
+changed. Please note that this option is only available under Linux
+and Mac. It is not available under Windows.
 
 ### Forcing direct output
 
