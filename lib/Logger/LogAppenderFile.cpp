@@ -141,9 +141,11 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
       }
 
+#ifdef ARANGODB_HAVE_SETGID
       if (_fileGroup != 0) {
         /* ignore = */ fchown(fd, -1, _fileGroup);
       }
+#endif
 
       _fds.emplace_back(std::make_tuple(fd, _filename, this));
       _fd = fd;
@@ -224,9 +226,11 @@ void LogAppenderFile::reopenAll() {
       continue;
     }
 
+#ifdef ARANGODB_HAVE_SETGID
     if (_fileGroup != 0) {
       /* ignore = */ fchown(fd, -1, _fileGroup);
     }
+#endif
 
     if (!Logger::_keepLogRotate) {
       FileUtils::remove(backup);
