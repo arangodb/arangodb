@@ -43,6 +43,7 @@
 
 #include <lib/Logger/LogMacros.h>
 
+#include <memory>
 #include <utility>
 
 using namespace arangodb;
@@ -65,8 +66,10 @@ static void resolveFCallConstAttributes(AstNode* fcall) {
 }  // namespace
 
 IndexExecutorInfos::IndexExecutorInfos(
-    RegisterId outputRegister, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+    RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToClear,
+    // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     std::vector<std::string> const& projections, transaction::Methods* trxPtr,
@@ -80,7 +83,7 @@ IndexExecutorInfos::IndexExecutorInfos(
                     make_shared_unordered_set({outputRegister}),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
-      _indexes(indexes),
+      _indexes(std::move(indexes)),
       _condition(condition),
       _ast(ast),
       _hasMultipleExpansions(false),
@@ -107,9 +110,10 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _allowCoveringIndexOptimization(false),
       _cursor(nullptr),
       _cursors(_infos.getIndexes().size()),
+      _currentIndex(0),
+      _alreadyReturned(),
       _indexesExhausted(false),
       _isLastIndex(false) {
-
   TRI_ASSERT(!_infos.getIndexes().empty());
 
   if (_infos.getCondition() != nullptr) {
@@ -340,7 +344,7 @@ void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
   auto ast = _infos.getAst();
-  AstNode* condition = const_cast<AstNode*>(_infos.getCondition());
+  auto* condition = const_cast<AstNode*>(_infos.getCondition());
 
   // modify the existing node in place
   TEMPORARILY_UNLOCK_NODE(condition);
@@ -435,7 +439,7 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
       }
     }
     TRI_ASSERT(_input.isInitialized());
-    TRI_ASSERT(getCursor()->hasMore());
+    TRI_ASSERT(getCursor() != nullptr && getCursor()->hasMore());
 
     IndexIterator::DocumentCallback callback;
 
@@ -473,10 +477,8 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     TRI_ASSERT(!getIndexesExhausted());
 
     // Read the next elements from the indexes
-    //    auto saveReturned = _infos.getReturned();
     bool more = readIndex(callback, hasWritten);
-    //    TRI_ASSERT(!more || _infos.getCursor()->hasMore());
-    TRI_ASSERT((getCursor() != nullptr || !more) || (getCursor() != nullptr && more == getCursor()->hasMore()));
+    TRI_ASSERT(getCursor() != nullptr || !more);
 
     if (!more) {
       _input = InputAqlItemRow{CreateInvalidInputRowHint{}};

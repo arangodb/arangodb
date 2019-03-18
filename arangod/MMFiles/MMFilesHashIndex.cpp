@@ -655,7 +655,7 @@ void MMFilesHashIndex::batchInsertUnique(
   }
 
   // functions that will be called for each thread
-  auto creator = [&trx, this]() -> void* {
+  auto creator = [this]() -> void* {
     return new MMFilesIndexLookupContext(&_collection, nullptr, numPaths());
   };
   auto destroyer = [](void* userData) {
@@ -774,7 +774,7 @@ void MMFilesHashIndex::batchInsertMulti(
   }
 
   // functions that will be called for each thread
-  auto creator = [&trx, this]() -> void* {
+  auto creator = [this]() -> void* {
     return new MMFilesIndexLookupContext(&_collection, nullptr, numPaths());
   };
   auto destroyer = [](void* userData) {

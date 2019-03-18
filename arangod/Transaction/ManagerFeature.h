@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,30 +20,33 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_CONTEXT_DATA_H
-#define ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_CONTEXT_DATA_H 1
+#ifndef ARANGODB_TRANSACTION_MANAGER_FEATURE_H
+#define ARANGODB_TRANSACTION_MANAGER_FEATURE_H 1
 
-#include "Basics/Common.h"
-#include "Transaction/ContextData.h"
-#include "VocBase/voc-types.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-class LogicalCollection;
+namespace transaction {
 
-/// @brief transaction type
-class RocksDBTransactionContextData final : public transaction::ContextData {
+class Manager;
+
+class ManagerFeature final : public application_features::ApplicationFeature {
  public:
-  RocksDBTransactionContextData() = default;
-  ~RocksDBTransactionContextData() = default;
+  explicit ManagerFeature(application_features::ApplicationServer& server);
 
-  /// @brief pin data for the collection
-  /// there is nothing to do for the RocksDB engine
-  void pinData(arangodb::LogicalCollection*) override {}
+  void prepare() override final;
+  void unprepare() override final;
 
-  /// @brief whether or not the data for the collection is pinned
-  /// note that this is always true in RocksDB
-  bool isPinned(TRI_voc_cid_t) const override { return true; }
+  static transaction::Manager* manager() {
+    TRI_ASSERT(MANAGER != nullptr);
+    return MANAGER.get();
+  }
+
+ private:
+  static std::unique_ptr<transaction::Manager> MANAGER;
 };
+
+}  // namespace transaction
 }  // namespace arangodb
 
 #endif
