@@ -8,26 +8,25 @@ from enum import Enum
 class Operation(Enum):
     READ = 1
     MODIFY = 2
-    READ_ONLY = 3
 
 class Status(Enum):
     OK = 0
-    OK_REPLACED = 0
-    FAIL = 1
+    OK_REPLACED = 1
+    FAIL = 2
 
 def is_good(status):
     return status in (Status.OK, Status.OK_REPLACED)
 
 import re
-g_log_topic_pattern = re.compile("(?P<macro>LOG_TOPIC(_(RAW|IF|EVERY_N))?)\((?P<params>[^)]*)\)")
+g_log_topic_pattern = re.compile("(?P<macro>LOG_TOPIC(_(IF|TRX))?)\((?P<param>[^),]*),(?P<rest>.*)")
 
 import hashlib
 g_hash_algorithm = hashlib.md5()
 
 
-def generate_id(location_string, params, id_database):
+def generate_id(location_string, params, rest, id_database):
     id_len = 5
-    g_hash_algorithm.update((location_string + params).encode())
+    g_hash_algorithm.update((location_string + params + rest).encode())
     digest = g_hash_algorithm.hexdigest()
     uid = digest[0:id_len]
 
@@ -45,16 +44,12 @@ def handle_file(fullpath, project_root, id_database, operation):
     project_path = os.path.relpath(fullpath, project_root)
     status = Status.OK
 
-    match_dict = dict()
-    match_dict["LOG_TOPIC"] = 2
-    match_dict["LOG_TOPIC_RAW"] = 2
-    match_dict["LOG_TOPIC_IF"] = 3
-    match_dict["LOG_TOPIC_EVERY_N"] = 3
+    levels = ( 'TRACE', 'INFO', 'WARN', 'DEBUG', 'ERR', 'FATAL')
 
     if operation == Operation.MODIFY:
         target_file = fullpath + ".replacement"
         with open(target_file, 'w') as target_file_handle:
-            status = do_operation(fullpath, project_path, target_file_handle, id_database, match_dict, operation)
+            status = do_operation(fullpath, project_path, target_file_handle, id_database, levels, operation)
 
         if status == Status.OK_REPLACED:
             os.rename(target_file, fullpath)
@@ -63,7 +58,7 @@ def handle_file(fullpath, project_root, id_database, operation):
 
     else:
         #not modifying operation
-        status = do_operation(fullpath, project_path, None, id_database, match_dict, operation)
+        status = do_operation(fullpath, project_path, None, id_database, levels, operation)
 
 
     if is_good(status):
@@ -71,9 +66,8 @@ def handle_file(fullpath, project_root, id_database, operation):
     return status
 
 
-def do_operation(fullpath, project_path, target_file_handle, id_database, match_dict, operation):
+def do_operation(fullpath, project_path, target_file_handle, id_database, levels, operation):
     status = Status.OK
-
     with open(fullpath) as source_file_handle:
         for cnt, line in enumerate(source_file_handle):
             match = g_log_topic_pattern.search(line)
@@ -81,24 +75,21 @@ def do_operation(fullpath, project_path, target_file_handle, id_database, match_
             if match:
                 location_string = "{}:{}".format(project_path, cnt)
                 macro = match.group('macro')
-                original_params = match.group('params')
-                splitted = [ x.strip() for x in original_params.split(',') ]
-
-                original_len = match_dict[macro]
+                rest = match.group('rest')
+                param = match.group('param').strip()
 
                 if operation == Operation.MODIFY:
-                    if len(splitted) == original_len:
+                    if param in levels:
                         # replace with new id
-                        uid = generate_id(location_string, original_params, id_database)
-                        replacement = '{}({}, {})'.format(macro,uid, original_params)
-                        #output = "{} -- {}".format(location_string, replacement)
-                        #print("REPLACE")
+                        uid = generate_id(location_string, param, rest, id_database)
+                        replacement = '{}({}, {}, {}'.format(macro,uid, param, rest)
+                        output = "{} -- {}".format(location_string, replacement)
+                        #print(output)
                         status = Status.OK_REPLACED
                         newline = g_log_topic_pattern.sub(replacement, line)
                         target_file_handle.write(newline)
 
-
-                    elif len(splitted) == original_len + 1:
+                    elif len(param) == 5:
                         # nothing to do - just copy
                         target_file_handle.write(line)
 
@@ -109,13 +100,13 @@ def do_operation(fullpath, project_path, target_file_handle, id_database, match_
                         status = Status.FAIL
 
                 if operation == Operation.READ:
-                    if len(splitted) == original_len:
+                    if param in levels:
                         # still unmodified
                         continue
 
-                    elif len(splitted) == original_len + 1:
+                    elif len(param) == 5:
                         # we need to store / check the id
-                        uid = splitted[0].replace('"','')
+                        uid = param
 
                         if uid in id_database:
                             print("collision check failed - the following lines contain equal ids:")
@@ -127,7 +118,7 @@ def do_operation(fullpath, project_path, target_file_handle, id_database, match_
 
                     else:
                         print("BROKEN PARAMS IN:")
-                        output = "{} -- {}".format(location_string, original_params)
+                        output = "{} -- {}".format(location_string, param)
                         print(output)
                         status = Status.FAIL
 
@@ -143,7 +134,7 @@ def do_operation(fullpath, project_path, target_file_handle, id_database, match_
             if not is_good(status):
                 return status
 
-    return Status.OK
+    return status
 
 
 def generate_ids_main(check_only, project_root, directories_to_include, directories_or_files_to_exclude, id_database):
@@ -178,8 +169,9 @@ if __name__ == "__main__":
     root = os.path.dirname(__file__)
     root = os.path.abspath(root + os.path.sep + os.pardir)
     check_only = False
-    sys.exit(generate_ids_main(check_only, root                             #project_root
-            ,["arangod", "arangosh", "enterprise", "lib"]        #dirs to include
-            ,[".", "lib/Logger/LogMacros.h"]                    #dirs and files to exclude (does not purge the dir)
-            , dict()                                            #database
+    sys.exit(generate_ids_main(check_only, root              #project_root
+            ,["arangod", "arangosh", "enterprise", "lib"]    #dirs to include
+            ,[".", "lib/Logger/LogMacros.h",
+              "arangod/StorageEngine/TransactionState.h"]    #dirs and files to exclude (does not purge the dir)
+            , dict()                                         #database
             ));

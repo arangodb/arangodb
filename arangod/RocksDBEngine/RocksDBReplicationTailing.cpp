@@ -45,9 +45,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rocksutils;
 
-// define to INFO to see the WAL output
-#define _LOG TRACE
-
 namespace {
 static std::string const emptyString;
 }
@@ -128,7 +125,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
   void LogData(rocksdb::Slice const& blob) override {
     RocksDBLogType type = RocksDBLogValue::type(blob);
 
-    LOG_TOPIC(_LOG, Logger::REPLICATION) << "[LOG] " << rocksDBLogTypeName(type);
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "[LOG] " << rocksDBLogTypeName(type);
     switch (type) {
       case RocksDBLogType::DatabaseCreate:  // not handled here
       case RocksDBLogType::DatabaseDrop: {
@@ -194,7 +191,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
           LogicalCollection* coll = loadCollection(cid);
           TRI_ASSERT(coll != nullptr);
           {
-            uint64_t tick = _currentSequence; 
+            uint64_t tick = _currentSequence;
             VPackObjectBuilder marker(&_builder, true);
             marker->add("tick", VPackValue(std::to_string(tick)));
             marker->add("type", VPackValue(REPLICATION_COLLECTION_TRUNCATE));
@@ -350,7 +347,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status PutCF(uint32_t column_family_id, rocksdb::Slice const& key,
                         rocksdb::Slice const& value) override {
     tick();
-    LOG_TOPIC(_LOG, Logger::REPLICATION)
+    LOG_TOPIC(TRACE, Logger::REPLICATION)
         << "PUT: key:" << key.ToString() << "  value: " << value.ToString();
 
     if (column_family_id == _definitionsCF) {
@@ -439,7 +436,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
     if (cfId != _primaryCF) {
       return;  // ignore all document operations
     }
-    
+
     if (_state != TRANSACTION && _state != SINGLE_REMOVE) {
       resetTransientState();
       return;
@@ -511,7 +508,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
 
   void writeCommitMarker() {
     TRI_ASSERT(_state == TRANSACTION);
-    LOG_TOPIC(_LOG, Logger::REPLICATION) << "tick: " << _currentSequence << " commit transaction";
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "tick: " << _currentSequence << " commit transaction";
 
     _builder.openObject();
     _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
@@ -640,7 +637,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase, uint64_t ti
   uint64_t lastTick = tickStart;         // generally contains begin of last wb
   uint64_t lastWrittenTick = tickStart;  // contains end tick of last wb
   uint64_t lastScannedTick = tickStart;
-  
+
   // prevent purging of WAL files while we are in here
   RocksDBFilePurgePreventer purgePreventer(rocksutils::globalRocksEngine()->disallowPurging());
 
@@ -697,7 +694,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase, uint64_t ti
     }
 
     lastTick = batch.sequence;
-    LOG_TOPIC(_LOG, Logger::REPLICATION) << "Start WriteBatch tick: " << lastTick;
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "Start WriteBatch tick: " << lastTick;
     handler->startNewBatch(batch.sequence);
     s = batch.writeBatchPtr->Iterate(handler.get());
     if (!s.ok()) {
@@ -706,7 +703,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase, uint64_t ti
     }
 
     lastWrittenTick = handler->endBatch();
-    LOG_TOPIC(_LOG, Logger::REPLICATION) << "End WriteBatch written-tick: " << lastWrittenTick;
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "End WriteBatch written-tick: " << lastWrittenTick;
     TRI_ASSERT(lastTick <= lastWrittenTick);
     if (!minTickIncluded && lastWrittenTick <= tickStart && lastWrittenTick <= tickEnd) {
       minTickIncluded = true;

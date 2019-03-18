@@ -77,15 +77,6 @@
       << (::arangodb::LogLevel::level) << (logger)                          \
       << ARANGO_INTERNAL_LOG_HELPER(id)
 
-
-// Can be used to pass the LogLevel in as variable
-#define LOG_TOPIC_RAW(id, level, logger)                      \
-  !::arangodb::Logger::isEnabled((level), (logger))           \
-    ? (void)nullptr                                           \
-    : ::arangodb::LogVoidify() & (::arangodb::LoggerStream()  \
-      << (level) << (logger)                                  \
-      << ARANGO_INTERNAL_LOG_HELPER(id)
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic given that a condition is true
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +87,6 @@
     : ::arangodb::LogVoidify() & (arangodb::LoggerStream()                          \
       << (arangodb::LogLevel::level) << (logger)                                    \
       << ARANGO_INTERNAL_LOG_HELPER(id)
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for debugging during development

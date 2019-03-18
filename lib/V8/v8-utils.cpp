@@ -697,16 +697,15 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        "invalid option value for sslProtocol");
       }
 
-      sslProtocol =
-          TRI_ObjectToUInt64(isolate,
-                             TRI_GetProperty(context, isolate, options, "sslProtocol"), false);
+      sslProtocol = TRI_ObjectToUInt64(
+          isolate, TRI_GetProperty(context, isolate, options, "sslProtocol"), false);
     }
 
     // method
     if (TRI_HasProperty(context, isolate, options, "method")) {
       std::string methodString =
-          TRI_ObjectToString(isolate,
-                             TRI_GetProperty(context, isolate, options, "method"));
+          TRI_ObjectToString(isolate, TRI_GetProperty(context, isolate, options,
+                                                      "method"));
 
       method = HttpRequest::translateMethod(methodString);
     }
@@ -733,20 +732,22 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        "invalid option value for timeout");
       }
 
-      timeout = TRI_ObjectToDouble(isolate,
-                                   TRI_GetProperty(context, isolate, options, "timeout"));
+      timeout = TRI_ObjectToDouble(isolate, TRI_GetProperty(context, isolate,
+                                                            options, "timeout"));
     }
 
     // return body as a buffer?
     if (TRI_HasProperty(context, isolate, options, "returnBodyAsBuffer")) {
-      returnBodyAsBuffer = TRI_ObjectToBoolean(
-          isolate, TRI_GetProperty(context, isolate, options, "returnBodyAsBuffer"));
+      returnBodyAsBuffer =
+          TRI_ObjectToBoolean(isolate, TRI_GetProperty(context, isolate, options,
+                                                       "returnBodyAsBuffer"));
     }
 
     // follow redirects
     if (TRI_HasProperty(context, isolate, options, "followRedirects")) {
-      followRedirects = TRI_ObjectToBoolean(
-          isolate, TRI_GetProperty(context, isolate, options, "followRedirects"));
+      followRedirects =
+          TRI_ObjectToBoolean(isolate, TRI_GetProperty(context, isolate, options,
+                                                       "followRedirects"));
     }
 
     // max redirects
@@ -756,8 +757,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        "invalid option value for maxRedirects");
       }
 
-      maxRedirects = (int)TRI_ObjectToInt64(
-          isolate, TRI_GetProperty(context, isolate, options, "maxRedirects"));
+      maxRedirects =
+          (int)TRI_ObjectToInt64(isolate, TRI_GetProperty(context, isolate, options,
+                                                          "maxRedirects"));
     }
 
     if (!body.empty() &&
@@ -768,21 +770,20 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     if (TRI_HasProperty(context, isolate, options, "returnBodyOnError")) {
-      returnBodyOnError = TRI_ObjectToBoolean(
-          isolate, TRI_GetProperty(context, isolate, options, "returnBodyOnError"));
+      returnBodyOnError =
+          TRI_ObjectToBoolean(isolate, TRI_GetProperty(context, isolate, options,
+                                                       "returnBodyOnError"));
     }
 
     if (TRI_HasProperty(context, isolate, options, "jwt")) {
-      jwtToken =
-          TRI_ObjectToString(isolate, TRI_GetProperty(context, isolate, options, "jwt"));
+      jwtToken = TRI_ObjectToString(isolate, TRI_GetProperty(context, isolate,
+                                                             options, "jwt"));
     } else if (TRI_HasProperty(context, isolate, options, "username")) {
-      username =
-          TRI_ObjectToString(isolate,
-                             TRI_GetProperty(context, isolate, options, "username"));
+      username = TRI_ObjectToString(isolate, TRI_GetProperty(context, isolate, options,
+                                                             "username"));
       if (TRI_HasProperty(context, isolate, options, "password")) {
-        password =
-            TRI_ObjectToString(isolate,
-                               TRI_GetProperty(context, isolate, options, "password"));
+        password = TRI_ObjectToString(isolate, TRI_GetProperty(context, isolate, options,
+                                                               "password"));
       }
     }
   }
@@ -1870,29 +1871,11 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string prefix;
-  LogLevel ll = LogLevel::WARN;
 
   StringUtils::tolowerInPlace(&ls);
   StringUtils::tolowerInPlace(&ts);
 
-  if (ls == "fatal") {
-    prefix = "FATAL! ";
-    ll = LogLevel::ERR;
-  } else if (ls == "error") {
-    ll = LogLevel::ERR;
-  } else if (ls == "warning" || ls == "warn") {
-    ll = LogLevel::WARN;
-  } else if (ls == "info") {
-    ll = LogLevel::INFO;
-  } else if (ls == "debug") {
-    ll = LogLevel::DEBUG;
-  } else if (ls == "trace") {
-    ll = LogLevel::TRACE;
-  } else {
-    prefix = ls + "!";
-  }
-
-  LogTopic* topic = ts.empty() ? nullptr : LogTopic::lookup(ts);
+  LogTopic* topic = ts.empty() ? &Logger::FIXME : LogTopic::lookup(ts);
 
   if (args[1]->IsArray()) {
     auto loglines = v8::Handle<v8::Array>::Cast(args[1]);
@@ -1907,13 +1890,26 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
         logLineVec.push_back(*message);
       }
     }
+
     for (auto& message : logLineVec) {
-      if (topic == nullptr) {
-        LOG_TOPIC_RAW(ll, Logger::FIXME) << prefix << message;
+      if (ls == "fatal") {
+        prefix = "FATAL! ";
+        LOG_TOPIC(ERR, *topic) << prefix << message;
+      } else if (ls == "error") {
+        LOG_TOPIC(ERR, *topic) << prefix << message;
+      } else if (ls == "warning" || ls == "warn") {
+        LOG_TOPIC(WARN, *topic) << prefix << message;
+      } else if (ls == "info") {
+        LOG_TOPIC(INFO, *topic) << prefix << message;
+      } else if (ls == "debug") {
+        LOG_TOPIC(DEBUG, *topic) << prefix << message;
+      } else if (ls == "trace") {
+        LOG_TOPIC(TRACE, *topic) << prefix << message;
       } else {
-        LOG_TOPIC_RAW(ll, *topic) << prefix << message;
+        prefix = ls + "!";
+        LOG_TOPIC(WARN, *topic) << prefix << message;
       }
-    }
+    } // for
   } else {
     TRI_Utf8ValueNFC message(isolate, args[1]);
 
@@ -1922,11 +1918,25 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     std::string msg = *message;
-    if (topic == nullptr) {
-      LOG_TOPIC_RAW(ll, Logger::FIXME) << prefix << msg;
+
+    if (ls == "fatal") {
+      prefix = "FATAL! ";
+      LOG_TOPIC(ERR, *topic) << prefix << message;
+    } else if (ls == "error") {
+      LOG_TOPIC(ERR, *topic) << prefix << message;
+    } else if (ls == "warning" || ls == "warn") {
+      LOG_TOPIC(WARN, *topic) << prefix << message;
+    } else if (ls == "info") {
+      LOG_TOPIC(INFO, *topic) << prefix << message;
+    } else if (ls == "debug") {
+      LOG_TOPIC(DEBUG, *topic) << prefix << message;
+    } else if (ls == "trace") {
+      LOG_TOPIC(TRACE, *topic) << prefix << message;
     } else {
-      LOG_TOPIC_RAW(ll, *topic) << prefix << msg;
+      prefix = ls + "!";
+      LOG_TOPIC(WARN, *topic) << prefix << message;
     }
+
   }
 
   TRI_V8_RETURN_UNDEFINED();
