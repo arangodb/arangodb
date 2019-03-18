@@ -20,22 +20,24 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "TransactionManagerFeature.h"
+#include "ManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/TransactionManager.h"
+#include "Transaction/Manager.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
 namespace arangodb {
+namespace transaction {
 
-std::unique_ptr<TransactionManager> TransactionManagerFeature::MANAGER;
+std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
-TransactionManagerFeature::TransactionManagerFeature(application_features::ApplicationServer& server)
+ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "TransactionManager") {
   setOptional(false);
   startsAfter("BasicsPhase");
@@ -43,12 +45,13 @@ TransactionManagerFeature::TransactionManagerFeature(application_features::Appli
   startsAfter("EngineSelector");
 }
 
-void TransactionManagerFeature::prepare() {
+void ManagerFeature::prepare() {
   TRI_ASSERT(MANAGER == nullptr);
   TRI_ASSERT(EngineSelectorFeature::ENGINE != nullptr);
   MANAGER = EngineSelectorFeature::ENGINE->createTransactionManager();
 }
 
-void TransactionManagerFeature::unprepare() { MANAGER.reset(); }
+void ManagerFeature::unprepare() { MANAGER.reset(); }
 
+}  // namespace transaction
 }  // namespace arangodb

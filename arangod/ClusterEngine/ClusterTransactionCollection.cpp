@@ -20,9 +20,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterTransactionCollection.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterInfo.h"
+#include "ClusterTransactionCollection.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
@@ -37,8 +37,7 @@ ClusterTransactionCollection::ClusterTransactionCollection(TransactionState* trx
                                                            int nestingLevel)
     : TransactionCollection(trx, cid, accessType),
       _lockType(AccessMode::Type::NONE),
-      _nestingLevel(nestingLevel),
-      _usageLocked(false) {}
+      _nestingLevel(nestingLevel) {}
 
 ClusterTransactionCollection::~ClusterTransactionCollection() {}
 
@@ -107,7 +106,6 @@ int ClusterTransactionCollection::use(int nestingLevel) {
         !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
       // use and usage-lock
       LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
-      _usageLocked = true;
     }
   }
 
@@ -143,11 +141,6 @@ void ClusterTransactionCollection::release() {
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
-
-    if (_usageLocked) {
-      _transaction->vocbase().releaseCollection(_collection.get());
-      _usageLocked = false;
-    }
     _collection = nullptr;
   }
 }
@@ -168,12 +161,6 @@ int ClusterTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   }
 
   TRI_ASSERT(_collection != nullptr);
-
-  std::string collName(_collection->name());
-  if (_transaction->isLockedShard(collName)) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
 
   TRI_ASSERT(!isLocked());
 
@@ -200,14 +187,7 @@ int ClusterTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   TRI_ASSERT(_collection != nullptr);
 
-  std::string collName(_collection->name());
-  if (_transaction->isLockedShard(collName)) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
-
   TRI_ASSERT(isLocked());
-
   if (_nestingLevel < nestingLevel) {
     // only process our own collections
     return TRI_ERROR_NO_ERROR;
