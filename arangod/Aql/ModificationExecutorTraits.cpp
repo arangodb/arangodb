@@ -173,7 +173,7 @@ bool Insert::doModifications(ModificationExecutorInfos& info,
   _block->forRowInBlock([this, inReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
-        info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
+        !info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
                                                               StaticStrings::Empty)) {
       _operations.push_back(ModOperationType::APPLY_RETURN);
       // TODO This may be optimized with externals
@@ -313,7 +313,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info,
                          &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
-        info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
+        !info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
                                                               StaticStrings::Empty)) {
       key.clear();
       rev.clear();
@@ -466,14 +466,12 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
     auto const& inVal = row.getValue(inDocReg);
 
     if (inVal.isObject()) /*update case, as old doc is present*/ {
-      // LOG_DEVEL << "UPDATE case";
       if (!info._consultAqlWriteFilter ||
-          info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
+          !info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
                                                                 StaticStrings::Empty)) {
         key.clear();
         errorCode = extractKey(trx, inVal, key);
         if (errorCode == TRI_ERROR_NO_ERROR) {
-          // LOG_DEVEL << "key ok: '" << key << "'";
           auto const& updateDoc = row.getValue(updateReg);
           if (updateDoc.isObject()) {
             VPackSlice toUpdate = updateDoc.slice();
@@ -489,7 +487,6 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
             _operations.push_back(ModOperationType::APPLY_UPDATE);
             this->_last_not_skip = _operations.size();
           } else {
-            // LOG_DEVEL << "bad key";
             errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
             errorMessage = std::string("expecting 'Object', got: ") +
                            updateDoc.slice().typeName() +
@@ -501,12 +498,10 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
         this->_last_not_skip = _operations.size();
       }
     } else /*insert case*/ {
-      // LOG_DEVEL << "INSERT case";
       auto const& toInsert = row.getValue(insertReg).slice();
       if (toInsert.isObject()) {
         if (!info._consultAqlWriteFilter ||
             !info._aqlCollection->getCollection()->skipForAqlWrite(toInsert, StaticStrings::Empty)) {
-          // LOG_DEVEL << "APPLY INSERT";
           _insertBuilder.add(toInsert);
           _operations.push_back(ModOperationType::APPLY_INSERT);
         } else {
@@ -522,7 +517,6 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
     }
 
     if (errorCode != TRI_ERROR_NO_ERROR) {
-      // LOG_DEVEL << "skipping doc";
       _operations.push_back(ModOperationType::IGNORE_SKIP);
       handleStats(stats, info, errorCode, info._ignoreErrors, &errorMessage);
     }
@@ -601,7 +595,6 @@ bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
   if (_justCopy || options.silent) {
-    // LOG_DEVEL << "copy _just or silent";
     output.copyRow(input);
   } else {
     auto& op = _operations[_blockIndex];
@@ -620,7 +613,6 @@ bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
           arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
 
       if (!wasError) {
-        // LOG_DEVEL << "not error";
         if (options.returnNew) {
           AqlValue value(elm.get("new"));
           AqlValueGuard guard(value, true);
@@ -632,7 +624,6 @@ bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
       }
       ++*iter;
     } else if (_operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
-      // LOG_DEVEL << "ignore skip";
       output.copyRow(input);
     } else {
       TRI_ASSERT(false);
@@ -741,6 +732,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
   TRI_ASSERT(info._trx);
 
   if (toUpdateOrReplace.isArray() && toUpdateOrReplace.length() > 0) {
+
     OperationResult opRes =
         (info._trx->*_method)(info._aqlCollection->name(), toUpdateOrReplace, options);
     setOperationResult(std::move(opRes));
