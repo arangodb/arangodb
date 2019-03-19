@@ -195,9 +195,9 @@ when using the RocksDB engine, so there is no need to offer all of them in paral
 Client tools
 ------------
 
-### arangodump
+### Dump and restore all databases
 
-arangodump got an option `--all-databases` to make it dump all available databases
+**arangodump** got an option `--all-databases` to make it dump all available databases
 instead of just a single database specified via the option `--server.database`.
 
 When set to true, this makes arangodump dump all available databases the current 
@@ -212,9 +212,7 @@ When dumping all databases, the consistency guarantees of arangodump are the sam
 as when dumping multiple single database individually, so the dump does not provide
 cross-database consistency of the data.
 
-### arangorestore
-
-arangorestore got an option `--all-databases` to make it restore all databases from
+**arangorestore** got an option `--all-databases` to make it restore all databases from
 inside the subdirectories of the specified dump directory, instead of just the
 single database specified via the option `--server.database`.
 
@@ -229,6 +227,15 @@ into them will fail unless the option `--create-database` is also specified for
 arangorestore. Please note that in this case a database user must be used that has 
 access to the `_system` database, in order to create the databases on restore. 
 
+### Warning if connected to DBServer
+
+Under normal circumstances there should be no need to connect to a 
+database server in a cluster with one of the client tools, and it is 
+likely that any user operations carried out there with one of the client
+tools may cause trouble. 
+
+The client tools arangosh, arangodump and arangorestore will now emit 
+a warning when connecting with them to a database server node in a cluster.
 
 Miscellaneous
 -------------
@@ -268,19 +275,6 @@ Users may now take advantage of the `indexHint` inline query option to override
 the internal optimizer decision regarding which index to use to serve content
 from a given collection. The index hint works with the named indices feature
 above, making it easy to specify which index to use.
-
-
-Client tools
-------------
-
-Under normal circumstances there should be no need to connect to a 
-database server in a cluster with one of the client tools, and it is 
-likely that any user operations carried out there with one of the client
-tools may cause trouble. 
-
-The client tools arangosh, arangodump and arangorestore will now emit 
-a warning when connecting with them to a database server node in a cluster.
-
 
 Internal
 --------
