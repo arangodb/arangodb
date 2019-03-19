@@ -55,13 +55,20 @@ DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
 }
 
 DistinctCollectExecutor::DistinctCollectExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher) {
-  _seen = std::make_unique<std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>>(
-      1024,
-      AqlValueGroupHash(_infos.getTransaction(), _infos.getGroupRegisters().size()),
-      AqlValueGroupEqual(_infos.getTransaction()));
-};
-DistinctCollectExecutor::~DistinctCollectExecutor() = default;
+    : _infos(infos), _fetcher(fetcher),
+       _seen(1024,
+             AqlValueGroupHash(_infos.getTransaction(), _infos.getGroupRegisters().size()),
+             AqlValueGroupEqual(_infos.getTransaction())) {
+}
+
+DistinctCollectExecutor::~DistinctCollectExecutor() {
+  // destroy all AqlValues captured
+  for (auto& it : _seen) {
+    for (auto& it2 : it) {
+      const_cast<AqlValue*>(&it2)->destroy();
+    }
+  }
+}
 
 std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRow(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("DistinctCollectExecutor::produceRow") {
@@ -95,9 +102,9 @@ std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRow(OutputAql
     }
 
     // now check if we already know this group
-    auto foundIt = _seen->find(groupValues);
+    auto foundIt = _seen.find(groupValues);
 
-    bool newGroup = foundIt == _seen->end();
+    bool newGroup = foundIt == _seen.end();
     if (newGroup) {
       size_t i = 0;
 
@@ -112,7 +119,7 @@ std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRow(OutputAql
       for (auto const& it : groupValues) {
         copy.emplace_back(it.clone());
       }
-      _seen->emplace(std::move(copy));
+      _seen.emplace(std::move(copy));
     }
 
     // Abort if upstream is done

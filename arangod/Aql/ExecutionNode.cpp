@@ -1275,7 +1275,8 @@ EnumerateCollectionNode::EnumerateCollectionNode(ExecutionPlan* plan,
     : ExecutionNode(plan, base),
       DocumentProducingNode(plan, base),
       CollectionAccessingNode(plan, base),
-      _random(base.get("random").getBoolean()) {}
+      _random(base.get("random").getBoolean()),
+      _hint(base) {}
 
 /// @brief toVelocyPack, for EnumerateCollectionNode
 void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const {
@@ -1283,6 +1284,8 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& builder, unsigned
   ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
 
   builder.add("random", VPackValue(_random));
+
+  _hint.toVelocyPack(builder);
 
   // add outvariable and projection
   DocumentProducingNode::toVelocyPack(builder);
@@ -1325,7 +1328,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
   }
 
   auto c = std::make_unique<EnumerateCollectionNode>(plan, _id, _collection,
-                                                     outVariable, _random);
+                                                     outVariable, _random, _hint);
 
   c->projections(_projections);
 

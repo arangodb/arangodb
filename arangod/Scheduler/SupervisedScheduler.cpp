@@ -169,7 +169,7 @@ void SupervisedScheduler::shutdown() {
       break;
     }
 
-    LOG_TOPIC(ERR, Logger::THREADS)
+    LOG_TOPIC(WARN, Logger::THREADS)
         << "Scheduler received shutdown, but there are still tasks on the "
         << "queue: jobsSubmitted=" << jobsSubmitted << " jobsDone=" << jobsDone;
     std::this_thread::sleep_for(std::chrono::seconds(1));

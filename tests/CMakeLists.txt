@@ -14,6 +14,7 @@ if (USE_IRESEARCH)
     IResearch/common.cpp
     IResearch/AgencyMock.cpp
     IResearch/AgencyCommManagerMock.cpp
+    IResearch/ClusterCommMock.cpp IResearch/ClusterCommMock.h
     IResearch/Containers-test.cpp
     IResearch/ExpressionFilter-test.cpp
     IResearch/ExecutionBlockMock.cpp
@@ -168,6 +169,7 @@ set(ARANGODB_TESTS_SOURCES
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
   Graph/ClusterTraverserCacheTest.cpp
+  Graph/ConstantWeightShortestPathFinder.cpp
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp

@@ -6,6 +6,12 @@ upgrading to ArangoDB 3.5, and adjust any client programs if necessary.
 
 The following incompatible changes have been made in ArangoDB 3.5:
 
+Startup options
+---------------
+
+The hidden startup option `--rocksdb.delayed_write_rate` was renamed to the more
+consistent `--rocksdb.delayed-write-rate`. When the old option name is used, the 
+arangod startup will be aborted with a descriptive error message.
 
 Web interface
 -------------

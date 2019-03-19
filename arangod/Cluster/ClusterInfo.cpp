@@ -1122,9 +1122,11 @@ void ClusterInfo::loadCurrent() {
 std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(DatabaseID const& databaseID,
                                                               CollectionID const& collectionID) {
   auto c = getCollectionNT(databaseID, collectionID);
+
   if (c == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                   getCollectionNotFoundMsg(collectionID, databaseID));
+      getCollectionNotFoundMsg(databaseID, collectionID) // message
+    );
   } else {
     return c;
   }
