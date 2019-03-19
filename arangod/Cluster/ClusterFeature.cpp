@@ -47,7 +47,7 @@ void ClusterFeature::abortOnTimeout() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto clusterFeature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
   if(clusterFeature->getAbortOnTimeout()) {
-    std::abort();
+    TRI_ASSERT(false);
   }
 }
 #endif
