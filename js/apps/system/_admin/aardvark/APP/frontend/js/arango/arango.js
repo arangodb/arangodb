@@ -789,7 +789,7 @@
       });
     },
 
-    syncAndReturnUninishedAardvarkJobs: function (type, callback) {
+    syncAndReturnUnfinishedAardvarkJobs: function (type, callback) {
       var callbackInner = function (error, AaJobs) {
         if (error) {
           callback(true);
