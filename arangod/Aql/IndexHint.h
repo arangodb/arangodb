@@ -24,7 +24,7 @@
 #ifndef ARANGOD_AQL_INDEX_HINT_H
 #define ARANGOD_AQL_INDEX_HINT_H 1
 
-#include <iostream>
+#include <iosfwd>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
