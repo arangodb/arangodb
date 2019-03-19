@@ -263,7 +263,7 @@
           reducedCollection;
 
         searchInput = $('#databaseSearchInput');
-        searchString = $('#databaseSearchInput').val();
+        searchString = arangoHelper.escapeHtml($('#databaseSearchInput').val());
         reducedCollection = this.collection.filter(
           function (u) {
             return u.get('name').indexOf(searchString) !== -1;
