@@ -396,13 +396,11 @@ static int distributeBabyOnShards(
     userSpecifiedKey = true;
   } else {
 
-#ifdef USE_ENTERPRISE
     int r = transaction::Methods::validateSmartJoinAttribute(*(collinfo.get()), value);
 
     if (r != TRI_ERROR_NO_ERROR) {
       return r;
     }
-#endif
 
     // Sort out the _key attribute:
     // The user is allowed to specify _key, provided that _key is the one

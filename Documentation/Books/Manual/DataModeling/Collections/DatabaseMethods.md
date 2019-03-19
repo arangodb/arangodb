@@ -200,8 +200,10 @@ to the [naming conventions](../NamingConventions/README.md).
   and will be ignored.
 
 - *smartJoinAttribute: in an *Enterprise Edition* cluster, this attribute 
-  determines an attribute of the collection that must contain the primary 
-  key value of the referred-to smart join collection.
+  determines an attribute of the collection that must contain the shard key value 
+  of the referred-to smart join collection. Additionally, the sharding key 
+  for a document in this collection must contain the value of this attribute, 
+  followed by a colon, followed by the actual primary key of the document.
 
   This feature can only be used in the *Enterprise Edition* and requires the
   *distributeShardsLike* attribute of the collection to be set to the name

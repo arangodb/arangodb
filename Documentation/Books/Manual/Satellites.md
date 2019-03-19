@@ -6,7 +6,7 @@ This feature is only available in the
 [**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
 {% endhint %}
 
-When doing joins in an ArangoDB cluster data has to exchanged between different servers.
+When doing joins in an ArangoDB cluster data has to be exchanged between different servers.
 
 Joins will be executed on a coordinator. It will prepare an execution plan
 and execute it. When executing, the coordinator will contact all shards of the
