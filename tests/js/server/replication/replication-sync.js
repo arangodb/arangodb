@@ -304,7 +304,7 @@ function BaseTestConfig () {
           const c = db._create(cn);
           state.indexDef = {type: 'skiplist', name: 'foo', fields: ['value']};
           c.ensureIndex(state.indexDef);
-          state.masterProps = c.index(state.indexDef.id);
+          state.masterProps = c.index(state.indexDef.name);
         },
         function (state) {
           //  already create the collection and index on the slave
@@ -329,7 +329,7 @@ function BaseTestConfig () {
           const c = db._create(cn);
           state.indexDef = {type: 'hash', name: 'foo', fields: ['value']};
           c.ensureIndex(state.indexDef);
-          state.masterProps = c.index(state.indexDef.id);
+          state.masterProps = c.index(state.indexDef.name);
         },
         function (state) {
           //  already create the collection and index on the slave
@@ -354,7 +354,7 @@ function BaseTestConfig () {
           const c = db._create(sysCn, {isSystem: true});
           state.indexDef = {type: 'hash', name: 'foo', fields: ['value3']};
           c.ensureIndex(state.indexDef);
-          state.masterProps = c.index(state.indexDef.id);
+          state.masterProps = c.index(state.indexDef.name);
         },
         function (state) {
           //  already create the index on the slave
