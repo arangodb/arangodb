@@ -769,11 +769,25 @@ arangodb::Result IResearchLink::init(
       viewId = view->guid();  // ensue that this is a GUID (required by
                               // operator==(IResearchView))
 
-      if (!view->emplace(_collection.id(), _collection.name(), definition)) {
-        return arangodb::Result(TRI_ERROR_INTERNAL,
-                                std::string("failed to link with view '") + view->name() +
-                                    "' while initializing link '" +
-                                    std::to_string(_id) + "'");
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+
+      // FIXME TODO move this logic into IResearchViewCoordinator
+      if (!meta.json(builder, false)) { // generate user-visible definition
+        return arangodb::Result( // result
+          TRI_ERROR_INTERNAL, // code
+          std::string("failed to generate link definition while initializing link '") + std::to_string(_id) + "'"
+        );
+      }
+
+      builder.close();
+
+      if (!view->emplace(_collection.id(), _collection.name(), builder.slice())) {
+        return arangodb::Result( // result
+          TRI_ERROR_INTERNAL, // code
+          std::string("failed to link with view '") + view->name() + "' while initializing link '" + std::to_string(_id) + "'"
+        );
       }
     }
   } else if (arangodb::ServerState::instance()->isDBServer()) {  // db-server link
