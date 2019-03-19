@@ -227,6 +227,7 @@ SET(ARANGOD_SOURCES
   Aql/InAndOutRowExpressionContext.cpp
   Aql/IdExecutor.cpp
   Aql/IndexExecutor.cpp
+  Aql/IndexHint.cpp
   Aql/IndexNode.cpp
   Aql/InputAqlItemRow.cpp
   Aql/LimitExecutor.cpp

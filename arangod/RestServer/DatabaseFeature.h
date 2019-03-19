@@ -23,6 +23,16 @@
 #ifndef APPLICATION_FEATURES_DATABASE_FEATURE_H
 #define APPLICATION_FEATURES_DATABASE_FEATURE_H 1
 
+#if !defined(USE_CATCH_TESTS) && !defined(EXPAND_APPLICATION_FEATURES_DATABASE_FEATURE_H)
+  #define DO_EXPAND_APPLICATION_FEATURES_DATABASE_FEATURE_H(VAL) VAL ## 1
+  #define EXPAND_APPLICATION_FEATURES_DATABASE_FEATURE_H(VAL) DO_EXPAND_APPLICATION_FEATURES_DATABASE_FEATURE_H(VAL)
+  #if defined(TEST_VIRTUAL) && (EXPAND_APPLICATION_FEATURES_DATABASE_FEATURE_H(TEST_VIRTUAL) != 1)
+    #define USE_CATCH_TESTS
+  #endif
+  #undef EXPAND_APPLICATION_FEATURES_DATABASE_FEATURE_H
+  #undef DO_EXPAND_APPLICATION_FEATURES_DATABASE_FEATURE_H
+#endif
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/DataProtector.h"
 #include "Basics/Mutex.h"
@@ -30,17 +40,24 @@
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 class LogicalCollection;
 
-namespace aql {
-class QueryRegistry;
 }
+
+namespace arangodb {
+namespace velocypack {
+
+  class Builder; // forward declaration
+  class Slice; // forward declaration
+
+} // velocypack
+} //arangodb
+
+namespace arangodb {
 
 class DatabaseManagerThread final : public Thread {
  public:
@@ -72,6 +89,13 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
+
+  // used by catch tests
+  #ifdef USE_CATCH_TESTS
+    inline int loadDatabases(velocypack::Slice const& databases) {
+      return iterateDatabases(databases);
+    }
+  #endif
 
   /// @brief will be called when the recovery phase has run
   /// this will call the engine-specific recoveryDone() procedures

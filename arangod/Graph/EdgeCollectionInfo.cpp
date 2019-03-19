@@ -46,21 +46,25 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
   auto var = _searchBuilder.getVariable();
   if (_dir == TRI_EDGE_OUT) {
     auto cond = _searchBuilder.getOutboundCondition();
-    bool worked = _trx->getBestIndexHandleForFilterCondition(_collectionName, cond,
-                                                             var, 1000, _forwardIndexId);
+    bool worked =
+        _trx->getBestIndexHandleForFilterCondition(_collectionName, cond, var, 1000,
+                                                   aql::IndexHint(), _forwardIndexId);
     TRI_ASSERT(worked);  // We always have an edge Index
     cond = _searchBuilder.getInboundCondition();
     worked = _trx->getBestIndexHandleForFilterCondition(_collectionName, cond, var,
-                                                        1000, _backwardIndexId);
+                                                        1000, aql::IndexHint(),
+                                                        _backwardIndexId);
     TRI_ASSERT(worked);  // We always have an edge Index
   } else {
     auto cond = _searchBuilder.getInboundCondition();
-    bool worked = _trx->getBestIndexHandleForFilterCondition(_collectionName, cond,
-                                                             var, 1000, _forwardIndexId);
+    bool worked =
+        _trx->getBestIndexHandleForFilterCondition(_collectionName, cond, var, 1000,
+                                                   aql::IndexHint(), _forwardIndexId);
     TRI_ASSERT(worked);  // We always have an edge Index
     cond = _searchBuilder.getOutboundCondition();
     worked = _trx->getBestIndexHandleForFilterCondition(_collectionName, cond, var,
-                                                        1000, _backwardIndexId);
+                                                        1000, aql::IndexHint(),
+                                                        _backwardIndexId);
     TRI_ASSERT(worked);  // We always have an edge Index
   }
 }

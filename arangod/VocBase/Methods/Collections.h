@@ -70,12 +70,23 @@ struct Collections {
   static void enumerate(TRI_vocbase_t* vocbase, FuncCallback);
 
   /// @brief lookup a collection in vocbase or clusterinfo.
-  static Result lookup(TRI_vocbase_t* vocbase, std::string const& collection, FuncCallback);
+  static arangodb::Result lookup( // find collection
+    TRI_vocbase_t const& vocbase, // vocbase to search
+    std::string const& name, // collection name
+    FuncCallback const& callback // invoke on found collection
+  );
+
   /// Create collection, ownership of collection in callback is
   /// transferred to callee
-  static Result create(TRI_vocbase_t*, std::string const& name, TRI_col_type_e collectionType,
-                       velocypack::Slice const& properties, bool createWaitsForSyncReplication,
-                       bool enforceReplicationFactor, FuncCallback);
+  static arangodb::Result create( // create collection
+    TRI_vocbase_t& vocbase, // collection vocbase
+    std::string const& name, // collection name
+    TRI_col_type_e collectionType, // collection type
+    arangodb::velocypack::Slice const& properties, // collection properties
+    bool createWaitsForSyncReplication, // replication wait flag
+    bool enforceReplicationFactor, // replication factor flag
+    FuncCallback const& callback // invoke on collection creation
+  );
 
   static Result load(TRI_vocbase_t& vocbase, LogicalCollection* coll);
   static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);
@@ -87,8 +98,11 @@ struct Collections {
   static Result rename(LogicalCollection& collection,
                        std::string const& newName, bool doOverride);
 
-  static Result drop(TRI_vocbase_t*, LogicalCollection* coll,
-                     bool allowDropSystem, double timeout);
+  static arangodb::Result drop( // drop collection
+    arangodb::LogicalCollection& coll, // collection to drop
+    bool allowDropSystem, // allow dropping system collection
+    double timeout // single-server drop timeout
+  );
 
   static Result warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll);
 
