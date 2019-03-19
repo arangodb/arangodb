@@ -105,7 +105,8 @@ class ModificationExecutorInfos : public ExecutorInfos {
                             std::unordered_set<RegisterId> registersToClear,
                             std::unordered_set<RegisterId> registersToKeep,
                             transaction::Methods* trx, OperationOptions options,
-                            aql::Collection const* aqlCollection, bool producesResults,
+                            aql::Collection const* aqlCollection,
+                            bool readCompleteInput, bool producesResults,
                             bool consultAqlWriteFilter, bool ignoreErrors,
                             bool doCount, /*bool returnInheritedResults,*/
                             bool isReplace, bool ignoreDocumentNotFound)
@@ -117,6 +118,7 @@ class ModificationExecutorInfos : public ExecutorInfos {
         _trx(trx),
         _options(options),
         _aqlCollection(aqlCollection),
+        _readCompleteInput(readCompleteInput),
         _producesResults(producesResults || !_options.silent),
         _consultAqlWriteFilter(consultAqlWriteFilter),
         _ignoreErrors(ignoreErrors),
@@ -139,11 +141,12 @@ class ModificationExecutorInfos : public ExecutorInfos {
   transaction::Methods* _trx;
   OperationOptions _options;
   aql::Collection const* _aqlCollection;
+  bool _readCompleteInput;
   bool _producesResults;
   bool _consultAqlWriteFilter;
   bool _ignoreErrors;
   bool _doCount;  // count statisitics
-  //bool _returnInheritedResults;
+  // bool _returnInheritedResults;
   bool _isReplace;               // needed for upsert
   bool _ignoreDocumentNotFound;  // needed for update replace
 

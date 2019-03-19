@@ -182,8 +182,6 @@ bool Insert::doModifications(ModificationExecutorInfos& info,
       // not relevant for ourselves... just pass it on to the next block
       _operations.push_back(ModOperationType::IGNORE_RETURN);
     }
-    this->_last_not_skip =
-        _operations.size();  // always true for insert as here is no ignore skip
   });
 
   TRI_ASSERT(_operations.size() == _block->block().size());
@@ -199,7 +197,8 @@ bool Insert::doModifications(ModificationExecutorInfos& info,
     // if there is anything other than IGNORE_SKIP the
     // block is prepared.
     _justCopy = true;
-    return _last_not_skip != std::numeric_limits<decltype(_last_not_skip)>::max();
+    TRI_ASSERT(false);
+    return false;
   }
 
   // execute insert
@@ -239,7 +238,6 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
   TRI_ASSERT(_block->hasBlock());
 
   std::size_t blockSize = _block->block().size();
-  TRI_ASSERT(_last_not_skip <= blockSize);
   TRI_ASSERT(_blockIndex < blockSize);
 
   OperationOptions& options = info._options;
@@ -250,6 +248,7 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
   }
 
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
+
   if (_justCopy || options.silent) {
     output.copyRow(input);
   } else {
@@ -290,7 +289,7 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
   }
 
   // increase index and make sure next element is within the valid range
-  return ++_blockIndex < _last_not_skip;
+  return ++_blockIndex < blockSize;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -312,6 +311,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info,
   _block->forRowInBlock([this, &stats, &errorCode, &key, &rev, trx, inReg,
                          &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
+
     if (!info._consultAqlWriteFilter ||
         !info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
                                                               StaticStrings::Empty)) {
