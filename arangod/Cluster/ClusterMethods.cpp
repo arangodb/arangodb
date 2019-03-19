@@ -2724,11 +2724,13 @@ arangodb::Result hotBackupCoordinator(
 
   // backup's UUID
   std::string const backupId = to_string(boost::uuids::random_generator()());
-    VPackBuilder lock;
-    {
-      VPackObjectBuilder o(&lock);
-      lock.add("backupId", VPackValue(backupId));
-    }
+  VPackBuilder lock;
+  {
+    VPackObjectBuilder o(&lock);
+    lock.add("backupId", VPackValue(backupId));
+  }
+  auto body = std::make_shared<std::string const>(lock.toJson());
+  std::unordered_map<std::string, std::string> headers;
   
   // Record when we need to bail out
   if (wait > 60) {
@@ -2784,9 +2786,6 @@ arangodb::Result hotBackupCoordinator(
     std::string const lockUrl =
       std::string("/_admin/hotbackup/lock?timeout=") + std::to_string(lockWait);
 
-    auto body = std::make_shared<std::string const>(lock.toJson());
-    std::unordered_map<std::string, std::string> headers;
-
     auto lockWaitEnd = steady_clock::now() + seconds((uint64_t)lockWait);
     
     std::unordered_map<std::string, OperationID> lockRes;
@@ -2800,13 +2799,13 @@ arangodb::Result hotBackupCoordinator(
     uint64_t nLocks;
     while (cc != nullptr && lockWaitEnd < steady_clock::now()) {
 
-      auto const waitRes = cc->wait(
-        coordTransactionID, 0, "",
-        duration<double>(lockWaitEnd - steady_clock::now()).count());
+      // Collect all call backs one after the other
+      auto const waitRes = cc->wait("", coordTransactionID, 0, "",
+                                    duration<double>(lockWaitEnd - steady_clock::now()).count());
 
       if (waitRes.status == CL_COMM_SENT) {
-        auto body = waitRes.result->getBodyVelocyPack();
-        VPackSlice slc = body->slice();
+        auto wrBody = waitRes.result->getBodyVelocyPack();
+        VPackSlice slc = wrBody->slice();
         // Sanity check
         if (slc.isObject()
             && slc.hasKey("backupId") && slc.get("backupId").isString()
@@ -2816,13 +2815,14 @@ arangodb::Result hotBackupCoordinator(
           if (backupId != otherBackupId) {
             std::stringstream s;
             s << std::string("Lock result contains wrong backup ID. Mine:");
-            s << backupId + " " + waitRes.destination + "'s " + otherBackupId + ". Failing!";
+            s << backupId + " " + waitRes.serverID + "'s " + otherBackupId + ". Failing!";
             LOG_TOPIC(ERR, Logger::HOTBACKUP) << s.str();
             return arangodb::Result(TRI_ERROR_INTERNAL, s.str());
           }
           if (!locked) {
             std::stringstream s;
-            s += std::string("Lock attempt rejected by ") + waitRes.destination + ". Failing!";
+            s <<"Lock attempt rejected by ";
+            s << waitRes.serverID + ". Failing!";
             LOG_TOPIC(ERR, Logger::HOTBACKUP) << s.str();
             return arangodb::Result(TRI_ERROR_INTERNAL, s.str());
           }
@@ -2832,8 +2832,8 @@ arangodb::Result hotBackupCoordinator(
         }
       } else {
         std::stringstream s;
-        s += "Invalid response from ";
-        s += backupId + ": " + slc.toJson() + ".Failing!"; 
+        s << "Failed to send lock request ";
+        s << backupId + " to " + waitRes.serverID; 
         LOG_TOPIC(ERR, Logger::HOTBACKUP) << s.str();
         return arangodb::Result(TRI_ERROR_INTERNAL, s.str());
       }
@@ -2850,12 +2850,15 @@ arangodb::Result hotBackupCoordinator(
   }
 
   std::string const backupUrl = std::string("/_admin/hotbackup/create");
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
   for (auto const& dbServer : dbServers) {
     cc->asyncRequest(
-      "", coordTransactionID, "server:" + dbServer, RequestType::POST, url, body,
+      "", coordTransactionID, "server:" + dbServer, RequestType::POST, backupUrl, body,
       headers, nullptr, lockWait);
   }
 
   return arangodb::Result();
+
+}
   
 }  // namespace arangodb

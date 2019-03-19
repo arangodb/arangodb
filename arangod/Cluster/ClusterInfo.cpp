@@ -3639,7 +3639,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
           return false;
         }
       }
-
+      
       short n = -1;
       try {
         n = hotBackup.getNumber<short>();
@@ -3704,7 +3704,8 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
       }
       
       agencyCallback->executeByCallbackOrTimeout(
-        std::chrono::duration_cast<double>(endTime - std::chrono::steady_clock::now()).count());
+        std::chrono::duration<double>(
+          endTime - std::chrono::steady_clock::now()).count());
         
     }
   }
