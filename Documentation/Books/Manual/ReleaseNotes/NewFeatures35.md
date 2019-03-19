@@ -262,6 +262,14 @@ name _cannot_ be changed after index creation. No two indices on the same
 collection may share the same name, but two indices on different collections 
 may.
 
+### Index Hints in AQL
+
+Users may now take advantage of the `indexHint` inline query option to override
+the internal optimizer decision regarding which index to use to serve content
+from a given collection. The index hint works with the named indices feature
+above, making it easy to specify which index to use.
+
+
 Client tools
 ------------
 
