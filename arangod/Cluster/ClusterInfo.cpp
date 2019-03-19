@@ -835,7 +835,7 @@ void ClusterInfo::loadPlan() {
 
                   if (!estimates.empty()) {
                     // already have an estimate... now copy it over
-                    newCollection->clusterIndexEstimates(std::move(estimates));
+                    newCollection->setClusterIndexEstimates(std::move(estimates));
                   }
                 } catch (...) {
                   // this may fail during unit tests, when mocks are used

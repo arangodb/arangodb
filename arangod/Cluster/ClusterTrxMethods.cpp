@@ -130,47 +130,81 @@ ClusterCommRequest beginTransactionRequest(transaction::Methods const* trx,
                             std::move(headers));
 }
 
-Result checkTransactionResult(TransactionState const& state, transaction::Status desiredStatus,
-                              ClusterCommRequest const& request) {
-  Result result;
+/// check the transaction cluster response with desited TID and status
+Result checkTransactionResult(TRI_voc_tid_t desiredTid,
+                              transaction::Status desiredStatus,
+                              ClusterCommResult const& result) {
+  Result res;
 
-  ClusterCommResult const& res = request.result;
-
-  int commError = ::handleGeneralCommErrors(&res);
+  int commError = ::handleGeneralCommErrors(&result);
   if (commError != TRI_ERROR_NO_ERROR) {
     // oh-oh cluster is in a bad state
-    return result.reset(commError);
+    return res.reset(commError);
   }
-  TRI_ASSERT(res.status == CL_COMM_RECEIVED);
+  TRI_ASSERT(result.status == CL_COMM_RECEIVED);
 
-  VPackSlice answer = res.answer->payload();
-  if ((res.answer_code == rest::ResponseCode::OK || res.answer_code == rest::ResponseCode::CREATED) &&
+  VPackSlice answer = result.answer->payload();
+  if ((result.answer_code == rest::ResponseCode::OK ||
+       result.answer_code == rest::ResponseCode::CREATED) &&
       answer.isObject()) {
     VPackSlice idSlice = answer.get(std::vector<std::string>{"result", "id"});
     VPackSlice statusSlice =
         answer.get(std::vector<std::string>{"result", "status"});
 
     if (!idSlice.isString() || !statusSlice.isString()) {
-      return result.reset(TRI_ERROR_TRANSACTION_INTERNAL,
+      return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
                           "transaction has wrong format");
     }
     TRI_voc_tid_t tid = StringUtils::uint64(idSlice.copyString());
     VPackValueLength len = 0;
     const char* str = statusSlice.getStringUnchecked(len);
-    if (tid == state.id() + 1 && transaction::statusFromString(str, len) == desiredStatus) {
-      return result;  // success
+    if (tid == desiredTid && transaction::statusFromString(str, len) == desiredStatus) {
+      return res;  // success
     }
   } else if (answer.isObject()) {
-    return result.reset(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
-                                                           TRI_ERROR_TRANSACTION_INTERNAL),
+    return res.reset(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
+                                                        TRI_ERROR_TRANSACTION_INTERNAL),
                         VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage,
-                                                         ""));
+                                                         "error during commit / abort"));
   }
   LOG_TOPIC(DEBUG, Logger::TRANSACTIONS)
-      << " failed to begin transaction on " << res.endpoint;
+      << " failed to begin transaction on " << result.endpoint;
 
-  return result.reset(TRI_ERROR_TRANSACTION_INTERNAL);  // unspecified error
+  return res.reset(TRI_ERROR_TRANSACTION_INTERNAL);  // unspecified error
 }
+  
+/*struct TrxCommitMethodsCb final : public ClusterCommCallback {
+  TRI_voc_tid_t tid;
+  transaction::Status status;
+  
+  bool operator()(ClusterCommResult* result) override {
+    TRI_ASSERT(result != nullptr);
+    
+    Result res = ::checkTransactionResult(state, status, *result);
+    if (res.fail()) {  // remove follower from all collections
+      ServerID const& follower = requests[i].result.serverID;
+      state.allCollections([&](TransactionCollection& tc) {
+        auto cc = tc.collection();
+        if (cc) {
+          if (cc->followers()->remove(follower)) {
+            // TODO: what happens if a server is re-added during a transaction ?
+            LOG_TOPIC(WARN, Logger::REPLICATION)
+            << "synchronous replication: dropping follower " << follower
+            << " for shard " << tc.collectionName();
+          } else {
+            LOG_TOPIC(ERR, Logger::REPLICATION)
+            << "synchronous replication: could not drop follower "
+            << follower << " for shard " << tc.collectionName();
+            res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+            return false;  // cancel transaction
+          }
+        }
+        return true;
+      });
+    }
+    return true;
+  }
+};*/
 
 Result commitAbortTransaction(transaction::Methods& trx, transaction::Status status) {
   Result res;
@@ -193,9 +227,10 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
     // nullptr happens only during controlled shutdown
     return TRI_ERROR_SHUTTING_DOWN;
   }
+  TRI_voc_tid_t tidPlus = state.id() + 1;
   // std::vector<ServerID> DBservers = ci->getCurrentDBServers();
-  const std::string url = "/_db/" + StringUtils::urlEncode(state.vocbase().name()) +
-                          "/_api/transaction/" + std::to_string(state.id() + 1);
+  const std::string path = "/_db/" + StringUtils::urlEncode(state.vocbase().name()) +
+                           "/_api/transaction/" + std::to_string(tidPlus);
 
   RequestType rtype;
   if (status == transaction::Status::COMMITTED) {
@@ -205,16 +240,16 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
   } else {
     TRI_ASSERT(false);
   }
-
+  
   std::shared_ptr<std::string> body;
   std::vector<ClusterCommRequest> requests;
   for (std::string const& server : state.knownServers()) {
-    LOG_TOPIC(DEBUG, Logger::TRANSACTIONS)
-        << transaction::statusString(status) << " on " << server;
-    requests.emplace_back("server:" + server, rtype, url, body);
+    LOG_TOPIC(DEBUG, Logger::TRANSACTIONS) << "Leader "
+    << transaction::statusString(status) << " on " << server;
+    requests.emplace_back("server:" + server, rtype, path, body);
   }
-
-  // Perform the requests
+  
+  // perform a synchronous commit on all leader servers
   cc->performRequests(requests, ::CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
                       /*retryOnCollNotFound*/ false, /*retryOnBackUnvlbl*/ true);
 
@@ -222,7 +257,7 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
     TRI_ASSERT(transaction::isCoordinatorTransactionId(state.id()));
 
     for (size_t i = 0; i < requests.size(); ++i) {
-      Result res = ::checkTransactionResult(state, status, requests[i]);
+      Result res = ::checkTransactionResult(tidPlus, status, requests[i].result);
       if (res.fail()) {
         return res;
       }
@@ -235,7 +270,7 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
 
     // Drop all followers that were not successful:
     for (size_t i = 0; i < requests.size(); ++i) {
-      Result res = ::checkTransactionResult(state, status, requests[i]);
+      Result res = ::checkTransactionResult(tidPlus, status, requests[i].result);
       if (res.fail()) {  // remove follower from all collections
         ServerID const& follower = requests[i].result.serverID;
         state.allCollections([&](TransactionCollection& tc) {
@@ -244,12 +279,12 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
             if (cc->followers()->remove(follower)) {
               // TODO: what happens if a server is re-added during a transaction ?
               LOG_TOPIC(WARN, Logger::REPLICATION)
-                  << "synchronous replication: dropping follower " << follower
-                  << " for shard " << tc.collectionName();
+              << "synchronous replication: dropping follower " << follower
+              << " for shard " << tc.collectionName();
             } else {
               LOG_TOPIC(ERR, Logger::REPLICATION)
-                  << "synchronous replication: could not drop follower "
-                  << follower << " for shard " << tc.collectionName();
+              << "synchronous replication: could not drop follower "
+              << follower << " for shard " << tc.collectionName();
               res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
               return false;  // cancel transaction
             }
@@ -258,7 +293,6 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
         });
       }
     }
-
     return res;  // succeed even if some followers did not commit
   }
 }
@@ -301,8 +335,9 @@ arangodb::Result ClusterTrxMethods::beginTransactionOnLeaders(TransactionState& 
   cc->performRequests(requests, ::CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
                       /*retryOnCollNotFound*/ false, /*retryOnBackUnvlbl*/ true);
 
+  TRI_voc_tid_t tid = state.id() + 1;
   for (size_t i = 0; i < requests.size(); ++i) {
-    res = ::checkTransactionResult(state, transaction::Status::RUNNING, requests[i]);
+    res = ::checkTransactionResult(tid, transaction::Status::RUNNING, requests[i].result);
     if (res.fail()) {  // remove follower from all collections
       return res;
     }
@@ -342,12 +377,13 @@ Result ClusterTrxMethods::beginTransactionOnFollowers(transaction::Methods& trx,
   // Perform the requests
   size_t nrGood = cc->performRequests(requests, ::CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
                                       /*retryOnCollNotFound*/ false);
-
+  TRI_voc_tid_t tid = state.id(); // desired tid
+  
   if (nrGood < followers.size()) {
     // Otherwise we drop all followers that were not successful:
     for (size_t i = 0; i < followers.size(); ++i) {
       Result r =
-          ::checkTransactionResult(state, transaction::Status::RUNNING, requests[i]);
+          ::checkTransactionResult(tid, transaction::Status::RUNNING, requests[i].result);
       if (r.fail()) {
         LOG_DEVEL << "dropping follower because it did not start trx "
                   << state.id() << ", error: '" << r.errorMessage() << "'";

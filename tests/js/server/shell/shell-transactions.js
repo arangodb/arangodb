@@ -34,6 +34,7 @@ var arangodb = require('@arangodb');
 var helper = require('@arangodb/aql-helper');
 var db = arangodb.db;
 var testHelper = require('@arangodb/test-helper').Helper;
+const isCluster = require('@arangodb/cluster').isCluster();
 
 var compareStringIds = function (l, r) {
   'use strict';
@@ -213,7 +214,7 @@ function transactionRevisionsSuite () {
       } catch (err) {
       }
 
-      if (db._engine().name === 'mmfiles') {
+      if (db._engine().name === 'mmfiles' && !isCluster) {
         assertEqual(1, c.figures().revisions.count);
       }
       assertEqual(1, c.count());
@@ -229,7 +230,7 @@ function transactionRevisionsSuite () {
       } catch (err) {
       }
 
-      if (db._engine().name === 'mmfiles') {
+      if (db._engine().name === 'mmfiles' && !isCluster) {
         assertEqual(1, c.figures().revisions.count);
       }
       assertEqual(1, c.count());
@@ -252,7 +253,7 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles') {
+      if (db._engine().name === 'mmfiles' && !isCluster) {
         assertEqual(1, c.figures().revisions.count);
       }
       assertEqual(1, c.document('test').value);
@@ -273,7 +274,7 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles') {
+      if (db._engine().name === 'mmfiles' && !isCluster) {
         assertEqual(1, c.figures().revisions.count);
       }
       assertEqual(1, c.document('test').value);
@@ -290,7 +291,7 @@ function transactionRevisionsSuite () {
       });
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles') {
+      if (db._engine().name === 'mmfiles' && !isCluster) {
         assertEqual(1, c.figures().revisions.count);
       }
       assertEqual(2, c.document('test').value);
@@ -301,7 +302,7 @@ function transactionRevisionsSuite () {
       c.update('test', { _key: 'test', _rev: doc._rev, value: 2 }, { isRestore: true });
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles') {
+      if (db._engine().name === 'mmfiles' && !isCluster) {
         assertEqual(1, c.figures().revisions.count);
       }
       assertEqual(2, c.document('test').value);
@@ -317,7 +318,7 @@ function transactionRevisionsSuite () {
       });
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles') {
+      if (db._engine().name === 'mmfiles' && !isCluster) {
         assertEqual(1, c.figures().revisions.count);
       }
       assertEqual(2, c.document('test').value);
@@ -338,7 +339,7 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles') {
+      if (db._engine().name === 'mmfiles' && !isCluster) {
         assertEqual(1, c.figures().revisions.count);
       }
       assertEqual(1, c.document('test').value);
@@ -359,7 +360,7 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles') {
+      if (db._engine().name === 'mmfiles' && !isCluster) {
         assertEqual(1, c.figures().revisions.count);
       }
       assertEqual(1, c.document('test').value);
@@ -381,7 +382,7 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles') {
+      if (db._engine().name === 'mmfiles' && !isCluster) {
         assertEqual(1, c.figures().revisions.count);
       }
       assertEqual(1, c.document('test').value);
@@ -398,7 +399,7 @@ function transactionRevisionsSuite () {
       });
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles') {
+      if (db._engine().name === 'mmfiles' && !isCluster) {
         assertEqual(1, c.figures().revisions.count);
       }
       assertEqual(2, c.document('test').value);
@@ -420,7 +421,7 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles') {
+      if (db._engine().name === 'mmfiles' && !isCluster) {
         assertEqual(1, c.figures().revisions.count);
       }
       assertEqual(1, c.document('test').value);

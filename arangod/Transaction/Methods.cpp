@@ -3166,28 +3166,25 @@ int transaction::Methods::lockCollections() {
 /// @brief Get all indexes for a collection name, coordinator case
 std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
     std::string const& name, std::string const& id) const {
-  auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto collectionInfo = clusterInfo->getCollection(vocbase().name(), name);
-  auto idxs = collectionInfo->getIndexes();
+  auto ci = arangodb::ClusterInfo::instance();
+  auto collection = ci->getCollection(vocbase().name(), name);
   TRI_idx_iid_t iid = basics::StringUtils::uint64(id);
-
-  for (auto const& it : idxs) {
-    if (it->id() == iid) {
-      return it;
-    }
-  }
-
-  return nullptr;
+  return collection->lookupIndex(iid);
 }
 
 /// @brief Get all indexes for a collection name, coordinator case
 std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCoordinator(
     std::string const& name) const {
-  auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto collection = clusterInfo->getCollection(vocbase().name(), name);
-
+  auto ci = arangodb::ClusterInfo::instance();
+  auto collection = ci->getCollection(vocbase().name(), name);
+  
   // update selectivity estimates if they were expired
-  collection->clusterIndexEstimates(true);
+  if (_state->hasHint(Hints::Hint::GLOBAL_MANAGED)) { // hack to fix mmfiles
+    collection->clusterIndexEstimates(true, _state->id() + 1);
+  } else {
+    collection->clusterIndexEstimates(true);
+  }
+  
   return collection->getIndexes();
 }
 
@@ -3210,8 +3207,7 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
     if (idx == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
                                      "Could not find index '" + indexHandle +
-                                         "' in collection '" + collectionName +
-                                         "'.");
+                                         "' in collection '" + collectionName + "'.");
     }
 
     // We have successfully found an index with the requested id.

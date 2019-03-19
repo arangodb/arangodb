@@ -1189,6 +1189,9 @@ function transactionServerFailuresSuite () {
 
     testDiskFullDuringTransaction : function () {
       internal.debugClearFailAt();
+      if (isCluster) {
+        return; // takes way too long
+      }
 
       db._drop(cn);
       c = db._create(cn);

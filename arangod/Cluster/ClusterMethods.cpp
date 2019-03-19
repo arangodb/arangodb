@@ -243,19 +243,6 @@ static T ExtractFigure(VPackSlice const& slice, char const* group, char const* n
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts answer from response into a VPackBuilder.
-///        If there was an error extracting the answer the builder will be
-///        empty.
-///        No Error can be thrown.
-////////////////////////////////////////////////////////////////////////////////
-
-static std::shared_ptr<VPackBuilder> ExtractAnswer(ClusterCommResult const& res) {
-  auto rv = std::make_shared<VPackBuilder>();
-  rv->add(res.answer->payload());
-  return rv;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief merge the baby-object results.
 ///        The shard map contains the ordering of elements, the vector in this
 ///        Map is expected to be sorted from front to back.
@@ -816,8 +803,7 @@ int revisionOnCoordinator(std::string const& dbname,
     auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
-        VPackSlice answer = answerBuilder->slice();
+        VPackSlice answer = res.answer->payload();
 
         if (answer.isObject()) {
           VPackSlice r = answer.get("revision");
@@ -929,8 +915,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
     auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
-        VPackSlice answer = answerBuilder->slice();
+        VPackSlice answer = res.answer->payload();
 
         if (answer.isObject()) {
           VPackSlice figures = answer.get("figures");
@@ -1003,8 +988,7 @@ int countOnCoordinator(transaction::Methods& trx, std::string const& cname,
     auto& res = req.result;
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
-        VPackSlice answer = answerBuilder->slice();
+        VPackSlice answer = res.answer->payload();
 
         if (answer.isObject()) {
           // add to the total
@@ -1030,7 +1014,8 @@ int countOnCoordinator(transaction::Methods& trx, std::string const& cname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string const& collname,
-                                      std::unordered_map<std::string, double>& result) {
+                                      std::unordered_map<std::string, double>& result,
+                                      TRI_voc_tick_t tid) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
@@ -1053,34 +1038,27 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
   std::string requestsUrl;
   auto body = std::make_shared<std::string>();
   for (auto const& p : *shards) {
+    std::unique_ptr<std::unordered_map<std::string, std::string>> headers;
+    if (tid != 0) {
+      headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      headers->emplace(StaticStrings::TransactionId, std::to_string(tid));
+    }
+    
     requestsUrl = "/_db/" + StringUtils::urlEncode(dbname) +
-                  "/_api/index?collection=" + StringUtils::urlEncode(p.first);
+                  "/_api/index/selectivity?collection=" + StringUtils::urlEncode(p.first);
     requests.emplace_back("shard:" + p.first, arangodb::rest::RequestType::GET,
-                          requestsUrl, body);
+                          requestsUrl, body, std::move(headers));
   }
 
   // format of expected answer:
-  // in identifiers is a map that has keys in the format
+  // in indexes is a map that has keys in the format
   // s<shardid>/<indexid> and index information as value
 
   // {"code":200
   // ,"error":false
-  // ,"identifiers":{ "s10004/0"    :{"fields":["_key"]
-  //                                 ,"id":"s10004/0"
-  //                                 ,"selectivityEstimate":1
-  //                                 ,"sparse":false
-  //                                 ,"type":"primary"
-  //                                 ,"unique":true
-  //                                 }
-  //                 ,"s10004/10005":{"deduplicate":true
-  //                                 ,"fields":["user"]
-  //                                 ,"id":"s10004/10005"
-  //                                 ,"selectivityEstimate":1
-  //                                 ,"sparse":true
-  //                                 ,"type":"hash"
-  //                                 ,"unique":true
-  //                                 }
-  //                 }
+  // ,"indexes":{ "s10004/0"    : 1.0,
+  //              "s10004/10005": 0.5
+  //            }
   // }
 
   cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::QUERIES,
@@ -1089,35 +1067,31 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
   std::map<std::string, std::vector<double>> indexEstimates;
 
   for (auto& req : requests) {
-    auto& res = req.result;
-    if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
-        VPackSlice answer = answerBuilder->slice();
-
-        if (answer.isObject()) {
-          // add to the total
-          for (auto const& identifier :
-               VPackObjectIterator(answer.get("identifiers"))) {
-            if (identifier.value.hasKey("selectivityEstimate")) {
-              arangodb::velocypack::StringRef shard_index_id(identifier.key);
-              auto split_point =
-                  std::find(shard_index_id.begin(), shard_index_id.end(), '/');
-              std::string index(split_point + 1, shard_index_id.end());
-
-              double estimate = arangodb::basics::VelocyPackHelper::getNumericValue(
-                  identifier.value, "selectivityEstimate", 0.0);
-              indexEstimates[index].push_back(estimate);
-            }
-          }
-        } else {
-          return TRI_ERROR_INTERNAL;
-        }
-      } else {
-        return static_cast<int>(res.answer_code);
+    int res = handleGeneralCommErrors(&req.result);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    
+    ClusterCommResult const& comRes = req.result;
+    
+    if (comRes.answer_code == arangodb::rest::ResponseCode::OK) {
+      VPackSlice answer = comRes.answer->payload();
+      if (!answer.isObject()) {
+        return TRI_ERROR_INTERNAL;
       }
+
+      // add to the total
+      for (auto const& pair : VPackObjectIterator(answer.get("indexes"), true)) {
+        velocypack::StringRef shard_index_id(pair.key);
+        auto split_point =
+        std::find(shard_index_id.begin(), shard_index_id.end(), '/');
+        std::string index(split_point + 1, shard_index_id.end());
+        double estimate = basics::VelocyPackHelper::getNumericValue(pair.value, 0.0);
+        indexEstimates[index].push_back(estimate);
+      }
+      
     } else {
-      return handleGeneralCommErrors(&req.result);
+      return static_cast<int>(comRes.answer_code);
     }
   }
 
@@ -2702,8 +2676,7 @@ Result getTtlStatisticsFromAllDBServers(TtlStatistics& out) {
     auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
-        VPackSlice answer = answerBuilder->slice();
+        VPackSlice answer = res.answer->payload();
         out += answer.get("result");
         nrok++;
       } else {
@@ -2759,8 +2732,7 @@ Result getTtlPropertiesFromAllDBServers(VPackBuilder& out) {
     auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
-        VPackSlice answer = answerBuilder->slice();
+        VPackSlice answer = res.answer->payload();
         if (!set) {
           out.add(answer.get("result"));
           set = true;
@@ -2819,8 +2791,7 @@ Result setTtlPropertiesOnAllDBServers(VPackSlice const& properties, VPackBuilder
     auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
-        VPackSlice answer = answerBuilder->slice();
+        VPackSlice answer = res.answer->payload();
         if (!set) {
           out.add(answer.get("result"));
           set = true;

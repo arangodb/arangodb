@@ -173,20 +173,21 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     trx.finish(res);
   }
 
+  bool mergeEdgeIdxs = !ServerState::instance()->isDBServer();
+  
   double selectivity = 0, memory = 0, cacheSize = 0, cacheUsage = 0,
          cacheLifeTimeHitRate = 0, cacheWindowedHitRate = 0;
 
   VPackArrayBuilder a(&result);
   for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
-    auto type = index.get(arangodb::StaticStrings::IndexType);
     std::string id = collection->name() + TRI_INDEX_HANDLE_SEPARATOR_CHR +
                      index.get(arangodb::StaticStrings::IndexId).copyString();
     VPackBuilder merge;
-
     merge.openObject(true);
     merge.add(arangodb::StaticStrings::IndexId, arangodb::velocypack::Value(id));
-
-    if (type.isString() && type.compareString("edge") == 0) {
+    
+    auto type = index.get(arangodb::StaticStrings::IndexType);
+    if (mergeEdgeIdxs && Index::type(type.copyString()) == Index::TRI_IDX_TYPE_EDGE_INDEX) {
       VPackSlice fields = index.get(StaticStrings::IndexFields);
       TRI_ASSERT(fields.isArray() && fields.length() <= 2);
 

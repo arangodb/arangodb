@@ -87,10 +87,10 @@ class PhysicalCollection {
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
-  virtual std::unordered_map<std::string, double> clusterIndexEstimates(bool allowUpdate) const;
+  virtual IndexEstMap clusterIndexEstimates(bool allowUpdate, TRI_voc_tick_t tid) const;
 
   /// @brief sets the current index selectivity estimates
-  virtual void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
+  virtual void setClusterIndexEstimates(IndexEstMap&& estimates);
 
   /// @brief flushes the current index selectivity estimates
   virtual void flushClusterIndexEstimates();
