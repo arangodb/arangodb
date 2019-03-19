@@ -56,7 +56,7 @@ ExecutionState BlockFetcher<passBlocksThrough>::prefetchBlock(size_t atMost) {
     _blockShellPassThroughQueue.push({state, blockShell});
   }
 
-  _blockShellQueue.push({state, blockShell});
+  _blockShellQueue.push({state, std::move(blockShell)});
   return ExecutionState::HASMORE;
 }
 
@@ -74,12 +74,14 @@ BlockFetcher<passBlocksThrough>::fetchBlock(size_t atMost) {
     TRI_ASSERT(state == ExecutionState::HASMORE);
   }
 
+  TRI_ASSERT(!_blockShellQueue.empty());
+
   ExecutionState state;
   std::shared_ptr<AqlItemBlockShell> blockShell;
   std::tie(state, blockShell) = _blockShellQueue.front();
   _blockShellQueue.pop();
 
-  return {state, blockShell};
+  return {state, std::move(blockShell)};
 }
 
 template <bool passBlocksThrough>
@@ -112,7 +114,7 @@ BlockFetcher<passBlocksThrough>::fetchBlockForDependency(size_t dependency, size
 
   auto blockShell =
       std::make_shared<AqlItemBlockShell>(itemBlockManager(), std::move(block));
-  return {state, blockShell};
+  return {state, std::move(blockShell)};
 }
 
 template <bool allowBlockPassthrough>
@@ -129,6 +131,8 @@ BlockFetcher<allowBlockPassthrough>::fetchBlockForPassthrough(size_t atMost) {
     }
     TRI_ASSERT(state == ExecutionState::HASMORE);
   }
+
+  TRI_ASSERT(!_blockShellPassThroughQueue.empty());
 
   ExecutionState state;
   std::shared_ptr<AqlItemBlockShell> blockShell;
