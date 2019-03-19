@@ -71,6 +71,9 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
 
     // if count = true, then we need to set a countRegister
     RegisterId collectRegister = 0;
+    RegisterId expressionRegister = ExecutionNode::MaxRegisterId; 
+    Variable const* expressionVariable = nullptr;
+    std::vector<std::pair<std::string, RegisterId>> variables;
     bool count = false;
 
     std::unordered_set<RegisterId> readableInputRegisters;
@@ -80,7 +83,9 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
                                      regToKeep, std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
                                      std::move(groupRegisters), collectRegister,
+                                     expressionRegister, expressionVariable,
                                      std::move(aggregateTypes),
+                                     std::move(variables),
                                      std::move(aggregateRegisters), trx, count);
 
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
@@ -145,13 +150,18 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
 
     // if count = true, then we need to set a valid countRegister
     RegisterId collectRegister = 0;
+    RegisterId expressionRegister = ExecutionNode::MaxRegisterId; 
+    Variable const* expressionVariable = nullptr;
+    std::vector<std::pair<std::string, RegisterId>> variables;
     bool count = false;
 
     SortedCollectExecutorInfos infos(1, nrOutputRegister, regToClear, regToKeep,
                                      std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
                                      std::move(groupRegisters), collectRegister,
+                                     expressionRegister, expressionVariable,
                                      std::move(aggregateTypes),
+                                     std::move(variables),
                                      std::move(aggregateRegisters), trx, count);
 
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, nrOutputRegister);
@@ -424,13 +434,18 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
     // if count = true, then we need to set a valid countRegister
     bool count = true;
     RegisterId collectRegister = 2;
+    RegisterId expressionRegister = ExecutionNode::MaxRegisterId; 
+    Variable const* expressionVariable = nullptr;
+    std::vector<std::pair<std::string, RegisterId>> variables;
     writeableOutputRegisters.insert(2);
 
     SortedCollectExecutorInfos infos(1, nrOutputRegister, regToClear, regToKeep,
                                      std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
                                      std::move(groupRegisters), collectRegister,
+                                     expressionRegister, expressionVariable,
                                      std::move(aggregateTypes),
+                                     std::move(variables),
                                      std::move(aggregateRegisters), trx, count);
 
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, nrOutputRegister);
@@ -523,13 +538,18 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
     // if count = true, then we need to set a valid countRegister
     bool count = true;
     RegisterId collectRegister = 2;
+    RegisterId expressionRegister = ExecutionNode::MaxRegisterId; 
+    Variable const* expressionVariable = nullptr;
+    std::vector<std::pair<std::string, RegisterId>> variables;
     writeableOutputRegisters.insert(2);
 
     SortedCollectExecutorInfos infos(1, nrOutputRegister, regToClear, regToKeep,
                                      std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
                                      std::move(groupRegisters), collectRegister,
+                                     expressionRegister, expressionVariable,
                                      std::move(aggregateTypes),
+                                     std::move(variables),
                                      std::move(aggregateRegisters), trx, count);
 
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, nrOutputRegister);
@@ -638,13 +658,18 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
     // if count = true, then we need to set a valid countRegister
     bool count = true;
     RegisterId collectRegister = 2;
+    RegisterId expressionRegister = ExecutionNode::MaxRegisterId; 
+    Variable const* expressionVariable = nullptr;
+    std::vector<std::pair<std::string, RegisterId>> variables;
     writeableOutputRegisters.insert(2);
 
     SortedCollectExecutorInfos infos(1, nrOutputRegister, regToClear, regToKeep,
                                      std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
                                      std::move(groupRegisters), collectRegister,
+                                     expressionRegister, expressionVariable,
                                      std::move(aggregateTypes),
+                                     std::move(variables),
                                      std::move(aggregateRegisters), trx, count);
 
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, nrOutputRegister);
