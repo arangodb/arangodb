@@ -74,7 +74,7 @@ rocksdb::Transaction* MMFilesTransactionState::rocksTransaction() {
 
 /// @brief start a transaction
 Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
-  LOG_TRX(this, nestingLevel())
+  LOG_TRX(TRACE, this, nestingLevel())
       << "beginning " << AccessMode::typeString(_type) << " transaction";
   Result result;
 
@@ -140,7 +140,7 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
 
 /// @brief commit a transaction
 Result MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX(this, nestingLevel())
+  LOG_TRX(TRACE, this, nestingLevel())
       << "committing " << AccessMode::typeString(_type) << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
@@ -185,7 +185,7 @@ Result MMFilesTransactionState::commitTransaction(transaction::Methods* activeTr
 
 /// @brief abort and rollback a transaction
 Result MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX(this, nestingLevel()) << "aborting " << AccessMode::typeString(_type) << " transaction";
+  LOG_TRX(TRACE, this, nestingLevel()) << "aborting " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 

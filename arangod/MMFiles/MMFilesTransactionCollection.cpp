@@ -146,7 +146,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
       // use and usage-lock
       TRI_vocbase_col_status_e status;
 
-      LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
+      LOG_TRX(TRACE, _transaction, nestingLevel) << "using collection " << _cid;
       TRI_set_errno(TRI_ERROR_NO_ERROR);  // clear error state so can get valid
                                           // error below
       _collection = _transaction->vocbase().useCollection(_cid, status);
@@ -237,7 +237,7 @@ void MMFilesTransactionCollection::release() {
   // the top level transaction releases all collections
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
-    LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
+    LOG_TRX(TRACE, _transaction, 0) << "unusing collection " << _cid;
 
     if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
         !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
@@ -282,10 +282,10 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
   int res;
   if (!AccessMode::isWriteOrExclusive(type)) {
-    LOG_TRX(_transaction, nestingLevel) << "read-locking collection " << _cid;
+    LOG_TRX(TRACE, _transaction, nestingLevel) << "read-locking collection " << _cid;
     res = physical->lockRead(useDeadlockDetector, _transaction, timeout);
   } else {  // WRITE or EXCLUSIVE
-    LOG_TRX(_transaction, nestingLevel) << "write-locking collection " << _cid;
+    LOG_TRX(TRACE, _transaction, nestingLevel) << "write-locking collection " << _cid;
     res = physical->lockWrite(useDeadlockDetector, _transaction, timeout);
   }
 
@@ -353,10 +353,10 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   TRI_ASSERT(physical != nullptr);
 
   if (!AccessMode::isWriteOrExclusive(_lockType)) {
-    LOG_TRX(_transaction, nestingLevel) << "read-unlocking collection " << _cid;
+    LOG_TRX(TRACE, _transaction, nestingLevel) << "read-unlocking collection " << _cid;
     physical->unlockRead(useDeadlockDetector, _transaction);
   } else {  // WRITE or EXCLUSIVE
-    LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;
+    LOG_TRX(TRACE, _transaction, nestingLevel) << "write-unlocking collection " << _cid;
     physical->unlockWrite(useDeadlockDetector, _transaction);
   }
 

@@ -1875,7 +1875,7 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
   StringUtils::tolowerInPlace(&ls);
   StringUtils::tolowerInPlace(&ts);
 
-  LogTopic* topic = ts.empty() ? &Logger::FIXME : LogTopic::lookup(ts);
+  LogTopic const& topic = ts.empty() ? Logger::FIXME : *LogTopic::lookup(ts);
 
   if (args[1]->IsArray()) {
     auto loglines = v8::Handle<v8::Array>::Cast(args[1]);
@@ -1894,20 +1894,20 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
     for (auto& message : logLineVec) {
       if (ls == "fatal") {
         prefix = "FATAL! ";
-        LOG_TOPIC(ERR, *topic) << prefix << message;
+        LOG_TOPIC(ERR, topic) << prefix << message;
       } else if (ls == "error") {
-        LOG_TOPIC(ERR, *topic) << prefix << message;
+        LOG_TOPIC(ERR, topic) << prefix << message;
       } else if (ls == "warning" || ls == "warn") {
-        LOG_TOPIC(WARN, *topic) << prefix << message;
+        LOG_TOPIC(WARN, topic) << prefix << message;
       } else if (ls == "info") {
-        LOG_TOPIC(INFO, *topic) << prefix << message;
+        LOG_TOPIC(INFO, topic) << prefix << message;
       } else if (ls == "debug") {
-        LOG_TOPIC(DEBUG, *topic) << prefix << message;
+        LOG_TOPIC(DEBUG, topic) << prefix << message;
       } else if (ls == "trace") {
-        LOG_TOPIC(TRACE, *topic) << prefix << message;
+        LOG_TOPIC(TRACE, topic) << prefix << message;
       } else {
         prefix = ls + "!";
-        LOG_TOPIC(WARN, *topic) << prefix << message;
+        LOG_TOPIC(WARN, topic) << prefix << message;
       }
     } // for
   } else {
@@ -1921,20 +1921,20 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     if (ls == "fatal") {
       prefix = "FATAL! ";
-      LOG_TOPIC(ERR, *topic) << prefix << message;
+      LOG_TOPIC(ERR, topic) << prefix << msg;
     } else if (ls == "error") {
-      LOG_TOPIC(ERR, *topic) << prefix << message;
+      LOG_TOPIC(ERR, topic) << prefix << msg;
     } else if (ls == "warning" || ls == "warn") {
-      LOG_TOPIC(WARN, *topic) << prefix << message;
+      LOG_TOPIC(WARN, topic) << prefix << msg;
     } else if (ls == "info") {
-      LOG_TOPIC(INFO, *topic) << prefix << message;
+      LOG_TOPIC(INFO, topic) << prefix << msg;
     } else if (ls == "debug") {
-      LOG_TOPIC(DEBUG, *topic) << prefix << message;
+      LOG_TOPIC(DEBUG, topic) << prefix << msg;
     } else if (ls == "trace") {
-      LOG_TOPIC(TRACE, *topic) << prefix << message;
+      LOG_TOPIC(TRACE, topic) << prefix << msg;
     } else {
       prefix = ls + "!";
-      LOG_TOPIC(WARN, *topic) << prefix << message;
+      LOG_TOPIC(WARN, topic) << prefix << msg;
     }
 
   }

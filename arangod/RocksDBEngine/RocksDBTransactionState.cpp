@@ -75,7 +75,7 @@ RocksDBTransactionState::~RocksDBTransactionState() {
 
 /// @brief start a transaction
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
-  LOG_TRX(this, nestingLevel())
+  LOG_TRX(TRACE, this, nestingLevel())
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
@@ -373,7 +373,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
 
 /// @brief commit a transaction
 Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX(this, nestingLevel())
+  LOG_TRX(TRACE, this, nestingLevel())
       << "committing " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
@@ -401,7 +401,7 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
 
 /// @brief abort and rollback a transaction
 Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX(this, nestingLevel()) << "aborting " << AccessMode::typeString(_type) << " transaction";
+  LOG_TRX(TRACE, this, nestingLevel()) << "aborting " << AccessMode::typeString(_type) << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   Result result;
   if (nestingLevel() == 0) {

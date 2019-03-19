@@ -18,7 +18,7 @@ def is_good(status):
     return status in (Status.OK, Status.OK_REPLACED)
 
 import re
-g_log_topic_pattern = re.compile("(?P<macro>LOG_TOPIC(_(IF|TRX))?)\((?P<param>[^),]*),(?P<rest>.*)")
+g_log_topic_pattern = re.compile(r'(?P<macro>LOG_(TOPIC(_IF)?|TRX))\((?P<param>[^),]*),(?P<rest>.*)')
 
 import hashlib
 g_hash_algorithm = hashlib.md5()
@@ -82,7 +82,7 @@ def do_operation(fullpath, project_path, target_file_handle, id_database, levels
                     if param in levels:
                         # replace with new id
                         uid = generate_id(location_string, param, rest, id_database)
-                        replacement = '{}({}, {}, {}'.format(macro,uid, param, rest)
+                        replacement = '{}({}, {}, {}'.format(macro ,uid, param, rest.replace('\\', '\\\\' ))
                         output = "{} -- {}".format(location_string, replacement)
                         #print(output)
                         status = Status.OK_REPLACED
@@ -94,9 +94,12 @@ def do_operation(fullpath, project_path, target_file_handle, id_database, levels
                         target_file_handle.write(line)
 
                     else:
-                        print("BROKEN PARAMS IN:")
-                        output = "{} -- {}".format(location_string, original_params)
-                        print(output)
+                        print("BROKEN PARAMS IN: " + project_path + ":" + str(cnt))
+                        print(operation)
+                        print(line)
+                        print("macro: " + macro)
+                        print("param: " +  param)
+                        print("rest:" + rest)
                         status = Status.FAIL
 
                 if operation == Operation.READ:
@@ -117,9 +120,12 @@ def do_operation(fullpath, project_path, target_file_handle, id_database, levels
                             id_database[uid]=location_string
 
                     else:
-                        print("BROKEN PARAMS IN:")
-                        output = "{} -- {}".format(location_string, param)
-                        print(output)
+                        print("BROKEN PARAMS IN: " + project_path + ":" + str(cnt))
+                        print(operation)
+                        print(line)
+                        print("macro: " + macro)
+                        print("param: " +  param)
+                        print("rest:" + rest)
                         status = Status.FAIL
 
                 else:

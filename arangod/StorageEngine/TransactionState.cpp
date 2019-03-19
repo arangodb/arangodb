@@ -99,7 +99,7 @@ TransactionState::Cookie::ptr TransactionState::cookie(void const* key,
 int TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cname,
                                     AccessMode::Type accessType,
                                     int nestingLevel, bool force) {
-  LOG_TRX(this, nestingLevel) << "adding collection " << cid;
+  LOG_TRX(TRACE, this, nestingLevel) << "adding collection " << cid;
 
   // upgrade transaction type if required
   if (nestingLevel == 0) {

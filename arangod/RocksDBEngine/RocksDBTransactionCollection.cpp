@@ -110,7 +110,7 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       // use and usage-lock
       TRI_vocbase_col_status_e status;
 
-      LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
+      LOG_TRX(TRACE, _transaction, nestingLevel) << "using collection " << _cid;
       TRI_set_errno(TRI_ERROR_NO_ERROR);  // clear error state so can get valid
                                           // error below
       _collection = _transaction->vocbase().useCollection(_cid, status);
@@ -172,7 +172,7 @@ void RocksDBTransactionCollection::release() {
   // the top level transaction releases all collections
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
-    LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
+    LOG_TRX(TRACE, _transaction, 0) << "unusing collection " << _cid;
 
     if (_usageLocked) {
       _transaction->vocbase().releaseCollection(_collection.get());
@@ -313,7 +313,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
     timeout = 0.00000001;
   }
 
-  LOG_TRX(_transaction, nestingLevel) << "write-locking collection " << _cid;
+  LOG_TRX(TRACE, _transaction, nestingLevel) << "write-locking collection " << _cid;
   int res;
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be acquiring the collection's RW lock in
@@ -386,7 +386,7 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
-  LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;
+  LOG_TRX(TRACE, _transaction, nestingLevel) << "write-unlocking collection " << _cid;
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be releasing the collection's RW lock in
     // write mode

@@ -36,15 +36,15 @@
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define LOG_TRX(logid, trx, trxlevel)                        \
-  LOG_TOPIC(logid, TRACE, arangodb::Logger::TRANSACTIONS) \
-      << "#" << trx->id() << "." << trxlevel << " ("  \
+#define LOG_TRX(logid, llevel, trx, tlevel)                \
+  LOG_TOPIC(logid, llevel, arangodb::Logger::TRANSACTIONS) \
+      << "#" << trx->id() << "." << tlevel << " ("         \
       << transaction::statusString(trx->status()) << "): "
 
 #else
 
-#define LOG_TRX(logid, ...) \
-  while (0) LOG_TOPIC(logid, TRACE,  arangodb::Logger::TRANSACTIONS)
+#define LOG_TRX(logid, llevel, ...) \
+  while (0) LOG_TOPIC(logid, llevel,  arangodb::Logger::TRANSACTIONS)
 #endif
 
 struct TRI_vocbase_t;
