@@ -17,33 +17,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_STATE_H
-#define ARANGOD_AQL_EXECUTION_STATE_H 1
+#include "ExecutionState.h"
 
-#include <iosfwd>
+#include <ostream>
 
 namespace arangodb {
 namespace aql {
 
-enum class ExecutionState {
-  // done with this block, definitely no more results
-  DONE,
-  // (potentially) more results available. this may "lie" and
-  // report that there are more results when in fact there are
-  // none (background: to accurately determine that there are
-  // more results we may need to execute expensive operations
-  // on the preceeding blocks, which we want to avoid)
-  HASMORE,
-  // unclear if more results available or not. caller is asked
-  // to try again
-  WAITING
-};
-
-std::ostream& operator<<(std::ostream& ostream, ExecutionState state);
+std::ostream& operator<<(std::ostream& ostream, ExecutionState state) {
+  switch (state) {
+    case ExecutionState::DONE:
+      ostream << "DONE";
+      break;
+    case ExecutionState::HASMORE:
+      ostream << "HASMORE";
+      break;
+    case ExecutionState::WAITING:
+      ostream << "WAITING";
+      break;
+  }
+  return ostream;
+}
 
 }  // namespace aql
 }  // namespace arangodb
-#endif

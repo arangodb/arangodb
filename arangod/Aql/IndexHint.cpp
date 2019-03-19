@@ -30,6 +30,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 
+#include <ostream>
+
 namespace {
 std::string const TypeIllegal("illegal");
 std::string const TypeNone("none");
