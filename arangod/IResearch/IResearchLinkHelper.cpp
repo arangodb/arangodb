@@ -154,16 +154,17 @@ bool dropLink<arangodb::iresearch::IResearchViewCoordinator>( // drop link
 }
 
 template <typename ViewType>
-arangodb::Result modifyLinks(std::unordered_set<TRI_voc_cid_t>& modified,
-                             TRI_vocbase_t& vocbase, ViewType& view,
-                             arangodb::velocypack::Slice const& links,
-                             std::unordered_set<TRI_voc_cid_t> const& stale = {}) {
+arangodb::Result modifyLinks( // modify links
+    std::unordered_set<TRI_voc_cid_t>& modified, // modified collection ids
+    ViewType& view, // modified view
+    arangodb::velocypack::Slice const& links, // modified link definitions
+    std::unordered_set<TRI_voc_cid_t> const& stale = {} // stale links
+) {
   if (!links.isObject()) {
-    return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string(
-            "error parsing link parameters from json for arangosearch view '") +
-            view.name() + "'");
+    return arangodb::Result( // result
+      TRI_ERROR_BAD_PARAMETER, // code
+      std::string("error parsing link parameters from json for arangosearch view '") + view.name() + "'"
+    );
   }
 
   struct State {
