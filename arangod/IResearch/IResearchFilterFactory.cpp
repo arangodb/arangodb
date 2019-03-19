@@ -336,7 +336,10 @@ bool byRange(irs::boolean_filter* filter, arangodb::aql::AstNode const& attribut
     }
 
     if (!min.execute(ctx)) {
-      // failed to execute expression
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "Failed to evaluate lower boundary from node '"
+          << arangodb::aql::AstNode::toString(&minValueNode)
+          << "'";
       return false;
     }
   }
@@ -350,13 +353,18 @@ bool byRange(irs::boolean_filter* filter, arangodb::aql::AstNode const& attribut
     }
 
     if (!max.execute(ctx)) {
-      // failed to execute expression
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "Failed to evaluate upper boundary from node '"
+          << arangodb::aql::AstNode::toString(&maxValueNode)
+          << "'";
       return false;
     }
   }
 
   if (min.type() != max.type()) {
-    // type mismatch
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "Failed to build range query, lower boundary '" << arangodb::aql::AstNode::toString(&minValueNode)
+        << "' mismatches upper boundary '" << arangodb::aql::AstNode::toString(&maxValueNode) << "'";
     return false;
   }
 
@@ -379,10 +387,8 @@ bool byRange(irs::boolean_filter* filter, arangodb::aql::AstNode const& attribut
         range.boost(filterCtx.boost);
         range.term<irs::Bound::MIN>(irs::null_token_stream::value_null());
         range.include<irs::Bound::MIN>(minInclude);
-        ;
         range.term<irs::Bound::MAX>(irs::null_token_stream::value_null());
         range.include<irs::Bound::MAX>(maxInclude);
-        ;
       }
 
       return true;
@@ -964,6 +970,7 @@ bool fromNegation(irs::boolean_filter* filter, QueryContext const& ctx,
   return ::filter(filter, ctx, subFilterCtx, *member);
 }
 
+/*
 bool rangeFromBinaryAnd(irs::boolean_filter* filter, QueryContext const& ctx,
                         FilterContext const& filterCtx,
                         arangodb::aql::AstNode const& node) {
@@ -1012,6 +1019,7 @@ bool rangeFromBinaryAnd(irs::boolean_filter* filter, QueryContext const& ctx,
   // unable to create range
   return false;
 }
+*/
 
 template <typename Filter>
 bool fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
@@ -1029,12 +1037,6 @@ bool fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
   }
 
   // Note: cannot optimize for single member in AND/OR since 'a OR NOT b' translates to 'a OR (OR NOT b)'
-
-//  if (std::is_same<Filter, irs::And>::value && 2 == n &&
-//      rangeFromBinaryAnd(filter, ctx, filterCtx, node)) {
-//    // range case
-//    return true;
-//  }
 
   if (filter) {
     filter = &filter->add<Filter>();
@@ -1784,6 +1786,103 @@ bool fromFuncStartsWith(irs::boolean_filter* filter, QueryContext const& ctx,
   return true;
 }
 
+// IN_RANGE(<attribute>, <low>, <high>, <include-low>, <include-high>)
+bool fromFuncInRange(irs::boolean_filter* filter, QueryContext const& ctx,
+                     FilterContext const& filterCtx,
+                     arangodb::aql::AstNode const& args) {
+  if (!args.isDeterministic()) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "Unable to handle non-deterministic arguments for 'IN_RANGE' "
+           "function";
+    return false;  // nondeterministic
+  }
+
+  auto const argc = args.numMembers();
+
+  if (argc != 5) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "'IN_RANGE' AQL function: Invalid number of arguments passed "
+           "(should be 5)";
+    return false;
+  }
+
+  // 1st argument defines a field
+  auto const* field =
+      arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
+
+  if (!field) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "'IN_RANGE' AQL function: Unable to parse 1st argument as an "
+           "attribute identifier";
+    return false;
+  }
+
+  ScopedAqlValue includeValue;
+  auto getInclusion = [&ctx, filter, &includeValue](
+      arangodb::aql::AstNode const* arg,
+      bool& include,
+      irs::string_ref const& argName) -> bool {
+    if (!arg) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "'IN_RANGE' AQL function: " << argName << " argument is invalid";
+      return false;
+    }
+
+    includeValue.reset(*arg);
+
+    if (filter || includeValue.isConstant()) {
+      if (!includeValue.execute(ctx)) {
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+            << "'IN_RANGE' AQL function: Failed to evaluate " << argName << " argument";
+        return false;
+      }
+
+      if (arangodb::iresearch::SCOPED_VALUE_TYPE_BOOL != includeValue.type()) {
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+            << "'IN_RANGE' AQL function: " << argName << " argument has invalid type '"
+            << includeValue.type() << "' (boolean expected)";
+        return false;
+      }
+
+      include = includeValue.getBoolean();
+    }
+
+    return true;
+  };
+
+  // 2nd argument defines a lower boundary
+  auto const* lhsArg = args.getMemberUnchecked(1);
+
+  if (!lhsArg) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "'IN_RANGE' AQL function: 2nd argument is invalid";
+    return false;
+  }
+
+  // 3rd argument defines an upper boundary
+  auto const* rhsArg = args.getMemberUnchecked(2);
+
+  if (!rhsArg) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "'IN_RANGE' AQL function: 3rd argument is invalid";
+    return false;
+  }
+
+  // 4th argument defines inclusion of lower boundary
+  bool lhsInclude = false;
+  if (!getInclusion(args.getMemberUnchecked(3), lhsInclude, "4th")) {
+    return false;
+  }
+
+  // 5th argument defines inclusion of upper boundary
+  bool rhsInclude = false;
+  if (!getInclusion(args.getMemberUnchecked(4), rhsInclude, "5th")) {
+    return false;
+  }
+
+  return byRange(filter, *field, *lhsArg, lhsInclude, *rhsArg, rhsInclude, ctx, filterCtx);
+}
+
 std::map<irs::string_ref, ConvertionHandler> const FCallUserConvertionHandlers;
 
 bool fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
@@ -1831,7 +1930,9 @@ bool fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
 std::map<std::string, ConvertionHandler> const FCallSystemConvertionHandlers{
     {"PHRASE", fromFuncPhrase},     {"STARTS_WITH", fromFuncStartsWith},
     {"EXISTS", fromFuncExists},     {"BOOST", fromFuncBoost},
-    {"ANALYZER", fromFuncAnalyzer}, {"MIN_MATCH", fromFuncMinMatch}};
+    {"ANALYZER", fromFuncAnalyzer}, {"MIN_MATCH", fromFuncMinMatch},
+    {"IN_RANGE", fromFuncInRange}
+};
 
 bool fromFCall(irs::boolean_filter* filter, QueryContext const& ctx,
                FilterContext const& filterCtx, arangodb::aql::AstNode const& node) {
