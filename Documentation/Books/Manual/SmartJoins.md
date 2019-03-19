@@ -6,7 +6,7 @@ This feature is only available in the
 [**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
 {% endhint %}
 
-When doing joins in an ArangoDB cluster data has to exchanged between different servers.
+When doing joins in an ArangoDB cluster data has to be exchanged between different servers.
 
 Joins between collections in a cluster normally require roundtrips between the shards of 
 the different collections for fetching the data. Requests are routed through an extra
@@ -125,8 +125,10 @@ Using smartJoinAttribute
 
 In case the join on the second collection must be performed on a non-shard key
 attribute, there is the option to specify a *smartJoinAttribute* for the collection.
-Note that setting *distributeShardsLike* is still required here, and that the
-single *shardKeys* attribute must be set to `_key:`.
+Note that for this case, setting *distributeShardsLike* is still required here, and that that
+only a single *shardKeys* attribute can be used.
+The single attribute name specified in the *shardKeys* attribute for the collection must end
+with a colon character then.
 
 This *smartJoinAttribute* must be populated for all documents in the collection,
 and must always contain a string value. The value of the *_key* attribute for each
