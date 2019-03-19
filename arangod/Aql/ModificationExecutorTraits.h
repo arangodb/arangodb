@@ -95,17 +95,17 @@ struct ModificationBase {
 };
 
 struct Insert : ModificationBase {
-  bool doModifications(ModificationExecutorInfos&, ModificationExecutorBase::Stats&);
+  bool doModifications(ModificationExecutorInfos&, ModificationStats&);
   bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 };
 
 struct Remove : ModificationBase {
-  bool doModifications(ModificationExecutorInfos&, ModificationExecutorBase::Stats&);
+  bool doModifications(ModificationExecutorInfos&, ModificationStats&);
   bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 };
 
 struct Upsert : ModificationBase {
-  bool doModifications(ModificationExecutorInfos&, ModificationExecutorBase::Stats&);
+  bool doModifications(ModificationExecutorInfos&, ModificationStats&);
   bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 
   OperationResult _operationResultUpdate;
@@ -141,7 +141,7 @@ struct UpdateReplace : ModificationBase {
   using MethodPtr = OperationResult (transaction::Methods::*)(std::string const& collectionName,
                                                               VPackSlice const updateValue,
                                                               OperationOptions const& options);
-  bool doModifications(ModificationExecutorInfos&, ModificationExecutorBase::Stats&);
+  bool doModifications(ModificationExecutorInfos&, ModificationStats&);
   bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 
   UpdateReplace() = delete;

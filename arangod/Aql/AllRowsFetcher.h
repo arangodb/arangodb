@@ -99,6 +99,11 @@ class AllRowsFetcher {
    */
   TEST_VIRTUAL std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t);
 
+  ExecutionState upstreamState() {
+    TRI_ASSERT(false);
+    return _upstreamState;
+  }
+
  private:
   BlockFetcher<false>* _blockFetcher;
 

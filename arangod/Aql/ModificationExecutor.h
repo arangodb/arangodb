@@ -29,6 +29,7 @@
 #include "Aql/ModificationOptions.h"
 #include "Aql/SingleBlockFetcher.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/Stats.h"
 #include "Utils/OperationOptions.h"
 #include "velocypack/Slice.h"
@@ -161,6 +162,7 @@ class ModificationExecutorInfos : public ExecutorInfos {
   boost::optional<RegisterId> _outputOldRegisterId;
 };
 
+template <typename FetcherType>
 struct ModificationExecutorBase {
   struct Properties {
     static const bool preservesOrder = true;
@@ -170,7 +172,7 @@ struct ModificationExecutorBase {
                 // Maybe This should ask for a 1:1 relation.
   };
   using Infos = ModificationExecutorInfos;
-  using Fetcher = SingleBlockFetcher<Properties::allowsBlockPassthrough>;
+  using Fetcher = FetcherType; // SingleBlockFetcher<Properties::allowsBlockPassthrough>;
   using Stats = ModificationStats;
 
   ModificationExecutorBase(Fetcher&, Infos&);
@@ -181,8 +183,8 @@ struct ModificationExecutorBase {
   bool _prepared = false;
 };
 
-template <typename Modifier>
-class ModificationExecutor : public ModificationExecutorBase {
+template <typename Modifier, typename FetcherType>
+class ModificationExecutor : public ModificationExecutorBase<FetcherType> {
   friend struct Insert;
   friend struct Remove;
   friend struct Upsert;
@@ -191,6 +193,11 @@ class ModificationExecutor : public ModificationExecutorBase {
 
  public:
   using Modification = Modifier;
+
+  //pull in types from template base
+  using Fetcher = typename ModificationExecutorBase<FetcherType>::Fetcher;
+  using Infos = typename ModificationExecutorBase<FetcherType>::Infos;
+  using Stats = typename ModificationExecutorBase<FetcherType>::Stats;
 
   ModificationExecutor(Fetcher&, Infos&);
   ~ModificationExecutor();
