@@ -30,6 +30,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "Logger/Logger.h"
@@ -207,6 +208,7 @@ bool RestHandler::forwardRequest() {
   }
 
   if (res->status == CL_COMM_TIMEOUT) {
+    ClusterFeature::abortOnTimeout();
     // No reply, we give up:
     generateError(rest::ResponseCode::BAD, TRI_ERROR_CLUSTER_TIMEOUT,
                   "timeout within cluster");

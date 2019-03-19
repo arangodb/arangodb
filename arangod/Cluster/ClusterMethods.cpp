@@ -32,6 +32,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "ClusterMethods.h"
+#include "Cluster/ClusterFeature.h"
 #include "Graph/Traverser.h"
 #include "Indexes/Index.h"
 #include "RestServer/TtlFeature.h"
@@ -623,6 +624,7 @@ int handleGeneralCommErrors(arangodb::ClusterCommResult const* res) {
   // If TRI_ERROR_NO_ERROR is returned, then the result was CL_COMM_RECEIVED
   // and .answer can safely be inspected.
   if (res->status == CL_COMM_TIMEOUT) {
+    ClusterFeature::abortOnTimeout();
     // No reply, we give up:
     return TRI_ERROR_CLUSTER_TIMEOUT;
   } else if (res->status == CL_COMM_ERROR) {
