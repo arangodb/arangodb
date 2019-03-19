@@ -850,6 +850,14 @@ function checkArangoAlive (arangod, options) {
   return ret;
 }
 
+function abortSurviviours(arangod, options) {
+  print("Killing in the name of: ")
+  print(arangod)
+  if (!arangod.hasOwnProperty('exitStatus')) {
+    arangod.exitStatus = killExternal(arangod.pid, abortSignal);
+  }
+}
+
 function checkInstanceAlive (instanceInfo, options) {
   if (options.activefailover && instanceInfo.hasOwnProperty('authOpts')) {
     let d = detectCurrentLeader(instanceInfo);
@@ -860,9 +868,15 @@ function checkInstanceAlive (instanceInfo, options) {
     }
   }
   
-  return instanceInfo.arangods.reduce((previous, arangod) => {
+  let rc = instanceInfo.arangods.reduce((previous, arangod) => {
     return previous && checkArangoAlive(arangod, options);
   }, true);
+  if (!rc) {
+    instanceInfo.arangods.reduce((previous, arangod) => {
+      abortSurviviours(arangod, options);
+    }, true);
+  }
+  return rc;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
