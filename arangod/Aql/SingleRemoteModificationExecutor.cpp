@@ -29,15 +29,43 @@
 #include "Basics/Common.h"
 #include "ModificationExecutorTraits.h"
 #include "VocBase/LogicalCollection.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 
 #include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,
+                                    TRI_voc_rid_t revision) {
+  auto builder = std::make_unique<VPackBuilder>();
+  {
+    VPackObjectBuilder guard(builder.get());
+    TRI_SanitizeObject(document, *builder);
+    VPackSlice keyInBody = document.get(StaticStrings::KeyString);
+
+    if (keyInBody.isNone() || keyInBody.isNull() ||
+        (keyInBody.isString() && keyInBody.copyString() != key) ||
+        ((revision != 0) && (TRI_ExtractRevisionId(document) != revision))) {
+      // We need to rewrite the document with the given revision and key:
+      builder->add(StaticStrings::KeyString, VPackValue(key));
+      if (revision != 0) {
+        builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(revision)));
+      }
+    }
+  }
+  return builder;
+}
+}  // namespace
+
 template <typename Modifier>
 SingleRemoteModificationExecutor<Modifier>::SingleRemoteModificationExecutor(Fetcher& fetcher, Infos& info)
-    : _info(info), _fetcher(fetcher), _upstreamState(ExecutionState::HASMORE){};
+    : _info(info), _fetcher(fetcher), _upstreamState(ExecutionState::HASMORE){
+      TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+    };
 
 template <typename Modifier>
 SingleRemoteModificationExecutor<Modifier>::~SingleRemoteModificationExecutor() = default;
@@ -98,9 +126,8 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
     inSlice = inBuilder.slice();
   }
 
-  std::unique_ptr<VPackBuilder> mergedBuilder;
   if (!_key.empty()) {
-    //FIXME mergedBuilder = merge(inSlice, _key, 0);
+    auto mergedBuilder = merge(inSlice, _key, 0);
     inSlice = mergedBuilder->slice();
   }
 
@@ -154,7 +181,7 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   // FIXME _engine->_stats.scannedIndex++;
 
   if (!(_info._outputRegisterId.has_value() || _info._outputOldRegisterId.has_value() || _info._outputNewRegisterId.has_value())) {
-  //FIXME  return node->hasParent();
+    return _hasParent;
   }
 
   // Fill itemblock

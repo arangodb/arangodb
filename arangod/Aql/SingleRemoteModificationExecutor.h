@@ -28,6 +28,32 @@
 namespace arangodb {
 namespace aql {
 
+struct SingleRemoteModificationInfos : ModificationExecutorInfos {
+  SingleRemoteModificationInfos(
+      boost::optional<RegisterId> input1RegisterId, boost::optional<RegisterId> input2RegisterId,
+      boost::optional<RegisterId> input3RegisterId, boost::optional<RegisterId> outputNewRegisterId,
+      boost::optional<RegisterId> outputOldRegisterId,
+      boost::optional<RegisterId> outputRegisterId, RegisterId nrInputRegisters,
+      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+      std::unordered_set<RegisterId> registersToKeep, transaction::Methods* trx,
+      OperationOptions options, aql::Collection const* aqlCollection,
+      ProducesResults producesResults, ConsultAqlWriteFilter consultAqlWriteFilter,
+      IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
+      IgnoreDocumentNotFound ignoreDocumentNotFound,  // end of base class params
+      std::string key,
+      bool hasParent)
+      : ModificationExecutorInfos(std::move(input1RegisterId), std::move(input2RegisterId), std::move(input3RegisterId),
+                                  std::move(outputNewRegisterId), std::move(outputOldRegisterId), std::move(outputRegisterId),
+                                  nrInputRegisters, std::move(nrOutputRegisters), std::move(registersToClear),
+                                  std::move(registersToKeep), trx, std::move(options), aqlCollection,
+                                  producesResults, consultAqlWriteFilter, ignoreErrors,
+                                  doCount, isReplace, ignoreDocumentNotFound),
+        _key(std::move(key)), _hasParent(hasParent) {}
+  std::string _key;
+  bool _hasParent;  //node->hasParent();
+  constexpr static double const defaultTimeOut = 3600.0;
+};
+
 struct Index {};
 
 template <typename Modifier>
@@ -36,7 +62,7 @@ struct SingleRemoteModificationExecutor {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
   };
-  using Infos = ModificationExecutorInfos;
+  using Infos = SingleRemoteModificationInfos;
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Stats = ModificationStats;
   using Modification = Modifier;
@@ -60,7 +86,6 @@ struct SingleRemoteModificationExecutor {
   ExecutionState _upstreamState;
   std::string _key;
 };
-
 
 }  // namespace aql
 }  // namespace arangodb

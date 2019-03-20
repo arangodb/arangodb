@@ -122,8 +122,7 @@ struct IgnoreDocumentNotFound : BoolWrapper {
 };
 
 
-class ModificationExecutorInfos : public ExecutorInfos {
- public:
+struct ModificationExecutorInfos : public ExecutorInfos {
   ModificationExecutorInfos(boost::optional<RegisterId> input1RegisterId,
                             boost::optional<RegisterId> input2RegisterId,
                             boost::optional<RegisterId> input3RegisterId,
