@@ -316,8 +316,6 @@ arangodb::Result ClusterTrxMethods::beginTransactionOnLeaders(TransactionState& 
       continue;  // already send a begin transaction there
     }
     state.addKnownServer(leader);
-
-    LOG_DEVEL << "Begin transaction " << state.id() << " on " << leader;
     requests.emplace_back(::beginTransactionRequest(nullptr, state, leader));
   }
 
@@ -385,7 +383,8 @@ Result ClusterTrxMethods::beginTransactionOnFollowers(transaction::Methods& trx,
       Result r =
           ::checkTransactionResult(tid, transaction::Status::RUNNING, requests[i].result);
       if (r.fail()) {
-        LOG_DEVEL << "dropping follower because it did not start trx "
+        LOG_TOPIC(INFO, Logger::REPLICATION)
+                  << "dropping follower because it did not start trx "
                   << state.id() << ", error: '" << r.errorMessage() << "'";
         if (info.remove(followers[i])) {
           // TODO: what happens if a server is re-added during a transaction ?

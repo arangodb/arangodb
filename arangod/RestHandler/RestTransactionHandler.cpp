@@ -49,9 +49,7 @@ RestTransactionHandler::RestTransactionHandler(GeneralRequest* request, GeneralR
     : RestVocbaseBaseHandler(request, response), _v8Context(nullptr), _lock() {}
 
 RestStatus RestTransactionHandler::execute() {
-  
-  LOG_DEVEL << "TRX API: " << requestToString(_request->requestType()) << "  " << _request->requestPath();
-  
+    
   switch (_request->requestType()) {
     case rest::RequestType::GET:
       executeGetState();

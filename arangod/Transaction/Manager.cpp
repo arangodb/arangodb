@@ -605,7 +605,6 @@ void Manager::abortAllManagedTrx(TRI_voc_cid_t cid, bool leader) {
   }
   
   for (TRI_voc_tid_t tid : toAbort) {
-    LOG_DEVEL << "aborting " << tid << " mod 4 " << (tid % 4) << " leader: " << leader;
     Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/true);
     if (res.fail()) {
       LOG_TOPIC(INFO, Logger::TRANSACTIONS) << "error while GC collecting "
