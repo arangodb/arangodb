@@ -116,7 +116,7 @@ inline static bool endpointPathFromUrl(std::string const& url,
 
 /// Ctor with name
 Store::Store(Agent* agent, std::string const& name)
-    : _agent(agent), _node(name, this) {}
+  : Thread::Thread(name), _agent(agent), _node(name, this) {}
 
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
@@ -807,4 +807,23 @@ void Store::run() {
     _agent->write(toClear);
   }
 
+}
+
+/// Get name
+std::string const& Store::name() const {
+  return _node.name();
+}
+
+
+/// Start thread
+bool Store::start() {
+  Thread::start();
+  return true;
+}
+
+/// Shutdown
+void Store::beginShutdown() {
+  Thread::beginShutdown();
+  CONDITION_LOCKER(guard, _cv);
+  guard.broadcast();
 }
