@@ -125,8 +125,8 @@ struct Job {
   static std::string randomIdleAvailableServer(Node const& snap,
                                                    std::vector<std::string> const& exclude);
   static std::string randomIdleAvailableServer(Node const& snap, VPackSlice const& exclude);
-  static size_t countGoodServersInList(Node const& snap, VPackSlice const& serverList);
-  static size_t countGoodServersInList(Node const& snap, std::vector<std::string> const& serverList);
+  static size_t countGoodOrBadServersInList(Node const& snap, VPackSlice const& serverList);
+  static size_t countGoodOrBadServersInList(Node const& snap, std::vector<std::string> const& serverList);
   static bool isInServerList(Node const& snap, std::string const& prefix, std::string const& server, bool isArray);
 
   /// @brief Get servers from plan, which are not failed or cleaned out

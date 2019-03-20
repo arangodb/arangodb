@@ -228,7 +228,7 @@ std::string Job::randomIdleAvailableServer(Node const& snap, Slice const& exclud
 
 // The following counts in a given server list how many of the servers are
 // in Status "GOOD".
-size_t Job::countGoodServersInList(Node const& snap, VPackSlice const& serverList) {
+size_t Job::countGoodOrBadServersInList(Node const& snap, VPackSlice const& serverList) {
   size_t count = 0;
   if (!serverList.isArray()) {
     // No array, strange, return 0
@@ -248,7 +248,8 @@ size_t Job::countGoodServersInList(Node const& snap, VPackSlice const& serverLis
           // Only check if found
           std::shared_ptr<Node> healthNode = it->second;
           // Check its status:
-          if (healthNode->hasAsString("Status").first == "GOOD") {
+          auto status = healthNode->hasAsString("Status");
+          if (status.first == "GOOD" || status.first == "BAD") {
             ++count;
           }
         }
@@ -260,7 +261,7 @@ size_t Job::countGoodServersInList(Node const& snap, VPackSlice const& serverLis
 
 // The following counts in a given server list how many of the servers are
 // in Status "GOOD".
-size_t Job::countGoodServersInList(Node const& snap, std::vector<std::string> const& serverList) {
+size_t Job::countGoodOrBadServersInList(Node const& snap, std::vector<std::string> const& serverList) {
   size_t count = 0;
   auto health = snap.hasAsChildren(healthPrefix);
   // Do we have a Health substructure?
@@ -273,7 +274,8 @@ size_t Job::countGoodServersInList(Node const& snap, std::vector<std::string> co
         // Only check if found
         std::shared_ptr<Node> healthNode = it->second;
         // Check its status:
-        if (healthNode->hasAsString("Status").first == "GOOD") {
+        auto status = healthNode->hasAsString("Status");
+        if (status.first == "GOOD" || status.first == "BAD") {
           ++count;
         }
       }
