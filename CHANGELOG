@@ -1,6 +1,9 @@
 v3.3.23 (XXXX-XX-XX)
 --------------------
 
+* don't attempt to remove non-existing WAL files, because such attempt will
+  trigger unnecessary error log messages in the RocksDB library
+
 * always clear all ongoing replication transactions on the slave if the slave
   discovers the data it has asked for is not present anymore on the master and the
   `requireFromPresent` value for the applier is set to `false`.
