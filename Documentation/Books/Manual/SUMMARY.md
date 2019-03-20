@@ -79,6 +79,7 @@
     * [Limitations](Programs/Arangodump/Limitations.md)
   * [Arangorestore](Programs/Arangorestore/README.md)
     * [Examples](Programs/Arangorestore/Examples.md)
+    * [Fast Cluster Restore](Programs/Arangorestore/FastClusterRestore.md)
     * [Options](Programs/Arangorestore/Options.md)
   * [Arangoimport](Programs/Arangoimport/README.md)
     * [Examples JSON](Programs/Arangoimport/ExamplesJson.md)
@@ -364,6 +365,7 @@
   <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
   * [Datacenter to datacenter replication](Security/DC2DC/README.md)
 * [Monitoring](Monitoring/README.md)
+  * [Log Levels](Monitoring/LogLevels.md)
   <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
   * [Datacenter to datacenter replication](Monitoring/DC2DC/README.md)
 * [Troubleshooting](Troubleshooting/README.md)

@@ -354,7 +354,7 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods* trx,
     if (s.isString()) {
       builder.add(StaticStrings::RevString, s);
       VPackValueLength l;
-      char const* p = s.getString(l);
+      char const* p = s.getStringUnchecked(l);
       revisionId = TRI_StringToRid(p, l, false);
       handled = true;
     }
@@ -443,7 +443,7 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods* trx,
     if (s.isString()) {
       builder.add(StaticStrings::RevString, s);
       VPackValueLength l;
-      char const* p = s.getString(l);
+      char const* p = s.getStringUnchecked(l);
       revisionId = TRI_StringToRid(p, l, false);
       handled = true;
     }

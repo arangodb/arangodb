@@ -59,6 +59,8 @@ const std::string SHARD_FOLLOWER2 = "follower2";
 const std::string FREE_SERVER = "free";
 const std::string FREE_SERVER2 = "free2";
 
+bool aborts = false;
+
 const char *agency =
 #include "RemoveFollowerTest.json"
   ;
@@ -224,7 +226,7 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
 
       When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
       auto &agent = mockAgent.get();
-      RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
+      RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 
     }
 
@@ -283,7 +285,7 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
       );
       When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
       auto &agent = mockAgent.get();
-      RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
+      RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 
     }
 
@@ -349,7 +351,7 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
       );
       When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
       auto &agent = mockAgent.get();
-      RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
+      RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 
     }
 
@@ -397,7 +399,7 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
           REQUIRE(typeName(q->slice()) == "array");
           REQUIRE(q->slice().length() == 1);
           REQUIRE(typeName(q->slice()[0]) == "array");
-          REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+          REQUIRE(q->slice()[0].length() == 2); // precondition
           REQUIRE(typeName(q->slice()[0][0]) == "object");
 
           auto writes = q->slice()[0][0];
@@ -405,14 +407,18 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
           REQUIRE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) == "string");
           CHECK(writes.get("/arango/Target/ToDo/1").get("op").copyString() == "delete");
           CHECK(writes.get("/arango/Target/Finished/1").get("collection").copyString() == COLLECTION);
-          CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
           CHECK(typeName(writes.get("/arango/Target/Failed/1")) == "none");
+
+          auto precond = q->slice()[0][1];
+          REQUIRE(typeName(precond) == "object");
+          REQUIRE(typeName(precond.get("/arango/Supervision/Health/follower1/Status")) == "object");
+
           return fakeWriteResult;
         }
       );
       When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
       AgentInterface &agent = mockAgent.get();
-      RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
+      RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 
     }
 
@@ -473,7 +479,7 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
         });
       When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
       auto& agent = mockAgent.get();
-      RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
+      RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 
       REQUIRE_NOTHROW(Verify(Method(mockAgent, write)));
     }
@@ -609,7 +615,7 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
       );
       When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
       auto &agent = mockAgent.get();
-      RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
+      RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 
       REQUIRE_NOTHROW(Verify(Method(mockAgent, write)));
     }

@@ -1245,7 +1245,26 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    auto result = trx.insert("compact", store.slice(), _options);
+    OperationResult result;
+    try {
+      result = trx.insert("compact", store.slice(), _options);
+      if (!result.ok()) {
+        if (result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+          LOG_TOPIC(DEBUG, Logger::AGENCY)
+            << "Failed to insert compacted agency state, will attempt to update: "
+            << result.errorMessage();
+          result = trx.replace("compact", store.slice(), _options);
+        } else {
+          LOG_TOPIC(FATAL, Logger::AGENCY)
+            << "Failed to persist compacted agency state" << result.errorMessage();
+          FATAL_ERROR_EXIT();
+        }
+      }
+    } catch (std::exception const& e) {
+      LOG_TOPIC(FATAL, Logger::AGENCY)
+        << "Failed to persist compacted agency state: " << e.what();
+      FATAL_ERROR_EXIT();
+    }
 
     res = trx.finish(result.result);
 
@@ -1542,8 +1561,6 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   std::snprintf (buf, logsz, logstr.c_str(), stringify(lastIndex).c_str());
   std::string querystr = buf;
 
-  LOG_DEVEL << querystr;
-
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
   arangodb::aql::Query logQuery(false, *_vocbase, aql::QueryString(querystr), bindVars,
                              nullptr, arangodb::aql::PART_MAIN);
@@ -1578,8 +1595,6 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     std::snprintf (buf, compsz, compstr.c_str(), firstIndex.c_str());
     querystr = buf;
 
-    LOG_DEVEL << querystr;
-  
     arangodb::aql::Query compQuery(false, *_vocbase, aql::QueryString(querystr),
                                bindVars, nullptr, arangodb::aql::PART_MAIN);
 

@@ -5884,14 +5884,19 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     // yet, as many traversal internals depend on the number of vertices
     // found/built
     auto outVariable = traversal->edgeOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
+    std::vector<Variable const*> pruneVars;
+    traversal->getPruneVariables(pruneVars);
+
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
+        std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
       // traversal edge outVariable not used later
       traversal->setEdgeOutput(nullptr);
       modified = true;
     }
 
     outVariable = traversal->pathOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
+        std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
       // traversal path outVariable not used later
       traversal->setPathOutput(nullptr);
       modified = true;
@@ -6041,8 +6046,11 @@ void arangodb::aql::removeTraversalPathVariable(Optimizer* opt,
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
 
+    std::vector<Variable const*> pruneVars;
+    traversal->getPruneVariables(pruneVars);
     auto outVariable = traversal->pathOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
+        std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
       // traversal path outVariable not used later
       traversal->setPathOutput(nullptr);
       modified = true;
@@ -6368,6 +6376,7 @@ struct GeoIndexInfo {
 static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
                                  AstNode const* lngArg, bool supportLegacy,
                                  GeoIndexInfo& info) {
+  // note: this only modifies "info" if the function returns true
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> attributeAccess1;
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> attributeAccess2;
   // first and second should be based on the same document - need to provide the
@@ -6388,17 +6397,14 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
   }
 
   // get logical collection
-  auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter1);
+  auto collNode = ExecutionNode::castTo<EnumerateCollectionNode*>(setter1);
   if (info.collectionNodeToReplace != nullptr && info.collectionNodeToReplace != collNode) {
     return false;  // should probably never happen
   }
-  info.collectionNodeToReplace = collNode;
-  info.collectionNodeOutVar = collNode->outVariable();
-  info.collection = collNode->collection();
 
   // we should not access the LogicalCollection directly
   Query* query = plan->getAst()->query();
-  auto indexes = query->trx()->indexesForCollection(info.collection->name());
+  auto indexes = query->trx()->indexesForCollection(collNode->collection()->name());
   // check for suitiable indexes
   for (std::shared_ptr<Index> idx : indexes) {
     // check if current index is a geo-index
@@ -6417,6 +6423,9 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
         info.index = idx;
         info.latitudeVar = latArg;
         info.longitudeVar = lngArg;
+        info.collectionNodeToReplace = collNode;
+        info.collectionNodeOutVar = collNode->outVariable();
+        info.collection = collNode->collection();
         return true;
       }
     } else if ((isGeo1 || isGeo) && fieldNum == 1) {
@@ -6437,6 +6446,9 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
         info.index = idx;
         info.latitudeVar = latArg;
         info.longitudeVar = lngArg;
+        info.collectionNodeToReplace = collNode;
+        info.collectionNodeOutVar = collNode->outVariable();
+        info.collection = collNode->collection();
         return true;
       }
     }  // if isGeo 1 or 2
@@ -6447,6 +6459,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
 // checks parameter of GEO_* function
 static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* args,
                             bool supportLegacy, GeoIndexInfo& info) {
+  // note: this only modifies "info" if the function returns true
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> attributeAccess;
   // "arg" is either `[doc.lat, doc.lng]` or `doc.geometry`
   if (args->isArray() && args->numMembers() == 2) {
@@ -6462,13 +6475,10 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* args,
   }
 
   // get logical collection
-  auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter);
+  auto collNode = ExecutionNode::castTo<EnumerateCollectionNode*>(setter);
   if (info.collectionNodeToReplace != nullptr && info.collectionNodeToReplace != collNode) {
     return false;  // should probably never happen
   }
-  info.collectionNodeToReplace = collNode;
-  info.collectionNodeOutVar = collNode->outVariable();
-  info.collection = collNode->collection();
   std::shared_ptr<LogicalCollection> coll = collNode->collection()->getCollection();
 
   // check for suitable indexes
@@ -6483,6 +6493,9 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* args,
         }
         info.index = idx;
         info.locationVar = args;
+        info.collectionNodeToReplace = collNode;
+        info.collectionNodeOutVar = collNode->outVariable();
+        info.collection = collNode->collection();
         return true;
       }
     }
@@ -6518,6 +6531,7 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
 
 static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
                               bool legacy, GeoIndexInfo& info) {
+  // note: this only modifies "info" if the function returns true
   if (funcNode->type == NODE_TYPE_REFERENCE) {
     // FOR x IN cc LET d = DISTANCE(...) FILTER d > 10 RETURN x
     Variable const* var = static_cast<Variable const*>(funcNode->getData());
@@ -6573,6 +6587,7 @@ static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
 // contains the AstNode* a supported function?
 static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
                                    GeoIndexInfo& info) {
+  // note: this only modifies "info" if the function returns true
   // the expression must exist and it must be a function call
   if (funcNode->type != NODE_TYPE_FCALL || funcNode->numMembers() != 1 ||
       info.filterMode != geo::FilterType::NONE) {  // can't handle more than one
@@ -6602,6 +6617,7 @@ static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
 // to use within a filter condition
 bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndexInfo& info) {
   // checks @first `smaller` @second
+  // note: this only modifies "info" if the function returns true
   auto eval = [&](AstNode const* first, AstNode const* second, bool lessequal) -> bool {
     if (isValueOrReference(second) &&       // no attribute access
         info.maxDistanceExpr == nullptr &&  // max distance is not yet set
@@ -6652,6 +6668,7 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
 }
 
 static bool optimizeSortNode(ExecutionPlan* plan, SortNode* sort, GeoIndexInfo& info) {
+  // note: info will only be modified if the function returns true 
   TRI_ASSERT(sort->getType() == EN::SORT);
   // we're looking for "SORT DISTANCE(x,y,a,b)"
   SortElementVector const& elements = sort->elements();
@@ -6672,6 +6689,7 @@ static bool optimizeSortNode(ExecutionPlan* plan, SortNode* sort, GeoIndexInfo& 
     return false;  // the expression must exist and must have an astNode
   }
 
+  // info will only be modified if the function returns true 
   bool legacy = elements[0].ascending;  // DESC is only supported on S2 index
   if (!info.sorted && checkDistanceFunc(plan, expr->node(), legacy, info)) {
     info.sorted = true;  // do not parse another SORT
@@ -6698,37 +6716,31 @@ static void optimizeFilterNode(ExecutionPlan* plan, FilterNode* fn, GeoIndexInfo
   // now check who introduced our variable
   ExecutionNode* setter = plan->getVarSetBy(varsUsedHere[0]->id);
   if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-    return;  // setter could be enumerate list node e.g.
+    return;  
   }
   CalculationNode* calc = ExecutionNode::castTo<CalculationNode*>(setter);
   Expression* expr = calc->expression();
   if (expr == nullptr || expr->node() == nullptr) {
-    return;  // the expression must exist and must have an astNode
+    return;  // the expression must exist and must have an AstNode
   }
 
-  std::vector<AstNodeType> parents;  // parents and current node
-  size_t orsInBranch = 0;
   Ast::traverseReadOnly(expr->node(),
                         [&](AstNode const* node) {  // pre
-                          parents.push_back(node->type);
-                          if (Ast::IsOrOperatorType(node->type)) {
-                            orsInBranch++;
-                            return false;
+                          if (node->isSimpleComparisonOperator() ||
+                              node->type == arangodb::aql::NODE_TYPE_FCALL ||
+                              node->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_AND ||
+                              node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND) {
+                            return true;
                           }
-                          return true;
+                          return false;
                         },
                         [&](AstNode const* node) {  // post
-                          size_t pl = parents.size();
-                          if (orsInBranch == 0 &&
-                              (pl == 1 || Ast::IsAndOperatorType(parents[pl - 2]))) {
-                            // do not visit below OR or into <=, <, >, >= expressions
-                            if (checkGeoFilterExpression(plan, node, info)) {
-                              info.exesToModify.emplace(fn, expr);
-                            }
+                          if (!node->isSimpleComparisonOperator() &&
+                              node->type != arangodb::aql::NODE_TYPE_FCALL) {
+                            return;
                           }
-                          parents.pop_back();
-                          if (Ast::IsOrOperatorType(node->type)) {
-                            orsInBranch--;
+                          if (checkGeoFilterExpression(plan, node, info)) {
+                            info.exesToModify.emplace(fn, expr);
                           }
                         });
 }
@@ -6923,11 +6935,18 @@ void arangodb::aql::geoIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> 
   plan->findNodesOfType(nodes, EN::ENUMERATE_COLLECTION, true);
   for (ExecutionNode* node : nodes) {
     GeoIndexInfo info;
+    info.collectionNodeToReplace = node;
+
     ExecutionNode* current = node->getFirstParent();
     LimitNode* limit = nullptr;
+    bool canUseSortLimit = true;
 
     while (current) {
-      if (current->getType() == EN::SORT) {
+      if (current->getType() == EN::FILTER) {
+        // picking up filter conditions is always allowed
+        optimizeFilterNode(plan.get(), ExecutionNode::castTo<FilterNode*>(current), info);
+      } else if (current->getType() == EN::SORT && canUseSortLimit) {
+        // only pick up a sort clause if we haven't seen another loop yet
         if (!optimizeSortNode(plan.get(), ExecutionNode::castTo<SortNode*>(current), info)) {
           // 1. EnumerateCollectionNode x
           // 2. SortNode x.abc ASC
@@ -6935,16 +6954,22 @@ void arangodb::aql::geoIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> 
           // limit = nullptr;
           break;  // stop parsing on non-optimizable SORT
         }
-      } else if (current->getType() == EN::FILTER) {
-        optimizeFilterNode(plan.get(), ExecutionNode::castTo<FilterNode*>(current), info);
-      } else if (current->getType() == EN::LIMIT) {
+      } else if (current->getType() == EN::LIMIT && canUseSortLimit) {
+        // only pick up a limit clause if we haven't seen another loop yet
         limit = ExecutionNode::castTo<LimitNode*>(current);
         break;  // stop parsing after first LIMIT
-      } else if (current->getType() == EN::RETURN) {
-        break;  // stop parsing on return
-      } else if (current->getType() == EN::INDEX || current->getType() == EN::COLLECT) {
-        info.invalidate();
-        break;  // unsupported
+      } else if (current->getType() == EN::RETURN || current->getType() == EN::COLLECT) {
+        break;  // stop parsing on return or collect
+      } else if (current->getType() == EN::INDEX ||
+                 current->getType() == EN::ENUMERATE_COLLECTION ||
+                 current->getType() == EN::ENUMERATE_LIST ||
+                 current->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
+                 current->getType() == EN::TRAVERSAL || current->getType() == EN::SHORTEST_PATH) {
+        // invalidate limit and sort. filters can still be used
+        limit = nullptr;
+        info.sorted = false;
+        // don't allow picking up either sort or limit from here on
+        canUseSortLimit = false; 
       }
       current = current->getFirstParent();  // inspect next node
     }

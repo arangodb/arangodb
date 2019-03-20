@@ -209,11 +209,13 @@ bool RocksDBTrxMethods::DisableIndexing() {
   return false;
 }
 
-void RocksDBTrxMethods::EnableIndexing() {
+bool RocksDBTrxMethods::EnableIndexing() {
   if (_indexingDisabled) {
     _state->_rocksTransaction->EnableIndexing();
     _indexingDisabled = false;
+    return true;
   }
+  return false;
 }
 
 RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)

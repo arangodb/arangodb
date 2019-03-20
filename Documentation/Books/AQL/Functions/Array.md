@@ -13,7 +13,7 @@ Apart from that, AQL also offers several language constructs:
   optionally with inline filter, limit and projection,
 - [array comparison operators](../Operators.md#array-comparison-operators) to compare
   each element in an array to a value or the elements of another array,
-- loop-based operations using [FOR](../Operations/For.md),
+- loop-based operations on arrays using [FOR](../Operations/For.md),
   [SORT](../Operations/Sort.md),
   [LIMIT](../Operations/Limit.md),
   as well as [COLLECT](../Operations/Collect.md) for grouping,
@@ -26,8 +26,11 @@ Apart from that, AQL also offers several language constructs:
 Add all elements of an array to another array. All values are added at the end of the
 array (right side).
 
+It can also be used to append a single element to an array. It is not necessary to wrap
+it in an array (unless it is an array itself). You may also use [PUSH()](#push) instead.
+
 - **anyArray** (array): array with elements of arbitrary type
-- **values** (array): array, whose elements shall be added to *anyArray*
+- **values** (array|any): array, whose elements shall be added to *anyArray*
 - **unique** (bool, *optional*): if set to *true*, only those *values* will be added
   that are not already contained in *anyArray*. The default is *false*.
 - returns **newArray** (array): the modified array
@@ -114,6 +117,8 @@ Turn an array of arrays into a flat array. All array elements in *array* will be
 expanded in the result array. Non-array elements are added as they are. The function
 will recurse into sub-arrays up to the specified depth. Duplicates will not be removed.
 
+Also see [array contraction](../Advanced/ArrayOperators.md#array-contraction).
+
 - **array** (array): array with elements of arbitrary type, including nested arrays
 - **depth** (number, *optional*):  flatten up to this many levels, the default is 1
 - returns **flatArray** (array): a flattened array
@@ -140,6 +145,10 @@ RETURN FLATTEN( [ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ] ], 2 )
 
 Return the intersection of all arrays specified. The result is an array of values that
 occur in all arguments.
+
+Other set operations are [UNION()](#union),
+[MINUS()](#minus) and
+[OUTERSECTION()](#outersection).
 
 - **arrays** (array, *repeatable*): an arbitrary number of arrays as multiple arguments
   (at least 2)
@@ -239,6 +248,10 @@ RETURN LENGTH( {a:1, b:2, c:3, d:4, e:{f:5,g:6}} )
 
 Return the difference of all arrays specified.
 
+Other set operations are [UNION()](#union),
+[INTERSECTION()](#intersection) and
+[OUTERSECTION()](#outersection).
+
 - **arrays** (array, *repeatable*): an arbitrary number of arrays as multiple
   arguments (at least 2)
 - returns **newArray** (array): an array of values that occur in the first array,
@@ -292,6 +305,10 @@ RETURN NTH( [ "foo", "bar", "baz" ], -1 )
 
 Return the values that occur only once across all arrays specified.
 
+Other set operations are [UNION()](#union),
+[MINUS()](#minus) and
+[INTERSECTION()](#intersection).
+
 - **arrays** (array, *repeatable*): an arbitrary number of arrays as multiple arguments
   (at least 2)
 - returns **newArray** (array): a single array with only the elements that exist only once
@@ -309,7 +326,11 @@ RETURN OUTERSECTION( [ 1, 2, 3 ], [ 2, 3, 4 ], [ 3, 4, 5 ] )
 
 `POP(anyArray) → newArray`
 
-Remove the element at the end (right side) of *array*.
+Remove the last element of *array*.
+
+To append an element (right side), see [PUSH()](#push).<br>
+To remove the first element, see [SHIFT()](#shift).<br>
+To remove an element at an arbitrary position, see [REMOVE_NTH()](#removenth).
 
 - **anyArray** (array): an array with elements of arbitrary type
 - returns **newArray** (array): *anyArray* without the last element. If it's already
@@ -364,7 +385,11 @@ RETURN POSITION( [2,4,6,8], 4, true )
 
 `PUSH(anyArray, value, unique) → newArray`
 
-Append *value* to the array specified by *anyArray*.
+Append *value* to *anyArray* (right side).
+
+To remove the last element, see [POP()](#pop).<br>
+To prepend a value (left side), see [UNSHIFT()](#unshift).<br>
+To append multiple elements, see [APPEND()](#append).
 
 - **anyArray** (array): array with elements of arbitrary type
 - **value** (any): an element of arbitrary type
@@ -396,6 +421,9 @@ RETURN PUSH([ 1, 2, 2, 3 ], 2, true)
 `REMOVE_NTH(anyArray, position) → newArray`
 
 Remove the element at *position* from the *anyArray*.
+
+To remove the first element, see [SHIFT()](#shift).<br>
+To remove the last element, see [POP()](#pop).
 
 - **anyArray** (array): array with elements of arbitrary type
 - **position** (number): the position of the element to remove. Positions start
@@ -484,7 +512,11 @@ RETURN REVERSE ( [2,4,6,8,10] )
 
 `SHIFT(anyArray) → newArray`
 
-Remove the element at the start (left side) of *anyArray*.
+Remove the first element of *anyArray*.
+
+To prepend an element (left side), see [UNSHIFT()](#unshift).<br>
+To remove the last element, see [POP()](#pop).<br>
+To remove an element at an arbitrary position, see [REMOVE_NTH()](#removenth).
 
 - **anyArray** (array): array with elements with arbitrary type
 - returns **newArray** (array): *anyArray* without the left-most element. If *anyArray*
@@ -600,6 +632,10 @@ RETURN SORTED_UNIQUE( [ 8,4,2,10,6,2,8,6,4 ] )
 
 Return the union of all arrays specified.
 
+Other set operations are [MINUS()](#minus),
+[INTERSECTION()](#intersection) and
+[OUTERSECTION()](#outersection).
+
 - **arrays** (array, *repeatable*): an arbitrary number of arrays as multiple
   arguments (at least 2)
 - returns **newArray** (array): all array elements combined in a single array,
@@ -676,7 +712,10 @@ RETURN UNIQUE( [ 1,2,2,3,3,3,4,4,4,4,5,5,5,5,5 ] )
 
 `UNSHIFT(anyArray, value, unique) → newArray`
 
-Prepend *value* to *anyArray*.
+Prepend *value* to *anyArray* (left side).
+
+To remove the first element, see [SHIFT()](#shift).<br>
+To append a value (right side), see [PUSH()](#push).
 
 - **anyArray** (array): array with elements of arbitrary type
 - **value** (any): an element of arbitrary type

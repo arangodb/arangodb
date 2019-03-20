@@ -202,7 +202,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
                                _state.barrier.updateTime, _batch.id, _batch.updateTime);
 
       // run the syncer with the supplied inventory collections
-      Result r = syncer->runWithInventory(false, dbInventory);
+      Result r = syncer->runWithInventory(incremental, dbInventory);
       if (r.fail()) {
         return r;
       }
@@ -220,7 +220,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
     return Result(TRI_ERROR_INTERNAL, "caught an unexpected exception");
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 /// @brief add or remove databases such that the local inventory
@@ -342,7 +342,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
     }
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 /// @brief fetch the server's inventory, public method for TailingSyncer
@@ -370,6 +370,9 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
                     "&batchId=" + std::to_string(_batch.id) + "&global=true";
   if (_state.applier._includeSystem) {
     url += "&includeSystem=true";
+  }
+  if (_state.applier._includeFoxxQueues) {
+    url += "&includeFoxxQueues=true";
   }
 
   // send request
