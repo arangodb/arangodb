@@ -310,8 +310,11 @@ Node const& Node::operator()(std::vector<std::string> const& pv) const {
   if (!pv.empty()) {
     auto const& key = pv.front();
     auto it = _children.find(key);
-    if (it->second->_ttl != std::chrono::system_clock::time_point() &&
-        it->second->_ttl  < std::chrono::system_clock::now()) {
+    
+    if (it != _children.end() &&
+        (it->second->_ttl != std::chrono::system_clock::time_point() &&
+         it->second->_ttl  < std::chrono::system_clock::now())) {
+      it->second->removeTimeToLive();
       _children.erase(it);
       it = _children.end();
     }
@@ -383,6 +386,7 @@ bool Node::addTimeToLive(long millis) {
 // remove time to live entry for this node
 bool Node::removeTimeToLive() {
   if (_ttl != std::chrono::system_clock::time_point()) {
+    LOG_DEVEL << uri();
     store().removeTTL(uri());
     _ttl = std::chrono::system_clock::time_point();
   }
