@@ -180,7 +180,7 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (!_fileMode.empty()) {
     try {
-      int result = std::stoi(_fileMode, 0, 8);
+      int result = std::stoi(_fileMode, nullptr, 8);
       LogAppenderFile::setFileMode(result);
     } catch (...) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
