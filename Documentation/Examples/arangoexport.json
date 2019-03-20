@@ -185,6 +185,34 @@
     "section" : "log",
     "type" : "string"
   },
+  "log.file-group" : {
+    "category" : "option",
+    "default" : "",
+    "deprecatedIn" : null,
+    "description" : "group to use for new log file, user must be a member of this group",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : null,
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "log",
+    "type" : "string"
+  },
+  "log.file-mode" : {
+    "category" : "option",
+    "default" : "",
+    "deprecatedIn" : null,
+    "description" : "mode to use for new log file, umask will be applied as well",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : null,
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "log",
+    "type" : "string"
+  },
   "log.force-direct" : {
     "category" : "option",
     "default" : false,
@@ -400,7 +428,7 @@
   },
   "output-directory" : {
     "category" : "option",
-    "default" : "/home/fceller/ArangoDB-3.4/export",
+    "default" : "/oskar/work/ArangoDB/export",
     "deprecatedIn" : null,
     "description" : "output directory",
     "dynamic" : false,
