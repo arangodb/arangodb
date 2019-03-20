@@ -1,7 +1,8 @@
 Implementation
 ==============
 
-### Architecture inside the cluster
+Architecture inside the cluster
+-------------------------------
 
 Synchronous replication can be configured per collection via the property *replicationFactor*. Synchronous replication requires a cluster to operate.
 
@@ -41,7 +42,8 @@ replicate it to the follower.
 
 The current implementation of ArangoDB does not allow changing the replicationFactor later. This is subject to change. In the meantime the only way is to dump and restore the collection. [See the cookbook recipe about migrating](../../../../Cookbook/Administration/Migrate2.8to3.0.html#controling-the-number-of-shards-and-the-replication-factor).
 
-### Automatic failover
+Automatic failover
+------------------
 
 Whenever the leader of a shard is failing and there is a query trying to access data of that shard the coordinator will continue trying to contact the leader until it timeouts.
 The internal cluster supervision running on the agency will check cluster health every few seconds and will take action if there is no heartbeat from a server for 15 seconds.

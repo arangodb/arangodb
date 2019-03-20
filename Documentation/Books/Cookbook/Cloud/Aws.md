@@ -15,12 +15,12 @@ Here is a quick guide how to start:
 
 You successfully launched an ArangoDB instance on AWS.
 
-![Launch ArangoDB](/assets/RunningOnAWS/launch.png)
+![Launch ArangoDB](../assets/RunningOnAWS/launch.png)
 
 The ArangoDB Web-Interface can be reached using the **Access Software** button or via public instance IP and the Port 8529 (e.g.: http://12.13.14.15:8529)
 The default user is `root` and the password is the `Instance ID` (You can find the Instance ID on the instance list).
 
-![Web Interface](/assets/RunningOnAWS/webInterface.png)
+![Web Interface](../assets/RunningOnAWS/webInterface.png)
 
 If you want to learn more about ArangoDB, start with the [ArangoDB First Steps][../../Manual/GettingStarted/index.html] in our Documentation or try one of our [Tutorials][5] or Cookbook recipes.
 

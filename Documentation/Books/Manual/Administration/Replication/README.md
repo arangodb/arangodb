@@ -15,8 +15,8 @@ replication for the cluster.
 We will describe pros and cons of each of them in the following
 sections.
 
-
-### Asynchronous replication
+Asynchronous replication
+------------------------
 
 In ArangoDB any write operation will be logged to the write-ahead
 log. When using Asynchronous replication slaves will connect to a
@@ -25,7 +25,8 @@ locally. After that, they will have the same state of data as the
 master database.
 
 
-### Synchronous replication
+Synchronous replication
+-----------------------
 
 Synchronous replication only works within a cluster and is typically
 used for mission critical data which must be accessible at all
@@ -46,11 +47,11 @@ factor. The number of followers can be controlled using the
 `replicationFactor` parameter is the total number of copies being
 kept, that is, it is one plus the number of followers. 
 
-### Satellite collections
+Satellite collections
+---------------------
 
 Satellite collections are synchronously replicated collections having a dynamic replicationFactor.
 They will replicate all data to all database servers allowing the database servers to join data
 locally instead of doing heavy network operations.
 
 Satellite collections are an enterprise only feature.
-

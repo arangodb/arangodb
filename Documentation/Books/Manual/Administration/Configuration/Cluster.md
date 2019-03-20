@@ -1,7 +1,9 @@
 Clusters Options
 ================
 
-### Agency endpoint
+Agency endpoint
+---------------
+
 <!-- arangod/Cluster/ClusterFeature.h -->
 
 
@@ -27,7 +29,8 @@ alternative endpoint if one of them becomes unavailable.
 --cluster.agency-endpoint tcp://192.168.1.1:4001 --cluster.agency-endpoint tcp://192.168.1.2:4002 ...
 ```
 
-### My address
+My address
+----------
 
 <!-- arangod/Cluster/ClusterFeature.h -->
 
@@ -58,7 +61,8 @@ Listen on all ipv4 and ipv6 addresses, which are configured on port `8530`
 --cluster.my-address ssl://[::]:8530
 ```
 
-### My role
+My role
+-------
 
 <!-- arangod/Cluster/ClusterFeature.h -->
 
@@ -69,7 +73,9 @@ This server's role:
 The server's role. Is this instance a db server (backend data server)
 or a coordinator (frontend server for external and application access)
 
-### Node ID (deprecated)
+Node ID (deprecated)
+--------------------
+
 <!-- arangod/Cluster/ClusterFeature.h -->
 
 
@@ -84,7 +90,13 @@ have a unique local info. This is ignored if my-id below is specified.
 This option is deprecated and will be removed in a future release. The
 cluster node ids have been dropped in favour of once generated UUIDs.
 
-### More advanced options (should generally remain untouched)
+More advanced options
+---------------------
+
+{% hint 'warn' %}
+These options should generally remain untouched.
+{% endhint %}
+
 <!-- arangod/Cluster/ClusterFeature.h -->
 
 
@@ -97,4 +109,3 @@ change. Please change only with intent and great care. Default at `1.0`.
 System replication factor: `--cluster.system-replication-factorinteger`
 
 Change default replication factor for system collections. Default at `2`.
-

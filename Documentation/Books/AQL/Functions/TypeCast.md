@@ -1,5 +1,5 @@
-Type cast functions
-===================
+Type cast
+=========
 
 Some operators expect their operands to have a certain data type. For example,
 logical operators expect their operands to be boolean values, and the arithmetic
@@ -13,6 +13,9 @@ This is called explicit type casting. AQL offers several functions for this.
 Each of the these functions takes an operand of any data type and returns a result
 value with the type corresponding to the function name. For example, *TO_NUMBER()*
 will return a numeric value.
+
+Type casting functions
+----------------------
 
 ### TO_BOOL()
 
@@ -136,7 +139,7 @@ TO_ARRAY({foo: 1, bar: 2, baz: [3, 4, 5]}) // [1, 2, [3, 4, 5]]
 This is an alias for [TO_ARRAY()](#toarray).
 
 Type check functions
-====================
+--------------------
 
 AQL also offers functions to check the data type of a value at runtime. The
 following type check functions are available. Each of these functions takes an

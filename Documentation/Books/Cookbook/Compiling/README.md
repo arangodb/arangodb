@@ -10,7 +10,7 @@ Solution
 --------
 
 Arangodb, as many other opensource projects nowadays is standing on the shoulder of giants.
-This gives us a solid foundation to bring you a uniq feature set, but it introduces a lot of
+This gives us a solid foundation to bring you a unique feature set, but it introduces a lot of
 dependencies that need to be in place in order to compile arangodb.
 
 Since build infrastructures are very different depending on the target OS, choose your target

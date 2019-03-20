@@ -62,7 +62,8 @@ Note that in the *UPDATE* case it is possible to refer to the previous version o
 document using the *OLD* pseudo-value.
 
 
-### Setting query options
+Setting query options
+---------------------
 
 As in several above examples, the *ignoreErrors* option can be used to suppress query 
 errors that may occur when trying to violate unique key constraints.
@@ -98,7 +99,8 @@ the searchExpression. Even worse, if you use an outdated `_rev` in the searchExp
 UPSERT will trigger the INSERT path instead of the UPDATE path, because it has not found a document
 exactly matching the searchExpression.
 
-### Returning documents
+Returning documents
+-------------------
 
 `UPSERT` statements can optionally return data. To do so, they need to be followed
 by a `RETURN` statement (intermediate `LET` statements are allowed, too). These statements
@@ -120,4 +122,3 @@ INSERT { name: 'superuser', logins: 1, dateCreated: DATE_NOW() }
 UPDATE { logins: OLD.logins + 1 } IN users
 RETURN { doc: NEW, type: OLD ? 'update' : 'insert' }
 ```
-

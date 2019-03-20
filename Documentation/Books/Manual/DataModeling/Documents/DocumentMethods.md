@@ -1,7 +1,9 @@
 Collection Methods
 ==================
 
-### All
+All
+---
+
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
@@ -47,7 +49,9 @@ Use *limit* to restrict the documents:
 
 
 
-### Query by example
+Query by example
+----------------
+
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
@@ -142,7 +146,9 @@ Use *next* to loop over all documents:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 004_collectionByExampleNext
 
-### First Example
+First Example
+-------------
+
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
@@ -174,7 +180,9 @@ As alternative you can supply an array of paths and values.
 
 
 
-### Range
+Range
+-----
+
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
@@ -219,7 +227,9 @@ Use *toArray* to get all documents at once:
     @endDocuBlock 005_collectionRange
 
 
-### Closed range
+Closed range
+------------
+
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
@@ -264,7 +274,9 @@ Use *toArray* to get all documents at once:
     @endDocuBlock 006_collectionClosedRange
 
 
-### Any
+Any
+---
+
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
@@ -276,7 +288,9 @@ Returns a random document from the collection or *null* if none exists.
 
 
 
-### Count
+Count
+-----
+
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -298,7 +312,9 @@ Returns the number of living documents in the collection.
 
 
 
-### toArray
+toArray
+-------
+
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
@@ -310,7 +326,9 @@ collection in RAM which will use resources depending on the number and size
 of the documents in your collecion.
 
 
-### Document
+Document
+--------
+
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -420,12 +438,14 @@ An error is raised if the handle is invalid:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock documentsCollectionNameHandle
 
-#### Changes in 3.0 from 2.8:
+**Changes in 3.0 from 2.8:**
 
 *document* can now query multiple documents with one call.
 
 
-### Exists
+Exists
+------
+
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -467,7 +487,7 @@ members of the array separately and all results are returned in an array. If an 
 occurs with any of the documents, the operation stops immediately returning
 only an error object.
 
-#### Changes in 3.0 from 2.8:
+**Changes in 3.0 from 2.8:**
 
 In the case of a revision mismatch *exists* now throws an error instead
 of simply returning *false*. This is to make it possible to tell the
@@ -476,7 +496,9 @@ difference between a revision mismatch and a non-existing document.
 *exists* can now query multiple documents with one call.
 
 
-### Lookup By Keys
+Lookup By Keys
+--------------
+
 <!-- arangod/V8Server/v8-query.cpp-->
 
 
@@ -508,7 +530,9 @@ This method is deprecated in favour of the array variant of *document*.
     @endDocuBlock collectionLookupByKeys
 
 
-### Insert
+Insert
+------
+
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -559,7 +583,7 @@ error occurs with any of the documents, no exception is risen! Instead of a
 document an error object is returned in the result array. The options behave
 exactly as before.
 
-#### Changes in 3.0 from 2.8:
+**Changes in 3.0 from 2.8:**
 
 The options *silent* and *returnNew* are new. The method can now insert
 multiple documents with one call.
@@ -588,7 +612,9 @@ multiple documents with one call.
 
 
 
-### Replace
+Replace
+-------
+
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -687,13 +713,15 @@ Use a document handle:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock documentsCollectionReplaceHandle
 
-#### Changes in 3.0 from 2.8:
+**Changes in 3.0 from 2.8:**
 
 The options *silent*, *returnNew* and *returnOld* are new. The method
 can now replace multiple documents with one call.
 
 
-### Update
+Update
+------
+
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 `collection.update(selector, data)`
@@ -844,13 +872,15 @@ Patching array values:
     @endDocuBlock documentsCollection_UpdateHandleArray
 
 
-#### Changes in 3.0 from 2.8:
+**Changes in 3.0 from 2.8:**
 
 The options *silent*, *returnNew* and *returnOld* are new. The method
 can now update multiple documents with one call.
 
 
-### Remove
+Remove
+------
+
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 `collection.remove(selector)`
@@ -946,7 +976,7 @@ Remove a document with a conflict:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock documentDocumentRemoveConflict
 
-#### Changes in 3.0 from 2.8:
+**Changes in 3.0 from 2.8:**
 
 The method now returns not only *true* but information about the removed
 document(s). The options *silent* and *returnOld* are new. The method
@@ -954,7 +984,9 @@ can now remove multiple documents with one call.
 
 
 
-### Remove By Keys
+Remove By Keys
+--------------
+
 <!-- arangod/V8Server/v8-query.cpp-->
 
 
@@ -991,7 +1023,9 @@ This method is deprecated in favour of the array variant of *remove*.
     @endDocuBlock collectionRemoveByKeys
 
 
-### Remove By Example
+Remove By Example
+-----------------
+
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
@@ -1033,7 +1067,9 @@ removed.
     @endDocuBlock 010_documentsCollectionRemoveByExample
 
 
-### Replace By Example
+Replace By Example
+------------------
+
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
@@ -1078,7 +1114,9 @@ replaced.
     @endDocuBlock 011_documentsCollectionReplaceByExample
 
 
-### Update By Example
+Update By Example
+-----------------
+
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
@@ -1143,7 +1181,8 @@ an object with the following sub-attributes:
     @endDocuBlock 012_documentsCollectionUpdateByExample
 
 
-### Collection type
+Collection type
+---------------
 
 `collection.type()`
 
@@ -1152,7 +1191,8 @@ Returns the type of a collection. Possible values are:
 - 3: edge collection
 
 
-### Get the Version of ArangoDB
+Get the Version of ArangoDB
+---------------------------
 
 `db._version()`
 
@@ -1169,7 +1209,8 @@ database.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock dbVersion
 
-### Edges
+Edges
+-----
 
 Edges are normal documents that always contain a `_from` and a `_to`
 attribute.  Therefore, you can use the document methods to operate on
@@ -1260,7 +1301,8 @@ from *vertices*, which must a list of documents or document handles.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock EDGCOL_02_outEdges
 
-### Misc
+Misc
+----
 
 `collection.iterate(iterator, options)`
 

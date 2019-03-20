@@ -66,9 +66,8 @@ equally the case with competing database systems. Transactions in a cluster
 will be supported in a future version of ArangoDB and make these operations
 fully ACID as well.
 
-
-Transactions in the RocksDB storage engine
-------------------------------------------
+With RocksDB storage engine
+---------------------------
 
 Data of ongoing transactions is stored in RAM. Query-Transactions that get too big 
 (in terms of number of operations involved or the total size of data created or
