@@ -89,6 +89,8 @@ v3.4.5 (XXXX-XX-XX)
 
 * fix crash in agency supervision when leadership is lost
 
+* fix log spamming after leader resignation in agency
+
 v3.4.4 (2019-03-12)
 -------------------
 
