@@ -141,7 +141,12 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
 
 #ifdef ARANGODB_HAVE_SETGID
       if (_fileGroup != 0) {
-        /* ignore = */ fchown(fd, -1, _fileGroup);
+        int result = fchown(fd, -1, _fileGroup);
+        if (result != 0) {
+          // we cannot log this error here, as we are the logging itself
+          // so just to please compilers, we pretend we are using the result
+          (void) result;
+        }
       }
 #endif
 
@@ -225,7 +230,12 @@ void LogAppenderFile::reopenAll() {
 
 #ifdef ARANGODB_HAVE_SETGID
     if (_fileGroup != 0) {
-      /* ignore = */ fchown(fd, -1, _fileGroup);
+      int result = fchown(fd, -1, _fileGroup);
+      if (result != 0) {
+        // we cannot log this error here, as we are the logging itself
+        // so just to please compilers, we pretend we are using the result
+        (void) result;
+      }
     }
 #endif
 
