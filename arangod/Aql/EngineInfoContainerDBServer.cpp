@@ -750,8 +750,7 @@ void EngineInfoContainerDBServer::DBServerInfo::addTraverserEngine(GraphNode* no
   _traverserEngineInfos.push_back(std::make_pair(node, std::move(shards)));
 }
 
-std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> EngineInfoContainerDBServer::createDBServerMapping(
-    std::unordered_set<ShardID>& lockedShards) const {
+std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> EngineInfoContainerDBServer::createDBServerMapping() const {
   auto* ci = ClusterInfo::instance();
   TRI_ASSERT(ci);
 
@@ -766,8 +765,6 @@ std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> EngineInfoContaine
     auto const& colInfo = it.second;
 
     for (auto const& s : colInfo.usedShards) {
-      lockedShards.emplace(s);
-
       auto const servers = ci->getResponsibleServer(s);
 
       if (!servers || servers->empty()) {
@@ -959,12 +956,11 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
   }
 }
 
-Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds,
-                                                 std::unordered_set<ShardID>& lockedShards) const {
+Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) const {
   TRI_ASSERT(_engineStack.empty());
 
   // We create a map for DBServer => All Query snippets executed there
-  auto dbServerMapping = createDBServerMapping(lockedShards);
+  auto dbServerMapping = createDBServerMapping();
   // This Mapping does not contain Traversal Engines
   //
   // We add traversal engines if necessary

@@ -62,8 +62,7 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     Query* query, QueryRegistry* queryRegistry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
-    MapRemoteToSnippet const& dbServerQueryIds, std::vector<uint64_t>& coordinatorQueryIds,
-    std::unordered_set<ShardID> const& lockedShards) const {
+    MapRemoteToSnippet const& dbServerQueryIds, std::vector<uint64_t>& coordinatorQueryIds) const {
   TRI_ASSERT(!_nodes.empty());
   {
     auto uniqEngine = std::make_unique<ExecutionEngine>(query);
@@ -139,8 +138,7 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
 ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
     Query* query, QueryRegistry* registry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
-    MapRemoteToSnippet const& dbServerQueryIds,
-    std::unordered_set<ShardID> const& lockedShards) const {
+    MapRemoteToSnippet const& dbServerQueryIds) const {
   TRI_ASSERT(_engineStack.size() == 1);
   TRI_ASSERT(_engineStack.top() == 0);
 
@@ -168,7 +166,7 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
       }
       try {
         auto res = info.buildEngine(localQuery, registry, dbname, restrictToShards,
-                                    dbServerQueryIds, coordinatorQueryIds, lockedShards);
+                                    dbServerQueryIds, coordinatorQueryIds);
         if (!res.ok()) {
           if (!first) {
             // We need to clean up this query.

@@ -88,7 +88,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
   SECTION("it should create an ExecutionEngine for the first snippet") {
     std::unordered_set<std::string> const restrictToShards;
     MapRemoteToSnippet queryIds;
-    std::unordered_set<ShardID> lockedShards;
     std::string const dbname = "TestDB";
 
     // ------------------------------
@@ -140,7 +139,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     testee.addNode(&sNode);
 
     ExecutionEngineResult result =
-        testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds, lockedShards);
+        testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
     REQUIRE(result.ok());
     ExecutionEngine* engine = result.engine();
 
@@ -160,7 +159,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
   SECTION("it should create an new engine and register it for second snippet") {
     std::unordered_set<std::string> const restrictToShards;
     MapRemoteToSnippet queryIds;
-    std::unordered_set<ShardID> lockedShards;
 
     size_t remoteId = 1337;
     QueryId secondId = 0;
@@ -297,7 +295,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     testee.closeSnippet();
 
     ExecutionEngineResult result =
-        testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds, lockedShards);
+        testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
     REQUIRE(result.ok());
     ExecutionEngine* engine = result.engine();
 
@@ -324,7 +322,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
   SECTION("snipets are a stack, insert node always into top snippet") {
     std::unordered_set<std::string> const restrictToShards;
     MapRemoteToSnippet queryIds;
-    std::unordered_set<ShardID> lockedShards;
 
     size_t remoteId = 1337;
     size_t secondRemoteId = 42;
@@ -534,7 +531,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     testee.addNode(&tbNode);
 
     ExecutionEngineResult result =
-        testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds, lockedShards);
+        testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
 
     REQUIRE(result.ok());
     ExecutionEngine* engine = result.engine();
@@ -565,7 +562,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
   SECTION("error cases") {
     std::unordered_set<std::string> const restrictToShards;
     MapRemoteToSnippet queryIds;
-    std::unordered_set<ShardID> lockedShards;
 
     size_t remoteId = 1337;
     QueryId secondId = 0;
@@ -704,8 +700,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
             .Throw(arangodb::basics::Exception(TRI_ERROR_DEBUG, __FILE__, __LINE__));
 
         ExecutionEngineResult result =
-            testee.buildEngines(&query, &registry, dbname, restrictToShards,
-                                queryIds, lockedShards);
+            testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
         REQUIRE(!result.ok());
         // Make sure we check the right thing here
         REQUIRE(result.errorNumber() == TRI_ERROR_DEBUG);
@@ -726,8 +721,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
             });
 
         ExecutionEngineResult result =
-            testee.buildEngines(&query, &registry, dbname, restrictToShards,
-                                queryIds, lockedShards);
+            testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
         REQUIRE(!result.ok());
         // Make sure we check the right thing here
         REQUIRE(result.errorNumber() == TRI_ERROR_INTERNAL);
@@ -774,7 +768,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
       }
 
       ExecutionEngineResult result = testee.buildEngines(
-        &query, &registry, dbname, restrictToShards, queryIds, lockedShards
+        &query, &registry, dbname, restrictToShards, queryIds
       );
       REQUIRE(!result.ok());
       // Make sure we check the right thing here
