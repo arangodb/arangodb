@@ -1,7 +1,15 @@
 v3.4.5 (XXXX-XX-XX)
 -------------------
 
-* fix uniq array indices not accepting document updates
+* added --log.file-mode to specify a file mode of newly created log files
+
+* added --log.file-group to specify the group of newly created log files
+
+* fixed some escaping issues within the web ui.
+
+* fixed issue #8165: AQL optimizer does not pick up multiple Geo index
+
+* fixed issue #8359: How to update a document with unique index (constraints)?
 
 * when restarting a follower in active failover mode, try an incremental sync instead
   of a full resync
@@ -82,6 +90,8 @@ v3.4.5 (XXXX-XX-XX)
 * fix crash in agency supervision when leadership is lost
 
 * speed up supervision in agency for large numbers of jobs
+
+* fix log spamming after leader resignation in agency
 
 v3.4.4 (2019-03-12)
 -------------------

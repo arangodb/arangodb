@@ -4,7 +4,7 @@ Cluster Administration
 This _Section_ includes information related to the administration of an ArangoDB Cluster.
 
 For a general introduction to the ArangoDB Cluster, please refer to the
-Cluster [chapter](../../Architecture/DeploymentModes/Cluster/README.md).
+[Cluster](../../Architecture/DeploymentModes/Cluster/README.md) chapter.
 
 There is also a detailed
 [Cluster Administration Course](https://www.arangodb.com/arangodb-cluster-course/)
