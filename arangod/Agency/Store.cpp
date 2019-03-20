@@ -608,14 +608,25 @@ query_t Store::clearExpired() const {
 void Store::dumpToBuilder(Builder& builder) const {
   MUTEX_LOCKER(storeLocker, _storeLock);
   toBuilder(builder, true);
+
+  std::map<std::string, int64_t> clean {};
+  for (auto const& i : _timeTable) {
+    auto ts = std::chrono::duration_cast<std::chrono::seconds>(
+      i.first.time_since_epoch()).count();
+    auto it = clean.find(i.second);
+    if (it == clean.end()) {
+      clean[i.second] = ts;
+    } else if (ts < it->second) {
+      it->second = ts;
+    }      
+  }
   {
     VPackObjectBuilder guard(&builder);
-    for (auto const& i : _timeTable) {
-      auto ts = std::chrono::duration_cast<std::chrono::seconds>(i.first.time_since_epoch())
-                    .count();
-      builder.add(i.second, VPackValue(ts));
+    for (auto const& c : clean) {
+      builder.add(c.first, VPackValue(c.second));
     }
   }
+
   {
     VPackArrayBuilder garray(&builder);
     for (auto const& i : _observerTable) {
