@@ -1148,6 +1148,12 @@ constexpr int TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS                              
 /// options specification.
 constexpr int TRI_ERROR_QUERY_EXCEPTION_OPTIONS                                 = 1576;
 
+/// 1577: ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE
+/// "could not use forced index hint"
+/// Will be raised when forceIndexHint is specified, and the hint cannot be
+/// used to serve the query.
+constexpr int TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE                        = 1577;
+
 /// 1578: ERROR_QUERY_DISALLOWED_DYNAMIC_CALL
 /// "disallowed dynamic call to '%s'"
 /// Will be raised when a dynamic function call is made to a function that

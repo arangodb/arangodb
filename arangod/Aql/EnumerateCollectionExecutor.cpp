@@ -94,7 +94,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
         _infos.getProjections(), _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
         _allowCoveringIndexOptimization, _infos.getUseRawDocumentPointers()));
 
-};
+}
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
 

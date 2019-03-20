@@ -156,9 +156,11 @@ OperationResult GraphOperations::eraseEdgeDefinition(bool waitForSync, std::stri
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
-          &_vocbase, collection, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+        _vocbase,// vocbase to search
+        collection, // collection to find
+        [&](std::shared_ptr<LogicalCollection> const& coll)->void { // callback if found
             TRI_ASSERT(coll);
-            resIn = methods::Collections::drop(&_vocbase, coll.get(), false, -1.0);
+            resIn = methods::Collections::drop(*coll, false, -1.0);
           });
 
       if (found.fail()) {
@@ -405,9 +407,11 @@ OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync, std::st
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
-          &_vocbase, collection, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+        _vocbase, // vocbase to search
+        collection, // collection to find
+        [&](std::shared_ptr<LogicalCollection> const& coll)->void { // callback if found
             TRI_ASSERT(coll);
-            resIn = methods::Collections::drop(&_vocbase, coll.get(), false, -1.0);
+            resIn = methods::Collections::drop(*coll, false, -1.0);
           });
 
       if (found.fail()) {

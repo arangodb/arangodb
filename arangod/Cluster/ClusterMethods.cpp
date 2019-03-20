@@ -32,7 +32,6 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterTrxMethods.h"
-#include "Cluster/FollowerInfo.h"
 #include "Graph/Traverser.h"
 #include "Indexes/Index.h"
 #include "Transaction/Context.h"
