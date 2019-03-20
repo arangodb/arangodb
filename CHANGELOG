@@ -340,6 +340,8 @@ devel
 
 * fix crash in agency supervision when leadership is lost
 
+* leader's timestamps in append entries protocol
+
 v3.4.1 (XXXX-XX-XX)
 -------------------
 
