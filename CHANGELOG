@@ -1,6 +1,9 @@
 v3.4.5 (XXXX-XX-XX)
 -------------------
 
+* don't attempt to remove non-existing WAL files, because such attempt will
+  trigger unnecessary error log messages in the RocksDB library
+
 * added --log.file-mode to specify a file mode of newly created log files
 
 * added --log.file-group to specify the group of newly created log files
