@@ -123,6 +123,13 @@ order& order::add(bool reverse, const sort::ptr& sort) {
   return *this;
 }
 
+order &order::add(bool reverse, sort::ptr &&sort) {
+  assert(sort);
+  order_.emplace_back(sort, reverse);
+
+  return *this;
+}
+
 order::prepared order::prepare() const {
   order::prepared pord;
   pord.order_.reserve(order_.size()); // strong exception guarantee

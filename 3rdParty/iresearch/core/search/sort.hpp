@@ -691,6 +691,7 @@ class IRESEARCH_API order final {
   prepared prepare() const;
 
   order& add(bool reverse, sort::ptr const& sort);
+  order& add(bool reverse, sort::ptr&& sort);
 
   template<typename T, typename... Args>
   T& add(bool reverse, Args&&... args) {

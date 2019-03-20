@@ -70,25 +70,27 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   ExecutionPlan const& plan() const noexcept;
   Variable const& outVariable() const noexcept;
   aql::AstNode const& filterCondition() const noexcept;
-  std::pair<bool, bool> volatility() const noexcept;
   VarInfoMap const& varInfoMap() const noexcept;
   int getDepth() const noexcept;
+  bool volatileSort() const noexcept;
+  bool volatileFilter() const noexcept;
 
   bool isScoreReg(RegisterId reg) const;
 
  private:
-  RegisterId _outputRegister;
-  RegisterId _numScoreRegisters;
-  std::shared_ptr<iresearch::IResearchView::Snapshot const> _reader;
+  RegisterId const _outputRegister;
+  RegisterId const _numScoreRegisters;
+  std::shared_ptr<iresearch::IResearchView::Snapshot const> const _reader;
   Query& _query;
 
   std::vector<iresearch::Scorer> const& _scorers;
   ExecutionPlan const& _plan;
   Variable const& _outVariable;
   aql::AstNode const& _filterCondition;
-  std::pair<bool, bool> _volatility;
+  bool const _volatileSort;
+  bool const _volatileFilter;
   VarInfoMap const& _varInfoMap;
-  int _depth;
+  int const _depth;
 };
 
 class IResearchViewStats {
@@ -190,8 +192,7 @@ class IResearchViewExecutor {
   iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
   size_t _inflight;  // The number of documents inflight if we hit a WAITING state.
   bool _hasMore;
-  bool _volatileSort;
-  bool _volatileFilter;
+  bool _isInitialized;
 
   // IResearchViewUnorderedBlock members:
   irs::columnstore_reader::values_reader_f _pkReader;  // current primary key reader

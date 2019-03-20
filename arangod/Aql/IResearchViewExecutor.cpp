@@ -50,9 +50,9 @@ typedef std::vector<arangodb::LocalDocumentId> pks_t;
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     ExecutorInfos&& infos, std::shared_ptr<const IResearchView::Snapshot> reader,
     RegisterId firstOutputRegister, RegisterId numScoreRegisters, Query& query,
-    const std::vector<Scorer>& scorers, ExecutionPlan const& plan, Variable const& outVariable,
+    std::vector<Scorer> const& scorers, ExecutionPlan const& plan, Variable const& outVariable,
     aql::AstNode const& filterCondition, std::pair<bool, bool> volatility,
-    const IResearchViewExecutorInfos::VarInfoMap& varInfoMap, int depth)
+    IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth)
     : ExecutorInfos(std::move(infos)),
       _outputRegister(firstOutputRegister),
       _numScoreRegisters(numScoreRegisters),
@@ -62,7 +62,9 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _plan(plan),
       _outVariable(outVariable),
       _filterCondition(filterCondition),
-      _volatility(volatility),
+      _volatileSort(volatility.second),
+      // `_volatileSort` implies `_volatileFilter`
+      _volatileFilter(_volatileSort || volatility.first),
       _varInfoMap(varInfoMap),
       _depth(depth) {
   TRI_ASSERT(_reader != nullptr);
@@ -88,7 +90,8 @@ bool IResearchViewExecutorInfos::isScoreReg(RegisterId reg) const {
   return getOutputRegister() < reg && reg <= getOutputRegister() + getNumScoreRegisters();
 }
 
-std::vector<arangodb::iresearch::Scorer> const& IResearchViewExecutorInfos::scorers() const noexcept {
+std::vector<arangodb::iresearch::Scorer> const& IResearchViewExecutorInfos::scorers() const
+    noexcept {
   return _scorers;
 }
 
@@ -104,16 +107,19 @@ aql::AstNode const& IResearchViewExecutorInfos::filterCondition() const noexcept
   return _filterCondition;
 }
 
-std::pair<bool, bool> IResearchViewExecutorInfos::volatility() const noexcept {
-  return _volatility;
-}
-
-IResearchViewExecutorInfos::VarInfoMap const& IResearchViewExecutorInfos::varInfoMap() const noexcept {
+IResearchViewExecutorInfos::VarInfoMap const& IResearchViewExecutorInfos::varInfoMap() const
+    noexcept {
   return _varInfoMap;
 }
 
-int IResearchViewExecutorInfos::getDepth() const noexcept {
-  return _depth;
+int IResearchViewExecutorInfos::getDepth() const noexcept { return _depth; }
+
+bool IResearchViewExecutorInfos::volatileSort() const noexcept {
+  return _volatileSort;
+}
+
+bool IResearchViewExecutorInfos::volatileFilter() const noexcept {
+  return _volatileFilter;
 }
 
 template <bool ordered>
@@ -131,8 +137,7 @@ IResearchViewExecutor<ordered>::IResearchViewExecutor(IResearchViewExecutor::Fet
       _execCtx(*infos.getQuery().trx(), _ctx),
       _inflight(0),
       _hasMore(true),  // has more data initially
-      _volatileSort(ordered),
-      _volatileFilter(true) {
+      _isInitialized(false) {
   TRI_ASSERT(infos.getQuery().trx() != nullptr);
 
   TRI_ASSERT(ordered == (infos.getNumScoreRegisters() != 0));
@@ -408,7 +413,7 @@ void IResearchViewExecutor<ordered>::reset() {
                                                       plan, plan->getAst(), &_ctx,
                                                       &infos().outVariable()};
 
-  if (_volatileFilter) {  // `_volatileSort` implies `_volatileFilter`
+  if (infos().volatileFilter() || !_isInitialized) {  // `_volatileSort` implies `_volatileFilter`
     irs::Or root;
 
     if (!arangodb::iresearch::FilterFactory::filter(&root, queryCtx,
@@ -416,10 +421,10 @@ void IResearchViewExecutor<ordered>::reset() {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "failed to build filter while querying arangosearch view, query '" +
-            infos().filterCondition().toVelocyPack(true)->toJson() + "'");
+              infos().filterCondition().toVelocyPack(true)->toJson() + "'");
     }
 
-    if (_volatileSort) {
+    if (infos().volatileSort() || !_isInitialized) {
       irs::order order;
       irs::sort::ptr scorer;
 
@@ -442,12 +447,7 @@ void IResearchViewExecutor<ordered>::reset() {
     // compile filter
     _filter = root.prepare(*_reader, _order, irs::boost::no_boost(), _filterCtx);
 
-    // TODO Why is this done during every reset()? Seems to me it is fixed
-    // at the time the block is created, and thus both members could just be
-    // (template) parameters.
-    auto const& volatility = infos().volatility();
-    _volatileSort = volatility.second;
-    _volatileFilter = _volatileSort || volatility.first;
+    _isInitialized = true;
   }
 }
 
