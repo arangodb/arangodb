@@ -39,7 +39,6 @@
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchView.h"
-#include "IResearch/IResearchViewBlock.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
