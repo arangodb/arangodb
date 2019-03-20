@@ -2045,27 +2045,31 @@ static void JS_TruncateVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
-  SingleCollectionTransaction trx(ctx, *collection, AccessMode::Type::EXCLUSIVE);
-  trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-  trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-  Result res = trx.begin();
+  {
+    auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
+    SingleCollectionTransaction trx(ctx, *collection, AccessMode::Type::EXCLUSIVE);
+    trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+    trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
+    Result res = trx.begin();
 
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION(res);
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+
+    auto result = trx.truncate(collection->name(), opOptions);
+
+    res = trx.finish(result.result);
+
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
   }
 
-  auto result = trx.truncate(collection->name(), opOptions);
-
-  res = trx.finish(result.result);
-
-  if (result.fail()) {
-    TRI_V8_THROW_EXCEPTION(result.result);
-  }
-
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  // wait for the transaction to finish first. only after that compact the
+  // data range(s) for the collection
+  // we shouldn't run compact() as part of the transaction, because the compact
+  // will be useless inside due to the snapshot the transaction has taken
+  collection->compact();
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END

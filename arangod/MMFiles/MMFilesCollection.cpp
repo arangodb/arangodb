@@ -2794,6 +2794,16 @@ Result MMFilesCollection::truncate(transaction::Methods& trx, OperationOptions& 
   return Result();
 }
 
+/// @brief compact-data operation
+Result MMFilesCollection::compact() {
+  // this will only reset the last compaction timestamp,
+  // so the collection becomes eligible for the next round of compactions
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+  _lastCompactionStamp = 0.0;
+
+  return {};
+}
+
 LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions const& options) const {
   if (options.recoveryData != nullptr) {
     auto marker = static_cast<MMFilesWalMarker*>(options.recoveryData);
