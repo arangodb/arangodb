@@ -176,9 +176,20 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
       let collectionsBefore = [];
       if (!serverDead) {
-        db._collections().forEach(collection => {
-          collectionsBefore.push(collection._name);
-        });
+        try {
+          db._collections().forEach(collection => {
+            collectionsBefore.push(collection._name);
+          });
+        }
+        catch (x) {
+          results[te] = {
+            status: false,
+            message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
+          };
+          continueTesting = false;
+          serverDead = true;
+          first = false;
+        }
       }
       while (first || options.loopEternal) {
         if (!continueTesting) {

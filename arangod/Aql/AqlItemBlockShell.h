@@ -73,8 +73,8 @@ class AqlItemBlockShell : public std::enable_shared_from_this<AqlItemBlockShell>
 
   using SmartAqlItemBlockPtr = std::unique_ptr<AqlItemBlock, AqlItemBlockDeleter>;
 
-  AqlItemBlock const& block() const { return *_block; };
-  AqlItemBlock& block() { return *_block; };
+  inline AqlItemBlock const& block() const { return *_block; }
+  inline AqlItemBlock& block() { return *_block; }
 
   AqlItemBlockShell(AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block);
 
