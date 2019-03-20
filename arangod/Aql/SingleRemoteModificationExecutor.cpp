@@ -103,13 +103,11 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   const bool isUpdate = std::is_same<Modifier, Update>::value;
   const bool isReplace = std::is_same<Modifier, Replace>::value;
 
-  const bool replaceIndex = false;
-
   int possibleWrites = 0;  // TODO - get real statistic values!
 
   OperationOptions& options = _info._options;
 
-  if (_key.empty() && !_info._input1RegisterId.has_value()) {
+  if (_info._key.empty() && !_info._input1RegisterId.has_value()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
                                    "missing document reference");
   }
@@ -126,8 +124,8 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
     inSlice = inBuilder.slice();
   }
 
-  if (!_key.empty()) {
-    auto mergedBuilder = merge(inSlice, _key, 0);
+  if (!_info._key.empty()) {
+    auto mergedBuilder = merge(inSlice, _info._key, 0);
     inSlice = mergedBuilder->slice();
   }
 
@@ -146,7 +144,7 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
     result = _info._trx->remove(_info._aqlCollection->name(), inSlice, _info._options);
     possibleWrites = 1;
   } else if (isReplace) {
-    if (replaceIndex && !_info._input1RegisterId.has_value()) {
+    if (_info._replaceIndex && !_info._input1RegisterId.has_value()) {
       // we have a FOR .. IN FILTER doc._key == ... REPLACE - no WITH.
       // in this case replace needs to behave as if it was UPDATE.
       result = _info._trx->update(_info._aqlCollection->name(), inSlice, _info._options);
@@ -162,8 +160,8 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   // check operation result
   if (!result.ok()) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
-        (isIndex || (isUpdate && replaceIndex) || (isUpdate && replaceIndex) ||
-         (isRemove && replaceIndex) || (isReplace && replaceIndex))) {
+        (isIndex || (isUpdate && _info._replaceIndex) || (isUpdate && _info._replaceIndex) ||
+         (isRemove && _info._replaceIndex) || (isReplace && _info._replaceIndex))) {
       // document not there is not an error in this situation.
       // FOR ... FILTER ... REMOVE wouldn't invoke REMOVE in first place, so
       // don't throw an excetpion.
@@ -181,7 +179,7 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   // FIXME _engine->_stats.scannedIndex++;
 
   if (!(_info._outputRegisterId.has_value() || _info._outputOldRegisterId.has_value() || _info._outputNewRegisterId.has_value())) {
-    return _hasParent;
+    return _info._hasParent;
   }
 
   // Fill itemblock

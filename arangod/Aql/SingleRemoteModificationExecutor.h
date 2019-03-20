@@ -41,16 +41,17 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
       IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
       IgnoreDocumentNotFound ignoreDocumentNotFound,  // end of base class params
       std::string key,
-      bool hasParent)
+      bool hasParent, bool replaceIndex)
       : ModificationExecutorInfos(std::move(input1RegisterId), std::move(input2RegisterId), std::move(input3RegisterId),
                                   std::move(outputNewRegisterId), std::move(outputOldRegisterId), std::move(outputRegisterId),
                                   nrInputRegisters, std::move(nrOutputRegisters), std::move(registersToClear),
                                   std::move(registersToKeep), trx, std::move(options), aqlCollection,
                                   producesResults, consultAqlWriteFilter, ignoreErrors,
                                   doCount, isReplace, ignoreDocumentNotFound),
-        _key(std::move(key)), _hasParent(hasParent) {}
+        _key(std::move(key)), _hasParent(hasParent), _replaceIndex(replaceIndex) {}
   std::string _key;
   bool _hasParent;  //node->hasParent();
+  bool _replaceIndex;
   constexpr static double const defaultTimeOut = 3600.0;
 };
 
@@ -81,10 +82,9 @@ struct SingleRemoteModificationExecutor {
  protected:
   bool doSingleRemoteModificationOperation(InputAqlItemRow&, OutputAqlItemRow&, Stats&);
 
-  ModificationExecutorInfos& _info;
+  Infos& _info;
   Fetcher& _fetcher;
   ExecutionState _upstreamState;
-  std::string _key;
 };
 
 }  // namespace aql
