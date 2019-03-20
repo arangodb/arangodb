@@ -108,6 +108,9 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow& input) {
     }
 
     addLine(input);
+  } else {
+    // We still need an open array...
+    _builder.openArray();
   }
 }
 
@@ -141,6 +144,10 @@ SortedCollectExecutor::SortedCollectExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos), _fetcher(fetcher), _currentGroup(infos.getCount(), infos), _fetcherDone(false) {
   // reserve space for the current row
   _currentGroup.initialize(_infos.getGroupRegisters().size());
+  // reset and recreate new group
+  // Initialize group with invalid input
+  InputAqlItemRow emptyInput{CreateInvalidInputRowHint{}};
+  _currentGroup.reset(emptyInput);
 };
 
 void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
@@ -272,6 +279,7 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
       TRI_ASSERT(!_currentGroup.isValid());
       return {ExecutionState::DONE, {}};
     }
+    return {ExecutionState::DONE, {}};
   }
 
   ExecutionState state;

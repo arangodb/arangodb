@@ -63,23 +63,25 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
     std::unordered_set<RegisterId> const regToClear;
     std::unordered_set<RegisterId> const regToKeep;
     std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
-    groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 2));
+    groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
 
     std::vector<std::string> aggregateTypes;
 
     std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
 
     // if count = true, then we need to set a countRegister
-    RegisterId collectRegister = 0;
+    RegisterId collectRegister = ExecutionNode::MaxRegisterId;
     RegisterId expressionRegister = ExecutionNode::MaxRegisterId; 
     Variable const* expressionVariable = nullptr;
     std::vector<std::pair<std::string, RegisterId>> variables;
     bool count = false;
 
     std::unordered_set<RegisterId> readableInputRegisters;
+    readableInputRegisters.insert(0);
     std::unordered_set<RegisterId> writeableOutputRegisters;
+    writeableOutputRegisters.insert(1);
 
-    SortedCollectExecutorInfos infos(2 /*nrIn*/, 2 /*nrOut*/, regToClear,
+    SortedCollectExecutorInfos infos(1 /*nrIn*/, 2 /*nrOut*/, regToClear,
                                      regToKeep, std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
                                      std::move(groupRegisters), collectRegister,
@@ -103,7 +105,7 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
                                 infos.registersToKeep(), infos.registersToClear());
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
+        REQUIRE(result.produced());
       }
     }
 
@@ -121,7 +123,7 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
         AND_THEN("the executor should return DONE") {
           std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!result.produced());
+          REQUIRE(result.produced());
         }
       }
     }
@@ -204,14 +206,9 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
         REQUIRE(x.isNumber());
         REQUIRE(x.slice().getInt() == 1);
         // check for collect
-
-        LOG_DEVEL << block->getValue(0, collectRegister).slice().toJson();
-
         x = block->getValue(1, 1);
         REQUIRE(x.isNumber());
         REQUIRE(x.slice().getInt() == 2);
-
-        LOG_DEVEL << block->getValue(1, collectRegister).slice().toJson();
       }
     }
 
@@ -407,18 +404,18 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
     RegisterId nrOutputRegister = 3;
 
     std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
-    aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
+    aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(2, 0));
+    writeableOutputRegisters.insert(2);
 
     std::vector<std::string> aggregateTypes;
     aggregateTypes.emplace_back("SUM");
 
     // if count = true, then we need to set a valid countRegister
     bool count = true;
-    RegisterId collectRegister = 2;
+    RegisterId collectRegister = ExecutionNode::MaxRegisterId;
     RegisterId expressionRegister = ExecutionNode::MaxRegisterId; 
     Variable const* expressionVariable = nullptr;
     std::vector<std::pair<std::string, RegisterId>> variables;
-    writeableOutputRegisters.insert(2);
 
     SortedCollectExecutorInfos infos(1, nrOutputRegister, regToClear, regToKeep,
                                      std::move(readableInputRegisters),
@@ -464,20 +461,20 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
         REQUIRE(x.isNumber());
         CHECK(x.slice().getInt() == 1);
 
-        // Check the count register
+        // Check the SUM register
         AqlValue counter = block->getValue(0, 2);
         REQUIRE(counter.isNumber());
-        CHECK(counter.slice().getInt() == 1);
+        CHECK(counter.slice().getDouble() == 1);
 
         // check for types
         x = block->getValue(1, 1);
         REQUIRE(x.isNumber());
         CHECK(x.slice().getInt() == 2);
 
-        // Check the count register
+        // Check the SUM register
         counter = block->getValue(1, 2);
         REQUIRE(counter.isNumber());
-        CHECK(counter.slice().getInt() == 1);
+        CHECK(counter.slice().getDouble() == 2);
       }
     }
   }
@@ -501,14 +498,14 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
     RegisterId nrOutputRegister = 3;
 
     std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
-    aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
+    aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(2, 0));
 
     std::vector<std::string> aggregateTypes;
     aggregateTypes.emplace_back("LENGTH");
 
     // if count = true, then we need to set a valid countRegister
     bool count = true;
-    RegisterId collectRegister = 2;
+    RegisterId collectRegister = ExecutionNode::MaxRegisterId;
     RegisterId expressionRegister = ExecutionNode::MaxRegisterId; 
     Variable const* expressionVariable = nullptr;
     std::vector<std::pair<std::string, RegisterId>> variables;
@@ -563,7 +560,7 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
         REQUIRE(x.isNumber());
         CHECK(x.slice().getInt() == 1);
 
-        // Check the count register
+        // Check the LENGTH register
         AqlValue xx = block->getValue(0, 2);
         REQUIRE(xx.isNumber());
         CHECK(xx.slice().getInt() == 1);
@@ -573,7 +570,7 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
         REQUIRE(x.isNumber());
         CHECK(x.slice().getInt() == 2);
 
-        // Check the count register
+        // Check the LENGTH register
         xx = block->getValue(1, 2);
         REQUIRE(xx.isNumber());
         CHECK(xx.slice().getInt() == 1);
@@ -583,6 +580,7 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
         REQUIRE(x.isNumber());
         CHECK(x.slice().getInt() == 3);
 
+        // Check the LENGTH register
         xx = block->getValue(2, 2);
         REQUIRE(xx.isNumber());
         CHECK(xx.slice().getInt() == 1);
@@ -609,14 +607,14 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
     RegisterId nrOutputRegister = 3;
 
     std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
-    aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
+    aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(2, 0));
 
     std::vector<std::string> aggregateTypes;
     aggregateTypes.emplace_back("LENGTH");
 
     // if count = true, then we need to set a valid countRegister
     bool count = true;
-    RegisterId collectRegister = 2;
+    RegisterId collectRegister = ExecutionNode::MaxRegisterId;
     RegisterId expressionRegister = ExecutionNode::MaxRegisterId; 
     Variable const* expressionVariable = nullptr;
     std::vector<std::pair<std::string, RegisterId>> variables;
