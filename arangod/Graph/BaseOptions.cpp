@@ -248,9 +248,10 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
                                          aql::AstNode* condition) {
   LookupInfo info;
   info.indexCondition = condition->clone(plan->getAst());
-  bool res = _trx->getBestIndexHandleForFilterCondition(collectionName,
-                                                        info.indexCondition, _tmpVar,
-                                                        1000, info.idxHandles[0]);
+  bool res =
+      _trx->getBestIndexHandleForFilterCondition(collectionName, info.indexCondition,
+                                                 _tmpVar, 1000, aql::IndexHint(),
+                                                 info.idxHandles[0]);
   // Right now we have an enforced edge index which should always fit.
   if (!res) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

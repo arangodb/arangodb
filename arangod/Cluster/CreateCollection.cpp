@@ -115,7 +115,7 @@ bool CreateCollection::first() {
   try {  // now try to guard the vocbase
 
     DatabaseGuard guard(database);
-    auto vocbase = &guard.database();
+    auto& vocbase = guard.database();
 
     auto cluster = ApplicationServer::getFeature<ClusterFeature>("Cluster");
 

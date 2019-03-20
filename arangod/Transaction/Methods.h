@@ -24,6 +24,7 @@
 #ifndef ARANGOD_TRANSACTION_METHODS_H
 #define ARANGOD_TRANSACTION_METHODS_H 1
 
+#include "Aql/IndexHint.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
@@ -331,7 +332,7 @@ class Methods {
   ENTERPRISE_VIRT std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
       std::string const&, arangodb::aql::Ast*, arangodb::aql::AstNode*,
       arangodb::aql::Variable const*, arangodb::aql::SortCondition const*,
-      size_t, std::vector<IndexHandle>&, bool&);
+      size_t, aql::IndexHint const&, std::vector<IndexHandle>&, bool&);
 
   /// @brief Gets the best fitting index for one specific condition.
   ///        Difference to IndexHandles: Condition is only one NARY_AND
@@ -339,10 +340,9 @@ class Methods {
   ///        Returns false if no index could be found.
   ///        If it returned true, the AstNode contains the specialized condition
 
-  ENTERPRISE_VIRT bool getBestIndexHandleForFilterCondition(std::string const&,
-                                                            arangodb::aql::AstNode*&,
-                                                            arangodb::aql::Variable const*,
-                                                            size_t, IndexHandle&);
+  ENTERPRISE_VIRT bool getBestIndexHandleForFilterCondition(
+      std::string const&, arangodb::aql::AstNode*&,
+      arangodb::aql::Variable const*, size_t, aql::IndexHint const&, IndexHandle&);
 
   /// @brief Checks if the index supports the filter condition.
   /// note: the caller must have read-locked the underlying collection when
@@ -362,7 +362,8 @@ class Methods {
   ENTERPRISE_VIRT bool getIndexForSortCondition(std::string const&,
                                                 arangodb::aql::SortCondition const*,
                                                 arangodb::aql::Variable const*,
-                                                size_t, std::vector<IndexHandle>&,
+                                                size_t, aql::IndexHint const&,
+                                                std::vector<IndexHandle>&,
                                                 size_t& coveredAttributes);
 
   /// @brief factory for IndexIterator objects from AQL
@@ -565,13 +566,14 @@ class Methods {
       std::vector<std::shared_ptr<Index>> const& indexes,
       arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference,
       arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
-      std::vector<transaction::Methods::IndexHandle>& usedIndexes,
+      aql::IndexHint const& hint, std::vector<transaction::Methods::IndexHandle>& usedIndexes,
       arangodb::aql::AstNode*& specializedCondition, bool& isSparse) const;
 
   /// @brief findIndexHandleForAndNode, Shorthand which does not support Sort
   bool findIndexHandleForAndNode(std::vector<std::shared_ptr<Index>> const& indexes,
                                  arangodb::aql::AstNode*& node,
-                                 arangodb::aql::Variable const* reference, size_t itemsInCollection,
+                                 arangodb::aql::Variable const* reference,
+                                 size_t itemsInCollection, aql::IndexHint const& hint,
                                  transaction::Methods::IndexHandle& usedIndex) const;
 
   /// @brief Get one index by id for a collection name, coordinator case

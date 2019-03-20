@@ -31,6 +31,7 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
+#include "ClusterMethods.h"
 #include "Graph/Traverser.h"
 #include "Indexes/Index.h"
 #include "RestServer/TtlFeature.h"

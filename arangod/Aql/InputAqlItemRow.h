@@ -88,12 +88,12 @@ class InputAqlItemRow {
   inline AqlValue stealValue(RegisterId registerId) {
     TRI_ASSERT(isInitialized());
     TRI_ASSERT(registerId < getNrRegisters());
-    AqlValue a = block().getValueReference(_baseIndex, registerId);
+    AqlValue const& a = block().getValueReference(_baseIndex, registerId);
     if (!a.isEmpty() && a.requiresDestruction()) {
       // Now no one is responsible for AqlValue a
       block().steal(a);
     }
-    // This cannot fail, caller needs to take immediate owner shops.
+    // This cannot fail, caller needs to take immediate ownership.
     return a;
   }
 

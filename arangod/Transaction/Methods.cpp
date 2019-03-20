@@ -576,14 +576,16 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     std::vector<std::shared_ptr<Index>> const& indexes,
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
-    std::vector<transaction::Methods::IndexHandle>& usedIndexes,
+    aql::IndexHint const& hint, std::vector<transaction::Methods::IndexHandle>& usedIndexes,
     arangodb::aql::AstNode*& specializedCondition, bool& isSparse) const {
   std::shared_ptr<Index> bestIndex;
   double bestCost = 0.0;
   bool bestSupportsFilter = false;
   bool bestSupportsSort = false;
 
-  for (auto const& idx : indexes) {
+  auto considerIndex = [&bestIndex, &bestCost, &bestSupportsFilter, &bestSupportsSort,
+                        &indexes, node, reference, itemsInCollection,
+                        sortCondition](std::shared_ptr<Index> const& idx) -> void {
     double filterCost = 0.0;
     double sortCost = 0.0;
     size_t itemsInIndex = itemsInCollection;
@@ -636,7 +638,7 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     }
 
     if (!supportsFilter && !supportsSort) {
-      continue;
+      return;
     }
 
     double totalCost = filterCost;
@@ -666,6 +668,38 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       bestSupportsFilter = supportsFilter;
       bestSupportsSort = supportsSort;
     }
+  };
+
+  if (hint.type() == aql::IndexHint::HintType::Simple) {
+    std::vector<std::string> const& hintedIndices = hint.hint();
+    for (std::string const& hinted : hintedIndices) {
+      std::shared_ptr<Index> matched;
+      for (std::shared_ptr<Index> const& idx : indexes) {
+        if (idx->name() == hinted) {
+          matched = idx;
+          break;
+        }
+      }
+
+      if (matched != nullptr) {
+        considerIndex(matched);
+        if (bestIndex != nullptr) {
+          break;
+        }
+      }
+    }
+
+    if (hint.isForced() && bestIndex == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
+          "could not use index hint to serve query; " + hint.toString());
+    }
+  }
+
+  if (bestIndex == nullptr) {
+    for (auto const& idx : indexes) {
+      considerIndex(idx);
+    }
   }
 
   if (bestIndex == nullptr) {
@@ -681,13 +715,14 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
 }
 
 bool transaction::Methods::findIndexHandleForAndNode(
-    std::vector<std::shared_ptr<Index>> const& indexes,
-    arangodb::aql::AstNode*& node, arangodb::aql::Variable const* reference,
-    size_t itemsInCollection, transaction::Methods::IndexHandle& usedIndex) const {
+    std::vector<std::shared_ptr<Index>> const& indexes, arangodb::aql::AstNode*& node,
+    arangodb::aql::Variable const* reference, size_t itemsInCollection,
+    aql::IndexHint const& hint, transaction::Methods::IndexHandle& usedIndex) const {
   std::shared_ptr<Index> bestIndex;
   double bestCost = 0.0;
 
-  for (auto const& idx : indexes) {
+  auto considerIndex = [&bestIndex, &bestCost, itemsInCollection, &indexes, &node,
+                        reference](std::shared_ptr<Index> const& idx) -> void {
     size_t itemsInIndex = itemsInCollection;
 
     // check if the index supports the filter expression
@@ -709,7 +744,7 @@ bool transaction::Methods::findIndexHandleForAndNode(
         << ", node: " << node;
 
     if (!supportsFilter) {
-      continue;
+      return;
     }
 
     // index supports the filter condition
@@ -720,6 +755,38 @@ bool transaction::Methods::findIndexHandleForAndNode(
     if (bestIndex == nullptr || estimatedCost < bestCost) {
       bestIndex = idx;
       bestCost = estimatedCost;
+    }
+  };
+
+  if (hint.type() == aql::IndexHint::HintType::Simple) {
+    std::vector<std::string> const& hintedIndices = hint.hint();
+    for (std::string const& hinted : hintedIndices) {
+      std::shared_ptr<Index> matched;
+      for (std::shared_ptr<Index> const& idx : indexes) {
+        if (idx->name() == hinted) {
+          matched = idx;
+          break;
+        }
+      }
+
+      if (matched != nullptr) {
+        considerIndex(matched);
+        if (bestIndex != nullptr) {
+          break;
+        }
+      }
+    }
+
+    if (hint.isForced() && bestIndex == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
+          "could not use index hint to serve query; " + hint.toString());
+    }
+  }
+
+  if (bestIndex == nullptr) {
+    for (auto const& idx : indexes) {
+      considerIndex(idx);
     }
   }
 
@@ -2761,7 +2828,7 @@ std::pair<bool, bool> transaction::Methods::getBestIndexHandlesForFilterConditio
     std::string const& collectionName, arangodb::aql::Ast* ast,
     arangodb::aql::AstNode* root, arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
-    std::vector<IndexHandle>& usedIndexes, bool& isSorted) {
+    aql::IndexHint const& hint, std::vector<IndexHandle>& usedIndexes, bool& isSorted) {
   // We can only start after DNF transformation
   TRI_ASSERT(root->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR);
   auto indexes = indexesForCollection(collectionName);
@@ -2777,7 +2844,7 @@ std::pair<bool, bool> transaction::Methods::getBestIndexHandlesForFilterConditio
     auto node = root->getMemberUnchecked(i);
     arangodb::aql::AstNode* specializedCondition = nullptr;
     auto canUseIndex = findIndexHandleForAndNode(indexes, node, reference, sortCondition,
-                                                 itemsInCollection, usedIndexes,
+                                                 itemsInCollection, hint, usedIndexes,
                                                  specializedCondition, isSparse);
 
     if (canUseIndex.second && !canUseIndex.first) {
@@ -2823,7 +2890,7 @@ std::pair<bool, bool> transaction::Methods::getBestIndexHandlesForFilterConditio
 bool transaction::Methods::getBestIndexHandleForFilterCondition(
     std::string const& collectionName, arangodb::aql::AstNode*& node,
     arangodb::aql::Variable const* reference, size_t itemsInCollection,
-    IndexHandle& usedIndex) {
+    aql::IndexHint const& hint, IndexHandle& usedIndex) {
   // We can only start after DNF transformation and only a single AND
   TRI_ASSERT(node->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
   if (node->numMembers() == 0) {
@@ -2835,7 +2902,8 @@ bool transaction::Methods::getBestIndexHandleForFilterCondition(
 
   // Const cast is save here. Giving computeSpecialization == false
   // Makes sure node is NOT modified.
-  return findIndexHandleForAndNode(indexes, node, reference, itemsInCollection, usedIndex);
+  return findIndexHandleForAndNode(indexes, node, reference, itemsInCollection,
+                                   hint, usedIndex);
 }
 
 /// @brief Checks if the index supports the filter condition.
@@ -2878,20 +2946,20 @@ std::vector<std::vector<arangodb::basics::AttributeName>> transaction::Methods::
 bool transaction::Methods::getIndexForSortCondition(
     std::string const& collectionName, arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    std::vector<IndexHandle>& usedIndexes, size_t& coveredAttributes) {
+    aql::IndexHint const& hint, std::vector<IndexHandle>& usedIndexes,
+    size_t& coveredAttributes) {
   // We do not have a condition. But we have a sort!
   if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess() &&
       sortCondition->isUnidirectional()) {
     double bestCost = 0.0;
     std::shared_ptr<Index> bestIndex;
 
-    auto indexes = indexesForCollection(collectionName);
-
-    for (auto const& idx : indexes) {
+    auto considerIndex = [reference, sortCondition, itemsInIndex, &bestCost, &bestIndex,
+                          &coveredAttributes](std::shared_ptr<Index> const& idx) -> void {
       if (idx->sparse()) {
         // a sparse index may exclude some documents, so it can't be used to
         // get a sorted view of the ENTIRE collection
-        continue;
+        return;
       }
       double sortCost = 0.0;
       size_t covered = 0;
@@ -2902,6 +2970,40 @@ bool transaction::Methods::getIndexForSortCondition(
           bestIndex = idx;
           coveredAttributes = covered;
         }
+      }
+    };
+
+    auto indexes = indexesForCollection(collectionName);
+
+    if (hint.type() == aql::IndexHint::HintType::Simple) {
+      std::vector<std::string> const& hintedIndices = hint.hint();
+      for (std::string const& hinted : hintedIndices) {
+        std::shared_ptr<Index> matched;
+        for (std::shared_ptr<Index> const& idx : indexes) {
+          if (idx->name() == hinted) {
+            matched = idx;
+            break;
+          }
+        }
+
+        if (matched != nullptr) {
+          considerIndex(matched);
+          if (bestIndex != nullptr) {
+            break;
+          }
+        }
+      }
+
+      if (hint.isForced() && bestIndex == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
+            "could not use index hint to serve query; " + hint.toString());
+      }
+    }
+
+    if (bestIndex == nullptr) {
+      for (auto const& idx : indexes) {
+        considerIndex(idx);
       }
     }
 

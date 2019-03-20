@@ -54,7 +54,7 @@ class FilterExecutorInfos : public ExecutorInfos {
   FilterExecutorInfos(FilterExecutorInfos const&) = delete;
   ~FilterExecutorInfos() = default;
 
-  RegisterId getInputRegister() const noexcept { return _inputRegister; };
+  RegisterId getInputRegister() const noexcept { return _inputRegister; }
 
  private:
   // This is exactly the value in the parent member ExecutorInfo::_inRegs,

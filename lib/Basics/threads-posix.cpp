@@ -24,6 +24,7 @@
 #include "threads.h"
 
 #ifdef TRI_HAVE_POSIX_THREADS
+#include <time.h>
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
@@ -157,6 +158,37 @@ int TRI_JoinThread(TRI_thread_t* thread) {
   }
   return res;
 }
+
+#ifndef __APPLE__
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief waits for a thread to finish within the specified timeout (in ms).
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout) {
+  if (timeout == INFINITE) {
+    return TRI_JoinThread(thread);
+  }
+  
+  TRI_ASSERT(!TRI_IsSelfThread(thread));
+  
+  timespec ts;
+  if (!timespec_get(&ts, TIME_UTC)) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not initialize timespec with current time";
+    FATAL_ERROR_ABORT();
+  }
+  ts.tv_sec += timeout / 1000;
+  ts.tv_nsec = (timeout % 1000) * 1'000'000;
+
+  int res = pthread_timedjoin_np(*thread, nullptr, &ts);
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(WARN, arangodb::Logger::THREADS) << "cannot join thread: " << strerror(res);
+    return TRI_ERROR_FAILED;
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief detaches a thread

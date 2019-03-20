@@ -62,9 +62,10 @@ using basics::VelocyPackHelper;
 namespace {
 
 /// create a collection if it does not exists.
-bool createSystemCollection(TRI_vocbase_t* vocbase, std::string const& name) {
-  auto res =
-      methods::Collections::lookup(vocbase, name,
+bool createSystemCollection(TRI_vocbase_t& vocbase, std::string const& name) {
+  auto res = methods::Collections::lookup(
+    vocbase, // vocbase to search
+    name, // collection to find
                                    [](std::shared_ptr<LogicalCollection> const&) -> void {});
 
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
@@ -89,7 +90,11 @@ bool createSystemCollection(TRI_vocbase_t* vocbase, std::string const& name) {
     }
 
     bb.close();
-    res = Collections::create(vocbase, name, TRI_COL_TYPE_DOCUMENT, bb.slice(),
+    res = Collections::create(
+      vocbase, // vocbase to create in
+      name, // collection name top create
+      TRI_COL_TYPE_DOCUMENT, // collection type to create
+      bb.slice(), // collection definition to create
                               /*waitsForSyncReplication*/ true,
                               /*enforceReplicationFactor*/ true,
                               [](std::shared_ptr<LogicalCollection> const&) -> void {});
@@ -103,7 +108,10 @@ bool createSystemCollection(TRI_vocbase_t* vocbase, std::string const& name) {
 }
 
 /// create an index if it does not exist
-bool createIndex(TRI_vocbase_t* vocbase, std::string const& name, Index::IndexType type,
+bool createIndex(
+  TRI_vocbase_t& vocbase, // collection vocbase
+  std::string const& name, // collection name
+  arangodb::Index::IndexType type, // index type
                  std::vector<std::string> const& fields, bool unique, bool sparse) {
   VPackBuilder output;
   Result res1, res2;
@@ -195,19 +203,23 @@ bool UpgradeTasks::upgradeGeoIndexes(TRI_vocbase_t& vocbase,
 
 bool UpgradeTasks::setupGraphs(TRI_vocbase_t& vocbase,
                                arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_graphs");
+  return ::createSystemCollection(vocbase, "_graphs");
 }
 
 bool UpgradeTasks::setupUsers(TRI_vocbase_t& vocbase,
                               arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_users");
+  return ::createSystemCollection(vocbase, "_users");
 }
 
 bool UpgradeTasks::createUsersIndex(TRI_vocbase_t& vocbase,
                                     arangodb::velocypack::Slice const& slice) {
   TRI_ASSERT(vocbase.isSystem());
 
-  return ::createIndex(&vocbase, "_users", Index::TRI_IDX_TYPE_HASH_INDEX, {"user"},
+  return ::createIndex(
+    vocbase, // collection vocbase
+    "_users", // collection name
+    arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, // index type
+    { "user" }, // index fields
                        /*unique*/ true,
                        /*sparse*/ true);
 }
@@ -266,36 +278,42 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
 
 bool UpgradeTasks::setupAnalyzers(TRI_vocbase_t& vocbase,
                                   arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_iresearch_analyzers");
+  return ::createSystemCollection(vocbase, "_iresearch_analyzers");
 }
 
 bool UpgradeTasks::setupAqlFunctions(TRI_vocbase_t& vocbase,
                                      arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_aqlfunctions");
+  return ::createSystemCollection(vocbase, "_aqlfunctions");
 }
 
 bool UpgradeTasks::createFrontend(TRI_vocbase_t& vocbase,
                                   arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_frontend");
+  return ::createSystemCollection(vocbase, "_frontend");
 }
 
 bool UpgradeTasks::setupQueues(TRI_vocbase_t& vocbase,
                                arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_queues");
+  return ::createSystemCollection(vocbase, "_queues");
 }
 
 bool UpgradeTasks::setupJobs(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_jobs");
+  return ::createSystemCollection(vocbase, "_jobs");
 }
 
 bool UpgradeTasks::createJobsIndex(TRI_vocbase_t& vocbase,
                                    arangodb::velocypack::Slice const& slice) {
-  ::createSystemCollection(&vocbase, "_jobs");
-  ::createIndex(&vocbase, "_jobs", Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+  ::createSystemCollection(vocbase, "_jobs");
+  ::createIndex(
+    vocbase, // collection vocbase
+    "_jobs", // collection name
+    arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, // index type
                 {"queue", "status", "delayUntil"},
                 /*unique*/ true,
                 /*sparse*/ true);
-  ::createIndex(&vocbase, "_jobs", Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+  ::createIndex(
+    vocbase, // collection vocbase
+    "_jobs", // collection name
+    arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, // index type
                 {"status", "queue", "delayUntil"},
                 /*unique*/ true,
                 /*sparse*/ true);
@@ -304,19 +322,23 @@ bool UpgradeTasks::createJobsIndex(TRI_vocbase_t& vocbase,
 }
 
 bool UpgradeTasks::setupApps(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_apps");
+  return ::createSystemCollection(vocbase, "_apps");
 }
 
 bool UpgradeTasks::createAppsIndex(TRI_vocbase_t& vocbase,
                                    arangodb::velocypack::Slice const& slice) {
-  return ::createIndex(&vocbase, "_apps", Index::TRI_IDX_TYPE_HASH_INDEX, {"mount"},
+  return ::createIndex(
+    vocbase, // collection vocbase
+    "_apps", // collection name
+    arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, // index type
+    {"mount"}, // index fields
                        /*unique*/ true,
                        /*sparse*/ true);
 }
 
 bool UpgradeTasks::setupAppBundles(TRI_vocbase_t& vocbase,
                                    arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_appbundles");
+  return ::createSystemCollection(vocbase, "_appbundles");
 }
 
 bool UpgradeTasks::persistLocalDocumentIds(TRI_vocbase_t& vocbase,

@@ -91,8 +91,11 @@ OperationResult GraphManager::createCollection(std::string const& name, TRI_col_
                                                bool waitForSync, VPackSlice options) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
 
-  Result res =
-      methods::Collections::create(&ctx()->vocbase(), name, colType, options,
+  auto res = arangodb::methods::Collections::create( // create collection
+    ctx()->vocbase(), // collection vocbase
+    name, // collection name
+    colType, // collection type
+    options, // collection properties
                                    waitForSync, true,
                                    [](std::shared_ptr<LogicalCollection> const&) -> void {});
 
@@ -463,8 +466,7 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   // Validation Phase collect a list of collections to create
   std::unordered_set<std::string> documentCollectionsToCreate{};
   std::unordered_set<std::string> edgeCollectionsToCreate{};
-
-  TRI_vocbase_t* vocbase = &(ctx()->vocbase());
+  auto& vocbase = ctx()->vocbase();
   Result innerRes{TRI_ERROR_NO_ERROR};
 
   // Check that all edgeCollections are either to be created
@@ -546,8 +548,10 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
 
   // Create Document Collections
   for (auto const& vertexColl : documentCollectionsToCreate) {
-    Result res =
-        methods::Collections::create(vocbase, vertexColl, TRI_COL_TYPE_DOCUMENT,
+    auto res = arangodb::methods::Collections::create( // create collection
+      vocbase, // vocbase to create it
+      vertexColl, // collection name to create
+      TRI_COL_TYPE_DOCUMENT, // collection type to create
                                      options, waitForSync, true,
                                      [](std::shared_ptr<LogicalCollection> const&) -> void {});
 
@@ -558,8 +562,10 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
 
   // Create Edge Collections
   for (auto const& edgeColl : edgeCollectionsToCreate) {
-    Result res =
-        methods::Collections::create(vocbase, edgeColl, TRI_COL_TYPE_EDGE,
+    auto res = arangodb::methods::Collections::create( // create collection
+      vocbase, // vocbase to create in
+      edgeColl, // collectionname to create
+      TRI_COL_TYPE_EDGE, // collection type to create
                                      options, waitForSync, true,
                                      [](std::shared_ptr<LogicalCollection> const&) -> void {});
 
@@ -803,11 +809,12 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
     for (auto const& collection : boost::join(followersToBeRemoved, leadersToBeRemoved)) {
       Result dropResult;
       Result found = methods::Collections::lookup(
-          &ctx()->vocbase(), collection,
+        ctx()->vocbase(), // vocbase to search
+        collection, // collection to find
           [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
             TRI_ASSERT(coll);
-            dropResult = methods::Collections::drop(&ctx()->vocbase(),
-                                                    coll.get(), false, -1.0);
+            dropResult = // result
+              arangodb::methods::Collections::drop(*coll, false, -1.0);
           });
 
       if (dropResult.fail()) {
