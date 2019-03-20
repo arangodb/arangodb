@@ -39,6 +39,12 @@
 #include "search/score.hpp"
 
 // TODO Eliminate access to the plan if possible!
+// I think it is used for two things only:
+//  - to get the Ast, which can simply be passed on its own, and
+//  - to call plan->getVarSetBy() in aql::Expression, which could be removed by
+//    passing (a reference to) plan->_varSetBy instead.
+// But changing this, even only for the IResearch part, would involve more
+// refactoring than I currently find appropriate for this.
 #include "Aql/ExecutionPlan.h"
 
 using namespace arangodb;
