@@ -108,6 +108,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   virtual void setPath(std::string const&) override;
   virtual arangodb::Result truncate(arangodb::transaction::Methods* trx, arangodb::OperationOptions&) override;
+  virtual arangodb::Result compact() override;
   virtual arangodb::Result update(
       arangodb::transaction::Methods* trx,
       arangodb::velocypack::Slice const newSlice,
