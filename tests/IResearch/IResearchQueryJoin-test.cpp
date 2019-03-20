@@ -48,6 +48,8 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
@@ -318,8 +320,8 @@ TEST_CASE("IResearchQueryTestJoinSubquery", "[iresearch][iresearch-query]") {
     }
 
     CHECK((trx.commit().ok()));
-    CHECK(dynamic_cast<arangodb::iresearch::IResearchView&>(*entities_view).commit().ok());
-    CHECK(dynamic_cast<arangodb::iresearch::IResearchView&>(*links_view).commit().ok());
+    CHECK((arangodb::iresearch::IResearchLinkHelper::find(*entities, *entities_view)->commit().ok()));
+    CHECK((arangodb::iresearch::IResearchLinkHelper::find(*links, *links_view)->commit().ok()));
   }
 
   // check query

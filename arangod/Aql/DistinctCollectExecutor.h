@@ -112,7 +112,7 @@ class DistinctCollectExecutor {
  private:
   Infos const& _infos;
   Fetcher& _fetcher;
-  std::unique_ptr<std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>> _seen;
+  std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual> _seen;
 };
 
 }  // namespace aql

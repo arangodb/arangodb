@@ -71,13 +71,13 @@ bool DropCollection::first() {
 
   try {
     DatabaseGuard guard(database);
-    auto vocbase = &guard.database();
+    auto& vocbase = guard.database();
     Result found = methods::Collections::lookup(
         vocbase, collection, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
           TRI_ASSERT(coll);
           LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
               << "Dropping local collection " + collection;
-          _result = Collections::drop(vocbase, coll.get(), false, 120);
+          _result = Collections::drop(*coll, false, 120);
         });
 
     if (found.fail()) {
