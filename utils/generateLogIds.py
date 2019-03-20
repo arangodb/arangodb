@@ -144,6 +144,21 @@ def do_operation(fullpath, project_path, target_file_handle, id_database, levels
 
 
 def generate_ids_main(check_only, project_root, directories_to_include, directories_or_files_to_exclude, id_database):
+    """
+    Library function to check arangodb project for valid unique log ids.
+
+    If `check_only` is set to False it will also convert macros form old style
+    logging to new the new style inserting unique ids.
+
+        :param check_only: check for uniqueness but do not modify
+        :param project_root: path to project_root
+        :param directories_to_include: list of directories to include
+        :param directories_or_files_to_exclude: list of directories and files to exclude
+
+        :return: status
+        :rtype: int
+    """
+
     include = [ project_root + os.path.sep + d for d in directories_to_include ]
     exclude = [ project_root + os.path.sep + d for d in directories_or_files_to_exclude ]
 
@@ -172,6 +187,13 @@ def generate_ids_main(check_only, project_root, directories_to_include, director
     return 0
 
 if __name__ == "__main__":
+    """
+    Returns non zero status if there is a duplicate id!
+
+    Note:
+    `check_only` must be set to true for normal operation mode.
+    """
+
     root = os.path.dirname(__file__)
     root = os.path.abspath(root + os.path.sep + os.pardir)
     check_only = False
