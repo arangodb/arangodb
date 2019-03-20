@@ -33,6 +33,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Traverser.h"
 #include "Indexes/Index.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/KeyGenerator.h"
@@ -2717,8 +2718,48 @@ int fetchEdgesFromEngines(std::string const& dbname,
   return TRI_ERROR_NO_ERROR;
 }
 
+
+arangodb::Result loadLocalBackup(std::string const& backupId) {
+
+  // Find local backup with Id
+  return arangodb::Result();
+
+  
+  
+}
+  
+arangodb::Result hotRestoreCoordinator(std::string const& backupId) {
+
+  // 1. Find local backup with id
+  //    - fail if not found
+  // 2. Check for matching db server number
+  //    - fail if not matching
+  // 3. Check if they have according backup with backupId
+  //    - fail if not
+  // 4. a. Initiate DB server restores
+  //    b. Replay agency
+
+  auto loadBackup = loadLocalBackup();
+
+  return arangodb::Result();
+  
+}
+
+
 arangodb::Result hotBackupCoordinator(
   HotBackupMode const& mode, uint64_t const& wait) {
+
+  /*
+    1. Create UUID for this entire attempt
+    2. Try to get unique hot backup lock in agency, triggers maintenance mode
+       if not successful: error
+    3. Get agency dump
+       if not successful: error
+    4. Get global lock on all database servers
+       if not successful: delete agency dump, error
+    5. Create backups on all dabatase servers
+       if not successful: delete all snapshots, agency dump
+   */
 
   using namespace std::chrono;
 

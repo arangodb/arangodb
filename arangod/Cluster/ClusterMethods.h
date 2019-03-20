@@ -244,6 +244,8 @@ enum HotBackupMode {CONSISTENT, DIRTY};
 
 arangodb::Result hotBackupCoordinator(HotBackupMode const&, uint64_t const&);
 
+arangodb::Result loadLocalBackup(HotBackupMode const&);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the active journals for the collection on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
