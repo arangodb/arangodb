@@ -140,10 +140,10 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
     _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts,
                                        true, inaccessible);
   } else {
-    _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, true);
+    _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, /*isMainTransaction*/true);
   }
 #else
-  _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, true);
+  _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, /*isMainTransaction*/true);
 #endif
 
   if (!needToLock) {

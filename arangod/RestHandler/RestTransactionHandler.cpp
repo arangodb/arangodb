@@ -22,14 +22,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestTransactionHandler.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Rest/HttpRequest.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Status.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Transactions.h"
+#include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -41,23 +48,192 @@ using namespace arangodb::rest;
 RestTransactionHandler::RestTransactionHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response), _v8Context(nullptr), _lock() {}
 
-void RestTransactionHandler::returnContext() {
-  WRITE_LOCKER(writeLock, _lock);
-  V8DealerFeature::DEALER->exitContext(_v8Context);
-  _v8Context = nullptr;
+RestStatus RestTransactionHandler::execute() {
+    
+  switch (_request->requestType()) {
+    case rest::RequestType::GET:
+      executeGetState();
+      break;
+
+    case rest::RequestType::POST:
+      if (_request->suffixes().size() == 1 &&
+          _request->suffixes()[0] == "begin") {
+        executeBegin();
+      } else if (_request->suffixes().empty()) {
+        executeJSTransaction();
+      } else {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
+      }
+      break;
+
+    case rest::RequestType::PUT:
+      executeCommit();
+      break;
+
+    case rest::RequestType::DELETE_REQ:
+      executeAbort();
+      break;
+
+    default:
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      break;
+  }
+  return RestStatus::DONE;
 }
 
-RestStatus RestTransactionHandler::execute() {
-  if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
-    return RestStatus::DONE;
+void RestTransactionHandler::executeGetState() {
+  if (_request->suffixes().size() != 1) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  TRI_voc_tid_t tid = StringUtils::uint64(_request->suffixes()[1]);
+  if (tid == 0) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "Illegal transaction ID");
+    return;
+  }
+
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  transaction::Status status = mgr->getManagedTrxStatus(tid);
+  
+  if (status == transaction::Status::UNDEFINED) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_TRANSACTION_NOT_FOUND);
+  } else {
+    generateTransactionResult(rest::ResponseCode::OK, tid, status);
+  }
+}
+
+void RestTransactionHandler::executeBegin() {
+  TRI_ASSERT(_request->suffixes().size() == 1 &&
+             _request->suffixes()[0] == "begin");
+  
+  // figure out the transaction ID
+  TRI_voc_tid_t tid = 0;
+  bool found = false;
+  std::string value = _request->header(StaticStrings::TransactionId, found);
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+  if (found) {
+    if (!ServerState::isDBServer(role)) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
+                    "Not supported on this server type");
+      return;
+    }
+    tid = basics::StringUtils::uint64(value);
+    if (tid == 0 || !transaction::isChildTransactionId(tid)) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    "invalid transaction ID");
+      return;
+    }
+    TRI_ASSERT(tid != 0);
+    TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
+  } else {
+    if (!(ServerState::isCoordinator(role) || ServerState::isSingleServer(role))) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
+                    "Not supported on this server type");
+      return;
+    }
+    tid = ServerState::isSingleServer(role) ? TRI_NewTickServer() :
+    TRI_NewServerSpecificTickMod4();
+  }
+  TRI_ASSERT(tid != 0);
+  
+  
+  bool parseSuccess = false;
+  VPackSlice body = parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    // error message generated in parseVPackBody
+    return;
+  }
+  
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  TRI_ASSERT(mgr != nullptr);
+  
+  Result res = mgr->createManagedTrx(_vocbase, tid, body);
+  if (res.fail()) {
+    generateError(res);
+  } else {
+    generateTransactionResult(rest::ResponseCode::CREATED, tid, transaction::Status::RUNNING);
+  }
+}
+
+void RestTransactionHandler::executeCommit() {
+  if (_request->suffixes().size() != 1) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
+    return;
+  }
+
+  TRI_voc_tid_t tid = basics::StringUtils::uint64(_request->suffixes()[0]);
+  if (tid == 0) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "bad transaction ID");
+    return;
+  }
+
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  TRI_ASSERT(mgr != nullptr);
+  
+  Result res = mgr->commitManagedTrx(tid);
+  if (res.fail()) {
+    generateError(res);
+  } else {
+    generateTransactionResult(rest::ResponseCode::OK, tid, transaction::Status::COMMITTED);
+  }
+}
+
+void RestTransactionHandler::executeAbort() {
+  if (_request->suffixes().size() != 1) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
+    return;
+  }
+
+  TRI_voc_tid_t tid = basics::StringUtils::uint64(_request->suffixes()[0]);
+  if (tid == 0) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "bad transaction ID");
+    return;
+  }
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  TRI_ASSERT(mgr != nullptr);
+  
+  Result res = mgr->abortManagedTrx(tid);
+  if (res.fail()) {
+    generateError(res);
+  } else {
+    generateTransactionResult(rest::ResponseCode::OK, tid, transaction::Status::ABORTED);
+  }
+}
+
+void RestTransactionHandler::generateTransactionResult(rest::ResponseCode code,
+                                                       TRI_voc_tid_t tid,
+                                                       transaction::Status status) {
+  VPackBuilder b;
+  b.openObject();
+  b.add("id", VPackValue(std::to_string(tid)));
+  b.add("status", VPackValue(transaction::statusString(status)));
+//  if (state->status() == transaction::Status::RUNNING) {
+//    b.add("options", VPackValue(VPackValueType::Object));
+//    state->options().toVelocyPack(b);
+//    b.close();
+//  }
+  b.close();
+  generateOk(code, b.slice());
+}
+
+// ====================== V8 stuff ===================
+
+/// start a legacy JS transaction
+void RestTransactionHandler::executeJSTransaction() {
+  if (!V8DealerFeature::DEALER) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
+                  "JavaScript transactions are not available");
+    return;
   }
 
   auto slice = _request->payload();
   if (!slice.isObject()) {
     generateError(
         Result(TRI_ERROR_BAD_PARAMETER, "could not acquire v8 context"));
-    return RestStatus::DONE;
+    return;
   }
 
   std::string portType = _request->connectionInfo().portType();
@@ -66,7 +242,7 @@ RestStatus RestTransactionHandler::execute() {
 
   if (!_v8Context) {
     generateError(Result(TRI_ERROR_INTERNAL, "could not acquire v8 context"));
-    return RestStatus::DONE;
+    return;
   }
 
   TRI_DEFER(returnContext());
@@ -77,7 +253,7 @@ RestStatus RestTransactionHandler::execute() {
       WRITE_LOCKER(lock, _lock);
       if (_canceled) {
         generateCanceled();
-        return RestStatus::DONE;
+        return;
       }
     }
 
@@ -100,8 +276,12 @@ RestStatus RestTransactionHandler::execute() {
   } catch (...) {
     generateError(Result(TRI_ERROR_INTERNAL));
   }
+}
 
-  return RestStatus::DONE;
+void RestTransactionHandler::returnContext() {
+  WRITE_LOCKER(writeLock, _lock);
+  V8DealerFeature::DEALER->exitContext(_v8Context);
+  _v8Context = nullptr;
 }
 
 bool RestTransactionHandler::cancel() {
@@ -113,4 +293,23 @@ bool RestTransactionHandler::cancel() {
     isolate->TerminateExecution();
   }
   return true;
+}
+
+/// @brief returns the short id of the server which should handle this request
+uint32_t RestTransactionHandler::forwardingTarget() {
+  rest::RequestType const type = _request->requestType();
+  if (type != rest::RequestType::GET && type != rest::RequestType::PUT &&
+      type != rest::RequestType::DELETE_REQ) {
+    return 0;
+  }
+
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  if (suffixes.size() < 1) {
+    return 0;
+  }
+
+  uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
+  uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
+
+  return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
 }

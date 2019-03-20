@@ -556,8 +556,10 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t performRequests(std::vector<ClusterCommRequest>& requests,
-                         ClusterCommTimeout timeout, size_t& nrDone,
-                         arangodb::LogTopic const& logTopic, bool retryOnCollNotFound);
+                         ClusterCommTimeout timeout,
+                         arangodb::LogTopic const& logTopic,
+                         bool retryOnCollNotFound,
+                         bool retryOnBackUnvlbl = true);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief this method performs the given requests described by the vector

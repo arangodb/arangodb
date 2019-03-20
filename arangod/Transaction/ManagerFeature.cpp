@@ -38,17 +38,37 @@ namespace transaction {
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "TransactionManager") {
+    : ApplicationFeature(server, "TransactionManager"), _workItem(nullptr), _gcfunc() {
   setOptional(false);
   startsAfter("BasicsPhase");
 
   startsAfter("EngineSelector");
+      
+  _gcfunc = [this] (bool cancelled) {
+    if (!cancelled) {
+      MANAGER->garbageCollect();
+    }
+    
+    if (!ApplicationServer::isStopping() && !cancelled) {
+      auto off = std::chrono::seconds(1);
+      _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+    }
+  };
 }
 
 void ManagerFeature::prepare() {
   TRI_ASSERT(MANAGER == nullptr);
   TRI_ASSERT(EngineSelectorFeature::ENGINE != nullptr);
   MANAGER = EngineSelectorFeature::ENGINE->createTransactionManager();
+}
+  
+void ManagerFeature::start() {
+  auto off = std::chrono::seconds(1);
+  _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+}
+  
+void ManagerFeature::beginShutdown() {
+  _workItem.reset();
 }
 
 void ManagerFeature::unprepare() { MANAGER.reset(); }

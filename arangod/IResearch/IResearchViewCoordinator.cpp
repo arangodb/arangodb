@@ -207,43 +207,14 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
   // links are not persisted, their definitions are part of the corresponding
   // collections
   if (!forPersistence) {
-    // open up a read transaction and add all linked collections to verify that
-    // the current user has access
-
-    std::vector<std::string> collections;
-    for (auto& entry : _collections) {
-      collections.emplace_back(entry.second.first);
-    }
-
-    Result result = arangodb::basics::catchToResult([this, &collections]() -> arangodb::Result {
-      static std::vector<std::string> const EMPTY;
-      // use default lock timeout
-      arangodb::transaction::Options options;
-      options.waitForSync = false;
-      options.allowImplicitCollections = false;
-
-      transaction::StandaloneContext ctx{vocbase()};
-      std::shared_ptr<transaction::StandaloneContext> ptr;
-      arangodb::transaction::Methods trx(std::shared_ptr<transaction::StandaloneContext>(ptr, &ctx),
-                                         collections,  // readCollections
-                                         EMPTY,        // writeCollections
-                                         EMPTY,        // exclusiveCollections
-                                         options);
-      auto res = trx.begin();
-
-      if (!res.ok()) {
-        return res;  // nothing more to output
+    // verify that the current user has access on all linked collections
+    auto* exec = ExecContext::CURRENT;
+    if (exec) {
+      for (auto& entry : _collections) {
+        if (!exec->canUseCollection(vocbase().name(), entry.second.first, auth::Level::RO)) {
+          return Result(TRI_ERROR_FORBIDDEN);
+        }
       }
-
-      trx.commit();
-      return res;
-    });
-    if (result.fail()) {
-      IR_LOG_EXCEPTION();
-      return arangodb::Result(result.errorNumber(),
-                              "caught exception while generating json for "
-                              "arangosearch view '" +
-                                  name() + "': " + result.errorMessage());
     }
 
     ReadMutex mutex(_mutex);
