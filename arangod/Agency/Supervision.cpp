@@ -851,23 +851,24 @@ void Supervision::run() {
         }
       }
 
-      // Leader: no point in progressing, if indexes cannot be advanced
-      while (!this->isStopping() && _agent->leading()) { 
-
-        // If anything was rafted, we need to
+      // If anything was rafted, we need to wait until it is replicated,
+      // otherwise it is not "committed" in the Raft sense. However, let's
+      // only wait for our changes not for new ones coming in during the wait.
+      if (_agent->leading()) {
         index_t leaderIndex = _agent->index();
-
         if (leaderIndex != 0) {
-          auto result = _agent->waitFor(leaderIndex);
-          if (result == Agent::raft_commit_t::TIMEOUT) { // Oh snap
-            // Note that we can get UNKNOWN if we have lost leadership or
-            // if we are shutting down. In both cases we just leave the loop.
-            LOG_TOPIC(WARN, Logger::SUPERVISION) << "Waiting for commits to be done ... ";
-            continue; 
-          } else {                                       // Good we can continue
-            break;
+          while (!this->isStopping() && _agent->leading()) {
+            auto result = _agent->waitFor(leaderIndex);
+            if (result == Agent::raft_commit_t::TIMEOUT) { // Oh snap
+              // Note that we can get UNKNOWN if we have lost leadership or
+              // if we are shutting down. In both cases we just leave the loop.
+              LOG_TOPIC(WARN, Logger::SUPERVISION)
+                << "Waiting for commits to be done ... ";
+              continue;
+            } else {                       // Good we can continue
+              break;
+            }
           }
-
         }
       }
 
