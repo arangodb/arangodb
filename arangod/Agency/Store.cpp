@@ -779,3 +779,32 @@ void Store::removeTTL(std::string const& uri) {
     }
   }
 }
+
+
+/// Work ttls and callbacks
+void Store::run() {
+  CONDITION_LOCKER(guard, _cv);
+  while (!this->isStopping()) {  // Check timetable and remove overage entries
+
+    std::chrono::microseconds t{0};
+    query_t toClear;
+
+    {  // any entries in time table?
+      MUTEX_LOCKER(storeLocker, _storeLock);
+      if (!_timeTable.empty()) {
+        t = std::chrono::duration_cast<std::chrono::microseconds>(
+            _timeTable.begin()->first - std::chrono::system_clock::now());
+      }
+    }
+
+    if (t != std::chrono::microseconds{0}) {
+      _cv.wait(t.count());
+    } else {
+      _cv.wait();
+    }
+
+    toClear = clearExpired();
+    _agent->write(toClear);
+  }
+
+}
