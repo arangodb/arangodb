@@ -56,26 +56,25 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     // set hints
     _hints = hints;
   }
-
-  Result result = useCollections(nestingLevel());
-  if (result.ok()) {
-    // all valid
-    if (nestingLevel() == 0) {
-      updateStatus(transaction::Status::RUNNING);
-    }
-  } else {
-    // something is wrong
+  
+  auto cleanup = [&] {
     if (nestingLevel() == 0) {
       updateStatus(transaction::Status::ABORTED);
     }
-
     // free what we have got so far
     unuseCollections(nestingLevel());
+  };
 
-    return result;
+  Result res = useCollections(nestingLevel());
+  if (res.fail()) { // something is wrong
+    cleanup();
+    return res;
   }
-
+  
+  // all valid
   if (nestingLevel() == 0) {
+    updateStatus(transaction::Status::RUNNING);
+    
     transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr);
     setRegistered();
     
@@ -95,13 +94,17 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
         return true; // continue
       });
       
-      ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders);
+      res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders);
+      if (res.fail()) { // something is wrong
+        cleanup();
+      }
     }
+    
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
 
-  return result;
+  return res;
 }
 
 /// @brief commit a transaction

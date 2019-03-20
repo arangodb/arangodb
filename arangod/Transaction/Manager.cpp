@@ -323,12 +323,17 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
     return res.reset(TRI_ERROR_BAD_PARAMETER, "invalid 'collections'");
   }
   
-  // now start our own transaction
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto state = engine->createTransactionState(vocbase, tid, options);
-  TRI_ASSERT(state != nullptr);
-  TRI_ASSERT(state->id() == tid);
-  
+  std::unique_ptr<TransactionState> state;
+  try {
+    // now start our own transaction
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    state = engine->createTransactionState(vocbase, tid, options);
+    TRI_ASSERT(state != nullptr);
+    TRI_ASSERT(state->id() == tid);
+  } catch (basics::Exception const& e) {
+    return res.reset(e.code(), e.message());
+  }
+
   // lock collections
   CollectionNameResolver resolver(vocbase);
   auto lockCols = [&](std::vector<std::string> cols, AccessMode::Type mode) {
