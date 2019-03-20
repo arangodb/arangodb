@@ -51,11 +51,12 @@ fi
 if "${ARANGOSH}" --version | grep -q "^enterprise-version: enterprise$"; then
     ALLPROGRAMS="arangobench arangod arangodump arangoexport arangoimport arangoinspect arangorestore arangosh"
     for HELPPROGRAM in ${ALLPROGRAMS}; do
+        echo "Dumping program options of ${HELPPROGRAM}"
         "${BIN_PATH}/${HELPPROGRAM}${EXT}" --dump-options > "Documentation/Examples/${HELPPROGRAM}.json"
     done
 else
     # should stop people from committing the JSON files without EE options
-    echo "skipping program option dump (requires Enterprise Edition binaries)"
+    echo "Skipping program option dump (requires Enterprise Edition binaries)"
 fi
 
 "${ARANGOSH}" \
