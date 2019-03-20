@@ -284,6 +284,9 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief processes a truncate operation
   Result truncate(transaction::Methods& trx, OperationOptions& options);
+  
+  /// @brief compact-data operation
+  Result compact();
 
   // convenience function for downwards-compatibility
   Result insert(transaction::Methods* trx, velocypack::Slice const slice,

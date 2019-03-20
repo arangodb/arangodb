@@ -203,6 +203,7 @@ SET(ARANGOD_SOURCES
   Aql/ConstrainedSortExecutor.cpp
   Aql/CountCollectExecutor.cpp
   Aql/DistinctCollectExecutor.cpp
+  Aql/DistributeExecutor.cpp
   Aql/DocumentProducingBlock.cpp
   Aql/DocumentProducingNode.cpp
   Aql/EngineInfoContainerCoordinator.cpp
@@ -263,6 +264,7 @@ SET(ARANGOD_SOURCES
   Aql/RemoteExecutor.cpp
   Aql/RestAqlHandler.cpp
   Aql/ReturnExecutor.cpp
+  Aql/ScatterExecutor.cpp
   Aql/Scopes.cpp
   Aql/SharedQueryState.cpp
   Aql/ShortStringStorage.cpp
