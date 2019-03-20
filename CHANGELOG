@@ -340,6 +340,8 @@ devel
 
 * fix crash in agency supervision when leadership is lost
 
+* speed up agency supervision in case of many jobs
+
 * fix log spam in agency supervision when leader resigned
 
 v3.4.1 (XXXX-XX-XX)
