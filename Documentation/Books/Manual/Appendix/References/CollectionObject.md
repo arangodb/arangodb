@@ -6,7 +6,7 @@ The following methods exist on the collection object (returned by *db.name*):
 *Collection*
 
 * [collection.checksum()](../../DataModeling/Collections/CollectionMethods.md#checksum)
-* [collection.compact()](../../DataModeling/Documents/DocumentMethods.md#compact)
+* [collection.compact()](../../DataModeling/Collections/CollectionMethods.md#compact)
 * [collection.count()](../../DataModeling/Documents/DocumentMethods.md#count)
 * [collection.drop()](../../DataModeling/Collections/CollectionMethods.md#drop)
 * [collection.figures()](../../DataModeling/Collections/CollectionMethods.md#figures)
