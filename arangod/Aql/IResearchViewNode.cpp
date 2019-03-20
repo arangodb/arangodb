@@ -1027,10 +1027,19 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->begin(),
                                                       writableOutputRegisters->end()));
   aql::ExecutorInfos infos = createRegisterInfos(calcInputRegs(), std::move(writableOutputRegisters));
-  // TODO Don't pass `this`, but only the necessary members.
-  aql::IResearchViewExecutorInfos executorInfos{
-      std::move(infos),   reader, firstOutputRegister, numScoreRegisters,
-      *engine.getQuery(), *this};
+
+  aql::IResearchViewExecutorInfos executorInfos{std::move(infos),
+                                                reader,
+                                                firstOutputRegister,
+                                                numScoreRegisters,
+                                                *engine.getQuery(),
+                                                scorers(),
+                                                *plan(),
+                                                outVariable(),
+                                                filterCondition(),
+                                                volatility(),
+                                                getRegisterPlan()->varInfo,
+                                                getDepth()};
 
   if (!ordered) {
     return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false>>>(

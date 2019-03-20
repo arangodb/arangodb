@@ -37,14 +37,14 @@ using namespace arangodb::aql;
 // -----------------------------------------------------------------------------
 
 size_t ViewExpressionContext::numRegisters() const {
-  return _data->getNrRegs();
+  return _numRegs;
 }
 
 AqlValue ViewExpressionContext::getVariableValue(Variable const* var, bool doCopy,
                                                  bool& mustDestroy) const {
   TRI_ASSERT(var);
 
-  if (var == &_node->outVariable()) {
+  if (var == &outVariable()) {
     // self-reference
     if (_expr) {
       std::string expr;
@@ -72,7 +72,7 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var, bool doCop
 
   mustDestroy = false;
 
-  auto const& vars = _node->getRegisterPlan()->varInfo;
+  auto const& vars = varInfoMap();
   auto const it = vars.find(var->id);
 
   if (vars.end() == it) {
@@ -81,30 +81,22 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var, bool doCop
 
   auto const& varInfo = it->second;
 
-  if (varInfo.depth > decltype(varInfo.depth)(_node->getDepth())) {
+  if (varInfo.depth > decltype(varInfo.depth)(nodeDepth())) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
                                   "Variable '%s' is used before being assigned",
                                   var->name.c_str());
   }
 
-  AqlValue const* value;
 
-  if (_data == nullptr && _inputRow.isInitialized()) {
-    // TODO the other cases shall be removed when everything is done
-    value = &_inputRow.getValue(varInfo.registerId);
-  } else if (_data != nullptr && !_inputRow.isInitialized()) {
-    // TODO old case, shall be removed lated
-    value = &_data->getValueReference(_pos, varInfo.registerId);
-  } else {
-    TRI_ASSERT(false);
-  }
+  TRI_ASSERT(_inputRow.isInitialized());
+  AqlValue const& value = _inputRow.getValue(varInfo.registerId);
 
   if (doCopy) {
     mustDestroy = true;
-    return value->clone();
+    return value.clone();
   }
 
-  return *value;
+  return value;
 }
 
 }  // namespace iresearch

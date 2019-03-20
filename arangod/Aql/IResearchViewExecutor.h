@@ -37,6 +37,11 @@ class score;
 }
 
 namespace arangodb {
+
+namespace iresearch {
+struct Scorer;
+}
+
 namespace aql {
 
 template <bool>
@@ -44,11 +49,14 @@ class SingleRowFetcher;
 
 class IResearchViewExecutorInfos : public ExecutorInfos {
  public:
-  explicit IResearchViewExecutorInfos(ExecutorInfos&& infos,
-                                      std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
-                                      RegisterId firstOutputRegister,
-                                      RegisterId numScoreRegisters, Query& query,
-                                      iresearch::IResearchViewNode const& node);
+  using VarInfoMap = std::unordered_map<aql::VariableId, aql::ExecutionNode::VarInfo>;
+
+  IResearchViewExecutorInfos(
+      ExecutorInfos&& infos, std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
+      RegisterId firstOutputRegister, RegisterId numScoreRegisters, Query& query,
+      std::vector<iresearch::Scorer> const& scorers, ExecutionPlan const& plan,
+      Variable const& outVariable, aql::AstNode const& filterCondition,
+      std::pair<bool, bool> volatility, VarInfoMap const& varInfoMap, int depth);
 
   RegisterId getOutputRegister() const;
 
@@ -58,7 +66,13 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
 
   Query& getQuery() const noexcept;
 
-  iresearch::IResearchViewNode const& getNode() const;
+  std::vector<iresearch::Scorer> const& scorers() const noexcept;
+  ExecutionPlan const& plan() const noexcept;
+  Variable const& outVariable() const noexcept;
+  aql::AstNode const& filterCondition() const noexcept;
+  std::pair<bool, bool> volatility() const noexcept;
+  VarInfoMap const& varInfoMap() const noexcept;
+  int getDepth() const noexcept;
 
   bool isScoreReg(RegisterId reg) const;
 
@@ -67,9 +81,14 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   RegisterId _numScoreRegisters;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> _reader;
   Query& _query;
-  // TODO Remove this member! Instead, pass all its members that are needed
-  // separately.
-  iresearch::IResearchViewNode const& _node;
+
+  std::vector<iresearch::Scorer> const& _scorers;
+  ExecutionPlan const& _plan;
+  Variable const& _outVariable;
+  aql::AstNode const& _filterCondition;
+  std::pair<bool, bool> _volatility;
+  VarInfoMap const& _varInfoMap;
+  int _depth;
 };
 
 class IResearchViewStats {

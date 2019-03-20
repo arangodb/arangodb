@@ -38,9 +38,8 @@
 #include "search/boolean_filter.hpp"
 #include "search/score.hpp"
 
-// TODO Eliminate access to the node and the plan!
+// TODO Eliminate access to the plan if possible!
 #include "Aql/ExecutionPlan.h"
-#include "IResearchViewNode.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -49,15 +48,23 @@ using namespace arangodb::iresearch;
 typedef std::vector<arangodb::LocalDocumentId> pks_t;
 
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
-    ExecutorInfos&& infos, std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
+    ExecutorInfos&& infos, std::shared_ptr<const IResearchView::Snapshot> reader,
     RegisterId firstOutputRegister, RegisterId numScoreRegisters, Query& query,
-    iresearch::IResearchViewNode const& node)
+    const std::vector<Scorer>& scorers, ExecutionPlan const& plan, Variable const& outVariable,
+    aql::AstNode const& filterCondition, std::pair<bool, bool> volatility,
+    const IResearchViewExecutorInfos::VarInfoMap& varInfoMap, int depth)
     : ExecutorInfos(std::move(infos)),
       _outputRegister(firstOutputRegister),
       _numScoreRegisters(numScoreRegisters),
       _reader(std::move(reader)),
       _query(query),
-      _node(node) {
+      _scorers(scorers),
+      _plan(plan),
+      _outVariable(outVariable),
+      _filterCondition(filterCondition),
+      _volatility(volatility),
+      _varInfoMap(varInfoMap),
+      _depth(depth) {
   TRI_ASSERT(_reader != nullptr);
   TRI_ASSERT(getOutputRegisters()->find(firstOutputRegister) !=
              getOutputRegisters()->end());
@@ -73,16 +80,40 @@ RegisterId IResearchViewExecutorInfos::getNumScoreRegisters() const {
 
 Query& IResearchViewExecutorInfos::getQuery() const noexcept { return _query; }
 
-IResearchViewNode const& IResearchViewExecutorInfos::getNode() const {
-  return _node;
-}
-
 std::shared_ptr<const IResearchView::Snapshot> IResearchViewExecutorInfos::getReader() const {
   return _reader;
 }
 
 bool IResearchViewExecutorInfos::isScoreReg(RegisterId reg) const {
   return getOutputRegister() < reg && reg <= getOutputRegister() + getNumScoreRegisters();
+}
+
+std::vector<arangodb::iresearch::Scorer> const& IResearchViewExecutorInfos::scorers() const noexcept {
+  return _scorers;
+}
+
+ExecutionPlan const& IResearchViewExecutorInfos::plan() const noexcept {
+  return _plan;
+}
+
+Variable const& IResearchViewExecutorInfos::outVariable() const noexcept {
+  return _outVariable;
+}
+
+aql::AstNode const& IResearchViewExecutorInfos::filterCondition() const noexcept {
+  return _filterCondition;
+}
+
+std::pair<bool, bool> IResearchViewExecutorInfos::volatility() const noexcept {
+  return _volatility;
+}
+
+IResearchViewExecutorInfos::VarInfoMap const& IResearchViewExecutorInfos::varInfoMap() const noexcept {
+  return _varInfoMap;
+}
+
+int IResearchViewExecutorInfos::getDepth() const noexcept {
+  return _depth;
 }
 
 template <bool ordered>
@@ -93,15 +124,15 @@ IResearchViewExecutor<ordered>::IResearchViewExecutor(IResearchViewExecutor::Fet
       _inputRow(CreateInvalidInputRowHint{}),
       _upstreamState(ExecutionState::HASMORE),
       _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
-      _ctx(&infos.getQuery(), infos.getNode()),
+      _ctx(&infos.getQuery(), infos.numberOfOutputRegisters(),
+           infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
       _reader(infos.getReader()),
       _filter(irs::filter::prepared::empty()),
       _execCtx(*infos.getQuery().trx(), _ctx),
       _inflight(0),
       _hasMore(true),  // has more data initially
       _volatileSort(ordered),
-      _volatileFilter(true)
-      {
+      _volatileFilter(true) {
   TRI_ASSERT(infos.getQuery().trx() != nullptr);
 
   TRI_ASSERT(ordered == (infos.getNumScoreRegisters() != 0));
@@ -318,9 +349,7 @@ bool IResearchViewExecutor<ordered>::resetIterator() {
           static_cast<size_t>(std::distance(_scrVal.begin(), _scrVal.end())) /
           sizeof(float_t);
 
-      IResearchViewNode const& viewNode = infos().getNode();
-
-      TRI_ASSERT(numScores == viewNode.scorers().size());
+      TRI_ASSERT(numScores == infos().scorers().size());
 #endif
     } else {
       _scr = &irs::score::no_score();
@@ -373,30 +402,28 @@ void IResearchViewExecutor<ordered>::reset() {
   // The rest is from IResearchViewBlockBase::reset():
   _ctx._inputRow = _inputRow;
 
-  auto& viewNode = infos().getNode();
-  // auto& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
-  auto* plan = const_cast<ExecutionPlan*>(viewNode.plan());
+  ExecutionPlan const* plan = &infos().plan();
 
   arangodb::iresearch::QueryContext const queryCtx = {infos().getQuery().trx(),
                                                       plan, plan->getAst(), &_ctx,
-                                                      &viewNode.outVariable()};
+                                                      &infos().outVariable()};
 
   if (_volatileFilter) {  // `_volatileSort` implies `_volatileFilter`
     irs::Or root;
 
     if (!arangodb::iresearch::FilterFactory::filter(&root, queryCtx,
-                                                    viewNode.filterCondition())) {
+                                                    infos().filterCondition())) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "failed to build filter while querying arangosearch view, query '" +
-              viewNode.filterCondition().toVelocyPack(true)->toJson() + "'");
+            infos().filterCondition().toVelocyPack(true)->toJson() + "'");
     }
 
     if (_volatileSort) {
       irs::order order;
       irs::sort::ptr scorer;
 
-      for (auto const& scorerNode : viewNode.scorers()) {
+      for (auto const& scorerNode : infos().scorers()) {
         TRI_ASSERT(scorerNode.node);
 
         if (!arangodb::iresearch::OrderFactory::scorer(&scorer, *scorerNode.node, queryCtx)) {
@@ -418,7 +445,7 @@ void IResearchViewExecutor<ordered>::reset() {
     // TODO Why is this done during every reset()? Seems to me it is fixed
     // at the time the block is created, and thus both members could just be
     // (template) parameters.
-    auto const& volatility = viewNode.volatility();
+    auto const& volatility = infos().volatility();
     _volatileSort = volatility.second;
     _volatileFilter = _volatileSort || volatility.first;
   }

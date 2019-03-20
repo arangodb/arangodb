@@ -24,6 +24,7 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT_H
 #define ARANGOD_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT_H 1
 
+#include "Aql/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryExpressionContext.h"
 #include "Basics/Exceptions.h"
@@ -56,10 +57,16 @@ struct ViewExpressionContextBase : public aql::QueryExpressionContext {
 /// @struct ViewExpressionContext
 ///////////////////////////////////////////////////////////////////////////////
 struct ViewExpressionContext final : public ViewExpressionContextBase {
-  ViewExpressionContext(arangodb::aql::Query* query, IResearchViewNode const& node)
-      : ViewExpressionContextBase(query), _node(&node) {
-    TRI_ASSERT(_node);
-  }
+  using VarInfoMap = std::unordered_map<aql::VariableId, aql::ExecutionNode::VarInfo>;
+
+  ViewExpressionContext(aql::Query* query, aql::RegisterId numRegs,
+                        aql::Variable const& outVar,
+                        VarInfoMap const& varInfoMap, int nodeDepth)
+      : ViewExpressionContextBase(query),
+        _numRegs(numRegs),
+        _outVar(outVar),
+        _varInfoMap(varInfoMap),
+        _nodeDepth(nodeDepth) {}
 
   virtual size_t numRegisters() const override;
 
@@ -74,12 +81,15 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
   virtual aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
                                          bool& mustDestroy) const override;
 
+  inline aql::Variable const& outVariable() const noexcept { return _outVar; }
+  inline VarInfoMap const& varInfoMap() const noexcept { return _varInfoMap; }
+  inline int nodeDepth() const noexcept { return _nodeDepth; }
+
   aql::InputAqlItemRow _inputRow{aql::CreateInvalidInputRowHint{}};
-  // TODO remove _data
-  aql::AqlItemBlock const* _data{};
-  IResearchViewNode const* _node;
-  // TODO remove _pos
-  size_t _pos{};
+  aql::RegisterId const _numRegs;
+  aql::Variable const& _outVar;
+  VarInfoMap const& _varInfoMap;
+  int const _nodeDepth;
 };  // ViewExpressionContext
 
 }  // namespace iresearch
