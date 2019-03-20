@@ -1,6 +1,15 @@
 v3.4.5 (XXXX-XX-XX)
 -------------------
 
+* don't run compact() on a collection after a truncate() was done in the same transaction
+
+  running compact() in the same transaction will only increase the data size on disk due to 
+  RocksDB not being able to remove any documents physically due to the snapshot that is
+  taken at transaction start.
+
+  This change also exposes db.<collection>.compact() in the arangosh, in order to manually 
+  run a compaction on the data range of a collection should it be needed for maintenance.
+
 * added --log.file-mode to specify a file mode of newly created log files
 
 * added --log.file-group to specify the group of newly created log files
