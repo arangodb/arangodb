@@ -264,6 +264,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
                   result.errorNumber(), result.errorMessage());
     return;
   }
+  
+  TRI_ASSERT(latest >= result.maxTick());
 
   bool const checkMore = (result.maxTick() > 0 && result.maxTick() < latest);
 

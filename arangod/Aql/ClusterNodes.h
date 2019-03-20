@@ -43,13 +43,11 @@ class IndexNode;
 class UpdateNode;
 class ReplaceNode;
 class RemoveNode;
-
 struct Collection;
 
 /// @brief class RemoteNode
 class RemoteNode final : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class RemoteBlock;
 
   /// @brief constructor with an id
  public:
@@ -190,7 +188,6 @@ class ScatterNode : public ExecutionNode {
 /// @brief class DistributeNode
 class DistributeNode final : public ScatterNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
-  friend class DistributeBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with an id

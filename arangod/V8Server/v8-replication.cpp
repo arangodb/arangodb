@@ -147,7 +147,7 @@ static void JS_LastLoggerReplication(v8::FunctionCallbackInfo<v8::Value> const& 
     TRI_V8_THROW_EXCEPTION_USAGE("tickStart < tickEnd");
   }
 
-  auto transactionContext = transaction::V8Context::Create(vocbase, false);
+  auto transactionContext = transaction::V8Context::Create(vocbase, true);
   auto builderSPtr = std::make_shared<VPackBuilder>();
   Result res = EngineSelectorFeature::ENGINE->lastLogger(vocbase, transactionContext,
                                                          tickStart, tickEnd, builderSPtr);

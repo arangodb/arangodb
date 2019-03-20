@@ -276,12 +276,16 @@ bool FailedFollower::start(bool& aborts) {
       JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
       return false;
     }
-  } 
+  }
 
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "FailedFollower start transaction: " << job.toJson();
 
   auto res = generalTransaction(_agent, job);
+  if (!res.accepted) {  // lost leadership
+    LOG_TOPIC(INFO, Logger::SUPERVISION) << "Leadership lost! Job " << _jobId << " handed off.";
+    return false;
+  }
 
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "FailedFollower start result: " << res.result->toJson();

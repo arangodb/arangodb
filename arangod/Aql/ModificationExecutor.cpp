@@ -33,29 +33,40 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ModificationExecutorBase::ModificationExecutorBase(Fetcher& fetcher, Infos& infos)
+namespace arangodb {
+namespace aql {
+std::string toString(AllRowsFetcher&) { return "AllRowsFetcher"; }
+std::string toString(SingleBlockFetcher<true>&) { return "SingleBlockFetcher<true>"; }
+std::string toString(SingleBlockFetcher<false>&) { return "SingleBlockFetcher<false>"; }
+}
+}
+
+template <typename FetcherType>
+ModificationExecutorBase<FetcherType>::ModificationExecutorBase(Fetcher& fetcher, Infos& infos)
     : _infos(infos), _fetcher(fetcher), _prepared(false){};
 
-template <typename Modifier>
-ModificationExecutor<Modifier>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
-    : ModificationExecutorBase(fetcher, infos), _modifier() {
-  _infos._trx->pinData(_infos._aqlCollection->id());  // important for mmfiles
+template <typename Modifier, typename FetcherType>
+ModificationExecutor<Modifier, FetcherType>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
+    : ModificationExecutorBase<FetcherType>(fetcher, infos), _modifier() {
+  this->_infos._trx->pinData(this->_infos._aqlCollection->id());  // important for mmfiles
+  //LOG_DEVEL << toString(_modifier) << " "  << toString(this->_fetcher); // <-- enable this first when debugging modification problems
 };
 
-template <typename Modifier>
-ModificationExecutor<Modifier>::~ModificationExecutor() = default;
+template <typename Modifier, typename FetcherType>
+ModificationExecutor<Modifier, FetcherType>::~ModificationExecutor() = default;
 
-template <typename Modifier>
-std::pair<ExecutionState, typename ModificationExecutor<Modifier>::Stats>
-ModificationExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
+template <typename Modifier, typename FetcherType>
+std::pair<ExecutionState, typename ModificationExecutor<Modifier, FetcherType>::Stats>
+ModificationExecutor<Modifier, FetcherType>::produceRow(OutputAqlItemRow& output) {
   ExecutionState state = ExecutionState::HASMORE;
   ModificationExecutor::Stats stats;
 
   // TODO - fix / improve prefetching if possible
-  while (!_prepared &&
-         (_fetcher.upstreamState() != ExecutionState::DONE || _fetcher._prefetched)) {
+  while (!this->_prepared &&
+         (this->_fetcher.upstreamState() != ExecutionState::DONE /*|| this->_fetcher._prefetched */)) {
     std::shared_ptr<AqlItemBlockShell> block;
-    std::tie(state, block) = _fetcher.fetchBlock(
+
+    std::tie(state, block) = this->_fetcher.fetchBlockForModificationExecutor(
         _modifier._defaultBlockSize);  // Upsert must use blocksize of one!
                                        // Otherwise it could happen that an insert
                                        // is not seen by subsequent opererations.
@@ -79,37 +90,38 @@ ModificationExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
     TRI_ASSERT(_modifier._block->hasBlock());
 
     // prepares modifier for single row output
-    _prepared = _modifier.doModifications(_infos, stats);
+    this->_prepared = _modifier.doModifications(this->_infos, stats);
 
-    if (!_infos._producesResults) {
-      _prepared = false;
+    if (!this->_infos._producesResults) {
+      this->_prepared = false;
     }
   }
 
-  if (_prepared) {
+  if (this->_prepared) {
     TRI_ASSERT(_modifier._block);
     TRI_ASSERT(_modifier._block->hasBlock());
 
-    // LOG_DEVEL << "call doOutput";
     // Produces the output
     bool thisBlockHasMore = _modifier.doOutput(this->_infos, output);
 
     if (thisBlockHasMore) {
-      // LOG_DEVEL << "doOutput OPRES HASMORE";
       return {ExecutionState::HASMORE, std::move(stats)};
     } else {
-      // LOG_DEVEL << "doOutput NEED NEW BLOCK";
       // we need to get a new block
-      _prepared = false;
+      this->_prepared = false;
     }
   }
 
-  // LOG_DEVEL << "exit produceRow";
-  return {_fetcher.upstreamState(), std::move(stats)};
+  return {this->_fetcher.upstreamState(), std::move(stats)};
 }
 
-template class ::arangodb::aql::ModificationExecutor<Insert>;
-template class ::arangodb::aql::ModificationExecutor<Remove>;
-template class ::arangodb::aql::ModificationExecutor<Replace>;
-template class ::arangodb::aql::ModificationExecutor<Update>;
-template class ::arangodb::aql::ModificationExecutor<Upsert>;
+template class ::arangodb::aql::ModificationExecutor<Insert, SingleBlockFetcher<false /*allowsBlockPassthrough */>>;
+template class ::arangodb::aql::ModificationExecutor<Insert, AllRowsFetcher>;
+template class ::arangodb::aql::ModificationExecutor<Remove, SingleBlockFetcher<false /*allowsBlockPassthrough */>>;
+template class ::arangodb::aql::ModificationExecutor<Remove, AllRowsFetcher>;
+template class ::arangodb::aql::ModificationExecutor<Replace, SingleBlockFetcher<false /*allowsBlockPassthrough */>>;
+template class ::arangodb::aql::ModificationExecutor<Replace, AllRowsFetcher>;
+template class ::arangodb::aql::ModificationExecutor<Update, SingleBlockFetcher<false /*allowsBlockPassthrough */>>;
+template class ::arangodb::aql::ModificationExecutor<Update, AllRowsFetcher>;
+template class ::arangodb::aql::ModificationExecutor<Upsert, SingleBlockFetcher<false /*allowsBlockPassthrough */>>;
+template class ::arangodb::aql::ModificationExecutor<Upsert, AllRowsFetcher>;

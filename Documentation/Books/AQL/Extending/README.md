@@ -18,9 +18,13 @@ Technical Details
 
 ### Known Limitations
 
-**UDFs have some implications you should be aware of. Otherwise they can
-introduce serious effects on the performance of your queries and the resource
-usage in ArangoDB.**
+{% hint 'warning' %}
+UDFs can have serious effects on the performance of your queries and the resource
+usage in ArangoDB. Especially in cluster setups they should not be used against
+much data, because this data will need to be sent over the network back and forth
+between _DBservers_ and _Coordinators_, potentially adding a lot of latency.
+This can be mitigated by very selective `FILTER`s before calls to UDFs.
+{% endhint %}
 
 Since the optimizer doesn't know anything about the nature of your function,
 **the optimizer can't use indices for UDFs**. So you should never lean on a UDF

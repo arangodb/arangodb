@@ -21,8 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SmartContext.h"
-#include "StorageEngine/TransactionManager.h"
-#include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 
 struct TRI_vocbase_t;

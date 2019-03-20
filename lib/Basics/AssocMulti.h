@@ -107,7 +107,7 @@ class AssocMulti {
  private:
   typedef Entry<Element, IndexType, useHashCache> EntryType;
 
-  typedef arangodb::basics::IndexBucket<EntryType, IndexType, SIZE_MAX> Bucket;
+  typedef arangodb::basics::IndexBucket<EntryType, IndexType> Bucket;
 
   AssocMultiHelper _helper;
   std::vector<Bucket> _buckets;

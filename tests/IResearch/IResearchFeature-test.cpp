@@ -176,8 +176,8 @@ SECTION("test_start") {
     CHECK((nullptr != function));
     CHECK((entry.second.first == function->arguments));
     CHECK((
-      entry.second.second == FunctionType::FILTER && arangodb::iresearch::isFilter(*function)
-      || entry.second.second == FunctionType::SCORER && arangodb::iresearch::isScorer(*function)
+            (entry.second.second == FunctionType::FILTER && arangodb::iresearch::isFilter(*function))
+            || (entry.second.second == FunctionType::SCORER && arangodb::iresearch::isScorer(*function))
     ));
   };
 }
@@ -492,7 +492,7 @@ SECTION("test_upgrade0_1") {
     auto versionJson = arangodb::velocypack::Parser::fromJson("{ \"version\": 0, \"tasks\": {} }");
 
     auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
-    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_PRIMARY);
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
     auto serverRoleRestore = irs::make_finally([&serverRoleBefore]()->void { arangodb::ServerState::instance()->setRole(serverRoleBefore); });
 
     // create a new instance of an ApplicationServer and fill it with the required features
@@ -572,7 +572,7 @@ SECTION("test_upgrade0_1") {
     auto versionJson = arangodb::velocypack::Parser::fromJson("{ \"version\": 0, \"tasks\": {} }");
 
     auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
-    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_PRIMARY);
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
     auto serverRoleRestore = irs::make_finally([&serverRoleBefore]()->void { arangodb::ServerState::instance()->setRole(serverRoleBefore); });
 
     // create a new instance of an ApplicationServer and fill it with the required features

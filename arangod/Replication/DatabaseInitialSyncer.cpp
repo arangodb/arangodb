@@ -46,9 +46,11 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/Methods/Indexes.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -536,10 +538,11 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
     });
 
+    t = TRI_microtime() - t;
     if (replutils::hasFailed(response.get())) {
-      stats.waitedForDump += TRI_microtime() - t;
+      stats.waitedForDump += t;
       sharedStatus->gotResponse(
-          replutils::buildHttpError(response.get(), url, _config.connection));
+          replutils::buildHttpError(response.get(), url, _config.connection), t);
       return;
     }
 
@@ -609,15 +612,15 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       // fallthrough here in case everything went well
     }
 
-    stats.waitedForDump += TRI_microtime() - t;
+    stats.waitedForDump += t;
 
     if (replutils::hasFailed(response.get())) {
       // failure
       sharedStatus->gotResponse(
-          replutils::buildHttpError(response.get(), url, _config.connection));
+          replutils::buildHttpError(response.get(), url, _config.connection), t);
     } else {
       // success!
-      sharedStatus->gotResponse(std::move(response));
+      sharedStatus->gotResponse(std::move(response), t);
     }
   } catch (basics::Exception const& ex) {
     sharedStatus->gotResponse(Result(ex.code(), ex.what()));
@@ -1279,6 +1282,37 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             if (type.isString()) {
               _config.progress.set("creating index of type " +
                                    type.copyString() + " for " + collectionMsg);
+            }
+          }
+
+          // delete any conflicts first
+          {
+            // check ID first
+            TRI_idx_iid_t iid = 0;
+            CollectionNameResolver resolver(_config.vocbase);
+            Result res = methods::Indexes::extractHandle(col, &resolver, idxDef, iid);
+            if (res.ok() && iid != 0) {
+              // lookup by id
+              auto byId = physical->lookupIndex(iid);
+              auto byDef = physical->lookupIndex(idxDef);
+              if (byId != nullptr && byId != byDef) {
+                // drop existing byId
+                physical->dropIndex(byId->id());
+              }
+            }
+
+            // now check name;
+            std::string name =
+                basics::VelocyPackHelper::getStringValue(idxDef, StaticStrings::IndexName,
+                                                         "");
+            if (!name.empty()) {
+              // lookup by name
+              auto byName = physical->lookupIndex(name);
+              auto byDef = physical->lookupIndex(idxDef);
+              if (byName != nullptr && byName != byDef) {
+                // drop existing byName
+                physical->dropIndex(byName->id());
+              }
             }
           }
 

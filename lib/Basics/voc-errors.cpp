@@ -214,6 +214,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, "invalid aggregate expression");
   REG_ERROR(ERROR_QUERY_COMPILE_TIME_OPTIONS, "query options must be readable at query compile time");
   REG_ERROR(ERROR_QUERY_EXCEPTION_OPTIONS, "query options expected");
+  REG_ERROR(ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE, "could not use forced index hint");
   REG_ERROR(ERROR_QUERY_DISALLOWED_DYNAMIC_CALL, "disallowed dynamic call to '%s'");
   REG_ERROR(ERROR_QUERY_ACCESS_AFTER_MODIFICATION, "access after data-modification by %s");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_NAME, "invalid user function name");

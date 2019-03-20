@@ -26,11 +26,16 @@
 #include "Aql/Ast.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/Collection.h"
+#include "Aql/DistributeExecutor.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/GraphNode.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
+#include "Aql/RemoteExecutor.h"
+#include "Aql/ScatterExecutor.h"
+
 #include "Transaction/Methods.h"
 
 #include <type_traits>
@@ -49,8 +54,7 @@ bool toSortMode(arangodb::velocypack::StringRef const& str, GatherNode::SortMode
   static std::map<arangodb::velocypack::StringRef, GatherNode::SortMode> const NameToValue{
       {SortModeMinElement, GatherNode::SortMode::MinElement},
       {SortModeHeap, GatherNode::SortMode::Heap},
-      {SortModeUnset, GatherNode::SortMode::Default}
-  };
+      {SortModeUnset, GatherNode::SortMode::Default}};
 
   auto const it = NameToValue.find(str);
 
@@ -92,7 +96,43 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<RemoteBlock>(&engine, this, server(), ownName(), queryId());
+
+  RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
+  RegisterId const nrInRegs = nrOutRegs;
+
+  std::unordered_set<RegisterId> regsToKeep{};
+  {  // This block sets regsToKeep.
+    // It's essentially a copy of ExecutionNode::calcRegsToKeep(), but it
+    // doesn't use the previous node, which we do not have here.
+    regsToKeep.reserve(getVarsUsedLater().size());
+    std::unordered_map<VariableId, VarInfo> const& varInfo = getRegisterPlan()->varInfo;
+    for (auto const var : getVarsUsedLater()) {
+      auto const it = varInfo.find(var->id);
+      TRI_ASSERT(it != varInfo.end());
+      RegisterId const reg = it->second.registerId;
+      if (reg < nrInRegs) {
+        bool inserted;
+        std::tie(std::ignore, inserted) = regsToKeep.emplace(reg);
+        TRI_ASSERT(inserted);
+      }
+    }
+  }
+
+  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // TODO This is only for me to find out about the current behaviour. Should
+  // probably be either removed, or made into an assert.
+  if (!regsToClear.empty()) {
+    LOG_TOPIC(WARN, Logger::AQL) << "RemoteBlock has registers to clear. "
+                                 << "Shouldn't this be done before network?";
+  }
+#endif
+  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
+                      std::move(regsToKeep));
+
+  return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(&engine, this,
+                                                              std::move(infos), server(),
+                                                              ownName(), queryId());
 }
 
 /// @brief toVelocyPack, for RemoteNode
@@ -134,7 +174,19 @@ ScatterNode::ScatterNode(ExecutionPlan* plan, arangodb::velocypack::Slice const&
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<ScatterBlock>(&engine, this, _clients);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
+  RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
+
+  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
+  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+
+  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
+                      std::move(regsToKeep));
+  return std::make_unique<ExecutionBlockImpl<ScatterExecutor>>(&engine, this,
+                                                               std::move(infos), _clients);
 }
 
 /// @brief toVelocyPack, for ScatterNode
@@ -216,7 +268,48 @@ DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<DistributeBlock>(&engine, this, clients(), collection());
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
+  RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
+
+  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
+  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+
+  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
+                      std::move(regsToKeep));
+
+  RegisterId regId;
+  RegisterId alternativeRegId = ExecutionNode::MaxRegisterId;
+
+  {  // set regId and alternativeRegId:
+
+    // get the variable to inspect . . .
+    VariableId varId = _variable->id;
+
+    // get the register id of the variable to inspect . . .
+    auto it = getRegisterPlan()->varInfo.find(varId);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    regId = (*it).second.registerId;
+
+    TRI_ASSERT(regId < ExecutionNode::MaxRegisterId);
+
+    if (_alternativeVariable != _variable) {
+      // use second variable
+      auto it = getRegisterPlan()->varInfo.find(_alternativeVariable->id);
+      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+      alternativeRegId = (*it).second.registerId;
+
+      TRI_ASSERT(alternativeRegId < ExecutionNode::MaxRegisterId);
+    } else {
+      TRI_ASSERT(alternativeRegId == ExecutionNode::MaxRegisterId);
+    }
+  }
+
+  return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(
+      &engine, this, std::move(infos), clients(), collection(), regId, alternativeRegId,
+      _allowSpecifiedKeys, _allowKeyConversionToObject, _createKeys);
 }
 
 /// @brief toVelocyPack, for DistributedNode

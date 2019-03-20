@@ -168,6 +168,7 @@ Supervision::Supervision()
       _okThreshold(5.),
       _jobId(0),
       _jobIdMax(0),
+      _haveAborts(false),
       _selfShutdown(false),
       _upgraded(false) {}
 
@@ -694,9 +695,9 @@ bool Supervision::updateSnapshot() {
 // All checks, guarded by main thread
 bool Supervision::doChecks() {
   _lock.assertLockedByCurrentThread();
-  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_PRIMARY) ==
+  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_DBSERVER) ==
              "DBServers");
-  check(ServerState::roleToAgencyListKey(ServerState::ROLE_PRIMARY));
+  check(ServerState::roleToAgencyListKey(ServerState::ROLE_DBSERVER));
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR) ==
              "Coordinators");
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR));
@@ -853,16 +854,13 @@ void Supervision::run() {
       index_t leaderIndex = _agent->index();
       
       if (leaderIndex != 0) {
-        while (true) { // No point in progressing, if indexes cannot be advanced
-
-          // avoid getting trapped as last agent standing
-          if (this->isStopping()) {
-            break;
-          }
+        // No point in progressing, if indexes cannot be advanced
+        while (!this->isStopping() && _agent->leading()) { 
 
           auto result = _agent->waitFor(leaderIndex);
-          if (result == Agent::raft_commit_t::UNKNOWN ||
-              result == Agent::raft_commit_t::TIMEOUT) { // Oh snap
+          if (result == Agent::raft_commit_t::TIMEOUT) { // Oh snap
+            // Note that we can get UNKNOWN if we have lost leadership or
+            // if we are shutting down. In both cases we just leave the loop.
             LOG_TOPIC(WARN, Logger::SUPERVISION) << "Waiting for commits to be done ... ";
             continue; 
           } else {                                       // Good we can continue
@@ -1456,11 +1454,8 @@ void Supervision::shrinkCluster() {
           if (replFact > maxReplFact) {
             maxReplFact = replFact;
           }
-        } else {
-          LOG_TOPIC(WARN, Logger::SUPERVISION)
-              << "Cannot retrieve replication factor for collection " << collptr.first;
-          return;
         }
+        // Note that this could be a satellite collection, in any case, ignore:
       }
     }
 

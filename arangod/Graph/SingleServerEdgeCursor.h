@@ -56,8 +56,6 @@ class SingleServerEdgeCursor final : public EdgeCursor {
   std::vector<LocalDocumentId> _cache;
   size_t _cachePos;
   std::vector<size_t> const* _internalCursorMapping;
-  using Callback =
-      std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)>;
 
  public:
   SingleServerEdgeCursor(BaseOptions* options, size_t,
@@ -65,9 +63,9 @@ class SingleServerEdgeCursor final : public EdgeCursor {
 
   ~SingleServerEdgeCursor();
 
-  bool next(std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)> callback) override;
+  bool next(EdgeCursor::Callback const& callback) override;
 
-  void readAll(std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)>) override;
+  void readAll(EdgeCursor::Callback const& callback) override;
 
   std::vector<std::vector<OperationCursor*>>& getCursors() { return _cursors; }
 
@@ -75,7 +73,7 @@ class SingleServerEdgeCursor final : public EdgeCursor {
   // returns false if cursor can not be further advanced
   bool advanceCursor(OperationCursor*& cursor, std::vector<OperationCursor*>& cursorSet);
 
-  void getDocAndRunCallback(OperationCursor*, Callback callback);
+  void getDocAndRunCallback(OperationCursor*, EdgeCursor::Callback const& callback);
 };
 }  // namespace graph
 }  // namespace arangodb

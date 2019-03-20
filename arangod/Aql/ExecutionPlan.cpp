@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
+#include "Aql/IndexHint.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -219,6 +220,7 @@ std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
 ExecutionPlan::ExecutionPlan(Ast* ast)
     : _ids(),
       _root(nullptr),
+      _planValid(true),
       _varUsageComputed(false),
       _isResponsibleForInitialize(true),
       _nestingLevel(0),
@@ -231,7 +233,7 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_root != nullptr) {
+  if (_root != nullptr && _planValid) {
     try {
       // count the actual number of nodes in the plan
       ::NodeCounter counter;
@@ -841,7 +843,8 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
 
   auto variable = node->getMember(0);
   auto expression = node->getMember(1);
-  // TODO: process FOR options here if we want to use them later
+  auto options = node->getMember(2);
+  IndexHint hint(options);
 
   // fetch 1st operand (out variable name)
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -861,7 +864,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "no collection for EnumerateCollection");
     }
-    en = registerNode(new EnumerateCollectionNode(this, nextId(), collection, v, false));
+    en = registerNode(new EnumerateCollectionNode(this, nextId(), collection, v, false, hint));
 #ifdef USE_IRESEARCH
   } else if (expression->type == NODE_TYPE_VIEW) {
     // second operand is a view

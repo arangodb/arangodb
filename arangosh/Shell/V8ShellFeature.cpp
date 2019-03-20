@@ -343,15 +343,24 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
         std::ostringstream is;
 
         is << "Connected to ArangoDB '" << v8connection->endpointSpecification()
-           << "' version: " << v8connection->version() << " ["
+           << "' version: " << v8connection->version() << " [" << v8connection->role() << ", "
            << v8connection->mode() << "], database: '" << v8connection->databaseName()
            << "', username: '" << v8connection->username() << "'";
 
         _console->printLine(is.str());
+
+        if (v8connection->role() == "PRIMARY" || v8connection->role() == "DBSERVER") {
+          std::string msg("WARNING: You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator");
+          if (_console->colors()) {
+            msg = ShellColorsFeature::SHELL_COLOR_RED + msg + ShellColorsFeature::SHELL_COLOR_RESET;
+          }
+          _console->printErrorLine(msg);
+        }
       } else {
         std::ostringstream is;
 
-        is << "Could not connect to endpoint '" << v8connection->endpointSpecification()
+        auto client = server()->getFeature<ClientFeature>("Client");
+        is << "Could not connect to endpoint '" << client->endpoint()
            << "', database: '" << v8connection->databaseName()
            << "', username: '" << v8connection->username() << "'";
 
@@ -424,7 +433,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
   bool promptError;
   auto v8connection = setup(context, true, positionals, &promptError);
 
-  V8LineEditor v8LineEditor(_isolate, context, "." + _name + ".history");
+  V8LineEditor v8LineEditor(_isolate, context, _console->useHistory() ? "." + _name + ".history" : "");
 
   if (v8connection != nullptr) {
     v8LineEditor.setSignalFunction(

@@ -29,7 +29,6 @@
 #include "Aql/ExecutionNode.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchDocument.h"

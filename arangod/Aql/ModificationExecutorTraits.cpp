@@ -76,7 +76,7 @@ int extractKey(transaction::Methods* trx, AqlValue const& value, std::string& ke
 }
 
 /// @brief process the result of a data-modification operation
-void handleStats(ModificationExecutorBase::Stats& stats,
+void handleStats(ModificationStats& stats,
                  ModificationExecutorInfos& info, int code, bool ignoreErrors,
                  std::string const* errorMessage = nullptr) {
   if (code == TRI_ERROR_NO_ERROR) {
@@ -104,7 +104,7 @@ void handleStats(ModificationExecutorBase::Stats& stats,
 }
 
 /// @brief process the result of a data-modification operation
-void handleBabyStats(ModificationExecutorBase::Stats& stats, ModificationExecutorInfos& info,
+void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
                      std::unordered_map<int, size_t> const& errorCounter, uint64_t numBabies,
                      bool ignoreErrors, bool ignoreDocumentNotFound = false) {
   size_t numberBabies = numBabies;  // from uint64_t to size_t
@@ -162,7 +162,7 @@ void handleBabyStats(ModificationExecutorBase::Stats& stats, ModificationExecuto
 ///////////////////////////////////////////////////////////////////////////////
 // INSERT /////////////////////////////////////////////////////////////////////
 bool Insert::doModifications(ModificationExecutorInfos& info,
-                             ModificationExecutorBase::Stats& stats) {
+                             ModificationStats& stats) {
   OperationOptions& options = info._options;
 
   reset();
@@ -182,8 +182,6 @@ bool Insert::doModifications(ModificationExecutorInfos& info,
       // not relevant for ourselves... just pass it on to the next block
       _operations.push_back(ModOperationType::IGNORE_RETURN);
     }
-    this->_last_not_skip =
-        _operations.size();  // always true for insert as here is no ignore skip
   });
 
   TRI_ASSERT(_operations.size() == _block->block().size());
@@ -195,11 +193,8 @@ bool Insert::doModifications(ModificationExecutorInfos& info,
   // and _operations the information if the data is to be kept or not
 
   if (toInsert.length() == 0) {
-    // there is nothing to update we just need to copy
-    // if there is anything other than IGNORE_SKIP the
-    // block is prepared.
     _justCopy = true;
-    return _last_not_skip != std::numeric_limits<decltype(_last_not_skip)>::max();
+    return !_operations.empty();
   }
 
   // execute insert
@@ -239,7 +234,6 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
   TRI_ASSERT(_block->hasBlock());
 
   std::size_t blockSize = _block->block().size();
-  TRI_ASSERT(_last_not_skip <= blockSize);
   TRI_ASSERT(_blockIndex < blockSize);
 
   OperationOptions& options = info._options;
@@ -250,6 +244,7 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
   }
 
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
+
   if (_justCopy || options.silent) {
     output.copyRow(input);
   } else {
@@ -290,13 +285,13 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
   }
 
   // increase index and make sure next element is within the valid range
-  return ++_blockIndex < _last_not_skip;
+  return ++_blockIndex < blockSize;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // REMOVE /////////////////////////////////////////////////////////////////////
 bool Remove::doModifications(ModificationExecutorInfos& info,
-                             ModificationExecutorBase::Stats& stats) {
+                             ModificationStats& stats) {
   OperationOptions& options = info._options;
 
   reset();
@@ -312,6 +307,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info,
   _block->forRowInBlock([this, &stats, &errorCode, &key, &rev, trx, inReg,
                          &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
+
     if (!info._consultAqlWriteFilter ||
         !info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
                                                               StaticStrings::Empty)) {
@@ -443,7 +439,7 @@ bool Remove::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 ///////////////////////////////////////////////////////////////////////////////
 // UPSERT /////////////////////////////////////////////////////////////////////
 bool Upsert::doModifications(ModificationExecutorInfos& info,
-                             ModificationExecutorBase::Stats& stats) {
+                             ModificationStats& stats) {
   OperationOptions& options = info._options;
 
   reset();
@@ -537,6 +533,8 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
 
   TRI_ASSERT(info._trx);
   OperationResult opRes;  // temporary value
+
+
   if (toInsert.isArray() && toInsert.length() > 0) {
     OperationResult opRes =
         info._trx->insert(info._aqlCollection->name(), toInsert, options);
@@ -637,13 +635,13 @@ bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 // UPDATE / REPLACE ///////////////////////////////////////////////////////////
 template <typename ModType>
 bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
-                                             ModificationExecutorBase::Stats& stats) {
+                                             ModificationStats& stats) {
   OperationOptions& options = info._options;
 
   // check if we're a DB server in a cluster
   bool const isDBServer = ServerState::instance()->isDBServer();
-  info._producesResults =
-      info._producesResults || (isDBServer && info._ignoreDocumentNotFound);
+  info._producesResults = ProducesResults(
+      info._producesResults || (isDBServer && info._ignoreDocumentNotFound));
 
   reset();
   _updateOrReplaceBuilder.openArray();

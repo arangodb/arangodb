@@ -116,7 +116,22 @@ TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
       _input{CreateInvalidInputRowHint{}},
       _rowState(ExecutionState::HASMORE),
       _traverser(infos.traverser()) {}
-TraversalExecutor::~TraversalExecutor() = default;
+
+TraversalExecutor::~TraversalExecutor() {
+  auto opts = _traverser.options();
+  if (opts != nullptr && opts->usesPrune()) {
+    auto *evaluator = opts->getPruneEvaluator();
+    if (evaluator != nullptr) {
+      // The InAndOutRowExpressionContext in the PruneExpressionEvaluator holds
+      // an InputAqlItemRow. As the Plan holds the PruneExpressionEvaluator and
+      // is destroyed after the Engine, this must be deleted by
+      // unPrepareContext() - otherwise, the AqlItemBlockShell referenced by the
+      // row will return its AqlItemBlock to an already destroyed
+      // AqlItemBlockManager.
+      evaluator->unPrepareContext();
+    }
+  }
+};
 
 // Shutdown query
 std::pair<ExecutionState, Result> TraversalExecutor::shutdown(int errorCode) {
@@ -163,18 +178,21 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
     } else {
       // traverser now has next v, e, p values
       if (_infos.useVertexOutput()) {
-        output.cloneValueInto(_infos.vertexRegister(), _input,
-                              _traverser.lastVertexToAqlValue());
+        AqlValue vertex = _traverser.lastVertexToAqlValue();
+        AqlValueGuard guard{vertex, true};
+        output.moveValueInto(_infos.vertexRegister(), _input, guard);
       }
       if (_infos.useEdgeOutput()) {
-        output.cloneValueInto(_infos.edgeRegister(), _input,
-                              _traverser.lastEdgeToAqlValue());
+        AqlValue edge = _traverser.lastEdgeToAqlValue();
+        AqlValueGuard guard{edge, true};
+        output.moveValueInto(_infos.edgeRegister(), _input, guard);
       }
       if (_infos.usePathOutput()) {
         transaction::BuilderLeaser tmp(_traverser.trx());
         tmp->clear();
-        output.cloneValueInto(_infos.pathRegister(), _input,
-                              _traverser.pathToAqlValue(*tmp.builder()));
+        AqlValue path = _traverser.pathToAqlValue(*tmp.builder());
+        AqlValueGuard guard{path, true};
+        output.moveValueInto(_infos.pathRegister(), _input, guard);
       }
       s.addFiltered(_traverser.getAndResetFilteredPaths());
       s.addScannedIndex(_traverser.getAndResetReadDocuments());

@@ -35,6 +35,8 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
@@ -55,7 +57,8 @@ ShortestPathExecutorInfos::ShortestPathExecutorInfos(
     std::unique_ptr<graph::ShortestPathFinder>&& finder,
     std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
     InputVertex&& source, InputVertex&& target)
-    : ExecutorInfos(inputRegisters, outputRegisters, nrInputRegisters, nrOutputRegisters,
+    : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
+                    nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _finder(std::move(finder)),
       _registerMapping(std::move(registerMapping)),
@@ -140,12 +143,16 @@ std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRow(OutputAqlIte
   while (true) {
     if (_posInPath < _path->length()) {
       if (_infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
-        output.cloneValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
-                              _input, _path->vertexToAqlValue(_infos.cache(), _posInPath));
+        AqlValue vertex = _path->vertexToAqlValue(_infos.cache(), _posInPath);
+        AqlValueGuard guard{vertex, true};
+        output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
+                             _input, guard);
       }
       if (_infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
-        output.cloneValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
-                              _input, _path->edgeToAqlValue(_infos.cache(), _posInPath));
+        AqlValue edge = _path->edgeToAqlValue(_infos.cache(), _posInPath);
+        AqlValueGuard guard{edge, true};
+        output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
+                             _input, guard);
       }
       _posInPath++;
       return {computeState(), s};

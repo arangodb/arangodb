@@ -385,6 +385,7 @@ void IResearchLink::batchInsert( // insert documents
     if (!dynamic_cast<arangodb::MMFilesCollection*>(collection().getPhysical())) {
       break; // skip for non-MMFiles (fallthough for MMFiles)
     }
+    // intentionally falls through
    case RecoveryState::DURING_CHECKPOINT:
     for (auto const& doc: batch) {
       ctx->remove(doc.first);

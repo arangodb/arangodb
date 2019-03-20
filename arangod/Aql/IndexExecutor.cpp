@@ -40,10 +40,10 @@
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <lib/Logger/LogMacros.h>
 
+#include <memory>
 #include <utility>
 
 using namespace arangodb;
@@ -66,8 +66,10 @@ static void resolveFCallConstAttributes(AstNode* fcall) {
 }  // namespace
 
 IndexExecutorInfos::IndexExecutorInfos(
-    RegisterId outputRegister, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+    RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToClear,
+    // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     std::vector<std::string> const& projections, transaction::Methods* trxPtr,
@@ -81,7 +83,7 @@ IndexExecutorInfos::IndexExecutorInfos(
                     make_shared_unordered_set({outputRegister}),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
-      _indexes(indexes),
+      _indexes(std::move(indexes)),
       _condition(condition),
       _ast(ast),
       _hasMultipleExpansions(false),
@@ -108,10 +110,10 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _allowCoveringIndexOptimization(false),
       _cursor(nullptr),
       _cursors(_infos.getIndexes().size()),
+      _currentIndex(0),
+      _alreadyReturned(),
       _indexesExhausted(false),
       _isLastIndex(false) {
-  _mmdr.reset(new ManagedDocumentResult);
-
   TRI_ASSERT(!_infos.getIndexes().empty());
 
   if (_infos.getCondition() != nullptr) {
@@ -180,30 +182,47 @@ IndexExecutor::~IndexExecutor() = default;
 /// @brief order a cursor for the index at the specified position
 arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
   TRI_ASSERT(_infos.getIndexes().size() > currentIndex);
+  
+  OperationCursor* cursor = getCursor(currentIndex);
+  if (cursor == nullptr) {
+    // first create an empty cursor object if none is there yet
+    cursor = resetCursor(currentIndex, std::make_unique<OperationCursor>()); 
+  }
+  
+  TRI_ASSERT(cursor != nullptr);
+  
+  IndexIterator* iterator = cursor->indexIterator(); 
+  
+  AstNode const* conditionNode = nullptr;
+  if ((iterator == nullptr || !_infos.getNonConstExpressions().empty()) && 
+      _infos.getCondition() != nullptr) {
+    TRI_ASSERT(_infos.getIndexes().size() == _infos.getCondition()->numMembers());
+    TRI_ASSERT(_infos.getCondition()->numMembers() > currentIndex);
 
-  // TODO: if we have _nonConstExpressions, we should also reuse the
-  // cursors, but in this case we have to adjust the iterator's search condition
-  // from _condition
-  if (!_infos.getNonConstExpressions().empty() || getCursor(currentIndex) == nullptr) {
-    AstNode const* conditionNode = nullptr;
-    if (_infos.getCondition() != nullptr) {
-      TRI_ASSERT(_infos.getIndexes().size() == _infos.getCondition()->numMembers());
-      TRI_ASSERT(_infos.getCondition()->numMembers() > currentIndex);
-
-      conditionNode = _infos.getCondition()->getMember(currentIndex);
-    }
-
-    // yet no cursor for index, so create it
-    resetCursor(currentIndex,
-                _infos.getTrxPtr()->indexScanForCondition(
-                    _infos.getIndexes()[currentIndex], conditionNode,
-                    _infos.getOutVariable(), _mmdr.get(), _infos.getOptions()));
-  } else {
-    // cursor for index already exists, reset and reuse it
-    resetCursor(currentIndex);
+    conditionNode = _infos.getCondition()->getMember(currentIndex);
   }
 
-  return getCursor(currentIndex);
+  if (iterator != nullptr && _infos.getNonConstExpressions().empty()) {
+    // quick case. we can simply reset the existing cursor
+    resetCursor(currentIndex);
+  } else if (iterator == nullptr || !iterator->canRearm()) {
+    // inject a new index iterator into the existing cursor
+    cursor->rearm(
+                _infos.getTrxPtr()->indexScanForCondition(
+                    _infos.getIndexes()[currentIndex], conditionNode,
+                    _infos.getOutVariable(), _infos.getOptions()));
+  } else {
+    // try to rearm an existing iterator
+    if (iterator->rearm(conditionNode, _infos.getOutVariable(), _infos.getOptions())) {
+      // rearming has worked. all good
+      resetCursor(currentIndex);
+    } else {
+      // iterator does not support the condition
+      cursor->rearm(std::make_unique<EmptyIndexIterator>(iterator->collection(), _infos.getTrxPtr()));
+    }
+  }
+    
+  return cursor;
 }
 
 void IndexExecutor::createCursor() {
@@ -315,10 +334,6 @@ bool IndexExecutor::initIndexes(InputAqlItemRow& input) {
   }
 
   createCursor();
-  if (getCursor()->fail()) {
-    THROW_ARANGO_EXCEPTION(getCursor()->code);
-  }
-
   return advanceCursor();
 }
 
@@ -329,7 +344,7 @@ void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
   auto ast = _infos.getAst();
-  AstNode* condition = const_cast<AstNode*>(_infos.getCondition());
+  auto* condition = const_cast<AstNode*>(_infos.getCondition());
 
   // modify the existing node in place
   TEMPORARILY_UNLOCK_NODE(condition);
@@ -383,9 +398,6 @@ bool IndexExecutor::advanceCursor() {
     if (getCurrentIndex() < _infos.getIndexes().size()) {
       // This check will work as long as _indexes.size() < MAX_SIZE_T
       createCursor();
-      if (getCursor()->fail()) {
-        THROW_ARANGO_EXCEPTION(getCursor()->code);
-      }
     } else {
       setCursor(nullptr);
       setIndexesExhausted(true);
@@ -396,7 +408,7 @@ bool IndexExecutor::advanceCursor() {
 
   setIndexesExhausted(false);
   return true;
-};
+}
 
 std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("IndexExecutor::produceRow") {
@@ -427,7 +439,7 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
       }
     }
     TRI_ASSERT(_input.isInitialized());
-    TRI_ASSERT(getCursor()->hasMore());
+    TRI_ASSERT(getCursor() != nullptr && getCursor()->hasMore());
 
     IndexIterator::DocumentCallback callback;
 
@@ -465,10 +477,8 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     TRI_ASSERT(!getIndexesExhausted());
 
     // Read the next elements from the indexes
-    //    auto saveReturned = _infos.getReturned();
     bool more = readIndex(callback, hasWritten);
-    //    TRI_ASSERT(!more || _infos.getCursor()->hasMore());
-    TRI_ASSERT((getCursor() != nullptr || !more) || more == getCursor()->hasMore());
+    TRI_ASSERT(getCursor() != nullptr || !more);
 
     if (!more) {
       _input = InputAqlItemRow{CreateInvalidInputRowHint{}};

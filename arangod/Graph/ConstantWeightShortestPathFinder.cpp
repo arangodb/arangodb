@@ -32,7 +32,6 @@
 #include "Transaction/Helpers.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -47,7 +46,7 @@ ConstantWeightShortestPathFinder::PathSnippet::PathSnippet(arangodb::velocypack:
     : _pred(pred), _path(std::move(path)) {}
 
 ConstantWeightShortestPathFinder::ConstantWeightShortestPathFinder(ShortestPathOptions& options)
-    : ShortestPathFinder(options), _mmdr(new ManagedDocumentResult{}) {}
+    : ShortestPathFinder(options) {}
 
 ConstantWeightShortestPathFinder::~ConstantWeightShortestPathFinder() {
   clearVisited();
@@ -166,9 +165,9 @@ void ConstantWeightShortestPathFinder::fillResult(arangodb::velocypack::StringRe
 void ConstantWeightShortestPathFinder::expandVertex(bool backward, arangodb::velocypack::StringRef vertex) {
   std::unique_ptr<EdgeCursor> edgeCursor;
   if (backward) {
-    edgeCursor.reset(_options.nextReverseCursor(_mmdr.get(), vertex));
+    edgeCursor.reset(_options.nextReverseCursor(vertex));
   } else {
-    edgeCursor.reset(_options.nextCursor(_mmdr.get(), vertex));
+    edgeCursor.reset(_options.nextCursor(vertex));
   }
 
   auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {

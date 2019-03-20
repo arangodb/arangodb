@@ -140,13 +140,14 @@ std::string Thread::stringify(ThreadState state) {
 }
 
 /// @brief constructs a thread
-Thread::Thread(std::string const& name, bool deleteOnExit)
+Thread::Thread(std::string const& name, bool deleteOnExit, std::uint32_t terminationTimeout)
     : _deleteOnExit(deleteOnExit),
       _threadStructInitialized(false),
       _refs(0),
       _name(name),
       _thread(),
       _threadNumber(0),
+      _terminationTimeout(terminationTimeout),
       _finishedCondition(nullptr),
       _state(ThreadState::CREATED) {
   TRI_InitThread(&_thread);
@@ -197,8 +198,30 @@ void Thread::shutdown() {
       // we must ignore any errors here, but TRI_DetachThread will log them
       TRI_DetachThread(&_thread);
     } else {
-      // we must ignore any errors here, but TRI_JoinThread will log them
-      TRI_JoinThread(&_thread);
+#ifdef __APPLE__
+      // MacOS does not provide an implemenation of pthread_timedjoin_np which is used in
+      // TRI_JoinThreadWithTimeout, so instead we simply wait for _state to be set to STOPPED.
+
+      std::uint32_t n = _terminationTimeout / 100;
+      for (std::uint32_t i = 0; i < n || _terminationTimeout == INFINITE; ++i) {
+        if (_state.load() == ThreadState::STOPPED) {
+          break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      }
+
+      // we still have to wait here until the thread has terminated, but this should
+      // happen immediately after _state has been set to STOPPED!
+      int ret = _state.load() == ThreadState::STOPPED ? TRI_JoinThread(&_thread) : TRI_ERROR_FAILED;
+#else
+      auto ret = TRI_JoinThreadWithTimeout(&_thread, _terminationTimeout);
+#endif
+
+      if (ret != TRI_ERROR_NO_ERROR) {
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "cannot shutdown thread '" << _name << "', giving up";
+        FATAL_ERROR_ABORT();
+      }
     }
   }
   TRI_ASSERT(_refs.load() == 0);
@@ -228,7 +251,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
 
   if (state != ThreadState::CREATED) {
     LOG_TOPIC(FATAL, Logger::THREADS)
-        << "called started on an already started thread, thread is in state "
+        << "called started on an already started thread '" << _name << "', thread is in state "
         << stringify(state);
     FATAL_ERROR_ABORT();
   }
@@ -237,7 +260,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   if (!_state.compare_exchange_strong(expected, ThreadState::STARTING)) {
     // This should never happen! If it does, it means we have multiple calls to start().
     LOG_TOPIC(WARN, Logger::THREADS)
-        << "failed to set thread to state 'starting'; thread is in unexpected state "
+        << "failed to set thread '" << _name << "' to state 'starting'; thread is in unexpected state "
         << stringify(expected);
     FATAL_ERROR_ABORT();
   }
