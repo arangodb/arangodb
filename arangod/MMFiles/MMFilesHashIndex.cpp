@@ -38,7 +38,6 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -526,8 +525,7 @@ Result MMFilesHashIndex::sizeHint(transaction::Methods& trx, size_t size) {
     size /= 5;
   }
 
-  ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(&trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&_collection, nullptr, numPaths());
 
   if (_unique) {
     return _uniqueArray->_hashArray->resize(&context, size);
@@ -543,8 +541,7 @@ int MMFilesHashIndex::lookup(transaction::Methods* trx, VPackSlice key,
     return TRI_ERROR_NO_ERROR;
   }
 
-  ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&_collection, nullptr, numPaths());
 
   if (_unique) {
     MMFilesHashIndexElement* found = _uniqueArray->_hashArray->findByKey(&context, &key);
@@ -584,8 +581,7 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
     return addErrorMsg(res, r);
   }
 
-  ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&_collection, nullptr, numPaths());
 
   auto work = [this, &context](MMFilesHashIndexElement* element, OperationMode) -> int {
     TRI_IF_FAILURE("InsertHashIndex") { return TRI_ERROR_DEBUG; }
@@ -659,14 +655,11 @@ void MMFilesHashIndex::batchInsertUnique(
   }
 
   // functions that will be called for each thread
-  auto creator = [&trx, this]() -> void* {
-    ManagedDocumentResult* result = new ManagedDocumentResult;
-
-    return new MMFilesIndexLookupContext(trx, &_collection, result, numPaths());
+  auto creator = [this]() -> void* {
+    return new MMFilesIndexLookupContext(&_collection, nullptr, numPaths());
   };
   auto destroyer = [](void* userData) {
     MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
-    delete context->result();
     delete context;
   };
 
@@ -704,8 +697,7 @@ Result MMFilesHashIndex::insertMulti(transaction::Methods* trx,
     return res.reset(r);
   }
 
-  ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&_collection, nullptr, numPaths());
   auto work = [this, &context](MMFilesHashIndexElement*& element, OperationMode) {
     TRI_IF_FAILURE("InsertHashIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -782,13 +774,11 @@ void MMFilesHashIndex::batchInsertMulti(
   }
 
   // functions that will be called for each thread
-  auto creator = [&trx, this]() -> void* {
-    ManagedDocumentResult* result = new ManagedDocumentResult;
-    return new MMFilesIndexLookupContext(trx, &_collection, result, numPaths());
+  auto creator = [this]() -> void* {
+    return new MMFilesIndexLookupContext(&_collection, nullptr, numPaths());
   };
   auto destroyer = [](void* userData) {
     MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
-    delete context->result();
     delete context;
   };
 
@@ -814,8 +804,7 @@ int MMFilesHashIndex::removeUniqueElement(transaction::Methods* trx,
                                           MMFilesHashIndexElement* element,
                                           OperationMode mode) {
   TRI_IF_FAILURE("RemoveHashIndex") { return TRI_ERROR_DEBUG; }
-  ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&_collection, nullptr, numPaths());
   MMFilesHashIndexElement* old = _uniqueArray->_hashArray->remove(&context, element);
 
   if (old == nullptr) {
@@ -837,8 +826,7 @@ int MMFilesHashIndex::removeMultiElement(transaction::Methods* trx,
                                          MMFilesHashIndexElement* element,
                                          OperationMode mode) {
   TRI_IF_FAILURE("RemoveHashIndex") { return TRI_ERROR_DEBUG; }
-  ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&_collection, nullptr, numPaths());
   MMFilesHashIndexElement* old = _multiArray->_hashArray->remove(&context, element);
 
   if (old == nullptr) {
@@ -867,7 +855,7 @@ bool MMFilesHashIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesHashIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*, arangodb::aql::AstNode const* node,
+    transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_IF_FAILURE("HashIndex::noIterator") {

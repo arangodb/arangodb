@@ -40,17 +40,19 @@ using namespace arangodb::aql;
 
 FilterExecutorInfos::FilterExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
                                          RegisterId nrOutputRegisters,
+                                         // cppcheck-suppress passedByValue
                                          std::unordered_set<RegisterId> registersToClear,
+                                         // cppcheck-suppress passedByValue
                                          std::unordered_set<RegisterId> registersToKeep)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(inputRegister),
                     nullptr, nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _inputRegister(inputRegister) {}
 
-FilterExecutor::FilterExecutor(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher){};
+FilterExecutor::FilterExecutor(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher) {}
 FilterExecutor::~FilterExecutor() = default;
 
-std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemRow &output) {
+std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("FilterExecutor::produceRow") {
      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

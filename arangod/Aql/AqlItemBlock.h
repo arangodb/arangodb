@@ -241,6 +241,7 @@ class AqlItemBlock {
         if (_data[fromRow * _nrRegs + i].requiresDestruction()) {
           ++_valueCount[_data[fromRow * _nrRegs + i]];
         }
+        TRI_ASSERT(_data[currentRow * _nrRegs + i].isEmpty());
         _data[currentRow * _nrRegs + i] = _data[fromRow * _nrRegs + i];
       }
     }

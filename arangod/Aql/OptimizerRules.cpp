@@ -58,6 +58,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
 
 #ifdef USE_IRESEARCH
@@ -2533,8 +2534,7 @@ void arangodb::aql::removeRedundantCalculationsRule(Optimizer* opt,
       continue;
     }
 
-    auto outvar = n->getVariablesSetHere();
-    TRI_ASSERT(outvar.size() == 1);
+    arangodb::aql::Variable const* outvar = nn->outVariable();
 
     try {
       nn->expression()->stringifyIfNotTooLong(&buffer);
@@ -2575,15 +2575,12 @@ void arangodb::aql::removeRedundantCalculationsRule(Optimizer* opt,
 
         if (isEqual) {
           // expressions are identical
-          auto outvars = current->getVariablesSetHere();
-          TRI_ASSERT(outvars.size() == 1);
-
           // check if target variable is already registered as a replacement
           // this covers the following case:
           // - replacements is set to B => C
           // - we're now inserting a replacement A => B
           // the goal now is to enter a replacement A => C instead of A => B
-          auto target = outvars[0];
+          auto target = ExecutionNode::castTo<CalculationNode const*>(current)->outVariable();
           while (target != nullptr) {
             auto it = replacements.find(target->id);
 
@@ -2593,7 +2590,7 @@ void arangodb::aql::removeRedundantCalculationsRule(Optimizer* opt,
               break;
             }
           }
-          replacements.emplace(outvar[0]->id, target);
+          replacements.emplace(outvar->id, target);
 
           // also check if the insertion enables further shortcuts
           // this covers the following case:
@@ -2601,7 +2598,7 @@ void arangodb::aql::removeRedundantCalculationsRule(Optimizer* opt,
           // - we have just inserted a replacement B => C
           // the goal now is to change the replacement A => B to A => C
           for (auto it = replacements.begin(); it != replacements.end(); ++it) {
-            if ((*it).second == outvar[0]) {
+            if ((*it).second == outvar) {
               (*it).second = target;
             }
           }
@@ -2649,6 +2646,8 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
   arangodb::HashSet<ExecutionNode*> toUnlink;
 
   for (auto const& n : nodes) {
+    arangodb::aql::Variable const* outVariable = nullptr;
+
     if (n->getType() == EN::CALCULATION) {
       auto nn = ExecutionNode::castTo<CalculationNode*>(n);
 
@@ -2656,6 +2655,8 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
         // If this node is non-deterministic, we must not optimize it away!
         continue;
       }
+
+      outVariable = nn->outVariable();
       // will remove calculation when we get here
     } else if (n->getType() == EN::SUBQUERY) {
       auto nn = ExecutionNode::castTo<SubqueryNode*>(n);
@@ -2670,12 +2671,15 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
         continue;
       }
       // will remove subquery when we get here
+      outVariable = nn->outVariable();
+    } else {
+      TRI_ASSERT(false);
+      continue;
     }
 
-    auto outvars = n->getVariablesSetHere();
-    TRI_ASSERT(outvars.size() == 1);
+    TRI_ASSERT(outVariable != nullptr);
 
-    if (!n->isVarUsedLater(outvars[0])) {
+    if (!n->isVarUsedLater(outVariable)) {
       // The variable whose value is calculated here is not used at
       // all further down the pipeline! We remove the whole
       // calculation node,
@@ -2714,7 +2718,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
         if (!hasCollectWithOutVariable) {
           // no COLLECT found, now replace
           std::unordered_map<VariableId, Variable const*> replacements;
-          replacements.emplace(outvars[0]->id,
+          replacements.emplace(outVariable->id,
                                static_cast<Variable const*>(rootNode->getData()));
 
           RedundantCalculationsReplacer finder(plan->getAst(), replacements);
@@ -2732,7 +2736,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
 
       while (current != nullptr) {
         current->getVariablesUsedHere(vars);
-        if (vars.find(outvars[0]) != vars.end()) {
+        if (vars.find(outVariable) != vars.end()) {
           if (current->getType() == EN::COLLECT) {
             if (ExecutionNode::castTo<CollectNode const*>(current)->hasOutVariableButNoCount()) {
               // COLLECT with an INTO variable will collect all variables from
@@ -2771,7 +2775,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
         TRI_ASSERT(otherExpression != nullptr);
 
         if (rootNode->type != NODE_TYPE_ATTRIBUTE_ACCESS &&
-            Ast::countReferences(otherExpression->node(), outvars[0]) > 1) {
+            Ast::countReferences(otherExpression->node(), outVariable) > 1) {
           // used more than once... better give up
           continue;
         }
@@ -2789,7 +2793,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
         }
 
         TRI_ASSERT(other != nullptr);
-        otherExpression->replaceVariableReference(outvars[0], rootNode);
+        otherExpression->replaceVariableReference(outVariable, rootNode);
 
         toUnlink.emplace(n);
       }
@@ -2876,12 +2880,11 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
       auto trx = _plan->getAst()->query()->trx();
       size_t coveredAttributes = 0;
-      auto resultPair =
-          trx->getIndexForSortCondition(enumerateCollectionNode->collection()->name(),
-                                        &sortCondition, outVariable,
-                                        enumerateCollectionNode->collection()->count(trx),
-                                        usedIndexes, coveredAttributes);
-      if (resultPair.second) {
+      bool canBeUsed = trx->getIndexForSortCondition(
+          enumerateCollectionNode->collection()->name(), &sortCondition,
+          outVariable, enumerateCollectionNode->collection()->count(trx),
+          enumerateCollectionNode->hint(), usedIndexes, coveredAttributes);
+      if (canBeUsed) {
         // If this bit is set, then usedIndexes has length exactly one
         // and contains the best index found.
         auto condition = std::make_unique<Condition>(_plan->getAst());
@@ -3111,11 +3114,8 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         return false;  // skip. we don't care.
 
       case EN::CALCULATION: {
-        auto outvars = en->getVariablesSetHere();
-        TRI_ASSERT(outvars.size() == 1);
-
         _variableDefinitions.emplace(
-            outvars[0]->id,
+            ExecutionNode::castTo<CalculationNode const*>(en)->outVariable()->id,
             ExecutionNode::castTo<CalculationNode const*>(en)->expression()->node());
         return false;
       }
@@ -3810,9 +3810,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
       vocbase = idxNode->vocbase();
       collection = idxNode->collection();
       TRI_ASSERT(collection != nullptr);
-      auto outVars = idxNode->getVariablesSetHere();
-      TRI_ASSERT(outVars.size() == 1);
-      Variable const* sortVariable = outVars[0];
+      Variable const* sortVariable = idxNode->outVariable();
       bool isSortAscending = idxNode->options().ascending;
       auto allIndexes = idxNode->getIndexes();
       TRI_ASSERT(!allIndexes.empty());
@@ -4959,8 +4957,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
           auto expr = cn->expression();
           if (expr->isAttributeAccess()) {
             // check the variable is the same as the remove variable
-            auto vars = cn->getVariablesSetHere();
-            if (vars.size() != 1 || vars[0] != rn->inVariable()) {
+            if (cn->outVariable() != rn->inVariable()) {
               break;  // abort . . .
             }
             // check the remove node's collection is sharded over _key
@@ -5111,7 +5108,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         auto fn = ExecutionNode::castTo<FilterNode const*>(_lastNode);
 
         // check these are a Calc-Filter pair
-        if (cn->getVariablesSetHere()[0] != fn->inVariable()) {
+        if (cn->outVariable() != fn->inVariable()) {
           break;  // abort . . .
         }
 
@@ -5490,9 +5487,9 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt, std::unique_ptr<Executio
 
     auto fn = ExecutionNode::castTo<FilterNode const*>(n);
     auto cn = ExecutionNode::castTo<CalculationNode*>(dep);
-    auto outVar = cn->getVariablesSetHere();
+    auto outVar = cn->outVariable();
 
-    if (outVar.size() != 1 || outVar[0] != fn->inVariable()) {
+    if (outVar != fn->inVariable()) {
       continue;
     }
 
@@ -5510,7 +5507,7 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt, std::unique_ptr<Executio
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
-        newNode = new CalculationNode(plan.get(), plan->nextId(), expr, outVar[0]);
+        newNode = new CalculationNode(plan.get(), plan->nextId(), expr, outVar);
       } catch (...) {
         delete expr;
         throw;
@@ -5664,9 +5661,9 @@ void arangodb::aql::removeRedundantOrRule(Optimizer* opt,
 
     auto fn = ExecutionNode::castTo<FilterNode const*>(n);
     auto cn = ExecutionNode::castTo<CalculationNode*>(dep);
-    auto outVar = cn->getVariablesSetHere();
+    auto outVar = cn->outVariable();
 
-    if (outVar.size() != 1 || outVar[0] != fn->inVariable()) {
+    if (outVar != fn->inVariable()) {
       continue;
     }
     if (cn->expression()->node()->type != NODE_TYPE_OPERATOR_BINARY_OR) {
@@ -5681,7 +5678,7 @@ void arangodb::aql::removeRedundantOrRule(Optimizer* opt,
       Expression* expr = new Expression(plan.get(), plan->getAst(), astNode);
 
       try {
-        newNode = new CalculationNode(plan.get(), plan->nextId(), expr, outVar[0]);
+        newNode = new CalculationNode(plan.get(), plan->nextId(), expr, outVar);
       } catch (...) {
         delete expr;
         throw;

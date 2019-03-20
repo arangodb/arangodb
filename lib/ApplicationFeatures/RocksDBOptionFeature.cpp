@@ -153,13 +153,14 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new UInt64Parameter(&_maxTotalWalSize));
 
   options->addOption(
-      "--rocksdb.delayed_write_rate",
+      "--rocksdb.delayed-write-rate",
       "limited write rate to DB (in bytes per second) if we are writing to the "
       "last mem-table allowed and we allow more than 3 mem-tables, or if we "
       "have surpassed a certain number of level-0 files and need to slowdown "
       "writes",
       new UInt64Parameter(&_delayedWriteRate),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+  options->addOldOption("rocksdb.delayed_write_rate", "rocksdb.delayed-write-rate");
 
   options->addOption("--rocksdb.min-write-buffer-number-to-merge",
                      "minimum number of write buffers that will be merged "

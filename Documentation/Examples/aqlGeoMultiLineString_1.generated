@@ -1,7 +1,7 @@
 @Q:
 RETURN GEO_MULTILINESTRING([
- [[<span class="hljs-number">100.0</span>, <span class="hljs-number">0.0</span>], [<span class="hljs-number">101.0</span>, <span class="hljs-number">1.0</span>]],
- [[<span class="hljs-number">102.0</span>, <span class="hljs-number">2.0</span>], [<span class="hljs-number">101.0</span>, <span class="hljs-number">2.3</span>]]
+  [[<span class="hljs-number">100.0</span>, <span class="hljs-number">0.0</span>], [<span class="hljs-number">101.0</span>, <span class="hljs-number">1.0</span>]],
+  [[<span class="hljs-number">102.0</span>, <span class="hljs-number">2.0</span>], [<span class="hljs-number">101.0</span>, <span class="hljs-number">2.3</span>]]
 ])
 
 @R

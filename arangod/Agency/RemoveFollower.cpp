@@ -235,6 +235,7 @@ bool RemoveFollower::start(bool&) {
         << " does not have a leader that has confirmed leadership, waiting, "
            "jobId="
         << _jobId;
+    finish("", "", false, "job no longer sensible, leader has gone bad");
     return false;
   }
 
@@ -245,7 +246,8 @@ bool RemoveFollower::start(bool&) {
         << " does not have enough in sync followers to remove one, waiting, "
            "jobId="
         << _jobId;
-    return false;
+    finish("", "", false, "job no longer sensible, do not have few enough replicas");
+    return true;
   }
 
   // We now know actualReplFactor >= inSyncCount + noGoodCount and

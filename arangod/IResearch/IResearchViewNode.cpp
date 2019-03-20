@@ -39,8 +39,10 @@
 #include "IResearchViewBlock.h"
 #include "IResearchViewCoordinator.h"
 #include "StorageEngine/TransactionState.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
-#include "velocypack/Iterator.h"
+
+#include <velocypack/Iterator.h>
 
 namespace {
 

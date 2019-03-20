@@ -765,7 +765,7 @@ arangodb::Result processInputDirectory(
   restrictViews.insert(options.views.begin(), options.views.end());
 
   try {
-    std::vector<std::string> const files = listFiles(options.inputPath);
+    std::vector<std::string> const files = listFiles(directory.path());
     std::string const collectionSuffix = std::string(".structure.json");
     std::string const viewsSuffix = std::string(".view.json");
     std::vector<VPackBuilder> collections, views;
@@ -926,7 +926,7 @@ arangodb::Result processInputDirectory(
     // wait for all jobs to finish, then check for errors
     if (options.progress) {
       LOG_TOPIC(INFO, Logger::RESTORE)
-          << "# Dispatched " << stats.totalCollections << " job(s) to "
+          << "# Dispatched " << stats.totalCollections << " job(s), using "
           << options.threadCount << " worker(s)";
 
       double start = TRI_microtime();
@@ -1104,6 +1104,11 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
       "--force-same-database",
       "force usage of the same database name as in the source dump.json file",
       new BooleanParameter(&_options.forceSameDatabase));
+  
+  options->addOption(
+      "--all-databases", "restore data to all databases",
+      new BooleanParameter(&_options.allDatabases))
+      .setIntroducedIn(30500);
 
   options->addOption("--input-directory", "input directory",
                      new StringParameter(&_options.inputPath));
@@ -1188,6 +1193,20 @@ void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
     LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
         << "expecting at most one directory, got " + join(positionals, ", ");
     FATAL_ERROR_EXIT();
+  }
+  
+  if (_options.allDatabases) {
+    if (options->processingResult().touched("server.database")) {
+      LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+          << "cannot use --server.database and --all-databases at the same time";
+      FATAL_ERROR_EXIT();
+    }
+
+    if (_options.forceSameDatabase) {
+      LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+          << "cannot use --force-same-database and --all-databases at the same time";
+      FATAL_ERROR_EXIT();
+    }
   }
 
   // use a minimum value for batches
@@ -1292,58 +1311,90 @@ void RestoreFeature::start() {
       "Client");
 
   _exitCode = EXIT_SUCCESS;
-
+  
+  // enumerate all databases present in the dump directory (in case of
+  // --all-databases=true, or use just the flat files in case of --all-databases=false)
+  std::vector<std::string> databases;
+  if (_options.allDatabases) {
+    for (auto const& it : basics::FileUtils::listFiles(_options.inputPath)) {
+      std::string path = basics::FileUtils::buildFilename(_options.inputPath, it);
+      if (basics::FileUtils::isDirectory(path)) {
+        databases.push_back(it);
+      }
+    }
+    
+    // sort by name, with _system first   
+    std::sort(databases.begin(), databases.end(), [](std::string const& lhs, std::string const& rhs) {
+      if (lhs == "_system" && rhs != "_system") {
+        return true;
+      } else if (rhs == "_system" && lhs != "_system") {
+        return false;
+      }
+      return lhs < rhs;
+    });
+    if (databases.empty()) {
+      LOG_TOPIC(FATAL, Logger::RESTORE) << "Unable to find per-database subdirectories in input directory '" << _options.inputPath << "'. No data will be restored!";
+      FATAL_ERROR_EXIT();
+    }
+  } else {
+    databases.push_back(client->databaseName());
+  }
+ 
   std::unique_ptr<SimpleHttpClient> httpClient;
-  Result result = _clientManager.getConnectedClient(httpClient, _options.force,
-                                                    true, !_options.createDatabase);
+  
+  // final result
+  Result result;
+    
+  result = _clientManager.getConnectedClient(httpClient, _options.force,
+                                             true, !_options.createDatabase);
   if (result.is(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
     LOG_TOPIC(FATAL, Logger::RESTORE)
         << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
-  } else if (result.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) && _options.createDatabase) {
-    // database not found, but database creation requested
-    std::string dbName = client->databaseName();
-    LOG_TOPIC(INFO, Logger::RESTORE) << "Creating database '" << dbName << "'";
-
-    client->setDatabaseName("_system");
-
-    Result res = ::tryCreateDatabase(dbName);
-    if (res.fail()) {
-      LOG_TOPIC(ERR, Logger::RESTORE) << "Could not create database '" << dbName << "'";
-      LOG_TOPIC(FATAL, Logger::RESTORE) << httpClient->getErrorMessage();
-      FATAL_ERROR_EXIT();
-    }
-
-    // restore old database name
-    client->setDatabaseName(dbName);
-
-    // re-check connection and version
-    result = _clientManager.getConnectedClient(httpClient, _options.force, true, true);
   }
+  if (result.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+    std::string dbName = client->databaseName();
+    if (_options.createDatabase) {
+      // database not found, but database creation requested
+      LOG_TOPIC(INFO, Logger::RESTORE) << "Creating database '" << dbName << "'";
 
+      client->setDatabaseName("_system");
+
+      Result res = ::tryCreateDatabase(dbName);
+      if (res.fail()) {
+        LOG_TOPIC(FATAL, Logger::RESTORE) << "Could not create database '" << dbName << "': " << httpClient->getErrorMessage();
+        FATAL_ERROR_EXIT();
+      }
+
+      // restore old database name
+      client->setDatabaseName(dbName);
+
+      // re-check connection and version
+      result = _clientManager.getConnectedClient(httpClient, _options.force, true, true);
+    } else {
+      LOG_TOPIC(WARN, Logger::RESTORE) << "Database '" << dbName << "' does not exist on target endpoint. In order to create this database along with the restore, please use the --create-database option";
+    }
+  }
+    
   if (result.fail() && !_options.force) {
     LOG_TOPIC(FATAL, Logger::RESTORE)
         << "cannot create server connection: " << result.errorMessage();
     FATAL_ERROR_EXIT();
   }
-
-  // read encryption info
-  ::checkEncryption(*_directory);
-
-  // read dump info
-  result = ::checkDumpDatabase(*_directory, _options.forceSameDatabase);
-  if (result.fail()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE) << result.errorMessage();
-    FATAL_ERROR_EXIT();
-  }
-
-  // Version 1.4 did not yet have a cluster mode
-  std::tie(result, _options.clusterMode) = _clientManager.getArangoIsCluster(*httpClient);
+  
+  // check if we are in cluster or single-server mode
+  std::string role;
+  std::tie(result, role) = _clientManager.getArangoIsCluster(*httpClient);
+  _options.clusterMode = (role == "COORDINATOR");
   if (result.fail()) {
     LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
         << "Error: could not detect ArangoDB instance type: " << result.errorMessage();
     _exitCode = EXIT_FAILURE;
     return;
+  }
+  
+  if (role == "DBSERVER" || role == "PRIMARY") {
+    LOG_TOPIC(WARN, arangodb::Logger::RESTORE) << "You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator. This is an unsupported operation!";
   }
 
   std::tie(result, _options.indexesFirst) =
@@ -1355,7 +1406,7 @@ void RestoreFeature::start() {
     _exitCode = EXIT_FAILURE;
     return;
   }
-
+  
   if (_options.progress) {
     LOG_TOPIC(INFO, Logger::RESTORE)
         << "Connected to ArangoDB '" << httpClient->getEndpointSpecification() << "'";
@@ -1366,19 +1417,91 @@ void RestoreFeature::start() {
 
   LOG_TOPIC(DEBUG, Logger::RESTORE) << "Using " << _options.threadCount << " worker thread(s)";
 
-  // run the actual restore
-  try {
-    result = ::processInputDirectory(*httpClient, _clientTaskQueue, *this,
-                                     _options, *_directory, _stats);
-  } catch (basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
-    result = {ex.code(), ex.what()};
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
-    result = {TRI_ERROR_INTERNAL, ex.what()};
-  } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught unknown exception";
-    result = {TRI_ERROR_INTERNAL};
+  if (_options.allDatabases) {
+    LOG_TOPIC(INFO, Logger::RESTORE) << "About to restore databases '" << basics::StringUtils::join(databases, "', '") << "' from dump directory '" << _options.inputPath << "'...";
+  }
+  
+  for (auto const& db : databases) {
+    result.reset();
+
+    if (_options.allDatabases) {
+      // inject current database
+      client->setDatabaseName(db);
+      LOG_TOPIC(INFO, Logger::RESTORE) << "Restoring database '" << db << "'";
+      _directory = std::make_unique<ManagedDirectory>(basics::FileUtils::buildFilename(_options.inputPath, db), false, false);
+
+      result = _clientManager.getConnectedClient(httpClient, _options.force,
+                                                 false, !_options.createDatabase);
+      if (result.is(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
+        LOG_TOPIC(FATAL, Logger::RESTORE)
+            << "cannot create server connection, giving up!";
+        FATAL_ERROR_EXIT();
+      }
+  
+      if (result.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+        if (_options.createDatabase) {
+          // database not found, but database creation requested
+          LOG_TOPIC(INFO, Logger::RESTORE) << "Creating database '" << db << "'";
+
+          client->setDatabaseName("_system");
+
+          result = ::tryCreateDatabase(db);
+          if (result.fail()) {
+            LOG_TOPIC(ERR, Logger::RESTORE) << "Could not create database '" << db << "': " << httpClient->getErrorMessage();
+            break;
+          }
+
+          // restore old database name
+          client->setDatabaseName(db);
+
+          // re-check connection and version
+          result = _clientManager.getConnectedClient(httpClient, _options.force, false, true);
+        } else {
+          LOG_TOPIC(WARN, Logger::RESTORE) << "Database '" << db << "' does not exist on target endpoint. In order to create this database along with the restore, please use the --create-database option";
+        }
+      }
+
+      if (result.fail()) {
+        result.reset(result.errorNumber(), std::string("cannot create server connection: ") + result.errorMessage());
+
+        if (!_options.force) {
+          break;
+        }
+
+        LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << result.errorMessage(); 
+        // continue with next db
+        continue;
+      }
+    }
+  
+    // read encryption info
+    ::checkEncryption(*_directory);
+
+    // read dump info
+    result = ::checkDumpDatabase(*_directory, _options.forceSameDatabase);
+    if (result.fail()) {
+      LOG_TOPIC(FATAL, arangodb::Logger::RESTORE) << result.errorMessage();
+      FATAL_ERROR_EXIT();
+    }
+
+    // run the actual restore
+    try {
+      result = ::processInputDirectory(*httpClient, _clientTaskQueue, *this,
+                                      _options, *_directory, _stats);
+    } catch (basics::Exception const& ex) {
+      LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
+      result = {ex.code(), ex.what()};
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
+      result = {TRI_ERROR_INTERNAL, ex.what()};
+    } catch (...) {
+      LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught unknown exception";
+      result = {TRI_ERROR_INTERNAL};
+    }
+
+    if (result.fail()) {
+      break;
+    }
   }
 
   if (result.fail()) {

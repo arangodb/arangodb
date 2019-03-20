@@ -30,9 +30,9 @@ ExecutionState BlockFetcher<passBlocksThrough>::prefetchBlock(size_t atMost) {
   ExecutionState state;
   std::unique_ptr<AqlItemBlock> block;
   std::tie(state, block) = upstreamBlock().getSome(atMost);
-    TRI_IF_FAILURE("ExecutionBlock::getBlock") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
+  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
   if (state == ExecutionState::WAITING) {
     TRI_ASSERT(block == nullptr);
@@ -56,7 +56,7 @@ ExecutionState BlockFetcher<passBlocksThrough>::prefetchBlock(size_t atMost) {
     _blockShellPassThroughQueue.push({state, blockShell});
   }
 
-  _blockShellQueue.push({state, blockShell});
+  _blockShellQueue.push({state, std::move(blockShell)});
   return ExecutionState::HASMORE;
 }
 
@@ -73,6 +73,8 @@ BlockFetcher<passBlocksThrough>::fetchBlock(size_t atMost) {
     }
     TRI_ASSERT(state == ExecutionState::HASMORE);
   }
+  
+  TRI_ASSERT(!_blockShellQueue.empty());
 
   ExecutionState state;
   std::shared_ptr<AqlItemBlockShell> blockShell;
@@ -81,7 +83,7 @@ BlockFetcher<passBlocksThrough>::fetchBlock(size_t atMost) {
 
   //auto inputBlockShell =
   //    std::make_shared<InputAqlItemBlockShell>(blockShell, _inputRegisters);
-  return {state, blockShell};
+  return {state, std::move(blockShell)};
 }
 
 template <bool allowBlockPassthrough>
@@ -98,6 +100,8 @@ BlockFetcher<allowBlockPassthrough>::fetchBlockForPassthrough(size_t atMost) {
     }
     TRI_ASSERT(state == ExecutionState::HASMORE);
   }
+
+  TRI_ASSERT(!_blockShellPassThroughQueue.empty());
 
   ExecutionState state;
   std::shared_ptr<AqlItemBlockShell> blockShell;

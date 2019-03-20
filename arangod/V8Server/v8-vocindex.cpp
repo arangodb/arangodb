@@ -263,7 +263,11 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   v8::Handle<v8::Value> result;
   auto res = methods::Collections::create(
-      &vocbase, name, collectionType, propSlice, createWaitsForSyncReplication,
+    vocbase, // collection vocbase
+    name, // collection name
+    collectionType, // collection type
+    propSlice, // collection properties
+    createWaitsForSyncReplication, // replication wait flag
       enforceReplicationFactor,
       [&isolate, &result](std::shared_ptr<LogicalCollection> const& coll) -> void {
         TRI_ASSERT(coll);

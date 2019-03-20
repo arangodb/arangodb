@@ -31,7 +31,6 @@
 
 namespace arangodb {
 class CollectionNameResolver;
-class ManagedDocumentResult;
 namespace transaction {
 class Methods;
 }

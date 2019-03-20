@@ -66,7 +66,7 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     irs::string_ref const& type() const noexcept { return _type; }
 
    private:
-    friend class IResearchAnalyzerFeature; // required for calling AnalyzerPool::init()
+    friend class IResearchAnalyzerFeature; // required for calling AnalyzerPool::init(...) and AnalyzerPool::setKey(...)
 
     // 'make(...)' method wrapper for irs::analysis::analyzer types
     struct Builder {
@@ -172,7 +172,13 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
 
   static Analyzers const& getStaticAnalyzers();
   bool loadConfiguration();
-  bool storeConfiguration(AnalyzerPool& pool);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief store the definition for the speicifed pool in the corresponding
+  ///        vocbase
+  /// @note on success will modify the '_key' of the pool
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result storeAnalyzer(AnalyzerPool& pool);
 };
 
 }  // namespace iresearch

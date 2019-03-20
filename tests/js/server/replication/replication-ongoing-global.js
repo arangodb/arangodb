@@ -83,7 +83,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
   applierConfiguration.password = '';
   applierConfiguration.includeSystem = false;
   applierConfiguration.force32mode = false;
-  applierConfiguration.requireFromPresent = false;
+  applierConfiguration.requireFromPresent = true;
 
   var syncResult = replication.syncGlobal({
     endpoint: masterEndpoint,
@@ -452,7 +452,7 @@ function BaseTestConfig () {
         function (state) {
           db._collection(cn).truncate();
           assertEqual(db._collection(cn).count(), 0);
-          assertEqual(db._collection(cn).all().toArray().length, 0);
+          assertEqual(db._collection(cn).toArray().length, 0);
         },
 
         function (state) {
@@ -461,7 +461,46 @@ function BaseTestConfig () {
 
         function (state) {
           assertEqual(db._collection(cn).count(), 0);
-          assertEqual(db._collection(cn).all().toArray().length, 0);
+          assertEqual(db._collection(cn).toArray().length, 0);
+        }
+      );
+    },
+    
+    testTruncateCollectionBiggerAndThenSome: function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          let c = db._create(cn);
+          let docs = [];
+          for (let i = 0; i < (32 * 1024 + 1); i++) {
+            docs.push({
+              value: i
+            });
+            if (docs.length >= 1000) {
+              c.insert(docs);
+              docs = [];
+            }
+          }
+          c.insert(docs);
+        },
+
+        function (state) {
+          db._collection(cn).truncate(); // should hit range-delete in rocksdb
+          assertEqual(db._collection(cn).count(), 0);
+          assertEqual(db._collection(cn).toArray().length, 0);
+          db._collection(cn).insert({_key: "a"});
+          db._collection(cn).insert({_key: "b"});
+        },
+
+        function (state) {
+          return true;
+        },
+
+        function (state) {
+          const c = db._collection(cn);
+          assertEqual(c.count(), 2);
+          assertEqual(c.toArray().length, 2);
         }
       );
     },
@@ -492,7 +531,7 @@ function BaseTestConfig () {
         function (state) {
           db._collection(cn).truncate(); // should hit range-delete in rocksdb
           assertEqual(db._collection(cn).count(), 0);
-          assertEqual(db._collection(cn).all().toArray().length, 0);
+          assertEqual(db._collection(cn).toArray().length, 0);
         },
 
         function (state) {
@@ -502,7 +541,7 @@ function BaseTestConfig () {
         function (state) {
           const c = db._collection(cn);
           assertEqual(c.count(), 0);
-          assertEqual(c.all().toArray().length, 0);
+          assertEqual(c.toArray().length, 0);
         }
       );
     },

@@ -55,6 +55,7 @@ class TransactionState;
 class MMFilesCollection final : public PhysicalCollection {
   friend class MMFilesCompactorThread;
   friend class MMFilesEngine;
+  friend class MMFilesIndexLookupContext;
 
  public:
   static inline MMFilesCollection* toMMFilesCollection(PhysicalCollection* physical) {

@@ -39,7 +39,9 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                                       // cppcheck-suppress passedByValue
                                        std::unordered_set<RegisterId> registersToClear,
+                                       // cppcheck-suppress passedByValue
                                        std::unordered_set<RegisterId> registersToKeep,
                                        size_t offset, size_t limit, bool fullCount)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
