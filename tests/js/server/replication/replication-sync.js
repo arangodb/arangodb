@@ -45,6 +45,7 @@ if (db._engine().name === 'mmfiles') {
 }
 
 const cn = 'UnitTestsReplication';
+const sysCn = '_UnitTestsReplication';
 
 const connectToMaster = function () {
   arango.reconnect(masterEndpoint, db._name(), 'root', '');
@@ -64,9 +65,9 @@ const collectionCount = function (name) {
   return db._collection(name).count();
 };
 
-const compare = function (masterFunc, slaveInitFunc, slaveCompareFunc, incremental) {
+const compare = function (masterFunc, slaveInitFunc, slaveCompareFunc, incremental, system) {
   var state = {};
-
+  
   db._flushCache();
   masterFunc(state);
 
@@ -76,9 +77,10 @@ const compare = function (masterFunc, slaveInitFunc, slaveCompareFunc, increment
   slaveInitFunc(state);
   internal.wait(0.1, false);
 
-  replication.syncCollection(cn, {
+  replication.syncCollection(system ? sysCn : cn, {
     endpoint: masterEndpoint,
     verbose: true,
+    includeSystem: true,
     incremental
   });
 
@@ -212,6 +214,160 @@ function BaseTestConfig () {
           assertEqual(10000, c.toArray().length);
         },
         true
+      );
+    },
+
+    testExistingIndexId: function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          const c = db._create(cn);
+          state.indexDef = {type: 'skiplist', id: '1234567', fields: ['value']};
+          c.ensureIndex(state.indexDef);
+          state.masterProps = c.index(state.indexDef.id);
+        },
+        function (state) {
+          //  already create the collection and index on the slave
+          const c = db._create(cn);
+          c.ensureIndex(state.indexDef);
+        },
+        function (state) {
+          const c = db._collection(cn);
+          const i = c.index(state.indexDef.id);
+          assertEqual(state.masterProps.id, i.id);
+          assertEqual(state.masterProps.name, i.name);
+        },
+        true
+      );
+    },
+
+    testExistingIndexIdConflict: function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          const c = db._create(cn);
+          state.indexDef = {type: 'hash', id: '1234567', fields: ['value']};
+          c.ensureIndex(state.indexDef);
+          state.masterProps = c.index(state.indexDef.id);
+        },
+        function (state) {
+          //  already create the collection and index on the slave
+          const c = db._create(cn);
+          const def = {type: 'skiplist', id: '1234567', fields: ['value2']};
+          c.ensureIndex(def);
+        },
+        function (state) {
+          const c = db._collection(cn);
+          const i = c.index(state.indexDef.id);
+          assertEqual(state.indexDef.type, i.type);
+          assertEqual(state.masterProps.id, i.id);
+          assertEqual(state.masterProps.name, i.name);
+        },
+        true
+      );
+    },
+
+    testExistingSystemIndexIdConflict: function () {
+      connectToMaster();
+      
+      compare(
+        function (state) {
+          const c = db._create(sysCn, {isSystem: true});
+          state.indexDef = {type: 'hash', id: '1234567', fields: ['value']};
+          c.ensureIndex(state.indexDef);
+          state.masterProps = c.index(state.indexDef.id);
+        },
+        function (state) {
+          //  already create the index on the slave
+          const c = db._create(sysCn, {isSystem: true});
+          const def = {type: 'skiplist', id: '1234567', fields: ['value2']};
+          c.ensureIndex(def);
+        },
+        function (state) {
+          const c = db._collection(sysCn);
+          const i = c.index(state.indexDef.id);
+          assertEqual(state.indexDef.type, i.type);
+          assertEqual(state.masterProps.id, i.id);
+          assertEqual(state.masterProps.name, i.name);
+        },
+        true, true
+      );
+    },
+
+    testExistingIndexName: function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          const c = db._create(cn);
+          state.indexDef = {type: 'skiplist', name: 'foo', fields: ['value']};
+          c.ensureIndex(state.indexDef);
+          state.masterProps = c.index(state.indexDef.name);
+        },
+        function (state) {
+          //  already create the collection and index on the slave
+          const c = db._create(cn);
+          c.ensureIndex(state.indexDef);
+        },
+        function (state) {
+          const c = db._collection(cn);
+          const i = c.index(state.indexDef.name);
+          assertEqual(state.masterProps.id, i.id);
+          assertEqual(state.masterProps.name, i.name);
+        },
+        true
+      );
+    },
+
+    testExistingIndexNameConflict: function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          const c = db._create(cn);
+          state.indexDef = {type: 'hash', name: 'foo', fields: ['value']};
+          c.ensureIndex(state.indexDef);
+          state.masterProps = c.index(state.indexDef.name);
+        },
+        function (state) {
+          //  already create the collection and index on the slave
+          const c = db._create(cn);
+          const def = {type: 'skiplist', name: 'foo', fields: ['value2']};
+          c.ensureIndex(def);
+        },
+        function (state) {
+          const c = db._collection(cn);
+          const i = c.index(state.indexDef.name);
+          assertEqual(state.indexDef.type, i.type);
+        },
+        true
+      );
+    },
+
+    testExistingSystemIndexNameConflict: function () {
+      connectToMaster();
+      
+      compare(
+        function (state) {
+          const c = db._create(sysCn, {isSystem: true});
+          state.indexDef = {type: 'hash', name: 'foo', fields: ['value3']};
+          c.ensureIndex(state.indexDef);
+          state.masterProps = c.index(state.indexDef.name);
+        },
+        function (state) {
+          //  already create the index on the slave
+          const c = db._create(sysCn, {isSystem: true});
+          const def  = {type: 'skiplist', name: 'foo', fields: ['value4']};
+          c.ensureIndex(def);
+        },
+        function (state) {
+          const c = db._collection(sysCn);
+          const i = c.index(state.indexDef.name);
+          assertEqual(state.indexDef.type, i.type);
+        },
+        true, true
       );
     },
 
@@ -1592,6 +1748,7 @@ function ReplicationSuite () {
         db._dropView(cn + 'View');
       } catch (ignored) {}
       db._drop(cn);
+      db._drop(sysCn, {isSystem: true});
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1604,9 +1761,11 @@ function ReplicationSuite () {
         db._dropView(cn + 'View');
       } catch (ignored) {}
       db._drop(cn);
+      db._drop(sysCn, {isSystem: true});
 
       connectToSlave();
       db._drop(cn);
+      db._drop(sysCn, {isSystem: true});
     }
   };
   deriveTestSuite(BaseTestConfig(), suite, '_Repl');

@@ -66,13 +66,13 @@ class BlockWithClients : public ExecutionBlock {
   std::pair<ExecutionState, Result> shutdown(int) override;
 
   /// @brief getSome: shouldn't be used, use skipSomeForShard
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) final {
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   /// @brief skipSome: shouldn't be used, use skipSomeForShard
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost) final {
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
