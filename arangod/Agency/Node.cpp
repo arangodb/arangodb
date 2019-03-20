@@ -309,10 +309,13 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
 Node const& Node::operator()(std::vector<std::string> const& pv) const {
   if (!pv.empty()) {
     auto const& key = pv.front();
-    auto const it = _children.find(key);
-    if (it == _children.end() ||
-        (it->second->_ttl != std::chrono::system_clock::time_point() &&
-         it->second->_ttl < std::chrono::system_clock::now())) {
+    auto it = _children.find(key);
+    if (it->second->_ttl != std::chrono::system_clock::time_point() &&
+        it->second->_ttl  < std::chrono::system_clock::now()) {
+      _children.erase(it);
+      it = _children.end();
+    }
+    if (it == _children.end()) {
       throw StoreException(std::string("Node ") + key + " not found!");
     }
     auto const& child = *_children.at(key);
