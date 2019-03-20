@@ -497,7 +497,10 @@
     "dynamic" : false,
     "enterpriseOnly" : false,
     "hidden" : false,
-    "introducedIn" : null,
+    "introducedIn" : [
+      "v3.4.5",
+      "v3.5.0"
+    ],
     "obsolete" : false,
     "requiresValue" : true,
     "section" : "log",
@@ -511,7 +514,10 @@
     "dynamic" : false,
     "enterpriseOnly" : false,
     "hidden" : false,
-    "introducedIn" : null,
+    "introducedIn" : [
+      "v3.4.5",
+      "v3.5.0"
+    ],
     "obsolete" : false,
     "requiresValue" : true,
     "section" : "log",
