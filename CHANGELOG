@@ -1,6 +1,15 @@
 devel
 -----
 
+* renamed hidden startup option `--rocksdb.delayed_write_rate` to the more
+  consistent `--rocksdb.delayed-write-rate`. When the old option name is
+  used, the arangod startup will be aborted with a descriptive error message.
+
+* if not explicitly configured, make agency nodes start removing their unused 
+  WAL files a few seconds after the completed server startup already. This is
+  because on agency nodes, unused WAL files do not need to be retained for
+  potential replication clients to read them. 
+
 * added option `--all-databases` to arangodump and arangorestore
 
   When set to true, this makes arangodump dump all available databases
@@ -25,6 +34,8 @@ devel
   is also specified. Please note that in this case a database user must
   be used that has access to the `_system` database, in order to create
   the databases on restore. 
+
+* added index hints feature to AQL
 
 * added "name" property for indices
 

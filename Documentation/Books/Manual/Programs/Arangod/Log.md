@@ -33,6 +33,9 @@ The available log levels are:
 
 Note that levels `debug` and `trace` will be very verbose.
 
+See [Log Levels](../../Monitoring/LogLevels.md) in the Monitoring chapter for a
+detailed description of the different levels.
+
 Some relevant log topics available in ArangoDB 3 are:
 
 - `agency`: information about the agency
