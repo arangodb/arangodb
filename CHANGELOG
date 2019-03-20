@@ -10,6 +10,9 @@ v3.4.5 (XXXX-XX-XX)
   This change also exposes db.<collection>.compact() in the arangosh, in order to manually 
   run a compaction on the data range of a collection should it be needed for maintenance.
 
+* don't attempt to remove non-existing WAL files, because such attempt will
+  trigger unnecessary error log messages in the RocksDB library
+
 * added --log.file-mode to specify a file mode of newly created log files
 
 * added --log.file-group to specify the group of newly created log files
@@ -97,6 +100,10 @@ v3.4.5 (XXXX-XX-XX)
 * fix shrinkCluster for satelliteCollections
 
 * fix crash in agency supervision when leadership is lost
+
+* speed up supervision in agency for large numbers of jobs
+
+* fix log spamming after leader resignation in agency
 
 v3.4.4 (2019-03-12)
 -------------------
