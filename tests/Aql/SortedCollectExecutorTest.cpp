@@ -50,7 +50,7 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
+SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
   ExecutionState state;
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor};
@@ -140,16 +140,18 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
     std::unordered_set<RegisterId> readableInputRegisters;
     readableInputRegisters.insert(0);
 
+    RegisterId collectRegister = 2;
+
     std::unordered_set<RegisterId> writeableOutputRegisters;
     writeableOutputRegisters.insert(1);
+    writeableOutputRegisters.insert(collectRegister);
 
-    RegisterId nrOutputRegister = 2;
+    RegisterId nrOutputRegister = 3;
 
     std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
     std::vector<std::string> aggregateTypes;
 
     // if count = true, then we need to set a valid countRegister
-    RegisterId collectRegister = 0;
     RegisterId expressionRegister = ExecutionNode::MaxRegisterId; 
     Variable const* expressionVariable = nullptr;
     std::vector<std::pair<std::string, RegisterId>> variables;
@@ -174,7 +176,7 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
       SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       SortedCollectExecutor testee(fetcher, infos);
 
-      THEN("the executor should return DONE") {
+      THEN("the executor should return two rows, then DONE") {
         OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
 
@@ -192,22 +194,24 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 
-        std::vector<int> myNumbers;
         auto block = result.stealBlock();
 
-        // check for types
+        // check for groups in this executor they are guaranteed to be ordered
+
+
+        // First group
         AqlValue x = block->getValue(0, 1);
         REQUIRE(x.isNumber());
-        myNumbers.emplace_back(x.slice().getInt());
+        REQUIRE(x.slice().getInt() == 1);
+        // check for collect
 
-        AqlValue z = block->getValue(1, 1);
-        REQUIRE(z.isNumber());
-        myNumbers.emplace_back(z.slice().getInt());
+        LOG_DEVEL << block->getValue(0, collectRegister).slice().toJson();
 
-        // now sort vector and check for appearances
-        std::sort(myNumbers.begin(), myNumbers.end());
-        REQUIRE(myNumbers.at(0) == 1);
-        REQUIRE(myNumbers.at(1) == 2);
+        x = block->getValue(1, 1);
+        REQUIRE(x.isNumber());
+        REQUIRE(x.slice().getInt() == 2);
+
+        LOG_DEVEL << block->getValue(1, collectRegister).slice().toJson();
       }
     }
 
@@ -239,32 +243,26 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 
-        std::vector<int> myNumbers;
         auto block = result.stealBlock();
 
-        // check for types
+        // check for collects
         AqlValue x = block->getValue(0, 1);
         REQUIRE(x.isNumber());
-        myNumbers.emplace_back(x.slice().getInt());
+        REQUIRE(x.slice().getInt() == 1);
 
-        AqlValue y = block->getValue(1, 1);
-        REQUIRE(y.isNumber());
-        myNumbers.emplace_back(y.slice().getInt());
+        x = block->getValue(1, 1);
+        REQUIRE(x.isNumber());
+        REQUIRE(x.slice().getInt() == 2);
 
-        AqlValue z = block->getValue(2, 1);
-        REQUIRE(z.isNumber());
-        myNumbers.emplace_back(z.slice().getInt());
-
-        // now sort vector and check for appearances
-        std::sort(myNumbers.begin(), myNumbers.end());
-        REQUIRE(myNumbers.at(0) == 1);
-        REQUIRE(myNumbers.at(1) == 2);
-        REQUIRE(myNumbers.at(2) == 3);
+        x = block->getValue(2, 1);
+        REQUIRE(x.isNumber());
+        REQUIRE(x.slice().getInt() == 3);
       }
     }
 
     WHEN("the producer does not wait") {
-      auto input = VPackParser::fromJson("[ [1], [2], [3], [1], [2] ]");
+      // Input order needs to be guaranteed
+      auto input = VPackParser::fromJson("[ [1], [1], [2], [2], [3] ]");
       SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       SortedCollectExecutor testee(fetcher, infos);
 
@@ -287,36 +285,30 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
         REQUIRE(result.produced());
         result.advanceRow();
 
+        // After done return done
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 
-        std::vector<int> myNumbers;
         auto block = result.stealBlock();
 
         // check for types
         AqlValue x = block->getValue(0, 1);
         REQUIRE(x.isNumber());
-        myNumbers.emplace_back(x.slice().getInt());
+        REQUIRE(x.slice().getInt() == 1);
 
-        AqlValue y = block->getValue(1, 1);
-        REQUIRE(y.isNumber());
-        myNumbers.emplace_back(y.slice().getInt());
+        x = block->getValue(1, 1);
+        REQUIRE(x.isNumber());
+        REQUIRE(x.slice().getInt() == 2);
 
-        AqlValue z = block->getValue(2, 1);
-        REQUIRE(z.isNumber());
-        myNumbers.emplace_back(z.slice().getInt());
-
-        // now sort vector and check for appearances
-        std::sort(myNumbers.begin(), myNumbers.end());
-        REQUIRE(myNumbers.at(0) == 1);
-        REQUIRE(myNumbers.at(1) == 2);
-        REQUIRE(myNumbers.at(2) == 3);
+        x = block->getValue(2, 1);
+        REQUIRE(x.isNumber());
+        REQUIRE(x.slice().getInt() == 3);
       }
     }
 
     WHEN("the producer does not wait") {
-      auto input = VPackParser::fromJson("[ [1], [2], [1], [2] ]");
+      auto input = VPackParser::fromJson("[ [1], [1], [2], [2] ]");
       SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       SortedCollectExecutor testee(fetcher, infos);
 
@@ -334,26 +326,21 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
         REQUIRE(result.produced());
         result.advanceRow();
 
+        // After DONE return DONE
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 
-        std::vector<int> myNumbers;
         auto block = result.stealBlock();
 
         // check for types
         AqlValue x = block->getValue(0, 1);
         REQUIRE(x.isNumber());
-        myNumbers.emplace_back(x.slice().getInt());
+        REQUIRE(x.slice().getInt() == 1);
 
-        AqlValue y = block->getValue(1, 1);
-        REQUIRE(y.isNumber());
-        myNumbers.emplace_back(y.slice().getInt());
-
-        // now sort vector and check for appearances
-        std::sort(myNumbers.begin(), myNumbers.end());
-        REQUIRE(myNumbers.at(0) == 1);
-        REQUIRE(myNumbers.at(1) == 2);
+        x = block->getValue(1, 1);
+        REQUIRE(x.isNumber());
+        REQUIRE(x.slice().getInt() == 2);
       }
     }
 
@@ -388,22 +375,16 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 
-        std::vector<int> myNumbers;
         auto block = result.stealBlock();
 
         // check for types
         AqlValue x = block->getValue(0, 1);
         REQUIRE(x.isNumber());
-        myNumbers.emplace_back(x.slice().getInt());
+        REQUIRE(x.slice().getInt() == 1);
 
-        AqlValue z = block->getValue(1, 1);
-        REQUIRE(z.isNumber());
-        myNumbers.emplace_back(z.slice().getInt());
-
-        // now sort vector and check for appearances
-        std::sort(myNumbers.begin(), myNumbers.end());
-        REQUIRE(myNumbers.at(0) == 1);
-        REQUIRE(myNumbers.at(1) == 2);
+        x = block->getValue(1, 1);
+        REQUIRE(x.isNumber());
+        REQUIRE(x.slice().getInt() == 2);
       }
     }
   }
@@ -476,37 +457,27 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 
-        std::vector<int> myNumbers;
-        std::vector<double> myCountNumbers;
         auto block = result.stealBlock();
 
         // check for types
         AqlValue x = block->getValue(0, 1);
         REQUIRE(x.isNumber());
-        myNumbers.emplace_back(x.slice().getInt());
+        CHECK(x.slice().getInt() == 1);
 
         // Check the count register
-        AqlValue xx = block->getValue(0, 2);
-        REQUIRE(xx.isNumber());
-        myCountNumbers.emplace_back(xx.slice().getDouble());
+        AqlValue counter = block->getValue(0, 2);
+        REQUIRE(counter.isNumber());
+        CHECK(counter.slice().getInt() == 1);
 
-        AqlValue z = block->getValue(1, 1);
-        REQUIRE(z.isNumber());
-        myNumbers.emplace_back(z.slice().getInt());
+        // check for types
+        x = block->getValue(1, 1);
+        REQUIRE(x.isNumber());
+        CHECK(x.slice().getInt() == 2);
 
         // Check the count register
-        AqlValue zz = block->getValue(1, 2);
-        REQUIRE(zz.isNumber());
-        myCountNumbers.emplace_back(zz.slice().getDouble());
-
-        // now sort vector and check for appearances
-        std::sort(myNumbers.begin(), myNumbers.end());
-
-        std::sort(myCountNumbers.begin(), myCountNumbers.end());
-        REQUIRE(myNumbers.at(0) == 1);
-        REQUIRE(myNumbers.at(1) == 2);
-        REQUIRE(myCountNumbers.at(0) == 1);
-        REQUIRE(myCountNumbers.at(1) == 2);
+        counter = block->getValue(1, 2);
+        REQUIRE(counter.isNumber());
+        CHECK(counter.slice().getInt() == 1);
       }
     }
   }
@@ -585,48 +556,36 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 
-        std::vector<int> myNumbers;
-        std::vector<int> myCountNumbers;
         auto block = result.stealBlock();
 
         // check for types
         AqlValue x = block->getValue(0, 1);
         REQUIRE(x.isNumber());
-        myNumbers.emplace_back(x.slice().getInt());
+        CHECK(x.slice().getInt() == 1);
 
         // Check the count register
         AqlValue xx = block->getValue(0, 2);
         REQUIRE(xx.isNumber());
-        myCountNumbers.emplace_back(xx.slice().getInt());
+        CHECK(xx.slice().getInt() == 1);
 
-        AqlValue z = block->getValue(1, 1);
-        REQUIRE(z.isNumber());
-        myNumbers.emplace_back(z.slice().getInt());
-
-        // Check the count register
-        AqlValue zz = block->getValue(1, 2);
-        REQUIRE(zz.isNumber());
-        myCountNumbers.emplace_back(zz.slice().getInt());
-
-        AqlValue y = block->getValue(2, 1);
-        REQUIRE(y.isNumber());
-        myNumbers.emplace_back(y.slice().getInt());
+        // check for types
+        x = block->getValue(1, 1);
+        REQUIRE(x.isNumber());
+        CHECK(x.slice().getInt() == 2);
 
         // Check the count register
-        AqlValue yy = block->getValue(2, 2);
-        REQUIRE(yy.isNumber());
-        myCountNumbers.emplace_back(yy.slice().getInt());
+        xx = block->getValue(1, 2);
+        REQUIRE(xx.isNumber());
+        CHECK(xx.slice().getInt() == 1);
 
-        // now sort vector and check for appearances
-        std::sort(myNumbers.begin(), myNumbers.end());
+        // check for types
+        x = block->getValue(2, 1);
+        REQUIRE(x.isNumber());
+        CHECK(x.slice().getInt() == 3);
 
-        std::sort(myCountNumbers.begin(), myCountNumbers.end());
-        REQUIRE(myNumbers.at(0) == 1);
-        REQUIRE(myNumbers.at(1) == 2);
-        REQUIRE(myNumbers.at(2) == 3);
-        REQUIRE(myCountNumbers.at(0) == 1);
-        REQUIRE(myCountNumbers.at(1) == 1);
-        REQUIRE(myCountNumbers.at(2) == 1);
+        xx = block->getValue(2, 2);
+        REQUIRE(xx.isNumber());
+        CHECK(xx.slice().getInt() == 1);
       }
     }
   }
@@ -712,41 +671,32 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
         // check for types
         AqlValue x = block->getValue(0, 1);
         REQUIRE(x.isString());
-        myStrings.emplace_back(x.slice().copyString());
+        CHECK(x.slice().copyString() == "a");
 
         // Check the count register
-        AqlValue xx = block->getValue(0, 2);
-        REQUIRE(xx.isNumber());
-        myCountNumbers.emplace_back(xx.slice().getInt());
+        AqlValue c = block->getValue(0, 2);
+        REQUIRE(c.isNumber());
+        CHECK(c.slice().getInt() == 1);
 
-        AqlValue z = block->getValue(1, 1);
-        REQUIRE(z.isString());
-        myStrings.emplace_back(z.slice().copyString());
-
-        // Check the count register
-        AqlValue zz = block->getValue(1, 2);
-        REQUIRE(zz.isNumber());
-        myCountNumbers.emplace_back(zz.slice().getInt());
-
-        AqlValue y = block->getValue(2, 1);
-        REQUIRE(y.isString());
-        myStrings.emplace_back(y.slice().copyString());
+        // check for types
+        x = block->getValue(1, 1);
+        REQUIRE(x.isString());
+        CHECK(x.slice().copyString() == "aa");
 
         // Check the count register
-        AqlValue yy = block->getValue(2, 2);
-        REQUIRE(yy.isNumber());
-        myCountNumbers.emplace_back(yy.slice().getInt());
+        c = block->getValue(1, 2);
+        REQUIRE(c.isNumber());
+        CHECK(c.slice().getInt() == 1);
 
-        // now sort vector and check for appearances
-        std::sort(myStrings.begin(), myStrings.end());
+        // check for types
+        x = block->getValue(2, 1);
+        REQUIRE(x.isString());
+        CHECK(x.slice().copyString() == "aaa");
 
-        std::sort(myCountNumbers.begin(), myCountNumbers.end());
-        REQUIRE(myStrings.at(0) == "a");
-        REQUIRE(myStrings.at(1) == "aa");
-        REQUIRE(myStrings.at(2) == "aaa");
-        REQUIRE(myCountNumbers.at(0) == 1);
-        REQUIRE(myCountNumbers.at(1) == 1);
-        REQUIRE(myCountNumbers.at(2) == 1);
+        // Check the count register
+        c = block->getValue(2, 2);
+        REQUIRE(c.isNumber());
+        CHECK(c.slice().getInt() == 1);
       }
     }
   }

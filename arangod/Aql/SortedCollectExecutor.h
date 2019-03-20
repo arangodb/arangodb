@@ -68,13 +68,13 @@ class SortedCollectExecutorInfos : public ExecutorInfos {
   ~SortedCollectExecutorInfos() = default;
 
  public:
-  std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const {
+  std::vector<std::pair<RegisterId, RegisterId>> const& getGroupRegisters() const {
     return _groupRegisters;
   }
-  std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const {
+  std::vector<std::pair<RegisterId, RegisterId>> const& getAggregatedRegisters() const {
     return _aggregateRegisters;
   }
-  std::vector<std::string> getAggregateTypes() const { return _aggregateTypes; }
+  std::vector<std::string> const& getAggregateTypes() const { return _aggregateTypes; }
   bool getCount() const noexcept { return _count; };
   transaction::Methods* getTransaction() const { return _trxPtr; }
   RegisterId getCollectRegister() const noexcept { return _collectRegister; };
@@ -195,8 +195,7 @@ class SortedCollectExecutor {
   /// @brief details about the current group
   CollectGroup _currentGroup;
 
-  bool _fetchedFirstRow; // indicator that we fetched the first row (we do not write in the first passing)
-  bool _returnedDone; // indicator that we fetched all rows, we need one more loop passthrough
+  bool _fetcherDone; // Flag if fetcher is done
 };
 
 }  // namespace aql
