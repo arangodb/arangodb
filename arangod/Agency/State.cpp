@@ -1553,9 +1553,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   auto bindVars = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder b(bindVars.get()); }
 
-  static std::string const logstr(
-    "FOR l IN log FILTER l._key <= '%s' SORT l._key RETURN {'_key': l._key, "
-    "'timestamp': l.timestamp, 'clientId': l.clientId, 'request': l.request}");
+  static std::string const logstr("FOR l IN log FILTER l._key <= '%s' SORT l._key RETURN l");
   static uint64_t const logsz(logstr.size()+19);
   char buf[logsz];
   std::snprintf (buf, logsz, logstr.c_str(), stringify(lastIndex).c_str());
