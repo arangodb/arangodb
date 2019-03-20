@@ -131,11 +131,13 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
   ModificationExecutorInfos infos(
       inDocRegister, boost::none, boost::none, outputNew, outputOld,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
-      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
-      calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options), _collection,
-      _options.readCompleteInput, producesResults(), _options.consultAqlWriteFilter,
-      _options.ignoreErrors, countStats() /*, false return interhited FIXME*/,
-      false /*is replace (needed by upsert)*/, _options.ignoreDocumentNotFound);
+      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
+      getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
+      std::move(options), _collection, ProducesResults(producesResults()),
+      ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
+      IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
+      IsReplace(false) /*(needed by upsert)*/,
+      IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
 
   if (_options.readCompleteInput) {
     return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Remove, AllRowsFetcher>>>(
@@ -207,11 +209,13 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
   ModificationExecutorInfos infos(
       inputRegister, boost::none, boost::none, outputNew, outputOld,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
-      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
-      calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options), _collection,
-      _options.readCompleteInput, producesResults(), _options.consultAqlWriteFilter,
-      _options.ignoreErrors, countStats() /*, false return interhited FIXME*/,
-      false /*is replace (needed by upsert)*/, _options.ignoreDocumentNotFound);
+      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
+      getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
+      std::move(options), _collection, ProducesResults(producesResults()),
+      ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
+      IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
+      IsReplace(false) /*(needed by upsert)*/,
+      IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
 
   if (_options.readCompleteInput) {
     return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Insert, AllRowsFetcher>>>(
@@ -306,12 +310,13 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
   ModificationExecutorInfos infos(
       inDocRegister, inKeyRegister, boost::none, outputNew, outputOld,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
-      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
-      calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options), _collection,
-      _options.readCompleteInput, producesResults(), _options.consultAqlWriteFilter,
-      _options.ignoreErrors, countStats() /*, false return interhited FIXME*/,
-      false /*is replace (needed by upsert)*/, _options.ignoreDocumentNotFound);
-
+      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
+      getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
+      std::move(options), _collection, ProducesResults(producesResults()),
+      ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
+      IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
+      IsReplace(false) /*(needed by upsert)*/,
+      IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
   if (_options.readCompleteInput) {
     return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Update, AllRowsFetcher>>>(
         &engine, this, std::move(infos));
@@ -387,12 +392,13 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
   ModificationExecutorInfos infos(
       inDocRegister, inKeyRegister, boost::none, outputNew, outputOld,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
-      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
-      calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options), _collection,
-      _options.readCompleteInput, producesResults(), _options.consultAqlWriteFilter,
-      _options.ignoreErrors, countStats() /*, false return interhited FIXME*/,
-      false /*is replace (needed by upsert)*/, _options.ignoreDocumentNotFound);
-
+      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
+      getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
+      std::move(options), _collection, ProducesResults(producesResults()),
+      ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
+      IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
+      IsReplace(false) /*(needed by upsert)*/,
+      IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
   if (_options.readCompleteInput) {
     return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Replace, AllRowsFetcher>>>(
         &engine, this, std::move(infos));
@@ -484,12 +490,13 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
   ModificationExecutorInfos infos(
       inDoc, insert, update, outputNew, outputOld,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
-      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
-      calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options), _collection,
-      _options.readCompleteInput, producesResults(), _options.consultAqlWriteFilter,
-      _options.ignoreErrors, countStats() /*, false return interhited FIXME*/,
-      _isReplace, _options.ignoreDocumentNotFound);
-
+      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
+      getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
+      std::move(options), _collection, ProducesResults(producesResults()),
+      ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
+      IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
+      IsReplace(_isReplace) /*(needed by upsert)*/,
+      IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
   if (_options.readCompleteInput) {
     return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Upsert, AllRowsFetcher>>>(
         &engine, this, std::move(infos));

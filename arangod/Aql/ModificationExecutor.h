@@ -95,6 +95,33 @@ inline std::shared_ptr<std::unordered_set<RegisterId>> makeSet(std::initializer_
   return rv;
 }
 
+struct BoolWrapper {
+  explicit BoolWrapper(bool b) { _value = b; }
+  operator bool(){ return _value; }
+  bool _value;
+};
+
+struct ProducesResults : BoolWrapper {
+  explicit ProducesResults(bool b) : BoolWrapper(b) {};
+};
+struct ConsultAqlWriteFilter : BoolWrapper {
+  explicit ConsultAqlWriteFilter(bool b) : BoolWrapper(b) {};
+};
+struct IgnoreErrors : BoolWrapper {
+  explicit IgnoreErrors(bool b) : BoolWrapper(b) {};
+};
+struct DoCount : BoolWrapper {
+  explicit DoCount(bool b) : BoolWrapper(b) {};
+};
+struct IsReplace : BoolWrapper {
+  explicit IsReplace(bool b) : BoolWrapper(b) {};
+};
+
+struct IgnoreDocumentNotFound : BoolWrapper {
+  explicit IgnoreDocumentNotFound(bool b) : BoolWrapper(b) {};
+};
+
+
 class ModificationExecutorInfos : public ExecutorInfos {
  public:
   ModificationExecutorInfos(boost::optional<RegisterId> input1RegisterId,
@@ -107,10 +134,10 @@ class ModificationExecutorInfos : public ExecutorInfos {
                             std::unordered_set<RegisterId> registersToKeep,
                             transaction::Methods* trx, OperationOptions options,
                             aql::Collection const* aqlCollection,
-                            bool readCompleteInput, bool producesResults,
-                            bool consultAqlWriteFilter, bool ignoreErrors,
-                            bool doCount, /*bool returnInheritedResults,*/
-                            bool isReplace, bool ignoreDocumentNotFound)
+                            ProducesResults producesResults,
+                            ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
+                            DoCount doCount, /*bool returnInheritedResults,*/
+                            IsReplace isReplace, IgnoreDocumentNotFound ignoreDocumentNotFound)
       : ExecutorInfos(makeSet({wrap(input1RegisterId), wrap(input2RegisterId),
                                wrap(input3RegisterId)}) /*input registers*/,
                       makeSet({wrap(outputOldRegisterId), wrap(outputNewRegisterId)}) /*output registers*/,
@@ -119,12 +146,10 @@ class ModificationExecutorInfos : public ExecutorInfos {
         _trx(trx),
         _options(options),
         _aqlCollection(aqlCollection),
-        _readCompleteInput(readCompleteInput),
-        _producesResults(producesResults || !_options.silent),
+        _producesResults(ProducesResults(producesResults._value || !_options.silent)),
         _consultAqlWriteFilter(consultAqlWriteFilter),
         _ignoreErrors(ignoreErrors),
         _doCount(doCount),
-        //_returnInheritedResults(returnInheritedResults),
         _isReplace(isReplace),
         _ignoreDocumentNotFound(ignoreDocumentNotFound),
         _input1RegisterId(input1RegisterId),
@@ -142,14 +167,13 @@ class ModificationExecutorInfos : public ExecutorInfos {
   transaction::Methods* _trx;
   OperationOptions _options;
   aql::Collection const* _aqlCollection;
-  bool _readCompleteInput;
-  bool _producesResults;
-  bool _consultAqlWriteFilter;
-  bool _ignoreErrors;
-  bool _doCount;  // count statisitics
+  ProducesResults _producesResults;
+  ConsultAqlWriteFilter _consultAqlWriteFilter;
+  IgnoreErrors _ignoreErrors;
+  DoCount _doCount;  // count statisitics
   // bool _returnInheritedResults;
-  bool _isReplace;               // needed for upsert
-  bool _ignoreDocumentNotFound;  // needed for update replace
+  IsReplace _isReplace;               // needed for upsert
+  IgnoreDocumentNotFound _ignoreDocumentNotFound;  // needed for update replace
 
   // insert (singleinput) - upsert (inDoc) - update replace (inDoc)
   boost::optional<RegisterId> _input1RegisterId;

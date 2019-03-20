@@ -646,8 +646,8 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
 
   // check if we're a DB server in a cluster
   bool const isDBServer = ServerState::instance()->isDBServer();
-  info._producesResults =
-      info._producesResults || (isDBServer && info._ignoreDocumentNotFound);
+  info._producesResults = ProducesResults(
+      info._producesResults || (isDBServer && info._ignoreDocumentNotFound));
 
   reset();
   _updateOrReplaceBuilder.openArray();
