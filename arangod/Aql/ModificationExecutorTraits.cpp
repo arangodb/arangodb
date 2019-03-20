@@ -540,7 +540,6 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
 
 
   if (toInsert.isArray() && toInsert.length() > 0) {
-    LOG_DEVEL << "unexpected insert";
     OperationResult opRes =
         info._trx->insert(info._aqlCollection->name(), toInsert, options);
     setOperationResult(std::move(opRes));
@@ -556,7 +555,6 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
   }
 
   if (toUpdate.isArray() && toUpdate.length() > 0) {
-    LOG_DEVEL << "to update: " << toUpdate.toJson();
     if (info._isReplace) {
       opRes = info._trx->replace(info._aqlCollection->name(), toUpdate, options);
     } else {
