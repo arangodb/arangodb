@@ -153,7 +153,6 @@ class SortedCollectExecutor {
       return _lastInputRow.isInitialized();
     }
 
-    void addValues(InputAqlItemRow& input, RegisterId groupRegister);
     void addLine(InputAqlItemRow& input);
     bool isSameGroup(InputAqlItemRow& input);
     void groupValuesToArray(VPackBuilder& builder);

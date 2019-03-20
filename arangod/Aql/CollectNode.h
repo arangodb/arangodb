@@ -46,10 +46,6 @@ class CollectNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class RedundantCalculationsReplacer;
-  friend class SortedCollectBlock;
-  friend class HashedCollectBlock;
-  friend class DistinctCollectBlock;
-  friend class CountCollectBlock;
 
  public:
   CollectNode(ExecutionPlan* plan, size_t id, CollectOptions const& options,

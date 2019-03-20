@@ -23,7 +23,6 @@
 
 #include "CollectNode.h"
 #include "Aql/Ast.h"
-#include "Aql/CollectBlock.h"
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -157,12 +156,14 @@ void CollectNode::calcGroupRegisters(
 
     auto itIn = getRegisterPlan()->varInfo.find(p.second->id);
     TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
-    TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
-    TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
-    groupRegisters.emplace_back(
-        std::make_pair((*itOut).second.registerId, (*itIn).second.registerId));
-    writeableOutputRegisters.insert((*itOut).second.registerId);
-    readableInputRegisters.insert((*itIn).second.registerId);
+
+    RegisterId inReg = itIn->second.registerId;
+    RegisterId outReg = itOut->second.registerId;
+    TRI_ASSERT(inReg < ExecutionNode::MaxRegisterId);
+    TRI_ASSERT(outReg < ExecutionNode::MaxRegisterId);
+    groupRegisters.emplace_back(outReg, inReg);
+    writeableOutputRegisters.insert(outReg);
+    readableInputRegisters.insert(inReg);
   }
 }
 
@@ -175,21 +176,21 @@ void CollectNode::calcAggregateRegisters(
     // getPlanNode()->_registerPlan is set up
     auto itOut = getRegisterPlan()->varInfo.find(p.first->id);
     TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
-    TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
+    RegisterId outReg = itOut->second.registerId;
+    TRI_ASSERT(outReg < ExecutionNode::MaxRegisterId);
 
-    RegisterId reg;
+    RegisterId inReg = ExecutionNode::MaxRegisterId;
     if (Aggregator::requiresInput(p.second.second)) {
       auto itIn = getRegisterPlan()->varInfo.find(p.second.first->id);
       TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
-      TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
-      reg = (*itIn).second.registerId;
-      readableInputRegisters.insert((*itIn).second.registerId);
-    } else {
-      // no input variable required
-      reg = ExecutionNode::MaxRegisterId;
+      inReg = itIn->second.registerId;
+      TRI_ASSERT(inReg < ExecutionNode::MaxRegisterId);
+      readableInputRegisters.insert(inReg);
     }
-    aggregateRegisters.emplace_back(std::make_pair((*itOut).second.registerId, reg));
-    writeableOutputRegisters.insert((*itOut).second.registerId);
+    // else: no input variable required
+
+    aggregateRegisters.emplace_back(std::make_pair(outReg, inReg));
+    writeableOutputRegisters.insert((outReg));
   }
   TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
 }
@@ -332,7 +333,6 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
 
       return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(&engine, this,
                                                                          std::move(infos));
-      // return std::make_unique<SortedCollectBlock>(&engine, this);
     }
     case CollectOptions::CollectMethod::COUNT: {
       ExecutionNode const* previousNode = getFirstDependency();

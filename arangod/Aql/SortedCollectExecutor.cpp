@@ -111,36 +111,6 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow& input) {
   }
 }
 
-void SortedCollectExecutor::CollectGroup::addValues(InputAqlItemRow& input,
-                                                    RegisterId groupRegister) {
-  if (groupRegister == ExecutionNode::MaxRegisterId) {
-    // nothing to do, but still make sure we won't add the same rows again
-    return;
-  }
-
-  // copy group values
-  if (count) {
-    groupLength += 1;
-  } else {
-    try {
-
-      // groupValues.emplace_back(input.getValue(groupRegister)); // TODO check register
-      for (auto& it : infos.getGroupRegisters()) {  // TODO check if this is really correct!!
-        groupValues.emplace_back(input.getValue(it.second));  // ROW 328 of CollectBlock.cpp
-      }
-      /*
-      size_t i = 0;
-      for (auto& it : infos.getGroupRegisters()) {
-        this->groupValues[i] = input.getValue(it.second).clone();
-        ++i;
-      }
-      */
-    } catch (...) {
-      throw;
-    }
-  }
-}
-
 SortedCollectExecutorInfos::SortedCollectExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear,
@@ -181,7 +151,11 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
   size_t j = 0;
   for (auto& it : this->aggregators) {
     RegisterId const reg = infos.getAggregatedRegisters()[j].second;
-    it->reduce(input.getValue(reg));
+    if (reg != ExecutionNode::MaxRegisterId) {
+      it->reduce(input.getValue(reg));
+    } else {
+      it->reduce(EmptyValue);
+    }
     ++j;
   }
 
@@ -244,8 +218,8 @@ void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& build
 }
 
 void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output) {
-  // if we do not have initialized input, just return and do not write to any register
-  TRI_ASSERT(_lastInputRow.isInitialized());
+  // Thanks to the edge case that we have to emmit a row even if we have no input
+  // We cannot assert here that the input row is valid ;(
   size_t i = 0;
   for (auto& it : infos.getGroupRegisters()) {
     AqlValue val = this->groupValues[i];
@@ -341,6 +315,8 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
       } else {
         if (!input.isInitialized()) {
           // we got exactly 0 rows as input.
+          // by definition we need to emit one collect row
+          _currentGroup.writeToOutput(output);
           TRI_ASSERT(state == ExecutionState::DONE);
           return {ExecutionState::DONE, {}};
         }
