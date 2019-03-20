@@ -287,6 +287,28 @@ void AqlItemBlock::shrink(size_t nrItems) {
   }
 
   decreaseMemoryUsage(sizeof(AqlValue) * (_nrItems - nrItems) * _nrRegs);
+  
+  for (size_t i = _nrItems * _nrRegs; i < _data.size(); ++i) {
+    AqlValue& a = _data[i];
+    if (a.requiresDestruction()) {
+      auto it = _valueCount.find(a);
+
+      if (it != _valueCount.end()) {
+        TRI_ASSERT((*it).second > 0);
+
+        if (--((*it).second) == 0) {
+          decreaseMemoryUsage(a.memoryUsage());
+          a.destroy();
+          try {
+            _valueCount.erase(it);
+            continue;  // no need for an extra a.erase() here
+          } catch (...) {
+          }
+        }
+      }
+    }
+    a.erase();
+  }
 
   // adjust the size of the block
   _nrItems = nrItems;
@@ -308,7 +330,7 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
   // way; because currently, we are tracking the memory we need, instead of the
   // memory we have.
   if (targetSize > _data.size()) {
-     _data.resize(targetSize);
+    _data.resize(targetSize);
   }
 
   TRI_ASSERT(targetSize <= _data.size());

@@ -65,18 +65,11 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _rowFetcher(_blockFetcher),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
-      _outputItemRow(nullptr),
+      _outputItemRow(),
       _query(*engine->getQuery()) {}
 
 template <class Executor>
-ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
-  if (_outputItemRow) {
-    std::unique_ptr<AqlItemBlock> block = _outputItemRow->stealBlock();
-    if (block != nullptr) {
-      _engine->itemBlockManager().returnBlock(std::move(block));
-    }
-  }
-}
+ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {}
 
 template <class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
@@ -136,7 +129,7 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
     // Count global but executor-specific statistics, like number of filtered
     // rows.
     _engine->_stats += executorStats;
-    if (_outputItemRow && _outputItemRow->produced()) {
+    if (_outputItemRow->produced()) {
       _outputItemRow->advanceRow();
     }
 
@@ -152,7 +145,7 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
       auto outputBlock = _outputItemRow->stealBlock();
       // This is not strictly necessary here, as we shouldn't be called again
       // after DONE.
-      _outputItemRow.reset(nullptr);
+      _outputItemRow.reset();
 
       return {state, std::move(outputBlock)};
     }
@@ -169,7 +162,7 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
   // we guarantee that we do return a valid pointer in the HASMORE case.
   TRI_ASSERT(outputBlock != nullptr);
   // TODO OutputAqlItemRow could get "reset" and "isValid" methods and be reused
-  _outputItemRow.reset(nullptr);
+  _outputItemRow.reset();
 
   return {state, std::move(outputBlock)};
 }

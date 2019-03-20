@@ -137,8 +137,7 @@ bool UpdateCollection::first() {
 
   try {
     DatabaseGuard guard(database);
-    auto vocbase = &guard.database();
-
+    auto& vocbase = guard.database();
     Result found = methods::Collections::lookup(
         vocbase, shard, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
           TRI_ASSERT(coll);

@@ -22,6 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -355,6 +356,13 @@ void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
   if (!isEnabled()) {
     return;
+  }
+  
+  if (ServerState::instance()->isAgent() &&
+      !application_features::ApplicationServer::server->options()->processingResult().touched("rocksdb.wal-file-timeout-initial")) {
+    // reduce --rocksb.wal-file-timeout-initial to 15 seconds for agency nodes
+    // as we probably won't need the WAL for WAL tailing and replication here
+    _pruneWaitTimeInitial = 15; 
   }
 
   LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)

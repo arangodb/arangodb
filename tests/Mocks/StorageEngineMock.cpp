@@ -1223,8 +1223,13 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
     return nullptr;
   }
 
-  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                         vocbaseCount++, args.get("name").copyString());
+  status = TRI_ERROR_NO_ERROR;
+
+  return std::make_unique<TRI_vocbase_t>(
+    TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+    vocbaseCount++,
+    args.get("name").copyString()
+  );
 }
 
 arangodb::Result StorageEngineMock::persistCollection(TRI_vocbase_t& vocbase,
@@ -1400,7 +1405,9 @@ int TransactionCollectionMock::use(int nestingLevel) {
     }
   }
 
-  _collection = _transaction->vocbase().useCollection(_cid, status);
+  if (!_collection) {
+    _collection = _transaction->vocbase().useCollection(_cid, status);
+  }
 
   return _collection ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL;
 }

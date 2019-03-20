@@ -107,6 +107,17 @@ std::string const StaticStrings::IndexNameEdgeTo("edge_to");
 std::string const StaticStrings::IndexNameInaccessible("inaccessible");
 std::string const StaticStrings::IndexNamePrimary("primary");
 
+// index hint strings
+std::string const StaticStrings::IndexHintAny("any");
+std::string const StaticStrings::IndexHintCollection("collection");
+std::string const StaticStrings::IndexHintHint("hint");
+std::string const StaticStrings::IndexHintDepth("depth");
+std::string const StaticStrings::IndexHintInbound("inbound");
+std::string const StaticStrings::IndexHintOption("indexHint");
+std::string const StaticStrings::IndexHintOptionForce("forceIndexHint");
+std::string const StaticStrings::IndexHintOutbound("outbound");
+std::string const StaticStrings::IndexHintWildcard("*");
+
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
 std::string const StaticStrings::AcceptEncoding("accept-encoding");

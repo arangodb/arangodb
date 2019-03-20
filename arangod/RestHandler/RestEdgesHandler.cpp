@@ -67,8 +67,9 @@ void RestEdgesHandler::readCursor(aql::AstNode* condition, aql::Variable const* 
                                   SingleCollectionTransaction& trx,
                                   std::function<void(LocalDocumentId const&)> const& cb) {
   transaction::Methods::IndexHandle indexId;
-  bool foundIdx = trx.getBestIndexHandleForFilterCondition(collectionName, condition,
-                                                           var, 1000, indexId);
+  bool foundIdx =
+      trx.getBestIndexHandleForFilterCondition(collectionName, condition, var,
+                                               1000, aql::IndexHint(), indexId);
   if (!foundIdx) {
     // Right now we enforce an edge index that can exactly! work on this
     // condition. So it is impossible to not find an index.
