@@ -894,6 +894,26 @@ void IResearchViewNode::getVariablesUsedHere(arangodb::HashSet<aql::Variable con
   }
 }
 
+std::shared_ptr<std::unordered_set<aql::RegisterId>> IResearchViewNode::calcInputRegs() const {
+  std::shared_ptr<std::unordered_set<aql::RegisterId>> inputRegs =
+      std::make_shared<std::unordered_set<aql::RegisterId>>();
+
+  if (!::filterConditionIsEmpty(_filterCondition)) {
+    arangodb::HashSet<aql::Variable const*> vars;
+    aql::Ast::getReferencedVariables(_filterCondition, vars);
+
+    for (auto const& it : vars) {
+      aql::RegisterId reg = varToRegUnchecked(*it);
+      // The filter condition may refer to registers that are written here
+      if (reg < getNrInputRegisters()) {
+        inputRegs->emplace(reg);
+      }
+    }
+  }
+
+  return inputRegs;
+}
+
 void IResearchViewNode::filterCondition(aql::AstNode const* node) noexcept {
   _filterCondition = !node ? &ALL : node;
 }
@@ -1006,8 +1026,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   TRI_ASSERT(writableOutputRegisters->size() == 1 + numScoreRegisters);
   TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->begin(),
                                                       writableOutputRegisters->end()));
-  // TODO We should set the input registers correctly.
-  aql::ExecutorInfos infos = createRegisterInfos({}, std::move(writableOutputRegisters));
+  aql::ExecutorInfos infos = createRegisterInfos(calcInputRegs(), std::move(writableOutputRegisters));
   // TODO Don't pass `this`, but only the necessary members.
   aql::IResearchViewExecutorInfos executorInfos{
       std::move(infos),   reader, firstOutputRegister, numScoreRegisters,

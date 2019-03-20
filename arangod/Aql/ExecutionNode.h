@@ -551,6 +551,8 @@ class ExecutionNode {
 
   RegisterId getNrOutputRegisters() const;
 
+  RegisterId varToRegUnchecked(Variable const& var) const;
+
  protected:
   /// @brief node id
   size_t _id;
