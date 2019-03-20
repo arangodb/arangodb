@@ -161,7 +161,7 @@ const optionsDefaults = {
   'skipNondeterministic': false,
   'skipGrey': false,
   'skipTimeCritical': false,
-  'storageEngine': 'mmfiles',
+  'storageEngine': 'rocksdb',
   'test': undefined,
   'testBuckets': undefined,
   'useReconnect': true,
