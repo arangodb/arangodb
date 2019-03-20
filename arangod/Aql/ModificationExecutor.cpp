@@ -33,6 +33,14 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace arangodb {
+namespace aql {
+std::string toString(AllRowsFetcher&) { return "AllRowsFetcher"; }
+std::string toString(SingleBlockFetcher<true>&) { return "SingleBlockFetcher<true>"; }
+std::string toString(SingleBlockFetcher<false>&) { return "SingleBlockFetcher<false>"; }
+}
+}
+
 template <typename FetcherType>
 ModificationExecutorBase<FetcherType>::ModificationExecutorBase(Fetcher& fetcher, Infos& infos)
     : _infos(infos), _fetcher(fetcher), _prepared(false){};
@@ -41,6 +49,7 @@ template <typename Modifier, typename FetcherType>
 ModificationExecutor<Modifier, FetcherType>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
     : ModificationExecutorBase<FetcherType>(fetcher, infos), _modifier() {
   this->_infos._trx->pinData(this->_infos._aqlCollection->id());  // important for mmfiles
+  //LOG_DEVEL << toString(_modifier) << " "  << toString(this->_fetcher); // <-- enable this first when debugging modification problems
 };
 
 template <typename Modifier, typename FetcherType>
@@ -54,9 +63,10 @@ ModificationExecutor<Modifier, FetcherType>::produceRow(OutputAqlItemRow& output
 
   // TODO - fix / improve prefetching if possible
   while (!this->_prepared &&
-         (this->_fetcher.upstreamState() != ExecutionState::DONE || this->_fetcher._prefetched)) {
+         (this->_fetcher.upstreamState() != ExecutionState::DONE /*|| this->_fetcher._prefetched */)) {
     std::shared_ptr<AqlItemBlockShell> block;
-    std::tie(state, block) = this->_fetcher.fetchBlock(
+
+    std::tie(state, block) = this->_fetcher.fetchBlockForModificationExecutor(
         _modifier._defaultBlockSize);  // Upsert must use blocksize of one!
                                        // Otherwise it could happen that an insert
                                        // is not seen by subsequent opererations.
@@ -91,21 +101,17 @@ ModificationExecutor<Modifier, FetcherType>::produceRow(OutputAqlItemRow& output
     TRI_ASSERT(_modifier._block);
     TRI_ASSERT(_modifier._block->hasBlock());
 
-    // LOG_DEVEL << "call doOutput";
     // Produces the output
     bool thisBlockHasMore = _modifier.doOutput(this->_infos, output);
 
     if (thisBlockHasMore) {
-      // LOG_DEVEL << "doOutput OPRES HASMORE";
       return {ExecutionState::HASMORE, std::move(stats)};
     } else {
-      // LOG_DEVEL << "doOutput NEED NEW BLOCK";
       // we need to get a new block
       this->_prepared = false;
     }
   }
 
-  // LOG_DEVEL << "exit produceRow";
   return {this->_fetcher.upstreamState(), std::move(stats)};
 }
 

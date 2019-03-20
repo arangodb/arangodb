@@ -41,6 +41,12 @@ enum class ModOperationType : uint8_t {
   APPLY_INSERT = 4,  // apply it and return the result, used only used for UPSERT
 };
 
+inline std::string toString(Insert&){ return "Insert"; };
+inline std::string toString(Remove&){ return "Remove"; };
+inline std::string toString(Update&){ return "Update"; };
+inline std::string toString(Upsert&){ return "Upsert"; };
+inline std::string toString(Replace&){ return "Replace"; };
+
 struct ModificationBase {
   ModificationBase()
       : _operationResultIterator(VPackSlice::emptyArraySlice()) {}
