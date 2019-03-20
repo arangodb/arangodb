@@ -193,12 +193,8 @@ bool Insert::doModifications(ModificationExecutorInfos& info,
   // and _operations the information if the data is to be kept or not
 
   if (toInsert.length() == 0) {
-    // there is nothing to update we just need to copy
-    // if there is anything other than IGNORE_SKIP the
-    // block is prepared.
     _justCopy = true;
-    TRI_ASSERT(false);
-    return false;
+    return !_operations.empty();
   }
 
   // execute insert
