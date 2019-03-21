@@ -2237,6 +2237,23 @@
     "section" : "query",
     "type" : "double"
   },
+  "query.smart-joins" : {
+    "category" : "option",
+    "default" : false,
+    "deprecatedIn" : null,
+    "description" : "enable smart joins query optimization",
+    "dynamic" : false,
+    "enterpriseOnly" : true,
+    "hidden" : true,
+    "introducedIn" : [
+      "v3.4.5",
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "query",
+    "type" : "boolean"
+  },
   "query.tracking" : {
     "category" : "option",
     "default" : true,
