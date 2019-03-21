@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print */
+/* global print, arango */
 'use strict';
 
 // /////////////////////////////////////////////////////////////////////////////
@@ -41,7 +41,7 @@ const tu = require('@arangodb/test-utils');
 const fs = require('fs');
 const _ = require('lodash');
 const hb = require("@arangodb/hotbackup");
-const sleep = internal.sleep;
+const sleep = require("internal").sleep;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -104,6 +104,17 @@ class DumpRestoreHelper {
     let rc = pu.arangod.check.instanceAlive(this.instanceInfo, this.options);
     this.print("Alive: " + rc);
     return rc;
+  }
+
+  getUptime() {
+    try {
+      return pu.arangod.check.uptime(this.instanceInfo, this.options);
+    }
+    catch (x) {
+      print(x); // TODO
+      print("uptime continuing anyways");
+      return {};
+    }
   }
 
   validate(phaseInfo) {
@@ -236,8 +247,9 @@ class DumpRestoreHelper {
 
   restoreHotBackup() {
     this.print("restoring backup - start");
+    let originalUptime = this.getUptime();
+    let originalUptimeKeys = Object.keys(originalUptime);
     let list = this.listHotBackup();
-    print(list)
     let backupName;
     list.forEach(function (name, i) {
       if (name.search("testHotBackup") !== -1) {
@@ -252,16 +264,45 @@ class DumpRestoreHelper {
     let rc = hb.restore(backupName);
     this.print("done restoring backup; waiting for server to come back up");
 
+    
     let i = 0;
     while (i < 100) {
-      try {
-        arango.reconnect(this.instanceInfo.endpoint, '_system', 'root', '');
-        return rc;
-      }
-      catch(x) {
-        print(".");
-      }
       i++;
+      let currentUptime = this.getUptime();
+      let keys = Object.keys(currentUptime);
+      if (keys.length !== originalUptimeKeys ) {
+        try {
+          arango.reconnect(this.instanceInfo.endpoint, '_system', 'root', '');
+        }
+        catch(x) {
+          this.print(".");
+          
+          sleep(1.0);
+          continue;
+        }
+      }
+      let newer = true;
+      keys.forEach(key => {
+        if (!originalUptime.hasOwnProperty(key)) {
+          newer = false;
+        }
+        if (originalUptime[key] < currentUptime[key]) {
+          newer = false;
+        }
+      });
+      
+      if (newer) {
+        try {
+          arango.reconnect(this.instanceInfo.endpoint, '_system', 'root', '');
+          this.print("reconnected");
+          return true;
+        }
+        catch(x) {
+          sleep(1.0);
+          this.print(",");
+          continue;
+        }
+      }
       sleep(1.0);
     }
     throw ("Arangod didn't come back up in the expected timeframe!");
@@ -505,7 +546,6 @@ function hotBackup (options) {
     return rc;
   }
   const helper = new DumpRestoreHelper(instanceInfo, options, {}, {}, {}, which, function(){});
-  
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const dumpCheck = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheck));
   const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
