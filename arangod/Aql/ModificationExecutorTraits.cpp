@@ -157,29 +157,25 @@ void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
   }
 
   auto code = first->first;
-  auto findMessage = [](OperationResult const& opRes, int errorCode) -> std::string {
-    std::string message;
-    try {
+
+  try {
+    if (opRes.slice().isArray()) {
       for (auto doc : VPackArrayIterator(opRes.slice())) {
-        if (doc.hasKey("errorNum") && doc.get("errorNum").getInt() == errorCode) {
+        if (doc.hasKey("errorNum") && doc.get("errorNum").getInt() == code) {
           if (doc.hasKey("errorMessage")) {
-            message = doc.get("errorMessage").copyString();
-            break;
+            std::string message = doc.get("errorMessage").copyString();
+            THROW_ARANGO_EXCEPTION(Result(code, message));
           }
         }
       }
-    } catch (...) {
     }
-    return message;
-  };
-
-  auto message = findMessage(opRes, code);
-  if (message.empty()) {
-    THROW_ARANGO_EXCEPTION(code);
+  } catch (...) {
+    // Fall-through to returning the generic error message,
+    // which better than forwarding an internal error here.
   }
 
-  Result rv(code, message);
-  THROW_ARANGO_EXCEPTION(rv);
+  // Throw generic error, as no error message was found.
+  THROW_ARANGO_EXCEPTION(code);
 }
 }  // namespace
 
