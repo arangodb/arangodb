@@ -51,10 +51,10 @@ function guid() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function shuffle(a) {
-    for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-    }
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1123,18 +1123,18 @@ function agencyTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Huge transaction package, all different keys
+/// @brief transaction package, all different keys
 ////////////////////////////////////////////////////////////////////////////////
 
     testTransactionDifferentKeys : function() {
       writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
       var huge = [], i;
       for (i = 0; i < 100; ++i) {
-        huge.push([{["a" + i]:{"op":"increment"}}]);
+        huge.push([{["a" + i]:i}]);
       }
       writeAndCheck(huge);
       for (i = 0; i < 100; ++i) {
-        assertEqual(readAndCheck([["a" + i]]), [{["a" + i]:1}]);
+        assertEqual(readAndCheck([["a" + i]]), [{["a" + i]:i}]);
       }
     },
 

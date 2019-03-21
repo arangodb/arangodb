@@ -652,6 +652,9 @@ void Agent::sendAppendEntriesRPC() {
 void Agent::resign(term_t otherTerm) {
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Resigning in term " << _constituent.term()
                                    << " because of peer's term " << otherTerm;
+  if (_readDB.isRunning()) {
+    _readDB.beginShutdown();
+  }
   _constituent.follow(otherTerm, NO_LEADER);
   endPrepareLeadership();
 }
@@ -1270,6 +1273,9 @@ void Agent::run() {
         MUTEX_LOCKER(ioLocker, _ioLock);
         READ_LOCKER(oLocker, _outputLock);
         _spearhead = _readDB;
+        if (!_readDB.isRunning()) {
+          _readDB.start();
+        }
         endPrepareLeadership();  // finally service can commence
       }
 
