@@ -83,7 +83,7 @@ class ModificationBlock : public ExecutionBlock {
   /// @brief process the result of a data-modification operation
   void handleResult(int, bool, std::string const* errorMessage = nullptr);
 
-  void handleBabyResult(std::unordered_map<int, size_t> const&, size_t,
+  void handleBabyResult(OperationResult const&, size_t,
                         bool ignoreAllErrors, bool ignoreDocumentNotFound = false);
 
   /// @brief determine the number of rows in a vector of blocks
