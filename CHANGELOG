@@ -91,6 +91,8 @@ v3.4.5 (XXXX-XX-XX)
 
 * fix log spamming after leader resignation in agency
 
+* make AddFollower less aggressive
+
 v3.4.4 (2019-03-12)
 -------------------
 
