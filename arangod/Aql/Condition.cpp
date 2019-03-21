@@ -244,7 +244,7 @@ ConditionPartCompareResult const ResultsTable[3][7][7] = {
 // larger than that of B
 //  -> A can be dropped.
 
-ConditionPartCompareResult const ResultsTableMutliValued[3][7][7] = {
+ConditionPartCompareResult const ResultsTableMultiValued[3][7][7] = {
     {// X < Y
      {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
       OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT, DISJOINT},
@@ -912,7 +912,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
   size_t r = 0;
 
   const auto* resultsTable = multivalued
-    ? ResultsTableMutliValued
+    ? ResultsTableMultiValued
     : ResultsTable;
 
   while (r < n) {  // foreach OR-Node
@@ -1074,7 +1074,8 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
 
           // IN-merging
           if (leftNode->type == NODE_TYPE_OPERATOR_BINARY_IN &&
-              leftNode->getMemberUnchecked(1)->isConstant()) {
+              leftNode->getMemberUnchecked(1)->isConstant() &&
+              !multivalued) {
             TRI_ASSERT(leftNode->numMembers() == 2);
 
             if (rightNode->type == NODE_TYPE_OPERATOR_BINARY_IN &&
