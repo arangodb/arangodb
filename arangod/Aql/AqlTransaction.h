@@ -49,20 +49,7 @@ class AqlTransaction : public transaction::Methods {
   ~AqlTransaction() {}
 
   /// @brief add a list of collections to the transaction
-  Result addCollections(std::map<std::string, aql::Collection*> const& collections) {
-    Result res;
-    for (auto const& it : collections) {
-      res = processCollection(it.second);
-
-      if (!res.ok()) {
-        return res;
-      }
-    }
-    return res;
-  }
-
-  /// @brief add a collection to the transaction
-  Result processCollection(aql::Collection*);
+  Result addCollections(std::map<std::string, aql::Collection*> const& collections);
 
   /// @brief documentCollection
   LogicalCollection* documentCollection(TRI_voc_cid_t cid);
@@ -98,12 +85,11 @@ class AqlTransaction : public transaction::Methods {
     }
     addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
-    for (auto it : *collections) {
-      if (!processCollection(it.second).ok()) {
-        break;
-      }
-    }
+    addCollections(*collections);
   }
+  
+  /// @brief add a collection to the transaction
+  Result processCollection(aql::Collection*);
 
  protected:
   /// @brief keep a copy of the collections, this is needed for the clone

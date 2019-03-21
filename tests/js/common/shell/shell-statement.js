@@ -1000,6 +1000,17 @@ function StatementSuite () {
 /// @brief test string builder
 ////////////////////////////////////////////////////////////////////////////////
 
+    testTemplateStringBuilderEmptyInlines : function () {
+      var foo = "foo-matic", bar = "BAR o MATIC", what = "' this string \\ \" is ' evil\n`";
+      var result = aql`FOR ${foo} ${aql.join([])} IN ${bar} ${aql``} RETURN ${what} ${aql.literal('')}`;
+      assertEqual("FOR @value0  IN @value1  RETURN @value2 ", result.query);
+      assertEqual({ value0: foo, value1: bar, value2: what }, result.bindVars);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test string builder
+////////////////////////////////////////////////////////////////////////////////
+
     testTemplateStringBuilderObject : function () {
       var result = aql`RETURN ${new Date('2015-01-01').toISOString()}`;
       assertEqual("RETURN @value0", result.query);

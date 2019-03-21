@@ -379,6 +379,8 @@
             shardBy = _.pluck($('#new-collection-shardBy').select2('data'), 'text');
             if (shardBy.length === 0) {
               shardBy.push('_key');
+            } else {
+              _.each(shardBy, function (element, index) { shardBy[index] = arangoHelper.escapeHtml(element); });
             }
           }
           if (collName.substr(0, 1) === '_') {

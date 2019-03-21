@@ -286,7 +286,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
   let bucketName = "";
   if (options.testBuckets) {
     let n = options.testBuckets.split('/');
-    bucketName = "_" + n[0];
+    bucketName = "_" + n[1];
   }
   try {
     /* jshint forin: false */
@@ -659,9 +659,12 @@ function iterateTests(cases, options, jsonReply) {
     const currentTest = caselist[n];
     var localOptions = _.cloneDeep(options);
     localOptions.skipTest = skipTest;
-
+    let printTestName = currentTest;
+    if (options.testBuckets) {
+      printTestName += " - " + options.testBuckets;
+    }
     print(BLUE + '================================================================================');
-    print('Executing test', currentTest);
+    print('Executing test', printTestName);
     print('================================================================================\n' + RESET);
 
     if (localOptions.verbose) {

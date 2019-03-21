@@ -131,6 +131,18 @@ Only meaningful on Linux. If set, use `O_DIRECT` for writing files. Default: fal
 
 If set, issue an `fsync` call when writing to disk (set to false to issue
 `fdatasync` only. Default: false.
+
+`--rocksdb.allow-fallocate`
+  
+Allow RocksDB to use the fallocate call. If false, fallocate calls are bypassed
+and no preallocation is done. Preallocation is turned on by default, but can be
+turned off for operating system versions that are known to have issues with it.
+This option only has an effect on operating systems that support fallocate.
+
+`--rocksdb.limit-open-files-at-startup`
+                     
+If set to true, this will limit the amount of .sst files RocksDB will inspect at 
+startup, which can reduce the number of IO operations performed at start.
   
 `--rocksdb.block-align-data-blocks`
 

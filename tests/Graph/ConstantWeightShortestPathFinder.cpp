@@ -145,7 +145,9 @@ struct MockGraphDatabase {
 
   ~MockGraphDatabase() {
     for (auto& q : queries) {
-      q->trx()->abort();
+      if (q->trx() != nullptr) {
+        q->trx()->abort();
+      }
       delete q;
     }
     for (auto& o : spos) {

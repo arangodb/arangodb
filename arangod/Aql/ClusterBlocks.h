@@ -55,7 +55,7 @@ class BlockWithClients : public ExecutionBlock {
   BlockWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
                    std::vector<std::string> const& shardIds);
 
-  virtual ~BlockWithClients() {}
+  ~BlockWithClients() override = default;
 
  public:
   /// @brief initializeCursor
@@ -77,29 +77,17 @@ class BlockWithClients : public ExecutionBlock {
   }
 
   /// @brief getSomeForShard
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShard(
-      size_t atMost, std::string const& shardId);
+  virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShard(
+      size_t atMost, std::string const& shardId) = 0;
 
   /// @brief skipSomeForShard
-  std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost, std::string const& shardId);
-
-  /// @brief hasMoreForShard: any more for shard <shardId>?
-  virtual bool hasMoreForShard(std::string const& shardId) = 0;
-
-  virtual ExecutionState getHasMoreStateForShard(std::string const& shardId) = 0;
+  virtual std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost,
+                                                             std::string const& shardId) = 0;
 
  protected:
-  /// @brief getOrSkipSomeForShard
-  virtual std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
-      size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
-      size_t& skipped, std::string const& shardId) = 0;
-
   /// @brief getClientId: get the number <clientId> (used internally)
   /// corresponding to <shardId>
-  size_t getClientId(std::string const& shardId);
-
-  /// @brief hasMoreForClientId: any more for client <cliendId>?
-  virtual bool hasMoreForClientId(size_t clientId) = 0;
+  size_t getClientId(std::string const& shardId) const;
 
  protected:
   /// @brief _shardIdMap: map from shardIds to clientNrs
@@ -110,104 +98,6 @@ class BlockWithClients : public ExecutionBlock {
 
  private:
   bool _wasShutdown;
-};
-
-class ScatterBlock final : public BlockWithClients {
- public:
-  ScatterBlock(ExecutionEngine* engine, ScatterNode const* ep,
-               std::vector<std::string> const& shardIds)
-      : BlockWithClients(engine, ep, shardIds) {}
-
-  /// @brief initializeCursor
-  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
-
-  /// @brief hasMoreForShard: any more for shard <shardId>?
-  bool hasMoreForShard(std::string const& shardId) override;
-
- private:
-  /// @brief getHasMoreStateForClientId: State for client <cliendId>?
-  ExecutionState getHasMoreStateForClientId(size_t clientId);
-
-  /// @brief hasMoreForClientId: any more for client <cliendId>?
-  bool hasMoreForClientId(size_t clientId) override;
-
-  ExecutionState getHasMoreStateForShard(const std::string& shardId) override;
-
-  /// @brief getOrSkipSomeForShard
-  std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
-      size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
-      size_t& skipped, std::string const& shardId) override final;
-
-  /// @brief _posForClient:
-  std::vector<std::pair<size_t, size_t>> _posForClient;
-};
-
-class DistributeBlock final : public BlockWithClients {
- public:
-  DistributeBlock(ExecutionEngine* engine, DistributeNode const* ep,
-                  std::vector<std::string> const& shardIds, Collection const* collection);
-
-  /// @brief initializeCursor
-  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
-
-  /// @brief hasMoreForShard: any more for shard <shardId>?
-  bool hasMoreForShard(std::string const& shardId) override;
-
- private:
-  /// @brief hasMoreForClientId: any more for client <cliendId>?
-  bool hasMoreForClientId(size_t clientId) override;
-
-  /// @brief getHasMoreStateForClientId: State for client <cliendId>?
-  ExecutionState getHasMoreStateForClientId(size_t clientId);
-
-  /// @brief getOrSkipSomeForShard
-  std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
-      size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
-      size_t& skipped, std::string const& shardId) override final;
-
-  /// @brief getBlockForClient: try to get at atMost pairs into
-  /// _distBuffer.at(clientId).
-  std::pair<ExecutionState, bool> getBlockForClient(size_t atMost, size_t clientId);
-
-  ExecutionState getHasMoreStateForShard(const std::string& shardId) override;
-
-  /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
-  /// attributes <shardKeys> of the register <id> to determine to which shard
-  /// the
-  /// row should be sent.
-  size_t sendToClient(AqlItemBlock*);
-
-  /// @brief create a new document key
-  std::string createKey(arangodb::velocypack::Slice) const;
-
-  // a reusable Builder object for building _key values
-  arangodb::velocypack::Builder _keyBuilder;
-
-  // a reusable Builder object for building document objects
-  arangodb::velocypack::Builder _objectBuilder;
-
-  /// @brief _distBuffer.at(i) is a deque containing pairs (j,k) such that
-  //  _buffer.at(j) row k should be sent to the client with id = i.
-  std::vector<std::deque<std::pair<size_t, size_t>>> _distBuffer;
-
-  /// @brief _colectionName: the name of the sharded collection
-  Collection const* _collection;
-
-  /// @brief _index: the block in _buffer we are currently considering
-  size_t _index;
-
-  /// @brief _regId: the register to inspect
-  RegisterId _regId;
-
-  /// @brief a second register to inspect (used only for UPSERT nodes at the
-  /// moment to distinguish between search and insert)
-  RegisterId _alternativeRegId;
-
-  /// @brief whether or not the collection uses the default sharding
-  bool _usesDefaultSharding;
-
-  /// @brief allow specified keys even in non-default sharding case
-  bool _allowSpecifiedKeys;
 };
 
 class SingleRemoteOperationBlock final : public ExecutionBlock {

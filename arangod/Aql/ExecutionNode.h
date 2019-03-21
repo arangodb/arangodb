@@ -56,6 +56,7 @@
 #include "Aql/CostEstimate.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/Expression.h"
+#include "Aql/IndexHint.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
@@ -584,7 +585,7 @@ class ExecutionNode {
   std::unordered_set<RegisterId> _regsToClear;
 
  public:
-  /// @brief maximum register id that can be assigned.
+  /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
   static constexpr RegisterId MaxRegisterId = 1000;
 
@@ -637,11 +638,12 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief constructor with a vocbase and a collection name
  public:
   EnumerateCollectionNode(ExecutionPlan* plan, size_t id, aql::Collection const* collection,
-                          Variable const* outVariable, bool random)
+                          Variable const* outVariable, bool random, IndexHint const& hint)
       : ExecutionNode(plan, id),
         DocumentProducingNode(outVariable),
         CollectionAccessingNode(collection),
-        _random(random) {}
+        _random(random),
+        _hint(hint) {}
 
   EnumerateCollectionNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -675,9 +677,15 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief enable random iteration of documents in collection
   void setRandom() { _random = true; }
 
+  /// @brief user hint regarding which index ot use
+  IndexHint const& hint() const { return _hint; }
+
  private:
   /// @brief whether or not we want random iteration
   bool _random;
+
+  /// @brief a possible hint from the user regarding which index to use
+  IndexHint _hint;
 };
 
 /// @brief class EnumerateListNode

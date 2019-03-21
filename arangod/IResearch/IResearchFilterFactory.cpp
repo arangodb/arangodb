@@ -52,6 +52,7 @@
 #include "IResearchKludge.h"
 #include "IResearchPrimaryKeyFilter.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/SystemDatabaseFeature.h"
 
 using namespace arangodb::iresearch;
 
@@ -176,7 +177,22 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr extractAnalyzerFromArg(
       return nullptr;
     }
 
-    analyzer = analyzerFeature->get(analyzerId);
+    if (ctx.trx) {
+      auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
+        arangodb::SystemDatabaseFeature // featue type
+      >();
+      auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+
+      if (sysVocbase) {
+        analyzer = analyzerFeature->get( // get analyzer
+          arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
+            analyzerId, ctx.trx->vocbase(), *sysVocbase // args
+          )
+        );
+      }
+    } else {
+      analyzer = analyzerFeature->get(analyzerId); // verbatim
+    }
 
     if (!analyzer) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
