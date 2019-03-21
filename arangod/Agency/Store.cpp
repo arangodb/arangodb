@@ -697,10 +697,14 @@ Store& Store::operator=(VPackSlice const& slice) {
 
   TRI_ASSERT(slice[1].isObject());
   for (auto const& entry : VPackObjectIterator(slice[1])) {
-    long long tse = entry.value.getInt();
-    _timeTable.emplace(
-        std::pair<TimePoint, std::string>(TimePoint(std::chrono::duration<int>(tse)),
-                                          entry.key.copyString()));
+    if (entry.value.isNumber()) {
+      auto const& key = entry.key.copyString();
+      if (_node.has(key)) {
+        auto tp = TimePoint(std::chrono::seconds(entry.value.getNumber<int>()));
+        _node(key).timeToLive(tp);
+        _timeTable.emplace(std::pair<TimePoint, std::string>(tp, key));
+      }
+    }
   }
 
   TRI_ASSERT(slice[2].isArray());
