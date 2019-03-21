@@ -75,7 +75,7 @@ function ReplicationSuite() {
     connectToSlave();
     assertEqual(cn, db._name());
 
-    var syncResult = replication.sync({
+    let syncResult = replication.sync({
       endpoint: masterEndpoint,
       username: "root",
       password: "",
@@ -98,7 +98,9 @@ function ReplicationSuite() {
       endpoint: masterEndpoint,
       username: "root",
       password: "",
-      requireFromPresent: true 
+      requireFromPresent: true,
+      autoResync: true,
+      autoResyncRetries: 5 
     };
 
     connectToSlave();
@@ -114,7 +116,7 @@ function ReplicationSuite() {
 
       if (slaveState.state.lastError.errorNum > 0) {
         console.topic("replication=error", "slave has errored:", JSON.stringify(slaveState.state.lastError));
-        break;
+        throw slaveState.state.lastError;
       }
 
       if (!slaveState.state.running) {
