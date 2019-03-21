@@ -42,25 +42,33 @@ RestClusterHandler::RestClusterHandler(GeneralRequest* request, GeneralResponse*
     : RestBaseHandler(request, response) {}
 
 RestStatus RestClusterHandler::execute() {
-  if (_request->requestType() != RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
-                  "only the GET method is allowed");
-    return RestStatus::DONE;
-  }
+  if (ServerState::instance()->isCoordinator()) {
 
-  std::vector<std::string> const& suffixes = _request->suffixes();
-  if (!suffixes.empty()) {
-    if (suffixes[0] == "endpoints") {
-      handleCommandEndpoints();
-    } else if (suffixes[0] == "agency-dump") {
-      handleAgencyDump();
+    if (_request->requestType() != RequestType::GET) {
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                    "only the GET method is allowed");
+      return RestStatus::DONE;
+    }
+
+    std::vector<std::string> const& suffixes = _request->suffixes();
+    if (!suffixes.empty()) {
+      if (suffixes[0] == "endpoints") {
+        handleCommandEndpoints();
+      } else if (suffixes[0] == "agency-dump") {
+        handleAgencyDump();
+      } else {
+        generateError(
+          Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/[endpoints,agency-dump]"));
+      }
     } else {
       generateError(
         Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/[endpoints,agency-dump]"));
     }
+
   } else {
-    generateError(
-      Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/[endpoints,agency-dump]"));
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                    "only to be executed on coordinators");
+      return RestStatus::DONE;
   }
 
   return RestStatus::DONE;
