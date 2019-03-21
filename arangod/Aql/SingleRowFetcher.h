@@ -221,7 +221,6 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
 
     _rowIndex++;
   }
-
   return {rowState, _currentRow};
 }
 

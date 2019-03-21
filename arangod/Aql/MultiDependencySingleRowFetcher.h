@@ -108,9 +108,19 @@ class MultiDependencySingleRowFetcher {
   }
 
   std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost) {
-    // This is not implemented for this fetcher
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    ExecutionState state = ExecutionState::DONE;
+    size_t limit = 0;
+    for (size_t i = 0; i < numberDependencies(); ++i) {
+      auto res = preFetchNumberOfRowsForDependency(i, atMost);
+      if (res.first == ExecutionState::WAITING) {
+        return {ExecutionState::WAITING, 0};
+      }
+      limit += res.second;
+      if (res.first == ExecutionState::HASMORE) {
+        state = ExecutionState::HASMORE;
+      }
+    }
+    return {state, limit};
   }
 
   size_t numberDependencies();
@@ -219,6 +229,34 @@ class MultiDependencySingleRowFetcher {
   size_t getRowIndex(DependencyInfo const& info) const {
     TRI_ASSERT(indexIsValid(info));
     return info._rowIndex;
+  }
+  std::pair<ExecutionState, size_t> preFetchNumberOfRowsForDependency(size_t dependency,
+                                                                      size_t atMost) {
+    TRI_ASSERT(dependency < numberDependencies());
+    auto& depInfo = _dependencyInfos[dependency];
+    // Fetch a new block iff necessary
+    if (!indexIsValid(depInfo)) {
+      // This returns the AqlItemBlock to the ItemBlockManager before fetching a
+      // new one, so we might reuse it immediately!
+      depInfo._currentBlock = nullptr;
+  
+      ExecutionState state;
+      std::shared_ptr<AqlItemBlockShell> newBlock;
+      std::tie(state, newBlock) = fetchBlockForDependency(dependency, atMost);
+      if (state == ExecutionState::WAITING) {
+        return {ExecutionState::WAITING, 0};
+      }
+  
+      depInfo._currentBlock = std::move(newBlock);
+      depInfo._rowIndex = 0;
+    }
+    if (!indexIsValid(depInfo)) {
+      TRI_ASSERT(depInfo._upstreamState == ExecutionState::DONE);
+      return {ExecutionState::DONE, 0};
+    } else {
+      return {depInfo._upstreamState,
+              depInfo._currentBlock->block().size() - depInfo._rowIndex};
+    }
   }
 };
 

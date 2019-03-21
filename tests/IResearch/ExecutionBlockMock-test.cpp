@@ -24,8 +24,8 @@
 #include "catch.hpp"
 #include "common.h"
 
-#include "ExecutionBlockMock.h"
 #include "../Mocks/StorageEngineMock.h"
+#include "ExecutionBlockMock.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -34,6 +34,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
+#include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -203,12 +204,11 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     // Singleton <- MockBlock
     MockNode<arangodb::aql::SingletonNode> rootNode;
 
-
-
-    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/, rootNode.getRegsToClear() /*toClear*/);
-    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
+    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/,
+                                         rootNode.getRegsToClear() /*toClear*/);
+    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor<arangodb::aql::ConstFetcher>> rootBlock(
         query.engine(), &rootNode, std::move(infos));
-    rootBlock.initializeCursor(nullptr,0);
+    rootBlock.initializeCursor(nullptr, 0);
 
     ExecutionNodeMock node;
     ExecutionBlockMock block(data, *query.engine(), node);
@@ -255,10 +255,11 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     // build simple chain
     // Singleton <- MockBlock
     MockNode<arangodb::aql::SingletonNode> rootNode;
-    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/, rootNode.getRegsToClear() /*toClear*/);
-    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
+    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/,
+                                         rootNode.getRegsToClear() /*toClear*/);
+    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor<arangodb::aql::ConstFetcher>> rootBlock(
         query.engine(), &rootNode, std::move(infos));
-    rootBlock.initializeCursor(nullptr,0);
+    rootBlock.initializeCursor(nullptr, 0);
 
     ExecutionNodeMock node;
     ExecutionBlockMock block(data, *query.engine(), node);
@@ -302,14 +303,15 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     // build simple chain
     // Singleton <- MockBlock
     MockNode<arangodb::aql::SingletonNode> rootNode;
-    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/, rootNode.getRegsToClear() /*toClear*/);
-    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
+    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/,
+                                         rootNode.getRegsToClear() /*toClear*/);
+    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor<arangodb::aql::ConstFetcher>> rootBlock(
         query.engine(), &rootNode, std::move(infos));
 
     ExecutionNodeMock node;
     ExecutionBlockMock block(data, *query.engine(), node);
     block.addDependency(&rootBlock);
-    rootBlock.initializeCursor(nullptr,0);
+    rootBlock.initializeCursor(nullptr, 0);
 
     {
       // skip last 90 items
@@ -357,15 +359,16 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     // build chain:
     // Singleton <- MockBlock0 <- MockBlock1
     MockNode<arangodb::aql::SingletonNode> rootNode;
-    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/, rootNode.getRegsToClear() /*toClear*/);
-    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
+    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/,
+                                         rootNode.getRegsToClear() /*toClear*/);
+    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor<arangodb::aql::ConstFetcher>> rootBlock(
         query.engine(), &rootNode, std::move(infos));
 
     arangodb::aql::AqlItemBlock data0(&resMon, 2, 2);
     ExecutionNodeMock node0;
     ExecutionBlockMock block0(data0, *query.engine(), node0);
     block0.addDependency(&rootBlock);
-    rootBlock.initializeCursor(nullptr,0);
+    rootBlock.initializeCursor(nullptr, 0);
 
     arangodb::aql::AqlItemBlock data1(&resMon, 100, 4);
     ExecutionNodeMock node1;
@@ -420,10 +423,11 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     // build chain:
     // Singleton <- MockBlock0 <- MockBlock1
     MockNode<arangodb::aql::SingletonNode> rootNode;
-    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/, rootNode.getRegsToClear() /*toClear*/);
-    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
+    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/,
+                                         rootNode.getRegsToClear() /*toClear*/);
+    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor<arangodb::aql::ConstFetcher>> rootBlock(
         query.engine(), &rootNode, std::move(infos));
-    rootBlock.initializeCursor(nullptr,0);
+    rootBlock.initializeCursor(nullptr, 0);
 
     arangodb::aql::AqlItemBlock data0(&resMon, 2, 2);
     ExecutionNodeMock node0;
@@ -481,10 +485,11 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     // build chain:
     // Singleton <- MockBlock0 <- MockBlock1
     MockNode<arangodb::aql::SingletonNode> rootNode;
-    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/, rootNode.getRegsToClear() /*toClear*/);
-    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
+    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/,
+                                         rootNode.getRegsToClear() /*toClear*/);
+    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor<arangodb::aql::ConstFetcher>> rootBlock(
         query.engine(), &rootNode, std::move(infos));
-    rootBlock.initializeCursor(nullptr,0);
+    rootBlock.initializeCursor(nullptr, 0);
 
     arangodb::aql::AqlItemBlock data0(&resMon, 2, 2);
     ExecutionNodeMock node0;

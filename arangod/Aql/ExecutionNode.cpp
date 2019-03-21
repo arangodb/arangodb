@@ -1251,7 +1251,7 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
 
   IdExecutorInfos infos(nrRegs, std::move(toKeep), getRegsToClear());
 
-  return std::make_unique<ExecutionBlockImpl<IdExecutor>>(&engine, this, std::move(infos));
+  return std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(&engine, this, std::move(infos));
 }
 
 /// @brief toVelocyPack, for SingletonNode

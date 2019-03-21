@@ -61,7 +61,7 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
   GIVEN("there are no rows upstream") {
     WHEN("the producer does not wait") {
       ConstFetcherHelper fetcher(nullptr);
-      IdExecutor testee(fetcher, infos);
+      IdExecutor<ConstFetcher> testee(fetcher, infos);
       NoStats stats{};
 
       THEN("the executor should return DONE with no block produced") {
@@ -77,7 +77,7 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
 
     WHEN("the producer does not wait") {
       ConstFetcherHelper fetcher(input->buffer());
-      IdExecutor testee(fetcher, infos);
+      IdExecutor<ConstFetcher> testee(fetcher, infos);
       NoStats stats{};
 
       THEN("the executor should return the rows") {

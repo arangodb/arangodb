@@ -31,12 +31,12 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/GraphNode.h"
+#include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
 #include "Aql/RemoteExecutor.h"
 #include "Aql/SortingGatherExecutor.h"
-#include "Aql/UnsortingGatherExecutor.h"
 #include "Transaction/Methods.h"
 
 #include <type_traits>
@@ -378,12 +378,12 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   if (_elements.empty()) {
-    ExecutorInfos infos(make_shared_unordered_set(), make_shared_unordered_set(),
-                        getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                        getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                        calcRegsToKeep());
-    return std::make_unique<ExecutionBlockImpl<UnsortingGatherExecutor>>(&engine, this,
-                                                                         std::move(infos));
+    TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
+               getRegisterPlan()->nrRegs[getDepth()]);
+    IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
+                          calcRegsToKeep(), getRegsToClear());
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<true>>>>(
+        &engine, this, std::move(infos));
   }
   std::vector<SortRegister> sortRegister;
   SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
@@ -395,7 +395,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
                                    _plan->getAst()->query()->trx(), sortMode());
 
   return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(&engine, this,
-                                                                       std::move(infos));
+                                                                     std::move(infos));
 }
 
 /// @brief estimateCost

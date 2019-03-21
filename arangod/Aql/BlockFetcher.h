@@ -75,7 +75,8 @@ class BlockFetcher {
         _inputRegisters(std::move(inputRegisters)),
         _nrInputRegisters(nrInputRegisters),
         _blockShellQueue(),
-        _blockShellPassThroughQueue() {}
+        _blockShellPassThroughQueue(),
+        _currentDependency(0) {}
 
   TEST_VIRTUAL ~BlockFetcher() = default;
 
@@ -111,19 +112,27 @@ class BlockFetcher {
   }
 
  protected:
-  AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
-  AqlItemBlockManager const& itemBlockManager() const {
+  inline AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
+  inline AqlItemBlockManager const& itemBlockManager() const {
     return _itemBlockManager;
   }
 
-  ExecutionBlock& upstreamBlock() {
-    TRI_ASSERT(_dependencies.size() == 1);
-    return upstreamBlockForDependency(0);
+  inline ExecutionBlock& upstreamBlock() {
+    return upstreamBlockForDependency(_currentDependency);
   }
 
-  ExecutionBlock& upstreamBlockForDependency(size_t index) {
+  inline ExecutionBlock& upstreamBlockForDependency(size_t index) {
     TRI_ASSERT(_dependencies.size() > index);
     return *_dependencies[index];
+  }
+
+ private:
+  inline bool advanceDependency() {
+    if (_currentDependency + 1 >= _dependencies.size()) {
+      return false;
+    }
+    _currentDependency++;
+    return true;
   }
 
  private:
@@ -134,6 +143,8 @@ class BlockFetcher {
   std::queue<std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>> _blockShellQueue;
   // only used in case of allowBlockPassthrough:
   std::queue<std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>> _blockShellPassThroughQueue;
+  // only modified in case of multiple dependencies + Passthrough otherwise always 0
+  size_t _currentDependency;
 };
 
 }  // namespace aql

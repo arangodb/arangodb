@@ -227,6 +227,9 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRow(OutputAqlIt
       _inputRows.reserve(_numberDependencies);
       for (size_t index = 0; index < _numberDependencies; ++index) {
         _inputRows.emplace_back(ValueType{index});
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        _flaggedAsDone.emplace_back(false);
+#endif
       }
     }
 
@@ -239,7 +242,7 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRow(OutputAqlIt
       }
       if (!_inputRows[_dependencyToFetch].row) {
         TRI_ASSERT(_inputRows[_dependencyToFetch].state == ExecutionState::DONE);
-        _nrDone++;
+        adjustNrDone(_dependencyToFetch, 4);
       }
       ++_dependencyToFetch;
     }
@@ -256,7 +259,6 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRow(OutputAqlIt
     }
     if (_inputRows[_dependencyToFetch].state == ExecutionState::DONE) {
       _inputRows[_dependencyToFetch].row = InputAqlItemRow{CreateInvalidInputRowHint()};
-      _nrDone++;
       if (_nrDone >= _numberDependencies) {
         return {ExecutionState::DONE, NoStats{}};
       }
@@ -270,7 +272,7 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRow(OutputAqlIt
       }
       if (!_inputRows[_dependencyToFetch].row) {
         TRI_ASSERT(_inputRows[_dependencyToFetch].state == ExecutionState::DONE);
-        _nrDone++;
+        adjustNrDone(_dependencyToFetch, 2);
         if (_nrDone >= _numberDependencies) {
           return {ExecutionState::DONE, NoStats{}};
         }
@@ -293,7 +295,6 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRow(OutputAqlIt
   // We have at least one row to sort.
   TRI_ASSERT(oneWithContent);
 #endif
-
   // get the index of the next best value.
   ValueType val = _strategy->nextValue();
   _dependencyToFetch = val.dependencyIndex;
@@ -303,8 +304,20 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRow(OutputAqlIt
   // inside the outputblock by identical AQL values.
   // This optimization is not in use anymore.
   output.copyRow(val.row);
+  adjustNrDone(_dependencyToFetch, 1);
   if (_nrDone < _numberDependencies) {
     return {ExecutionState::HASMORE, NoStats{}};
   }
   return {ExecutionState::DONE, NoStats{}};
+}
+
+void SortingGatherExecutor::adjustNrDone(size_t dependency, size_t hass) {
+  auto const& dep = _inputRows[dependency];
+  if (dep.state == ExecutionState::DONE) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_flaggedAsDone[dependency] == false);
+    _flaggedAsDone[dependency] = true;
+#endif
+    ++_nrDone;
+  }
 }

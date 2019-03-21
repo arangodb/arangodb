@@ -29,21 +29,27 @@ ExecutionState BlockFetcher<passBlocksThrough>::prefetchBlock(size_t atMost) {
   TRI_ASSERT(atMost > 0);
   ExecutionState state;
   std::unique_ptr<AqlItemBlock> block;
-  std::tie(state, block) = upstreamBlock().getSome(atMost);
-  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
+  do {
+    // Note: upstreamBlock will return next dependency
+    // if we need to lopp here
+    std::tie(state, block) = upstreamBlock().getSome(atMost);
+    TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
 
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(block == nullptr);
-    return state;
-  }
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(block == nullptr);
+      return state;
+    }
 
-  if (block == nullptr) {
-    // We're not waiting and didn't get a block, so we have to be done.
-    TRI_ASSERT(state == ExecutionState::DONE);
-    return state;
-  }
+    if (block == nullptr) {
+      // We're not waiting and didn't get a block, so we have to be done.
+      TRI_ASSERT(state == ExecutionState::DONE);
+      if (!advanceDependency()) {
+        return state;
+      }
+    }
+  } while (block == nullptr);
 
   // Now we definitely have a block.
   TRI_ASSERT(block != nullptr);
@@ -51,12 +57,19 @@ ExecutionState BlockFetcher<passBlocksThrough>::prefetchBlock(size_t atMost) {
   auto blockShell =
       std::make_shared<AqlItemBlockShell>(itemBlockManager(), std::move(block));
 
+  if (state == ExecutionState::DONE) {
+    // We need to modify the state here s.t. on next call we fetch from
+    // next dependency and do not return DONE on first dependency
+    if (advanceDependency()) {
+      state = ExecutionState::HASMORE;
+    }
+  }
   if /* constexpr */ (passBlocksThrough) {
     // Reposit blockShell for pass-through executors.
     _blockShellPassThroughQueue.push({state, blockShell});
   }
-
   _blockShellQueue.push({state, std::move(blockShell)});
+
   return ExecutionState::HASMORE;
 }
 

@@ -98,6 +98,9 @@ class SortingGatherExecutor {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
+    // This block takes ownership of one input row per
+    // dependency, therefore the second saking for
+    // input size will be off by #nrDependencies...
     static const bool inputSizeRestrictsOutputSize = false;
   };
 
@@ -115,6 +118,16 @@ class SortingGatherExecutor {
    *         if something was written output.hasValue() == true
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+
+  void adjustNrDone(size_t dependency, size_t hass);
+
+  inline size_t numberOfRowsInFlight() const {
+    // For every not-done dependency we have one row in the buffers.
+    // Initially _numberDependencies is == 0 and _nrDone == 0 as well.
+    // This is due to the fact that dependencies are built AFTER this node
+    // and the number is yet unknown.
+    return _numberDependencies - _nrDone;
+  }
 
  private:
   Fetcher& _fetcher;
@@ -136,6 +149,10 @@ class SortingGatherExecutor {
 
   /// @brief sorting strategy
   std::unique_ptr<SortingStrategy> _strategy;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::vector<bool> _flaggedAsDone;
+#endif
 };
 
 }  // namespace aql
