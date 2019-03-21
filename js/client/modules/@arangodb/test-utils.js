@@ -63,6 +63,7 @@ function diffArray (arr1, arr2) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function makePathUnix (path) {
+  if(typeof path !== "string" && path !== undefined) { path = path.toString(); }
   return fs.join.apply(null, path.split('/'));
 }
 
