@@ -124,9 +124,6 @@ class ConstFetcherHelper : public arangodb::aql::ConstFetcher {
  private:
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;
   arangodb::velocypack::Slice _data;
-  arangodb::aql::ResourceMonitor& _resourceMonitor;
-  arangodb::aql::AqlItemBlockManager& _itemBlockManager;
-  arangodb::aql::InputAqlItemRow _lastReturnedRow;
 };
 
 }  // namespace aql
