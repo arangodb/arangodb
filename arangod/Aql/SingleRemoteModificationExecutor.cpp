@@ -68,9 +68,6 @@ SingleRemoteModificationExecutor<Modifier>::SingleRemoteModificationExecutor(Fet
     };
 
 template <typename Modifier>
-SingleRemoteModificationExecutor<Modifier>::~SingleRemoteModificationExecutor() = default;
-
-template <typename Modifier>
 std::pair<ExecutionState, typename SingleRemoteModificationExecutor<Modifier>::Stats>
 SingleRemoteModificationExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
   Stats stats;
@@ -97,7 +94,7 @@ template <typename Modifier>
 bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOperation(InputAqlItemRow& input,
                                                              OutputAqlItemRow& output,
                                                              Stats& stats) {
-  const bool isIndex = std::is_same<Modifier, Index>::value;
+  const bool isIndex = std::is_same<Modifier, IndexTag>::value;
   const bool isInsert = std::is_same<Modifier, Insert>::value;
   const bool isRemove = std::is_same<Modifier, Remove>::value;
   const bool isUpdate = std::is_same<Modifier, Update>::value;
@@ -238,6 +235,7 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   return true;
 }
 
+template struct ::arangodb::aql::SingleRemoteModificationExecutor<IndexTag>;
 template struct ::arangodb::aql::SingleRemoteModificationExecutor<Insert>;
 template struct ::arangodb::aql::SingleRemoteModificationExecutor<Remove>;
 template struct ::arangodb::aql::SingleRemoteModificationExecutor<Replace>;

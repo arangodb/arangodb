@@ -55,13 +55,14 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
   constexpr static double const defaultTimeOut = 3600.0;
 };
 
-struct Index {};
+struct IndexTag {};
 
 template <typename Modifier>
 struct SingleRemoteModificationExecutor {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
+    static const bool inputSizeRestrictsOutputSize = false;
   };
   using Infos = SingleRemoteModificationInfos;
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -69,7 +70,7 @@ struct SingleRemoteModificationExecutor {
   using Modification = Modifier;
 
   SingleRemoteModificationExecutor(Fetcher&, Infos&);
-  ~SingleRemoteModificationExecutor();
+  ~SingleRemoteModificationExecutor() = default;
 
   /**
    * @brief produce the next Row of Aql Values.

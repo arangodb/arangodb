@@ -65,7 +65,9 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <boost/optional.hpp>
 #include <type_traits>
+
 
 namespace arangodb {
 namespace velocypack {
@@ -545,6 +547,13 @@ class ExecutionNode {
   std::unordered_set<RegisterId> calcRegsToKeep() const;
 
   RegisterId variableToRegisterId(Variable const*) const;
+
+  boost::optional<RegisterId> variableToRegisterOptionalId(Variable const* var) const {
+    if(var){
+      return variableToRegisterId(var);
+    }
+    return boost::none;
+  }
 
  protected:
   /// @brief node id

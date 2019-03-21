@@ -97,7 +97,6 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-
   RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
   RegisterId const nrInRegs = nrOutRegs;
 
@@ -478,40 +477,32 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(
 /// @brief creates corresponding SingleRemoteOperationNode
 std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-
   ExecutionNode const* previousNode = getFirstDependency();
+
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId in = variableToRegisterId(_inVariable);
-  RegisterId out = variableToRegisterId(_outVariable);
-  RegisterId update = variableToRegisterId(_updateVariable);
-
-  boost::optional<RegisterId> outputNew;
-  if (_outVariableNew) {
-    outputNew = variableToRegisterId(_outVariableNew);
-  }
-
-  boost::optional<RegisterId> outputOld;
-  if (_outVariableOld) {
-    outputOld = variableToRegisterId(_outVariableOld);
-  }
+  auto in = variableToRegisterOptionalId(_inVariable);
+  auto out = variableToRegisterOptionalId(_outVariable);
+  auto outputNew = variableToRegisterOptionalId(_outVariableNew);
+  auto outputOld = variableToRegisterOptionalId(_outVariableOld);
 
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   SingleRemoteModificationInfos infos(
-      inDoc, insert, update, outputNew, outputOld, boost::none /*output*/,
+      in /*input1*/, boost::none /*input1*/, boost::none /*input1*/, outputNew,
+      outputOld, out /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
-      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
-      getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
-      std::move(options), _collection, ProducesResults(false /*producesResults()*/),
+      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
+      calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
+      _collection, ProducesResults(false /*producesResults()*/),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(true /*countStats()*/),
       IsReplace(false) /*(needed by upsert)*/,
-      IgnoreDocumentNotFound(_options.ignoreDocumentNotFound), _key , this->hasParent());
-
+      IgnoreDocumentNotFound(_options.ignoreDocumentNotFound), _key,
+      this->hasParent(), this->_replaceIndexNode);
 
   if (_mode == NodeType::INDEX) {
-    return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Index>>>(
+    return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<IndexTag>>>(
         &engine, this, std::move(infos));
   } else if (_mode == NodeType::INSERT) {
     return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Insert>>>(
@@ -522,14 +513,16 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
   } else if (_mode == NodeType::REPLACE) {
     return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Replace>>>(
         &engine, this, std::move(infos));
-  } else if (_mode == NodeType::UPDATE ) {
+  } else if (_mode == NodeType::UPDATE) {
     return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Update>>>(
         &engine, this, std::move(infos));
-  } else if (_mode == NodeType::UPSERT ) {
+  } else if (_mode == NodeType::UPSERT) {
     return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Upsert>>>(
         &engine, this, std::move(infos));
+  } else {
+    TRI_ASSERT(false);
+    return nullptr;
   }
-
 }
 
 /// @brief toVelocyPack, for SingleRemoteOperationNode
