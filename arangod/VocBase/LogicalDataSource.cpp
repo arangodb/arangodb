@@ -53,7 +53,15 @@ std::string ensureGuid(std::string&& guid, TRI_voc_cid_t id, TRI_voc_cid_t planI
   // id numbers can also not conflict, first character is always 'h'
   if (arangodb::ServerState::instance()->isCoordinator() ||
       arangodb::ServerState::instance()->isDBServer()) {
-    TRI_ASSERT(planId);
+     // this was seen to happen on coordinator when agency returned '0' for 'id'
+    // and no 'planId' was provided in the definition
+    if (!planId) {
+      THROW_ARANGO_EXCEPTION_MESSAGE( // exception
+        TRI_ERROR_INTERNAL, // code
+        "invalid zero 'planId' value" // message
+      );
+    }
+
     guid.append("c");
     guid.append(std::to_string(planId));
     guid.push_back('/');
@@ -64,10 +72,14 @@ std::string ensureGuid(std::string&& guid, TRI_voc_cid_t id, TRI_voc_cid_t planI
     }
   } else if (isSystem) {
     guid.append(name);
+  } else if (!id) {
+    THROW_ARANGO_EXCEPTION_MESSAGE( // exception
+      TRI_ERROR_INTERNAL, // code
+      "invalid zero 'id' value" // message
+    );
   } else {
     char buf[sizeof(TRI_server_id_t) * 2 + 1];
     auto len = TRI_StringUInt64HexInPlace(arangodb::ServerIdFeature::getId(), buf);
-    TRI_ASSERT(id);
     guid.append("h");
     guid.append(buf, len);
     TRI_ASSERT(guid.size() > 3);

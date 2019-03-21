@@ -653,55 +653,56 @@ namespace iresearch {
   return LINK_TYPE;
 }
 
-/*static*/ arangodb::Result IResearchLinkHelper::validateLinks(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& links) {
+/*static*/ arangodb::Result IResearchLinkHelper::validateLinks( // validate
+    TRI_vocbase_t& vocbase, // vocbase
+    arangodb::velocypack::Slice const& links // link definitions
+) {
   if (!links.isObject()) {
-    return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("while validating arangosearch link definition, error: "
-                    "definition is not an object"));
+    return arangodb::Result( // result
+      TRI_ERROR_BAD_PARAMETER, // code
+      std::string("while validating arangosearch link definition, error: definition is not an object")
+    );
   }
 
   size_t offset = 0;
   arangodb::CollectionNameResolver resolver(vocbase);
 
-  for (arangodb::velocypack::ObjectIterator itr(links); itr.valid(); ++itr, ++offset) {
+  for (arangodb::velocypack::ObjectIterator itr(links); // setup
+       itr.valid(); // condition
+       ++itr, ++offset // step
+  ) {
     auto collectionName = itr.key();
     auto linkDefinition = itr.value();
 
     if (!collectionName.isString()) {
-      return arangodb::Result(
-          TRI_ERROR_BAD_PARAMETER,
-          std::string("while validating arangosearch link definition, error: "
-                      "collection at offset ") +
-              std::to_string(offset) + " is not a string");
+      return arangodb::Result( // result
+        TRI_ERROR_BAD_PARAMETER, // code
+        std::string("while validating arangosearch link definition, error: collection at offset ") + std::to_string(offset) + " is not a string"
+      );
     }
 
     auto collection = resolver.getCollection(collectionName.copyString());
 
     if (!collection) {
-      return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                              std::string("while validating arangosearch link "
-                                          "definition, error: collection '") +
-                                  collectionName.copyString() + "' not found");
+      return arangodb::Result( // result
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, // code
+        std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not found"
+      );
     }
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (arangodb::ExecContext::CURRENT &&
-        !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(),
-                                                          collection->name(),
-                                                          arangodb::auth::Level::RO)) {
-      return arangodb::Result(TRI_ERROR_FORBIDDEN,
-                              std::string("while validating arangosearch link "
-                                          "definition, error: collection '") +
-                                  collectionName.copyString() +
-                                  "' not authorized for read access");
+    if (arangodb::ExecContext::CURRENT // have context
+        && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
+      return arangodb::Result( // result
+        TRI_ERROR_FORBIDDEN, // code
+        std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not authorized for read access"
+      );
     }
 
     IResearchLinkMeta meta;
     std::string errorField;
 
-    if (!linkDefinition.isNull() && !meta.init(linkDefinition, errorField)) { // for db-server analyzer validation should have already apssed on coordinator
+    if (!linkDefinition.isNull() && !meta.init(linkDefinition, errorField, &vocbase)) { // for db-server analyzer validation should have already apssed on coordinator
       return arangodb::Result( // result
         TRI_ERROR_BAD_PARAMETER, // code
         errorField.empty()
