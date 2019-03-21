@@ -1,6 +1,31 @@
 v3.4.5 (XXXX-XX-XX)
 -------------------
 
+* don't check for the presence of ArangoDB upgrades available when firing up an arangosh
+  enterprise edition build
+
+* added startup option `--rocksdb.allow-fallocate`
+  
+  When set to true, allows RocksDB to use the fallocate call. If false, fallocate 
+  calls are bypassed and no preallocation is done. Preallocation is turned on by 
+  default, but can be turned off for operating system versions that are known to 
+  have issues with it.
+  This option only has an effect on operating systems that support fallocate.
+
+* added startup option `--rocksdb.limit-open-files-at-startup`
+                     
+  If set to true, this will limit the amount of .sst files RocksDB will inspect at 
+  startup, which can reduce the number of IO operations performed at start.
+
+* don't run compact() on a collection after a truncate() was done in the same transaction
+
+  running compact() in the same transaction will only increase the data size on disk due to 
+  RocksDB not being able to remove any documents physically due to the snapshot that is
+  taken at transaction start.
+
+  This change also exposes db.<collection>.compact() in the arangosh, in order to manually 
+  run a compaction on the data range of a collection should it be needed for maintenance.
+
 * don't attempt to remove non-existing WAL files, because such attempt will
   trigger unnecessary error log messages in the RocksDB library
 
@@ -97,6 +122,9 @@ v3.4.5 (XXXX-XX-XX)
 * fix log spamming after leader resignation in agency
 
 * fix cases, where invalid json could be generated in agents' store dumps
+
+* coordinator route for full agency dumps contains compactions and
+  time stamps
 
 v3.4.4 (2019-03-12)
 -------------------

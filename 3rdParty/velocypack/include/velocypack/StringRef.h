@@ -34,6 +34,7 @@
 #include <string>
 
 #include "velocypack/velocypack-common.h"
+#include "velocypack/Exception.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -98,6 +99,16 @@ class StringRef {
   
   /// @brief create a StringRef from a VPack slice of type String
   StringRef& operator=(Slice slice);
+  
+  StringRef substr(size_t pos = 0, size_t count = std::string::npos) const {
+    if (pos >= _length) {
+      throw Exception(Exception::IndexOutOfBounds, "substr index out of bounds");
+    }
+    if (count == std::string::npos || (count + pos >= _length)) {
+      count = _length - pos;
+    }
+    return StringRef(_data + pos, count);
+  }
 
   int compare(std::string const& other) const noexcept {
     int res = memcmp(_data, other.data(), (std::min)(_length, other.size()));
