@@ -122,6 +122,7 @@ struct IResearchViewDBServerSetup {
     buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false); // required for TRI_vocbase_t instantiation
     buildFeatureEntry(new arangodb::ShardingFeature(server), false); // required for TRI_vocbase_t instantiation
     buildFeatureEntry(new arangodb::ViewTypesFeature(server), false); // required for TRI_vocbase_t::createView(...)
+    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(server), false); // required for IResearchLinkMeta::init(...)
     buildFeatureEntry(new arangodb::iresearch::IResearchFeature(server), false); // required for instantiating IResearchView*
     buildFeatureEntry(new arangodb::ClusterFeature(server), false);
     buildFeatureEntry(new arangodb::V8DealerFeature(server), false);
