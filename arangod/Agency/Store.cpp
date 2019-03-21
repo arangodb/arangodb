@@ -782,7 +782,6 @@ void Store::removeTTL(std::string const& uri) {
 
   if (!_timeTable.empty()) {
     for (auto it = _timeTable.cbegin(); it != _timeTable.cend();) {
-      LOG_DEVEL << it->second << " " << uri;
       if (it->second == uri) {
         it = _timeTable.erase(it);
       } else {
