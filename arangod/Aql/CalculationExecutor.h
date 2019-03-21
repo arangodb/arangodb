@@ -118,6 +118,8 @@ class CalculationExecutor {
   template <CalculationType U = calculationType, typename = std::enable_if_t<U == CalculationType::V8Condition>>
   inline void exitContext();
 
+  inline bool shouldExitContextBetweenBlocks() const;
+
  public:
   CalculationExecutorInfos& _infos;
 
@@ -126,29 +128,31 @@ class CalculationExecutor {
 
   InputAqlItemRow _currentRow;
   ExecutionState _rowState;
-
-  bool _hasEnteredContext;
 };
 
 template<CalculationType calculationType>
 template<CalculationType U, typename>
 inline void CalculationExecutor<calculationType>::enterContext() {
   _infos.getQuery().enterContext();
-  _hasEnteredContext = true;
 }
 
 template<CalculationType calculationType>
 template<CalculationType U, typename>
 inline void CalculationExecutor<calculationType>::exitContext() {
-  static const bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
-  const bool stream = _infos.getQuery().queryOptions().stream;
-  if (isRunningInCluster || stream) {
+  if (shouldExitContextBetweenBlocks()) {
     // must invalidate the expression now as we might be called from
     // different threads
     _infos.getExpression().invalidate();
     _infos.getQuery().exitContext();
   }
-  _hasEnteredContext = false;
+}
+
+template<CalculationType calculationType>
+bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks() const {
+  static const bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
+  const bool stream = _infos.getQuery().queryOptions().stream;
+
+  return isRunningInCluster || stream;
 }
 
 template <>
@@ -176,13 +180,13 @@ CalculationExecutor<calculationType>::produceRow(OutputAqlItemRow& output) {
 
   if (state == ExecutionState::WAITING) {
     TRI_ASSERT(!row);
-    TRI_ASSERT(!_hasEnteredContext);
+    TRI_ASSERT(!_infos.getQuery().hasEnteredContext());
     return {state, NoStats{}};
   }
 
   if (!row) {
     TRI_ASSERT(state == ExecutionState::DONE);
-    TRI_ASSERT(!_hasEnteredContext);
+    TRI_ASSERT(!_infos.getQuery().hasEnteredContext());
     return {state, NoStats{}};
   }
 
@@ -192,10 +196,13 @@ CalculationExecutor<calculationType>::produceRow(OutputAqlItemRow& output) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  // _hasEnteredContext => state == HASMORE,
+  // The following only affects V8Conditions. If we should exit the V8 context
+  // between blocks, because we might have to wait for client or upstream, then
+  //   hasEnteredContext => state == HASMORE,
   // as we only leave the context open when there are rows left in the current
-  // block!
-  TRI_ASSERT(!_hasEnteredContext || state == ExecutionState::HASMORE);
+  // block.
+  TRI_ASSERT(!shouldExitContextBetweenBlocks() ||
+             !_infos.getQuery().hasEnteredContext() || state == ExecutionState::HASMORE);
 
   return {state, NoStats{}};
 }
@@ -222,10 +229,14 @@ template <>
 inline void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
     InputAqlItemRow& input, OutputAqlItemRow& output) {
   // must have a V8 context here to protect Expression::execute().
+
   // enterContext is safe to call even if we've already entered.
-  // However, it is expected that we enter the context exactly on the first row
-  // of every block.
-  TRI_ASSERT(_hasEnteredContext == !input.isFirstRowInBlock());
+
+  // If we should exit the context between two blocks, because client or upstream
+  // might send us to sleep, it is expected that we enter the context exactly on the
+  // first row of every block.
+  TRI_ASSERT(!shouldExitContextBetweenBlocks() ||
+             _infos.getQuery().hasEnteredContext() == !input.isFirstRowInBlock());
   enterContext();
   auto contextGuard = scopeGuard([this]() { exitContext(); });
 
@@ -250,6 +261,8 @@ inline void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
     // Thus we won't wait for upstream, nor will get a WAITING on the next
     // fetchRow().
     // So we keep the context open.
+    // This works because this block allows pass through, i.e. produces exactly
+    // one output row per input row.
     contextGuard.cancel();
   }
 }
