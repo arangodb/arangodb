@@ -82,7 +82,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
     password: '',
     verbose: true,
     includeSystem: false,
-    keepBarrier: false
+    keepBarrier: true
   });
 
   assertTrue(syncResult.hasOwnProperty('lastLogTick'));
@@ -98,7 +98,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
   applierConfiguration.username = 'root';
   applierConfiguration.password = '';
   applierConfiguration.force32mode = false;
-  applierConfiguration.requireFromPresent = false;
+  applierConfiguration.requireFromPresent = true;
 
   if (!applierConfiguration.hasOwnProperty('chunkSize')) {
     applierConfiguration.chunkSize = 16384;
@@ -107,7 +107,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
   connectToSlave();
 
   replication.applier.properties(applierConfiguration);
-  replication.applier.start(syncResult.lastLogTick);
+  replication.applier.start(syncResult.lastLogTick, syncResult.barrierId);
 
   var printed = false;
   var handled = false;
@@ -128,7 +128,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
 
     if (slaveState.state.lastError.errorNum > 0) {
       console.topic('replication=error', 'slave has errored:', JSON.stringify(slaveState.state.lastError));
-      break;
+      throw slaveState.state.lastError;
     }
 
     if (!slaveState.state.running) {

@@ -608,14 +608,25 @@ query_t Store::clearExpired() const {
 void Store::dumpToBuilder(Builder& builder) const {
   MUTEX_LOCKER(storeLocker, _storeLock);
   toBuilder(builder, true);
+
+  std::map<std::string, int64_t> clean {};
+  for (auto const& i : _timeTable) {
+    auto ts = std::chrono::duration_cast<std::chrono::seconds>(
+      i.first.time_since_epoch()).count();
+    auto it = clean.find(i.second);
+    if (it == clean.end()) {
+      clean[i.second] = ts;
+    } else if (ts < it->second) {
+      it->second = ts;
+    }      
+  }
   {
     VPackObjectBuilder guard(&builder);
-    for (auto const& i : _timeTable) {
-      auto ts = std::chrono::duration_cast<std::chrono::seconds>(i.first.time_since_epoch())
-                    .count();
-      builder.add(i.second, VPackValue(ts));
+    for (auto const& c : clean) {
+      builder.add(c.first, VPackValue(c.second));
     }
   }
+
   {
     VPackArrayBuilder garray(&builder);
     for (auto const& i : _observerTable) {
@@ -686,10 +697,14 @@ Store& Store::operator=(VPackSlice const& slice) {
 
   TRI_ASSERT(slice[1].isObject());
   for (auto const& entry : VPackObjectIterator(slice[1])) {
-    long long tse = entry.value.getInt();
-    _timeTable.emplace(
-        std::pair<TimePoint, std::string>(TimePoint(std::chrono::duration<int>(tse)),
-                                          entry.key.copyString()));
+    if (entry.value.isNumber()) {
+      auto const& key = entry.key.copyString();
+      if (_node.has(key)) {
+        auto tp = TimePoint(std::chrono::seconds(entry.value.getNumber<int>()));
+        _node(key).timeToLive(tp);
+        _timeTable.emplace(std::pair<TimePoint, std::string>(tp, key));
+      }
+    }
   }
 
   TRI_ASSERT(slice[2].isArray());
@@ -772,7 +787,7 @@ void Store::removeTTL(std::string const& uri) {
   if (!_timeTable.empty()) {
     for (auto it = _timeTable.cbegin(); it != _timeTable.cend();) {
       if (it->second == uri) {
-        _timeTable.erase(it++);
+        it = _timeTable.erase(it);
       } else {
         ++it;
       }

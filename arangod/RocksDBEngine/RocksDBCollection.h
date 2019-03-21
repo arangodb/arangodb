@@ -109,7 +109,11 @@ class RocksDBCollection final : public PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  Result truncate(transaction::Methods* trx, OperationOptions&) override;
+  Result truncate(transaction::Methods* trx, OperationOptions& options) override;
+  
+  /// @brief compact-data operation
+  /// triggers rocksdb compaction for documentDB and indexes
+  Result compact() override;
 
   void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) override;
 
@@ -174,8 +178,6 @@ class RocksDBCollection final : public PhysicalCollection {
   /// recalculte counts for collection in case of failure
   uint64_t recalculateCounts();
 
-  /// trigger rocksdb compaction for documentDB and indexes
-  void compact();
   void estimateSize(velocypack::Builder& builder);
 
   inline bool cacheEnabled() const { return _cacheEnabled; }

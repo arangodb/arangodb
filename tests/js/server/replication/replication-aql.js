@@ -83,7 +83,6 @@ function ReplicationSuite() {
       verbose: true,
       includeSystem: false,
       keepBarrier: true,
-      requireFromPresent: true,
     });
 
     assertTrue(syncResult.hasOwnProperty('lastLogTick'));
@@ -97,7 +96,8 @@ function ReplicationSuite() {
     let applierConfiguration = {
       endpoint: masterEndpoint,
       username: "root",
-      password: "" 
+      password: "", 
+      requireFromPresent: true 
     };
 
     connectToSlave();
@@ -113,7 +113,7 @@ function ReplicationSuite() {
 
       if (slaveState.state.lastError.errorNum > 0) {
         console.topic("replication=error", "slave has errored:", JSON.stringify(slaveState.state.lastError));
-        break;
+        throw slaveState.state.lastError;
       }
 
       if (!slaveState.state.running) {

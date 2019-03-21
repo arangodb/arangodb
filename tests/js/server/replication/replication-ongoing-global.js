@@ -83,7 +83,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
   applierConfiguration.password = '';
   applierConfiguration.includeSystem = false;
   applierConfiguration.force32mode = false;
-  applierConfiguration.requireFromPresent = false;
+  applierConfiguration.requireFromPresent = true;
 
   var syncResult = replication.syncGlobal({
     endpoint: masterEndpoint,
@@ -132,7 +132,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
 
     if (slaveState.state.lastError.errorNum > 0) {
       console.topic('replication=error', 'slave has errored:', JSON.stringify(slaveState.state.lastError));
-      break;
+      throw slaveState.state.lastError;
     }
 
     if (!slaveState.state.running) {
@@ -1292,7 +1292,7 @@ function ReplicationOtherDBSuite () {
         let slaveState = replication.globalApplier.state();
         if (slaveState.state.lastError.errorNum > 0) {
           console.topic('replication=error', 'slave has errored:', JSON.stringify(slaveState.state.lastError));
-          break;
+          throw slaveState.state.lastError;
         }
 
         if (!slaveState.state.running) {

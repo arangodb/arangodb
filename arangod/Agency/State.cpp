@@ -1553,13 +1553,11 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   auto bindVars = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder b(bindVars.get()); }
 
-  std::string const querystr 
-    = "FOR l IN log FILTER l._key <= 'buf" + stringify(lastIndex) +
-      "' SORT l._key RETURN {'_key': l._key, 'timestamp': l.timestamp,"
-                            "'clientId': l.clientId, 'request': l.request}";
+  std::string const logQueryStr = std::string("FOR l IN log FILTER l._key <= '")
+    + stringify(lastIndex) + std::string("' SORT l._key RETURN l");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query logQuery(false, *_vocbase, aql::QueryString(querystr), bindVars,
+  arangodb::aql::Query logQuery(false, *_vocbase, aql::QueryString(logQueryStr), bindVars,
                              nullptr, arangodb::aql::PART_MAIN);
 
   aql::QueryResult logQueryResult = logQuery.executeSync(_queryRegistry);
@@ -1586,11 +1584,12 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   }
 
   if (n > 0) {
-    std::string const compstr
-      = "FOR c in compact FILTER c._key >= '" + firstIndex +
-        "' SORT c._key LIMIT 1 RETURN c";
 
-    arangodb::aql::Query compQuery(false, *_vocbase, aql::QueryString(compstr),
+    std::string const compQueryStr =
+      std::string("FOR c in compact FILTER c._key >= '") + firstIndex
+      + std::string("' SORT c._key LIMIT 1 RETURN c");
+        
+    arangodb::aql::Query compQuery(false, *_vocbase, aql::QueryString(compQueryStr),
                                bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     aql::QueryResult compQueryResult = compQuery.executeSync(_queryRegistry);
