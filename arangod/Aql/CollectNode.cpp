@@ -124,12 +124,12 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const 
 
 void CollectNode::calcExpressionRegister(
     arangodb::aql::RegisterId& expressionRegister,
-    std::unordered_set<arangodb::aql::RegisterId>& writeableOutputRegisters) const {
+    std::unordered_set<arangodb::aql::RegisterId>& readableInputRegisters) const {
   if (_expressionVariable != nullptr) {
     auto it = getRegisterPlan()->varInfo.find(_expressionVariable->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     expressionRegister = (*it).second.registerId;
-    writeableOutputRegisters.insert((*it).second.registerId);
+    readableInputRegisters.insert((*it).second.registerId);
   }
 }
 
@@ -294,8 +294,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       RegisterId collectRegister = ExecutionNode::MaxRegisterId;
       calcCollectRegister(collectRegister, writeableOutputRegisters);
 
-      RegisterId expressionRegister;
-      calcExpressionRegister(expressionRegister, writeableOutputRegisters);
+      RegisterId expressionRegister = ExecutionNode::MaxRegisterId;
+      calcExpressionRegister(expressionRegister, readableInputRegisters);
 
       // calculate the group registers
       std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
