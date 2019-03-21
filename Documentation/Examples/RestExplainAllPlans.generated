@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain &lt;&lt;EOF
+shell> curl -X POST --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/explain &lt;&lt;EOF
 { 
   <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR p IN products FILTER p.id == 25 RETURN p"</span>, 
   <span class="hljs-string">"options"</span> : { 
@@ -41,7 +41,7 @@ x-content-type-options: nosniff
           <span class="hljs-string">"producesResult"</span> : <span class="hljs-literal">true</span>, 
           <span class="hljs-string">"indexes"</span> : [ 
             { 
-              <span class="hljs-string">"id"</span> : <span class="hljs-string">"10856"</span>, 
+              <span class="hljs-string">"id"</span> : <span class="hljs-string">"10858"</span>, 
               <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
               <span class="hljs-string">"fields"</span> : [ 
                 <span class="hljs-string">"id"</span> 

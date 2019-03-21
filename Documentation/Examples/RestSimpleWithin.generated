@@ -1,4 +1,4 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/near &lt;&lt;EOF
+shell> curl -X PUT --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/simple/near &lt;&lt;EOF
 { 
   <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"latitude"</span> : <span class="hljs-number">0</span>, 
@@ -16,9 +16,9 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11948"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11948"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDwufeW--B"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11945"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11945"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YX0lLia--_"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.002/"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">0.002</span>, 
@@ -26,9 +26,9 @@ x-content-type-options: nosniff
       ] 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11942"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11942"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDwufeS--H"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11939"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11939"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YX0lLiW--_"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.002/"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">-0.002</span>, 

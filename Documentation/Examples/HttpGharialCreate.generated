@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial &lt;&lt;EOF
+shell> curl -X POST --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/gharial &lt;&lt;EOF
 { 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"myGraph"</span>, 
   <span class="hljs-string">"edgeDefinitions"</span> : [ 
@@ -16,9 +16,9 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
-x-content-type-options: nosniff
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _YDwuSQe--_
+etag: _YX0k9Ca---
+x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -41,7 +41,7 @@ etag: _YDwuSQe--_
     <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"smartGraphAttribute"</span> : <span class="hljs-string">""</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/myGraph"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDwuSQe--_"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YX0k9Ca---"</span> 
   }, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }

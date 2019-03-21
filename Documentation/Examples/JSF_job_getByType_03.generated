@@ -1,4 +1,4 @@
-shell> curl -X POST --header 'x-arango-async: store' --data-binary @- --dump - http://localhost:8529/_api/transaction &lt;&lt;EOF
+shell> curl -X POST --header 'x-arango-async: store' --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/transaction &lt;&lt;EOF
 { 
   <span class="hljs-string">"collections"</span> : { 
     <span class="hljs-string">"read"</span> : [ 
@@ -10,20 +10,20 @@ shell> curl -X POST --header 'x-arango-async: store' --data-binary @- --dump - h
 EOF
 
 HTTP/1.1 202 Accepted
-x-content-type-options: nosniff
-x-arango-async-id: 9598
 content-type: text/plain; charset=utf-8
+x-content-type-options: nosniff
+x-arango-async-id: 9594
 
-shell> curl --dump - http://localhost:8529/_api/job/pending
+shell> curl --header 'accept: application/json' --dump - http://localhost:8529/_api/job/pending
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 [ 
-  <span class="hljs-string">"9598"</span> 
+  <span class="hljs-string">"9594"</span> 
 ]
-shell> curl -X DELETE --dump - http://localhost:8529/_api/job/9598
+shell> curl -X DELETE --header 'accept: application/json' --dump - http://localhost:8529/_api/job/9594
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>

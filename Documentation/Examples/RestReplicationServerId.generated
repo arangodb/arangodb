@@ -1,9 +1,9 @@
-shell> curl --dump - http://localhost:8529/_api/replication/server-id
+shell> curl --header 'accept: application/json' --dump - http://localhost:8529/_api/replication/server-id
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"70877811142364"</span> 
+  <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"83942969721748"</span> 
 }

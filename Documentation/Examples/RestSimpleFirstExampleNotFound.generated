@@ -1,4 +1,4 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/first-example &lt;&lt;EOF
+shell> curl -X PUT --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/simple/first-example &lt;&lt;EOF
 { 
   <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"example"</span> : { 

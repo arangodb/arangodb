@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query &lt;&lt;EOF
+shell> curl -X POST --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/query &lt;&lt;EOF
 { "query" : "FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n" }
 EOF
 

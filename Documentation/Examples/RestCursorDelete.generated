@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor &lt;&lt;EOF
+shell> curl -X POST --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/cursor &lt;&lt;EOF
 { 
   <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR p IN products LIMIT 5 RETURN p"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-literal">true</span>, 
@@ -15,20 +15,20 @@ x-content-type-options: nosniff
   <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span>, 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10350"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10350"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDwuYBW--B"</span>, 
-      <span class="hljs-string">"hello3"</span> : <span class="hljs-string">"world1"</span> 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10340"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10340"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YX0lDyC--_"</span>, 
+      <span class="hljs-string">"hello1"</span> : <span class="hljs-string">"world1"</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10353"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10353"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDwuYBW--D"</span>, 
-      <span class="hljs-string">"hello4"</span> : <span class="hljs-string">"world1"</span> 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10344"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10344"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YX0lDyC--B"</span>, 
+      <span class="hljs-string">"hello2"</span> : <span class="hljs-string">"world1"</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10359"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10356"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-number">5</span>, 
   <span class="hljs-string">"extra"</span> : { 
     <span class="hljs-string">"stats"</span> : { 
@@ -38,11 +38,11 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00011682510375976562</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0002002716064453125</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 
   <span class="hljs-string">"cached"</span> : <span class="hljs-literal">false</span> 
 }
-shell> curl -X DELETE --dump - http://localhost:8529/_api/cursor/10359
+shell> curl -X DELETE --header 'accept: application/json' --dump - http://localhost:8529/_api/cursor/10356
 

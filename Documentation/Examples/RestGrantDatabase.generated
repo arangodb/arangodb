@@ -1,4 +1,4 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/user/admin@myapp/database/_system &lt;&lt;EOF
+shell> curl -X PUT --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/user/admin@myapp/database/_system &lt;&lt;EOF
 { 
   <span class="hljs-string">"grant"</span> : <span class="hljs-string">"rw"</span> 
 }

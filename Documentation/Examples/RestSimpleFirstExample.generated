@@ -1,4 +1,4 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/first-example &lt;&lt;EOF
+shell> curl -X PUT --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/simple/first-example &lt;&lt;EOF
 { 
   <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"example"</span> : { 
@@ -15,10 +15,7 @@ x-content-type-options: nosniff
   <span class="hljs-string">"document"</span> : { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11493"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11493"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDwufGG--B"</span>, 
-    <span class="hljs-string">"a"</span> : { 
-      <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
-    }, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YX0lLHO--B"</span>, 
     <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
   }, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
