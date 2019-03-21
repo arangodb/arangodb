@@ -48,9 +48,24 @@ class BackupFeature : public application_features::ApplicationFeature {
    */
   static std::string featureName();
 
+ public:
+  struct Options {
+    std::string credentials;
+    std::string endpoint;
+    bool force = false;
+    bool includeSearch = true;
+    std::string label = "";
+    double maxWaitTime = 60.0;
+    std::string name = "";
+    std::string operation = "list";
+    std::string timestamp = "";
+    std::string uuid = "";
+  };
+
  private:
   ClientManager _clientManager;
   int& _exitCode;
+  Options _options;
 };
 
 }  // namespace arangodb
