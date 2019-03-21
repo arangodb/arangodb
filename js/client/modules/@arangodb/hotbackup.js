@@ -74,11 +74,61 @@ exports.restore = function(restoreBackupName) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief deletes a hot backup to the server
+// / @brief deletes a hot backup on the server
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.delete = function(deleteBackupName) {
   let reply = internal.db._connection.DELETE('_admin/hotbackup/create', { directory: deleteBackupName });
+  if (!reply.error && reply.code === 200) {
+    return reply.result;
+  }
+  throw new ArangoError(reply);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief stores a hot backup on the server
+// //////////////////////////////////////////////////////////////////////////////
+
+exports.store = function(storeBackupName) {
+  let reply = internal.db._connection.GET('_admin/hotbackup/store', { directory: storeBackupName });
+  if (!reply.error && reply.code === 200) {
+    return reply.result;
+  }
+  throw new ArangoError(reply);
+};
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief retrieves a hot backup from the server
+// //////////////////////////////////////////////////////////////////////////////
+
+exports.retrieve = function(backupName) {
+  let reply = internal.db._connection.POST('_admin/hotbackup/retrieve', { directory: backupName });
+  if (!reply.error && reply.code === 200) {
+    return reply.result;
+  }
+  throw new ArangoError(reply);
+};
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fetches the hot backup policy
+// //////////////////////////////////////////////////////////////////////////////
+
+exports.getPolicy = function() {
+  let reply = internal.db._connection.GET('_admin/hotbackup/policy');
+  if (!reply.error && reply.code === 200) {
+    return reply.result;
+  }
+  throw new ArangoError(reply);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief sets a hot backup policy
+// //////////////////////////////////////////////////////////////////////////////
+
+exports.setPolicy = function(policy) {
+  let reply = internal.db._connection.POST('_admin/hotbackup/policy', {policy: policy });
   if (!reply.error && reply.code === 200) {
     return reply.result;
   }
