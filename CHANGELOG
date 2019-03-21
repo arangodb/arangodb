@@ -1,6 +1,10 @@
 v3.4.5 (XXXX-XX-XX)
 -------------------
 
+* fixed internal issue #3757 : when restarting a follower in active failover mode,
+  try an incremental sync instead of a full resync. Fixed also the case where a
+  double resync was made
+
 * don't check for the presence of ArangoDB upgrades available when firing up an arangosh
   enterprise edition build
 
@@ -42,8 +46,8 @@ v3.4.5 (XXXX-XX-XX)
 * when restarting a follower in active failover mode, try an incremental sync instead
   of a full resync
 
-* add "PRUNE <condition>" to AQL Traversals. This allows to early abort searching of
-  unnecessary branches within a traversal.
+* add "PRUNE <condition>" to AQL Traversals (internal issue #3068). This allows to early
+  abort searching of unnecessary branches within a traversal.
   PRUNE is only allowed in the Traversal statement and only between the graphdefinition
   and the options of the traversal.
   e.g.:
