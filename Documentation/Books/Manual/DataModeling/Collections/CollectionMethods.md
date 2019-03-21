@@ -73,6 +73,29 @@ Truncates a collection:
     @endDocuBlock collectionTruncate
 
 
+Compact
+-------
+
+<!-- js/server/modules/@arangodb/arango-collection.js-->
+
+Compacts the data of a collection
+`collection.compact()`
+
+Compacts the data of a collection in order to reclaim disk space. For the
+MMFiles storage engine, the operation will reset the collection's last
+compaction timestamp, so it will become a candidate for compaction. For the
+RocksDB storage engine, the operation will compact the document and index
+data by rewriting the underlying .sst files and only keeping the relevant
+entries.
+
+Under normal circumstances running a compact operation is not necessary,
+as the collection data will eventually get compacted anyway. However, in 
+some situations, e.g. after running lots of update/replace or remove 
+operations, the disk data for a collection may contain a lot of outdated data
+for which the space shall be reclaimed. In this case the compaction operation
+can be used.
+
+
 Properties
 ----------
 

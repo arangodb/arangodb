@@ -342,6 +342,10 @@ devel
 
 * leader's timestamps in append entries protocol
 
+* speed up agency supervision in case of many jobs
+
+* fix log spam in agency supervision when leader resigned
+
 v3.4.1 (XXXX-XX-XX)
 -------------------
 
