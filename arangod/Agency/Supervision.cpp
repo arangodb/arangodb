@@ -246,7 +246,7 @@ void Supervision::upgradeHealthRecords(Builder& builder) {
     HealthRecord hr;
     {
       VPackObjectBuilder oo(&b);
-      for (auto recPair : _snapshot.hasAsChildren(healthPrefix).first) {
+      for (auto const& recPair : _snapshot.hasAsChildren(healthPrefix).first) {
         if (recPair.second->has("ShortName") &&
             recPair.second->has("Endpoint")) {
           hr = *recPair.second;
@@ -1142,7 +1142,7 @@ void Supervision::workJobs() {
     }
   }
 
-  auto pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  auto const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
   for (auto const& pendEnt : pends) {
     auto jobNode = *(pendEnt.second);
     JobContext(PENDING, jobNode.hasAsString("jobId").first, _snapshot, _agent)

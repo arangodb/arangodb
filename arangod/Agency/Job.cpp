@@ -234,10 +234,10 @@ size_t Job::countGoodOrBadServersInList(Node const& snap, VPackSlice const& serv
     // No array, strange, return 0
     return count;
   }
-  auto health = snap.hasAsChildren(healthPrefix);
+  auto const& health = snap.hasAsChildren(healthPrefix);
   // Do we have a Health substructure?
   if (health.second) {
-    Node::Children& healthData = health.first; // List of servers in Health
+    Node::Children const& healthData = health.first; // List of servers in Health
     for (VPackSlice const serverName : VPackArrayIterator(serverList)) {
       if (serverName.isString()) {
         // serverName not a string? Then don't count
@@ -263,10 +263,10 @@ size_t Job::countGoodOrBadServersInList(Node const& snap, VPackSlice const& serv
  // in Status "GOOD" or "BAD".
 size_t Job::countGoodOrBadServersInList(Node const& snap, std::vector<std::string> const& serverList) {
   size_t count = 0;
-  auto health = snap.hasAsChildren(healthPrefix);
+  auto const& health = snap.hasAsChildren(healthPrefix);
   // Do we have a Health substructure?
   if (health.second) {
-    Node::Children& healthData = health.first; // List of servers in Health
+    Node::Children const& healthData = health.first; // List of servers in Health
     for (auto& serverStr : serverList) {
       // Now look up this server:
       auto it = healthData.find(serverStr);
@@ -300,10 +300,9 @@ bool Job::isInServerList(Node const& snap, std::string const& prefix, std::strin
       }
     }
   } else {  // an object
-    Node::Children children;
-    std::tie(children, has) = snap.hasAsChildren(prefix);
-    if (has) {
-      for (auto const& srv : children) {
+    auto const& children  = snap.hasAsChildren(prefix);
+    if (children.second) {
+      for (auto const& srv : children.first) {
         if (srv.first == server) {
           found = true;
           break;
@@ -328,7 +327,6 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
 
     bool has;
     VPackSlice slice;
-    Node::Children children;
 
     if (isArray) {
       std::tie(slice, has) = snapshot.hasAsSlice(prefix);
@@ -338,9 +336,11 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
         }
       }
     } else {
-      std::tie(children, has) = snapshot.hasAsChildren(prefix);
-      for (auto const& srv : children) {
-        ret.erase(std::remove(ret.begin(), ret.end(), srv.first), ret.end());
+      auto const& children = snapshot.hasAsChildren(prefix);
+      if (children.second) {
+        for (auto const& srv : children.first) {
+          ret.erase(std::remove(ret.begin(), ret.end(), srv.first), ret.end());
+        }
       }
     }
   };

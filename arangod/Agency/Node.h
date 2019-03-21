@@ -231,6 +231,18 @@ class Node {
   /// @brief Is string
   bool isString() const;
 
+  /**
+   * @brief Get seconds this node still has to live. (Must be guarded by caller)
+   * @return  seconds to live (int64_t::max, if none set)
+   */
+  TimePoint const& timeToLive() const;
+
+  /**
+   * @brief Set expiry for this node
+   * @param Time point of expiry
+   */
+  void timeToLive(TimePoint const& ttl);
+
   /// @brief accessor to Node object
   /// @return  second is true if url exists, first populated if second true
   std::pair<Node const&, bool> hasAsNode(std::string const&) const;
@@ -261,7 +273,7 @@ class Node {
 
   /// @brief accessor to Node's _children
   /// @return  second is true if url exists, first populated if second true
-  std::pair<Children, bool> hasAsChildren(std::string const&) const;
+  std::pair<Children const&, bool> hasAsChildren(std::string const&) const;
 
   /// @brief accessor to Node then write to builder
   /// @return  second is true if url exists, first is ignored
@@ -334,6 +346,8 @@ class Node {
   mutable Buffer<uint8_t> _vecBuf;
   mutable bool _vecBufDirty;
   bool _isArray;
+  static Children const dummyChildren;
+
 };
 
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
