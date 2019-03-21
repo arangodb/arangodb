@@ -69,7 +69,8 @@ GeneralCommTask::GeneralCommTask(Scheduler* scheduler, GeneralServer* server,
     : Task(scheduler, "GeneralCommTask"),
       SocketTask(scheduler, std::move(socket), std::move(info), keepAliveTimeout, skipSocketInit),
       _server(server),
-      _auth(AuthenticationFeature::instance()) {
+      _auth(AuthenticationFeature::instance()),
+      _authToken("", false, 0.) {
   TRI_ASSERT(_auth != nullptr);
 }
 
@@ -515,6 +516,13 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
   std::string const& path = req.requestPath();
   std::string const& username = req.user();
   bool userAuthenticated = req.authenticated();
+
+  auto const& ap = _authToken._allowedPaths;
+  if (!ap.empty()) {
+    if (std::find(ap.begin(), ap.end(), path) == ap.end()) {
+      return rest::ResponseCode::UNAUTHORIZED;
+    }
+  }
 
   rest::ResponseCode result = userAuthenticated ? rest::ResponseCode::OK
                                                 : rest::ResponseCode::UNAUTHORIZED;

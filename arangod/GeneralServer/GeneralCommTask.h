@@ -33,6 +33,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Scheduler/Socket.h"
+#include "Auth/TokenCache.h"
 
 namespace arangodb {
 class AuthenticationFeature;
@@ -139,6 +140,8 @@ class GeneralCommTask : public SocketTask {
 
   arangodb::Mutex _statisticsMutex;
   std::unordered_map<uint64_t, RequestStatistics*> _statisticsMap;
+
+  auth::TokenCache::Entry _authToken;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks the access rights for a specified path, includes automatic
