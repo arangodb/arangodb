@@ -350,6 +350,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'waitForSync': true,
     'shardKeys': false,
     'smartGraphAttribute': false,
+    'smartJoinAttribute': false,
     'numberOfShards': false,
     'keyOptions': false,
     'indexBuckets': true,
@@ -517,6 +518,7 @@ ArangoCollection.prototype.truncate = function (options) {
   var requestResult = this._database._connection.PUT(this._baseurl('truncate') + append, null);
 
   arangosh.checkRequestResult(requestResult);
+  // invalidate cache
   this._status = null;
 
   if (!options.compact) {
@@ -545,6 +547,18 @@ ArangoCollection.prototype.truncate = function (options) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief compacts a collection
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.compact = function () {
+  let requestResult = this._database._connection.PUT(this._baseurl('compact'), null);
+
+  arangosh.checkRequestResult(requestResult);
+  // invalidate cache
+  this._status = null;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief loads a collection
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -560,6 +574,7 @@ ArangoCollection.prototype.load = function (count) {
 
   arangosh.checkRequestResult(requestResult);
 
+  // invalidate cache
   this._status = null;
 };
 

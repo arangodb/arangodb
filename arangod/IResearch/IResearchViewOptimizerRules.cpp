@@ -105,7 +105,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
   auto const conditionValid =
       !searchCondition.root() ||
       FilterFactory::filter(nullptr,
-                            {nullptr, nullptr, nullptr, nullptr, &viewNode.outVariable()},
+        { query.trx(), nullptr, nullptr, nullptr, &viewNode.outVariable() },
                             *searchCondition.root());
 
   if (!conditionValid) {

@@ -666,13 +666,10 @@ function TtlSuite () {
       assertNotEqual(stats.runs, oldStats.runs);
       assertTrue(stats.limitReached > oldStats.limitReached);
       assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
-      // for debugging, can remove this later
-      let data = {
-        stats,
-        oldStats,
-        count: db._collection(cn).count()
-      };  
-      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0, data);
+      // wait again, as fetching the stats and acquiring the collection count is not atomic
+      oldStats = stats;
+      stats = waitForNextRun(c, oldStats, 10);
+      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
     },
     
     testRemovalsLimitsHitGlobalDate : function () {
@@ -711,13 +708,10 @@ function TtlSuite () {
       assertNotEqual(stats.runs, oldStats.runs);
       assertTrue(stats.limitReached > oldStats.limitReached);
       assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
-      // for debugging, can remove this later
-      let data = {
-        stats,
-        oldStats,
-        count: db._collection(cn).count()
-      };  
-      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0, data);
+      // wait again, as fetching the stats and acquiring the collection count is not atomic
+      oldStats = stats;
+      stats = waitForNextRun(c, oldStats, 10);
+      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
     },
     
     testRemovalsLimitsHitCollectionNumeric : function () {
@@ -756,13 +750,10 @@ function TtlSuite () {
       assertNotEqual(stats.runs, oldStats.runs);
       assertTrue(stats.limitReached > oldStats.limitReached);
       assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
-      // for debugging, can remove this later
-      let data = {
-        stats,
-        oldStats,
-        count: db._collection(cn).count()
-      };  
-      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0, data);
+      // wait again, as fetching the stats and acquiring the collection count is not atomic
+      oldStats = stats;
+      stats = waitForNextRun(c, oldStats, 10);
+      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
     },
     
     testRemovalsLimitsHitCollectionDate : function () {
@@ -801,13 +792,10 @@ function TtlSuite () {
       assertNotEqual(stats.runs, oldStats.runs);
       assertTrue(stats.limitReached > oldStats.limitReached);
       assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
-      // for debugging, can remove this later
-      let data = {
-        stats,
-        oldStats,
-        count: db._collection(cn).count()
-      };  
-      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0, data);
+      // wait again, as fetching the stats and acquiring the collection count is not atomic
+      oldStats = stats;
+      stats = waitForNextRun(c, oldStats, 10);
+      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
     },
   
   };

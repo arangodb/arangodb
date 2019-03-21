@@ -56,10 +56,23 @@ transaction::Methods* AqlTransaction::clone(transaction::Options const& options)
   auto ctx = transaction::StandaloneContext::Create(vocbase());
   return new AqlTransaction(ctx, &_collections, options, false);
 }
+  
+/// @brief add a list of collections to the transaction
+Result AqlTransaction::addCollections(std::map<std::string, aql::Collection*> const& collections) {
+  Result res;
+  for (auto const& it : collections) {
+    res = processCollection(it.second);
+
+    if (!res.ok()) {
+      break;
+    }
+  }
+  return res;
+}
 
 /// @brief add a collection to the transaction
 Result AqlTransaction::processCollection(aql::Collection* collection) {
-  if (ServerState::instance()->isCoordinator()) {
+  if (_state->isCoordinator()) {
     auto cid = resolver()->getCollectionId(collection->name());
 
     return addCollection(cid, collection->name(), collection->accessType());

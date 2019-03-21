@@ -94,7 +94,7 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
     try {
       std::unordered_set<TRI_voc_cid_t> collections;
 
-      res = IResearchLinkHelper::updateLinks(collections, vocbase, *impl, links);
+      res = IResearchLinkHelper::updateLinks(collections, *impl, links);
 
       if (!res.ok()) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -437,10 +437,12 @@ arangodb::Result IResearchViewCoordinator::properties(velocypack::Slice const& s
     std::unordered_set<TRI_voc_cid_t> collections;
 
     if (partialUpdate) {
-      return IResearchLinkHelper::updateLinks(collections, vocbase(), *this, links);
+      return IResearchLinkHelper::updateLinks(collections, *this, links);
     }
 
-    return IResearchLinkHelper::updateLinks(collections, vocbase(), *this, links, currentCids);
+    return IResearchLinkHelper::updateLinks( // update links
+      collections, *this, links, currentCids // args
+    );
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
@@ -507,7 +509,9 @@ Result IResearchViewCoordinator::dropImpl() {
     }
 
     std::unordered_set<TRI_voc_cid_t> collections;
-    auto res = IResearchLinkHelper::updateLinks(collections, vocbase(), *this,
+    auto res = IResearchLinkHelper::updateLinks( // update links
+      collections, // modified collections
+      *this, // view
                                                 arangodb::velocypack::Slice::emptyObjectSlice(),
                                                 currentCids);
 

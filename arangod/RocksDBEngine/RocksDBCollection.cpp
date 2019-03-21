@@ -573,8 +573,6 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   TRI_ASSERT(_objectId != 0);
   auto state = RocksDBTransactionState::toState(&trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
-  // don't compact on restore
-  bool const doCompact = !options.isRestore;
 
   if (state->isOnlyExclusiveTransaction() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
@@ -658,10 +656,6 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
     guard.fire();  // remove blocker
 
-    if (numDocs > 64 * 1024 && doCompact) {
-      // also compact the ranges in order to speed up all further accesses
-      compact();
-    }
     TRI_ASSERT(!state->hasOperations());  // not allowed
     return Result{};
   }
@@ -729,11 +723,6 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   // reset to previous value after truncate is finished
   state->options().intermediateCommitCount = prvICC;
 
-  if (found > 64 * 1024 && doCompact) {
-    // also compact the ranges in order to speed up all further accesses
-    compact();
-  }
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (state->numCommits() == 0) {
     // check IN TRANSACTION if documents have been deleted
@@ -752,7 +741,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   }
   return Result{};
 }
-
+  
 LocalDocumentId RocksDBCollection::lookupKey(transaction::Methods* trx,
                                              VPackSlice const& key) const {
   TRI_ASSERT(key.isString());
@@ -966,8 +955,11 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
-    if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), false)) {
+    if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), true)) {
       return res.reset(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+    }
+    if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc, builder->slice(), true)) {
+      return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
     }
   }
 
@@ -1070,6 +1062,9 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), false)) {
       return res.reset(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+    }
+    if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc, builder->slice(), false)) {
+      return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
     }
   }
 
@@ -1682,7 +1677,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
   return numberDocuments();
 }
 
-void RocksDBCollection::compact() {
+Result RocksDBCollection::compact() {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::CompactRangeOptions opts;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
@@ -1694,6 +1689,8 @@ void RocksDBCollection::compact() {
     RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
     index->compact();
   }
+
+  return {};
 }
 
 void RocksDBCollection::estimateSize(velocypack::Builder& builder) {

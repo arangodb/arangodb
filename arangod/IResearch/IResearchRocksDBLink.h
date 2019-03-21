@@ -101,7 +101,7 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack;  // for Index::toVelocyPack(bool, unsigned)
+  using Index::toVelocyPack; // for std::shared_ptr<Builder> Index::toVelocyPack(bool, Index::Serialize)
   virtual void toVelocyPack(arangodb::velocypack::Builder& builder,
                             std::underlying_type<arangodb::Index::Serialize>::type flags) const override;
 

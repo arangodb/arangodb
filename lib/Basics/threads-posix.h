@@ -26,6 +26,9 @@
 
 #include "Basics/Common.h"
 
+// Compatible wth the Windows definition.
+#define INFINITE 0xFFFFFFFF // Infinite timeout
+
 #ifdef TRI_HAVE_POSIX_THREADS
 
 ////////////////////////////////////////////////////////////////////////////////
