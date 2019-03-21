@@ -226,6 +226,7 @@ SET(ARANGOD_SOURCES
   Aql/Functions.cpp
   Aql/GraphNode.cpp
   Aql/Graphs.cpp
+  Aql/HashedCollectExecutor.cpp
   Aql/InAndOutRowExpressionContext.cpp
   Aql/IdExecutor.cpp
   Aql/IndexExecutor.cpp
