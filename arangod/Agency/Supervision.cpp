@@ -1260,22 +1260,24 @@ void Supervision::enforceReplication() {
   _lock.assertLockedByCurrentThread();
 
   // First check the number of AddFollower and RemoveFollower jobs in ToDo:
+  // We always maintain that we have at most maxNrAddRemoveJobsInTodo
+  // AddFollower or RemoveFollower jobs in ToDo. These are all long-term
+  // cleanup jobs, so they can be done over time. This is to ensure that
+  // there is no overload on the Agency job system. Therefore, if this
+  // number is at least maxNrAddRemoveJobsInTodo, we skip the rest of
+  // the function:
+  int const maxNrAddRemoveJobsInTodo = 15;
+
   auto todos = _snapshot.hasAsChildren(toDoPrefix).first;
   int nrAddRemoveJobsInTodo = 0;
   for (auto it = todos.begin(); it != todos.end(); ++it) {
     auto jobNode = *(it->second);
     auto t = jobNode.hasAsString("type");
     if (t.second && (t.first == "addFollower" || t.first == "removeFollower")) {
-      ++nrAddRemoveJobsInTodo;
+      if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
+        return;
+      }
     }
-  }
-  // We always maintain that we have at most 15 AddFollower or RemoveFollower
-  // jobs in ToDo. These are all long-term cleanup jobs, so they can be
-  // done over time. This is to ensure that there is no overload on the
-  // Agency job system. Therefore, if this number is at least 15, we skip
-  // the rest of the function:
-  if (nrAddRemoveJobsInTodo >= 15) {
-    return;
   }
 
   auto const& plannedDBs = _snapshot.hasAsChildren(planColPrefix).first;
@@ -1355,7 +1357,7 @@ void Supervision::enforceReplication() {
                 AddFollower(_snapshot, _agent, std::to_string(_jobId++),
                             "supervision", db_.first, col_.first, shard_.first)
                     .create();
-                if (++nrAddRemoveJobsInTodo >= 15) {
+                if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
                   return;
                 }
               } else if (apparentReplicationFactor > replicationFactor &&
@@ -1363,7 +1365,7 @@ void Supervision::enforceReplication() {
                 RemoveFollower(_snapshot, _agent, std::to_string(_jobId++),
                                "supervision", db_.first, col_.first, shard_.first)
                     .create();
-                if (++nrAddRemoveJobsInTodo >= 15) {
+                if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
                   return;
                 }
               }
