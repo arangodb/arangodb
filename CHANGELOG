@@ -346,6 +346,8 @@ devel
 
 * fix log spam in agency supervision when leader resigned
 
+* make AddFollower less aggressive
+
 v3.4.1 (XXXX-XX-XX)
 -------------------
 
