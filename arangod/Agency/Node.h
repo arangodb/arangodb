@@ -328,7 +328,7 @@ class Node {
   std::string _nodeName;                ///< @brief my name
   Node* _parent;                        ///< @brief parent
   Store* _store;                        ///< @brief Store
-  mutable Children _children;           ///< @brief child nodes
+  Children _children;                   ///< @brief child nodes
   TimePoint _ttl;                       ///< @brief my expiry
   std::vector<Buffer<uint8_t>> _value;  ///< @brief my value
   mutable Buffer<uint8_t> _vecBuf;

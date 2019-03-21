@@ -320,22 +320,17 @@ Node const& Node::operator()(std::vector<std::string> const& pv) const {
   
   for (std::string const& key : pv) {
 
-    auto& children = current->_children;
-    auto  child = children.find(key);
+    auto const& children = current->_children;
+    auto const  child = children.find(key);
 
-    if (child != children.end() &&
-        child->second->_ttl != std::chrono::system_clock::time_point() &&
-        child->second->_ttl < std::chrono::system_clock::now()) {
-      child->second->removeTimeToLive();
-      children.erase(child);
-      child = children.end();
-    }  
-    
-    if (child == children.end()) {
+    if (child == children.end() ||
+        (child->second->_ttl != std::chrono::system_clock::time_point() &&
+         child->second->_ttl < std::chrono::system_clock::now())) {
       throw StoreException(std::string("Node ") + uri() + "/" + key + " not found!");
     }  else {
       current = child->second.get();
     }
+    
   }
 
   return *current;
@@ -398,7 +393,6 @@ bool Node::addTimeToLive(long millis) {
 // remove time to live entry for this node
 bool Node::removeTimeToLive() {
   if (_ttl != std::chrono::system_clock::time_point()) {
-    LOG_DEVEL << uri();
     store().removeTTL(uri());
     _ttl = std::chrono::system_clock::time_point();
   }
