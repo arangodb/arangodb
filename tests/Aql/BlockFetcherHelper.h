@@ -45,6 +45,7 @@ namespace arangodb {
 
 namespace aql {
 class AqlItemBlock;
+class AqlItemBlockManager;
 class InputAqlItemRow;
 class AqlItemMatrix;
 }  // namespace aql
@@ -114,7 +115,8 @@ class AllRowsFetcherHelper : public ::arangodb::aql::AllRowsFetcher {
 
 class ConstFetcherHelper : public arangodb::aql::ConstFetcher {
  public:
-  explicit ConstFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer);
+  ConstFetcherHelper(arangodb::aql::AqlItemBlockManager& itemBlockManager,
+                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer);
   virtual ~ConstFetcherHelper();
 
   std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::InputAqlItemRow> fetchRow() override;
@@ -122,8 +124,8 @@ class ConstFetcherHelper : public arangodb::aql::ConstFetcher {
  private:
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;
   arangodb::velocypack::Slice _data;
-  arangodb::aql::ResourceMonitor _resourceMonitor;
-  arangodb::aql::AqlItemBlockManager _itemBlockManager;
+  arangodb::aql::ResourceMonitor& _resourceMonitor;
+  arangodb::aql::AqlItemBlockManager& _itemBlockManager;
   arangodb::aql::InputAqlItemRow _lastReturnedRow;
 };
 

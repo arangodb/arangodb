@@ -213,11 +213,12 @@ std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcherHelper::fetchAllRo
 // - SECTION CONSTFETCHER              -
 // -----------------------------------------
 
-ConstFetcherHelper::ConstFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer)
+ConstFetcherHelper::ConstFetcherHelper(AqlItemBlockManager& itemBlockManager,
+                                       std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer)
     : ConstFetcher(),
       _vPackBuffer(std::move(vPackBuffer)),
-      _resourceMonitor(),
-      _itemBlockManager(&_resourceMonitor),
+      _resourceMonitor(*itemBlockManager.resourceMonitor()),
+      _itemBlockManager(itemBlockManager),
       _lastReturnedRow{CreateInvalidInputRowHint{}} {
   if (_vPackBuffer != nullptr) {
     _data = VPackSlice(_vPackBuffer->data());

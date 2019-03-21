@@ -60,7 +60,7 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
                        infos.registersToClear()};
   GIVEN("there are no rows upstream") {
     WHEN("the producer does not wait") {
-      ConstFetcherHelper fetcher(nullptr);
+      ConstFetcherHelper fetcher(itemBlockManager, nullptr);
       IdExecutor testee(fetcher, infos);
       NoStats stats{};
 
@@ -76,7 +76,7 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
     auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
 
     WHEN("the producer does not wait") {
-      ConstFetcherHelper fetcher(input->buffer());
+      ConstFetcherHelper fetcher(itemBlockManager, input->buffer());
       IdExecutor testee(fetcher, infos);
       NoStats stats{};
 
@@ -114,7 +114,7 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
       }  // WHEN
     }    // GIVEN
 
-  }  // GIVERN
+  }  // GIVEN
 }  // SCENARIO
 
 }  // namespace aql
