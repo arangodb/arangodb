@@ -160,12 +160,17 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;
-  bool waitForSync() const;
-  bool isSmart() const;
+  bool waitForSync() const { return _waitForSync; }
+  void waitForSync(bool value) { _waitForSync = value; }
+  bool isSmart() const { return _isSmart; }
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
 
-  void waitForSync(bool value) { _waitForSync = value; }
+  bool hasSmartJoinAttribute() const { return !smartJoinAttribute().empty(); } 
+  
+  /// @brief return the name of the smart join attribute (empty string
+  /// if no smart join attribute is present)
+  std::string const& smartJoinAttribute() const { return _smartJoinAttribute; } 
 
   // SECTION: sharding
   ShardingInfo* shardingInfo() const;
@@ -395,9 +400,11 @@ class LogicalCollection : public LogicalDataSource {
 
   bool const _allowUserKeys;
 
+  std::string _smartJoinAttribute;
+
   // SECTION: Key Options
 
-  // @brief options for key creation, TODO Really VPack?
+  // @brief options for key creation
   std::shared_ptr<velocypack::Buffer<uint8_t> const> _keyOptions;
   std::unique_ptr<KeyGenerator> _keyGenerator;
 

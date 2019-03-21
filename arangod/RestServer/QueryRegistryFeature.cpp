@@ -42,6 +42,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _trackSlowQueries(true),
       _trackBindVars(true),
       _failOnWarning(false),
+      _smartJoins(true),
       _queryMemoryLimit(0),
       _maxQueryPlans(128),
       _slowQueryThreshold(10.0),
@@ -128,6 +129,12 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "single-server instances or 600 for cluster instances",
                      new DoubleParameter(&_queryRegistryTTL),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+  
+  options->addOption("--query.smart-joins",
+                     "enable smart joins query optimization",
+                     new BooleanParameter(&_smartJoins),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
+                     .setIntroducedIn(30405).setIntroducedIn(30500);
 }
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
