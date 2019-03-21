@@ -182,9 +182,10 @@ struct IResearchIndexSetup {
     auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
       arangodb::iresearch::IResearchAnalyzerFeature
     >();
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
-    analyzers->emplace("test_A", "TestInsertAnalyzer", "X"); // cache analyzer
-    analyzers->emplace("test_B", "TestInsertAnalyzer", "Y"); // cache analyzer
+    analyzers->emplace(result, "test_A", "TestInsertAnalyzer", "X"); // cache analyzer
+    analyzers->emplace(result, "test_B", "TestInsertAnalyzer", "Y"); // cache analyzer
 
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
