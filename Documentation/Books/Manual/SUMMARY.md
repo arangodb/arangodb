@@ -241,6 +241,7 @@
     * [Auth and OAuth2](Foxx/Migrating2x/Auth.md)
     * [Foxx Queries](Foxx/Migrating2x/Queries.md)
 * [Satellite Collections](Satellites.md)
+* [Smart Joins](SmartJoins.md)
 
 ## OPERATIONS
 
