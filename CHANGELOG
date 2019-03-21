@@ -121,6 +121,8 @@ v3.4.5 (XXXX-XX-XX)
 
 * fix log spamming after leader resignation in agency
 
+* make AddFollower less aggressive
+
 * fix cases, where invalid json could be generated in agents' store dumps
 
 * coordinator route for full agency dumps contains compactions and

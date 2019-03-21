@@ -1258,6 +1258,28 @@ void Supervision::readyOrphanedIndexCreations() {
 
 void Supervision::enforceReplication() {
   _lock.assertLockedByCurrentThread();
+
+  // First check the number of AddFollower and RemoveFollower jobs in ToDo:
+  // We always maintain that we have at most maxNrAddRemoveJobsInTodo
+  // AddFollower or RemoveFollower jobs in ToDo. These are all long-term
+  // cleanup jobs, so they can be done over time. This is to ensure that
+  // there is no overload on the Agency job system. Therefore, if this
+  // number is at least maxNrAddRemoveJobsInTodo, we skip the rest of
+  // the function:
+  int const maxNrAddRemoveJobsInTodo = 15;
+
+  auto todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  int nrAddRemoveJobsInTodo = 0;
+  for (auto it = todos.begin(); it != todos.end(); ++it) {
+    auto jobNode = *(it->second);
+    auto t = jobNode.hasAsString("type");
+    if (t.second && (t.first == "addFollower" || t.first == "removeFollower")) {
+      if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
+        return;
+      }
+    }
+  }
+
   auto const& plannedDBs = _snapshot.hasAsChildren(planColPrefix).first;
 
   for (const auto& db_ : plannedDBs) {  // Planned databases
@@ -1274,7 +1296,7 @@ void Supervision::enforceReplication() {
         if (replFact2.second && replFact2.first == "satellite") {
           // satellites => distribute to every server
           auto available = Job::availableServers(_snapshot);
-          replicationFactor = Job::countGoodServersInList(_snapshot, available);
+          replicationFactor = Job::countGoodOrBadServersInList(_snapshot, available);
         } else {
           LOG_TOPIC(DEBUG, Logger::SUPERVISION)
               << "no replicationFactor entry in " << col.toJson();
@@ -1299,7 +1321,7 @@ void Supervision::enforceReplication() {
             }
           }
           size_t actualReplicationFactor
-            = 1 + Job::countGoodServersInList(_snapshot, onlyFollowers.slice());
+            = 1 + Job::countGoodOrBadServersInList(_snapshot, onlyFollowers.slice());
             // leader plus GOOD followers
           size_t apparentReplicationFactor = shard.slice().length();
 
@@ -1335,11 +1357,17 @@ void Supervision::enforceReplication() {
                 AddFollower(_snapshot, _agent, std::to_string(_jobId++),
                             "supervision", db_.first, col_.first, shard_.first)
                     .create();
+                if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
+                  return;
+                }
               } else if (apparentReplicationFactor > replicationFactor &&
                          actualReplicationFactor >= replicationFactor) {
                 RemoveFollower(_snapshot, _agent, std::to_string(_jobId++),
                                "supervision", db_.first, col_.first, shard_.first)
                     .create();
+                if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
+                  return;
+                }
               }
             }
           }
