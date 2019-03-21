@@ -1,6 +1,9 @@
 v3.4.5 (XXXX-XX-XX)
 -------------------
 
+* don't check for the presence of ArangoDB upgrades available when firing up an arangosh
+  enterprise edition build
+
 * added startup option `--rocksdb.allow-fallocate`
   
   When set to true, allows RocksDB to use the fallocate call. If false, fallocate 
