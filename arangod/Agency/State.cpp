@@ -1553,14 +1553,11 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   auto bindVars = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder b(bindVars.get()); }
 
-  static std::string const logstr("FOR l IN log FILTER l._key <= '%s' SORT l._key RETURN l");
-  static uint64_t const logsz(logstr.size()+19);
-  char buf[logsz];
-  std::snprintf (buf, logsz, logstr.c_str(), stringify(lastIndex).c_str());
-  std::string querystr = buf;
+  std::string const logQueryStr = std::string("FOR l IN log FILTER l._key <= '")
+    + stringify(lastIndex) + std::string("' SORT l._key RETURN l");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query logQuery(false, *_vocbase, aql::QueryString(querystr), bindVars,
+  arangodb::aql::Query logQuery(false, *_vocbase, aql::QueryString(logQueryStr), bindVars,
                              nullptr, arangodb::aql::PART_MAIN);
 
   aql::QueryResult logQueryResult = logQuery.executeSync(_queryRegistry);
@@ -1587,13 +1584,12 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   }
 
   if (n > 0) {
-    static std::string const compstr(
-      "FOR c in compact FILTER c._key >= '%s' SORT c._key LIMIT 1 RETURN c");
-    static uint64_t const compsz(compstr.size()+19);
-    std::snprintf (buf, compsz, compstr.c_str(), firstIndex.c_str());
-    querystr = buf;
 
-    arangodb::aql::Query compQuery(false, *_vocbase, aql::QueryString(querystr),
+    std::string const compQueryStr =
+      std::string("FOR c in compact FILTER c._key >= '") + firstIndex
+      + std::string("' SORT c._key LIMIT 1 RETURN c");
+        
+    arangodb::aql::Query compQuery(false, *_vocbase, aql::QueryString(compQueryStr),
                                bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     aql::QueryResult compQueryResult = compQuery.executeSync(_queryRegistry);
