@@ -260,7 +260,7 @@ size_t Job::countGoodOrBadServersInList(Node const& snap, VPackSlice const& serv
 }
 
 // The following counts in a given server list how many of the servers are
-// in Status "GOOD".
+ // in Status "GOOD" or "BAD".
 size_t Job::countGoodOrBadServersInList(Node const& snap, std::vector<std::string> const& serverList) {
   size_t count = 0;
   auto health = snap.hasAsChildren(healthPrefix);
