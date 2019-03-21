@@ -1,6 +1,9 @@
 v3.4.5 (XXXX-XX-XX)
 -------------------
 
+* don't check for the presence of ArangoDB upgrades available when firing up an arangosh
+  enterprise edition build
+
 * don't run compact() on a collection after a truncate() was done in the same transaction
 
   running compact() in the same transaction will only increase the data size on disk due to 
