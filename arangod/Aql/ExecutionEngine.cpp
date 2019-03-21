@@ -125,7 +125,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
     if (nodeType == ExecutionNode::GATHER) {
       // we found a gather node
       if (remoteNode == nullptr) {
-        return {TRI_ERROR_INTERNAL, "expecting a RemoteNode"};
+        return {TRI_ERROR_INTERNAL, "expecting a remoteNode"};
       }
 
       // now we'll create a remote node for each shard and add it to the
@@ -136,7 +136,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
       TRI_ASSERT(serversForRemote != queryIds.end());
       if (serversForRemote == queryIds.end()) {
         return {TRI_ERROR_INTERNAL,
-                "Did not find a DBServer to contact for RemoteNode"};
+                "Did not find a DBServer to contact for RemoteNode."};
       }
 
       // use "server:" instead of "shard:" to send query fragments to

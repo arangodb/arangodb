@@ -32,30 +32,20 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
-#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 CollectionAccessingNode::CollectionAccessingNode(aql::Collection const* collection)
-    : _collection(collection),
-      _prototypeCollection(nullptr),
-      _prototypeOutVariable(nullptr) {
+    : _collection(collection) {
   TRI_ASSERT(_collection != nullptr);
 }
 
 CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
                                                  arangodb::velocypack::Slice slice)
     : _collection(plan->getAst()->query()->collections()->get(
-          slice.get("collection").copyString())),
-      _prototypeCollection(nullptr),
-      _prototypeOutVariable(nullptr) {
-    
-  if (slice.get("prototype").isString()) {
-    _prototypeCollection = plan->getAst()->query()->collections()->get(slice.get("prototype").copyString());
-  }
-
+          slice.get("collection").copyString())) {
   TRI_ASSERT(_collection != nullptr);
 
   if (_collection == nullptr) {
@@ -86,11 +76,8 @@ void CollectionAccessingNode::collection(aql::Collection const* collection) {
 void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("database", VPackValue(_collection->vocbase()->name()));
   builder.add("collection", VPackValue(_collection->name()));
-  if (_prototypeCollection != nullptr) {
-    builder.add("prototype", VPackValue(_prototypeCollection->name()));
-  }
   builder.add("satellite", VPackValue(_collection->isSatellite()));
-    
+
   if (ServerState::instance()->isCoordinator()) {
     builder.add(StaticStrings::NumberOfShards, VPackValue(_collection->numberOfShards()));
   }

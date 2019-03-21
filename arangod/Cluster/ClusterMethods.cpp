@@ -396,13 +396,6 @@ static int distributeBabyOnShards(
     shardID = shards->at(0);
     userSpecifiedKey = true;
   } else {
-
-    int r = transaction::Methods::validateSmartJoinAttribute(*(collinfo.get()), value);
-
-    if (r != TRI_ERROR_NO_ERROR) {
-      return r;
-    }
-
     // Sort out the _key attribute:
     // The user is allowed to specify _key, provided that _key is the one
     // and only sharding attribute, because in this case we can delegate
@@ -724,38 +717,8 @@ bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& old
       return true;
     }
   }
-  
+
   return false;
-}
-
-bool smartJoinAttributeChanged(LogicalCollection const& collection, 
-                               VPackSlice const& oldValue,
-                               VPackSlice const& newValue, bool isPatch) {
-  if (!collection.hasSmartJoinAttribute()) {
-    return false;
-  }
-  if (!oldValue.isObject() || !newValue.isObject()) {
-    // expecting two objects. everything else is an error
-    return true;
-  }
-
-  std::string const& s = collection.smartJoinAttribute();
-    
-  VPackSlice n = newValue.get(s);
-  if (!n.isString()) {
-    if (isPatch && n.isNone()) {
-      // attribute not set in patch document. this means no update
-      return false;
-    }
-
-    // no string value... invalid!
-    return true;
-  }
-
-  VPackSlice o = oldValue.get(s);
-  TRI_ASSERT(o.isString());
-    
-  return (arangodb::basics::VelocyPackHelper::compare(n, o, false) != 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

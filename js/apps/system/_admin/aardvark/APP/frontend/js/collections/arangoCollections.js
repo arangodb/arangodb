@@ -167,11 +167,6 @@
         data.shardKeys = object.shardBy;
       }
 
-      if (object.smartJoinAttribute &&
-          object.smartJoinAttribute !== '') {
-        data.smartJoinAttribute = object.smartJoinAttribute;
-      }
-
       if (object.replicationFactor) {
         data.replicationFactor = object.replicationFactor;
         var pattern = new RegExp(/^[0-9]+$/);

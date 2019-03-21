@@ -3457,11 +3457,8 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
 
     if (_isDBServer) {
       // Need to check that no sharding keys have changed:
-      if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), true)) {
+      if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), false)) {
         return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
-      }
-      if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc, builder->slice(), true)) {
-        return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
       }
     }
   } else {
@@ -3594,9 +3591,6 @@ Result MMFilesCollection::replace(transaction::Methods* trx, VPackSlice const ne
       // Need to check that no sharding keys have changed:
       if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), false)) {
         return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
-      }
-      if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc, builder->slice(), false)) {
-        return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
       }
     }
   }
