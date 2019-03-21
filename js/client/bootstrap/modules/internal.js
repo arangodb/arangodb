@@ -1,5 +1,21 @@
 /* jshint -W051:true */
 /* eslint-disable */
+
+let appendHeaders = function(appender, headers) {
+  var key;
+  // generate header
+  appender('HTTP/1.1 ' + headers['http/1.1'] + '\n');
+
+  for (key in headers) {
+    if (headers.hasOwnProperty(key)) {
+      if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
+          && key !== 'content-length') {
+        appender(key + ': ' + headers[key] + '\n');
+      }
+    }
+  }
+};
+  
 ;(function () {
   'use strict'
   /* eslint-enable */
@@ -142,12 +158,17 @@
     return function (method, url, body, headers) {
       var response;
       var curl;
-      var i;
       var jsonBody = false;
 
       if ((typeof body !== 'string') && (body !== undefined)) {
         jsonBody = true;
         body = exports.inspect(body);
+      }
+      if (headers === undefined || headers === null || headers === '') {
+        headers = {};
+      }
+      if (!headers.hasOwnProperty('Accept') && !headers.hasOwnProperty('accept')) {
+        headers['accept'] = 'application/json';
       }
 
       curl = 'shell> curl ';
@@ -209,21 +230,7 @@
 
   exports.appendRawResponse = function (appender, syntaxAppender) {
     return function (response) {
-      var key;
-      var headers = response.headers;
-
-      // generate header
-      appender('HTTP/1.1 ' + headers['http/1.1'] + '\n');
-
-      for (key in headers) {
-        if (headers.hasOwnProperty(key)) {
-          if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
-            && key !== 'content-length') {
-            appender(key + ': ' + headers[key] + '\n');
-          }
-        }
-      }
-
+      appendHeaders(appender, response.headers);
       appender('\n');
 
       // append body
@@ -245,10 +252,41 @@
       // copy original body (this is necessary because 'response' is passed by reference)
       var copy = response.body;
       // overwrite body with parsed JSON && append
-      response.body = JSON.parse(response.body);
+      try {
+        response.body = JSON.parse(response.body);
+      }
+      catch (e) {
+        throw ` ${e}: ${JSON.stringify(response)}`;
+      }
       syntaxAppend(response);
       // restore original body
       response.body = copy;
+    };
+  };
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief logs a response in JSON
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.appendJsonLResponse = function (appender, syntaxAppender) {
+    return function (response) {
+      var syntaxAppend = exports.appendRawResponse(syntaxAppender, syntaxAppender);
+
+      appendHeaders(appender, response.headers);
+      appender('\n');
+
+      var splitted = response.body.split("\n");
+      splitted.forEach(function(line) {
+        try {
+          if (line.length > 0) {
+            syntaxAppender(exports.inspect(JSON.parse(line)));
+          }
+        }
+        catch (e) {
+          throw ` ${e}: (${line})\n${JSON.stringify(response)}`;
+        }
+      }
+                      );
     };
   };
 
