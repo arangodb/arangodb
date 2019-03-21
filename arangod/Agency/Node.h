@@ -258,7 +258,7 @@ class Node {
 
   /// @brief accessor to Node's _children
   /// @return  second is true if url exists, first populated if second true
-  std::pair<Children, bool> hasAsChildren(std::string const&) const;
+  std::pair<Children const&, bool> hasAsChildren(std::string const&) const;
 
   /// @brief accessor to Node then write to builder
   /// @return  second is true if url exists, first is ignored
@@ -331,6 +331,8 @@ class Node {
   mutable Buffer<uint8_t> _vecBuf;
   mutable bool _vecBufDirty;
   bool _isArray;
+  static Children const dummyChildren;
+
 };
 
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
