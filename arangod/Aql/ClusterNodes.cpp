@@ -281,7 +281,7 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
                       std::move(regsToKeep));
 
   RegisterId regId;
-  RegisterId alternativeRegId;
+  RegisterId alternativeRegId = ExecutionNode::MaxRegisterId;
 
   {  // set regId and alternativeRegId:
 

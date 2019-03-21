@@ -1783,7 +1783,15 @@ void RocksDBEngine::pruneWalFiles() {
     if (deleteFile) {
       LOG_TOPIC(DEBUG, Logger::ENGINES)
           << "deleting RocksDB WAL file '" << (*it).first << "'";
-      auto s = _db->DeleteFile((*it).first);
+      rocksdb::Status s;
+      if (basics::FileUtils::exists(basics::FileUtils::buildFilename(_options.wal_dir, (*it).first))) {
+        // only attempt file deletion if the file actually exists.
+        // otherwise RocksDB may complain about non-existing files and log a big error message
+        s = _db->DeleteFile((*it).first);
+      } else {
+        LOG_TOPIC(DEBUG, Logger::ROCKSDB)
+            << "to-be-deleted RocksDB WAL file '" << (*it).first << "' does not exist. skipping deletion";
+      }
       // apparently there is a case where a file was already deleted
       // but is still in _prunableWalFiles. In this case we get an invalid
       // argument response.

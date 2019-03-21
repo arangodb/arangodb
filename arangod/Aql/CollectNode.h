@@ -111,7 +111,7 @@ class CollectNode : public ExecutionNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
-  /// @brief calculate the collect register
+  /// @brief calculate the expression register
   void calcExpressionRegister(RegisterId& expressionRegister,
                               std::unordered_set<RegisterId>& writeableOutputRegisters) const;
 
