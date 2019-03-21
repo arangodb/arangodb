@@ -50,7 +50,18 @@ CalculationExecutor<calculationType>::CalculationExecutor(Fetcher& fetcher,
     : _infos(infos),
       _fetcher(fetcher),
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _rowState(ExecutionState::HASMORE){};
+      _rowState(ExecutionState::HASMORE),
+      _hasEnteredContext(false) {}
+
+template <CalculationType calculationType>
+CalculationExecutor<calculationType>::~CalculationExecutor() = default;
+
+template <>
+CalculationExecutor<CalculationType::V8Condition>::~CalculationExecutor() {
+  if (_hasEnteredContext) {
+    exitContext();
+  }
+};
 
 template class ::arangodb::aql::CalculationExecutor<CalculationType::Condition>;
 template class ::arangodb::aql::CalculationExecutor<CalculationType::V8Condition>;

@@ -97,36 +97,26 @@ class CalculationExecutor {
   using Stats = NoStats;
 
   CalculationExecutor(Fetcher& fetcher, CalculationExecutorInfos&);
-  ~CalculationExecutor() = default;
+  ~CalculationExecutor();
 
   /**
    * @brief produce the next Row of Aql Values.
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  inline std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output) {
-    ExecutionState state;
-    InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
-    std::tie(state, row) = _fetcher.fetchRow();
-
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(!row);
-      return {state, NoStats{}};
-    }
-
-    if (!row) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, NoStats{}};
-    }
-
-    doEvaluation(row, output);
-
-    return {state, NoStats{}};
-  }
+  inline std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  private:
   // specialized implementations
   inline void doEvaluation(InputAqlItemRow& input, OutputAqlItemRow& output);
+
+  // Only for V8Conditions
+  template <CalculationType U = calculationType, typename = std::enable_if_t<U == CalculationType::V8Condition>>
+  inline void enterContext();
+
+  // Only for V8Conditions
+  template <CalculationType U = calculationType, typename = std::enable_if_t<U == CalculationType::V8Condition>>
+  inline void exitContext();
 
  public:
   CalculationExecutorInfos& _infos;
@@ -136,7 +126,30 @@ class CalculationExecutor {
 
   InputAqlItemRow _currentRow;
   ExecutionState _rowState;
+
+  bool _hasEnteredContext;
 };
+
+template<CalculationType calculationType>
+template<CalculationType U, typename>
+inline void CalculationExecutor<calculationType>::enterContext() {
+  _infos.getQuery().enterContext();
+  _hasEnteredContext = true;
+}
+
+template<CalculationType calculationType>
+template<CalculationType U, typename>
+inline void CalculationExecutor<calculationType>::exitContext() {
+  static const bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
+  const bool stream = _infos.getQuery().queryOptions().stream;
+  if (isRunningInCluster || stream) {
+    // must invalidate the expression now as we might be called from
+    // different threads
+    _infos.getExpression().invalidate();
+    _infos.getQuery().exitContext();
+  }
+  _hasEnteredContext = false;
+}
 
 template <>
 inline void CalculationExecutor<CalculationType::Reference>::doEvaluation(
@@ -152,6 +165,39 @@ inline void CalculationExecutor<CalculationType::Reference>::doEvaluation(
   }
 
   output.cloneValueInto(_infos.getOutputRegisterId(), input, input.getValue(inRegs[0]));
+}
+
+template <CalculationType calculationType>
+inline std::pair<ExecutionState, typename CalculationExecutor<calculationType>::Stats>
+CalculationExecutor<calculationType>::produceRow(OutputAqlItemRow& output) {
+  ExecutionState state;
+  InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  std::tie(state, row) = _fetcher.fetchRow();
+
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(!row);
+    TRI_ASSERT(!_hasEnteredContext);
+    return {state, NoStats{}};
+  }
+
+  if (!row) {
+    TRI_ASSERT(state == ExecutionState::DONE);
+    TRI_ASSERT(!_hasEnteredContext);
+    return {state, NoStats{}};
+  }
+
+  doEvaluation(row, output);
+
+  TRI_IF_FAILURE("CalculationBlock::afterEvaluation") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  // _hasEnteredContext => state == HASMORE,
+  // as we only leave the context open when there are rows left in the current
+  // block!
+  TRI_ASSERT(!_hasEnteredContext || state == ExecutionState::HASMORE);
+
+  return {state, NoStats{}};
 }
 
 template <>
@@ -175,20 +221,13 @@ inline void CalculationExecutor<CalculationType::Condition>::doEvaluation(
 template <>
 inline void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
     InputAqlItemRow& input, OutputAqlItemRow& output) {
-  static const bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
-  const bool stream = _infos.getQuery().queryOptions().stream;
-  auto cleanup = [&]() {
-    if (isRunningInCluster || stream) {
-      // must invalidate the expression now as we might be called from
-      // different threads
-      _infos.getExpression().invalidate();
-      _infos.getQuery().exitContext();
-    }
-  };
-
-  // must have a V8 context here to protect Expression::execute()
-  _infos.getQuery().enterContext();
-  TRI_DEFER(cleanup());
+  // must have a V8 context here to protect Expression::execute().
+  // enterContext is safe to call even if we've already entered.
+  // However, it is expected that we enter the context exactly on the first row
+  // of every block.
+  TRI_ASSERT(_hasEnteredContext == !input.isFirstRowInBlock());
+  enterContext();
+  auto contextGuard = scopeGuard([this]() { exitContext(); });
 
   ISOLATE;
   v8::HandleScope scope(isolate);  // do not delete this!
@@ -205,6 +244,14 @@ inline void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
   }
 
   output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
+
+  if (input.blockHasMoreRows()) {
+    // We will be called again before the fetcher needs to get a new block.
+    // Thus we won't wait for upstream, nor will get a WAITING on the next
+    // fetchRow().
+    // So we keep the context open.
+    contextGuard.cancel();
+  }
 }
 
 }  // namespace aql
