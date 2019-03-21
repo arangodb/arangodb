@@ -1,4 +1,4 @@
-v3.4.5 (XXXX-XX-XX)
+v3.4.5 (2019-03-27)
 -------------------
 
 * fixed internal issue #3757 : when restarting a follower in active failover mode,
