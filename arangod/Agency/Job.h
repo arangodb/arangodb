@@ -144,7 +144,7 @@ struct Job {
                                                                std::string const& shrd);
 
   JOB_STATUS _status;
-  Node const _snapshot;
+  Node const& _snapshot;
   AgentInterface* _agent;
   std::string _jobId;
   std::string _creator;

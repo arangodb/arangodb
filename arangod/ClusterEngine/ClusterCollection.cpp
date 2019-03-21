@@ -455,6 +455,11 @@ void ClusterCollection::invokeOnAllElements(transaction::Methods* trx,
 Result ClusterCollection::truncate(transaction::Methods* trx, OperationOptions& options) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
+  
+/// @brief compact-data operation
+Result ClusterCollection::compact() {
+  return {};
+}
 
 LocalDocumentId ClusterCollection::lookupKey(transaction::Methods* trx,
                                              VPackSlice const& key) const {
