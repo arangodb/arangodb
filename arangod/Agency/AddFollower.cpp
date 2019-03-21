@@ -155,7 +155,7 @@ bool AddFollower::start(bool&) {
     if (replFact2.second && replFact2.first == "satellite") {
       // satellites => distribute to every server
       auto available = Job::availableServers(_snapshot);
-      desiredReplFactor = Job::countGoodServersInList(_snapshot, available);
+      desiredReplFactor = Job::countGoodOrBadServersInList(_snapshot, available);
     }
   }
 
@@ -171,7 +171,7 @@ bool AddFollower::start(bool&) {
     }
   }
   size_t actualReplFactor
-      = 1 + Job::countGoodServersInList(_snapshot, onlyFollowers.slice());
+      = 1 + Job::countGoodOrBadServersInList(_snapshot, onlyFollowers.slice());
       // Leader plus good followers in plan
   if (actualReplFactor >= desiredReplFactor) {
     finish("", "", true, "job no longer necessary, have enough replicas");
