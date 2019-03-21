@@ -742,9 +742,9 @@ void Agent::advanceCommitIndex() {
           << "Critical mass for commiting " << _commitIndex + 1 << " through "
           << index << " to read db";
       // Change _readDB and _commitIndex atomically together:
-      _readDB.applyLogEntries(_state.slices(/* inform others by callbacks */
-                                            _commitIndex + 1, index),
-                              _commitIndex, t, true);
+      /* inform others by callbacks */
+      _readDB.applyLogEntries(
+        _state.slices(_commitIndex + 1, index), _commitIndex, t, true);
 
       _commitIndex = index;
       // Wake up rest handlers:
