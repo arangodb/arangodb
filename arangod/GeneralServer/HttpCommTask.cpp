@@ -794,7 +794,7 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* req) {
 
       req->setAuthenticationMethod(authMethod);
       if (authMethod != AuthenticationMethod::NONE) {
-        _authToken = std::move(_auth->tokenCache().checkAuthentication(authMethod, auth));
+        _authToken = _auth->tokenCache().checkAuthentication(authMethod, auth);
         req->setAuthenticated(_authToken.authenticated());
         req->setUser(std::move(_authToken._username));
       }
