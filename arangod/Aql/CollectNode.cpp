@@ -28,6 +28,7 @@
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/HashedCollectExecutor.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/WalkerWorker.h"
 
@@ -121,12 +122,107 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const 
   nodes.close();
 }
 
+void CollectNode::calcCollectRegister(arangodb::aql::RegisterId& collectRegister,
+                                      std::unordered_set<arangodb::aql::RegisterId>& writeableOutputRegisters) const {
+  if (_outVariable != nullptr) {
+    auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    collectRegister = (*it).second.registerId;
+    writeableOutputRegisters.insert((*it).second.registerId);
+  }
+}
+
+void CollectNode::calcGroupRegisters(
+    std::vector<std::pair<arangodb::aql::RegisterId, arangodb::aql::RegisterId>>& groupRegisters,
+    std::unordered_set<arangodb::aql::RegisterId>& readableInputRegisters,
+    std::unordered_set<arangodb::aql::RegisterId>& writeableOutputRegisters) const {
+  for (auto const& p : _groupVariables) {
+    // We know that planRegisters() has been run, so
+    // getPlanNode()->_registerPlan is set up
+    auto itOut = getRegisterPlan()->varInfo.find(p.first->id);
+    TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
+
+    auto itIn = getRegisterPlan()->varInfo.find(p.second->id);
+    TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
+    TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
+    TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
+    groupRegisters.emplace_back(
+        std::make_pair((*itOut).second.registerId, (*itIn).second.registerId));
+    writeableOutputRegisters.insert((*itOut).second.registerId);
+    readableInputRegisters.insert((*itIn).second.registerId);
+  }
+}
+
+void CollectNode::calcAggregateRegisters(
+    std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
+    std::unordered_set<arangodb::aql::RegisterId>& readableInputRegisters,
+    std::unordered_set<arangodb::aql::RegisterId>& writeableOutputRegisters) const {
+  for (auto const& p : _aggregateVariables) {
+    // We know that planRegisters() has been run, so
+    // getPlanNode()->_registerPlan is set up
+    auto itOut = getRegisterPlan()->varInfo.find(p.first->id);
+    TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
+    TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
+
+    RegisterId reg;
+    if (Aggregator::requiresInput(p.second.second)) {
+      auto itIn = getRegisterPlan()->varInfo.find(p.second.first->id);
+      TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
+      TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
+      reg = (*itIn).second.registerId;
+      readableInputRegisters.insert((*itIn).second.registerId);
+    } else {
+      // no input variable required
+      reg = ExecutionNode::MaxRegisterId;
+    }
+    aggregateRegisters.emplace_back(std::make_pair((*itOut).second.registerId, reg));
+    writeableOutputRegisters.insert((*itOut).second.registerId);
+  }
+  TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   switch (aggregationMethod()) {
-    case CollectOptions::CollectMethod::HASH:
-      return std::make_unique<HashedCollectBlock>(&engine, this);
+    case CollectOptions::CollectMethod::HASH: {
+      ExecutionNode const* previousNode = getFirstDependency();
+      TRI_ASSERT(previousNode != nullptr);
+
+      std::unordered_set<RegisterId> readableInputRegisters;
+      std::unordered_set<RegisterId> writeableOutputRegisters;
+
+      RegisterId collectRegister;
+      calcCollectRegister(collectRegister, writeableOutputRegisters);
+
+      // calculate the group registers
+      std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
+      calcGroupRegisters(groupRegisters, readableInputRegisters, writeableOutputRegisters);
+
+      // calculate the aggregate registers
+      std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
+      calcAggregateRegisters(aggregateRegisters, readableInputRegisters, writeableOutputRegisters);
+
+      TRI_ASSERT(groupRegisters.size() == _groupVariables.size());
+      TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
+
+      std::vector<std::string> aggregateTypes;
+      std::transform(aggregateVariables().begin(), aggregateVariables().end(),
+                     std::back_inserter(aggregateTypes),
+                     [](auto& it) { return it.second.second; });
+      TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
+
+      transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
+      HashedCollectExecutorInfos infos(
+          getRegisterPlan()->nrRegs[previousNode->getDepth()],
+          getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
+          std::move(readableInputRegisters), std::move(writeableOutputRegisters),
+          std::move(groupRegisters), collectRegister, std::move(aggregateTypes),
+          std::move(aggregateRegisters), trxPtr, _count);
+
+      return std::make_unique<ExecutionBlockImpl<HashedCollectExecutor>>(&engine, this,
+                                                                         std::move(infos));
+    }
     case CollectOptions::CollectMethod::SORTED:
       return std::make_unique<SortedCollectBlock>(&engine, this);
     case CollectOptions::CollectMethod::COUNT: {
@@ -137,7 +233,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
       RegisterId collectRegister = (*it).second.registerId;
 
-      CountCollectExecutorInfos infos(collectRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+      CountCollectExecutorInfos infos(collectRegister,
+                                      getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                       getRegisterPlan()->nrRegs[getDepth()],
                                       getRegsToClear(), calcRegsToKeep());
 
@@ -149,33 +246,18 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       TRI_ASSERT(previousNode != nullptr);
 
       std::unordered_set<RegisterId> readableInputRegisters;
-      std::unordered_set<RegisterId> writeableInputRegisters;
+      std::unordered_set<RegisterId> writeableOutputRegisters;
 
       std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
-      for (auto const& p : _groupVariables) {
-        // We know that planRegisters() has been run, so
-        // getPlanNode()->_registerPlan is set up
-        auto itOut = getRegisterPlan()->varInfo.find(p.first->id);
-        TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
-
-        auto itIn = getRegisterPlan()->varInfo.find(p.second->id);
-        TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
-        TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
-        TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
-        groupRegisters.emplace_back(std::make_pair((*itOut).second.registerId,
-                                                   (*itIn).second.registerId));
-        writeableInputRegisters.insert((*itOut).second.registerId);
-        readableInputRegisters.insert((*itIn).second.registerId);
-      }
-
-      // fill writeable and readable input/output registers TODO (1st & 2nd parameters of executor infos) !!!!!!
+      // calculate the group registers
+      calcGroupRegisters(groupRegisters, readableInputRegisters, writeableOutputRegisters);
 
       transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
       DistinctCollectExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                          getRegisterPlan()->nrRegs[getDepth()],
                                          getRegsToClear(), calcRegsToKeep(),
                                          std::move(readableInputRegisters),
-                                         std::move(writeableInputRegisters),
+                                         std::move(writeableOutputRegisters),
                                          std::move(groupRegisters), trxPtr);
 
       return std::make_unique<ExecutionBlockImpl<DistinctCollectExecutor>>(&engine, this,
