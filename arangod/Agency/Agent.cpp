@@ -602,6 +602,7 @@ void Agent::sendAppendEntriesRPC() {
           builder.add("term", VPackValue(entry.term));
           builder.add("query", VPackSlice(entry.entry->data()));
           builder.add("clientId", VPackValue(entry.clientId));
+          builder.add("timestamp", VPackValue(entry.timestamp.count()));
           builder.close();
           highest = entry.index;
           ++toLog;
