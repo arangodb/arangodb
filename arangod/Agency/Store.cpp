@@ -122,6 +122,7 @@ Store::Store(Agent* agent, std::string const& name)
 Store& Store::operator=(Store const& rhs) {
   if (&rhs != this) {
     MUTEX_LOCKER(otherLock, rhs._storeLock);
+    MUTEX_LOCKER(lock, _storeLock);
     _agent = rhs._agent;
     _timeTable = rhs._timeTable;
     _observerTable = rhs._observerTable;
@@ -135,6 +136,7 @@ Store& Store::operator=(Store const& rhs) {
 Store& Store::operator=(Store&& rhs) {
   if (&rhs != this) {
     MUTEX_LOCKER(otherLock, rhs._storeLock);
+    MUTEX_LOCKER(lock, _storeLock);
     _agent = std::move(rhs._agent);
     _timeTable = std::move(rhs._timeTable);
     _observerTable = std::move(rhs._observerTable);
@@ -701,7 +703,7 @@ Store& Store::operator=(VPackSlice const& s) {
       }
     }
   }
-
+  
   TRI_ASSERT(slice[2].isArray());
   for (auto const& entry : VPackArrayIterator(slice[2])) {
     TRI_ASSERT(entry.isObject());
@@ -778,7 +780,6 @@ bool Store::has(std::string const& path) const {
 /// Remove ttl entry for path, guarded by caller
 void Store::removeTTL(std::string const& uri) {
   _storeLock.assertLockedByCurrentThread();
-
   if (!_timeTable.empty()) {
     for (auto it = _timeTable.cbegin(); it != _timeTable.cend();) {
       if (it->second == uri) {
