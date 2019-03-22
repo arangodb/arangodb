@@ -180,7 +180,7 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   }
 
   stats.addWritesExecuted(possibleWrites);
-  // FIXME _engine->_stats.scannedIndex++;
+  stats.incrScannedIndex();
 
   if (!(_info._outputRegisterId.has_value() || _info._outputOldRegisterId.has_value() || _info._outputNewRegisterId.has_value())) {
     if (_info._hasParent){
