@@ -795,7 +795,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
       VPackSlice i = result[0];
       VPackSlice ii = i.resolveExternals();
       try {
-        store = ii.get("readDB");
+        store = ii;
         index = basics::StringUtils::uint64(ii.get("_key").copyString());
         term = ii.get("term").getNumber<uint64_t>();
         return true;
