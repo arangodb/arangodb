@@ -1,8 +1,6 @@
 v3.4.5 (2019-03-27)
 -------------------
 
-* added `IN_RANGE` AQL ArangoSearch filter function
-
 * fixed issue #8294: wrong equals behaviour on arrays with ArangoSearch
 
 * fixed internal issue #528: ArangoSearch range query sometimes doesn't work
