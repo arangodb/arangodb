@@ -236,6 +236,7 @@ start() {
           --log.force-direct true \
           --log.level $LOG_LEVEL_CLUSTER \
           --javascript.allow-admin-execute true \
+          --server.statistics false \
           $STORAGE_ENGINE \
           $AUTHENTICATION \
           $SSLKEYFILE \
@@ -259,6 +260,7 @@ start() {
         --log.thread true \
         --log.level $LOG_LEVEL_CLUSTER \
         --javascript.allow-admin-execute true \
+        --server.statistics false \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \

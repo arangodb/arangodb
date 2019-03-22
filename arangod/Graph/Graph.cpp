@@ -87,7 +87,6 @@ Graph::Graph(velocypack::Slice const& slice)
       _rev(basics::VelocyPackHelper::getStringValue(slice, StaticStrings::RevString,
                                                     "")) {
   // If this happens we have a document without an _key Attribute.
-  TRI_ASSERT(!_graphName.empty());
   if (_graphName.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Persisted graph is invalid. It does not "
@@ -95,12 +94,14 @@ Graph::Graph(velocypack::Slice const& slice)
   }
 
   // If this happens we have a document without an _rev Attribute.
-  TRI_ASSERT(!_rev.empty());
   if (_rev.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Persisted graph is invalid. It does not "
                                    "have a _rev set. Please contact support.");
   }
+  
+  TRI_ASSERT(!_graphName.empty());
+  TRI_ASSERT(!_rev.empty());
 
   if (slice.hasKey(StaticStrings::GraphEdgeDefinitions)) {
     parseEdgeDefinitions(slice.get(StaticStrings::GraphEdgeDefinitions));
@@ -138,7 +139,6 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
 }
 
 void Graph::parseEdgeDefinitions(VPackSlice edgeDefs) {
-  TRI_ASSERT(edgeDefs.isArray());
   if (!edgeDefs.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_GRAPH_INVALID_GRAPH,
@@ -154,7 +154,11 @@ void Graph::parseEdgeDefinitions(VPackSlice edgeDefs) {
 }
 
 void Graph::insertOrphanCollections(VPackSlice const arr) {
-  TRI_ASSERT(arr.isArray());
+  if (!arr.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_GRAPH_INVALID_GRAPH,
+        "'orphanCollections' are not an array in the graph definition");
+  }
   for (auto const& c : VPackArrayIterator(arr)) {
     TRI_ASSERT(c.isString());
     validateOrphanCollection(c);

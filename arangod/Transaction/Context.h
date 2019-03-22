@@ -83,7 +83,7 @@ class Context {
 
   /// @brief return a temporary StringBuffer object
   void returnStringBuffer(basics::StringBuffer* stringBuffer);
-
+  
   /// @brief temporarily lease a std::string
   std::string* leaseString();
 
@@ -102,8 +102,7 @@ class Context {
   /// @brief get velocypack options for dumping
   arangodb::velocypack::Options* getVPackOptionsForDump();
 
-  /// @brief unregister the transaction
-  /// this will save the transaction's id and status locally
+  /// @brief save the transaction's id and status locally
   void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations,
                               bool wasRegistered) noexcept;
 
@@ -127,6 +126,9 @@ class Context {
 
   /// @brief generate persisted transaction ID
   virtual TRI_voc_tid_t generateId() const;
+  
+  /// @brief generates correct ID based on server type
+  static TRI_voc_tid_t makeTransactionId();
 
  protected:
   /// @brief create a resolver
@@ -145,6 +147,8 @@ class Context {
 
   arangodb::velocypack::Options _options;
   arangodb::velocypack::Options _dumpOptions;
+  
+private:
 
  private:
   std::unique_ptr<transaction::ContextData> _contextData;

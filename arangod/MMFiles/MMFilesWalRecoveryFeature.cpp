@@ -67,6 +67,9 @@ void MMFilesWalRecoveryFeature::start() {
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
         << "unable to finish WAL recovery: " << TRI_errno_string(res);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    FATAL_ERROR_ABORT();
+#endif
     FATAL_ERROR_EXIT();
   }
 

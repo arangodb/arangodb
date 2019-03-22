@@ -276,11 +276,6 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
   return true;
 }
 
-bool UpgradeTasks::setupAnalyzers(TRI_vocbase_t& vocbase,
-                                  arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(vocbase, "_iresearch_analyzers");
-}
-
 bool UpgradeTasks::setupAqlFunctions(TRI_vocbase_t& vocbase,
                                      arangodb::velocypack::Slice const& slice) {
   return ::createSystemCollection(vocbase, "_aqlfunctions");
