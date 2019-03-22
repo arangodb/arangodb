@@ -42,7 +42,11 @@ RestClusterHandler::RestClusterHandler(GeneralRequest* request, GeneralResponse*
     : RestBaseHandler(request, response) {}
 
 RestStatus RestClusterHandler::execute() {
-  if (ServerState::instance()->isCoordinator()) {
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+
+  if (ServerState::instance()->isCoordinator(role) ||
+      (ServerState::instance()->isSingleServer(role) && AgencyCommManager::isEnabled())) {
+    // the feature can be used on a coordinator and for an active failover single
 
     if (_request->requestType() != RequestType::GET) {
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
@@ -66,16 +70,14 @@ RestStatus RestClusterHandler::execute() {
     }
 
   } else {
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
-                    "only to be executed on coordinators");
-      return RestStatus::DONE;
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "only to be executed on coordinators");
   }
 
   return RestStatus::DONE;
 }
 
 void RestClusterHandler::handleAgencyDump() {
-
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
     auth::Level lvl = auth::Level::NONE;
