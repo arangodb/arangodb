@@ -3145,7 +3145,6 @@ function transactionCrossCollectionSuite () {
         assertEqual(2, tc2.document('b1').a);
 
       } catch (err) {
-        print(err);
         fail();
       } finally {
         trx.abort(); // rollback
