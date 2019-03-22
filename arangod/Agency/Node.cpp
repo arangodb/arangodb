@@ -400,9 +400,11 @@ TimePoint const& Node::timeToLive() const {
 
 // remove time to live entry for this node
 bool Node::removeTimeToLive() {
-  store().removeTTL(uri());
-  if (_ttl != std::chrono::system_clock::time_point()) {
-    _ttl = std::chrono::system_clock::time_point();
+  if (_store != nullptr) {
+    store().removeTTL(uri());
+    if (_ttl != std::chrono::system_clock::time_point()) {
+      _ttl = std::chrono::system_clock::time_point();
+    }
   }
   return true;
 }
