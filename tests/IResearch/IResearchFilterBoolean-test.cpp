@@ -146,12 +146,6 @@ struct IResearchFilterSetup {
         return params[0];
     }});
 
-    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
-      arangodb::iresearch::IResearchAnalyzerFeature
-    >();
-
-    analyzers->emplace("test_analyzer", "TestCharAnalyzer", "abc"); // cache analyzer
-
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);

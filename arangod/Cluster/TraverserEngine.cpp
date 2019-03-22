@@ -121,7 +121,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
       _collections.add(name, AccessMode::Type::READ);
       shards.emplace_back(std::move(name));
     }
-    _vertexShards.emplace(collection.key.copyString(), shards);
+    _vertexShards.emplace(collection.key.copyString(), std::move(shards));
   }
 
   // FIXME: in the future this needs to be replaced with
@@ -140,10 +140,10 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
     _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts,
                                        true, inaccessible);
   } else {
-    _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, true);
+    _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, /*isMainTransaction*/true);
   }
 #else
-  _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, true);
+  _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, /*isMainTransaction*/true);
 #endif
 
   if (!needToLock) {

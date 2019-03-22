@@ -123,8 +123,8 @@ struct IResearchLinkMeta {
   bool init( // initialize meta
     arangodb::velocypack::Slice const& slice, // definition
     std::string& errorField, // field causing error (out-param)
-    IResearchLinkMeta const& defaults = DEFAULT(), // inherited defaults
     TRI_vocbase_t const* defaultVocbase = nullptr, // fallback vocbase
+    IResearchLinkMeta const& defaults = DEFAULT(), // inherited defaults
     Mask* mask = nullptr // initialized fields (out-param)
   );
 
@@ -139,6 +139,7 @@ struct IResearchLinkMeta {
   ////////////////////////////////////////////////////////////////////////////////
   bool json( // append meta jSON
     arangodb::velocypack::Builder& builder, // output buffer (out-param)
+    bool writeAnalyzerDefinition, // output full analyzer definition instead of just name
     IResearchLinkMeta const* ignoreEqual = nullptr, // values to ignore if equal
     TRI_vocbase_t const* defaultVocbase = nullptr, // fallback vocbase
     Mask const* mask = nullptr // values to ignore always

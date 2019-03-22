@@ -135,12 +135,6 @@ struct IResearchBlockMockSetup {
       }
     }
 
-    auto* analyzers =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-
-    analyzers->emplace("test_analyzer", "TestAnalyzer", "abc");  // cache analyzer
-    analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ",");  // cache analyzer
-
     auto* dbPathFeature =
         arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
             "DatabasePath");
