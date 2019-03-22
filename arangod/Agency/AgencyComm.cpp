@@ -1197,24 +1197,6 @@ bool AgencyComm::ensureStructureInitialized() {
     // We should really have exclusive access, here, this is strange!
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    AgencyCommResult result = getValues("InitDone");
-
-    if (result.successful()) {
-      VPackSlice value = result.slice()[0].get(
-          std::vector<std::string>({AgencyCommManager::path(), "InitDone"}));
-      if (value.isBoolean() && value.getBoolean()) {
-        // expecting a value of "true"
-        LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "Found an initialized agency";
-        break;
-      }
-    } else {
-      if (result.httpCode() == 401) {
-        // unauthorized
-        LOG_TOPIC(FATAL, Logger::STARTUP) << "Unauthorized. Wrong credentials.";
-        FATAL_ERROR_EXIT();
-      }
-    }
-
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
         << "Waiting for agency to get initialized";
 
@@ -1792,11 +1774,17 @@ bool AgencyComm::shouldInitializeStructure() {
 
   size_t nFail = 0;
 
-  while (!application_features::ApplicationServer::isStopping()) {
+  while (true) {
 
     auto result = getValues("Plan");
 
     if (!result.successful()) { // Not 200 - 299
+      
+      if (result.httpCode() == 401) {
+        // unauthorized
+        LOG_TOPIC(FATAL, Logger::STARTUP) << "Unauthorized. Wrong credentials.";
+        FATAL_ERROR_EXIT();
+      }
       
       // Agency not ready yet
       LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
