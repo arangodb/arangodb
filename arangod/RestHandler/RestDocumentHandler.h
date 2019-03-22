@@ -41,6 +41,9 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   void shutdownExecute(bool isFinalized) noexcept override;
 #endif
 
+ protected:
+  virtual uint32_t forwardingTarget() override;
+
  private:
   // inserts a document
   bool insertDocument();

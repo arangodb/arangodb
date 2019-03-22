@@ -17,7 +17,7 @@ describe ArangoDB do
       it "returns an error if a wrong method type is used" do
         cmd = api
         body = "{ \"collections\" : { }, \"action\" : \" for \" }"
-        doc = ArangoDB.log_put("#{prefix}-invalid-method", cmd, :body => body)
+        doc = ArangoDB.log_patch("#{prefix}-invalid-method", cmd, :body => body)
         
         doc.code.should eq(405)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
