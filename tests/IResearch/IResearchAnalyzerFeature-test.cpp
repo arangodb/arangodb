@@ -1219,7 +1219,7 @@ SECTION("test_persistence") {
       CHECK((expected.empty()));
     }
   }
-*/
+
   // remove existing records
   {
     {
@@ -1285,7 +1285,7 @@ SECTION("test_persistence") {
       CHECK((expected.empty()));
     }
   }
-
+*/
   // emplace on single-server (should persist)
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;

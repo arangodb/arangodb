@@ -53,15 +53,7 @@ std::string ensureGuid(std::string&& guid, TRI_voc_cid_t id, TRI_voc_cid_t planI
   // id numbers can also not conflict, first character is always 'h'
   if (arangodb::ServerState::instance()->isCoordinator() ||
       arangodb::ServerState::instance()->isDBServer()) {
-     // this was seen to happen on coordinator when agency returned '0' for 'id'
-    // and no 'planId' was provided in the definition
-    if (!planId) {
-      THROW_ARANGO_EXCEPTION_MESSAGE( // exception
-        TRI_ERROR_INTERNAL, // code
-        "invalid zero 'planId' value" // message
-      );
-    }
-
+    TRI_ASSERT(planId); // ensured by LogicalDataSource constructor + '_id' != 0
     guid.append("c");
     guid.append(std::to_string(planId));
     guid.push_back('/');
@@ -72,12 +64,8 @@ std::string ensureGuid(std::string&& guid, TRI_voc_cid_t id, TRI_voc_cid_t planI
     }
   } else if (isSystem) {
     guid.append(name);
-  } else if (!id) {
-    THROW_ARANGO_EXCEPTION_MESSAGE( // exception
-      TRI_ERROR_INTERNAL, // code
-      "invalid zero 'id' value" // message
-    );
   } else {
+    TRI_ASSERT(id); // ensured by ensureId(...)
     char buf[sizeof(TRI_server_id_t) * 2 + 1];
     auto len = TRI_StringUInt64HexInPlace(arangodb::ServerIdFeature::getId(), buf);
     guid.append("h");
@@ -95,14 +83,31 @@ TRI_voc_cid_t ensureId(TRI_voc_cid_t id) {
     return id;
   }
 
-  if (arangodb::ServerState::instance()->isCoordinator() ||
-      arangodb::ServerState::instance()->isDBServer()) {
-    auto* ci = arangodb::ClusterInfo::instance();
-
-    return ci ? ci->uniqid(1) : 0;
+  if (!arangodb::ServerState::instance()->isCoordinator() // not coordinator
+      && !arangodb::ServerState::instance()->isDBServer() // not db-server
+     ) {
+    return TRI_NewTickServer();
   }
 
-  return TRI_NewTickServer();
+  auto* ci = arangodb::ClusterInfo::instance();
+
+  if (!ci) {
+    THROW_ARANGO_EXCEPTION_MESSAGE( // exception
+      TRI_ERROR_INTERNAL, // code
+      "failure to find 'ClusterInfo' instance while generating LogicalDataSource ID" // message
+    );
+  }
+
+  id = ci->uniqid(1);
+
+  if (!id) {
+    THROW_ARANGO_EXCEPTION_MESSAGE( // exception
+      TRI_ERROR_INTERNAL, // code
+      "invalid zero value returned for uniqueid by 'ClusterInfo' while generating LogicalDataSource ID" // message
+    );
+  }
+
+  return id;
 }
 
 bool readIsSystem(arangodb::velocypack::Slice definition) {
