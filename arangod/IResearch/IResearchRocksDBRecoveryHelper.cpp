@@ -166,7 +166,7 @@ void ensureLink(arangodb::DatabaseFeature& db,
 
   json.openObject();
 
-  if (!link->json(json)) {
+  if (!link->properties(json, true).ok()) { // link definition used for recreation and persistence
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "Failed to generate jSON definition for link '" << iid
         << "' to the collection '" << cid << "' in the database '" << dbId;

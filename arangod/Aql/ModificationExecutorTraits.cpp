@@ -76,9 +76,8 @@ int extractKey(transaction::Methods* trx, AqlValue const& value, std::string& ke
 }
 
 /// @brief process the result of a data-modification operation
-void handleStats(ModificationStats& stats,
-                 ModificationExecutorInfos& info, int code, bool ignoreErrors,
-                 std::string const* errorMessage = nullptr) {
+void handleStats(ModificationStats& stats, ModificationExecutorInfos& info, int code,
+                 bool ignoreErrors, std::string const* errorMessage = nullptr) {
   if (code == TRI_ERROR_NO_ERROR) {
     // update the success counter
     if (info._doCount) {
@@ -105,8 +104,10 @@ void handleStats(ModificationStats& stats,
 
 /// @brief process the result of a data-modification operation
 void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
-                     std::unordered_map<int, size_t> const& errorCounter, uint64_t numBabies,
+                     OperationResult const& opRes, uint64_t numBabies,
                      bool ignoreErrors, bool ignoreDocumentNotFound = false) {
+  auto const& errorCounter = opRes.countErrorCodes;
+
   size_t numberBabies = numBabies;  // from uint64_t to size_t
   if (errorCounter.empty()) {
     // update the success counter
@@ -155,14 +156,32 @@ void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
     TRI_ASSERT(first != errorCounter.end());
   }
 
-  THROW_ARANGO_EXCEPTION(first->first);
+  auto code = first->first;
+
+  try {
+    if (opRes.slice().isArray()) {
+      for (auto doc : VPackArrayIterator(opRes.slice())) {
+        if (doc.hasKey("errorNum") && doc.get("errorNum").getInt() == code) {
+          if (doc.hasKey("errorMessage")) {
+            std::string message = doc.get("errorMessage").copyString();
+            THROW_ARANGO_EXCEPTION(Result(code, message));
+          }
+        }
+      }
+    }
+  } catch (...) {
+    // Fall-through to returning the generic error message,
+    // which better than forwarding an internal error here.
+  }
+
+  // Throw generic error, as no error message was found.
+  THROW_ARANGO_EXCEPTION(code);
 }
 }  // namespace
 
 ///////////////////////////////////////////////////////////////////////////////
 // INSERT /////////////////////////////////////////////////////////////////////
-bool Insert::doModifications(ModificationExecutorInfos& info,
-                             ModificationStats& stats) {
+bool Insert::doModifications(ModificationExecutorInfos& info, ModificationStats& stats) {
   OperationOptions& options = info._options;
 
   reset();
@@ -174,7 +193,7 @@ bool Insert::doModifications(ModificationExecutorInfos& info,
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
         !info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
-                                                              StaticStrings::Empty)) {
+                                                               StaticStrings::Empty)) {
       _operations.push_back(ModOperationType::APPLY_RETURN);
       // TODO This may be optimized with externals
       _tmpBuilder.add(inVal.slice());
@@ -203,8 +222,7 @@ bool Insert::doModifications(ModificationExecutorInfos& info,
   setOperationResult(std::move(operationResult));
 
   // handle statisitcs
-  handleBabyStats(stats, info, _operationResult.countErrorCodes,
-                  toInsert.length(), info._ignoreErrors);
+  handleBabyStats(stats, info, _operationResult, toInsert.length(), info._ignoreErrors);
 
   _tmpBuilder.clear();
 
@@ -239,7 +257,8 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
   OperationOptions& options = info._options;
 
   // ignore-skip values
-  while (_blockIndex < _operations.size() && _operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
+  while (_blockIndex < _operations.size() &&
+         _operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
     _blockIndex++;
   }
 
@@ -290,8 +309,7 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 
 ///////////////////////////////////////////////////////////////////////////////
 // REMOVE /////////////////////////////////////////////////////////////////////
-bool Remove::doModifications(ModificationExecutorInfos& info,
-                             ModificationStats& stats) {
+bool Remove::doModifications(ModificationExecutorInfos& info, ModificationStats& stats) {
   OperationOptions& options = info._options;
 
   reset();
@@ -310,7 +328,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info,
 
     if (!info._consultAqlWriteFilter ||
         !info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
-                                                              StaticStrings::Empty)) {
+                                                               StaticStrings::Empty)) {
       key.clear();
       rev.clear();
 
@@ -361,8 +379,8 @@ bool Remove::doModifications(ModificationExecutorInfos& info,
   auto operationResult = info._trx->remove(info._aqlCollection->name(), toRemove, options);
   setOperationResult(std::move(operationResult));
 
-  handleBabyStats(stats, info, _operationResult.countErrorCodes,
-                  toRemove.length(), info._ignoreErrors, info._ignoreDocumentNotFound);
+  handleBabyStats(stats, info, _operationResult, toRemove.length(),
+                  info._ignoreErrors, info._ignoreDocumentNotFound);
 
   _tmpBuilder.clear();
 
@@ -393,7 +411,8 @@ bool Remove::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 
   OperationOptions& options = info._options;
 
-  while (_blockIndex < _operations.size() && _operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
+  while (_blockIndex < _operations.size() &&
+         _operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
     _blockIndex++;
   }
 
@@ -438,8 +457,7 @@ bool Remove::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 
 ///////////////////////////////////////////////////////////////////////////////
 // UPSERT /////////////////////////////////////////////////////////////////////
-bool Upsert::doModifications(ModificationExecutorInfos& info,
-                             ModificationStats& stats) {
+bool Upsert::doModifications(ModificationExecutorInfos& info, ModificationStats& stats) {
   OperationOptions& options = info._options;
 
   reset();
@@ -464,7 +482,7 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
     if (inVal.isObject()) /*update case, as old doc is present*/ {
       if (!info._consultAqlWriteFilter ||
           !info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
-                                                                StaticStrings::Empty)) {
+                                                                 StaticStrings::Empty)) {
         key.clear();
         errorCode = extractKey(trx, inVal, key);
         if (errorCode == TRI_ERROR_NO_ERROR) {
@@ -534,7 +552,6 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
   TRI_ASSERT(info._trx);
   OperationResult opRes;  // temporary value
 
-
   if (toInsert.isArray() && toInsert.length() > 0) {
     OperationResult opRes =
         info._trx->insert(info._aqlCollection->name(), toInsert, options);
@@ -544,8 +561,7 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
       THROW_ARANGO_EXCEPTION(_operationResult.result);
     }
 
-    handleBabyStats(stats, info, _operationResult.countErrorCodes,
-                    toInsert.length(), info._ignoreErrors);
+    handleBabyStats(stats, info, _operationResult, toInsert.length(), info._ignoreErrors);
 
     _insertBuilder.clear();
   }
@@ -562,8 +578,7 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
       THROW_ARANGO_EXCEPTION(_operationResultUpdate.result);
     }
 
-    handleBabyStats(stats, info, _operationResultUpdate.countErrorCodes,
-                    toUpdate.length(), info._ignoreErrors);
+    handleBabyStats(stats, info, _operationResultUpdate, toUpdate.length(), info._ignoreErrors);
 
     _tmpBuilder.clear();
     _updateBuilder.clear();
@@ -587,7 +602,8 @@ bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 
   OperationOptions& options = info._options;
 
-  while (_blockIndex < _operations.size() && _operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
+  while (_blockIndex < _operations.size() &&
+         _operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
     _blockIndex++;
   }
 
@@ -730,7 +746,6 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
   TRI_ASSERT(info._trx);
 
   if (toUpdateOrReplace.isArray() && toUpdateOrReplace.length() > 0) {
-
     OperationResult opRes =
         (info._trx->*_method)(info._aqlCollection->name(), toUpdateOrReplace, options);
     setOperationResult(std::move(opRes));
@@ -739,8 +754,8 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
       THROW_ARANGO_EXCEPTION(_operationResult.result);
     }
 
-    handleBabyStats(stats, info, _operationResult.countErrorCodes,
-                    toUpdateOrReplace.length(), info._ignoreErrors, info._ignoreDocumentNotFound);
+    handleBabyStats(stats, info, _operationResult, toUpdateOrReplace.length(),
+                    info._ignoreErrors, info._ignoreDocumentNotFound);
   }
 
   _tmpBuilder.clear();
@@ -770,7 +785,8 @@ bool UpdateReplace<ModType>::doOutput(ModificationExecutorInfos& info,
 
   OperationOptions& options = info._options;
 
-  while (_blockIndex < _operations.size() && _operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
+  while (_blockIndex < _operations.size() &&
+         _operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
     _blockIndex++;
   }
 

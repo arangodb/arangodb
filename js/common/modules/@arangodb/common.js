@@ -550,6 +550,11 @@ exports.checkAvailableVersions = function(version) {
     return;
   }
 
+  if (internal.isEnterprise()) {
+    // don't check for version updates in the enterprise version
+    return;
+  }
+
   try {
     var u =
       'https://www.arangodb.com/repositories/versions.php?version=' +
