@@ -354,21 +354,27 @@ void ModificationBlock::handleBabyResult(OperationResult const& opRes,
   auto code = first->first;
 
   // check if we can find a specific error message
+  std::string message;
   try {
     if (opRes.slice().isArray()) {
       for (auto doc : VPackArrayIterator(opRes.slice())) {
-        if (!doc.isObject() || !doc.hasKey("errorNum") || doc.get("errorNum").getInt() != code) {
+        if (!doc.isObject() || !doc.hasKey("errorNum") ||
+            doc.get("errorNum").getInt() != code) {
           continue;
         }
         VPackSlice msg = doc.get("errorMessage");
         if (msg.isString()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(code, msg.copyString());
+          message = msg.copyString();
         }
       }
     }
   } catch (...) {
     // fall-through to returning the generic error message, which better than
     // forwarding an internal error here
+  }
+
+  if (!message.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(code, std::move(message));
   }
 
   // no specific error message found. now respond with a generic error message
