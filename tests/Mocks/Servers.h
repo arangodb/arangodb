@@ -74,7 +74,7 @@ class MockAqlServer : public MockServer {
     MockAqlServer();
     ~MockAqlServer();
 
-    arangodb::transaction::Methods* createFakeTransaction() const;
+    std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
     std::unique_ptr<arangodb::aql::Query> createFakeQuery() const;
 };
 

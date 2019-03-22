@@ -260,13 +260,10 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 
   // A daughter transaction which does not
   // actually lock the collections
-  clone->_trx = _trx->clone(_queryOptions.transactionOptions);
-
-  Result res = clone->_trx->begin();
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  clone->_trx = _trx;// _trx->clone(_queryOptions.transactionOptions);
+  TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
+  // hack ensure only the first query commits
+  clone->_isClonedQuery = true;
 
   return clone.release();
 }
@@ -460,13 +457,11 @@ ExecutionPlan* Query::preparePlan() {
   }
 #endif
 
-  std::unique_ptr<AqlTransaction> trx(
-      AqlTransaction::create(std::move(ctx), _collections.collections(),
-                             _queryOptions.transactionOptions,
-                             _part == PART_MAIN, inaccessibleCollections));
-  TRI_DEFER(trx.release());
+  auto trx = AqlTransaction::create(std::move(ctx), _collections.collections(),
+                                    _queryOptions.transactionOptions,
+                                    _part == PART_MAIN, inaccessibleCollections);
   // create the transaction object, but do not start it yet
-  _trx = trx.get();
+  _trx = trx;
   _trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL); // only used on toplevel
 
   // As soon as we start to instantiate the plan we have to clean it
@@ -656,7 +651,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
             AqlValue const& val = res.second->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
-              val.toVelocyPack(_trx, resultBuilder, useQueryCache);
+              val.toVelocyPack(_trx.get(), resultBuilder, useQueryCache);
             }
           }
 
@@ -867,10 +862,10 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
             AqlValue const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
-              resArray->Set(j++, val.toV8(isolate, _trx));
+              resArray->Set(j++, val.toV8(isolate, _trx.get()));
 
               if (useQueryCache) {
-                val.toVelocyPack(_trx, *builder, true);
+                val.toVelocyPack(_trx.get(), *builder, true);
               }
             }
 
@@ -949,10 +944,12 @@ ExecutionState Query::finalize(QueryResult& result) {
     LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                       << "Query::finalize: before _trx->commit"
                                       << " this: " << (uintptr_t)this;
-
-    Result commitResult = _trx->commit();
-    if (commitResult.fail()) {
-      THROW_ARANGO_EXCEPTION(commitResult);
+    
+    if (!_isClonedQuery) {
+      Result commitResult = _trx->commit();
+      if (commitResult.fail()) {
+        THROW_ARANGO_EXCEPTION(commitResult);
+      }
     }
 
     LOG_TOPIC(DEBUG, Logger::QUERIES)
@@ -1415,7 +1412,6 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
   }
 
   // If the transaction was not committed, it is automatically aborted
-  delete _trx;
   _trx = nullptr;
 
   _plan.reset();

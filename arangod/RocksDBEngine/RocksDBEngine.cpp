@@ -462,7 +462,7 @@ void RocksDBEngine::start() {
   // Maximum number of level-0 files.  We stop writes at this point.
   _options.level0_stop_writes_trigger = static_cast<int>(opts->_level0StopTrigger);
 
-  _options.recycle_log_file_num = static_cast<size_t>(opts->_recycleLogFileNum);
+  _options.recycle_log_file_num = opts->_recycleLogFileNum;
   _options.compaction_readahead_size = static_cast<size_t>(opts->_compactionReadaheadSize);
 
 #ifdef USE_ENTERPRISE

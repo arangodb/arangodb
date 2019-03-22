@@ -29,6 +29,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -88,6 +90,11 @@ void handleLeadership(LogicalCollection& collection, std::string const& localLea
 
   if (plannedLeader.empty()) {   // Planned to lead
     if (!localLeader.empty()) {  // We were not leader, assume leadership
+      auto* mgr = transaction::ManagerFeature::manager();
+      if (mgr) { // abort ongoing follower transactions
+        mgr->abortAllManagedTrx(collection.id(), false);
+      }
+      
       followers->setTheLeader(std::string());
       followers->clear();
     } else {
@@ -107,6 +114,10 @@ void handleLeadership(LogicalCollection& collection, std::string const& localLea
     }
   } else {  // Planned to follow
     if (localLeader.empty()) {
+      auto* mgr = transaction::ManagerFeature::manager();
+      if (mgr) { // abort ongoing follower transactions
+        mgr->abortAllManagedTrx(collection.id(), true);
+      }
       // Note that the following does not delete the follower list
       // and that this is crucial, because in the planned leader
       // resign case, updateCurrentForCollections will report the
