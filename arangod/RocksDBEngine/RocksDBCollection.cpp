@@ -616,7 +616,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx, OperationOptions& 
 
     ++found;
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
-    VPackSlice document = VPackSlice(iter->value().data());
+    VPackSlice document(iter->value().data());
     TRI_ASSERT(document.isObject());
     
     // tmp may contain a pointer into rocksdb::WriteBuffer::_rep. This is
