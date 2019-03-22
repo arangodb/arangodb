@@ -1183,8 +1183,11 @@ bool AgencyComm::ensureStructureInitialized() {
 
   auto serverFeature =
     application_features::ApplicationServer::getFeature<ServerFeature>("Server");
-  while (!serverFeature->isStopping()) {
+  while (!serverFeature->isStopping() && shouldInitializeStructure()) {
 
+      LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
+        << "Agency is fresh. Needs initial structure.";
+      
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
       << "Agency is fresh. Needs initial structure.";
     
