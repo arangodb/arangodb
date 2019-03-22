@@ -1,20 +1,20 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex/male &lt;&lt;EOF
+shell> curl -X POST --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex/male &lt;&lt;EOF
 { 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Francis"</span> 
 }
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
-x-content-type-options: nosniff
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _YDwuSE2--_
+etag: _YX0k85K--_
+x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"vertex"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/8142"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"8142"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDwuSE2--_"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YX0k85K--_"</span> 
   }, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }

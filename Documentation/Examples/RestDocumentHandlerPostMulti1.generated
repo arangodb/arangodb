@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document/products &lt;&lt;EOF
+shell> curl -X POST --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/document/products &lt;&lt;EOF
 [{"Hello":"Earth"}, {"Hello":"Venus"}, {"Hello":"Mars"}]
 EOF
 
@@ -8,18 +8,18 @@ x-content-type-options: nosniff
 
 [ 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10661"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10661"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDwuYqe--_"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10665"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10665"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDwuYqe--B"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10663"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10663"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YX0lEfq--_"</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10667"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10667"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDwuYqe--D"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YX0lEfq--B"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10669"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10669"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YX0lEfq--D"</span> 
   } 
 ]

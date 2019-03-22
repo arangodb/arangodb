@@ -3,21 +3,26 @@ Single instance deployment
 
 The latest official builds of ArangoDB for all supported operating systems may be obtained from https://www.arangodb.com/download/.
 
-### Linux remarks
+Linux remarks
+-------------
 
 Besides the official images which are provided for the most popular linux distributions there are also a variety of unofficial images provided by the community. We are tracking most of the community contributions (including new or updated images) in our newsletter:
 
 https://www.arangodb.com/category/newsletter/
 
-### Windows remarks
+Windows remarks
+---------------
 
 Please note that ArangoDB will only work on 64bit.
 
-### Docker
+Docker
+------
 
-The simplest way to deploy ArangoDB is using [Docker](https://docker.io/). To get a general understanding of Docker have a look at [their excellent documentation](https://docs.docker.com/).
+The simplest way to deploy ArangoDB is using [Docker](https://docker.io/).
+To get a general understanding of Docker have a look at
+[their excellent documentation](https://docs.docker.com/).
 
-#### Authentication
+### Authentication
 
 To start the official Docker container you will have to decide on an authentication method. Otherwise the container won't start.
 

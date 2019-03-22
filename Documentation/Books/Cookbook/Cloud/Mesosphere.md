@@ -171,15 +171,15 @@ on the mesos master.
 If you now switch to the Marathon console on port `8080`, you should see apps, namely
 `/guesser/database/arangodb` and `/guesser/frontend/node`.
 
-![Marathon Console](/assets/UsingArangoDBMesosphere/UsingArangoDBMesosphere1.png)
+![Marathon Console](../assets/UsingArangoDBMesosphere/UsingArangoDBMesosphere1.png)
 
 If you access port `32222`, you should see the ArangoDB console.
 
-![ArangoDB Console](/assets/UsingArangoDBMesosphere/UsingArangoDBMesosphere2.png)
+![ArangoDB Console](../assets/UsingArangoDBMesosphere/UsingArangoDBMesosphere2.png)
  
 And finally, on port `32211`, you can play the guesser game.
 
-![Guesser Game](/assets/UsingArangoDBMesosphere/UsingArangoDBMesosphere3.png)
+![Guesser Game](../assets/UsingArangoDBMesosphere/UsingArangoDBMesosphere3.png)
 
 ### Scaling Up
 

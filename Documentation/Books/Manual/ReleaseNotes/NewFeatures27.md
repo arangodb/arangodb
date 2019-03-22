@@ -403,7 +403,7 @@ If the query cache is operated in `demand` mode, it can be controlled per query
 if the cache should be checked for a result.
 
 
-### Miscellaneous changes
+### Miscellaneous AQL changes
 
 ### Optimizer
 

@@ -1,7 +1,9 @@
 Database Methods
 ================
 
-### Collection
+Collection
+----------
+
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -45,7 +47,9 @@ Unknown collection:
     @endDocuBlock collectionDatabaseNameUnknown
 
 
-### Create
+Create
+------
+
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
@@ -262,7 +266,9 @@ Creates a new document collection named *collection-name*. If the
 document name already exists and error is thrown.
 
 
-### All Collections
+All Collections
+---------------
+
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -285,7 +291,9 @@ Returns all collections of the given database.
 
 
 
-### Collection Name
+Collection Name
+---------------
+
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -310,7 +318,9 @@ default properties.
 
 
 
-### Drop
+Drop
+----
+
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
@@ -374,7 +384,9 @@ Drops a system collection
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock collectionDatabaseDropSystem
 
-### Truncate
+Truncate
+--------
+
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 

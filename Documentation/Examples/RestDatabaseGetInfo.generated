@@ -1,4 +1,4 @@
-shell> curl --dump - http://localhost:8529/_api/database/current
+shell> curl --header 'accept: application/json' --dump - http://localhost:8529/_api/database/current
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
@@ -10,7 +10,7 @@ x-content-type-options: nosniff
   <span class="hljs-string">"result"</span> : { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"_system"</span>, 
     <span class="hljs-string">"id"</span> : <span class="hljs-string">"1"</span>, 
-    <span class="hljs-string">"path"</span> : <span class="hljs-string">"/tmp/arangosh_EcFtnK/tmp-21913-10480753/data/databases/database-1"</span>, 
+    <span class="hljs-string">"path"</span> : <span class="hljs-string">"/tmp/arangosh_PHbcFK/tmp-320-1750994798/data/databases/database-1"</span>, 
     <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span> 
   } 
 }

@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products &lt;&lt;EOF
+shell> curl -X POST --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/index?collection=products &lt;&lt;EOF
 { 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"fulltext"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
@@ -15,7 +15,7 @@ x-content-type-options: nosniff
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"text"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/11200"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/11197"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"minLength"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 

@@ -1,20 +1,20 @@
-shell> curl -X PUT --header 'x-arango-async: store' --data-binary @- --dump - http://localhost:8529/_api/collection &lt;&lt;EOF
+shell> curl -X PUT --header 'x-arango-async: store' --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/collection &lt;&lt;EOF
 { 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">" this name is invalid "</span> 
 }
 EOF
 
 HTTP/1.1 202 Accepted
-x-content-type-options: nosniff
-x-arango-async-id: 9595
 content-type: text/plain; charset=utf-8
+x-content-type-options: nosniff
+x-arango-async-id: 9591
 
-shell> curl -X PUT --dump - http://localhost:8529/_api/job/9595
+shell> curl -X PUT --header 'accept: application/json' --dump - http://localhost:8529/_api/job/9591
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">400</span> Bad Request
-x-content-type-options: nosniff
-x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">9595</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
+x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">9591</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 

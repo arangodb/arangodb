@@ -21,7 +21,8 @@ Information:
  - F: Collection state(unloaded, loaded, ...)
  - G: Collection name
 
-### Collection
+Collection
+----------
 
 ![Collection](images/collectionView.png)
 

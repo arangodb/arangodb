@@ -1,4 +1,4 @@
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/user/admin@myapp &lt;&lt;EOF
+shell> curl -X PATCH --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/user/admin@myapp &lt;&lt;EOF
 { 
   <span class="hljs-string">"passwd"</span> : <span class="hljs-string">"secure"</span> 
 }

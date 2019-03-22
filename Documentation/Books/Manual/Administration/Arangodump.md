@@ -87,7 +87,8 @@ Note that the version of the arangodump client tool needs to match the
 version of the ArangoDB server it connects to.
     
 
-### Advanced cluster options
+Advanced cluster options
+------------------------
 
 Starting with version 3.1.17, collections may be created with shard
 distribution identical to an existing prototypical collection;

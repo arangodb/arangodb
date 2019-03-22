@@ -59,7 +59,8 @@ FOR u IN users
   REMOVE { _key: u._key } IN backup
 ```
 
-### Setting query options
+Setting query options
+---------------------
 
 *options* can be used to suppress query errors that may occur when trying to
 remove non-existing documents. For example, the following query will fail if one
@@ -86,7 +87,7 @@ FOR i IN 1..1000
   REMOVE { _key: CONCAT('test', i) } IN users OPTIONS { waitForSync: true }
 ```
 
-In order to not accidentially remove documents that have been updated since you last fetched
+In order to not accidentally remove documents that have been updated since you last fetched
 them, you can use the option *ignoreRevs* to either let ArangoDB compare the `_rev` values and 
 only succeed if they still match, or let ArangoDB ignore them (default):
 
@@ -95,8 +96,8 @@ FOR i IN 1..1000
   REMOVE { _key: CONCAT('test', i), _rev: "1287623" } IN users OPTIONS { ignoreRevs: false }
 ```
 
-
-### Returning the removed documents
+Returning the removed documents
+-------------------------------
 
 The removed documents can also be returned by the query. In this case, the `REMOVE` 
 statement must be followed by a `RETURN` statement (intermediate `LET` statements
@@ -116,4 +117,3 @@ FOR u IN users
   LET removed = OLD 
   RETURN removed._key
 ```
-

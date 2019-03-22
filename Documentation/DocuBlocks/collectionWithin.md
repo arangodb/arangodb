@@ -28,7 +28,7 @@ contains the distance between the given point and the document in meters.
 Note: the *within* simple query function is **deprecated** as of ArangoDB 2.6.
 The function may be removed in future versions of ArangoDB. The preferred
 way for retrieving documents from a collection using the within operator  is
-to use the AQL *WITHIN* function in an [AQL query](../../AQL/Functions/Geo.html) as follows:
+to use the AQL *WITHIN* function in an AQL query as follows:
 
 ```
 FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)

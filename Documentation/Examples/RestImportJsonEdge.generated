@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=links&type=documents &lt;&lt;EOF
+shell> curl -X POST --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/import?collection=links&type=documents &lt;&lt;EOF
 { "_from": "products/123", "_to": "products/234" }
 {"_from": "products/332", "_to": "products/abc",   "name": "other name" }
 EOF

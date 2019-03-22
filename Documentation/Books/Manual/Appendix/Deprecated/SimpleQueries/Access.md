@@ -19,7 +19,9 @@ method that is available for each type of simple query, or when the simple
 query is executed using its *execute* method. If no *batchSize* value
 is specified, the server will pick a reasonable default value.
 
-### Has Next
+Has Next
+--------
+
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -49,7 +51,9 @@ documents. In this case the next document can be accessed using the
     @endDocuBlock cursorHasNext
 
 
-### Next
+Next
+----
+
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -80,7 +84,9 @@ exhausted cursor, then *undefined* is returned.
     @endDocuBlock cursorNext
 
 
-### Set Batch size
+Set Batch size
+--------------
+
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -91,7 +97,9 @@ Sets the batch size for queries. The batch size determines how many results
 are at most transferred from the server to the client in one chunk.
 
 
-### Get Batch size
+Get Batch size
+--------------
+
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -102,7 +110,9 @@ Returns the batch size for queries. If the returned value is undefined, the
 server will determine a sensible batch size for any following requests.
 
 
-### Execute Query
+Execute Query
+-------------
+
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -146,7 +156,9 @@ result:
 
 
 
-### Dispose
+Dispose
+-------
+
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -158,7 +170,9 @@ If you are no longer interested in any further results, you should call
 After calling *dispose* you can no longer access the cursor.
 
 
-### Count
+Count
+-----
+
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -180,40 +194,4 @@ skiped using the *skip* operator, the *count* operator with argument
 applying *limit* and *skip*.
 
 **Note**: Not all simple queries support counting. In this case *null* is
-returned.
-
-
-**Examples**
-
-
-Ignore any limit:
-
-    @startDocuBlockInline cursorCountUnLimited
-    @EXAMPLE_ARANGOSH_OUTPUT{cursorCountUnLimited}
-    ~ db._create("five");
-    ~ db.five.save({ name : "one" });
-    ~ db.five.save({ name : "two" });
-    ~ db.five.save({ name : "three" });
-    ~ db.five.save({ name : "four" });
-    ~ db.five.save({ name : "five" });
-      db.five.all().limit(2).count();
-    ~ db._drop("five")
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock cursorCountUnLimited
-
-Counting any limit or skip:
-
-    @startDocuBlockInline cursorCountLimit
-    @EXAMPLE_ARANGOSH_OUTPUT{cursorCountLimit}
-    ~ db._create("five");
-    ~ db.five.save({ name : "one" });
-    ~ db.five.save({ name : "two" });
-    ~ db.five.save({ name : "three" });
-    ~ db.five.save({ name : "four" });
-    ~ db.five.save({ name : "five" });
-      db.five.all().limit(2).count(true);
-    ~ db._drop("five")
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock cursorCountLimit
-
-
+returned (Simple Queries are deprecated).

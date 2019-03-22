@@ -1,4 +1,4 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_admin/wal/properties &lt;&lt;EOF
+shell> curl -X PUT --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_admin/wal/properties &lt;&lt;EOF
 { 
   <span class="hljs-string">"logfileSize"</span> : <span class="hljs-number">33554432</span>, 
   <span class="hljs-string">"allowOversizeEntries"</span> : <span class="hljs-literal">true</span> 

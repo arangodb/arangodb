@@ -23,7 +23,8 @@ COLLECT WITH COUNT INTO countVariable options
 
 `options` is optional in all variants.
 
-### Grouping syntaxes
+Grouping syntaxes
+-----------------
 
 The first syntax form of *COLLECT* only groups the result by the defined group 
 criteria specified in *expression*. In order to further process the results 
@@ -85,7 +86,8 @@ by city, and for each distinct combination of country and city, the users
 will be returned.
 
 
-### Discarding obsolete variables
+Discarding obsolete variables
+-----------------------------
 
 The third form of *COLLECT* allows rewriting the contents of the *groupsVariable* 
 using an arbitrary *projectionExpression*:
@@ -147,7 +149,8 @@ be used in the *KEEP* clause. *KEEP* supports the specification of multiple
 variable names.
 
 
-### Group length calculation
+Group length calculation
+------------------------
 
 *COLLECT* also provides a special *WITH COUNT* clause that can be used to 
 determine the number of group members efficiently.
@@ -182,7 +185,8 @@ FOR u IN users
 Note: the *WITH COUNT* clause can only be used together with an *INTO* clause.
 
 
-### Aggregation
+Aggregation
+-----------
 
 A `COLLECT` statement can be used to perform aggregation of data per group. To
 only determine group lengths, the `WITH COUNT INTO` variant of `COLLECT` can be
@@ -244,7 +248,8 @@ assignment:
 - an aggregate expression must not refer to variables introduced by the `COLLECT` itself
 
 
-### COLLECT variants
+COLLECT variants
+----------------
 
 Since ArangoDB 2.6, there are two variants of *COLLECT* that the optimizer can
 choose from: the *sorted* variant and the *hash* variant. The *hash* variant only becomes a
@@ -287,7 +292,8 @@ Which variant of *COLLECT* was actually used can be figured out by looking into 
 a query, specifically the *AggregateNode* and its *aggregationOptions* attribute.
 
 
-### Setting COLLECT options
+Setting COLLECT options
+-----------------------
 
 *options* can be used in a *COLLECT* statement to inform the optimizer about the preferred *COLLECT*
 method. When specifying the following appendix to a *COLLECT* statement, the optimizer will always use
@@ -302,7 +308,8 @@ because the *hash* variant is not eligible for all queries. Instead, if no optio
 than *sorted* are specified in *OPTIONS*, the optimizer will use its regular cost estimations.
 
 
-### COLLECT vs. RETURN DISTINCT
+COLLECT vs. RETURN DISTINCT
+---------------------------
 
 In order to make a result set unique, one can either use *COLLECT* or *RETURN DISTINCT*. Behind the
 scenes, both variants will work by creating an *AggregateNode*. For both variants, the optimizer
@@ -322,6 +329,3 @@ FOR u IN users
 
 However, *COLLECT* is vastly more flexible than *RETURN DISTINCT*. Additionally, the order of results is 
 undefined for a *RETURN DISTINCT*, whereas for a *COLLECT* the results will be sorted.
-
-
-

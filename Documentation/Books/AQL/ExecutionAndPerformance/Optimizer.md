@@ -13,7 +13,8 @@ meaning that an optimization should not modify the result of a query. A notable 
 to this is that the optimizer is allowed to change the order of results for queries that
 do not explicitly specify how results should be sorted.
 
-### Execution plans
+Execution plans
+---------------
 
 The `explain` command can be used to query the optimal executed plan or even all plans
 the optimizer has generated. Additionally, `explain` can reveal some more information
@@ -134,7 +135,7 @@ Here is the meaning of these rules in context of this query:
 * `use-indexes`: use an index to iterate over a collection instead of performing a
   full collection scan. In the example case this makes sense, as the index can be
   used for filtering and sorting.
-* `remove-filter-covered-by-index`: remove an unnessary filter whose functionality
+* `remove-filter-covered-by-index`: remove an unnecessary filter whose functionality
   is already covered by an index. In this case the index only returns documents 
   matching the filter.
 * `use-index-for-sort`: removes a `SORT` operation if it is already satisfied by
@@ -211,7 +212,8 @@ Note that some optimizations are already done at parse time (i.e. evaluate simpl
 calculation as `1 + 1`)
 
 
-### Turning specific optimizer rules off
+Turning specific optimizer rules off
+------------------------------------
 
 Optimizer rules can also be turned on or off individually, using the `rules` attribute.
 This can be used to enable or disable one or multiple rules. Rules that shall be enabled
@@ -248,7 +250,8 @@ The maximum number of plans created by the optimizer can also be limited using t
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock AQLEXP_09_explainMaxNumberOfPlans
 
-### Optimizer statistics
+Optimizer statistics
+--------------------
 
 The optimizer will return statistics as a part of an `explain` result.
 
@@ -259,7 +262,8 @@ The following attributes will be returned in the `stats` attribute of an `explai
   indicate a plan was actually modified by a rule)
 - `rulesSkipped`: number of rules skipped by the optimizer
 
-### Warnings
+Warnings
+--------
 
 For some queries, the optimizer may produce warnings. These will be returned in
 the `warnings` attribute of the `explain` result:
@@ -277,13 +281,15 @@ There is an upper bound on the number of warning a query may produce. If that
 bound is reached, no further warnings will be returned.
 
 
-### Things to consider for optimizing queries
+Things to consider for optimizing queries
+-----------------------------------------
+
 While the optimizer can fix some things in queries, it is not allowed to take some assumptions,
 that you, the user, knowing what queries are intended to do can take. It may pull calculations
 to the front of the execution, but it may not cross certain borders.
 
 So in certain cases you may want to move calculations in your query, so they're cheaper.
-Even more expensive is if you have calculacions that are executed in JavaScript:
+Even more expensive is if you have calculations that are executed in JavaScript:
 
     @startDocuBlockInline AQLEXP_11_explainjs
     @EXAMPLE_ARANGOSH_OUTPUT{AQLEXP_11_explainjs}
@@ -302,19 +308,20 @@ of the query, which will then only give us one V8 expression at the very start o
 
 Next to bringing better performance, this also obeys the [DRY principle](https://en.wikipedia.org/wiki/Don't_repeat_yourself).
 
-### Optimization in a cluster
+Optimization in a cluster
+-------------------------
 
 When you're running AQL in the cluster, the parsing of the query is done on the
-coordinator. The coordinator then chops the query into snipets, which are to
+coordinator. The coordinator then chops the query into snippets, which are to
 remain on the coordinator, and others that are to be distributed over the network
 to the shards. The cutting sites are interconnected via *Scatter-*, *Gather-* and *RemoteNodes*.
 
 These nodes mark the network borders of the snippets. The optimizer strives to reduce the amount
-of data transfered via these network interfaces by pushing `FILTER`s out to the shards,
+of data transferred via these network interfaces by pushing `FILTER`s out to the shards,
 as it is vital to the query performance to reduce that data amount to transfer over the
 network links.
 
-Snippets marked with **DBS** are executed on the shards, **COOR** ones are excuted on the coordinator.
+Snippets marked with **DBS** are executed on the shards, **COOR** ones are executed on the coordinator.
 
 **As usual, the optimizer can only take certain assumptions for granted when doing so,
 i.e. [user-defined functions have to be executed on the coordinator](../Extending/README.md).
@@ -322,7 +329,8 @@ If in doubt, you should modify your query to reduce the number interconnections 
 
 When optimizing your query you may want to look at simpler parts of it first.
 
-### List of execution nodes
+List of execution nodes
+-----------------------
 
 The following execution node types will appear in the output of `explain`:
 
@@ -375,7 +383,8 @@ For queries in the cluster, the following nodes may appear in execution plans:
   So, all of the above cluster relevant nodes will be accompanied by a *RemoteNode*.
 
 
-### List of optimizer rules
+List of optimizer rules
+-----------------------
 
 The following optimizer rules may appear in the `rules` attribute of a plan:
 

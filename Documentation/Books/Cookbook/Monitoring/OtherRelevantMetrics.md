@@ -106,13 +106,29 @@ As mentioned above, the list of available plugins is huge; Here are some more on
 - [Parse tabular files](https://collectd.org/wiki/index.php/Plugin:Table) in the `/proc` file system
 - you can use [filters](https://collectd.org/documentation/manpages/collectd.conf.5.shtml#filter_configuration) to reduce the amount of data created by plugins (i.e. if you have many CPU cores, you may want the combined result). It can also decide where to route data and to which writer plugin
 - while you may have seen that metrics are stored at a fixed rate or frequency, your metrics (i.e. the durations of web requests) may come in a random & higher frequency. Thus you want to burn them down to a fixed frequency, and know Min/Max/Average/Median. So you want to  [Aggregate values using the statsd pattern](https://collectd.org/wiki/index.php/Plugin:StatsD).
-- You may start rolling your own in [Python](https://collectd.org/wiki/index.php/Plugin:Python), [java](https://collectd.org/wiki/index.php/Plugin:Java), [Perl](https://collectd.org/wiki/index.php/Plugin:Perl) or for sure in [C](https://collectd.org/wiki/index.php/Plugin_architecture), the language collectd is implemented in
+- You may start rolling your own in
+  [Python](https://collectd.org/wiki/index.php/Plugin:Python),
+  [Java](https://collectd.org/wiki/index.php/Plugin:Java),
+  [Perl](https://collectd.org/wiki/index.php/Plugin:Perl) or for sure in
+  [C](https://collectd.org/wiki/index.php/Plugin_architecture), the language collectd is implemented in
 
-Finally while kcollectd is nice to get a quick success at inspecting your collected metrics during working your way into collectd, its not as sufficient for operating a production site. Since collectds default storage RRD is already widespread in system monitoring, there are [many webfrontents](https://collectd.org/wiki/index.php/List_of_front-ends) to choose for the visualization. Some of them replace the RRD storage by simply adding a writer plugin, most prominent the [Graphite graphing framework](http://graphite.wikidot.com/screen-shots) with the [Graphite writer](https://collectd.org/wiki/index.php/Plugin:Write_Graphite) which allows you to combine random metrics in single graphs - to find coincidences in your data [you never dreamed of](http://metrics20.org/media/).
+Finally while kcollectd is nice to get a quick success at inspecting your
+collected metrics during working your way into collectd, its not as sufficient
+for operating a production site. Since collectds default storage RRD is already
+widespread in system monitoring, there are
+[many webfrontents](https://collectd.org/wiki/index.php/List_of_front-ends)
+to choose for the visualization. Some of them replace the RRD storage by simply
+adding a writer plugin, most prominent the
+[Graphite graphing framework](http://graphite.wikidot.com/screen-shots) with the
+[Graphite writer](https://collectd.org/wiki/index.php/Plugin:Write_Graphite)
+which allows you to combine random metrics in single graphs - to find
+coincidences in your data [you never dreamed of](http://metrics20.org/media/).
 
-If you already run [Nagios](http://www.nagios.org) you can use the [Nagios tool](https://collectd.org/documentation/manpages/collectd-nagios.1.shtml) to submit values.
+If you already run [Nagios](http://www.nagios.org) you can use the
+[Nagios tool](https://collectd.org/documentation/manpages/collectd-nagios.1.shtml) to submit values.
 
-We hope you now have a good overview of whats possible, but as usual its a good idea to browse the [Fine Manual](https://collectd.org/documentation.shtml).
+We hope you now have a good overview of whats possible, but as usual its a good
+idea to browse the [Fine Manual](https://collectd.org/documentation.shtml).
 
 **Author:** [Wilfried Goesgens](https://github.com/dothebart)
 

@@ -1,18 +1,18 @@
-shell> curl --dump - http://localhost:8529/test/url1
+shell> curl --header 'accept: application/json' --dump - http://localhost:8529/test/url1
 
 HTTP/1.1 200 OK
 content-type: text/plain
 x-content-type-options: nosniff
 
 "route 1"
-shell> curl --dump - http://localhost:8529/test/url2
+shell> curl --header 'accept: application/json' --dump - http://localhost:8529/test/url2
 
 HTTP/1.1 200 OK
 content-type: text/plain
 x-content-type-options: nosniff
 
 "route 2"
-shell> curl --dump - http://localhost:8529/test/url3
+shell> curl --header 'accept: application/json' --dump - http://localhost:8529/test/url3
 
 HTTP/1.1 200 OK
 content-type: text/plain

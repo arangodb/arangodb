@@ -6,7 +6,8 @@ or go into a detailed view of a choosen service.
 
 ![Services](images/servicesView.png)
 
-### Create Service
+Create Service
+--------------
 
 There are four different possibilities to create a new service:
 
@@ -17,7 +18,8 @@ There are four different possibilities to create a new service:
 
 ![Create Service](images/installService.png)
 
-### Service View
+Service View
+------------
 
 This section offers several information about a specific service. 
 

@@ -1,4 +1,4 @@
-shell> curl --dump - http://localhost:8529/_api/replication/logger-first-tick
+shell> curl --header 'accept: application/json' --dump - http://localhost:8529/_api/replication/logger-first-tick
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8

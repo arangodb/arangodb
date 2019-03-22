@@ -13,7 +13,8 @@ We will cover how to
 - query the database to retrieve the data again
 - edit and remove existing data
 
-### Installation
+Installation
+------------
 
 Head to [arangodb.com/download](https://www.arangodb.com/download/),
 select your operating system and download ArangoDB. You may also follow
@@ -40,7 +41,8 @@ MMFiles and RocksDB. Choose the one which suits your needs best in the
 installation process or on first startup.
 {% endhint %}
 
-### Securing the installation
+Securing the installation
+-------------------------
 
 The default installation contains one database *_system* and a user
 named *root*.
@@ -56,7 +58,8 @@ shell> arango-secure-installation
 
 This will ask for a root password and sets this password.
 
-### Web interface
+Web interface
+-------------
 
 The server itself (*arangod*) speaks HTTP / REST, but you can use the
 graphical web interface to keep it simple. There's also
@@ -96,7 +99,8 @@ You should then be presented the dashboard with server statistics like this:
 
 For a more detailed description of the interface, see [Web Interface](../Administration/WebInterface/README.md).
 
-### Databases, collections and documents
+Databases, collections and documents
+------------------------------------
 
 Databases are sets of collections. Collections store records, which are referred
 to as documents. Collections are the equivalent of tables in RDBMS, and
@@ -135,7 +139,8 @@ changes. If you click on *Collection: users* at the top on the right-hand side
 of the ArangoDB logo, the document browser will show the documents in the
 *users* collection and you will see the document you just created in the list.
 
-### Querying the database
+Querying the database
+---------------------
 
 Time to retrieve our document using AQL, ArangoDB's query language. We can
 directly look up the document we created via the `_id`, but there are also
@@ -346,7 +351,7 @@ The `UPDATE` keyword is followed by the document key (or a document / object
 with a `_key` attribute) to identify what to modify. The attributes to update
 are written as object after the `WITH` keyword. `IN` denotes in which collection
 to perform this operation in, just like `INTO` (both keywords are actually
-interchangable here). The full document with the changes applied is returned
+interchangeable here). The full document with the changes applied is returned
 if we use the `NEW` pseudo-variable:
 
 ```json
@@ -358,6 +363,7 @@ if we use the `NEW` pseudo-variable:
     "age": 40,
     "name": "Katie Foster"
   }
+]
 ```
 
 If we used `REPLACE` instead, the name attribute would be gone. With `UPDATE`,
@@ -560,7 +566,8 @@ FOR user IN users
 
 The query deletes all users whose age is greater than or equal to 30.
 
-### How to continue
+How to continue
+---------------
 
 There is a lot more to [discover in AQL](../../AQL/index.html) and much more
 functionality that ArangoDB offers. Continue reading the other chapters and

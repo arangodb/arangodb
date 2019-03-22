@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor &lt;&lt;EOF
+shell> curl -X POST --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/cursor &lt;&lt;EOF
 { 
   <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR u IN unknowncoll LIMIT 2 RETURN u"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-literal">true</span>, 

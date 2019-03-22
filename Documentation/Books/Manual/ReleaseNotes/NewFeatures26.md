@@ -174,7 +174,7 @@ RETURN { found: OLD, updated: NEW }
 A more detailed description of `UPSERT` can be found here:
 http://jsteemann.github.io/blog/2015/03/27/preview-of-the-upsert-command/
 
-### Miscellaneous changes
+### Miscellaneous AQL changes
 
 When errors occur inside AQL user functions, the error message will now contain a stacktrace,
 indicating the line of code in which the error occurred. This should make debugging AQL user functions

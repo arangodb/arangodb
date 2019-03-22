@@ -1,4 +1,4 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/by-example &lt;&lt;EOF
+shell> curl -X PUT --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/simple/by-example &lt;&lt;EOF
 { 
   <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"example"</span> : { 
@@ -16,9 +16,9 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11475"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11475"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDwufFG--B"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11472"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11472"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YX0lLGG--B"</span>, 
       <span class="hljs-string">"a"</span> : { 
         <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
       }, 
@@ -36,7 +36,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00014972686767578125</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00029969215393066406</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 

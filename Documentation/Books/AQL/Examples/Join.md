@@ -10,7 +10,8 @@ we'll use all *relations* that have a value of *friend* in their *type* attribut
 Relationships are established by using the *friendOf* and *thisUser* attributes in the
 *relations* collection, which point to the *userId* values in the *users* collection.
 
-### Join tuples
+Join tuples
+-----------
 
 We'll start with a SQL-ish result set and return each tuple (user name, friends userId) 
 separately. The AQL query to generate such result is:
@@ -41,7 +42,8 @@ by comparing the *userId* of our current user with the *friendOf* attribute of t
 and the userId of the friend.
 
 
-### Horizontal lists
+Horizontal lists
+----------------
 
 
 Note that in the above result, a user can be returned multiple times. This is the
@@ -100,7 +102,8 @@ In this query we are still iterating over the users in the *users* collection
 and for each matching user we are executing a subquery to create the matching
 list of related users.
 
-### Self joins
+Self joins
+----------
 
 To not only return friend ids but also the names of friends, we could "join" the
 *users* collection once more (something like a "self join"):
@@ -159,7 +162,8 @@ friend from the users collection. So here we iterate the users collection,
 and for each hit the relations collection, and for each hit once more the
 users collection.
 
-### Outer joins
+Outer joins
+-----------
 
 Lets find the lonely people in our database - those without friends.
 
@@ -190,9 +194,10 @@ So, for each user we pick the list of their friends and count them. The ones whe
 count equals zero are the lonely people. Using *RETURN 1* in the subquery
 saves even more precious CPU cycles and gives the optimizer more alternatives.
 
-### Index usage
+Index usage
+-----------
 
-Especially on joins you should [make sure indices can be used to speed up your query.](../../ExecutionAndPerformance/ExplainingQueries.md)
+Especially on joins you should [make sure indices can be used to speed up your query.](../ExecutionAndPerformance/ExplainingQueries.md)
 Please note that sparse indices don't qualify for joins:
 
 In joins you typically would also want to join documents not containing the property 
@@ -200,7 +205,8 @@ you join with. However sparse indices don't contain references to documents that
 don't contain the indexed attributes - thus they would be missing from the join operation.
 For that reason you should provide non-sparse indices. 
 
-### Pitfalls
+Pitfalls
+--------
 
 Since we're free of schemata, there is by default no way to tell the format of the
 documents. So, if your documents don't contain an attribute, it defaults to

@@ -361,10 +361,11 @@ Authorization
 Read more in the [overview](../Administration/ManagingUsers/README.md).
 
 
-Foxx
-----
+Foxx and authorization
+----------------------
 
-* the [cookie session transport](../Foxx/Sessions/Transports/Cookie.md) now supports all options supported by the [cookie method of the response object](../Foxx/Router/Response.md#cookie).
+* the [cookie session transport](../Foxx/Sessions/Transports/Cookie.md) now
+  supports all options supported by the [cookie method of the response object](../Foxx/Router/Response.md#cookie).
 
 * it's now possible to provide your own version of the `graphql-sync` module when using the [GraphQL extensions for Foxx](../Foxx/GraphQL.md) by passing a copy of the module using the new _graphql_ option.
 
