@@ -231,5 +231,8 @@ struct IndexIteratorOptions {
   /// @brief Limit used in a parent LIMIT node (if non-zero)
   size_t limit = 0;
 };
+  
+/// index estimate map, defined here because it was convenient
+typedef std::unordered_map<std::string, double> IndexEstMap;
 }  // namespace arangodb
 #endif

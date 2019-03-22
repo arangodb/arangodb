@@ -158,7 +158,7 @@ bool RemoveFollower::start(bool&) {
     if (replFact2.second && replFact2.first == "satellite") {
       // satellites => distribute to every server
       auto available = Job::availableServers(_snapshot);
-      desiredReplFactor = Job::countGoodServersInList(_snapshot, available);
+      desiredReplFactor = Job::countGoodOrBadServersInList(_snapshot, available);
     }
   }
 
