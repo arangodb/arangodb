@@ -389,26 +389,26 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
     std::string key = precond.key.copyString();
     std::vector<std::string> pv = split(key, '/');
 
-    Node node("precond");
+    Node const* node = &Node::dummyNode();
 
     // Check is guarded in ::apply
     bool found = _node.has(pv);
     if (found) {
-      node = _node(pv);
+      node = &_node(pv);
     }
 
     if (precond.value.isObject()) {
       for (auto const& op : VPackObjectIterator(precond.value)) {
         std::string const& oper = op.key.copyString();
         if (oper == "old") {  // old
-          if (node != op.value) {
+          if (*node != op.value) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
               break;
             }
           }
         } else if (oper == "oldNot") {  // oldNot
-          if (node == op.value) {
+          if (*node == op.value) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
               break;
@@ -423,7 +423,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
               break;
             }
           }
-          bool isArray = (node.type() == LEAF && node.slice().isArray());
+          bool isArray = (node->type() == LEAF && node->slice().isArray());
           if (op.value.getBool() ? !isArray : isArray) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
@@ -447,9 +447,9 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           }
         } else if (oper == "in") {  // in
           if (found) {
-            if (node.slice().isArray()) {
+            if (node->slice().isArray()) {
               bool _found = false;
-              for (auto const& i : VPackArrayIterator(node.slice())) {
+              for (auto const& i : VPackArrayIterator(node->slice())) {
                 if (i == op.value) {
                   _found = true;
                   continue;
@@ -470,9 +470,9 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (!found) {
             continue;
           } else {
-            if (node.slice().isArray()) {
+            if (node->slice().isArray()) {
               bool _found = false;
-              for (auto const& i : VPackArrayIterator(node.slice())) {
+              for (auto const& i : VPackArrayIterator(node->slice())) {
                 if (i == op.value) {
                   _found = true;
                   continue;
@@ -499,7 +499,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
         }
       }
     } else {
-      if (node != precond.value) {
+      if (*node != precond.value) {
         ret.push_back(precond.key);
         if (mode == FIRST_FAIL) {
           break;

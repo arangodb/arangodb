@@ -328,6 +328,11 @@ class Node {
   /// @brief Clear key value store
   void clear();
 
+  // @brief Helper function to return static instance of dummy node below
+  static Node const& dummyNode() {
+    return _dummyNode;
+  }
+
  protected:
   /// @brief Add time to live entry
   virtual bool addTimeToLive(long millis);
@@ -347,6 +352,7 @@ class Node {
   mutable bool _vecBufDirty;
   bool _isArray;
   static Children const dummyChildren;
+  static Node const _dummyNode;
 
 };
 

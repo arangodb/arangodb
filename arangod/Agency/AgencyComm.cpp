@@ -1183,6 +1183,8 @@ bool AgencyComm::ensureStructureInitialized() {
 
   auto serverFeature =
     application_features::ApplicationServer::getFeature<ServerFeature>("Server");
+
+
   while (!serverFeature->isStopping() && shouldInitializeStructure()) {
 
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
@@ -1821,6 +1823,8 @@ bool AgencyComm::tryInitializeStructure() {
 
 bool AgencyComm::shouldInitializeStructure() {
 
+  size_t nFail = 0;
+
   while (!application_features::ApplicationServer::isStopping()) {
     
     auto result = getValues("Plan");
@@ -1849,6 +1853,14 @@ bool AgencyComm::shouldInitializeStructure() {
       } else {
         // Should never get here
         TRI_ASSERT(false);
+        if (nFail++ < 3) {
+          LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) << "What the hell just happened?";
+        } else {
+          LOG_TOPIC(FATAL, Logger::AGENCYCOMM)
+            << "Illegal response from agency during bootstrap: "
+            << result.slice().toJson();
+          FATAL_ERROR_EXIT();
+        }
         continue;
       }
       
