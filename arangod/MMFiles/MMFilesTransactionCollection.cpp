@@ -259,10 +259,10 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (_transaction->isLockedShard(_collection->name())) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
+//  if (_transaction->isLockedShard(_collection->name())) {
+//    // do not lock by command
+//    return TRI_ERROR_NO_ERROR;
+//  }
 
   TRI_ASSERT(!isLocked());
   TRI_ASSERT(_collection);
@@ -319,11 +319,11 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   TRI_ASSERT(_collection != nullptr);
 
-  std::string collName(_collection->name());
-  if (_transaction->isLockedShard(collName)) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
+//  std::string collName(_collection->name());
+//  if (_transaction->isLockedShard(collName)) {
+//    // do not lock by command
+//    return TRI_ERROR_NO_ERROR;
+//  }
 
   TRI_ASSERT(isLocked());
 
