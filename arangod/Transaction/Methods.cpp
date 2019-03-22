@@ -39,6 +39,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterTrxMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
@@ -1003,17 +1004,16 @@ Result transaction::Methods::begin() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid transaction state");
   }
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool a = _localHints.has(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
+  bool b = _localHints.has(transaction::Hints::Hint::GLOBAL_MANAGED);
+  TRI_ASSERT(!(a && b));
+#endif
 
-  if (_state->isCoordinator()) {
-    if (_state->isTopLevelTransaction()) {
-      _state->updateStatus(transaction::Status::RUNNING);
-    }
-  } else {
-    auto res = _state->beginTransaction(_localHints);
-
-    if (res.fail()) {
-      return res;
-    }
+  auto res = _state->beginTransaction(_localHints);
+  if (res.fail()) {
+    return res;
   }
 
   applyStatusChangeCallbacks(*this, Status::RUNNING);
@@ -1039,16 +1039,19 @@ Result transaction::Methods::commit() {
     }
   }
 
-  if (_state->isCoordinator()) {
-    if (_state->isTopLevelTransaction()) {
-      _state->updateStatus(transaction::Status::COMMITTED);
-    }
-  } else {
-    auto res = _state->commitTransaction(this);
-
-    if (res.fail()) {
+  if (_state->isRunningInCluster() && _state->isTopLevelTransaction()) {
+    // first commit transaction on subordinate servers
+    Result res = ClusterTrxMethods::commitTransaction(*this);
+    if (res.fail()) {  // do not commit locally
+      LOG_TOPIC(WARN, Logger::TRANSACTIONS)
+          << "failed to commit on subordinates " << res.errorMessage();
       return res;
     }
+  }
+
+  auto res = _state->commitTransaction(this);
+  if (res.fail()) {
+    return res;
   }
 
   applyStatusChangeCallbacks(*this, Status::COMMITTED);
@@ -1064,16 +1067,18 @@ Result transaction::Methods::abort() {
                   "transaction not running on abort");
   }
 
-  if (_state->isCoordinator()) {
-    if (_state->isTopLevelTransaction()) {
-      _state->updateStatus(transaction::Status::ABORTED);
+  if (_state->isRunningInCluster() && _state->isTopLevelTransaction()) {
+    // first commit transaction on subordinate servers
+    Result res = ClusterTrxMethods::abortTransaction(*this);
+    if (res.fail()) {  // do not commit locally
+      LOG_TOPIC(WARN, Logger::TRANSACTIONS)
+      << "failed to abort on subordinates: " << res.errorMessage();
     }
-  } else {
-    auto res = _state->abortTransaction(this);
+  }
 
-    if (res.fail()) {
-      return res;
-    }
+  auto res = _state->abortTransaction(this);
+  if (res.fail()) {
+    return res;
   }
 
   applyStatusChangeCallbacks(*this, Status::ABORTED);
@@ -2263,12 +2268,11 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
     return emptyResult(options);
   }
 
-  OperationOptions optionsCopy = options;
-
   if (_state->isCoordinator()) {
-    return removeCoordinator(collectionName, value, optionsCopy);
+    return removeCoordinator(collectionName, value, options);
   }
 
+  OperationOptions optionsCopy = options;
   return removeLocal(collectionName, value, optionsCopy);
 }
 
@@ -2278,7 +2282,7 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::removeCoordinator(std::string const& collectionName,
                                                         VPackSlice const value,
-                                                        OperationOptions& options) {
+                                                        OperationOptions const& options) {
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
@@ -2646,6 +2650,8 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
   // Now see whether or not we have to do synchronous replication:
   if (replicationType == ReplicationType::LEADER) {
     TRI_ASSERT(followers != nullptr);
+    
+    TRI_ASSERT(!_state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL));
 
     // Now replicate the good operations on all followers:
     auto cc = arangodb::ClusterComm::instance();
@@ -2663,11 +2669,13 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
       requests.reserve(followers->size());
 
       for (auto const& f : *followers) {
-        requests.emplace_back("server:" + f, arangodb::rest::RequestType::PUT, path, body);
+        auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+        ClusterTrxMethods::addTransactionHeader(*this, f, *headers);
+        requests.emplace_back("server:" + f, arangodb::rest::RequestType::PUT, path, body, std::move(headers));
       }
 
-      size_t nrDone = 0;
-      cc->performRequests(requests, 120.0, nrDone, Logger::REPLICATION, false);
+
+      cc->performRequests(requests, 120.0, Logger::REPLICATION, false);
       // If any would-be-follower refused to follow there must be a
       // new leader in the meantime, in this case we must not allow
       // this operation to succeed, we simply return with a refusal
@@ -2685,6 +2693,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
         if (!replicationWorked) {
           auto const& followerInfo = collection->followers();
           if (followerInfo->remove((*followers)[i])) {
+            _state->removeKnownServer((*followers)[i]);
             LOG_TOPIC(WARN, Logger::REPLICATION)
                 << "truncateLocal: dropping follower " << (*followers)[i]
                 << " for shard " << collectionName;
@@ -3190,18 +3199,6 @@ Result transaction::Methods::addCollection(std::string const& name, AccessMode::
   return addCollection(resolver()->getCollectionId(name), name, type);
 }
 
-bool transaction::Methods::isLockedShard(std::string const& shardName) const {
-  return _state->isLockedShard(shardName);
-}
-
-void transaction::Methods::setLockedShard(std::string const& shardName) {
-  _state->setLockedShard(shardName);
-}
-
-void transaction::Methods::setLockedShards(std::unordered_set<std::string> const& lockedShards) {
-  _state->setLockedShards(lockedShards);
-}
-
 /// @brief test if a collection is already locked
 bool transaction::Methods::isLocked(LogicalCollection* document, AccessMode::Type type) const {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
@@ -3268,36 +3265,28 @@ int transaction::Methods::lockCollections() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-/// @brief Clone this transaction. Only works for selected sub-classes
-transaction::Methods* transaction::Methods::clone(transaction::Options const&) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 /// @brief Get all indexes for a collection name, coordinator case
 std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
     std::string const& name, std::string const& id) const {
-  auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto collectionInfo = clusterInfo->getCollection(vocbase().name(), name);
-  auto idxs = collectionInfo->getIndexes();
+  auto ci = arangodb::ClusterInfo::instance();
+  auto collection = ci->getCollection(vocbase().name(), name);
   TRI_idx_iid_t iid = basics::StringUtils::uint64(id);
-
-  for (auto const& it : idxs) {
-    if (it->id() == iid) {
-      return it;
-    }
-  }
-
-  return nullptr;
+  return collection->lookupIndex(iid);
 }
 
 /// @brief Get all indexes for a collection name, coordinator case
 std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCoordinator(
     std::string const& name) const {
-  auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto collection = clusterInfo->getCollection(vocbase().name(), name);
-
+  auto ci = arangodb::ClusterInfo::instance();
+  auto collection = ci->getCollection(vocbase().name(), name);
+  
   // update selectivity estimates if they were expired
-  collection->clusterIndexEstimates(true);
+  if (_state->hasHint(Hints::Hint::GLOBAL_MANAGED)) { // hack to fix mmfiles
+    collection->clusterIndexEstimates(true, _state->id() + 1);
+  } else {
+    collection->clusterIndexEstimates(true);
+  }
+  
   return collection->getIndexes();
 }
 
@@ -3320,8 +3309,7 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
     if (idx == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
                                      "Could not find index '" + indexHandle +
-                                         "' in collection '" + collectionName +
-                                         "'.");
+                                         "' in collection '" + collectionName + "'.");
     }
 
     // We have successfully found an index with the requested id.
@@ -3481,14 +3469,14 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
   requests.reserve(followers->size());
 
   for (auto const& f : *followers) {
-    requests.emplace_back("server:" + f, requestType, path, body);
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+    ClusterTrxMethods::addTransactionHeader(*this, f, *headers);
+    requests.emplace_back("server:" + f, requestType, path, body, std::move(headers));
   }
 
   double const timeout = chooseTimeout(count, body->size() * followers->size());
 
-  size_t nrDone = 0;
-
-  cc->performRequests(requests, timeout, nrDone, Logger::REPLICATION, false);
+  cc->performRequests(requests, timeout, Logger::REPLICATION, false);
   // If any would-be-follower refused to follow there are two possiblities:
   // (1) there is a new leader in the meantime, or
   // (2) the follower was restarted and forgot that it is a follower.
@@ -3516,6 +3504,8 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
     if (!replicationWorked) {
       auto const& followerInfo = collection.followers();
       if (followerInfo->remove((*followers)[i])) {
+        // TODO: what happens if a server is re-added during a transaction ?
+        _state->removeKnownServer((*followers)[i]);
         LOG_TOPIC(WARN, Logger::REPLICATION)
             << "synchronous replication: dropping follower " << (*followers)[i]
             << " for shard " << collection.name();
@@ -3528,7 +3518,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
     }
   }
 
-  if (findRefusal(requests)) {
+  if (findRefusal(requests)) {  // case (1), caller may abort this transaction
     return res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
   }
 
