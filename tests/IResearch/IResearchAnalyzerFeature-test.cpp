@@ -1170,7 +1170,7 @@ SECTION("test_persistence") {
     });
     CHECK((expected.empty()));
   }
-*/
+
   // add new records
   {
     {
@@ -1219,7 +1219,7 @@ SECTION("test_persistence") {
       CHECK((expected.empty()));
     }
   }
-
+*/
   // remove existing records
   {
     {
