@@ -58,6 +58,11 @@ To create the target database whe restoring, use a command like this:
 
     arangorestore --server.username backup --server.database newdb --create-database true --input-directory "dump"
 
+In contrast to the above calls, when working with multiple databases using `--all-databases true` the parameter `--server.database mydb` must not be specified:
+
+    arangorestore --server.username backup --all-databases true --create-database true --input-directory "dump-multiple"
+    
+
 _arangorestore_ will print out its progress while running, and will end with a line
 showing some aggregate statistics:
 

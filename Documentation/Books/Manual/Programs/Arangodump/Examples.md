@@ -30,6 +30,10 @@ Here's an example of dumping data from a non-standard endpoint, using a dedicate
 
     arangodump --server.endpoint tcp://192.168.173.13:8531 --server.username backup --server.database mydb --output-directory "dump"
 
+In contrast to the above call `--server.database` must not be specified when duming all databases using `--all-databases true`:
+
+    arangodump --server.endpoint tcp://192.168.173.13:8531 --server.username backup --all-databases true --output-directory "dump-multiple"
+
 When finished, _arangodump_ will print out a summary line with some aggregate
 statistics about what it did, e.g.:
 
