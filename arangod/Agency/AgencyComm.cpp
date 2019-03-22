@@ -1796,12 +1796,9 @@ bool AgencyComm::tryInitializeStructure() {
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
         << "Initializing agency with " << builder.toJson();
 
-    AgencyOperation initOperation("", AgencyValueOperationType::SET, builder.slice());
-    AgencyPrecondition planNotExists("Plan", AgencyPrecondition::Type::EMPTY, true);
-    
-    AgencyWriteTransaction initTransaction;
-    initTransaction.operations.push_back(initOperation);
-    initTransaction.preconditions.push_back(planNotExists);
+    AgencyWriteTransaction initTransaction(
+      AgencyOperation("", AgencyValueOperationType::SET, builder.slice()),
+      AgencyPrecondition("Plan", AgencyPrecondition::Type::EMPTY, true));
 
     AgencyCommResult result = sendTransactionWithFailover(initTransaction);
     if (result.httpCode() == TRI_ERROR_HTTP_UNAUTHORIZED) {
