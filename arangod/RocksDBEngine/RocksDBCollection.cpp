@@ -1274,22 +1274,6 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
-  
-  {
-    READ_LOCKER(guard, _indexesLock);
-    for (std::shared_ptr<Index> const& idx : _indexes) {
-      RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-      res = ridx->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
-
-      if (res.fail()) {
-        break;
-      }
-    }
-  }
-
-  if (res.fail()) {
-    return res;
-  }
 
   rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
   if (!s.ok()) {
@@ -1300,6 +1284,16 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
       << "Delete rev: " << revisionId << " trx: " << trx->state()->id()
       << " seq: " << mthds->sequenceNumber()
       << " objectID " << _objectId << " name: " << _logicalCollection->name();*/
+
+  READ_LOCKER(guard, _indexesLock);
+  for (std::shared_ptr<Index> const& idx : _indexes) {
+    RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
+    res = ridx->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
+
+    if (res.fail()) {
+      break;
+    }
+  }
 
   return res;
 }
