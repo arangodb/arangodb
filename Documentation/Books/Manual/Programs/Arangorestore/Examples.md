@@ -62,7 +62,6 @@ In contrast to the above calls, when working with multiple databases using `--al
 
     arangorestore --server.username backup --all-databases true --create-database true --input-directory "dump-multiple"
     
-
 _arangorestore_ will print out its progress while running, and will end with a line
 showing some aggregate statistics:
 
