@@ -66,11 +66,11 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _tableBlockSize(
           std::max(rocksDBTableOptionsDefaults.block_size,
                    static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 * 1024))),
-      _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _compactionReadaheadSize(2 * 1024 * 1024),  // rocksDBDefaults.compaction_readahead_size
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(rocksDBDefaults.level0_slowdown_writes_trigger),
       _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
+      _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _enforceBlockCacheSizeLimit(false),
       _blockAlignDataBlocks(rocksDBTableOptionsDefaults.block_align),
       _enablePipelinedWrite(rocksDBDefaults.enable_pipelined_write),
@@ -288,8 +288,8 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       new UInt64Parameter(&_tableBlockSize));
 
   options->addOption("--rocksdb.recycle-log-file-num",
-                     "number of log files to keep around for recycling",
-                     new UInt64Parameter(&_recycleLogFileNum),
+                     "if true, keep a pool of log files around for recycling",
+                     new BooleanParameter(&_recycleLogFileNum),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
@@ -402,7 +402,7 @@ void RocksDBOptionFeature::start() {
       << ", block_cache_shard_bits: " << _blockCacheShardBits
       << ", block_cache_strict_capacity_limit: " << _enforceBlockCacheSizeLimit
       << ", table_block_size: " << _tableBlockSize
-      << ", recycle_log_file_num: " << _recycleLogFileNum
+      << ", recycle_log_file_num: " << std::boolalpha << _recycleLogFileNum
       << ", compaction_read_ahead_size: " << _compactionReadaheadSize
       << ", level0_compaction_trigger: " << _level0CompactionTrigger
       << ", level0_slowdown_trigger: " << _level0SlowdownTrigger

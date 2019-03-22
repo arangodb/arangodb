@@ -1,5 +1,5 @@
-#include "Transactions.h"
 #include <v8.h>
+#include "Transactions.h"
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -319,12 +319,12 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   auto ctx = std::make_shared<transaction::V8Context>(vocbase, embed);
 
   // start actual transaction
-  std::unique_ptr<transaction::Methods> trx(
-      new transaction::Methods(ctx, readCollections, writeCollections,
-                               exclusiveCollections, trxOptions));
-
+  auto trx = std::make_unique<transaction::Methods>(ctx, readCollections, writeCollections,
+                                                    exclusiveCollections, trxOptions);
+  trx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  
   rv = trx->begin();
-
+  
   if (rv.fail()) {
     return rv;
   }
