@@ -157,6 +157,8 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
   // calculate aggregate functions
   size_t j = 0;
   for (auto& it : this->aggregators) {
+    TRI_ASSERT(!this->aggregators.empty());
+    TRI_ASSERT(infos.getAggregatedRegisters().size() > j);
     RegisterId const reg = infos.getAggregatedRegisters()[j].second;
     if (reg != ExecutionNode::MaxRegisterId) {
       it->reduce(input.getValue(reg));
@@ -178,8 +180,12 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
 
       _builder.openObject();
       for (auto const& pair : infos.getVariables()) {
-        _builder.add(VPackValue(pair.first));
-        input.getValue(pair.second).toVelocyPack(infos.getTransaction(), _builder, false);
+        // Only collect input variables, the variable names DO! contain more.
+        // e.g. the group variable name
+        if (pair.second < infos.numberOfInputRegisters()) {
+          _builder.add(VPackValue(pair.first));
+          input.getValue(pair.second).toVelocyPack(infos.getTransaction(), _builder, false);
+        }
       }
       _builder.close();
     }
@@ -271,21 +277,22 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  if (_fetcherDone) {
-    if (_currentGroup.isValid()) {
-      _currentGroup.writeToOutput(output);
-      InputAqlItemRow input{CreateInvalidInputRowHint{}};
-      _currentGroup.reset(input);
-      TRI_ASSERT(!_currentGroup.isValid());
-      return {ExecutionState::DONE, {}};
-    }
-    return {ExecutionState::DONE, {}};
-  }
-
   ExecutionState state;
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (true) {
+    if (_fetcherDone) {
+      if (_currentGroup.isValid()) {
+        _currentGroup.writeToOutput(output);
+        InputAqlItemRow input{CreateInvalidInputRowHint{}};
+        _currentGroup.reset(input);
+        TRI_ASSERT(!_currentGroup.isValid());
+        return {ExecutionState::DONE, {}};
+      }
+      return {ExecutionState::DONE, {}};
+    }
+
+
     std::tie(state, input) = _fetcher.fetchRow();
 
     if (state == ExecutionState::WAITING) {
@@ -297,7 +304,7 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
     }
 
     // if we are in the same group, we need to add lines to the current group
-    if (_currentGroup.isSameGroup(input)) {  // << returnedDone to check wheter we hit the last row
+    if (_currentGroup.isSameGroup(input)) {
       _currentGroup.addLine(input);
 
       if (state == ExecutionState::DONE) {
@@ -322,9 +329,12 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
         return {ExecutionState::DONE, {}};
       } else {
         if (!input.isInitialized()) {
-          // we got exactly 0 rows as input.
-          // by definition we need to emit one collect row
-          _currentGroup.writeToOutput(output);
+          if (_infos.getGroupRegisters().empty()) {
+            // we got exactly 0 rows as input.
+            // by definition we need to emit one collect row
+            _currentGroup.writeToOutput(output);
+            TRI_ASSERT(output.produced());
+          }
           TRI_ASSERT(state == ExecutionState::DONE);
           return {ExecutionState::DONE, {}};
         }
@@ -334,10 +344,3 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
     }
   }
 }
-
-// TODOS:
-
-// 5.) build up the aggregators correctly. this seems to be missing right now. they are empty!
-
-// use ./scripts/unittest shell_server_aql --test aql-optimizer-collect-aggregate.js for quick debuging,
-// later on all tests of course
