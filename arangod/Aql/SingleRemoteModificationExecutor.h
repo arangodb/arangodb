@@ -48,7 +48,10 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
                                   std::move(registersToKeep), trx, std::move(options), aqlCollection,
                                   producesResults, consultAqlWriteFilter, ignoreErrors,
                                   doCount, isReplace, ignoreDocumentNotFound),
-        _key(std::move(key)), _hasParent(hasParent), _replaceIndex(replaceIndex) {}
+        _key(std::move(key)), _hasParent(hasParent), _replaceIndex(replaceIndex) {
+
+
+        }
   std::string _key;
   bool _hasParent;  //node->hasParent();
   bool _replaceIndex;
