@@ -392,8 +392,8 @@ bool Node::addTimeToLive(long millis) {
 
 // remove time to live entry for this node
 bool Node::removeTimeToLive() {
+  store().removeTTL(uri());
   if (_ttl != std::chrono::system_clock::time_point()) {
-    store().removeTTL(uri());
     _ttl = std::chrono::system_clock::time_point();
   }
   return true;
