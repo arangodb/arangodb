@@ -22,8 +22,14 @@
 
 #include "LoggerFeature.h"
 
+#ifdef ARANGODB_HAVE_GETGRGID
+#include <grp.h>
+#endif
+
+#include "Basics/conversions.h"
 #include "Basics/StringUtils.h"
 #include "Logger/LogAppender.h"
+#include "Logger/LogAppenderFile.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -38,7 +44,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, bool threaded)
-    : ApplicationFeature(server, "Logger"), _threaded(threaded) {
+  : ApplicationFeature(server, "Logger"), _threaded(threaded) {
   setOptional(false);
 
   startsAfter("ShellColors");
@@ -86,6 +92,20 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.ids", "log unique message ids", new BooleanParameter(&_showIds));
 
   options->addOption("--log.role", "log server role", new BooleanParameter(&_showRole));
+
+  options->addOption("--log.file-mode",
+                     "mode to use for new log file, umask will be applied as well",
+                     new StringParameter(&_fileMode))
+                     .setIntroducedIn(30405)
+                     .setIntroducedIn(30500);
+
+#ifdef ARANGODB_HAVE_SETGID
+  options->addOption("--log.file-group",
+                     "group to use for new log file, user must be a member of this group",
+                     new StringParameter(&_fileGroup))
+                     .setIntroducedIn(30405)
+                     .setIntroducedIn(30500);
+#endif
 
   options->addOption("--log.prefix", "prefix log message with this string",
                      new StringParameter(&_prefix),
@@ -163,6 +183,56 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_performance) {
     _levels.push_back("performance=trace");
   }
+
+  if (!_fileMode.empty()) {
+    try {
+      int result = std::stoi(_fileMode, nullptr, 8);
+      LogAppenderFile::setFileMode(result);
+    } catch (...) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "expecting an octal number for log.file-mode, got '" << _fileMode << "'";
+      FATAL_ERROR_EXIT();
+    }
+  }
+
+#ifdef ARANGODB_HAVE_SETGID
+  if (!_fileGroup.empty()) {
+    int gidNumber = TRI_Int32String(_fileGroup.c_str());
+
+    if (TRI_errno() == TRI_ERROR_NO_ERROR && gidNumber >= 0) {
+#ifdef ARANGODB_HAVE_GETGRGID
+      group* g = getgrgid(gidNumber);
+
+      if (g == nullptr) {
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            << "unknown numeric gid '" << _fileGroup << "'";
+        FATAL_ERROR_EXIT();
+      }
+#endif
+    } else {
+#ifdef ARANGODB_HAVE_GETGRNAM
+      std::string name = _fileGroup;
+      group* g = getgrnam(name.c_str());
+
+      if (g != nullptr) {
+        gidNumber = g->gr_gid;
+      } else {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            << "cannot convert groupname '" << _fileGroup
+            << "' to numeric gid: " << TRI_last_error();
+        FATAL_ERROR_EXIT();
+      }
+#else
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "cannot convert groupname '" << _fileGroup << "' to numeric gid";
+      FATAL_ERROR_EXIT();
+#endif
+    }
+
+    LogAppenderFile::setFileGroup(gidNumber);
+  }
+#endif
 }
 
 void LoggerFeature::prepare() {

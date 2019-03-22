@@ -48,6 +48,8 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   std::vector<std::string> _levels;
   std::string _prefix;
   std::string _file;
+  std::string _fileMode;
+  std::string _fileGroup;
   bool _useLocalTime = false;
   bool _useColor = true;
   bool _useEscaped = true;

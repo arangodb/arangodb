@@ -67,6 +67,7 @@ bool TRI_IsSelfThread(TRI_thread_t* thread);
 // SHOULD BE REMOVED
 void TRI_InitThread(TRI_thread_t* thread);
 int TRI_JoinThread(TRI_thread_t* thread);
+int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout);
 int TRI_DetachThread(TRI_thread_t* thread);
 
 #endif

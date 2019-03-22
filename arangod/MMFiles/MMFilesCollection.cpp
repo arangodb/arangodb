@@ -2474,11 +2474,6 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector,
                                 TransactionState const* state, double timeout) {
   TRI_ASSERT(state != nullptr);
 
-  if (state->isLockedShard(_logicalCollection.name())) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
-
   TRI_voc_tid_t tid = state->id();
 
   // LOCKING-DEBUG
@@ -2592,11 +2587,6 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector,
                                  TransactionState const* state, double timeout) {
   TRI_ASSERT(state != nullptr);
 
-  if (state->isLockedShard(_logicalCollection.name())) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
-
   TRI_voc_tid_t tid = state->id();
 
   // LOCKING-DEBUG
@@ -2709,11 +2699,6 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector,
 int MMFilesCollection::unlockRead(bool useDeadlockDetector, TransactionState const* state) {
   TRI_ASSERT(state != nullptr);
 
-  if (state->isLockedShard(_logicalCollection.name())) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
-
   TRI_voc_tid_t tid = state->id();
 
   if (useDeadlockDetector) {
@@ -2734,11 +2719,6 @@ int MMFilesCollection::unlockRead(bool useDeadlockDetector, TransactionState con
 /// @brief write unlocks a collection
 int MMFilesCollection::unlockWrite(bool useDeadlockDetector, TransactionState const* state) {
   TRI_ASSERT(state != nullptr);
-
-  if (state->isLockedShard(_logicalCollection.name())) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
 
   TRI_voc_tid_t tid = state->id();
 
@@ -2810,6 +2790,16 @@ Result MMFilesCollection::truncate(transaction::Methods& trx, OperationOptions& 
   }
 
   return Result();
+}
+
+/// @brief compact-data operation
+Result MMFilesCollection::compact() {
+  // this will only reset the last compaction timestamp,
+  // so the collection becomes eligible for the next round of compactions
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+  _lastCompactionStamp = 0.0;
+
+  return {};
 }
 
 LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions const& options) const {

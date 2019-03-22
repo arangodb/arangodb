@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -55,33 +56,55 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     // set hints
     _hints = hints;
   }
-
-  Result result = useCollections(nestingLevel());
-  if (result.ok()) {
-    // all valid
-    if (nestingLevel() == 0) {
-      updateStatus(transaction::Status::RUNNING);
-    }
-  } else {
-    // something is wrong
+  
+  auto cleanup = [&] {
     if (nestingLevel() == 0) {
       updateStatus(transaction::Status::ABORTED);
     }
-
     // free what we have got so far
     unuseCollections(nestingLevel());
+  };
 
-    return result;
+  Result res = useCollections(nestingLevel());
+  if (res.fail()) { // something is wrong
+    cleanup();
+    return res;
   }
-
+  
+  // all valid
   if (nestingLevel() == 0) {
+    updateStatus(transaction::Status::RUNNING);
+    
     transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr);
     setRegistered();
+    
+    ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+    if (ce->isMMFiles() && hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+      TRI_ASSERT(isCoordinator());
+      
+      std::vector<std::string> leaders;
+      allCollections([&leaders](TransactionCollection& c) {
+        auto shardIds = c.collection()->shardIds();
+        for (auto const& pair : *shardIds) {
+          std::vector<arangodb::ShardID> const& servers = pair.second;
+          if (!servers.empty()) {
+            leaders.push_back(servers[0]);
+          }
+        }
+        return true; // continue
+      });
+      
+      res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders);
+      if (res.fail()) { // something is wrong
+        cleanup();
+      }
+    }
+    
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
 
-  return result;
+  return res;
 }
 
 /// @brief commit a transaction

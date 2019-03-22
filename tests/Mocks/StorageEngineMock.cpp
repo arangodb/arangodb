@@ -29,6 +29,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/asio_ns.h"
+#include "Cluster/ClusterInfo.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchMMFilesLink.h"
@@ -878,6 +879,10 @@ arangodb::Result PhysicalCollectionMock::truncate(arangodb::transaction::Methods
   return arangodb::Result();
 }
 
+arangodb::Result PhysicalCollectionMock::compact() {
+  return arangodb::Result();
+}
+
 arangodb::Result PhysicalCollectionMock::update(
     arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
     arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
@@ -1354,7 +1359,9 @@ bool TransactionCollectionMock::hasOperations() const {
 
 void TransactionCollectionMock::release() {
   if (_collection) {
-    _transaction->vocbase().releaseCollection(_collection.get());
+    if (!arangodb::ServerState::instance()->isCoordinator()) {
+      _transaction->vocbase().releaseCollection(_collection.get());
+    }
     _collection = nullptr;
   }
 }
@@ -1406,7 +1413,13 @@ int TransactionCollectionMock::use(int nestingLevel) {
   }
 
   if (!_collection) {
-    _collection = _transaction->vocbase().useCollection(_cid, status);
+    if (arangodb::ServerState::instance()->isCoordinator()) {
+      auto* ci = arangodb::ClusterInfo::instance();
+      TRI_ASSERT(ci);
+      _collection = ci->getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
+    } else {
+      _collection = _transaction->vocbase().useCollection(_cid, status);
+    }
   }
 
   return _collection ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL;

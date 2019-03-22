@@ -386,12 +386,12 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
 
-std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates(bool allowUpdate) {
-  return getPhysical()->clusterIndexEstimates(allowUpdate);
+IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdate, TRI_voc_tid_t tid) {
+  return getPhysical()->clusterIndexEstimates(allowUpdate, tid);
 }
 
-void LogicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates) {
-  getPhysical()->clusterIndexEstimates(std::move(estimates));
+void LogicalCollection::setClusterIndexEstimates(IndexEstMap&& estimates) {
+  getPhysical()->setClusterIndexEstimates(std::move(estimates));
 }
 
 void LogicalCollection::flushClusterIndexEstimates() {
@@ -604,13 +604,13 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   result.add(VPackValue("indexes"));
   auto flags = Index::makeFlags();
   // FIXME simon: hide links here, but increase chance of ASAN errors
-  /* auto filter = [&](arangodb::Index const* idx) { // hide hidden indexes
+  /*auto filter = [&](arangodb::Index const* idx) { // hide hidden indexes
      return (forPersistence || !idx->isHidden());
    };*/
   if (forPersistence) {
     flags = Index::makeFlags(Index::Serialize::Internals);
   }
-  getIndexesVPack(result, flags /*, filter*/);
+  getIndexesVPack(result, flags/*, filter*/);
 
   // Cluster Specific
   result.add(StaticStrings::IsSmart, VPackValue(_isSmart));
@@ -883,6 +883,11 @@ Result LogicalCollection::truncate(transaction::Methods& trx, OperationOptions& 
   }
 
   return getPhysical()->truncate(trx, options);
+}
+
+/// @brief compact-data operation
+Result LogicalCollection::compact() {
+  return getPhysical()->compact();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

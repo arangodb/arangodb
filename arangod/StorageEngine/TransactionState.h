@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Basics/HashSet.h"
 #include "Basics/SmallVector.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Hints.h"
@@ -103,12 +104,16 @@ class TransactionState {
   void setRegistered() noexcept { _registeredTransaction = true; }
   bool wasRegistered() const noexcept { return _registeredTransaction; }
 
-  int increaseNesting() { return ++_nestingLevel; }
+  int increaseNesting() {
+    return _nestingLevel.fetch_add(1, std::memory_order_relaxed) + 1;
+  }
   int decreaseNesting() {
     TRI_ASSERT(nestingLevel() > 0);
-    return --_nestingLevel;
+    return _nestingLevel.fetch_sub(1, std::memory_order_relaxed) - 1;
   }
-  int nestingLevel() const { return _nestingLevel; }
+  int nestingLevel() const {
+    return _nestingLevel.load(std::memory_order_relaxed);
+  }
   bool isTopLevelTransaction() const { return nestingLevel() == 0; }
   bool isEmbeddedTransaction() const { return !isTopLevelTransaction(); }
 
@@ -185,32 +190,31 @@ class TransactionState {
     return (_type == AccessMode::Type::READ);
   }
 
-  /**
-   * @brief Check if this shard is locked, used to send nolockheader
-   *
-   * @param shard The name of the shard
-   *
-   * @return True if locked by this transaction.
-   */
-  bool isLockedShard(std::string const& shard) const;
-
-  /**
-   * @brief Set that this shard is locked by this transaction
-   *        Used to define nolockheaders
-   *
-   * @param shard the shard name
-   */
-  void setLockedShard(std::string const& shard);
-
-  /**
-   * @brief Overwrite the entire list of locked shards.
-   *
-   * @param lockedShards The list of locked shards.
-   */
-  void setLockedShards(std::unordered_set<std::string> const& lockedShards);
-
   /// @brief whether or not a transaction only has exculsive or read accesses
   bool isOnlyExclusiveTransaction() const;
+  
+  /// @brief servers already contacted
+  arangodb::HashSet<std::string> const& knownServers() const {
+    return _knownServers;
+  }
+
+  bool knowsServer(std::string const& uuid) const {
+    return _knownServers.find(uuid) != _knownServers.end();
+  }
+  
+  /// @brief add a server to the known set
+  void addKnownServer(std::string const& uuid) {
+    _knownServers.emplace(uuid);
+  }
+  
+  /// @brief remove a server from the known set
+  void removeKnownServer(std::string const& uuid) {
+    _knownServers.erase(uuid);
+  }
+  
+  void clearKnownServers() {
+    _knownServers.clear();
+  }
 
  protected:
   /// @brief find a collection in the transaction's list of collections
@@ -225,6 +229,8 @@ class TransactionState {
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
   void clearQueryCache();
+  
+protected:
 
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
@@ -247,12 +253,13 @@ class TransactionState {
  private:
   /// a collection of stored cookies
   std::map<void const*, Cookie::ptr> _cookies;
-
-  /// the list of locked shards (cluster only)
-  std::unordered_set<std::string> _lockedShards;
+  
+  /// @brief servers we already talked to for this transactions
+  arangodb::HashSet<std::string> _knownServers;
+  
   /// @brief reference counter of # of 'Methods' instances using this object
-  int _nestingLevel;
-
+  std::atomic<int> _nestingLevel;
+  
   bool _registeredTransaction;
 };
 

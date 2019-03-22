@@ -203,6 +203,7 @@ SET(ARANGOD_SOURCES
   Aql/ConstrainedSortExecutor.cpp
   Aql/CountCollectExecutor.cpp
   Aql/DistinctCollectExecutor.cpp
+  Aql/DistributeExecutor.cpp
   Aql/DocumentProducingBlock.cpp
   Aql/DocumentProducingNode.cpp
   Aql/EngineInfoContainerCoordinator.cpp
@@ -225,6 +226,7 @@ SET(ARANGOD_SOURCES
   Aql/Functions.cpp
   Aql/GraphNode.cpp
   Aql/Graphs.cpp
+  Aql/HashedCollectExecutor.cpp
   Aql/InAndOutRowExpressionContext.cpp
   Aql/IdExecutor.cpp
   Aql/IndexExecutor.cpp
@@ -263,6 +265,7 @@ SET(ARANGOD_SOURCES
   Aql/RemoteExecutor.cpp
   Aql/RestAqlHandler.cpp
   Aql/ReturnExecutor.cpp
+  Aql/ScatterExecutor.cpp
   Aql/Scopes.cpp
   Aql/SharedQueryState.cpp
   Aql/ShortStringStorage.cpp
@@ -318,6 +321,7 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterRepairDistributeShardsLike.cpp
   Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTraverser.cpp
+  Cluster/ClusterTrxMethods.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
   Cluster/CriticalThread.cpp

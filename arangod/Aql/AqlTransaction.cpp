@@ -35,31 +35,37 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlTransaction* AqlTransaction::create(
+std::shared_ptr<AqlTransaction> AqlTransaction::create(
     std::shared_ptr<transaction::Context> const& transactionContext,
     std::map<std::string, aql::Collection*> const* collections,
     transaction::Options const& options, bool isMainTransaction,
     std::unordered_set<std::string> inaccessibleCollections) {
 #ifdef USE_ENTERPRISE
   if (options.skipInaccessibleCollections) {
-    return new transaction::IgnoreNoAccessAqlTransaction(transactionContext, collections,
-                                                         options, isMainTransaction,
-                                                         inaccessibleCollections);
+    return std::make_shared<transaction::IgnoreNoAccessAqlTransaction>(transactionContext, collections,
+                                                                       options, isMainTransaction,
+                                                                       inaccessibleCollections);
   }
 #endif
-  return new AqlTransaction(transactionContext, collections, options, isMainTransaction);
+  return std::make_shared<AqlTransaction>(transactionContext, collections, options, isMainTransaction);
 }
+  
+/// @brief add a list of collections to the transaction
+Result AqlTransaction::addCollections(std::map<std::string, aql::Collection*> const& collections) {
+  Result res;
+  for (auto const& it : collections) {
+    res = processCollection(it.second);
 
-/// @brief clone, used to make daughter transactions for parts of a
-/// distributed AQL query running on the coordinator
-transaction::Methods* AqlTransaction::clone(transaction::Options const& options) const {
-  auto ctx = transaction::StandaloneContext::Create(vocbase());
-  return new AqlTransaction(ctx, &_collections, options, false);
+    if (!res.ok()) {
+      break;
+    }
+  }
+  return res;
 }
 
 /// @brief add a collection to the transaction
 Result AqlTransaction::processCollection(aql::Collection* collection) {
-  if (ServerState::instance()->isCoordinator()) {
+  if (_state->isCoordinator()) {
     auto cid = resolver()->getCollectionId(collection->name());
 
     return addCollection(cid, collection->name(), collection->accessType());
