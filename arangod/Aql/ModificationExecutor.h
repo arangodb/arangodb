@@ -64,6 +64,10 @@ inline OperationOptions convertOptions(ModificationOptions const& in,
                                        Variable const* outVariableOld) {
   OperationOptions out;
 
+  // commented out OperationOptions attributesare not provided
+  // by the ModificationOptions or the information given by the
+  // Variable pointer.
+
   // in.ignoreErrors;
   out.waitForSync = in.waitForSync;
   out.keepNull = !in.nullMeansRemove;
