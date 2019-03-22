@@ -678,19 +678,27 @@ void Store::clear() {
 }
 
 /// Apply a request to my key value store
-Store& Store::operator=(VPackSlice const& slice) {
-  TRI_ASSERT(slice.isArray());
+Store& Store::operator=(VPackSlice const& s) {
+  TRI_ASSERT(s.isObject());
+  TRI_ASSERT(s.hasKey("readDB"));
+  auto const& slice = s.get("readDB");
   TRI_ASSERT(slice.length() == 4);
 
   MUTEX_LOCKER(storeLocker, _storeLock);
   _node.applies(slice[0]);
 
-  TRI_ASSERT(slice[1].isObject());
-  for (auto const& entry : VPackObjectIterator(slice[1])) {
-    long long tse = entry.value.getInt();
-    _timeTable.emplace(
-        std::pair<TimePoint, std::string>(TimePoint(std::chrono::duration<int>(tse)),
-                                          entry.key.copyString()));
+  if (s.hasKey("version")) {
+    TRI_ASSERT(slice[1].isObject());
+    for (auto const& entry : VPackObjectIterator(slice[1])) {
+      if (entry.value.isNumber()) {
+        auto const& key = entry.key.copyString();
+        if (_node.has(key)) {
+          auto tp = TimePoint(std::chrono::seconds(entry.value.getNumber<int>()));
+          _node(key).timeToLive(tp);
+          _timeTable.emplace(std::pair<TimePoint, std::string>(tp, key));
+        }
+      }
+    }
   }
 
   TRI_ASSERT(slice[2].isArray());

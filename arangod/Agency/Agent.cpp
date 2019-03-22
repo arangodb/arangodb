@@ -1645,13 +1645,13 @@ Store const& Agent::transient() const {
 /// Rebuild from persisted state
 void Agent::setPersistedState(VPackSlice const& compaction) {
   // Catch up with compacted state, this is only called at startup
-  _spearhead = compaction.get("readDB");
+  _spearhead = compaction;
 
   // Catch up with commit
   try {
     WRITE_LOCKER(oLocker, _outputLock);
     CONDITION_LOCKER(guard, _waitForCV);
-    _readDB = compaction.get("readDB");
+    _readDB = compaction;
     _commitIndex =
         arangodb::basics::StringUtils::uint64(compaction.get("_key").copyString());
     _waitForCV.broadcast();

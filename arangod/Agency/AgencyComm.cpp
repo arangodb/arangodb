@@ -1181,23 +1181,23 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "checking if agency is initialized";
 
-  while (true) {
-    while (shouldInitializeStructure()) {
+  auto serverFeature =
+    application_features::ApplicationServer::getFeature<ServerFeature>("Server");
+  while (!serverFeature->isStopping()) {
+
+    LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
+      << "Agency is fresh. Needs initial structure.";
+    
+    if (tryInitializeStructure()) {
       LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
-          << "Agency is fresh. Needs initial structure.";
-      // mop: we are the chosen one .. great success
-
-      if (tryInitializeStructure()) {
-        LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
-            << "Successfully initialized agency";
-        break;
-      }
-
-      LOG_TOPIC(WARN, Logger::AGENCYCOMM)
-          << "Initializing agency failed. We'll try again soon";
-      // We should really have exclusive access, here, this is strange!
-      std::this_thread::sleep_for(std::chrono::seconds(1));
+        << "Successfully initialized agency";
+      break;
     }
+    
+    LOG_TOPIC(WARN, Logger::AGENCYCOMM)
+      << "Initializing agency failed. We'll try again soon";
+    // We should really have exclusive access, here, this is strange!
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     AgencyCommResult result = getValues("InitDone");
 
@@ -1797,9 +1797,11 @@ bool AgencyComm::tryInitializeStructure() {
         << "Initializing agency with " << builder.toJson();
 
     AgencyOperation initOperation("", AgencyValueOperationType::SET, builder.slice());
-
+    AgencyPrecondition planNotExists("Plan", AgencyPrecondition::Type::EMPTY, true);
+    
     AgencyWriteTransaction initTransaction;
     initTransaction.operations.push_back(initOperation);
+    initTransaction.preconditions.push_back(planNotExists);
 
     AgencyCommResult result = sendTransactionWithFailover(initTransaction);
     if (result.httpCode() == TRI_ERROR_HTTP_UNAUTHORIZED) {
@@ -1820,19 +1822,43 @@ bool AgencyComm::tryInitializeStructure() {
 }
 
 bool AgencyComm::shouldInitializeStructure() {
-  VPackBuilder builder;
-  builder.add(VPackValue(false));
 
-  // "InitDone" key should not previously exist
-  auto result = casValue("InitDone", builder.slice(), false, 60.0,
-                         AgencyCommManager::CONNECTION_OPTIONS._requestTimeout);
+  while (!application_features::ApplicationServer::isStopping()) {
+    
+    auto result = getValues("Plan");
 
-  if (!result.successful()) {
-    // somebody else has or is initializing the agency
-    LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
-        << "someone else is initializing the agency";
-    return false;
+    if (!result.successful()) { // Not 200 - 299
+      
+      // Agency not ready yet
+      LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
+        << "waiting for agency to become ready";
+      continue;
+      
+    } else {
+
+      // Sanity
+      if (result.slice().isArray() && result.slice().length() == 1) {
+
+        // No plan entry? Should initialise
+        if (result.slice()[0] == VPackSlice::emptyObjectSlice()) {
+          LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
+            << "agency initialisation should be performed";
+          return true;
+        } else {
+          LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
+            << "agency initialisation under way or done";
+        }
+      } else {
+        // Should never get here
+        TRI_ASSERT(false);
+        continue;
+      }
+      
+    }
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+
   }
 
-  return true;
+  return false;
 }
