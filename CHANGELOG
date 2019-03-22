@@ -1,6 +1,13 @@
 v3.4.5 (2019-03-27)
 -------------------
 
+* fixed internal issue #3787: Improve error message for unique constraint
+  violations
+  This provides more context details why exactly a unique constraint violation happens
+  and in which index. Detailed error messages were already produced for single-
+  document CRUD operations but not from within AQL. This change returns the more
+  detailed messages from AQL too.
+
 * fixed issue #8294: wrong equals behaviour on arrays with ArangoSearch
 
 * fixed internal issue #528: ArangoSearch range query sometimes doesn't work
