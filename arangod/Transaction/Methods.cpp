@@ -1008,7 +1008,7 @@ Result transaction::Methods::begin() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool a = _localHints.has(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
   bool b = _localHints.has(transaction::Hints::Hint::GLOBAL_MANAGED);
-  TRI_ASSERT(!a && !b || a && !b || !a && b);
+  TRI_ASSERT(!(a && b));
 #endif
 
   auto res = _state->beginTransaction(_localHints);

@@ -553,7 +553,8 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
     try {
       tid = std::stoull(value, &pos, 10);
     } catch (...) {}
-    if (tid == 0 || transaction::isLegacyTransactionId(tid)) {
+    if (tid == 0 || (transaction::isLegacyTransactionId(tid) &&
+                     ServerState::instance()->isRunningInCluster())) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
     }
     
@@ -561,10 +562,6 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
     TRI_ASSERT(mgr != nullptr);
     
     if (pos > 0 && pos < value.size()) {
-//      if (value.compare(pos, std::string::npos, " aql") == 0) {
-//        auto ctx = std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
-//        return std::make_unique<SingleCollectionTransaction>(ctx, name, type);
-//      } else
       if (value.compare(pos, std::string::npos, " begin") == 0) {
         value = _request->header(StaticStrings::TransactionBody, found);
         if (found) {

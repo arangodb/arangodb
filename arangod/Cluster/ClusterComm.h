@@ -559,7 +559,7 @@ class ClusterComm {
                          ClusterCommTimeout timeout,
                          arangodb::LogTopic const& logTopic,
                          bool retryOnCollNotFound,
-                         bool retryOnBackUnvlbl = true);
+                         bool retryOnBackendUnavailable = true);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief this method performs the given requests described by the vector

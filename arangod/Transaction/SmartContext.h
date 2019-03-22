@@ -36,11 +36,11 @@ class TransactionState;
   
 namespace transaction {
 
-/// Transaction context that will manage the creation or acquisition of a
+/// Context that will manage the creation or acquisition of a
 /// TransactionState for transaction::Methods instances for cluster wide
 /// transactions. Cluster wide transactions essentially just mean that all
 /// operations will use a consistent transaction ID and on the same server the
-/// same TransactionState instance will be used.
+/// same TransactionState instance will be used across shards on the same server.
 class SmartContext : public Context {
  public:
 

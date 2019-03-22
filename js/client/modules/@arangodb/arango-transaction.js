@@ -29,7 +29,6 @@ const internal = require('internal');
 const arangosh = require('@arangodb/arangosh');
 const ArangoError = require('@arangodb').ArangoError;
 
-
 function ArangoTransaction (database, data) {
   this._id = 0;
   this._database = database;
@@ -56,7 +55,6 @@ function ArangoTransaction (database, data) {
     });
   }
 
-  data.collections = Object.assign({}, data.collections);
   if (data.collections.read) {
     if (!Array.isArray(data.collections.read)) {
       data.collections.read = [data.collections.read];
@@ -84,14 +82,22 @@ function ArangoTransaction (database, data) {
   }
 
   this._collections = data.collections;
+
+  let url = this._url() + '/begin';
+  let body = {collections: this._collections};
+  var requestResult = this._database._connection.POST(url, body);
+
+  arangosh.checkRequestResult(requestResult);
+  this._id = requestResult.result.id;
 }
 
 exports.ArangoTransaction = ArangoTransaction;
 
-function ArangoTransactionCollection(coll) {
-  if (!coll || !coll.isArangoCollection) {
+function ArangoTransactionCollection(trx, coll) {
+  if (!trx || !coll || !coll.isArangoCollection) {
     throw "invaliid input";
   }
+  this._transaction = trx;
   this._collection = coll;
 }
 
@@ -99,20 +105,15 @@ ArangoTransaction.prototype._url = function () {
   return this._dbPrefix + '/_api/transaction';
 };
 
-ArangoTransaction.prototype.begin = function() {
-  let url = this._url() + '/begin';
-  let body = {collections: this._collections};
-  var requestResult = this._database._connection.POST(url, body);
-
-  arangosh.checkRequestResult(requestResult);
-  this._id = requestResult.result.id;
+ArangoTransaction.prototype.id = function() {
+  return this._id;
 };
 
 ArangoTransaction.prototype.collection = function(col) {
   if (col.isArangoCollection) {
-    return new ArangoTransactionCollection(col);
+    return new ArangoTransactionCollection(this, col);
   }
-  return new ArangoTransactionCollection(this._database._collection(col));
+  return new ArangoTransactionCollection(this, this._database._collection(col));
 };
 
 ArangoTransaction.prototype.commit = function() {
@@ -129,9 +130,22 @@ ArangoTransaction.prototype.abort = function() {
   this._id = 0;
 };
 
+ArangoTransactionCollection.prototype.document = function(id) {
+  if (this._transaction.id() === 0) {
+    throw new ArangoError({
+      error: true,
+      code: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
+      errorNum: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
+      errorMessage: 'transaction not running'
+    });
+  }
+  let opts = { transactionId : this._transaction.id() };
+  return this._collection.document(id, opts);
+};
+
 ArangoTransactionCollection.prototype.save = 
 ArangoTransactionCollection.prototype.insert = function(data, opts) {
-  if (this._id === 0) {
+  if (this._transaction.id() === 0) {
     throw new ArangoError({
       error: true,
       code: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
@@ -140,12 +154,12 @@ ArangoTransactionCollection.prototype.insert = function(data, opts) {
     });
   }
   opts = opts || {};
-  opts.transactionId = this._id;
-  this._collection.insert(data, opts);
+  opts.transactionId = this._transaction.id();
+  return this._collection.insert(data, opts);
 };
 
-ArangoTransactionCollection.prototype.remove = function(id, opts) {
-  if (this._id === 0) {
+ArangoTransactionCollection.prototype.remove = function(id, options) {
+  if (this._transaction.id() === 0) {
     throw new ArangoError({
       error: true,
       code: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
@@ -153,13 +167,15 @@ ArangoTransactionCollection.prototype.remove = function(id, opts) {
       errorMessage: 'transaction not running'
     });
   }
-  opts = opts || {};
-  opts.transactionId = this._id;
-  this._database.collection(this._collection).remove(id, opts);
+  if (!options) {
+    options = {};
+  }
+  options.transactionId = this._transaction.id();
+  return this._collection.remove(id, options);
 };
 
-ArangoTransactionCollection.prototype.replace = function(data, opts) {
-  if (this._id === 0) {
+ArangoTransactionCollection.prototype.replace = function(id, data, options) {
+  if (this._transaction.id() === 0) {
     throw new ArangoError({
       error: true,
       code: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
@@ -167,13 +183,15 @@ ArangoTransactionCollection.prototype.replace = function(data, opts) {
       errorMessage: 'transaction not started yet'
     });
   }
-  opts = opts || {};
-  opts.transactionId = this._id;
-  this._database.collection(this._collection).replace(data, opts);
+  if (!options) {
+    options = {};
+  }
+  options.transactionId = this._transaction.id();
+  return this._collection.replace(id, data, options);
 };
 
-ArangoTransactionCollection.prototype.update = function(data, opts) {
-  if (this._id === 0) {
+ArangoTransactionCollection.prototype.update = function(id, data, options) {
+  if (this._transaction.id() === 0) {
     throw new ArangoError({
       error: true,
       code: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
@@ -181,13 +199,15 @@ ArangoTransactionCollection.prototype.update = function(data, opts) {
       errorMessage: 'transaction not started yet'
     });
   }
-  opts = opts || {};
-  opts.transactionId = this._id;
-  this._database.collection(this._collection).update(data, opts);
+  if (!options) {
+    options = {};
+  }
+  options.transactionId = this._transaction.id();
+  return this._collection.update(id, data, options);
 };
 
 ArangoTransactionCollection.prototype.truncate = function(opts) {
-  if (this._id === 0) {
+  if (this._transaction.id() === 0) {
     throw new ArangoError({
       error: true,
       code: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
@@ -196,6 +216,24 @@ ArangoTransactionCollection.prototype.truncate = function(opts) {
     });
   }
   opts = opts || {};
-  opts.transactionId = this._id;
-  this._database.collection(this._collection).truncate(opts);
+  opts.transactionId = this._transaction.id();
+  return this._collection.truncate(opts);
+};
+
+ArangoTransactionCollection.prototype.count = function() {
+  if (this._transaction.id() === 0) {
+    throw new ArangoError({
+      error: true,
+      code: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
+      errorNum: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
+      errorMessage: 'transaction not started yet'
+    });
+  }
+  
+  const url = this._collection._baseurl('count');
+  const headers = {'x-arango-trx-id' : this._transaction.id()};
+  let requestResult = this._transaction._database._connection.GET(url, headers);
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.count;
 };

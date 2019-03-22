@@ -80,7 +80,7 @@ class Manager final {
  public:
 
   /// @brief collect forgotten transactions
-  void garbageCollect();
+  bool garbageCollect(bool abortAll);
   
   /// @brief register a AQL transaction
   void registerAQLTrx(TransactionState*);
@@ -139,7 +139,7 @@ class Manager final {
     ~ManagedTrx();
     
     MetaType type;
-    double expires; /// expiration timestamp
+    double expires; /// expiration timestamp, if 0 it expires immediately
     TransactionState* state; /// Transaction, may be nullptr
     /// @brief  final TRX state that is valid if this is a tombstone
     /// necessary to avoid getting error on a 'diamond' commit or accidantally

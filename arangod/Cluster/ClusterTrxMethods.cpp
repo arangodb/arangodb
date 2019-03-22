@@ -132,7 +132,7 @@ ClusterCommRequest beginTransactionRequest(transaction::Methods const* trx,
 
 /// check the transaction cluster response with desited TID and status
 Result checkTransactionResult(TRI_voc_tid_t desiredTid,
-                              transaction::Status desiredStatus,
+                              transaction::Status desStatus,
                               ClusterCommResult const& result) {
   Result res;
 
@@ -158,14 +158,22 @@ Result checkTransactionResult(TRI_voc_tid_t desiredTid,
     TRI_voc_tid_t tid = StringUtils::uint64(idSlice.copyString());
     VPackValueLength len = 0;
     const char* str = statusSlice.getStringUnchecked(len);
-    if (tid == desiredTid && transaction::statusFromString(str, len) == desiredStatus) {
+    if (tid == desiredTid && transaction::statusFromString(str, len) == desStatus) {
       return res;  // success
     }
   } else if (answer.isObject()) {
+    std::string msg = std::string("error while ");
+    if (desStatus == transaction::Status::RUNNING) {
+      msg.append("beginning transaction");
+    } else if (desStatus == transaction::Status::COMMITTED) {
+      msg.append("committing transaction");
+    } else if (desStatus == transaction::Status::RUNNING) {
+      msg.append("aborting transaction");
+    }                      
     return res.reset(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
                                                         TRI_ERROR_TRANSACTION_INTERNAL),
                         VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage,
-                                                         "error during commit / abort"));
+                                                         msg));
   }
   LOG_TOPIC(DEBUG, Logger::TRANSACTIONS)
       << " failed to begin transaction on " << result.endpoint;

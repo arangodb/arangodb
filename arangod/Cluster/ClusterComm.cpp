@@ -780,7 +780,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                                     ClusterCommTimeout timeout,
                                     arangodb::LogTopic const& logTopic,
                                     bool retryOnCollNotFound,
-                                    bool retryOnBackUnvlbl) {
+                                    bool retryOnBackendUnavailable) {
   if (requests.size() == 0) {
     return 0;
   }
@@ -897,7 +897,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
             << "ClusterComm::performRequests: "
             << "got answer from " << requests[index].destination << ":"
             << requests[index].path << " with return code " << (int)res.answer_code;
-      } else if ((res.status == CL_COMM_BACKEND_UNAVAILABLE && retryOnBackUnvlbl) ||
+      } else if ((res.status == CL_COMM_BACKEND_UNAVAILABLE && retryOnBackendUnavailable) ||
                  (res.status == CL_COMM_TIMEOUT && !res.sendWasComplete)) {
         // Note that this case includes the refusal of a leader to accept
         // the operation, in which we have to flush ClusterInfo:

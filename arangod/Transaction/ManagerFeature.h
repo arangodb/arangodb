@@ -36,10 +36,10 @@ class ManagerFeature final : public application_features::ApplicationFeature {
  public:
   explicit ManagerFeature(application_features::ApplicationServer& server);
 
-  void prepare() override final;
+  void prepare() override;
   void start() override;
   void beginShutdown() override;
-  void unprepare() override final;
+  void unprepare() override;
 
   static transaction::Manager* manager() {
     TRI_ASSERT(MANAGER != nullptr);

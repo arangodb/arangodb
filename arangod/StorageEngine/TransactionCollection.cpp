@@ -54,10 +54,6 @@ bool TransactionCollection::isLocked() const {
   if (_collection == nullptr) {
     return false;
   }
-//  std::string const& collName{_collection->name()};
-//  if (_transaction->isLockedShard(collName)) {
-//    return true;
-//  }
   return _lockType > AccessMode::Type::NONE;
 }
 

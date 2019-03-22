@@ -46,7 +46,7 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
       
   _gcfunc = [this] (bool cancelled) {
     if (!cancelled) {
-      MANAGER->garbageCollect();
+      MANAGER->garbageCollect(/*abortAll*/false);
     }
     
     if (!ApplicationServer::isStopping() && !cancelled) {
@@ -69,9 +69,17 @@ void ManagerFeature::start() {
   
 void ManagerFeature::beginShutdown() {
   _workItem.reset();
+  // make sure no lingering managed trx remain
+  MANAGER->garbageCollect(/*abortAll*/true);
+  while (MANAGER->garbageCollect(/*abortAll*/true)) {
+    LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "still waiting for managed transaction";
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
 }
 
-void ManagerFeature::unprepare() { MANAGER.reset(); }
+void ManagerFeature::unprepare() {
+  MANAGER.reset();
+}
 
 }  // namespace transaction
 }  // namespace arangodb

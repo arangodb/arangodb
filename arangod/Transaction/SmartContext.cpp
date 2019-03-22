@@ -92,7 +92,7 @@ ManagedContext::~ManagedContext() {
   }
 }
 
-/// @brief get parent transaction (if any) increase nesting
+/// @brief get parent transaction (if any)
 TransactionState* ManagedContext::getParentTransaction() const {
   TRI_ASSERT(_state);
   // single document transaction should never be leased out

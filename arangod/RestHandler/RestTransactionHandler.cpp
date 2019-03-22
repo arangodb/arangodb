@@ -121,7 +121,7 @@ void RestTransactionHandler::executeBegin() {
     tid = basics::StringUtils::uint64(value);
     if (tid == 0 || !transaction::isChildTransactionId(tid)) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                    "invalid transaction ID");
+                    "invalid transaction ID on DBServer");
       return;
     }
     TRI_ASSERT(tid != 0);
@@ -133,7 +133,7 @@ void RestTransactionHandler::executeBegin() {
       return;
     }
     tid = ServerState::isSingleServer(role) ? TRI_NewTickServer() :
-    TRI_NewServerSpecificTickMod4();
+                                              TRI_NewServerSpecificTickMod4();
   }
   TRI_ASSERT(tid != 0);
   
@@ -206,17 +206,18 @@ void RestTransactionHandler::executeAbort() {
 void RestTransactionHandler::generateTransactionResult(rest::ResponseCode code,
                                                        TRI_voc_tid_t tid,
                                                        transaction::Status status) {
-  VPackBuilder b;
-  b.openObject();
-  b.add("id", VPackValue(std::to_string(tid)));
-  b.add("status", VPackValue(transaction::statusString(status)));
-//  if (state->status() == transaction::Status::RUNNING) {
-//    b.add("options", VPackValue(VPackValueType::Object));
-//    state->options().toVelocyPack(b);
-//    b.close();
-//  }
-  b.close();
-  generateOk(code, b.slice());
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder tmp(buffer);
+  tmp.add(VPackValue(VPackValueType::Object, true));
+  tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+  tmp.add(StaticStrings::Error, VPackValue(false));
+  tmp.add("result", VPackValue(VPackValueType::Object, true));
+  tmp.add("id", VPackValue(std::to_string(tid)));
+  tmp.add("status", VPackValue(transaction::statusString(status)));
+  tmp.close();
+  tmp.close();
+  
+  generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
 // ====================== V8 stuff ===================

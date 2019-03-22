@@ -513,8 +513,13 @@ ArangoCollection.prototype.truncate = function (options) {
     options = options || {};
   }
 
+  let headers = {};
+  if (options && options.transactionId) {
+    headers['x-arango-trx-id'] = options.transactionId;
+  }
+
   var append = (options.waitForSync ? '&waitForSync=true' : '');
-  var requestResult = this._database._connection.PUT(this._baseurl('truncate') + append, null);
+  var requestResult = this._database._connection.PUT(this._baseurl('truncate') + append, null, headers);
 
   arangosh.checkRequestResult(requestResult);
   // invalidate cache
@@ -714,7 +719,7 @@ ArangoCollection.prototype.count = function (details) {
 // / @brief gets a single document from the collection
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.document = function (id) {
+ArangoCollection.prototype.document = function (id, options) {
   var rev = null;
   var requestResult;
 
@@ -725,9 +730,14 @@ ArangoCollection.prototype.document = function (id) {
     });
   }
 
+  let headers = {};
+  if (options && options.transactionId) {
+    headers['x-arango-trx-id'] = options.transactionId;
+  }
+
   if (Array.isArray(id)) {
     var url = this._documentcollectionurl() + '?onlyget=true&ignoreRevs=false';
-    requestResult = this._database._connection.PUT(url, id);
+    requestResult = this._database._connection.PUT(url, id, headers);
   } else {
     if (typeof id === 'object') {
       if (id.hasOwnProperty('_rev')) {
@@ -739,12 +749,10 @@ ArangoCollection.prototype.document = function (id) {
         id = id._key;
       }
     }
-    if (rev === null) {
-      requestResult = this._database._connection.GET(this._documenturl(id));
-    }else {
-      requestResult = this._database._connection.GET(this._documenturl(id),
-        {'if-match': JSON.stringify(rev) });
+    if (rev !== null) {
+      headers['if-match'] = JSON.stringify(rev);
     }
+    requestResult = this._database._connection.GET(this._documenturl(id), headers);
   }
 
   if (requestResult !== null && requestResult.error === true) {
@@ -936,8 +944,8 @@ ArangoCollection.prototype.save =
     }
 
     let headers = {};
-    if (options.transactionId && Number.isInteger(options.transactionId)) {
-      headers['x-arango-trx'] = options.transactionId;
+    if (options.transactionId) {
+      headers['x-arango-trx-id'] = options.transactionId;
     }
     
     if (data === undefined || typeof data !== 'object') {
@@ -1032,8 +1040,8 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
   }
 
   let headers = {};
-  if (options.transactionId && Number.isInteger(options.transactionId)) {
-    headers['x-arango-trx'] = options.transactionId;
+  if (options.transactionId) {
+    headers['x-arango-trx-id'] = options.transactionId;
   }
   if (rev !== null && !ignoreRevs) {
     headers['if-match'] = JSON.stringify(rev);
@@ -1180,8 +1188,8 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
   }
 
   let headers ={};
-  if (options.transactionId && Number.isInteger(options.transactionId)) {
-    headers['x-arango-trx'] = options.transactionId;
+  if (options.transactionId) {
+    headers['x-arango-trx-id'] = options.transactionId;
   }
   if (rev !== null && !ignoreRevs) {
     headers['if-match'] = JSON.stringify(rev);
@@ -1298,8 +1306,8 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
   }
 
   let headers = {};
-  if (options.transactionId && Number.isInteger(options.transactionId)) {
-    headers['x-arango-trx'] = options.transactionId;
+  if (options.transactionId) {
+    headers['x-arango-trx-id'] = options.transactionId;
   }
   if (rev !== null && !ignoreRevs) {
     headers['if-match'] = JSON.stringify(rev);
