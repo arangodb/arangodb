@@ -195,7 +195,8 @@ Approximate size of user data (in bytes) packed per block for uncompressed data.
 
 `--rocksdb.recycle-log-file-num` (Hidden)
 
-Number of log files to keep around for recycling. Default: 0.
+If true, keeps a pool of log files around for recycling them. The default
+value is false.
 
 ### Miscellaneous
 
