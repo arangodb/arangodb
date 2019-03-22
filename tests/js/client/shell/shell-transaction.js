@@ -1744,27 +1744,33 @@ function transactionBarriersSuite () {
     testBarriersOutsideCommit: function () {
       c1 = db._create(cn1);
 
-      var docs = [ ];
-      var i;
+      let docs = [ ];
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          for (i = 0; i < 100; ++i) {
-            c1.save({ _key: 'foo' + i, value1: i, value2: 'foo' + i + 'x' });
-          }
-
-          for (i = 0; i < 100; ++i) {
-            docs.push(c1.document('foo' + i));
-          }
-
-          return c1.document('foo0');
         }
       };
 
-      var result = TRANSACTION(obj);
+      let result;
+      // begin trx
+      let trx = db._createTransaction(obj);
+      try {
+        let tc1 = trx.collection(c1.name());
+        
+        for (let i = 0; i < 100; ++i) {
+          tc1.save({ _key: 'foo' + i, value1: i, value2: 'foo' + i + 'x' });
+        }
+
+        for (let i = 0; i < 100; ++i) {
+          docs.push(tc1.document('foo' + i));
+        }
+        result = tc1.document('foo0');
+
+      } finally {
+        trx.commit();
+      }
+      // end trx
 
       assertEqual(100, docs.length);
       assertEqual(100, c1.count());
@@ -1773,7 +1779,7 @@ function transactionBarriersSuite () {
       assertEqual(0, result.value1);
       assertEqual('foo0x', result.value2);
 
-      for (i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         assertEqual('foo' + i, docs[i]._key);
         assertEqual(i, docs[i].value1);
         assertEqual('foo' + i + 'x', docs[i].value2);
@@ -1787,285 +1793,40 @@ function transactionBarriersSuite () {
     testBarriersOutsideRollback: function () {
       c1 = db._create(cn1);
 
-      var docs = [ ];
-      var i;
-
-      var obj = {
+      let docs = [ ];
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          for (i = 0; i < 100; ++i) {
-            c1.save({ _key: 'foo' + i, value1: i, value2: 'foo' + i + 'x' });
-          }
-
-          for (i = 0; i < 100; ++i) {
-            docs.push(c1.document('foo' + i));
-          }
-
-          throw new Error('doh!');
         }
       };
 
+      let result;
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        for (let i = 0; i < 100; ++i) {
+          tc1.save({ _key: 'foo' + i, value1: i, value2: 'foo' + i + 'x' });
+        }
+
+        for (let i = 0; i < 100; ++i) {
+          docs.push(tc1.document('foo' + i));
+        }
+
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(100, docs.length);
 
-      for (i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         assertEqual('foo' + i, docs[i]._key);
         assertEqual(i, docs[i].value1);
         assertEqual('foo' + i + 'x', docs[i].value2);
       }
-    }
-
-  };
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief test suite
-// //////////////////////////////////////////////////////////////////////////////
-
-function transactionGraphSuite () {
-  'use strict';
-  var cn1 = 'UnitTestsVertices';
-  var cn2 = 'UnitTestsEdges';
-
-  var G = require('@arangodb/general-graph');
-
-  var c1 = null;
-  var c2 = null;
-
-  return {
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
-
-    setUp: function () {
-      try {
-        G._drop('UnitTestsGraph');
-      } catch (err) {
-      }
-      db._drop(cn1);
-      db._drop(cn2);
-
-      c1 = db._create(cn1);
-      c2 = db._createEdgeCollection(cn2);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief tear down
-    // //////////////////////////////////////////////////////////////////////////////
-
-    tearDown: function () {
-      if (c1 !== null) {
-        c1.drop();
-      }
-
-      c1 = null;
-
-      if (c2 !== null) {
-        c2.drop();
-      }
-
-      c2 = null;
-      try {
-        G._drop('UnitTestsGraph');
-      } catch (err) {
-      }
-      internal.wait(0);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: rollback updates in a graph transaction
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testRollbackGraphUpdates: function () {
-      var graph = G._create('UnitTestsGraph', [G._relation(cn2, cn1, cn1)]);
-      var gotHere = 0;
-
-      assertEqual(0, db[cn1].count());
-
-      var obj = {
-        collections: {
-          write: [ cn1, cn2 ]
-        },
-        action: function () {
-          var result = { };
-          result.enxirvp = graph[cn1].save({});
-          result.biitqtk = graph[cn1].save({});
-          result.oboyuhh = graph[cn2].save({_from: result.enxirvp._id, _to: result.biitqtk._id, name: 'john smith'});
-          result.cvwmkym = db[cn1].replace(result.enxirvp._id, { _rev: null });
-          result.gsalfxu = db[cn1].replace(result.biitqtk._id, { _rev: null });
-          result.xsjzbst = (function () {
-            graph[cn2].remove(result.oboyuhh._id);
-            return true;
-          }());
-
-          result.thizhdd = graph[cn2].save({_from: result.cvwmkym._id, _to: result.gsalfxu._id, _key: result.oboyuhh._key, name: 'david smith'});
-          gotHere = 1;
-
-          result.rldfnre = graph[cn2].save({_from: result.cvwmkym._id, _to: result.gsalfxu._id, _key: result.oboyuhh._key, name: 'david smith'});
-          gotHere = 2;
-
-          return result;
-        }
-      };
-
-      try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
-      }
-
-      assertEqual(0, db[cn1].count());
-      assertEqual(0, db[cn2].count());
-      assertEqual(1, gotHere);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: usage of barriers outside of graph transaction
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testUseBarriersOutsideGraphTransaction: function () {
-      var graph = G._create('UnitTestsGraph', [G._relation(cn2, cn1, cn1)]);
-
-      var obj = {
-        collections: {
-          write: [ cn1, cn2 ]
-        },
-        action: function () {
-          var result = { };
-
-          result.enxirvp = graph[cn1].save({});
-          result.biitqtk = graph[cn1].save({});
-          result.oboyuhh = graph[cn2].save({_from: result.enxirvp._id, _to: result.biitqtk._id, name: 'john smith'});
-          result.oboyuhh = graph[cn2].document(result.oboyuhh);
-          result.cvwmkym = db[cn1].replace(result.enxirvp._id, { _rev: null });
-          result.gsalfxu = db[cn1].replace(result.biitqtk._id, { _rev: null });
-          result.xsjzbst = (function () {
-            graph[cn2].remove(result.oboyuhh._id);
-            return true;
-          }());
-
-          graph[cn2].save({_from: result.cvwmkym._id, _to: result.gsalfxu._id, _key: result.oboyuhh._key, name: 'david smith'});
-          result.rldfnre = graph[cn2].document(result.oboyuhh._key);
-
-          return result;
-        }
-      };
-
-      var result = TRANSACTION(obj);
-      assertTrue(result.enxirvp._key.length > 0);
-      assertEqual(undefined, result.enxirvp.name);
-
-      assertTrue(result.biitqtk._key.length > 0);
-      assertEqual(undefined, result.biitqtk.name);
-
-      assertTrue(result.oboyuhh._key.length > 0);
-      assertEqual('john smith', result.oboyuhh.name);
-      assertEqual(undefined, result.oboyuhh.$label);
-      assertTrue(result.oboyuhh._from.length > 0);
-      assertTrue(result.oboyuhh._to.length > 0);
-
-      assertTrue(result.cvwmkym._key.length > 0);
-      assertEqual(undefined, result.cvwmkym.name);
-      assertEqual(result.enxirvp._rev, result.cvwmkym._oldRev);
-
-      assertTrue(result.gsalfxu._key.length > 0);
-      assertEqual(undefined, result.gsalfxu.name);
-      assertEqual(result.biitqtk._rev, result.gsalfxu._oldRev);
-
-      assertEqual(true, result.xsjzbst);
-
-      assertTrue(result.rldfnre._key.length > 0);
-      assertEqual(result.oboyuhh._key, result.rldfnre._key);
-      assertEqual('david smith', result.rldfnre.name);
-      assertEqual(undefined, result.rldfnre.$label);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: usage of read-copied documents inside write-transaction
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testReadWriteDocumentsList: function () {
-      c1.save({ _key: 'bar' });
-      c1.save({ _key: 'baz' });
-      c2.save(cn1 + '/bar', cn1 + '/baz', { type: 'one' });
-      c2.save(cn1 + '/baz', cn1 + '/bar', { type: 'two' });
-
-      var obj = {
-        collections: {
-          write: [ cn2 ]
-        },
-        action: function () {
-          var result = [ ];
-
-          result.push(c2.inEdges(cn1 + '/baz'));
-          result.push(c2.inEdges(cn1 + '/bar'));
-
-          c2.save(cn1 + '/foo', cn1 + '/baz', { type: 'three' });
-          c2.save(cn1 + '/foo', cn1 + '/bar', { type: 'four' });
-
-          result.push(c2.inEdges(cn1 + '/baz'));
-          result.push(c2.inEdges(cn1 + '/bar'));
-
-          return result;
-        }
-      };
-
-      var sorter = function (l, r) {
-        if (l.type !== r.type) {
-          if (l.type < r.type) {
-            return -1;
-          }
-          return 1;
-        }
-        return 0;
-      };
-
-      var result = TRANSACTION(obj);
-
-      assertEqual(4, result.length);
-      var r = result[0];
-      assertEqual(1, r.length);
-      assertEqual(cn1 + '/bar', r[0]._from);
-      assertEqual(cn1 + '/baz', r[0]._to);
-      assertEqual('one', r[0].type);
-
-      r = result[1];
-      assertEqual(1, r.length);
-      assertEqual(cn1 + '/baz', r[0]._from);
-      assertEqual(cn1 + '/bar', r[0]._to);
-      assertEqual('two', r[0].type);
-
-      r = result[2];
-      r.sort(sorter);
-
-      assertEqual(2, r.length);
-      assertEqual(cn1 + '/bar', r[0]._from);
-      assertEqual(cn1 + '/baz', r[0]._to);
-      assertEqual('one', r[0].type);
-
-      assertEqual(cn1 + '/foo', r[1]._from);
-      assertEqual(cn1 + '/baz', r[1]._to);
-      assertEqual('three', r[1].type);
-
-      r = result[3];
-      r.sort(sorter);
-
-      assertEqual(cn1 + '/foo', r[0]._from);
-      assertEqual(cn1 + '/bar', r[0]._to);
-      assertEqual('four', r[0].type);
-
-      assertEqual(2, r.length);
-      assertEqual(cn1 + '/baz', r[1]._from);
-      assertEqual(cn1 + '/bar', r[1]._to);
-      assertEqual('two', r[1].type);
+      assertEqual(c1.count(), 0);
     }
 
   };
@@ -2114,23 +1875,24 @@ function transactionRollbackSuite () {
       var obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.save({ _key: 'tom' });
-          c1.save({ _key: 'tim' });
-          c1.save({ _key: 'tam' });
-
-          internal.wal.flush(true);
-          assertEqual(3, c1.count());
-          throw new Error('rollback');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.save({ _key: 'tom' });
+        tc1.save({ _key: 'tim' });
+        tc1.save({ _key: 'tam' });
+
+        internal.wal.flush(true);
+        assertEqual(3, tc1.count());
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(0, c1.count());
 
@@ -2143,56 +1905,58 @@ function transactionRollbackSuite () {
     // / @brief test: the collection revision id
     // //////////////////////////////////////////////////////////////////////////////
 
-    testRollbackRevision: function () {
+    // TODO revision is not a supported El-Cheapo API
+    /*testRollbackRevision: function () {
       c1 = db._create(cn1);
       c1.save({ _key: 'foo' });
 
-      var r = c1.revision();
+      let r = c1.revision();
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          var _r = r;
-
-          c1.save({ _key: 'tom' });
-          assertEqual(1, compareStringIds(c1.revision(), _r));
-          _r = c1.revision();
-
-          c1.save({ _key: 'tim' });
-          assertEqual(1, compareStringIds(c1.revision(), _r));
-          _r = c1.revision();
-
-          c1.save({ _key: 'tam' });
-          assertEqual(1, compareStringIds(c1.revision(), _r));
-          _r = c1.revision();
-
-          c1.remove('tam');
-          assertEqual(1, compareStringIds(c1.revision(), _r));
-          _r = c1.revision();
-
-          c1.update('tom', { 'bom': true });
-          assertEqual(1, compareStringIds(c1.revision(), _r));
-          _r = c1.revision();
-
-          c1.remove('tom');
-          assertEqual(1, compareStringIds(c1.revision(), _r));
-          // _r = c1.revision();
-
-          throw new Error('rollback');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        var _r = r;
+
+        tc1.save({ _key: 'tom' });
+        assertEqual(1, compareStringIds(tc1.revision(), _r));
+        _r = tc1.revision();
+
+        tc1.save({ _key: 'tim' });
+        assertEqual(1, compareStringIds(tc1.revision(), _r));
+        _r = tc1.revision();
+
+        tc1.save({ _key: 'tam' });
+        assertEqual(1, compareStringIds(tc1.revision(), _r));
+        _r = c1.revision();
+
+        tc1.remove('tam');
+        assertEqual(1, compareStringIds(tc1.revision(), _r));
+        _r = c1.revision();
+
+        tc1.update('tom', { 'bom': true });
+        assertEqual(1, compareStringIds(tc1.revision(), _r));
+        _r = tc1.revision();
+
+        tc1.remove('tom');
+        assertEqual(1, compareStringIds(tc1.revision(), _r));
+        // _r = c1.revision();
+        
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(1, c1.count());
       assertEqual(r, c1.revision());
-    },
+    },*/
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: rollback inserts
@@ -2207,22 +1971,24 @@ function transactionRollbackSuite () {
       var obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.save({ _key: 'tom' });
-          c1.save({ _key: 'tim' });
-          c1.save({ _key: 'tam' });
-
-          assertEqual(6, c1.count());
-          throw new Error('rollback');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.save({ _key: 'tom' });
+        tc1.save({ _key: 'tim' });
+        tc1.save({ _key: 'tam' });
+
+        assertEqual(6, tc1.count());
+        
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(3, c1.count());
       assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c1));
@@ -2240,31 +2006,33 @@ function transactionRollbackSuite () {
 
       c1.ensureHashIndex('value');
       c1.ensureSkiplist('value');
-      var good = false;
+      let good = false;
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.save({ _key: 'tom', value: 'tom' });
-          c1.save({ _key: 'tim', value: 'tim' });
-          c1.save({ _key: 'tam', value: 'tam' });
-          c1.save({ _key: 'troet', value: 'foo', a: 2 });
-          c1.save({ _key: 'floxx', value: 'bar', a: 2 });
-
-          assertEqual(8, c1.count());
-
-          good = true;
-          throw new Error('rollback');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.save({ _key: 'tom', value: 'tom' });
+        tc1.save({ _key: 'tim', value: 'tim' });
+        tc1.save({ _key: 'tam', value: 'tam' });
+        tc1.save({ _key: 'troet', value: 'foo', a: 2 });
+        tc1.save({ _key: 'floxx', value: 'bar', a: 2 });
+
+        assertEqual(8, tc1.count());
+
+        good = true;
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
+
       assertEqual(true, good);
 
       assertEqual(3, c1.count());
@@ -2280,34 +2048,35 @@ function transactionRollbackSuite () {
       c1.save({ _key: 'bar' });
       c1.save({ _key: 'meow' });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.save({ _key: 'tom' });
-          c1.save({ _key: 'tim' });
-          c1.save({ _key: 'tam' });
-
-          c1.update('tom', { });
-          c1.update('tim', { });
-          c1.update('tam', { });
-          c1.update('bar', { });
-          c1.remove('foo');
-          c1.remove('bar');
-          c1.remove('meow');
-          c1.remove('tom');
-
-          assertEqual(2, c1.count());
-          throw new Error('rollback');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.save({ _key: 'tom' });
+        tc1.save({ _key: 'tim' });
+        tc1.save({ _key: 'tam' });
+
+        tc1.update('tom', { });
+        tc1.update('tim', { });
+        tc1.update('tam', { });
+        tc1.update('bar', { });
+        tc1.remove('foo');
+        tc1.remove('bar');
+        tc1.remove('meow');
+        tc1.remove('tom');
+
+        assertEqual(2, tc1.count());
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(3, c1.count());
       assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c1));
@@ -2328,22 +2097,24 @@ function transactionRollbackSuite () {
       var obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.update(d1, { a: 4 });
-          c1.update(d2, { a: 5 });
-          c1.update(d3, { a: 6 });
-
-          assertEqual(3, c1.count());
-          throw new Error('rollback');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.update(d1, { a: 4 });
+        tc1.update(d2, { a: 5 });
+        tc1.update(d3, { a: 6 });
+
+        assertEqual(3, tc1.count());
+
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(3, c1.count());
       assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c1));
@@ -2364,32 +2135,33 @@ function transactionRollbackSuite () {
       d2 = c1.save({ _key: 'bar', a: 2 });
       d3 = c1.save({ _key: 'meow', a: 3 });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          for (var i = 0; i < 100; ++i) {
-            c1.replace('foo', { a: i });
-            c1.replace('bar', { a: i + 42 });
-            c1.replace('meow', { a: i + 23 });
-
-            assertEqual(i, c1.document('foo').a);
-            assertEqual(i + 42, c1.document('bar').a);
-            assertEqual(i + 23, c1.document('meow').a);
-          }
-
-          assertEqual(3, c1.count());
-
-          throw new Error('rollback');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        for (let i = 0; i < 100; ++i) {
+          tc1.replace('foo', { a: i });
+          tc1.replace('bar', { a: i + 42 });
+          tc1.replace('meow', { a: i + 23 });
+
+          assertEqual(i, tc1.document('foo').a);
+          assertEqual(i + 42, tc1.document('bar').a);
+          assertEqual(i + 23, tc1.document('meow').a);
+        }
+
+        assertEqual(3, tc1.count());
+
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(3, c1.count());
       assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c1));
@@ -2413,29 +2185,30 @@ function transactionRollbackSuite () {
 
       c1.ensureHashIndex('value');
       c1.ensureSkiplist('value');
-      var good = false;
+      let good = false;
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.update('foo', { value: 'foo', a: 2 });
-          c1.update('bar', { value: 'bar', a: 2 });
-          c1.update('meow', { value: 'troet' });
-
-          assertEqual(3, c1.count());
-
-          good = true;
-          throw new Error('rollback');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.update('foo', { value: 'foo', a: 2 });
+        tc1.update('bar', { value: 'bar', a: 2 });
+        tc1.update('meow', { value: 'troet' });
+
+        assertEqual(3, tc1.count());
+        good = true;
+
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(true, good);
       assertEqual(3, c1.count());
@@ -2451,26 +2224,27 @@ function transactionRollbackSuite () {
       c1.save({ _key: 'bar' });
       c1.save({ _key: 'meow' });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.remove('meow');
-          c1.remove('foo');
-
-          assertEqual(1, c1.count());
-          assertEqual([ 'bar' ], sortedKeys(c1));
-
-          throw new Error('rollback');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.remove('meow');
+        tc1.remove('foo');
+
+        assertEqual(1, tc1.count());
+        assertTrue(tc1.document('bar') !== undefined);
+
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(3, c1.count());
       assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c1));
@@ -2484,26 +2258,26 @@ function transactionRollbackSuite () {
       c1 = db._create(cn1);
       c1.save({ _key: 'foo' });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          for (var i = 0; i < 100; ++i) {
-            c1.save({ _key: 'foo' + i });
-          }
-
-          assertEqual(101, c1.count());
-
-          throw new Error('rollback');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        for (var i = 0; i < 100; ++i) {
+          tc1.save({ _key: 'foo' + i });
+        }
+
+        assertEqual(101, tc1.count());
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(1, c1.count());
       assertEqual([ 'foo' ], sortedKeys(c1));
@@ -2523,28 +2297,29 @@ function transactionRollbackSuite () {
       c1.ensureSkiplist('value');
       var good = false;
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.remove('meow');
-          c1.remove('bar');
-          c1.remove('foo');
-
-          assertEqual(0, c1.count());
-
-          good = true;
-
-          throw new Error('rollback');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.remove('meow');
+        tc1.remove('bar');
+        tc1.remove('foo');
+
+        assertEqual(0, tc1.count());
+
+        good = true;
+        
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(true, good);
       assertEqual(3, c1.count());
@@ -2562,33 +2337,34 @@ function transactionRollbackSuite () {
 
       c1.ensureHashIndex('value');
       c1.ensureSkiplist('value');
-      var good = false;
+      let good = false;
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.remove('meow');
-          c1.remove('bar');
-          c1.remove('foo');
-          assertEqual(0, c1.count());
-
-          c1.save({ _key: 'foo2', value: 'foo', a: 2 });
-          c1.save({ _key: 'bar2', value: 'bar', a: 2 });
-          assertEqual(2, c1.count());
-
-          good = true;
-
-          throw new Error('rollback');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.remove('meow');
+        tc1.remove('bar');
+        tc1.remove('foo');
+        assertEqual(0, tc1.count());
+
+        tc1.save({ _key: 'foo2', value: 'foo', a: 2 });
+        tc1.save({ _key: 'bar2', value: 'bar', a: 2 });
+        assertEqual(2, tc1.count());
+
+        good = true;
+      
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(true, good);
       assertEqual(3, c1.count());
@@ -2601,25 +2377,26 @@ function transactionRollbackSuite () {
     testRollbackTruncateEmpty: function () {
       c1 = db._create(cn1);
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          // truncate often...
-          for (var i = 0; i < 100; ++i) {
-            c1.truncate();
-          }
-
-          throw new Error('rollback');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        // truncate often...
+        for (let i = 0; i < 100; ++i) {
+          tc1.truncate();
+        }
+      
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(0, c1.count());
       assertEqual([ ], sortedKeys(c1));
@@ -2636,26 +2413,27 @@ function transactionRollbackSuite () {
       }
       assertEqual(100, c1.count());
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          // truncate often...
-          for (var i = 0; i < 100; ++i) {
-            c1.truncate();
-          }
-          c1.save({ _key: 'bar' });
-
-          throw new Error('rollback');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        // truncate often...
+        for (let i = 0; i < 100; ++i) {
+          tc1.truncate();
+        }
+        tc1.save({ _key: 'bar' });
+      
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(100, c1.count());
     },
@@ -2666,24 +2444,29 @@ function transactionRollbackSuite () {
 
     testRollbackUniquePrimary: function () {
       c1 = db._create(cn1);
-      var d1 = c1.save({ _key: 'foo' });
+      let d1 = c1.save({ _key: 'foo' });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.save({ _key: 'bar' });
-          c1.save({ _key: 'foo' });
-          fail();
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.save({ _key: 'bar' });
+        tc1.save({ _key: 'foo' });
         fail();
+
       } catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(1, c1.count());
       assertEqual('foo', c1.toArray()[0]._key);
@@ -2697,25 +2480,31 @@ function transactionRollbackSuite () {
     testRollbackUniqueSecondary: function () {
       c1 = db._create(cn1);
       c1.ensureUniqueConstraint('name');
-      var d1 = c1.save({ name: 'foo' });
+      let d1 = c1.save({ name: 'foo' });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.save({ name: 'bar' });
-          c1.save({ name: 'baz' });
-          c1.save({ name: 'foo' });
-          fail();
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.save({ name: 'bar' });
+        tc1.save({ name: 'baz' });
+        tc1.save({ name: 'foo' });
         fail();
+      
       } catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
+      
       assertEqual(1, c1.count());
       assertEqual('foo', c1.toArray()[0].name);
       assertEqual(d1._rev, c1.toArray()[0]._rev);
@@ -2728,35 +2517,35 @@ function transactionRollbackSuite () {
     testRollbackMixed1: function () {
       c1 = db._create(cn1);
 
-      var i;
-
-      for (i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         c1.save({ _key: 'key' + i, value: i });
       }
 
       var obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          for (i = 0; i < 50; ++i) {
-            c1.remove('key' + i);
-          }
-
-          for (i = 50; i < 100; ++i) {
-            c1.update('key' + i, { value: i - 50 });
-          }
-
-          c1.remove('key50');
-          throw new Error('doh!');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        for (let i = 0; i < 50; ++i) {
+          tc1.remove('key' + i);
+        }
+
+        for (let i = 50; i < 100; ++i) {
+          tc1.update('key' + i, { value: i - 50 });
+        }
+
+        tc1.remove('key50');
+      
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(100, c1.count());
     },
@@ -2771,35 +2560,35 @@ function transactionRollbackSuite () {
       c1.save({ _key: 'foo' });
       c1.save({ _key: 'bar' });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          var i;
-
-          for (i = 0; i < 10; ++i) {
-            c1.save({ _key: 'key' + i, value: i });
-          }
-
-          for (i = 0; i < 5; ++i) {
-            c1.remove('key' + i);
-          }
-
-          for (i = 5; i < 10; ++i) {
-            c1.update('key' + i, { value: i - 5 });
-          }
-
-          c1.remove('key5');
-          throw new Error('doh!');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        for (let i = 0; i < 10; ++i) {
+          tc1.save({ _key: 'key' + i, value: i });
+        }
+
+        for (let i = 0; i < 5; ++i) {
+          tc1.remove('key' + i);
+        }
+
+        for (let i = 5; i < 10; ++i) {
+          tc1.update('key' + i, { value: i - 5 });
+        }
+
+        tc1.remove('key5');
+      
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(2, c1.count());
       assertEqual('foo', c1.document('foo')._key);
@@ -2819,47 +2608,46 @@ function transactionRollbackSuite () {
       var obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          var i;
-
-          for (i = 0; i < 10; ++i) {
-            c1.save({ _key: 'key' + i, value: i });
-          }
-
-          for (i = 0; i < 10; ++i) {
-            c1.remove('key' + i);
-          }
-
-          for (i = 0; i < 10; ++i) {
-            c1.save({ _key: 'key' + i, value: i });
-          }
-
-          for (i = 0; i < 10; ++i) {
-            c1.update('key' + i, { value: i - 5 });
-          }
-
-          for (i = 0; i < 10; ++i) {
-            c1.update('key' + i, { value: i + 5 });
-          }
-
-          for (i = 0; i < 10; ++i) {
-            c1.remove('key' + i);
-          }
-
-          for (i = 0; i < 10; ++i) {
-            c1.save({ _key: 'key' + i, value: i });
-          }
-
-          throw new Error('doh!');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
+        let tc1 = trx.collection(c1.name());
+        
+        for (let i = 0; i < 10; ++i) {
+          tc1.save({ _key: 'key' + i, value: i });
+        }
+
+        for (let i = 0; i < 10; ++i) {
+          tc1.remove('key' + i);
+        }
+
+        for (let i = 0; i < 10; ++i) {
+          tc1.save({ _key: 'key' + i, value: i });
+        }
+
+        for (let i = 0; i < 10; ++i) {
+          tc1.update('key' + i, { value: i - 5 });
+        }
+
+        for (let i = 0; i < 10; ++i) {
+          tc1.update('key' + i, { value: i + 5 });
+        }
+
+        for (let i = 0; i < 10; ++i) {
+          tc1.remove('key' + i);
+        }
+
+        for (let i = 0; i < 10; ++i) {
+          tc1.save({ _key: 'key' + i, value: i });
+        }
+      
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(2, c1.count());
       assertEqual('foo', c1.document('foo')._key);
@@ -3195,7 +2983,7 @@ function transactionCrossCollectionSuite () {
     // / @brief test: test cross collection commit
     // //////////////////////////////////////////////////////////////////////////////
 
-    /*testDeletes: function () {
+    testDeletes: function () {
       c1 = db._create(cn1);
       c2 = db._create(cn2);
 
@@ -3208,18 +2996,25 @@ function transactionCrossCollectionSuite () {
       var obj = {
         collections: {
           write: [ cn1, cn2 ]
-        },
-        action: function () {
-          for (i = 0; i < 10; ++i) {
-            c1.remove('a' + i);
-            c2.remove('b' + i);
-          }
-
-          return true;
         }
       };
 
-      TRANSACTION(obj);
+      // begin trx
+      let trx = db._createTransaction(obj);
+      try {
+        let tc1 = trx.collection(c1.name());
+        let tc2 = trx.collection(c2.name());
+
+        for (i = 0; i < 10; ++i) {
+          tc1.remove('a' + i);
+          tc2.remove('b' + i);
+        }
+
+      } finally {
+        trx.commit();
+      }
+      // end trx
+
       assertEqual(0, c1.count());
       assertEqual(0, c2.count());
     },
@@ -3241,18 +3036,25 @@ function transactionCrossCollectionSuite () {
       var obj = {
         collections: {
           write: [ cn1, cn2 ]
-        },
-        action: function () {
-          for (i = 0; i < 10; ++i) {
-            c1.remove('a' + i);
-            c2.remove('b' + i);
-          }
-
-          return true;
         }
       };
 
-      TRANSACTION(obj);
+      // begin trx
+      let trx = db._createTransaction(obj);
+      try {
+        let tc1 = trx.collection(c1.name());
+        let tc2 = trx.collection(c2.name());
+
+        for (i = 0; i < 10; ++i) {
+          tc1.remove('a' + i);
+          tc2.remove('b' + i);
+        }
+
+      } finally {
+        trx.commit();
+      }
+      // end trx
+
       assertEqual(0, c1.count());
       assertEqual(0, c2.count());
 
@@ -3274,29 +3076,34 @@ function transactionCrossCollectionSuite () {
       var obj = {
         collections: {
           write: [ cn1, cn2 ]
-        },
-        action: function () {
-          var i;
-
-          for (i = 0; i < 10; ++i) {
-            c1.save({ _key: 'a' + i });
-          }
-
-          for (i = 0; i < 10; ++i) {
-            c2.save({ _key: 'b' + i });
-          }
-
-          assertEqual(10, c1.count());
-          assertEqual(10, c2.count());
-
-          c1.remove('a4');
-          c2.remove('b6');
-
-          return true;
         }
       };
 
-      TRANSACTION(obj);
+      // begin trx
+      let trx = db._createTransaction(obj);
+      try {
+        let tc1 = trx.collection(c1.name());
+        let tc2 = trx.collection(c2.name());
+
+        for (let i = 0; i < 10; ++i) {
+          tc1.save({ _key: 'a' + i });
+        }
+
+        for (let i = 0; i < 10; ++i) {
+          tc2.save({ _key: 'b' + i });
+        }
+
+        assertEqual(10, tc1.count());
+        assertEqual(10, tc2.count());
+
+        tc1.remove('a4');
+        tc2.remove('b6');
+
+      } finally {
+        trx.commit();
+      }
+      // end trx
+
       assertEqual(9, c1.count());
       assertEqual(9, c2.count());
 
@@ -3321,24 +3128,29 @@ function transactionCrossCollectionSuite () {
       var obj = {
         collections: {
           write: [ cn1, cn2 ]
-        },
-        action: function () {
-          c1.save({ _key: 'a2' });
-          c1.save({ _key: 'a3' });
-
-          c2.save({ _key: 'b2' });
-          c2.update('b1', { a: 2 });
-          assertEqual(2, c2.document('b1').a);
-
-          throw new Error('rollback');
         }
       };
 
+      // begin trx
+      let trx = db._createTransaction(obj);
       try {
-        TRANSACTION(obj);
-        fail();
+        let tc1 = trx.collection(c1.name());
+        let tc2 = trx.collection(c2.name());
+
+        tc1.save({ _key: 'a2' });
+        tc1.save({ _key: 'a3' });
+
+        tc2.save({ _key: 'b2' });
+        tc2.update('b1', { a: 2 });
+        assertEqual(2, tc2.document('b1').a);
+
       } catch (err) {
+        print(err);
+        fail();
+      } finally {
+        trx.abort(); // rollback
       }
+      // end trx
 
       assertEqual(1, c1.count());
       assertEqual(1, c2.count());
@@ -3361,37 +3173,39 @@ function transactionCrossCollectionSuite () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: unload / reload after failed transactions
+    // / @brief test: unload / reload after aborting transactions
     // //////////////////////////////////////////////////////////////////////////////
 
-    testUnloadReloadFailedTrx: function () {
+    testUnloadReloadAbortedTrx: function () {
       c1 = db._create(cn1);
 
-      var i;
-      for (i = 0; i < 10; ++i) {
+      for (let i = 0; i < 10; ++i) {
         c1.save({ _key: 'a' + i, a: i });
       }
 
       var obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          var i;
-          for (i = 0; i < 100; ++i) {
-            c1.save({ _key: 'test' + i });
-          }
-
-          throw new Error('rollback');
         }
       };
 
-      for (i = 0; i < 50; ++i) {
+      for (let i = 0; i < 50; ++i) {
+
+        // begin trx
+        let trx = db._createTransaction(obj);
         try {
-          TRANSACTION(obj);
-          fail();
+          let tc1 = trx.collection(c1.name());
+
+          for (let x = 0; x < 100; ++x) {
+            tc1.save({ _key: 'test' + x });
+          }
+  
         } catch (err) {
+          fail();
+        } finally {
+          trx.abort(); // rollback
         }
+        // end trx
       }
 
       assertEqual(10, c1.count());
@@ -3399,150 +3213,6 @@ function transactionCrossCollectionSuite () {
       testHelper.waitUnload(c1);
 
       assertEqual(10, c1.count());
-    }*/
-
-  };
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief test suite
-// //////////////////////////////////////////////////////////////////////////////
-
-function transactionConstraintsSuite () {
-  'use strict';
-  var cn = 'UnitTestsTransaction';
-
-  var c = null;
-
-  return {
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
-
-    setUp: function () {
-      db._drop(cn);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief tear down
-    // //////////////////////////////////////////////////////////////////////////////
-
-    tearDown: function () {
-      if (c !== null) {
-        c.drop();
-      }
-
-      c = null;
-      internal.wait(0);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: rollback in case of a server-side fail
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testMultiHashConstraintInsert1: function () {
-      c = db._create(cn);
-      c.ensureUniqueConstraint('value1');
-      c.ensureUniqueConstraint('value2');
-
-      var i;
-      for (i = 0; i < 10; ++i) {
-        c.save({ _key: 'test' + i, value1: i, value2: i });
-      }
-      assertEqual(10, c.count());
-
-      try {
-        c.save({ value1: 9, value2: 17 });
-        fail();
-      } catch (err) {
-        assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
-      }
-
-      assertEqual(10, c.count());
-      assertEqual(9, c.document('test9').value1);
-      assertEqual(9, c.document('test9').value2);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: rollback in case of a server-side fail
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testMultiHashConstraintInsert2: function () {
-      c = db._create(cn);
-      c.ensureUniqueConstraint('value1');
-      c.ensureUniqueConstraint('value2');
-
-      var i;
-      for (i = 0; i < 10; ++i) {
-        c.save({ _key: 'test' + i, value1: i, value2: i });
-      }
-      assertEqual(10, c.count());
-
-      try {
-        c.save({ value1: 17, value2: 9 });
-        fail();
-      } catch (err) {
-        assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
-      }
-
-      assertEqual(10, c.count());
-      assertEqual(9, c.document('test9').value1);
-      assertEqual(9, c.document('test9').value2);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: rollback in case of a server-side fail
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testMultiSkipConstraintInsert1: function () {
-      c = db._create(cn);
-      c.ensureUniqueSkiplist('value1');
-      c.ensureUniqueSkiplist('value2');
-
-      var i;
-      for (i = 0; i < 10; ++i) {
-        c.save({ _key: 'test' + i, value1: i, value2: i });
-      }
-      assertEqual(10, c.count());
-
-      try {
-        c.save({ value1: 9, value2: 17 });
-        fail();
-      } catch (err) {
-        assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
-      }
-
-      assertEqual(10, c.count());
-      assertEqual(9, c.document('test9').value1);
-      assertEqual(9, c.document('test9').value2);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: rollback in case of a server-side fail
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testMultiSkipConstraintInsert2: function () {
-      c = db._create(cn);
-      c.ensureUniqueSkiplist('value1');
-      c.ensureUniqueSkiplist('value2');
-
-      var i;
-      for (i = 0; i < 10; ++i) {
-        c.save({ _key: 'test' + i, value1: i, value2: i });
-      }
-      assertEqual(10, c.count());
-
-      try {
-        c.save({ value1: 17, value2: 9 });
-        fail();
-      } catch (err) {
-        assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
-      }
-
-      assertEqual(10, c.count());
-      assertEqual(9, c.document('test9').value1);
-      assertEqual(9, c.document('test9').value2);
     }
 
   };
@@ -3657,15 +3327,13 @@ function transactionTraversalSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(transactionRevisionsSuite);
-//jsunity.run(transactionRollbackSuite);
+jsunity.run(transactionRollbackSuite);
 jsunity.run(transactionInvocationSuite);
 jsunity.run(transactionCollectionsSuite);
 jsunity.run(transactionOperationsSuite);
-// jsunity.run(transactionBarriersSuite);
-// jsunity.run(transactionGraphSuite);
+jsunity.run(transactionBarriersSuite);
 jsunity.run(transactionCountSuite);
 jsunity.run(transactionCrossCollectionSuite);
-// jsunity.run(transactionConstraintsSuite);
 // jsunity.run(transactionTraversalSuite);
 
 return jsunity.done();
