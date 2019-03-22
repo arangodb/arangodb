@@ -52,7 +52,8 @@ const testPaths = {
   'dump': [tu.pathForTesting('server/dump')],
   'dump_authentication': [tu.pathForTesting('server/dump')],
   'dump_encrypted': [tu.pathForTesting('server/dump')],
-  'dump_maskings': [tu.pathForTesting('server/dump')]
+  'dump_maskings': [tu.pathForTesting('server/dump')],
+  'dump_multiple': [tu.pathForTesting('server/dump')]
 };
 
 class DumpRestoreHelper {
@@ -73,6 +74,9 @@ class DumpRestoreHelper {
     if (dumpOptions.hasOwnProperty("maskings")) {
        this.dumpConfig.setMaskings(dumpOptions.maskings);
     }
+    if (dumpOptions.allDatabases) {
+      this.dumpConfig.setAllDatabases();
+    }
 
     this.restoreConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceInfo);
     this.restoreConfig.setInputDirectory('dump', true);
@@ -81,12 +85,17 @@ class DumpRestoreHelper {
     this.restoreOldConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceInfo);
     this.restoreOldConfig.setInputDirectory('dump', true);
     this.restoreOldConfig.setIncludeSystem(true);
-    this.restoreOldConfig.setDatabase('_system');
     this.restoreOldConfig.setRootDir(pu.TOP_DIR);
 
     if (options.encrypted) {
       this.dumpConfig.activateEncryption();
       this.restoreOldConfig.activateEncryption();
+    }
+    if (restoreOptions.allDatabases) {
+      this.restoreConfig.setAllDatabases();
+      this.restoreOldConfig.setAllDatabases();
+    } else {
+      this.restoreOldConfig.setDatabase('_system');
     }
 
     this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir);
@@ -127,20 +136,28 @@ class DumpRestoreHelper {
 
   dumpFrom(database) {
     this.print('dump');
-    this.dumpConfig.setDatabase(database);
+    if (!this.dumpConfig.haveSetAllDatabases()) {
+      this.dumpConfig.setDatabase(database);
+    }
     this.results.dump = this.arangodump();
     return this.validate(this.results.dump);
   }
 
   restoreTo(database) {
     this.print('restore');
-    this.restoreConfig.setDatabase(database);
+    if (!this.restoreConfig.haveSetAllDatabases()) {
+      this.restoreConfig.setDatabase(database);
+    }
     this.results.restore = this.arangorestore();
     return this.validate(this.results.restore);
   }
 
   runTests(file, database) {
     this.print('dump after restore');
+    if (this.restoreConfig.haveSetAllDatabases()) {
+      // if we dump with multiple databases, it remains with the original name.
+      database = 'UnitTestsDumpSrc';
+    }
     this.results.test = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.test);
   }
@@ -218,8 +235,13 @@ class DumpRestoreHelper {
   }
 };
 
-function getClusterStrings(options)
-{
+function getClusterStrings(options) {
+  if (options.hasOwnProperty('allDatabases') && options.allDatabases) {
+    return {
+      cluster: '-multiple',
+      notCluster: '-multiple'
+    };
+  }
   if (options.cluster) {
     return {
       cluster: '-cluster',
@@ -298,6 +320,22 @@ function dump (options) {
   };
 
   return dump_backend(options, {}, {}, options, options, 'dump', tstFiles, function(){});
+}
+
+function dumpMultiple (options) {
+  let c = getClusterStrings(options);
+  let tstFiles = {
+    dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpAgain: 'dump-' + options.storageEngine + c.cluster + '.js',
+    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
+    dumpCheckGraph: 'check-graph-multiple.js'
+  };
+  
+  let dumpOptions = {
+    allDatabases: true
+  };
+  _.defaults(dumpOptions, options);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){});
 }
 
 function dumpAuthentication (options) {
@@ -429,6 +467,9 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
 
   testFns['dump_maskings'] = dumpMaskings;
   defaultFns.push('dump_maskings');
+
+  testFns['dump_multiple'] = dumpMultiple;
+  defaultFns.push('dump_multiple');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
