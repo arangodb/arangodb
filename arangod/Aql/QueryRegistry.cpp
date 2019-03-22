@@ -131,7 +131,7 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
       qi->_query->prepare(this);
     } catch (...) {
       qi->_isOpen = false;
-      qi->_expires = TRI_microtime();
+      qi->_expires = 0.0;
       throw;
     }
     qi->_isPrepared = true;
@@ -170,7 +170,7 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
       qi->_query->prepare(this);
     } catch (...) {
       qi->_isOpen = false;
-      qi->_expires = TRI_microtime();
+      qi->_expires = 0.0;
       throw;
     }
   }
@@ -204,7 +204,7 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id, int errorCod
     if (q->second->_isOpen && !ignoreOpened) {
       // query in use by another thread/request
       q->second->_query->kill();
-      q->second->_expires = TRI_microtime();
+      q->second->_expires = 0.0;
       return;
     }
 
