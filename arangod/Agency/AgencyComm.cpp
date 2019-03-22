@@ -1181,11 +1181,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "checking if agency is initialized";
 
-  auto serverFeature =
-    application_features::ApplicationServer::getFeature<ServerFeature>("Server");
-
-
-  while (!serverFeature->isStopping() && shouldInitializeStructure()) {
+  while (shouldInitializeStructure()) {
 
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
       << "Agency is fresh. Needs initial structure.";
@@ -1825,7 +1821,7 @@ bool AgencyComm::shouldInitializeStructure() {
   size_t nFail = 0;
 
   while (!application_features::ApplicationServer::isStopping()) {
-    
+
     auto result = getValues("Plan");
 
     if (!result.successful()) { // Not 200 - 299
@@ -1848,6 +1844,7 @@ bool AgencyComm::shouldInitializeStructure() {
         } else {
           LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
             << "agency initialisation under way or done";
+          return false;
         }
       } else {
         // Should never get here
