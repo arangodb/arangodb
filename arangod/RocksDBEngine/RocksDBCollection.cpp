@@ -607,21 +607,27 @@ Result RocksDBCollection::truncate(transaction::Methods* trx, OperationOptions& 
   uint64_t const prvICC = state->options().intermediateCommitCount;
   state->options().intermediateCommitCount = std::min<uint64_t>(prvICC, 10000);
 
-  std::unique_ptr<rocksdb::Iterator> iter =
-      mthds->NewIterator(ro, documentBounds.columnFamily());
-  iter->Seek(documentBounds.start());
-
   uint64_t found = 0;
-  while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
+  VPackBuilder docBuffer;
+  auto iter = mthds->NewIterator(ro, documentBounds.columnFamily());
+  for (iter->Seek(documentBounds.start());
+       iter->Valid() && cmp->Compare(iter->key(), end) < 0;
+       iter->Next()) {
+
     ++found;
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
-    VPackSlice doc = VPackSlice(iter->value().data());
-    TRI_ASSERT(doc.isObject());
+    VPackSlice document = VPackSlice(iter->value().data());
+    TRI_ASSERT(document.isObject());
+    
+    // tmp may contain a pointer into rocksdb::WriteBuffer::_rep. This is
+    // a 'std::string' which might be realloc'ed on any Put/Delete operation
+    docBuffer.clear();
+    docBuffer.add(document);
 
     // To print the WAL we need key and RID
     VPackSlice key;
     TRI_voc_rid_t rid = 0;
-    transaction::helpers::extractKeyAndRevFromDocument(doc, key, rid);
+    transaction::helpers::extractKeyAndRevFromDocument(document, key, rid);
     TRI_ASSERT(key.isString());
     TRI_ASSERT(rid != 0);
 
@@ -630,16 +636,15 @@ Result RocksDBCollection::truncate(transaction::Methods* trx, OperationOptions& 
     state->prepareOperation(_logicalCollection.id(),
                             rid,  // actual revision ID!!
                             TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-
+    
     LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
-    auto res = removeDocument(trx, docId, doc, options);
+    auto res = removeDocument(trx, docId, docBuffer.slice(), options);
 
     if (res.fail()) {  // Failed to remove document in truncate.
       return res;
     }
 
     bool hasPerformedIntermediateCommit = false;
-
     res = state->addOperation(_logicalCollection.id(), docId.id(), TRI_VOC_DOCUMENT_OPERATION_REMOVE,
                               hasPerformedIntermediateCommit);
 
@@ -649,7 +654,6 @@ Result RocksDBCollection::truncate(transaction::Methods* trx, OperationOptions& 
     guard.finish(hasPerformedIntermediateCommit);
 
     trackWaitForSync(trx, options);
-    iter->Next();
   }
 
   // reset to previous value after truncate is finished
