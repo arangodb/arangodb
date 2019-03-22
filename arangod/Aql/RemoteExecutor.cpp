@@ -273,6 +273,11 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(int errorCode) {
   if (!_hasTriggeredShutdown) {
+    // Make sure to cover against the race that the request
+    // in flight is not overtaking in the drop phase here.
+    // After this lock is released even a response
+    // will be discarded in the handle response code
+    MUTEX_LOCKER(locker, _communicationMutex); 
     if (_lastTicketId != 0) {
       auto cc = ClusterComm::instance();
       if (cc == nullptr) {
