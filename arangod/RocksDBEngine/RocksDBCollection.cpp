@@ -578,7 +578,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
       this->canUseRangeDeleteInWal() && _numberDocuments >= 32 * 1024) {
     // non-transactional truncate optimization. We perform a bunch of
-    // range deletes and circumwent the normal rocksdb::Transaction.
+    // range deletes and circumvent the normal rocksdb::Transaction.
     // no savepoint needed here
     TRI_ASSERT(!state->hasOperations());  // not allowed
 
@@ -670,6 +670,8 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
   rocksdb::Slice const end = documentBounds.end();
   ro.iterate_upper_bound = &end;
+
+  TRI_ASSERT(ro.snapshot);
 
   // avoid OOM error for truncate by committing earlier
   uint64_t const prvICC = state->options().intermediateCommitCount;
@@ -1272,6 +1274,22 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
+  
+  {
+    READ_LOCKER(guard, _indexesLock);
+    for (std::shared_ptr<Index> const& idx : _indexes) {
+      RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
+      res = ridx->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
+
+      if (res.fail()) {
+        break;
+      }
+    }
+  }
+
+  if (res.fail()) {
+    return res;
+  }
 
   rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
   if (!s.ok()) {
@@ -1282,17 +1300,6 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
       << "Delete rev: " << revisionId << " trx: " << trx->state()->id()
       << " seq: " << mthds->sequenceNumber()
       << " objectID " << _objectId << " name: " << _logicalCollection->name();*/
-
-  Result resInner;
-  READ_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index> const& idx : _indexes) {
-    RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-    res = ridx->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
-
-    if (res.fail()) {
-      break;
-    }
-  }
 
   return res;
 }

@@ -41,7 +41,7 @@ class Result final {
    * @param  errorNumber   Said error number
    * @param  errorMessage  Said error message
    */
-  Result(int errorNumber, std::string&& errorMessage);
+  Result(int errorNumber, std::string&& errorMessage) noexcept;
 
   /**
    * @brief Construct as copy
