@@ -96,9 +96,6 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
                                                              OutputAqlItemRow& output,
                                                              Stats& stats) {
 
-  LOG_DEVEL << "=====>";
-  TRI_DEFER( LOG_DEVEL << "<====="; )
-
   _info._options.silent = false;
   _info._options.returnOld = _info._options.returnOld || _info._outputRegisterId;
 
@@ -129,50 +126,28 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
     inSlice = inBuilder.slice();
   }
 
-  try {
-    LOG_DEVEL << "inslice - " << inSlice.toJson();
-  } catch (...) {
-    LOG_DEVEL << "inslice - unable to print" ;
-  }
 
-  LOG_DEVEL << "key: " << _info._key;
   std::unique_ptr<VPackBuilder> mergedBuilder = nullptr;
   if (!_info._key.empty()) {
-    LOG_DEVEL << "merge key into inslice";
     mergedBuilder = merge(inSlice, _info._key, 0);
     inSlice = mergedBuilder->slice();
   }
 
-  try {
-    LOG_DEVEL << "inslice - " << inSlice.toJson();
-  } catch (...) {
-    LOG_DEVEL << "inslice - unable to print" ;
-  }
-
   OperationResult result;
   if (isIndex) {
-    LOG_DEVEL << "-- INDEX --";
-    LOG_DEVEL << "pre trx";
-    LOG_DEVEL << _info._aqlCollection->name();
     result = _info._trx->document(_info._aqlCollection->name(), inSlice, _info._options);
-    LOG_DEVEL << "post trx";
   } else if (isInsert) {
-    LOG_DEVEL << "-- INSERT --";
     if (options.returnOld && !options.overwrite) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
           "OLD is only available when using INSERT with the overwrite option");
     }
-    LOG_DEVEL << "pre trx";
     result = _info._trx->insert(_info._aqlCollection->name(), inSlice, _info._options);
-    LOG_DEVEL << "post trx";
     possibleWrites = 1;
   } else if (isRemove) {
-    LOG_DEVEL << "-- REMOVE --";
     result = _info._trx->remove(_info._aqlCollection->name(), inSlice, _info._options);
     possibleWrites = 1;
   } else if (isReplace) {
-    LOG_DEVEL << "-- REPLACE --";
     if (_info._replaceIndex && !_info._input1RegisterId.has_value()) {
       // we have a FOR .. IN FILTER doc._key == ... REPLACE - no WITH.
       // in this case replace needs to behave as if it was UPDATE.
@@ -182,17 +157,8 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
     }
     possibleWrites = 1;
   } else if (isUpdate) {
-    LOG_DEVEL << "-- UPDATE --";
     result = _info._trx->update(_info._aqlCollection->name(), inSlice, _info._options);
     possibleWrites = 1;
-  }
-
-  try {
-    LOG_DEVEL_IF(result.buffer) <<  "result       - " << result.slice().toJson();
-    LOG_DEVEL_IF(!result.buffer) << "result       - no buffer";
-    LOG_DEVEL_IF(!result.buffer) << "error string - " << result.errorMessage();
-  } catch (...) {
-    LOG_DEVEL                    << "result       - unable to print" ;
   }
 
   // check operation result
@@ -203,30 +169,20 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
       // document not there is not an error in this situation.
       // FOR ... FILTER ... REMOVE wouldn't invoke REMOVE in first place, so
       // don't throw an excetpion.
-      LOG_DEVEL << "no doc expected";
       return false;
     } else if (!_info._ignoreErrors) {  // TODO remove if
-      LOG_DEVEL << "now throwing";
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
 
     if (isIndex) {
-       LOG_DEVEL << "returning false for index";
        return false;
     }
   }
 
-  LOG_DEVEL << "adding stats";
   stats.addWritesExecuted(possibleWrites);
   // FIXME _engine->_stats.scannedIndex++;
-  //
-  LOG_DEVEL << "New: " << (_info._outputNewRegisterId.has_value() ? std::to_string(_info._outputNewRegisterId.value()) : "none");
-  LOG_DEVEL << "Old: " << (_info._outputOldRegisterId.has_value() ? std::to_string(_info._outputOldRegisterId.value()) : "none");
-  LOG_DEVEL << "out: " << (_info._outputRegisterId.has_value() ? std::to_string(_info._outputRegisterId.value()) : "none");
-
 
   if (!(_info._outputRegisterId.has_value() || _info._outputOldRegisterId.has_value() || _info._outputNewRegisterId.has_value())) {
-    LOG_DEVEL << "return has parent";
     if (_info._hasParent){
       output.copyRow(input);
     }
@@ -248,11 +204,9 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   VPackSlice newDocument = VPackSlice::nullSlice();
   if (outDocument.isObject()) {
     if (_info._outputNewRegisterId.has_value() && outDocument.hasKey("new")) {
-      LOG_DEVEL << "get new";
       newDocument = outDocument.get("new");
     }
     if (outDocument.hasKey("old")) {
-      LOG_DEVEL << "get old";
       outDocument = outDocument.get("old");
       if (_info._outputOldRegisterId.has_value()) {
         oldDocument = outDocument;
@@ -264,14 +218,12 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
 
   // place documents as in the out variable slots of the result
   if (_info._outputRegisterId.has_value()) {
-    LOG_DEVEL << "write out";
     AqlValue value(outDocument);
     AqlValueGuard guard(value,true);
     output.moveValueInto(_info._outputRegisterId.value(), input, guard);
   }
 
   if (_info._outputOldRegisterId.has_value()) {
-    LOG_DEVEL << "write old";
     TRI_ASSERT(options.returnOld);
     AqlValue value(oldDocument);
     AqlValueGuard guard(value,true);
@@ -279,7 +231,6 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   }
 
   if (_info._outputNewRegisterId.has_value()) {
-    LOG_DEVEL << "write new";
     TRI_ASSERT(options.returnNew);
     AqlValue value(newDocument);
     AqlValueGuard guard(value,true);
