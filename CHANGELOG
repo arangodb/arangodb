@@ -1,6 +1,11 @@
 v3.4.5 (2019-03-27)
 -------------------
 
+* fixed issue #8294: wrong equals behaviour on arrays with ArangoSearch
+
+* fixed internal issue #528: ArangoSearch range query sometimes doesn't work
+  correctly with numeric values
+
 * fixed internal issue #3757 : when restarting a follower in active failover mode,
   try an incremental sync instead of a full resync. Fixed also the case where a
   double resync was made
