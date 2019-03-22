@@ -303,8 +303,8 @@ JOB_STATUS FailedServer::status() {
 
   std::shared_ptr<Builder> deleteTodos;
 
-  Node::Children const todos = _snapshot.hasAsChildren(toDoPrefix).first;
-  Node::Children const pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  Node::Children const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
   bool hasOpenChildTasks = false;
 
   for (auto const& subJob : todos) {

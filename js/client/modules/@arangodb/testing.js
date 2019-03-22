@@ -459,8 +459,16 @@ function unitTest (cases, options) {
   // tests to run
   let caselist = [];
 
+  const expandWildcard = ( name ) => {
+    if (!name.endsWith('*')) {
+      return name;
+    }
+    const prefix = name.substring(0, name.length - 1);
+    return allTests.filter( ( s ) => s.startsWith(prefix) ).join(',');
+  };
+
   for (let n = 0; n < cases.length; ++n) {
-    let splitted = cases[n].split(/[,;\.|]/);
+    let splitted = expandWildcard(cases[n]).split(/[,;|]/);
 
     for (let m = 0; m < splitted.length; ++m) {
       let which = splitted[m];
