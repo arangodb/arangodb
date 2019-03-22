@@ -25,6 +25,7 @@
 
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Basics/Mutex.h"
 #include "Cluster/ClusterComm.h"
 
 #include <lib/Rest/CommonDefines.h>
@@ -131,6 +132,10 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   /// @brief the last remote response Result object, may contain an error.
   arangodb::Result _lastError;
+
+  /// @brief Mutex to cover against the race, that a getSome request
+  ///        is responded before the ticket id is registered.
+  arangodb::Mutex _communicationMutex;
 
   OperationID _lastTicketId;
 

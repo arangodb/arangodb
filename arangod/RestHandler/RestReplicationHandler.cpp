@@ -2706,10 +2706,10 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
 
   {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    auto trx = std::make_unique<SingleCollectionTransaction>(ctx, col, access);
+    auto trx = std::make_shared<SingleCollectionTransaction>(ctx, col, access);
     query->setTransactionContext(ctx);
     // Inject will take over responsiblilty of transaction, even on error case.
-    query->injectTransaction(trx.release());
+    query->injectTransaction(std::move(trx));
   }
   auto trx = query->trx();
   TRI_ASSERT(trx != nullptr);

@@ -459,9 +459,9 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler("/_api/version",
                               RestHandlerCreator<RestVersionHandler>::createNoData);
 
-  _handlerFactory->addHandler("/_api/transaction",
-                              RestHandlerCreator<RestTransactionHandler>::createNoData);
-  
+  _handlerFactory->addPrefixHandler("/_api/transaction",
+                                    RestHandlerCreator<RestTransactionHandler>::createNoData);
+
   _handlerFactory->addPrefixHandler("/_api/ttl",
                                     RestHandlerCreator<RestTtlHandler>::createNoData);
 

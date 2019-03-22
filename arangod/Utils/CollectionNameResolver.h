@@ -47,11 +47,7 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
   explicit CollectionNameResolver(TRI_vocbase_t& vocbase)
       : _vocbase(vocbase),
-        _serverRole(ServerState::instance()->getRole()),
-        _resolvedNames(),
-        _resolvedIds(),
-        _nameLock(),
-        _idLock() {}
+        _serverRole(ServerState::instance()->getRole()) {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the resolver

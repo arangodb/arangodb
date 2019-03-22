@@ -609,6 +609,7 @@ SECTION("test_upgrade0_1") {
     REQUIRE((irs::utf8_path(dbPathFeature->directory()).mkdir()));
     REQUIRE((arangodb::basics::VelocyPackHelper::velocyPackToFile(StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
+    s.engine.views.clear();
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((false == !logicalCollection));

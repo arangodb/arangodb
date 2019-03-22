@@ -133,8 +133,10 @@ struct IResearchQueryPhraseSetup {
     auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
       arangodb::iresearch::IResearchAnalyzerFeature
     >();
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     analyzers->emplace(
+      result,
       "test_analyzer",
       "TestAnalyzer",
       "abc",
@@ -142,6 +144,7 @@ struct IResearchQueryPhraseSetup {
     ); // cache analyzer
 
     analyzers->emplace(
+      result,
       "test_csv_analyzer",
       "TestDelimAnalyzer",
       ","

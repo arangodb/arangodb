@@ -96,7 +96,8 @@ int countOnCoordinator(transaction::Methods& trx, std::string const& collname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string const& collname,
-                                      std::unordered_map<std::string, double>& result);
+                                      std::unordered_map<std::string, double>& result,
+                                      TRI_voc_tick_t tid = 0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document in a coordinator
