@@ -111,7 +111,6 @@ void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
   size_t numberBabies = numBabies;  // from uint64_t to size_t
   if (errorCounter.empty()) {
     // update the success counter
-    // All successful.
     if (info._doCount) {
       stats.addWritesExecuted(numberBabies);
     }
@@ -243,7 +242,6 @@ bool Insert::doModifications(ModificationExecutorInfos& info, ModificationStats&
       return _last_not_skip != std::numeric_limits<decltype(_last_not_skip)>::max();
     }
   }
-  // return false; //CHECK - ME -- false should be ok as we do not output anything
   return true;
 }
 
@@ -303,7 +301,6 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
     }
   }
 
-  // increase index and make sure next element is within the valid range
   return ++_blockIndex < blockSize;
 }
 
@@ -432,16 +429,9 @@ bool Remove::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
           // store $OLD
           auto slice = elm.get("old");
 
-          // original no none check! //result->emplaceValue(dstRow, _outRegOld, elm.get("old"));
-          // if (slice.isNone()) {
-          //   AqlValue value(VPackSlice::nullSlice());
-          //   AqlValueGuard guard(value, true);
-          //   output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
-          // } else {
           AqlValue value(slice);
           AqlValueGuard guard(value, true);
           output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
-          //}
         }
       }
       ++_operationResultIterator;
@@ -633,9 +623,8 @@ bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
           // store $NEW
           output.moveValueInto(info._outputNewRegisterId.value(), input, guard);
         }
-      } else {
-        // LOG_DEVEL << "error";
       }
+
       ++*iter;
     } else if (_operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
       output.copyRow(input);
@@ -824,7 +813,6 @@ bool UpdateReplace<ModType>::doOutput(ModificationExecutorInfos& info,
     }
   }
 
-  // increase index and make sure next element is within the valid range
   return ++_blockIndex < _last_not_skip;
 }
 

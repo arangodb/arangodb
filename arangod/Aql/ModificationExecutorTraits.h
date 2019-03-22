@@ -65,8 +65,6 @@ struct ModificationBase {
   std::size_t _last_not_skip;
   bool _justCopy = false;
 
-  // SingleBlockFetcher<false>& _fetcher;
-
   void reset() {
     // MUST not reset _block
     _justCopy = false;

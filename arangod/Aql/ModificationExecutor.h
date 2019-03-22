@@ -23,13 +23,13 @@
 #ifndef ARANGOD_AQL_MODIFICATION_EXECUTOR_H
 #define ARANGOD_AQL_MODIFICATION_EXECUTOR_H
 
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/SingleBlockFetcher.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/Stats.h"
 #include "Utils/OperationOptions.h"
 #include "velocypack/Slice.h"
@@ -64,6 +64,10 @@ inline OperationOptions convertOptions(ModificationOptions const& in,
                                        Variable const* outVariableOld) {
   OperationOptions out;
 
+  // commented out OperationOptions attributesare not provided
+  // by the ModificationOptions or the information given by the
+  // Variable pointer.
+
   // in.ignoreErrors;
   out.waitForSync = in.waitForSync;
   out.keepNull = !in.nullMeansRemove;
@@ -97,47 +101,42 @@ inline std::shared_ptr<std::unordered_set<RegisterId>> makeSet(std::initializer_
 
 struct BoolWrapper {
   explicit BoolWrapper(bool b) { _value = b; }
-  operator bool(){ return _value; }
+  operator bool() { return _value; }
   bool _value;
 };
 
 struct ProducesResults : BoolWrapper {
-  explicit ProducesResults(bool b) : BoolWrapper(b) {};
+  explicit ProducesResults(bool b) : BoolWrapper(b){};
 };
 struct ConsultAqlWriteFilter : BoolWrapper {
-  explicit ConsultAqlWriteFilter(bool b) : BoolWrapper(b) {};
+  explicit ConsultAqlWriteFilter(bool b) : BoolWrapper(b){};
 };
 struct IgnoreErrors : BoolWrapper {
-  explicit IgnoreErrors(bool b) : BoolWrapper(b) {};
+  explicit IgnoreErrors(bool b) : BoolWrapper(b){};
 };
 struct DoCount : BoolWrapper {
-  explicit DoCount(bool b) : BoolWrapper(b) {};
+  explicit DoCount(bool b) : BoolWrapper(b){};
 };
 struct IsReplace : BoolWrapper {
-  explicit IsReplace(bool b) : BoolWrapper(b) {};
+  explicit IsReplace(bool b) : BoolWrapper(b){};
 };
 
 struct IgnoreDocumentNotFound : BoolWrapper {
-  explicit IgnoreDocumentNotFound(bool b) : BoolWrapper(b) {};
+  explicit IgnoreDocumentNotFound(bool b) : BoolWrapper(b){};
 };
-
 
 class ModificationExecutorInfos : public ExecutorInfos {
  public:
-  ModificationExecutorInfos(boost::optional<RegisterId> input1RegisterId,
-                            boost::optional<RegisterId> input2RegisterId,
-                            boost::optional<RegisterId> input3RegisterId,
-                            boost::optional<RegisterId> outputNewRegisterId,
-                            boost::optional<RegisterId> outputOldRegisterId,
-                            RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                            std::unordered_set<RegisterId> registersToClear,
-                            std::unordered_set<RegisterId> registersToKeep,
-                            transaction::Methods* trx, OperationOptions options,
-                            aql::Collection const* aqlCollection,
-                            ProducesResults producesResults,
-                            ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
-                            DoCount doCount, /*bool returnInheritedResults,*/
-                            IsReplace isReplace, IgnoreDocumentNotFound ignoreDocumentNotFound)
+  ModificationExecutorInfos(
+      boost::optional<RegisterId> input1RegisterId, boost::optional<RegisterId> input2RegisterId,
+      boost::optional<RegisterId> input3RegisterId, boost::optional<RegisterId> outputNewRegisterId,
+      boost::optional<RegisterId> outputOldRegisterId, RegisterId nrInputRegisters,
+      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+      std::unordered_set<RegisterId> registersToKeep, transaction::Methods* trx,
+      OperationOptions options, aql::Collection const* aqlCollection,
+      ProducesResults producesResults, ConsultAqlWriteFilter consultAqlWriteFilter,
+      IgnoreErrors ignoreErrors, DoCount doCount, /*bool returnInheritedResults,*/
+      IsReplace isReplace, IgnoreDocumentNotFound ignoreDocumentNotFound)
       : ExecutorInfos(makeSet({wrap(input1RegisterId), wrap(input2RegisterId),
                                wrap(input3RegisterId)}) /*input registers*/,
                       makeSet({wrap(outputOldRegisterId), wrap(outputNewRegisterId)}) /*output registers*/,
@@ -172,7 +171,7 @@ class ModificationExecutorInfos : public ExecutorInfos {
   IgnoreErrors _ignoreErrors;
   DoCount _doCount;  // count statisitics
   // bool _returnInheritedResults;
-  IsReplace _isReplace;               // needed for upsert
+  IsReplace _isReplace;                            // needed for upsert
   IgnoreDocumentNotFound _ignoreDocumentNotFound;  // needed for update replace
 
   // insert (singleinput) - upsert (inDoc) - update replace (inDoc)
@@ -196,7 +195,7 @@ struct ModificationExecutorBase {
                 // Maybe This should ask for a 1:1 relation.
   };
   using Infos = ModificationExecutorInfos;
-  using Fetcher = FetcherType; // SingleBlockFetcher<Properties::allowsBlockPassthrough>;
+  using Fetcher = FetcherType;  // SingleBlockFetcher<Properties::allowsBlockPassthrough>;
   using Stats = ModificationStats;
 
   ModificationExecutorBase(Fetcher&, Infos&);
@@ -218,7 +217,7 @@ class ModificationExecutor : public ModificationExecutorBase<FetcherType> {
  public:
   using Modification = Modifier;
 
-  //pull in types from template base
+  // pull in types from template base
   using Fetcher = typename ModificationExecutorBase<FetcherType>::Fetcher;
   using Infos = typename ModificationExecutorBase<FetcherType>::Infos;
   using Stats = typename ModificationExecutorBase<FetcherType>::Stats;
