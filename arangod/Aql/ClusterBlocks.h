@@ -214,31 +214,6 @@ class SortingGatherBlock final : public ExecutionBlock {
   std::unique_ptr<SortingStrategy> _strategy;
 };  // SortingGatherBlock
 
-class SingleRemoteOperationBlock final : public ExecutionBlock {
-  /// @brief constructors/destructors
- private:
-  bool getOne(arangodb::aql::AqlItemBlock* aqlres, size_t outputCounter);
-
- public:
-  SingleRemoteOperationBlock(ExecutionEngine* engine, SingleRemoteOperationNode const* en);
-
-  /// @brief timeout
-  static double const defaultTimeOut;
-
-  /// @brief getSome
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
-
-  /// @brief skipSome
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
-
- private:
-  /// @brief _colectionName: the name of the sharded collection
-  Collection const* _collection;
-
-  /// @brief the key of the document to fetch
-  std::string const _key;
-};
-
 }  // namespace aql
 }  // namespace arangodb
 
