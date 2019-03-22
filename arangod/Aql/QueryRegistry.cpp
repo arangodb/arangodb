@@ -70,10 +70,6 @@ QueryRegistry::~QueryRegistry() {
 /// @brief insert
 void QueryRegistry::insert(QueryId id, Query* query, double ttl,
                            bool isPrepared, bool keepLease) {
-  if (application_features::ApplicationServer::isStopping()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-  }
-
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->trx() != nullptr);
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
