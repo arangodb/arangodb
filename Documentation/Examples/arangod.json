@@ -2339,6 +2339,23 @@
     "section" : "replication",
     "type" : "boolean"
   },
+  "rocksdb.allow-fallocate" : {
+    "category" : "option",
+    "default" : true,
+    "deprecatedIn" : null,
+    "description" : "if true, allow RocksDB to use fallocate calls. if false, fallocate calls are bypassed",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "introducedIn" : [
+      "v3.4.5",
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
   "rocksdb.block-align-data-blocks" : {
     "category" : "option",
     "default" : false,
@@ -2576,6 +2593,23 @@
     "requiresValue" : true,
     "section" : "rocksdb",
     "type" : "int64"
+  },
+  "rocksdb.limit-open-files-at-startup" : {
+    "category" : "option",
+    "default" : false,
+    "deprecatedIn" : null,
+    "description" : "limit the amount of .sst files RocksDB will inspect at startup, in order to startup reduce IO",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "introducedIn" : [
+      "v3.4.5",
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "rocksdb",
+    "type" : "boolean"
   },
   "rocksdb.max-background-jobs" : {
     "category" : "option",
