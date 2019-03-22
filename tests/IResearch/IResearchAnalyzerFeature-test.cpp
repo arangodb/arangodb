@@ -1285,7 +1285,7 @@ SECTION("test_persistence") {
       CHECK((expected.empty()));
     }
   }
-*/
+
   // emplace on single-server (should persist)
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -1314,7 +1314,7 @@ SECTION("test_persistence") {
     CHECK((trx.truncate(ANALYZER_COLLECTION_NAME, options).ok()));
     CHECK((trx.commit().ok()));
   }
-
+*/
   // emplace on coordinator (should persist)
   {
     auto before = arangodb::ServerState::instance()->getRole();
