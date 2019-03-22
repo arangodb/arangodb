@@ -133,10 +133,8 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_
                                                 double ttl, bool hasCount) {
   TRI_ASSERT(result.result != nullptr);
 
-  CursorId const id = TRI_NewServerSpecificTick();  // embedded server id
-  TRI_ASSERT(id != 0);
   std::unique_ptr<Cursor> cursor(
-      new aql::QueryResultCursor(_vocbase, id, std::move(result), batchSize, ttl, hasCount));
+      new aql::QueryResultCursor(_vocbase, std::move(result), batchSize, ttl, hasCount));
   cursor->use();
 
   return addCursor(std::move(cursor));
@@ -153,14 +151,14 @@ Cursor* CursorRepository::createQueryStream(std::string const& query,
                                             std::shared_ptr<VPackBuilder> const& binds,
                                             std::shared_ptr<VPackBuilder> const& opts,
                                             size_t batchSize, double ttl,
-                                            bool contextOwnedByExterior) {
+                                            bool contextOwnedByExterior,
+                                            std::shared_ptr<transaction::Context> ctx) {
   TRI_ASSERT(!query.empty());
 
-  CursorId const id = TRI_NewServerSpecificTick();  // embedded server id
-  TRI_ASSERT(id != 0);
-  auto cursor = std::make_unique<aql::QueryStreamCursor>(_vocbase, id, query, binds,
+  auto cursor = std::make_unique<aql::QueryStreamCursor>(_vocbase, query, binds,
                                                          opts, batchSize, ttl,
-                                                         contextOwnedByExterior);
+                                                         contextOwnedByExterior,
+                                                         std::move(ctx));
   cursor->use();
 
   return addCursor(std::move(cursor));

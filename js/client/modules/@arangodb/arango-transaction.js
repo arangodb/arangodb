@@ -28,6 +28,7 @@
 const internal = require('internal');
 const arangosh = require('@arangodb/arangosh');
 const ArangoError = require('@arangodb').ArangoError;
+const ArangoQueryCursor = require('@arangodb/arango-query-cursor').ArangoQueryCursor;
 
 function ArangoTransaction (database, data) {
   this._id = 0;
@@ -129,6 +130,49 @@ ArangoTransaction.prototype.abort = function() {
   arangosh.checkRequestResult(requestResult);
   this._id = 0;
 };
+
+ArangoTransaction.prototype.query = function(query, bindVars, cursorOptions, options) {
+
+  if (typeof query === 'object' && query !== null && arguments.length === 1) {
+    return new ArangoStatement(this, query).execute();
+  }
+  if (options === undefined && cursorOptions !== undefined) {
+    options = cursorOptions;
+  }
+
+  if (query === undefined || query === '') {
+    throw 'ArangoStatement needs a valid query attribute';
+  }
+
+  let body = {
+    query: query,
+    count: (cursorOptions && cursorOptions.count) || false,
+    bindVars: bindVars || undefined,
+  };
+
+  if (cursorOptions && cursorOptions.batchSize) {
+    body.batchSize = cursorOptions.batchSize;
+  }
+  
+  if (options) {
+    body.options = options;
+  }
+
+  if (cursorOptions && cursorOptions.cache) {
+    body.cache = cursorOptions.cache;
+  }
+
+  const headers = {'x-arango-trx-id' : this.id()};
+  var requestResult = this._database._connection.POST('/_api/cursor', body, headers);
+  arangosh.checkRequestResult(requestResult);
+
+  let isStream = false;
+  if (options && options.stream) {
+    isStream = this._options.stream;
+  }
+
+  return new ArangoQueryCursor(this._database, requestResult, isStream);
+}
 
 ArangoTransactionCollection.prototype.document = function(id) {
   if (this._transaction.id() === 0) {
