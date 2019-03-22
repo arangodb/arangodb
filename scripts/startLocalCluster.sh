@@ -154,7 +154,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           --database.directory cluster/data$PORT \
           --javascript.enabled false \
           --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-          --server.statistics false \
           --log.file cluster/$PORT.log \
         --log.force-direct true \
           --log.level $LOG_LEVEL_AGENCY \
@@ -181,7 +180,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --database.directory cluster/data$PORT \
         --javascript.enabled false \
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-        --server.statistics false \
         --log.file cluster/$PORT.log \
         --log.force-direct true \
         --log.level $LOG_LEVEL_AGENCY \
