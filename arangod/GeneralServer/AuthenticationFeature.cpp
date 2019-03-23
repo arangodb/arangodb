@@ -185,7 +185,8 @@ void AuthenticationFeature::start() {
   TRI_ASSERT(isEnabled());
 
   // If this is empty here, --server.jwt-secret was used
-  if (_jwtSecretKeyfileProgramOption.empty()) {
+  if (!_jwtSecretProgramOption.empty() &&
+      _jwtSecretKeyfileProgramOption.empty()) {
     LOG_TOPIC(WARN, arangodb::Logger::AUTHENTICATION)
         << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
            "instead.";
