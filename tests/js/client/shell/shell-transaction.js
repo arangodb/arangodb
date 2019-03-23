@@ -458,7 +458,7 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testNonExistingCollectionsArray: function () {
-      var obj = {
+      let obj = {
         collections: {
           read: [ 'UnitTestsTransactionNonExisting' ]
         }
@@ -481,7 +481,7 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testNonExistingCollectionsString: function () {
-      var obj = {
+      let obj = {
         collections: {
           read: 'UnitTestsTransactionNonExisting'
         }
@@ -504,7 +504,7 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testNonDeclaredCollections1: function () {
-      var obj = {
+      let obj = {
         collections: {}
       };
 
@@ -528,7 +528,7 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testNonDeclaredCollections2: function () {
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn2 ]
         }
@@ -554,7 +554,7 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testNonDeclaredCollections3: function () {
-      var obj = {
+      let obj = {
         collections: {
           read: [ cn1 ]
         }
@@ -580,20 +580,18 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testNoCollections: function () {
-      var obj = {
+      let obj = {
         collections: {}
       };
 
       let trx;
       try {
         trx = db._createTransaction(obj);
-        trx.commit();
-        trx = null;
       } catch(err) {
         fail();
       } finally {
         if (trx) {
-          trx.abort();
+          trx.commit();
         }
       }
     },
@@ -602,41 +600,35 @@ function transactionCollectionsSuite () {
     // / @brief test: trx using no collections
     // //////////////////////////////////////////////////////////////////////////////
 
-    /*testNoCollectionsAql: function () {
-      var result;
+    testNoCollectionsAql: function () {
+      let result;
 
-      var obj = {
+      let obj = {
         collections: {
-        },
-        action: function () {
-          result = db._query('FOR i IN [ 1, 2, 3 ] RETURN i').toArray();
-          return true;
         }
       };
 
       let trx;
       try {
         trx = db._createTransaction(obj);
-        result = db._query('FOR i IN [ 1, 2, 3 ] RETURN i').toArray();
-        trx.commit();
+        result = trx.query('FOR i IN [ 1, 2, 3 ] RETURN i').toArray();
       } catch(err) {
         fail();
       } finally {
         if (trx) {
-          trx.abort();
+          trx.commit();
         }
       }
 
-      assertTrue(TRANSACTION(obj));
       assertEqual([ 1, 2, 3 ], result);
-    },*/
+    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: trx using valid collections
     // //////////////////////////////////////////////////////////////////////////////
 
     testValidCollectionsArray: function () {
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         }
@@ -662,7 +654,7 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testValidCollectionsString: function () {
-      var obj = {
+      let obj = {
         collections: {
           write: cn1
         }
@@ -689,7 +681,7 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testValidMultipleCollectionsArray: function () {
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1, cn2 ]
         }
@@ -721,7 +713,7 @@ function transactionCollectionsSuite () {
     testValidMultipleCollectionsString: function () {
       c2.save({ _key: 'foo' });
 
-      var obj = {
+      let obj = {
         collections: {
           write: cn1,
           read: cn2
@@ -752,7 +744,7 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRedeclareCollectionArray: function () {
-      var obj = {
+      let obj = {
         collections: {
           read: [ cn1 ],
           write: [ cn1 ]
@@ -781,7 +773,7 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRedeclareCollectionString: function () {
-      var obj = {
+      let obj = {
         collections: {
           read: cn1,
           write: cn1
@@ -810,7 +802,7 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testReadWriteCollections: function () {
-      var obj = {
+      let obj = {
         collections: {
           read: [ cn1 ],
           write: [ cn2 ]
@@ -839,7 +831,7 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testWaitForSyncTrue: function () {
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         },
@@ -868,7 +860,7 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testWaitForSyncFalse: function () {
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         },
@@ -896,24 +888,32 @@ function transactionCollectionsSuite () {
     // / @brief test: trx with embedded AQL
     // //////////////////////////////////////////////////////////////////////////////
 
-    /*testAqlRead: function () {
-      var i = 0;
-      for (i = 0; i < 10; ++i) {
+    testAqlRead: function () {
+      for (let i = 0; i < 10; ++i) {
         c1.save({ _key: 'test' + i });
       }
 
-      var obj = {
+      let obj = {
         collections: {
           read: [ cn1 ]
-        },
-        action: function () {
-          var docs = db._query('FOR i IN @@cn1 RETURN i', { '@cn1': cn1 }).toArray();
-          assertEqual(10, docs.length);
-          return true;
         }
       };
 
-      assertTrue(TRANSACTION(obj));
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+
+        let docs = trx.query('FOR i IN @@cn1 RETURN i', { '@cn1': cn1 }).toArray();
+        assertEqual(10, docs.length);
+
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+      
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -927,18 +927,26 @@ function transactionCollectionsSuite () {
         c2.save({ _key: 'test' + i });
       }
 
-      var obj = {
+      let obj = {
         collections: {
           read: [ cn1, cn2 ]
-        },
-        action: function () {
-          var docs = db._query('FOR i IN @@cn1 FOR j IN @@cn2 RETURN i', { '@cn1': cn1, '@cn2': cn2 }).toArray();
-          assertEqual(100, docs.length);
-          return true;
         }
       };
+      
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
 
-      assertTrue(TRANSACTION(obj));
+        let docs = trx.query('FOR i IN @@cn1 FOR j IN @@cn2 RETURN i', { '@cn1': cn1, '@cn2': cn2 }).toArray();
+        assertEqual(100, docs.length);
+
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -952,18 +960,26 @@ function transactionCollectionsSuite () {
         c2.save({ _key: 'test' + i });
       }
 
-      var obj = {
+      let obj = {
         collections: {
           // intentionally empty
-        },
-        action: function () {
-          var docs = db._query('FOR i IN @@cn1 FOR j IN @@cn2 RETURN i', { '@cn1': cn1, '@cn2': cn2 }).toArray();
-          assertEqual(100, docs.length);
-          return true;
         }
       };
 
-      assertTrue(TRANSACTION(obj));
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+
+        let docs = trx.query('FOR i IN @@cn1 FOR j IN @@cn2 RETURN i', { '@cn1': cn1, '@cn2': cn2 }).toArray();
+        assertEqual(100, docs.length);
+
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -971,25 +987,34 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAqlWrite: function () {
-      var i = 0;
-      for (i = 0; i < 10; ++i) {
+      for (let i = 0; i < 10; ++i) {
         c1.save({ _key: 'test' + i });
       }
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          assertEqual(10, c1.count());
-          var ops = db._query('FOR i IN @@cn1 REMOVE i._key IN @@cn1', { '@cn1': cn1 }).getExtra().stats;
-          assertEqual(10, ops.writesExecuted);
-          assertEqual(0, c1.count());
-          return true;
         }
       };
 
-      assertTrue(TRANSACTION(obj));
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+
+        assertEqual(10, tc1.count());
+        var ops = trx.query('FOR i IN @@cn1 REMOVE i._key IN @@cn1', { '@cn1': cn1 }).getExtra().stats;
+        assertEqual(10, ops.writesExecuted);
+        assertEqual(0, tc1.count());
+
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
       assertEqual(0, c1.count());
     },
 
@@ -998,25 +1023,38 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAqlReadWrite: function () {
-      var i = 0;
-      for (i = 0; i < 10; ++i) {
+      for (let i = 0; i < 10; ++i) {
         c1.save({ _key: 'test' + i });
         c2.save({ _key: 'test' + i });
       }
 
-      var obj = {
+      let obj = {
         collections: {
           read: [ cn1 ],
           write: [ cn2 ]
-        },
-        action: function () {
-          var ops = db._query('FOR i IN @@cn1 REMOVE i._key IN @@cn2', { '@cn1': cn1, '@cn2': cn2 }).getExtra().stats;
-          assertEqual(10, ops.writesExecuted);
-          return true;
         }
       };
 
-      assertTrue(TRANSACTION(obj));
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        let tc2 = trx.collection(c2.name());
+        assertEqual(10, tc1.count());
+        assertEqual(10, tc2.count());
+
+        var ops = trx.query('FOR i IN @@cn1 REMOVE i._key IN @@cn2', { '@cn1': cn1, '@cn2': cn2 }).getExtra().stats;
+        assertEqual(10, ops.writesExecuted);
+        assertEqual(10, tc1.count());
+        assertEqual(0, tc2.count());
+
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
 
       assertEqual(10, c1.count());
       assertEqual(0, c2.count());
@@ -1027,30 +1065,40 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAqlWriteUndeclared: function () {
-      var i = 0;
-      for (i = 0; i < 10; ++i) {
+      for (let i = 0; i < 10; ++i) {
         c1.save({ _key: 'test' + i });
         c2.save({ _key: 'test' + i });
       }
 
-      var obj = {
+      let obj = {
         collections: {
           read: [ cn1 ]
-        },
-        action: function () {
-          try {
-            db._query('FOR i IN @@cn1 REMOVE i._key IN @@cn2', { '@cn1': cn1, '@cn2': cn2 });
-            fail();
-          } catch (err) {
-            assertEqual(arangodb.errors.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
-          }
-
-          assertEqual(10, c1.count());
-          return true;
         }
       };
 
-      assertTrue(TRANSACTION(obj));
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        let tc2 = trx.collection(c2.name());
+        
+        try {
+          trx.query('FOR i IN @@cn1 REMOVE i._key IN @@cn2', { '@cn1': cn1, '@cn2': cn2 });
+          fail();
+        } catch (err) {
+          assertEqual(arangodb.errors.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+        }
+
+        assertEqual(10, tc1.count());
+        assertEqual(10, tc2.count());
+
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
 
       assertEqual(10, c1.count());
       assertEqual(10, c2.count());
@@ -1061,34 +1109,43 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAqlMultiWrite: function () {
-      var i = 0;
-      for (i = 0; i < 10; ++i) {
+      for (let i = 0; i < 10; ++i) {
         c1.save({ _key: 'test' + i });
         c2.save({ _key: 'test' + i });
       }
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1, cn2 ]
-        },
-        action: function () {
-          var ops;
-          ops = db._query('FOR i IN @@cn1 REMOVE i._key IN @@cn1', { '@cn1': cn1 }).getExtra().stats;
-          assertEqual(10, ops.writesExecuted);
-          assertEqual(0, c1.count());
-
-          ops = db._query('FOR i IN @@cn2 REMOVE i._key IN @@cn2', { '@cn2': cn2 }).getExtra().stats;
-          assertEqual(10, ops.writesExecuted);
-          assertEqual(0, c2.count());
-          return true;
         }
       };
 
-      assertTrue(TRANSACTION(obj));
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        let tc2 = trx.collection(c2.name());
+        
+        var ops;
+        ops = trx.query('FOR i IN @@cn1 REMOVE i._key IN @@cn1', { '@cn1': cn1 }).getExtra().stats;
+        assertEqual(10, ops.writesExecuted);
+        assertEqual(0, tc1.count());
+
+        ops = trx.query('FOR i IN @@cn2 REMOVE i._key IN @@cn2', { '@cn2': cn2 }).getExtra().stats;
+        assertEqual(10, ops.writesExecuted);
+        assertEqual(0, tc2.count());
+
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
 
       assertEqual(0, c1.count());
       assertEqual(0, c2.count());
-    }*/
+    }
 
   };
 }
@@ -1143,7 +1200,7 @@ function transactionOperationsSuite () {
       c1 = db._create(cn1);
       c1.save({ _key: 'foo', a: 1 });
 
-      var obj = {
+      let obj = {
         collections: {
           read: [ cn1 ]
         }
@@ -1174,7 +1231,7 @@ function transactionOperationsSuite () {
       c1 = db._create(cn1);
       c1.save({ _key: 'foo', a: 1 });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         }
@@ -1207,7 +1264,7 @@ function transactionOperationsSuite () {
         c1.save({ _key: 'foo' + i, a: i });
       }
 
-      var obj = {
+      let obj = {
         collections: {
           read: [ cn1 ]
         }
@@ -1238,28 +1295,38 @@ function transactionOperationsSuite () {
     // / @brief test: trx with read operation
     // //////////////////////////////////////////////////////////////////////////////
 
-    /*testScan2: function () {
+    testScan2: function () {
       c1 = db._create(cn1);
-      for (var i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         c1.save({ _key: 'foo' + i, a: i });
       }
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          assertEqual(100, c1.toArray().length);
-          assertEqual(100, c1.count());
-
-          for (var i = 0; i < 100; ++i) {
-            assertEqual(i, c1.document('foo' + i).a);
-          }
-          return true;
         }
       };
 
-      TRANSACTION(obj);
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        //assertEqual(100, tc1.toArray().length);
+        assertEqual(100, tc1.count());
+
+        for (let i = 0; i < 100; ++i) {
+          assertEqual(i, tc1.document('foo' + i).a);
+        }
+
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
       assertEqual(100, c1.count());
     },
 
@@ -1270,17 +1337,27 @@ function transactionOperationsSuite () {
     testSingleInsert: function () {
       c1 = db._create(cn1);
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.save({ _key: 'foo' });
-          return true;
         }
       };
 
-      TRANSACTION(obj);
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.save({ _key: 'foo' });
+
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
       assertEqual(1, c1.count());
       assertEqual([ 'foo' ], sortedKeys(c1));
     },
@@ -1292,18 +1369,28 @@ function transactionOperationsSuite () {
     testMultiInsert: function () {
       c1 = db._create(cn1);
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.save({ _key: 'foo' });
-          c1.save({ _key: 'bar' });
-          return true;
         }
       };
+      
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.save({ _key: 'foo' });
+        tc1.save({ _key: 'bar' });
 
-      TRANSACTION(obj);
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
       assertEqual(2, c1.count());
       assertEqual([ 'bar', 'foo' ], sortedKeys(c1));
     },
@@ -1317,18 +1404,28 @@ function transactionOperationsSuite () {
       c1.save({ _key: 'foo' });
       c1.save({ _key: 'bar' });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.save({ _key: 'baz' });
-          c1.save({ _key: 'bam' });
-          return true;
         }
       };
 
-      TRANSACTION(obj);
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.save({ _key: 'baz' });
+        tc1.save({ _key: 'bam' });
+
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
       assertEqual(4, c1.count());
       assertEqual([ 'bam', 'bar', 'baz', 'foo' ], sortedKeys(c1));
     },
@@ -1342,22 +1439,32 @@ function transactionOperationsSuite () {
       c1.save({ _key: 'foo', a: 1 });
       c1.save({ _key: 'bar', b: 2, c: 3 });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          assertEqual(1, c1.document('foo').a);
-          c1.replace('foo', { a: 3 });
-
-          assertEqual(2, c1.document('bar').b);
-          assertEqual(3, c1.document('bar').c);
-          c1.replace('bar', { b: 9 });
-          return true;
         }
       };
 
-      TRANSACTION(obj);
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        assertEqual(1, tc1.document('foo').a);
+        tc1.replace('foo', { a: 3 });
+
+        assertEqual(2, tc1.document('bar').b);
+        assertEqual(3, tc1.document('bar').c);
+        tc1.replace('bar', { b: 9 });
+
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
       assertEqual(2, c1.count());
       assertEqual([ 'bar', 'foo' ], sortedKeys(c1));
       assertEqual(3, c1.document('foo').a);
@@ -1373,26 +1480,36 @@ function transactionOperationsSuite () {
       c1 = db._create(cn1);
       c1.save({ _key: 'foo', a: 1 });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          assertEqual(1, c1.document('foo').a);
-          c1.replace('foo', { a: 3 });
-          assertEqual(3, c1.document('foo').a);
-          c1.replace('foo', { a: 4 });
-          assertEqual(4, c1.document('foo').a);
-          c1.replace('foo', { a: 5 });
-          assertEqual(5, c1.document('foo').a);
-          c1.replace('foo', { a: 6, b: 99 });
-          assertEqual(6, c1.document('foo').a);
-          assertEqual(99, c1.document('foo').b);
-          return true;
         }
       };
 
-      TRANSACTION(obj);
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        assertEqual(1, tc1.document('foo').a);
+        tc1.replace('foo', { a: 3 });
+        assertEqual(3, tc1.document('foo').a);
+        tc1.replace('foo', { a: 4 });
+        assertEqual(4, tc1.document('foo').a);
+        tc1.replace('foo', { a: 5 });
+        assertEqual(5, tc1.document('foo').a);
+        tc1.replace('foo', { a: 6, b: 99 });
+        assertEqual(6, tc1.document('foo').a);
+        assertEqual(99, tc1.document('foo').b);
+
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
       assertEqual(1, c1.count());
       assertEqual(6, c1.document('foo').a);
       assertEqual(99, c1.document('foo').b);
@@ -1409,26 +1526,36 @@ function transactionOperationsSuite () {
       c1.save({ _key: 'baz', c: 3 });
       c1.save({ _key: 'bam', d: 4 });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          assertEqual(1, c1.document('foo').a);
-          c1.update('foo', { a: 3 });
-
-          assertEqual(2, c1.document('bar').b);
-          c1.update('bar', { b: 9 });
-
-          assertEqual(3, c1.document('baz').c);
-          c1.update('baz', { b: 9, c: 12 });
-
-          assertEqual(4, c1.document('bam').d);
-          return true;
         }
       };
+      
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        assertEqual(1, tc1.document('foo').a);
+        tc1.update('foo', { a: 3 });
 
-      TRANSACTION(obj);
+        assertEqual(2, tc1.document('bar').b);
+        tc1.update('bar', { b: 9 });
+
+        assertEqual(3, tc1.document('baz').c);
+        tc1.update('baz', { b: 9, c: 12 });
+
+        assertEqual(4, tc1.document('bam').d);
+
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
       assertEqual(4, c1.count());
       assertEqual([ 'bam', 'bar', 'baz', 'foo' ], sortedKeys(c1));
       assertEqual(3, c1.document('foo').a);
@@ -1448,18 +1575,28 @@ function transactionOperationsSuite () {
       c1.save({ _key: 'bar', b: 2 });
       c1.save({ _key: 'baz', c: 3 });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.remove('foo');
-          c1.remove('baz');
-          return true;
         }
       };
+      
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.remove('foo');
+        tc1.remove('baz');
 
-      TRANSACTION(obj);
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
       assertEqual(1, c1.count());
       assertEqual([ 'bar' ], sortedKeys(c1));
     },
@@ -1471,17 +1608,28 @@ function transactionOperationsSuite () {
     testTruncateEmpty: function () {
       c1 = db._create(cn1);
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.truncate();
-          return true;
         }
       };
 
-      TRANSACTION(obj);
+           
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.truncate();
+
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
       assertEqual(0, c1.count());
       assertEqual([ ], sortedKeys(c1));
     },
@@ -1493,21 +1641,31 @@ function transactionOperationsSuite () {
     testTruncateNonEmpty: function () {
       c1 = db._create(cn1);
 
-      for (var i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         c1.save({ a: i });
       }
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.truncate();
-          return true;
         }
       };
+      
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.truncate();
 
-      TRANSACTION(obj);
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
       assertEqual(0, c1.count());
       assertEqual([ ], sortedKeys(c1));
     },
@@ -1519,178 +1677,35 @@ function transactionOperationsSuite () {
     testTruncateAndAdd: function () {
       c1 = db._create(cn1);
 
-      for (var i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         c1.save({ a: i });
       }
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
-        },
-        action: function () {
-          c1.truncate();
-          c1.save({ _key: 'foo' });
-          return true;
         }
       };
 
-      TRANSACTION(obj);
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.truncate();
+        tc1.save({ _key: 'foo' });
+
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
       assertEqual(1, c1.count());
       assertEqual([ 'foo' ], sortedKeys(c1));
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: trx with byExample operation
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testByExample: function () {
-      c1 = db._create(cn1);
-      c1.ensureUniqueConstraint('name');
-
-      for (var i = 0; i < 100; ++i) {
-        c1.save({ name: 'test' + i });
-      }
-
-      var obj = {
-        collections: {
-          write: [ cn1 ]
-        },
-        action: function () {
-          var r = c1.byExample({ name: 'test99' }).toArray();
-          assertEqual(r.length, 1);
-          assertEqual('test99', r[0].name);
-        }
-      };
-
-      TRANSACTION(obj);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: trx with firstExample operation
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testFirstExample1: function () {
-      c1 = db._create(cn1);
-      c1.ensureUniqueConstraint('name');
-
-      for (var i = 0; i < 100; ++i) {
-        c1.save({ name: 'test' + i });
-      }
-
-      var obj = {
-        collections: {
-          write: [ cn1 ]
-        },
-        action: function () {
-          var r = c1.firstExample({ name: 'test99' });
-          assertEqual('test99', r.name);
-        }
-      };
-
-      TRANSACTION(obj);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: trx with firstExample operation
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testFirstExample2: function () {
-      c1 = db._create(cn1);
-      c1.ensureHashIndex('name');
-
-      for (var i = 0; i < 100; ++i) {
-        c1.save({ name: 'test' + i });
-      }
-
-      var obj = {
-        collections: {
-          write: [ cn1 ]
-        },
-        action: function () {
-          var r = c1.firstExample({ name: 'test99' });
-          assertEqual('test99', r.name);
-        }
-      };
-
-      TRANSACTION(obj);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: trx with firstExample operation
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testFirstExample3: function () {
-      c1 = db._create(cn1);
-      c1.ensureUniqueSkiplist('name');
-
-      for (var i = 0; i < 100; ++i) {
-        c1.save({ name: 'test' + i });
-      }
-
-      var obj = {
-        collections: {
-          write: [ cn1 ]
-        },
-        action: function () {
-          var r = c1.firstExample({ name: 'test99' });
-          assertEqual('test99', r.name);
-        }
-      };
-
-      TRANSACTION(obj);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: trx with firstExample operation
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testFirstExample4: function () {
-      c1 = db._create(cn1);
-      c1.ensureSkiplist('name');
-
-      for (var i = 0; i < 100; ++i) {
-        c1.save({ name: 'test' + i });
-      }
-
-      var obj = {
-        collections: {
-          write: [ cn1 ]
-        },
-        action: function () {
-          var r = c1.firstExample({ name: 'test99' });
-          assertEqual('test99', r.name);
-        }
-      };
-
-      TRANSACTION(obj);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: trx with fulltext operation
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testFulltext: function () {
-      c1 = db._create(cn1);
-      var idx = c1.ensureFulltextIndex('text');
-
-      c1.save({ text: 'steam', other: 1 });
-      c1.save({ text: 'steamboot', other: 2 });
-
-      var obj = {
-        collections: {
-          write: [ cn1 ]
-        },
-        action: function () {
-          var r = c1.fulltext('text', 'prefix:steam', idx).toArray();
-          assertEqual(2, r.length);
-
-          r = c1.fulltext('text', 'steam', idx).toArray();
-          assertEqual(1, r.length);
-        }
-      };
-
-      TRANSACTION(obj);
-    }*/
+    }
 
   };
 }
@@ -1872,7 +1887,7 @@ function transactionRollbackSuite () {
     testRollbackAfterFlush: function () {
       c1 = db._create(cn1);
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         }
@@ -1968,7 +1983,7 @@ function transactionRollbackSuite () {
       c1.save({ _key: 'bar' });
       c1.save({ _key: 'meow' });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         }
@@ -2094,7 +2109,7 @@ function transactionRollbackSuite () {
       d2 = c1.save({ _key: 'bar', a: 2 });
       d3 = c1.save({ _key: 'meow', a: 3 });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         }
@@ -2269,7 +2284,7 @@ function transactionRollbackSuite () {
       try {
         let tc1 = trx.collection(c1.name());
         
-        for (var i = 0; i < 100; ++i) {
+        for (let i = 0; i < 100; ++i) {
           tc1.save({ _key: 'foo' + i });
         }
 
@@ -2408,7 +2423,7 @@ function transactionRollbackSuite () {
 
     testRollbackTruncateNonEmpty: function () {
       c1 = db._create(cn1);
-      for (var i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         c1.save({ _key: 'foo' + i });
       }
       assertEqual(100, c1.count());
@@ -2521,7 +2536,7 @@ function transactionRollbackSuite () {
         c1.save({ _key: 'key' + i, value: i });
       }
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         }
@@ -2605,7 +2620,7 @@ function transactionRollbackSuite () {
       c1.save({ _key: 'foo' });
       c1.save({ _key: 'bar' });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         }
@@ -2698,7 +2713,7 @@ function transactionCountSuite () {
       c1 = db._create(cn1);
       assertEqual(0, c1.count());
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         }
@@ -2748,7 +2763,7 @@ function transactionCountSuite () {
       c1.save({ _key: 'bar' });
       assertEqual(2, c1.count());
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         }
@@ -2789,7 +2804,7 @@ function transactionCountSuite () {
       c1.save({ _key: 'bar' });
       assertEqual(2, c1.count());
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         }
@@ -2826,7 +2841,7 @@ function transactionCountSuite () {
       c1.save({ _key: 'bar' });
       assertEqual(2, c1.count());
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         }
@@ -2913,7 +2928,7 @@ function transactionCrossCollectionSuite () {
       c1 = db._create(cn1);
       c2 = db._create(cn2);
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1, cn2 ]
         }
@@ -2952,7 +2967,7 @@ function transactionCrossCollectionSuite () {
         c2.save({ _key: 'b' + i, b: i });
       }
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1, cn2 ]
         }
@@ -2993,7 +3008,7 @@ function transactionCrossCollectionSuite () {
         c2.save({ _key: 'b' + i, b: i });
       }
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1, cn2 ]
         }
@@ -3033,7 +3048,7 @@ function transactionCrossCollectionSuite () {
         c2.save({ _key: 'b' + i, b: i });
       }
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1, cn2 ]
         }
@@ -3073,7 +3088,7 @@ function transactionCrossCollectionSuite () {
       c1 = db._create(cn1);
       c2 = db._create(cn2);
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1, cn2 ]
         }
@@ -3125,7 +3140,7 @@ function transactionCrossCollectionSuite () {
       c1.save({ _key: 'a1' });
       c2.save({ _key: 'b1', a: 1 });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1, cn2 ]
         }
@@ -3182,7 +3197,7 @@ function transactionCrossCollectionSuite () {
         c1.save({ _key: 'a' + i, a: i });
       }
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         }
@@ -3290,7 +3305,7 @@ function transactionTraversalSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testTestCount: function () {
-      for (var i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         db[cn + 'Edge'].insert(cn + 'Edge/test' + (i % 21), cn + 'Edge/test' + (i % 7), { });
       }
 
