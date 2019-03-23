@@ -167,7 +167,7 @@ Result checkTransactionResult(TRI_voc_tid_t desiredTid,
       msg.append("beginning transaction");
     } else if (desStatus == transaction::Status::COMMITTED) {
       msg.append("committing transaction");
-    } else if (desStatus == transaction::Status::RUNNING) {
+    } else if (desStatus == transaction::Status::ABORTED) {
       msg.append("aborting transaction");
     }                      
     return res.reset(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
