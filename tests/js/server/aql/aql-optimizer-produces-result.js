@@ -62,6 +62,10 @@ function optimizerProducesResultTestSuite () {
       
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'EnumerateCollectionNode'; });
+      if (nodes.length === 0) {
+        // rocksdb
+        nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      }
       assertEqual(1, nodes.length);
       assertFalse(nodes[0].producesResult);
     },

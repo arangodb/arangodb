@@ -248,6 +248,38 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       }
       
       modified = true;
+    } else if (!stop && attributes.empty() && n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+      // replace collection access with primary index access (which can be faster
+      // given the fact that keys and values are stored together in RocksDB, but
+      // average values are much bigger in the documents column family than in the
+      // primary index colum family. thus in disk-bound workloads scanning the
+      // documents via the primary index should be faster
+      EnumerateCollectionNode* en = ExecutionNode::castTo<EnumerateCollectionNode*>(n);
+        
+      std::shared_ptr<Index> picked;
+      auto indexes = en->collection()->getCollection()->getIndexes();
+
+      for (auto const& idx : indexes) {
+        if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+          picked = idx;
+          break;
+        }
+      }
+     
+      if (picked != nullptr) { 
+        IndexIteratorOptions opts;
+        auto condition = std::make_unique<Condition>(plan->getAst());
+        condition->normalize(plan.get());
+        auto inode = new IndexNode(
+            plan.get(), plan->nextId(),
+            en->collection(), en->outVariable(),
+            std::vector<transaction::Methods::IndexHandle>{
+                transaction::Methods::IndexHandle{picked}},
+            std::move(condition), opts);
+        plan->registerNode(inode);
+        plan->replaceNode(n, inode);
+        modified = true;
+      }
     }
   }
 
