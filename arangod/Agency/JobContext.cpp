@@ -31,6 +31,7 @@
 #include "Agency/FailedServer.h"
 #include "Agency/MoveShard.h"
 #include "Agency/RemoveFollower.h"
+#include "Agency/ResignLeadership.h"
 
 using namespace arangodb::consensus;
 
@@ -53,6 +54,8 @@ JobContext::JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
     _job = std::make_unique<FailedServer>(snapshot, agent, status, id);
   } else if (type == "cleanOutServer") {
     _job = std::make_unique<CleanOutServer>(snapshot, agent, status, id);
+  } else if (type == "resignLeadership") {
+    _job = std::make_unique<ResignLeadership>(snapshot, agent, status, id);
   } else if (type == "moveShard") {
     _job = std::make_unique<MoveShard>(snapshot, agent, status, id);
   } else if (type == "addFollower") {
