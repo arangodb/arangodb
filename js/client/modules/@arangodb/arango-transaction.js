@@ -133,15 +133,11 @@ ArangoTransaction.prototype.abort = function() {
 
 ArangoTransaction.prototype.query = function(query, bindVars, cursorOptions, options) {
 
-  if (typeof query === 'object' && query !== null && arguments.length === 1) {
-    return new ArangoStatement(this, query).execute();
+  if (typeof query !== 'string' || query === undefined || query === '') {
+    throw 'need a valid query string';
   }
   if (options === undefined && cursorOptions !== undefined) {
     options = cursorOptions;
-  }
-
-  if (query === undefined || query === '') {
-    throw 'ArangoStatement needs a valid query attribute';
   }
 
   let body = {
@@ -172,7 +168,7 @@ ArangoTransaction.prototype.query = function(query, bindVars, cursorOptions, opt
   }
 
   return new ArangoQueryCursor(this._database, requestResult, isStream);
-}
+};
 
 ArangoTransactionCollection.prototype.document = function(id) {
   if (this._transaction.id() === 0) {

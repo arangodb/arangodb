@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertFalse, assertEqual, TRANSACTION */
+/* global fail, assertTrue, assertFalse, assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
@@ -301,7 +301,7 @@ function transactionInvocationSuite () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: invalid invocations of TRANSACTION() function
+    // / @brief test: invalid invocations of _createTransaction() function
     // //////////////////////////////////////////////////////////////////////////////
 
     testInvalidInvocations: function () {
@@ -374,7 +374,7 @@ function transactionInvocationSuite () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: valid invocations of TRANSACTION() function
+    // / @brief test: valid invocations of _createTransaction() function
     // //////////////////////////////////////////////////////////////////////////////
 
     testValidEmptyInvocations: function () {
