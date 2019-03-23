@@ -338,23 +338,23 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
         body.add("term", VPackValue(term));
         body.add("index", VPackValue(index));
         auto ret = in.equal_range(url);
-        std::string currentKey;
+        std::map<std::string,std::map<std::string, std::string>> result;
+        // key -> (modified -> op)
         for (auto it = ret.first; it != ret.second; ++it) {
-          if (currentKey != it->second->key) {
-            if (!currentKey.empty()) {
-              body.close();
-            }
-            body.add(it->second->key, VPackValue(VPackValueType::Object));
-            currentKey = it->second->key;
-          }
-          body.add(VPackValue(it->second->modified));
-          {
-            VPackObjectBuilder b(&body);
-            body.add("op", VPackValue(it->second->oper));
-          }
+          result[it->second->key][it->second->modified] = it->second->oper;
         }
-        if (!currentKey.empty()) {
-          body.close();
+        for (auto const& m : result) {
+          body.add(VPackValue(m.first));
+          {
+            VPackObjectBuilder guard(&body);
+            for (auto const& m2 : m.second) {
+              body.add(VPackValue(m2.first));
+              {
+                VPackObjectBuilder guard2(&body);
+                body.add("op", VPackValue(m2.second));
+              }
+            }
+          }
         }
       }
 
