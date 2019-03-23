@@ -365,7 +365,8 @@
           }
 
           if (isCoordinator) {
-            if ($('#smart-join-attribute').val() !== '') {
+
+            if (frontendConfig.isEnterprise && $('#smart-join-attribute').val() !== '') {
               smartJoinAttribute = $('#smart-join-attribute').val().trim();
             }
 
