@@ -6,10 +6,10 @@ This feature is only available in the
 [**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
 {% endhint %}
 
-When doing Joins in an ArangoDB cluster data has to exchanged between different servers.
+When doing joins in an ArangoDB cluster data has to be exchanged between different servers.
 
 Joins will be executed on a coordinator. It will prepare an execution plan
-and execute it. When executing the coordinator will contact all shards of the
+and execute it. When executing, the coordinator will contact all shards of the
 starting point of the join and ask for their data. The database servers carrying
 out this operation will load all their local data and then ask the cluster for
 the other part of the join. This again will be distributed to all involved shards
@@ -23,7 +23,7 @@ Satellite collections are collections that are intended to address this issue.
 They will facilitate the synchronous replication and replicate all its data
 to all database servers that are part of the cluster.
 
-This enables the database servers to execute that part of any Join locally.
+This enables the database servers to execute that part of any join locally.
 
 This greatly improves performance for such joins at the costs of increased
 storage requirements and poorer write performance on this data.
