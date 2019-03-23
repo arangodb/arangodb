@@ -1181,7 +1181,8 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "checking if agency is initialized";
 
-  while (shouldInitializeStructure()) {
+  while (!application_features::ApplicationServer::isStopping() &&
+         shouldInitializeStructure()) {
 
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
       << "Agency is fresh. Needs initial structure.";
@@ -1326,10 +1327,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   auto waitSomeTime = [&waitInterval, &result]() -> bool {
     // Returning true means timeout because of shutdown:
-    auto serverFeature = application_features::ApplicationServer::getFeature<ServerFeature>(
-        "Server");
-    if (serverFeature->isStopping() ||
-        !application_features::ApplicationServer::isRetryOK()) {
+    if (!application_features::ApplicationServer::isRetryOK()) {
       LOG_TOPIC(INFO, Logger::AGENCYCOMM)
           << "Unsuccessful AgencyComm: Timeout because of shutdown "
           << "errorCode: " << result.errorCode()
@@ -1384,8 +1382,6 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
     // Some reporting:
     if (tries > 20) {
       auto serverState = application_features::ApplicationServer::server->state();
-      application_features::ApplicationServer::getFeature<ServerFeature>(
-          "Server");
       std::string serverStateStr;
       switch (serverState) {
         case arangodb::application_features::ServerState::UNINITIALIZED:
@@ -1802,7 +1798,7 @@ bool AgencyComm::shouldInitializeStructure() {
 
   size_t nFail = 0;
 
-  while (true) {
+  while (!application_features::ApplicationServer::isStopping()) {
 
     auto result = getValues("Plan");
 
