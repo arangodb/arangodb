@@ -286,16 +286,14 @@ size_t Job::countGoodOrBadServersInList(Node const& snap, std::vector<std::strin
 
 /// @brief Check if a server is cleaned or to be cleaned out:
 bool Job::isInServerList(Node const& snap, std::string const& prefix, std::string const& server, bool isArray) {
-  VPackSlice slice;
-  bool has;
-  bool found = false;
   if (isArray) {
+    VPackSlice slice;
+    bool has;
     std::tie(slice, has) = snap.hasAsSlice(prefix);
     if (has && slice.isArray()) {
       for (auto const& srv : VPackArrayIterator(slice)) {
-        if (srv.copyString() == server) {
-          found = true;
-          break;
+        if (srv.isEqualString(server)) {
+          return true;
         }
       }
     }
@@ -304,13 +302,12 @@ bool Job::isInServerList(Node const& snap, std::string const& prefix, std::strin
     if (children.second) {
       for (auto const& srv : children.first) {
         if (srv.first == server) {
-          found = true;
-          break;
+          return true;
         }
       }
     }
   }
-  return found;
+  return false;
 }
 
 /// @brief Get servers from plan, which are not failed or (to be) cleaned out
@@ -324,11 +321,9 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
   }
 
   auto excludePrefix = [&ret, &snapshot](std::string const& prefix, bool isArray) {
-
-    bool has;
-    VPackSlice slice;
-
     if (isArray) {
+      bool has;
+      VPackSlice slice;
       std::tie(slice, has) = snapshot.hasAsSlice(prefix);
       if (has) {
         for (auto const& srv : VPackArrayIterator(slice)) {

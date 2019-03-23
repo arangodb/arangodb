@@ -42,7 +42,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
       _from(id(from)),
       _to(id(to)),
       _isLeader(isLeader),  // will be initialized properly when information known
-      _remainsFollower(remainsFollower) {}
+      _remainsFollower(remainsFollower),
+      _toServerIsFollower(false) {}
 
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
                      std::string const& creator, std::string const& database,
@@ -55,7 +56,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent, std::string co
       _from(id(from)),
       _to(id(to)),
       _isLeader(isLeader),  // will be initialized properly when information known
-      _remainsFollower(isLeader) {}
+      _remainsFollower(isLeader),
+      _toServerIsFollower(false) {}
 
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      JOB_STATUS status, std::string const& jobId)
@@ -81,6 +83,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     _isLeader = tmp_isLeader.first.isTrue();
     _remainsFollower =
         tmp_remainsFollower.second ? tmp_remainsFollower.first.isTrue() : _isLeader;
+    // TODO: _toServerIsFollower is ignored here... should it be false by default?
+    _toServerIsFollower = false;
     _creator = tmp_creator.first;
   } else {
     std::stringstream err;
@@ -142,6 +146,7 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->add("toServer", VPackValue(_to));
     _jb->add("isLeader", VPackValue(_isLeader));
     _jb->add("remainsFollower", VPackValue(_remainsFollower));
+    // TODO: _toServerIsFollower is not serialize here... should it be ignored?
     _jb->add("jobId", VPackValue(_jobId));
     _jb->add("timeCreated", VPackValue(now));
   }

@@ -68,7 +68,7 @@ struct HealthRecord {
         engine(en),
         version(0) {}
 
-  HealthRecord(Node const& node) { *this = node; }
+  explicit HealthRecord(Node const& node) { *this = node; }
 
   HealthRecord& operator=(Node const& node) {
     version = 0;
@@ -168,6 +168,7 @@ Supervision::Supervision()
       _okThreshold(5.),
       _jobId(0),
       _jobIdMax(0),
+      _haveAborts(false),
       _selfShutdown(false),
       _upgraded(false) {}
 
