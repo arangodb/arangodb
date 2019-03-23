@@ -73,7 +73,7 @@ void MMFilesRestReplicationHandler::insertClient(TRI_voc_tick_t lastServedTick) 
   }
 }
 
-// prevents datafiles from beeing removed while dumping the contents
+// prevents datafiles from being removed while dumping the contents
 void MMFilesRestReplicationHandler::handleCommandBatch() {
   // extract the request type
   auto const type = _request->requestType();

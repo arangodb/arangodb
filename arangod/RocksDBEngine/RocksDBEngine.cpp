@@ -168,7 +168,7 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(RocksDBFilePurgeEnabler&& other
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
     : StorageEngine(server, EngineName, FeatureName,
-                    std::unique_ptr<IndexFactory>(new RocksDBIndexFactory())),
+                    std::make_unique<RocksDBIndexFactory>()),
       _db(nullptr),
       _vpackCmp(new RocksDBVPackComparator()),
       _walAccess(new RocksDBWalAccess()),
@@ -838,7 +838,7 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSl
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
     LogicalCollection& collection, velocypack::Slice const& info) {
-  return std::unique_ptr<PhysicalCollection>(new RocksDBCollection(collection, info));
+  return std::make_unique<RocksDBCollection>(collection, info);
 }
 
 // inventory functionality
