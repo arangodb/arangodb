@@ -123,6 +123,9 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
   graph::TraverserCache* cache() const;
 
  private:
+  RegisterId findRegisterChecked(OutputName type) const;
+
+ private:
   /// @brief the shortest path finder.
   std::unique_ptr<arangodb::graph::ShortestPathFinder> _finder;
 
