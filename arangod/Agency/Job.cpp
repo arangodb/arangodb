@@ -156,7 +156,6 @@ bool Job::finish(std::string const& server, std::string const& shard,
           finished.add(prec.key.copyString(), prec.value);
         }
       } // -- preconditions
-
     }
 
     write_ret_t res = singleWriteTransaction(_agent, finished, false);
@@ -541,7 +540,7 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
       type == "activeFailover") {
     return false;
   } else if (type == "addFollower" || type == "moveShard" ||
-             type == "cleanOutServer") {
+             type == "cleanOutServer" || type == "resignLeadership") {
     return true;
   }
 
