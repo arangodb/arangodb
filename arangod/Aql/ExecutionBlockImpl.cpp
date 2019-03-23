@@ -49,6 +49,7 @@
 #include "Aql/ShortestPathExecutor.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
+#include "Aql/SubqueryExecutor.h"
 #include "Aql/TraversalExecutor.h"
 
 #include <type_traits>
@@ -310,6 +311,27 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<ShortestPathExecutor>::shut
   return this->executor().shutdown(errorCode);
 }
 
+template <>
+std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor>::shutdown(int errorCode) {
+  ExecutionState state;
+  Result subqueryResult;
+  // shutdown is repeatable
+  std::tie(state, subqueryResult) = this->executor().shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {ExecutionState::WAITING, subqueryResult};
+  }
+  Result result;
+
+  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {state, result};
+  }
+  if (result.fail()) {
+    return {state, result};
+  }
+  return {state, subqueryResult};
+}
+
 }  // namespace aql
 }  // namespace arangodb
 
@@ -400,4 +422,5 @@ template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;

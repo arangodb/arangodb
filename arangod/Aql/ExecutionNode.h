@@ -885,7 +885,6 @@ class CalculationNode : public ExecutionNode {
 class SubqueryNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class SubqueryBlock;
 
  public:
   SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
@@ -947,7 +946,7 @@ class SubqueryNode : public ExecutionNode {
 
   bool isDeterministic() override final;
 
-  bool isConst();
+  bool isConst() const;
   bool mayAccessCollections();
 
  private:
