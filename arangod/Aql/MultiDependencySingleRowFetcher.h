@@ -247,8 +247,13 @@ class MultiDependencySingleRowFetcher {
       TRI_ASSERT(depInfo._upstreamState == ExecutionState::DONE);
       return {ExecutionState::DONE, 0};
     } else {
-      return {depInfo._upstreamState,
-              depInfo._currentBlock->block().size() - depInfo._rowIndex};
+      if (depInfo._upstreamState == ExecutionState::DONE) {
+        return {depInfo._upstreamState,
+                depInfo._currentBlock->block().size() - depInfo._rowIndex};
+      }
+      // In the HAS_MORE case we do not know exactly how many rows there are.
+      // So we need to return an uppter bound (atMost) here.
+      return {depInfo._upstreamState, atMost};
     }
   }
 };
