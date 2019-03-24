@@ -566,7 +566,7 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
         value = _request->header(StaticStrings::TransactionBody, found);
         if (found) {
           auto trxOpts = VPackParser::fromJson(value);
-          Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());;
+          Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());
           if (res.fail()) {
             THROW_ARANGO_EXCEPTION(res);
           }

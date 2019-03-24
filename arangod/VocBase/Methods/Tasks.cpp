@@ -412,7 +412,7 @@ void Task::work(ExecContext const* exec) {
 
       // call the function within a try/catch
       try {
-        v8::TryCatch tryCatch(isolate);;
+        v8::TryCatch tryCatch(isolate);
         action->Call(current, 1, &fArgs);
         if (tryCatch.HasCaught()) {
           if (tryCatch.CanContinue()) {
