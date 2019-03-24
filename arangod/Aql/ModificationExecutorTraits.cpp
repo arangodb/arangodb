@@ -156,14 +156,13 @@ void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
   }
 
   auto code = first->first;
-
+  std::string message;
   try {
     if (opRes.slice().isArray()) {
       for (auto doc : VPackArrayIterator(opRes.slice())) {
         if (doc.hasKey("errorNum") && doc.get("errorNum").getInt() == code) {
           if (doc.hasKey("errorMessage")) {
-            std::string message = doc.get("errorMessage").copyString();
-            THROW_ARANGO_EXCEPTION(Result(code, message));
+            message = doc.get("errorMessage").copyString();
           }
         }
       }
@@ -172,7 +171,9 @@ void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
     // Fall-through to returning the generic error message,
     // which better than forwarding an internal error here.
   }
-
+  if (!message.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(code, message);
+  }
   // Throw generic error, as no error message was found.
   THROW_ARANGO_EXCEPTION(code);
 }
