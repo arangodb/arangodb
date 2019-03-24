@@ -109,7 +109,7 @@ class AllRowsFetcher {
 
   std::unique_ptr<AqlItemMatrix> _aqlItemMatrix;
   ExecutionState _upstreamState;
-  std::size_t _lastReturnedBlock;
+  std::size_t _blockToReturnNext;
 
  private:
   /**
