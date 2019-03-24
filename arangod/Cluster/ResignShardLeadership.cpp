@@ -29,6 +29,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/DatabaseGuard.h"
@@ -74,8 +76,8 @@ ResignShardLeadership::ResignShardLeadership(MaintenanceFeature& feature,
 ResignShardLeadership::~ResignShardLeadership(){};
 
 bool ResignShardLeadership::first() {
-  auto const& database = _description.get(DATABASE);
-  auto const& collection = _description.get(SHARD);
+  std::string const& database = _description.get(DATABASE);
+  std::string const& collection = _description.get(SHARD);
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
       << "trying to withdraw as leader of shard '" << database << "/" << collection;
@@ -104,7 +106,7 @@ bool ResignShardLeadership::first() {
 
     // Get write transaction on collection
     auto ctx = std::make_shared<transaction::StandaloneContext>(*vocbase);
-    SingleCollectionTransaction trx{ctx, collection, AccessMode::Type::EXCLUSIVE};
+    SingleCollectionTransaction trx{ctx, *col, AccessMode::Type::EXCLUSIVE};
 
     Result res = trx.begin();
 
@@ -119,6 +121,12 @@ bool ResignShardLeadership::first() {
     // leader, until we have negotiated a deal with it. Then the actual
     // name of the leader will be set.
     col->followers()->setTheLeader("LEADER_NOT_YET_KNOWN");  // resign
+    trx.abort(); // unlock
+    
+    auto* mgr = transaction::ManagerFeature::manager();
+    if (mgr) {  // abort ongoing leader transactions
+      mgr->abortAllManagedTrx(col->id(), /*leader*/true);
+    }
 
   } catch (std::exception const& e) {
     std::stringstream error;

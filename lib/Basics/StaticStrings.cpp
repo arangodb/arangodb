@@ -93,12 +93,12 @@ std::string const StaticStrings::DataSourceType("type");
 std::string const StaticStrings::IndexExpireAfter("expireAfter");
 std::string const StaticStrings::IndexFields("fields");
 std::string const StaticStrings::IndexId("id");
+std::string const StaticStrings::IndexInBackground("inBackground");
+std::string const StaticStrings::IndexIsBuilding("isBuilding");
 std::string const StaticStrings::IndexName("name");
 std::string const StaticStrings::IndexSparse("sparse");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
-std::string const StaticStrings::IndexIsBuilding("isBuilding");
-std::string const StaticStrings::IndexInBackground("inBackground");
 
 // static index names
 std::string const StaticStrings::IndexNameEdge("edge");
@@ -173,6 +173,9 @@ std::string const StaticStrings::RequestForwardedTo(
     "x-arango-request-forwarded-to");
 std::string const StaticStrings::ResponseCode("x-arango-response-code");
 std::string const StaticStrings::Server("server");
+std::string const StaticStrings::TransactionBody("x-arango-trx-body");
+std::string const StaticStrings::TransactionId("x-arango-trx-id");
+
 std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
@@ -192,6 +195,7 @@ std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
 std::string const StaticStrings::ShardKeys("shardKeys");
+std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");

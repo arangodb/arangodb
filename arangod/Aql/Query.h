@@ -120,8 +120,8 @@ class Query {
   QueryString const& queryString() const { return _queryString; }
 
   /// @brief Inject a transaction from outside. Use with care!
-  void injectTransaction(transaction::Methods* trx) {
-    _trx = trx;
+  void injectTransaction(std::shared_ptr<transaction::Methods> trx) {
+    _trx = std::move(trx);
     init();
   }
 
@@ -245,7 +245,7 @@ class Query {
   TEST_VIRTUAL void setEngine(ExecutionEngine* engine);
 
   /// @brief return the transaction, if prepared
-  TEST_VIRTUAL inline transaction::Methods* trx() { return _trx; }
+  TEST_VIRTUAL inline transaction::Methods* trx() { return _trx.get(); }
 
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
@@ -404,7 +404,8 @@ class Query {
   /// @brief the transaction object, in a distributed query every part of
   /// the query has its own transaction object. The transaction object is
   /// created in the prepare method.
-  transaction::Methods* _trx;
+  std::shared_ptr<transaction::Methods> _trx;
+  bool _isClonedQuery = false;
 
   /// @brief the ExecutionEngine object, if the query is prepared
   std::unique_ptr<ExecutionEngine> _engine;

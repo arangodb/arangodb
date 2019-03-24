@@ -32,7 +32,7 @@ Result::Result(int errorNumber) : _errorNumber(errorNumber) {}
 Result::Result(int errorNumber, std::string const& errorMessage)
     : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
 
-Result::Result(int errorNumber, std::string&& errorMessage)
+Result::Result(int errorNumber, std::string&& errorMessage) noexcept
     : _errorNumber(errorNumber), _errorMessage(std::move(errorMessage)) {}
 
 Result::Result(Result const& other)

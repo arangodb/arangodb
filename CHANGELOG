@@ -1,6 +1,15 @@
 devel
 -----
 
+* fixed issue #8294: wrong equals behaviour on arrays with ArangoSearch
+
+* fixed internal issue #528: ArangoSearch range query sometimes doesn't work
+  correctly with numeric values
+
+* changed type of the startup option `--rocksdb.recycle-log-file-num` from 
+  numeric to boolean, as this is also the type the options has in the RocksDB
+  library.
+
 * renamed hidden startup option `--rocksdb.delayed_write_rate` to the more
   consistent `--rocksdb.delayed-write-rate`. When the old option name is
   used, the arangod startup will be aborted with a descriptive error message.

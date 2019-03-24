@@ -25,6 +25,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/WakeupQueryCallback.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
@@ -272,6 +273,11 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(int errorCode) {
   if (!_hasTriggeredShutdown) {
+    // Make sure to cover against the race that the request
+    // in flight is not overtaking in the drop phase here.
+    // After this lock is released even a response
+    // will be discarded in the handle response code
+    MUTEX_LOCKER(locker, _communicationMutex); 
     if (_lastTicketId != 0) {
       auto cc = ClusterComm::instance();
       if (cc == nullptr) {
@@ -379,7 +385,12 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
   std::shared_ptr<ClusterCommCallback> callback =
       std::make_shared<WakeupQueryCallback>(this, _engine->getQuery());
 
-  // TODO Returns OperationID do we need it in any way?
+  // Make sure to cover against the race that this
+  // Request is fullfilled before the register has taken place
+  MUTEX_LOCKER(locker, _communicationMutex); 
+  // We can only track one request at a time.
+  // So assert there is no other request in flight!
+  TRI_ASSERT(_lastTicketId == 0);
   _lastTicketId =
       cc->asyncRequest(coordTransactionId, _server, type, url, std::move(body),
                        headers, callback, defaultTimeOut, true);
@@ -388,6 +399,10 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
 }
 
 bool ExecutionBlockImpl<RemoteExecutor>::handleAsyncResult(ClusterCommResult* result) {
+  // So we cannot have the response beeing produced while sending the request.
+  // Make sure to cover against the race that this
+  // Request is fullfilled before the register has taken place
+  MUTEX_LOCKER(locker, _communicationMutex); 
   if (_lastTicketId == result->operationID) {
     // TODO Handle exceptions thrown while we are in this code
     // Query will not be woken up again.
@@ -472,6 +487,10 @@ arangodb::Result ExecutionBlockImpl<RemoteExecutor>::handleCommErrors(ClusterCom
  * @return A shared_ptr containing the remote response.
  */
 std::shared_ptr<VPackBuilder> ExecutionBlockImpl<RemoteExecutor>::stealResultBody() {
+  // NOTE: This cannot participate in the race in communication.
+  // This will not be called after the MUTEX to send was released.
+  // It can only be called by the next getSome call.
+  // This getSome however is locked by the QueryRegistery several layers above
   if (!_lastError.ok()) {
     THROW_ARANGO_EXCEPTION(_lastError);
   }

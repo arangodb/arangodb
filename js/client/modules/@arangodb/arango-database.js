@@ -62,6 +62,7 @@ ArangoCollection = require('@arangodb/arango-collection').ArangoCollection;
 ArangoView = require('@arangodb/arango-view').ArangoView;
 var ArangoError = require('@arangodb').ArangoError;
 var ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;
+let ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief index id regex
@@ -345,8 +346,8 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     [ 'waitForSync', 'journalSize', 'isSystem', 'isVolatile',
       'doCompact', 'keyOptions', 'shardKeys', 'numberOfShards',
       'distributeShardsLike', 'indexBuckets', 'id', 'isSmart',
-      'replicationFactor', 'shardingStrategy', 'smartGraphAttribute', 
-      'avoidServers', 'cacheEnabled'].forEach(function (p) {
+      'replicationFactor', 'shardingStrategy', 'smartGraphAttribute',
+      'smartJoinAttribute', 'avoidServers', 'cacheEnabled'].forEach(function (p) {
       if (properties.hasOwnProperty(p)) {
         body[p] = properties[p];
       }
@@ -1167,6 +1168,15 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
   arangosh.checkRequestResult(requestResult);
 
   return requestResult.result;
+};
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a transaction
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._createTransaction = function (data) {
+  return new ArangoTransaction(this, data);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
