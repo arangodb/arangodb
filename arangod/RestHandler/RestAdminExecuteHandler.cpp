@@ -27,6 +27,7 @@
 #include "Actions/actions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
@@ -71,10 +72,18 @@ RestStatus RestAdminExecuteHandler::execute() {
 
   try {
     LOG_TOPIC(WARN, Logger::FIXME) << "about to execute: '" << Logger::CHARS(body, bodySize) << "'";
+    
+    ssize_t forceContext = -1;
+    bool found;
+    std::string const& c = _request->header("x-arango-v8-context", found);
+
+    if (found && !c.empty()) {
+      forceContext = basics::StringUtils::int32(c);
+    }
   
     // get a V8 context
     bool const allowUseDatabase = ActionFeature::ACTION->allowUseDatabase();
-    V8Context* context = V8DealerFeature::DEALER->enterContext(&_vocbase,  allowUseDatabase);
+    V8Context* context = V8DealerFeature::DEALER->enterContext(&_vocbase,  allowUseDatabase, forceContext);
 
     // note: the context might be nullptr in case of shut-down
     if (context == nullptr) {
@@ -135,13 +144,13 @@ RestStatus RestAdminExecuteHandler::execute() {
         }
     
         _response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
-        _response->setContentType(rest::ContentType::TEXT);
         switch (_response->transportType()) {
           case Endpoint::TransportType::HTTP: {
             HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
             if (httpResponse == nullptr) {
               THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast response object");
             }
+            _response->setContentType(rest::ContentType::TEXT);
             httpResponse->body().appendText(errorMessage.data(), errorMessage.size());
             break;
           } 
@@ -149,6 +158,7 @@ RestStatus RestAdminExecuteHandler::execute() {
             VPackBuffer<uint8_t> buffer;
             VPackBuilder builder(buffer);
             builder.add(VPackValuePair(reinterpret_cast<uint8_t const*>(errorMessage.data()), errorMessage.size()));
+            _response->setContentType(rest::ContentType::VPACK);
             _response->setPayload(std::move(buffer), true);
             break;
           }
