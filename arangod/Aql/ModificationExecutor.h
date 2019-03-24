@@ -233,6 +233,11 @@ class ModificationExecutor : public ModificationExecutorBase<FetcherType> {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
+/** 
+ * This executor immedieately  returns every actually consumed row
+ * All other rows belong to the fetcher.
+ */
+  inline size_t numberOfRowsInFlight() const { return 0; }
  private:
   Modifier _modifier;
 };
