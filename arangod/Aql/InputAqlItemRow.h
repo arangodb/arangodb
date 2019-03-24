@@ -59,8 +59,8 @@ class InputAqlItemRow {
       : _blockShell(nullptr), _baseIndex(0) {}
 
   InputAqlItemRow(
-    // cppcheck-suppress passedByValue
-    std::shared_ptr<AqlItemBlockShell> blockShell, size_t baseIndex)
+      // cppcheck-suppress passedByValue
+      std::shared_ptr<AqlItemBlockShell> blockShell, size_t baseIndex)
       : _blockShell(std::move(blockShell)), _baseIndex(baseIndex) {
     TRI_ASSERT(_blockShell != nullptr);
   }
@@ -120,11 +120,30 @@ class InputAqlItemRow {
   bool internalBlockIs(AqlItemBlockShell const& other) const;
 #endif
 
+  /**
+   * @brief Clone a new ItemBlock from this row
+   */
+  std::unique_ptr<AqlItemBlock> cloneToBlock(AqlItemBlockManager& manager,
+                                             std::unordered_set<RegisterId> const& registers,
+                                             size_t newNrRegs) const;
+
+  /// @brief toVelocyPack, transfer a single AqlItemRow to Json, the result can
+  /// be used to recreate the AqlItemBlock via the Json constructor
+  /// Uses the same API as an AqlItemBlock with only a single row
+  void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
+
  private:
-  AqlItemBlockShell& blockShell() { return *_blockShell; }
-  AqlItemBlockShell const& blockShell() const { return *_blockShell; }
-  AqlItemBlock& block() { return blockShell().block(); }
-  AqlItemBlock const& block() const { return blockShell().block(); }
+  inline AqlItemBlockShell& blockShell() {
+    TRI_ASSERT(_blockShell != nullptr);
+    return *_blockShell;
+  }
+
+  inline AqlItemBlockShell const& blockShell() const { 
+    TRI_ASSERT(_blockShell != nullptr);
+    return *_blockShell;
+  }
+  inline AqlItemBlock& block() { return blockShell().block(); }
+  inline AqlItemBlock const& block() const { return blockShell().block(); }
 
  private:
   /**

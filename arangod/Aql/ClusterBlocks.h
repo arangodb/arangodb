@@ -59,7 +59,7 @@ class BlockWithClients : public ExecutionBlock {
 
  public:
   /// @brief initializeCursor
-  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   /// @brief shutdown
   std::pair<ExecutionState, Result> shutdown(int) override;

@@ -1784,6 +1784,7 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
   auto outVar = getRegisterPlan()->varInfo.find(_outVariable->id);
   TRI_ASSERT(outVar != getRegisterPlan()->varInfo.end());
   RegisterId outReg = outVar->second.registerId;
+  outputRegisters->emplace(outReg);
   // The const_cast has been taken from previous implementation.
   SubqueryExecutorInfos infos(inputRegisters, outputRegisters,
                               getRegisterPlan()->nrRegs[previousNode->getDepth()],

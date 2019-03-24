@@ -131,6 +131,8 @@ std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRow(OutputAqlItemRow
           // Error during initialize cursor
           THROW_ARANGO_EXCEPTION(initRes.second);
         }
+        _subqueryResults =
+            std::make_unique<std::vector<std::unique_ptr<AqlItemBlock>>>();
       }
       // on const subquery we can retoggle init as soon as we have new input.
       _subqueryInitialized = true;
@@ -145,6 +147,7 @@ void SubqueryExecutor::writeOutput(OutputAqlItemRow& output) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   if (_infos.returnsData()) {
+    TRI_ASSERT(_subqueryResults != nullptr);
     AqlValue resultDocVec{_subqueryResults.get()};
     AqlValueGuard guard{resultDocVec, true};
     output.moveValueInto(_infos.outputRegister(), _input, guard);

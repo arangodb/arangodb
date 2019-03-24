@@ -221,10 +221,9 @@ std::pair<ExecutionState, size_t> ModificationBlock::skipSome(size_t atMost) {
   return {res.first, skipped};
 }
 
-std::pair<ExecutionState, arangodb::Result> ModificationBlock::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> ModificationBlock::initializeCursor(InputAqlItemRow const& input) {
   _blocks.clear();
-  return ExecutionBlock::initializeCursor(items, pos);
+  return ExecutionBlock::initializeCursor(input);
 }
 
 /// @brief extract a key from the AqlValue passed
@@ -261,7 +260,8 @@ int ModificationBlock::extractKeyAndRev(AqlValue const& value, std::string& key,
       key.assign(sub.slice().copyString());
 
       bool mustDestroyToo;
-      AqlValue subTwo = value.get(*resolver, StaticStrings::RevString, mustDestroyToo, false);
+      AqlValue subTwo =
+          value.get(*resolver, StaticStrings::RevString, mustDestroyToo, false);
       AqlValueGuard guard(subTwo, mustDestroyToo);
       if (subTwo.isString()) {
         rev.assign(subTwo.slice().copyString());
@@ -361,7 +361,8 @@ void ModificationBlock::handleBabyResult(OperationResult const& opRes,
   try {
     if (opRes.slice().isArray()) {
       for (auto doc : VPackArrayIterator(opRes.slice())) {
-        if (!doc.isObject() || !doc.hasKey("errorNum") || doc.get("errorNum").getInt() != code) {
+        if (!doc.isObject() || !doc.hasKey("errorNum") ||
+            doc.get("errorNum").getInt() != code) {
           continue;
         }
         VPackSlice msg = doc.get("errorMessage");

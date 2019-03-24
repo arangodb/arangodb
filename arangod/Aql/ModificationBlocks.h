@@ -55,8 +55,7 @@ class ModificationBlock : public ExecutionBlock {
 
   virtual ~ModificationBlock();
 
-  std::pair<ExecutionState, arangodb::Result> initializeCursor(AqlItemBlock* items,
-                                                               size_t pos) override final;
+  std::pair<ExecutionState, arangodb::Result> initializeCursor(InputAqlItemRow const& input) override final;
 
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
 
@@ -83,8 +82,8 @@ class ModificationBlock : public ExecutionBlock {
   /// @brief process the result of a data-modification operation
   void handleResult(int, bool, std::string const* errorMessage = nullptr);
 
-  void handleBabyResult(OperationResult const&, size_t,
-                        bool ignoreAllErrors, bool ignoreDocumentNotFound = false);
+  void handleBabyResult(OperationResult const&, size_t, bool ignoreAllErrors,
+                        bool ignoreDocumentNotFound = false);
 
   /// @brief determine the number of rows in a vector of blocks
   size_t countBlocksRows() const;

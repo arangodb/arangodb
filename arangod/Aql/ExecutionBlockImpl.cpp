@@ -218,8 +218,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::traceSkipSomeEnd
 }
 
 template <class Executor>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
   // destroy and re-create the BlockFetcher
   _blockFetcher.~BlockFetcher();
   new (&_blockFetcher)
@@ -241,7 +240,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   //   }
   // }
 
-  return ExecutionBlock::initializeCursor(items, pos);
+  return ExecutionBlock::initializeCursor(input);
 }
 
 template <class Executor>
@@ -257,7 +256,7 @@ namespace aql {
 // TODO -- remove this specialization when cpp 17 becomes available
 template <>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+    InputAqlItemRow const& input) {
   // destroy and re-create the BlockFetcher
   _blockFetcher.~BlockFetcher();
   new (&_blockFetcher)
@@ -268,14 +267,10 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   _rowFetcher.~Fetcher();
   new (&_rowFetcher) Fetcher(_blockFetcher);
 
-  std::unique_ptr<AqlItemBlock> block;
-  if (items != nullptr) {
-    block = std::unique_ptr<AqlItemBlock>(
-        items->slice(pos, *(infos().registersToKeep()), infos().numberOfOutputRegisters()));
-  } else {
-    block = std::unique_ptr<AqlItemBlock>(
-        _engine->itemBlockManager().requestBlock(1, infos().numberOfOutputRegisters()));
-  }
+  std::unique_ptr<AqlItemBlock> block =
+      input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
+                         infos().numberOfOutputRegisters());
+
   auto shell = std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
                                                    std::move(block));
   _rowFetcher.injectBlock(shell);
@@ -284,7 +279,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   _executor.~IdExecutor<ConstFetcher>();
   new (&_executor) IdExecutor<ConstFetcher>(_rowFetcher, _infos);
 
-  return ExecutionBlock::initializeCursor(items, pos);
+  return ExecutionBlock::initializeCursor(input);
 }
 
 template <>
