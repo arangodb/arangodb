@@ -568,22 +568,20 @@ void V8DealerFeature::unprepare() {
 }
 
 bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
-  auto cb = [this, &method]() -> bool {
-    bool result = true;
-    for (auto& context : _contexts) {
-      try {
-        if (!context->addGlobalContextMethod(method)) {
-          result = false;
-        }
-      } catch (...) {
-        result = false;
-      }
-    }
-    return result;
-  };
+  bool result = true;
 
   CONDITION_LOCKER(guard, _contextCondition);
-  return cb();
+
+  for (auto& context : _contexts) {
+    try {
+      if (!context->addGlobalContextMethod(method)) {
+        result = false;
+      }
+    } catch (...) {
+      result = false;
+    }
+  }
+  return result;
 }
 
 void V8DealerFeature::collectGarbage() {

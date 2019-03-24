@@ -238,7 +238,7 @@
 
   if (global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION) {
     exports.executeGlobalContextFunction = global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
-  }else {
+  } else {
     exports.executeGlobalContextFunction = function () {
       // nothing to do. we're probably in --no-server mode
     };

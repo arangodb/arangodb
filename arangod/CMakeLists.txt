@@ -443,8 +443,10 @@ SET(ARANGOD_SOURCES
   RestHandler/RestAdminServerHandler.cpp
   RestHandler/RestAdminStatisticsHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
+  RestHandler/RestAqlReloadHandler.cpp
   RestHandler/RestAqlUserFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
+  RestHandler/RestAuthReloadHandler.cpp
   RestHandler/RestBaseHandler.cpp
   RestHandler/RestBatchHandler.cpp
   RestHandler/RestCollectionHandler.cpp
@@ -472,6 +474,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestStatusHandler.cpp
   RestHandler/RestTasksHandler.cpp
+  RestHandler/RestTimeHandler.cpp
   RestHandler/RestTransactionHandler.cpp
   RestHandler/RestTtlHandler.cpp
   RestHandler/RestUploadHandler.cpp
