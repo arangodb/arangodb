@@ -75,10 +75,10 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
   std::vector<std::string> getAggregateTypes () const {
     return _aggregateTypes;
   }
-  bool getCount() const noexcept { return _count; };
+  bool getCount() const noexcept { return _count; }
   transaction::Methods* getTransaction() const { return _trxPtr; }
-  RegisterId getInputRegister() const noexcept { return _inputRegister; };
-  RegisterId getCollectRegister() const noexcept { return _collectRegister; };
+  RegisterId getInputRegister() const noexcept { return _inputRegister; }
+  RegisterId getCollectRegister() const noexcept { return _collectRegister; }
 
  private:
   // This is exactly the value in the parent member ExecutorInfo::_inRegs,
@@ -143,7 +143,7 @@ class HashedCollectExecutor {
   using GroupValueType = std::unique_ptr<AggregateValuesType>;
   using GroupMapType = std::unordered_map<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
 
-  Infos const& infos() const noexcept { return _infos; };
+  Infos const& infos() const noexcept { return _infos; }
 
   /**
   * @brief Shall be executed until it returns DONE, then never again.

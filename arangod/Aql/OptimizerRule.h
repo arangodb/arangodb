@@ -203,9 +203,10 @@ struct OptimizerRule {
 
     // make operations on sharded collections use distribute
     distributeInClusterRule,
-
-    // try to find candidates for shard-local joins in the cluster
-    optimizeClusterJoinsRule,
+    
+#ifdef USE_ENTERPRISE
+    smartJoinsRule,
+#endif
 
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule,
