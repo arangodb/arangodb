@@ -172,6 +172,8 @@ class ShortestPathExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
+  inline size_t numberOfRowsInFlight() const { return 0; }
+
  private:
   /**
    * @brief Fetch input row(s) and compute path

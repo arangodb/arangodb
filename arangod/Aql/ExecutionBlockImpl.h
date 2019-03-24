@@ -36,6 +36,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "OutputAqlItemRow.h"

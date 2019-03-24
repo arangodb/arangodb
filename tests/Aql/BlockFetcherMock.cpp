@@ -123,8 +123,7 @@ BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::andThe
   }
   std::shared_ptr<AqlItemBlockShell> blockShell;
   if (block != nullptr) {
-    blockShell =
-        std::make_shared<AqlItemBlockShell>(_itemBlockManager, std::move(block));
+    blockShell = std::make_shared<AqlItemBlockShell>(_itemBlockManager, std::move(block));
   }
   return andThenReturn({state, std::move(blockShell)});
 }
@@ -157,9 +156,52 @@ size_t BlockFetcherMock<passBlocksThrough>::numFetchBlockCalls() const {
   return _numFetchBlockCalls;
 }
 
+template <bool passBlocksThrough>
+MultiBlockFetcherMock<passBlocksThrough>::MultiBlockFetcherMock(
+    arangodb::aql::ResourceMonitor& monitor,
+    ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps)
+    : BlockFetcher<passBlocksThrough>({}, _itemBlockManager,
+                                      std::shared_ptr<std::unordered_set<RegisterId>>(),
+                                      nrRegisters),
+      _itemBlockManager(&monitor) {
+  _dependencyMocks.reserve(nrDeps);
+  for (size_t i = 0; i < nrDeps; ++i) {
+    _dependencyMocks.emplace_back(BlockFetcherMock<passBlocksThrough>{monitor, nrRegisters});
+  }
+}
+
+template <bool passBlocksThrough>
+std::pair<arangodb::aql::ExecutionState, std::shared_ptr<arangodb::aql::AqlItemBlockShell>>
+MultiBlockFetcherMock<passBlocksThrough>::fetchBlockForDependency(size_t dependency,
+                                                                  size_t atMost) {
+  return getDependencyMock(dependency).fetchBlock(atMost);
+}
+
+template <bool passBlocksThrough>
+bool MultiBlockFetcherMock<passBlocksThrough>::allBlocksFetched() const {
+  for (auto& dep : _dependencyMocks) {
+    if (!dep.allBlocksFetched()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+template <bool passBlocksThrough>
+size_t MultiBlockFetcherMock<passBlocksThrough>::numFetchBlockCalls() const {
+  size_t res = 0;
+  for (auto& dep : _dependencyMocks) {
+    res += dep.numFetchBlockCalls();
+  }
+  return res;
+}
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
 
 template class ::arangodb::tests::aql::BlockFetcherMock<true>;
 template class ::arangodb::tests::aql::BlockFetcherMock<false>;
+
+// Multiblock does not pass through
+template class ::arangodb::tests::aql::MultiBlockFetcherMock<false>;
