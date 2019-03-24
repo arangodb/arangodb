@@ -22,12 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyMock.h"
+#include "Agency/Store.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/StringBuffer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Agency/Store.h"
-#include "lib/Rest/HttpResponse.h"
+#include "Rest/HttpResponse.h"
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -107,7 +108,7 @@ void GeneralClientConnectionAgencyMock::handleRead(
     ? arangodb::rest::ResponseCode::OK
     : arangodb::rest::ResponseCode::BAD;
 
-  arangodb::HttpResponse resp(code);
+  arangodb::HttpResponse resp(code, new arangodb::basics::StringBuffer(false));
 
   std::string body;
   if (arangodb::rest::ResponseCode::OK == code && !result->isEmpty()) {
@@ -140,7 +141,7 @@ void GeneralClientConnectionAgencyMock::handleWrite(
   bodyObj.close();
   auto body = bodyObj.slice().toString();
 
-  arangodb::HttpResponse resp(code);
+  arangodb::HttpResponse resp(code, new arangodb::basics::StringBuffer(false));
   resp.setContentType(arangodb::ContentType::VPACK);
   resp.headResponse(body.size());
 

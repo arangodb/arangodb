@@ -29,6 +29,7 @@
 #include <chrono>
 #include <thread>
 
+#include "Agency/AgentCallback.h"
 #include "Agency/GossipCallback.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"

@@ -350,9 +350,7 @@ void ClusterComm::stopBackgroundThreads() {
 /// @brief choose next communicator via round robin
 ////////////////////////////////////////////////////////////////////////////////
 std::shared_ptr<communicator::Communicator> ClusterComm::communicator() {
-  unsigned index;
-
-  index = (++_roundRobin) % _backgroundThreads.size();
+  unsigned index = (++_roundRobin) % _backgroundThreads.size();
   return _backgroundThreads[index]->communicator();
 }
 
@@ -415,7 +413,7 @@ OperationID ClusterComm::asyncRequest(
     arangodb::rest::RequestType reqtype, std::string const& path,
     std::shared_ptr<std::string const> body,
     std::unordered_map<std::string, std::string> const& headerFields,
-    std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
+    std::shared_ptr<ClusterCommCallback> const& callback, ClusterCommTimeout timeout,
     bool singleRequest, ClusterCommTimeout initTimeout) {
   auto prepared = prepareRequest(destination, reqtype, body.get(), headerFields);
   std::shared_ptr<ClusterCommResult> result(prepared.first);
@@ -496,12 +494,16 @@ OperationID ClusterComm::asyncRequest(
   }
 
   TRI_ASSERT(request != nullptr);
-  CONDITION_LOCKER(locker, somethingReceived);
   // Call a random communicator
   auto communicatorPtr = communicator();
-  auto ticketId =
-      communicatorPtr->addRequest(createCommunicatorDestination(result->endpoint, path),
-                                  std::move(request), callbacks, opt);
+  auto newRequest = std::make_unique<communicator::NewRequest>(
+      createCommunicatorDestination(result->endpoint, path),
+      std::move(request), 
+      std::move(callbacks),
+      opt);
+  
+  CONDITION_LOCKER(locker, somethingReceived);
+  auto ticketId = communicatorPtr->addRequest(std::move(newRequest));
 
   result->operationID = ticketId;
   responses.emplace(ticketId, AsyncResponse{TRI_microtime(), result,
@@ -572,9 +574,16 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
   opt.requestTimeout = timeout;
   TRI_ASSERT(request != nullptr);
   result->status = CL_COMM_SENDING;
+  
+  auto newRequest = std::make_unique<communicator::NewRequest>(
+      createCommunicatorDestination(result->endpoint, path),
+      std::move(request), 
+      callbacks,
+      opt);
+  
   CONDITION_LOCKER(isen, cv);
-  communicator()->addRequest(createCommunicatorDestination(result->endpoint, path),
-                             std::move(request), callbacks, opt);
+  // can't move callbacks here
+  communicator()->addRequest(std::move(newRequest));
 
   while (!wasSignaled) {
     cv.wait(100000);
@@ -978,16 +987,22 @@ void ClusterComm::fireAndForgetRequests(std::vector<ClusterCommRequest> const& r
   drop(coordinatorTransactionID, 0, "");
 }
 
-communicator::Destination ClusterComm::createCommunicatorDestination(std::string const& endpoint,
-                                                                     std::string const& path) {
+std::string ClusterComm::createCommunicatorDestination(std::string const& endpoint,
+                                                       std::string const& path) const {
   std::string httpEndpoint;
-  if (endpoint.substr(0, 6) == "tcp://") {
-    httpEndpoint = "http://" + endpoint.substr(6);
-  } else if (endpoint.substr(0, 6) == "ssl://") {
-    httpEndpoint = "https://" + endpoint.substr(6);
+  // reserve enough space
+  httpEndpoint.reserve(endpoint.size() + 8);
+
+  if (endpoint.compare(0, 6, "tcp://") == 0) {
+    httpEndpoint.append("http://", 7);
+    httpEndpoint.append(endpoint.substr(6));
+  } else if (endpoint.compare(0, 6, "ssl://") == 0) {
+    httpEndpoint.append("https://", 8);
+    httpEndpoint.append(endpoint.substr(6));
   }
-  httpEndpoint += path;
-  return communicator::Destination{httpEndpoint};
+  httpEndpoint.append(path);
+
+  return std::move(httpEndpoint);
 }
 
 std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(

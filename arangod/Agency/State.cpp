@@ -35,6 +35,7 @@
 #include "Agency/Agent.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
