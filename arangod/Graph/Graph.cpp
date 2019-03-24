@@ -55,7 +55,8 @@ std::unique_ptr<Graph> Graph::fromPersistence(VPackSlice document, TRI_vocbase_t
   if (document.isExternal()) {
     document = document.resolveExternal();
   }
-  return std::make_unique<Graph>(document);
+  std::unique_ptr<Graph> result{new Graph{document}};
+  return result;
 }
 
 std::unique_ptr<Graph> Graph::fromUserInput(std::string&& name, VPackSlice document,
@@ -63,7 +64,8 @@ std::unique_ptr<Graph> Graph::fromUserInput(std::string&& name, VPackSlice docum
   if (document.isExternal()) {
     document = document.resolveExternal();
   }
-  return std::make_unique<Graph>(std::move(name), document, options);
+  std::unique_ptr<Graph> result{new Graph{std::move(name), document, options}};
+  return result;
 }
 #endif
 
