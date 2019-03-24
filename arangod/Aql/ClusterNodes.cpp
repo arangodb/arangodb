@@ -22,18 +22,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterNodes.h"
+
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/DistributeExecutor.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/GraphNode.h"
+#include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
 #include "Aql/RemoteExecutor.h"
+#include "Aql/SortingGatherExecutor.h"
 #include "Aql/ScatterExecutor.h"
 
 #include "Transaction/Methods.h"
@@ -96,7 +100,6 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-
   RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
   RegisterId const nrInRegs = nrOutRegs;
 
@@ -426,11 +429,27 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
   if (_elements.empty()) {
-    return std::make_unique<UnsortingGatherBlock>(engine, *this);
+    TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
+               getRegisterPlan()->nrRegs[getDepth()]);
+    IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
+                          calcRegsToKeep(), getRegsToClear());
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<true>>>>(
+        &engine, this, std::move(infos));
   }
+  std::vector<SortRegister> sortRegister;
+  SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
+  SortingGatherExecutorInfos infos(make_shared_unordered_set(),
+                                   make_shared_unordered_set(),
+                                   getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                                   getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                                   calcRegsToKeep(), std::move(sortRegister),
+                                   _plan->getAst()->query()->trx(), sortMode());
 
-  return std::make_unique<SortingGatherBlock>(engine, *this);
+  return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(&engine, this,
+                                                                     std::move(infos));
 }
 
 /// @brief estimateCost
