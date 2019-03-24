@@ -158,10 +158,7 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
 class SingleRemoteModificationStats {
  public:
   SingleRemoteModificationStats() noexcept
-      : _writesExecuted(0),
-        _writesIgnored(0),
-        _scannedIndex(0)
-  {}
+      : _writesExecuted(0), _writesIgnored(0), _scannedIndex(0) {}
 
   void setWritesExecuted(std::size_t writesExecuted) noexcept {
     _writesExecuted = writesExecuted;
@@ -181,11 +178,14 @@ class SingleRemoteModificationStats {
   void incrWritesIgnored() noexcept { _writesIgnored++; }
   std::size_t getWritesIgnored() const noexcept { return _writesIgnored; }
 
-  void setScannedIndex(std::size_t scannedIndex) noexcept { _scannedIndex = scannedIndex; }
-  void addScannedIndex(std::size_t scannedIndex) noexcept { _scannedIndex += scannedIndex; }
+  void setScannedIndex(std::size_t scannedIndex) noexcept {
+    _scannedIndex = scannedIndex;
+  }
+  void addScannedIndex(std::size_t scannedIndex) noexcept {
+    _scannedIndex += scannedIndex;
+  }
   void incrScannedIndex() noexcept { _scannedIndex++; }
   std::size_t getScannedIndex() const noexcept { return _scannedIndex; }
-
 
  private:
   std::size_t _writesExecuted;

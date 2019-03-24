@@ -99,9 +99,10 @@ class AllRowsFetcher {
    */
   TEST_VIRTUAL std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t);
 
-  //only for ModificationNodes
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForModificationExecutor(std::size_t /*unused limit*/);
-  //only for ModificationNodes
+  // only for ModificationNodes
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForModificationExecutor(
+      std::size_t /*unused limit*/);
+  // only for ModificationNodes
   ExecutionState upstreamState();
 
  private:
@@ -109,7 +110,7 @@ class AllRowsFetcher {
 
   std::unique_ptr<AqlItemMatrix> _aqlItemMatrix;
   ExecutionState _upstreamState;
-  std::size_t _lastReturnedBlock;
+  std::size_t _blockToReturnNext;
 
  private:
   /**

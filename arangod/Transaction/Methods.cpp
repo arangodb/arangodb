@@ -1816,6 +1816,12 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     }
 
+    int r = validateSmartJoinAttribute(*collection, value);
+
+    if (r != TRI_ERROR_NO_ERROR) {
+      return Result(r);
+    }
+
     TRI_voc_tick_t resultMarkerTick = 0;
     TRI_voc_rid_t revisionId = 0;
     documentResult.clear();
@@ -3524,3 +3530,10 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
 
   return res;
 }
+  
+#ifndef USE_ENTERPRISE
+/*static*/ int Methods::validateSmartJoinAttribute(LogicalCollection const&,
+                                                   arangodb::velocypack::Slice) {
+  return TRI_ERROR_NO_ERROR;
+}
+#endif

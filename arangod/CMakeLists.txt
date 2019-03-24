@@ -191,7 +191,6 @@ SET(ARANGOD_SOURCES
   Aql/CalculationExecutor.cpp
   Aql/ClusterBlocks.cpp
   Aql/ClusterNodes.cpp
-  Aql/CollectBlock.cpp
   Aql/CollectNode.cpp
   Aql/CollectOptions.cpp
   Aql/Collection.cpp
@@ -238,6 +237,7 @@ SET(ARANGOD_SOURCES
   Aql/ModificationExecutorTraits.cpp
   Aql/ModificationNodes.cpp
   Aql/ModificationOptions.cpp
+  Aql/MultiDependencySingleRowFetcher.cpp
   Aql/NoResultsExecutor.cpp
   Aql/NodeFinder.cpp
   Aql/Optimizer.cpp
@@ -275,8 +275,10 @@ SET(ARANGOD_SOURCES
   Aql/SingleRemoteModificationExecutor.cpp
   Aql/SingleRowFetcher.cpp
   Aql/SortCondition.cpp
+  Aql/SortedCollectExecutor.cpp
   Aql/SortExecutor.cpp
   Aql/SortNode.cpp
+  Aql/SortingGatherExecutor.cpp
   Aql/SortRegister.cpp
   Aql/SubqueryBlock.cpp
   Aql/TraversalExecutor.cpp

@@ -186,7 +186,7 @@ struct ModificationExecutorInfos : public ExecutorInfos {
   boost::optional<RegisterId> _outputNewRegisterId;
   boost::optional<RegisterId> _outputOldRegisterId;
   boost::optional<RegisterId> _outputRegisterId;  // single remote
-};                                                // namespace aql
+};
 
 template <typename FetcherType>
 struct ModificationExecutorBase {
@@ -235,6 +235,12 @@ class ModificationExecutor : public ModificationExecutorBase<FetcherType> {
    *         if something was written output.hasValue() == true
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+
+  /**
+   * This executor immedieately  returns every actually consumed row
+   * All other rows belong to the fetcher.
+   */
+  inline size_t numberOfRowsInFlight() const { return 0; }
 
  private:
   Modifier _modifier;

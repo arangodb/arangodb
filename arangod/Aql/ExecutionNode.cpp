@@ -680,8 +680,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
           VPackObjectBuilder guardInner(&nodes);
           nodes.add("VariableId", VPackValue(oneVarInfo.first));
           nodes.add("depth", VPackValue(oneVarInfo.second.depth));
-          nodes.add("RegisterId",
-                    VPackValue(oneVarInfo.second.registerId));
+          nodes.add("RegisterId", VPackValue(oneVarInfo.second.registerId));
         }
       }
       nodes.add(VPackValue("nrRegs"));
@@ -1241,7 +1240,6 @@ RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-
   // number in == number out
   // Other nodes get the nrInRegs from the previous node.
   // That is why we do not use `calcRegsToKeep()`
@@ -1259,7 +1257,9 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
   }
 
   IdExecutorInfos infos(nrRegs, std::move(toKeep), getRegsToClear());
-  return std::make_unique<ExecutionBlockImpl<IdExecutor>>(&engine, this, std::move(infos));
+
+  return std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(&engine, this,
+                                                                        std::move(infos));
 }
 
 /// @brief toVelocyPack, for SingletonNode
@@ -1337,6 +1337,8 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
                                                      outVariable, _random, _hint);
 
   c->projections(_projections);
+  c->_prototypeCollection = _prototypeCollection;
+  c->_prototypeOutVariable = _prototypeOutVariable;
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }

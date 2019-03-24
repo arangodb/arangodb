@@ -124,6 +124,8 @@ class CalculationExecutor {
     return {state, NoStats{}};
   }
 
+  inline size_t numberOfRowsInFlight() const { return 0; }
+
  private:
   // specialized implementations
   inline void doEvaluation(InputAqlItemRow& input, OutputAqlItemRow& output);

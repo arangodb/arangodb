@@ -99,6 +99,7 @@ class SortExecutor {
    *         if something was written output.hasValue() == true
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  inline size_t numberOfRowsInFlight() const { return 0; }
 
  private:
   void doSorting();

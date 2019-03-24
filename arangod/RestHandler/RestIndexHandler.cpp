@@ -51,8 +51,6 @@ RestStatus RestIndexHandler::execute() {
       return getSelectivityEstimates();
     }
     return getIndexes();
-  } else if (type == rest::RequestType::GET) {
-    return getIndexes();
   } else if (type == rest::RequestType::POST) {
     return createIndex();
   } else if (type == rest::RequestType::DELETE_REQ) {

@@ -85,11 +85,7 @@ AllRowsFetcher::AllRowsFetcher(BlockFetcher<false>& executionBlock)
     : _blockFetcher(&executionBlock),
       _aqlItemMatrix(nullptr),
       _upstreamState(ExecutionState::HASMORE),
-      _lastReturnedBlock(std::numeric_limits<decltype(_lastReturnedBlock)>::max())
-       {
-         //ensure we can safely overflow
-         static_assert(std::is_unsigned<decltype(_lastReturnedBlock)>::value);
-       }
+      _blockToReturnNext(0) {}
 
 RegisterId AllRowsFetcher::getNrInputRegisters() const {
   return _blockFetcher->getNrInputRegisters();
@@ -104,32 +100,32 @@ std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> AllRowsFetcher::fe
 }
 
 std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> AllRowsFetcher::fetchBlockForModificationExecutor(
-      std::size_t limit = ExecutionBlock::DefaultBatchSize()) {
-
-    while (_upstreamState != ExecutionState::DONE){
-      auto state = fetchUntilDone();
-      if(state == ExecutionState::WAITING) {
-        return {state, nullptr};
-      }
+    std::size_t limit = ExecutionBlock::DefaultBatchSize()) {
+  while (_upstreamState != ExecutionState::DONE) {
+    auto state = fetchUntilDone();
+    if (state == ExecutionState::WAITING) {
+      return {state, nullptr};
     }
-
-    _lastReturnedBlock++;
-    auto size = _aqlItemMatrix->_blocks.size();
-    if( _lastReturnedBlock + 1 < size) {
-        return {ExecutionState::HASMORE, _aqlItemMatrix->_blocks[_lastReturnedBlock].second};
-    } else if(_lastReturnedBlock + 1 ==  size){
-        return {ExecutionState::DONE, _aqlItemMatrix->_blocks[_lastReturnedBlock].second};
-    } else {
-        return {ExecutionState::DONE, nullptr};
-    }
-
+  }
+  TRI_ASSERT(_aqlItemMatrix != nullptr);
+  auto size = _aqlItemMatrix->numberOfBlocks();
+  if (_blockToReturnNext >= size) {
+    return {ExecutionState::DONE, nullptr};
+  }
+  return {(_blockToReturnNext + 1 < size ? ExecutionState::HASMORE : ExecutionState::DONE),
+          _aqlItemMatrix->getBlock(_blockToReturnNext++)};
 }
 
 ExecutionState AllRowsFetcher::upstreamState() {
-    if(_lastReturnedBlock == std::numeric_limits<decltype(_lastReturnedBlock)>::max()){
-      // we never tried to pull -> return HASMORE
-      return ExecutionState::HASMORE;
-    }
-
-    return (_aqlItemMatrix && _lastReturnedBlock < _aqlItemMatrix->_blocks.size()) ? ExecutionState::HASMORE : ExecutionState::DONE;
+  if (_aqlItemMatrix == nullptr) {
+    // We have not pulled anything yet!
+    return ExecutionState::HASMORE;
+  }
+  if (_upstreamState == ExecutionState::WAITING) {
+    return ExecutionState::WAITING;
+  }
+  if (_blockToReturnNext >= _aqlItemMatrix->numberOfBlocks()) {
+    return ExecutionState::DONE;
+  }
+  return ExecutionState::HASMORE;
 }

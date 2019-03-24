@@ -51,7 +51,9 @@
 #include "Aql/ShortestPathExecutor.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
-#include "arangod/Aql/SingleRemoteModificationExecutor.h"
+#include "Aql/SingleRemoteModificationExecutor.h"
+#include "Aql/SortedCollectExecutor.h"
+#include "Aql/SortingGatherExecutor.h"
 #include "Aql/TraversalExecutor.h"
 
 #include <type_traits>
@@ -150,7 +152,6 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
       // This is not strictly necessary here, as we shouldn't be called again
       // after DONE.
       _outputItemRow.reset();
-
       return {state, std::move(outputBlock)};
     }
   }
@@ -167,7 +168,6 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
   TRI_ASSERT(outputBlock != nullptr);
   // TODO OutputAqlItemRow could get "reset" and "isValid" methods and be reused
   _outputItemRow.reset();
-
   return {state, std::move(outputBlock)};
 }
 
@@ -258,7 +258,7 @@ namespace arangodb {
 namespace aql {
 // TODO -- remove this specialization when cpp 17 becomes available
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCursor(
+std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
     AqlItemBlock* items, size_t pos) {
   // destroy and re-create the BlockFetcher
   _blockFetcher.~BlockFetcher();
@@ -283,8 +283,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCurs
   _rowFetcher.injectBlock(shell);
 
   // destroy and re-create the Executor
-  _executor.~IdExecutor();
-  new (&_executor) IdExecutor(_rowFetcher, _infos);
+  _executor.~IdExecutor<ConstFetcher>();
+  new (&_executor) IdExecutor<ConstFetcher>(_rowFetcher, _infos);
 
   return ExecutionBlock::initializeCursor(items, pos);
 }
@@ -361,6 +361,7 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
       TRI_ASSERT(expectedRows == 0);
       return {state, nullptr};
     }
+    expectedRows += _executor.numberOfRowsInFlight();
     nrItems = (std::min)(expectedRows, nrItems);
     if (nrItems == 0) {
       TRI_ASSERT(state == ExecutionState::DONE);
@@ -394,8 +395,9 @@ template class ::arangodb::aql::ExecutionBlockImpl<DistinctCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<true>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
@@ -418,5 +420,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;
