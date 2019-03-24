@@ -103,7 +103,6 @@ function aqlInsertOptionsSuite() {
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
-        assertEqual(err.errorMessage, "AQL: " + errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.message + " (while executing)");
       }
       assertEqual(2001, col.count());
 
