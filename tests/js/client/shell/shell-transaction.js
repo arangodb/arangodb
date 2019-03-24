@@ -3276,26 +3276,33 @@ function transactionTraversalSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testUndeclaredTraversalCollection: function () {
-      var result = db._executeTransaction({
+
+      let result;
+      // begin trx
+      let trx = db._createTransaction({
         collections: {
           read: [ cn + 'Edge' ],
           write: [ cn + 'Edge' ]
-        },
-        action: function () {
-          var db = require('internal').db;
-
-          var results = db._query('WITH ' + cn + 'Vertex FOR v, e IN ANY "' + cn + 'Vertex/20" ' + 
-                                  cn + 'Edge FILTER v._id == "' + cn + 
-                                  'Vertex/21" LIMIT 1 RETURN e').toArray();
-
-          if (results.length > 0) {
-            var result = results[0];
-            db[cn + 'Edge'].remove(result);
-            return 1;
-          }
-          return 0;
         }
       });
+      try {
+        let tedge = trx.collection(cn + 'Edge');
+
+        let results = trx.query('WITH ' + cn + 'Vertex FOR v, e IN ANY "' + cn + 'Vertex/20" ' + 
+                            cn + 'Edge FILTER v._id == "' + cn + 
+                            'Vertex/21" LIMIT 1 RETURN e').toArray();
+
+        if (results.length > 0) {
+          result = results[0];
+          tedge.remove(result);
+          return 1;
+        }
+      } catch (err) {
+        fail();
+      } finally {
+        trx.commit();
+      }
+      // end trx
 
       assertEqual(1, result);
     },
@@ -3309,26 +3316,34 @@ function transactionTraversalSuite () {
         db[cn + 'Edge'].insert(cn + 'Edge/test' + (i % 21), cn + 'Edge/test' + (i % 7), { });
       }
 
-      var result = db._executeTransaction({
+      let result;
+      // begin trx
+      let trx = db._createTransaction({
         collections: {
           read: [ cn + 'Edge' ],
           write: [ cn + 'Edge' ]
-        },
-        action: function () {
-          var db = require('internal').db;
-          var from = cn + 'Edge/test1';
-          var to = cn + 'Edge/test8';
-
-          var newDoc = db[cn + 'Edge'].insert(from, to, { request: true });
-          var fromCount1 = db[cn + 'Edge'].byExample({ _from: from, request: false }).count();
-
-          newDoc.request = false;
-          db[cn + 'Edge'].update({ _id: newDoc._id }, newDoc);
-
-          var fromCount2 = db[cn + 'Edge'].byExample({ _from: from, request: false }).count();
-          return [ fromCount1, fromCount2 ];
         }
       });
+      try {
+        let tedge = trx.collection(cn + 'Edge');
+        const qq = "FOR e IN " + cn + "Edge FILTER e._from == @a AND e.request == false RETURN e";
+
+        let from = cn + 'Edge/test1';
+        let to = cn + 'Edge/test8';
+
+        let newDoc = tedge.insert({_from: from, _to: to, request: true});
+        let fromCount1 = trx.query(qq, {a:from}, {count:true}).count();
+
+        newDoc.request = false;
+        tedge.update({ _id: newDoc._id }, newDoc);
+
+        let fromCount2 = trx.query(qq, {a:from}, {count:true}).count();
+        result = [ fromCount1, fromCount2 ];
+
+      } finally {
+        trx.commit();
+      }
+      // end trx
 
       assertEqual(result[0] + 1, result[1]);
     }
@@ -3348,6 +3363,6 @@ jsunity.run(transactionOperationsSuite);
 jsunity.run(transactionBarriersSuite);
 jsunity.run(transactionCountSuite);
 jsunity.run(transactionCrossCollectionSuite);
-// jsunity.run(transactionTraversalSuite);
+jsunity.run(transactionTraversalSuite);
 
 return jsunity.done();
