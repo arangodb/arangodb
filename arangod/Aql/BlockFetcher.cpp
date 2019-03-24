@@ -101,6 +101,7 @@ template <bool passBlocksThrough>
 std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
 // NOLINTNEXTLINE google-default-arguments
 BlockFetcher<passBlocksThrough>::fetchBlockForDependency(size_t dependency, size_t atMost) {
+  TRI_ASSERT(!passBlocksThrough);
   ExecutionBlock& upstream = upstreamBlockForDependency(dependency);
 
   TRI_ASSERT(atMost > 0);

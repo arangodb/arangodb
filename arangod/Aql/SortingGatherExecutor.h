@@ -98,10 +98,7 @@ class SortingGatherExecutor {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
-    // This block takes ownership of one input row per
-    // dependency, therefore the second saking for
-    // input size will be off by #nrDependencies...
-    static const bool inputSizeRestrictsOutputSize = false;
+    static const bool inputSizeRestrictsOutputSize = true;
   };
 
   using Fetcher = MultiDependencySingleRowFetcher;
@@ -119,7 +116,7 @@ class SortingGatherExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
-  void adjustNrDone(size_t dependency, size_t hass);
+  void adjustNrDone(size_t dependency);
 
   inline size_t numberOfRowsInFlight() const {
     // For every not-done dependency we have one row in the buffers.
@@ -128,6 +125,9 @@ class SortingGatherExecutor {
     // and the number is yet unknown.
     return _numberDependencies - _nrDone;
   }
+
+ private:
+  ExecutionState init();
 
  private:
   Fetcher& _fetcher;

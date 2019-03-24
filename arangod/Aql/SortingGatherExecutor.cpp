@@ -219,49 +219,16 @@ SortingGatherExecutor::~SortingGatherExecutor() = default;
 std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRow(OutputAqlItemRow& output) {
   TRI_ASSERT(_strategy != nullptr);
   if (!_initialized) {
-    if (_numberDependencies == 0) {
-      // We need to initialize the dependencies once, they are injected
-      // after the fetcher is created.
-      _numberDependencies = _fetcher.numberDependencies();
-      TRI_ASSERT(_numberDependencies > 0);
-      _inputRows.reserve(_numberDependencies);
-      for (size_t index = 0; index < _numberDependencies; ++index) {
-        _inputRows.emplace_back(ValueType{index});
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        _flaggedAsDone.emplace_back(false);
-#endif
-      }
+    ExecutionState state = init();
+    if (state != ExecutionState::HASMORE) {
+      // Can be DONE(unlikely, no input) of WAITING
+      return {state, NoStats{}};
     }
-
-    while (_dependencyToFetch < _numberDependencies) {
-      std::tie(_inputRows[_dependencyToFetch].state,
-               _inputRows[_dependencyToFetch].row) =
-          _fetcher.fetchRowForDependency(_dependencyToFetch);
-      if (_inputRows[_dependencyToFetch].state == ExecutionState::WAITING) {
-        return {ExecutionState::WAITING, NoStats{}};
-      }
-      if (!_inputRows[_dependencyToFetch].row) {
-        TRI_ASSERT(_inputRows[_dependencyToFetch].state == ExecutionState::DONE);
-        adjustNrDone(_dependencyToFetch, 4);
-      }
-      ++_dependencyToFetch;
-    }
-    _initialized = true;
-    if (_nrDone >= _numberDependencies) {
-      return {ExecutionState::DONE, NoStats{}};
-    }
-    _strategy->prepare(_inputRows);
   } else {
     // Activate this assert as soon as all blocks follow the done == no call api
     // TRI_ASSERT(_nrDone < _numberDependencies);
-    if (_nrDone >= _numberDependencies) {
-      return {ExecutionState::DONE, NoStats{}};
-    }
     if (_inputRows[_dependencyToFetch].state == ExecutionState::DONE) {
       _inputRows[_dependencyToFetch].row = InputAqlItemRow{CreateInvalidInputRowHint()};
-      if (_nrDone >= _numberDependencies) {
-        return {ExecutionState::DONE, NoStats{}};
-      }
     } else {
       // This is executed on every produceRow, and will replace the row that we have returned last time
       std::tie(_inputRows[_dependencyToFetch].state,
@@ -272,15 +239,16 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRow(OutputAqlIt
       }
       if (!_inputRows[_dependencyToFetch].row) {
         TRI_ASSERT(_inputRows[_dependencyToFetch].state == ExecutionState::DONE);
-        adjustNrDone(_dependencyToFetch, 2);
-        if (_nrDone >= _numberDependencies) {
-          return {ExecutionState::DONE, NoStats{}};
-        }
+        adjustNrDone(_dependencyToFetch);
       }
     }
   }
-
+  if (_nrDone >= _numberDependencies) {
+    // We cannot return a row, because all are done
+    return {ExecutionState::DONE, NoStats{}};
+  }
 // if we get here, we have a valid row for every not done dependency.
+// And we have atLeast 1 valid row left
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool oneWithContent = false;
   for (auto const& inPair : _inputRows) {
@@ -304,14 +272,14 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRow(OutputAqlIt
   // inside the outputblock by identical AQL values.
   // This optimization is not in use anymore.
   output.copyRow(val.row);
-  adjustNrDone(_dependencyToFetch, 1);
-  if (_nrDone < _numberDependencies) {
-    return {ExecutionState::HASMORE, NoStats{}};
+  adjustNrDone(_dependencyToFetch);
+  if (_nrDone >= _numberDependencies) {
+    return {ExecutionState::DONE, NoStats{}};
   }
-  return {ExecutionState::DONE, NoStats{}};
+  return {ExecutionState::HASMORE, NoStats{}};
 }
 
-void SortingGatherExecutor::adjustNrDone(size_t dependency, size_t hass) {
+void SortingGatherExecutor::adjustNrDone(size_t dependency) {
   auto const& dep = _inputRows[dependency];
   if (dep.state == ExecutionState::DONE) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -320,4 +288,40 @@ void SortingGatherExecutor::adjustNrDone(size_t dependency, size_t hass) {
 #endif
     ++_nrDone;
   }
+}
+
+ExecutionState SortingGatherExecutor::init() {
+  if (_numberDependencies == 0) {
+    // We need to initialize the dependencies once, they are injected
+    // after the fetcher is created.
+    _numberDependencies = _fetcher.numberDependencies();
+    TRI_ASSERT(_numberDependencies > 0);
+    _inputRows.reserve(_numberDependencies);
+    for (size_t index = 0; index < _numberDependencies; ++index) {
+      _inputRows.emplace_back(ValueType{index});
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _flaggedAsDone.emplace_back(false);
+#endif
+    }
+  }
+
+  while (_dependencyToFetch < _numberDependencies) {
+    std::tie(_inputRows[_dependencyToFetch].state,
+             _inputRows[_dependencyToFetch].row) =
+        _fetcher.fetchRowForDependency(_dependencyToFetch);
+    if (_inputRows[_dependencyToFetch].state == ExecutionState::WAITING) {
+      return ExecutionState::WAITING;
+    }
+    if (!_inputRows[_dependencyToFetch].row) {
+      TRI_ASSERT(_inputRows[_dependencyToFetch].state == ExecutionState::DONE);
+      adjustNrDone(_dependencyToFetch);
+    }
+    ++_dependencyToFetch;
+  }
+  _initialized = true;
+  if (_nrDone >= _numberDependencies) {
+    return ExecutionState::DONE;
+  }
+  _strategy->prepare(_inputRows);
+  return ExecutionState::HASMORE;
 }

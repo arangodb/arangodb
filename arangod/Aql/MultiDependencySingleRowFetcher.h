@@ -37,12 +37,14 @@ template <bool>
 class BlockFetcher;
 
 /**
- * @brief Interface for all AqlExecutors that do only need one
- *        row at a time in order to make progress.
+ * @brief Interface for all AqlExecutors that do need one
+ *        row at a time from every dependency in order to make progress.
  *        The guarantee is the following:
- *        If fetchRow returns a row the pointer to
+ *        If fetchRowForDependency returns a row of the given dependency,
+ *        the pointer to
  *        this row stays valid until the next call
- *        of fetchRow.
+ *        of fetchRowForDependency.
+ *        So we can have one Row per dependency in flight.
  */
 class MultiDependencySingleRowFetcher {
  private:
@@ -76,12 +78,6 @@ class MultiDependencySingleRowFetcher {
      *        are moved into separate classes.
      */
     size_t _rowIndex;
-
-    /**
-     * @brief The current row, as returned last by fetchRow(). Must stay valid
-     *        until the next fetchRow() call.
-     */
-    InputAqlItemRow _currentRow;
   };
 
  public:
@@ -93,8 +89,6 @@ class MultiDependencySingleRowFetcher {
   MultiDependencySingleRowFetcher();
 
  public:
-  // This is only TEST_VIRTUAL, so we ignore this lint warning:
-  // NOLINTNEXTLINE google-default-arguments
   std::pair<ExecutionState, InputAqlItemRow> fetchRow(size_t atMost = ExecutionBlock::DefaultBatchSize()) {
     // This is not implemented for this fetcher
     TRI_ASSERT(false);
@@ -109,25 +103,25 @@ class MultiDependencySingleRowFetcher {
 
   std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost) {
     ExecutionState state = ExecutionState::DONE;
-    size_t limit = 0;
+    size_t available = 0;
     for (size_t i = 0; i < numberDependencies(); ++i) {
       auto res = preFetchNumberOfRowsForDependency(i, atMost);
       if (res.first == ExecutionState::WAITING) {
         return {ExecutionState::WAITING, 0};
       }
-      limit += res.second;
+      available += res.second;
       if (res.first == ExecutionState::HASMORE) {
         state = ExecutionState::HASMORE;
       }
     }
-    return {state, limit};
+    return {state, available};
   }
 
   size_t numberDependencies();
 
   /**
    * @brief Fetch one new AqlItemRow from upstream.
-   *        **Guarantee**: the pointer returned is valid only
+   *        **Guarantee**: the row returned is valid only
    *        until the next call to fetchRow.
    *
    * @param atMost may be passed if a block knows the maximum it might want to
@@ -171,14 +165,13 @@ class MultiDependencySingleRowFetcher {
     }
 
     ExecutionState rowState;
-
+    InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
     if (depInfo._currentBlock == nullptr) {
       TRI_ASSERT(depInfo._upstreamState == ExecutionState::DONE);
-      depInfo._currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
       rowState = ExecutionState::DONE;
     } else {
       TRI_ASSERT(depInfo._currentBlock);
-      depInfo._currentRow = InputAqlItemRow{depInfo._currentBlock, depInfo._rowIndex};
+      row = InputAqlItemRow{depInfo._currentBlock, depInfo._rowIndex};
 
       TRI_ASSERT(depInfo._upstreamState != ExecutionState::WAITING);
       if (isLastRowInBlock(depInfo) && depInfo._upstreamState == ExecutionState::DONE) {
@@ -190,7 +183,7 @@ class MultiDependencySingleRowFetcher {
       depInfo._rowIndex++;
     }
 
-    return {rowState, depInfo._currentRow};
+    return {rowState, row};
   }
 
  private:
@@ -239,14 +232,14 @@ class MultiDependencySingleRowFetcher {
       // This returns the AqlItemBlock to the ItemBlockManager before fetching a
       // new one, so we might reuse it immediately!
       depInfo._currentBlock = nullptr;
-  
+
       ExecutionState state;
       std::shared_ptr<AqlItemBlockShell> newBlock;
       std::tie(state, newBlock) = fetchBlockForDependency(dependency, atMost);
       if (state == ExecutionState::WAITING) {
         return {ExecutionState::WAITING, 0};
       }
-  
+
       depInfo._currentBlock = std::move(newBlock);
       depInfo._rowIndex = 0;
     }

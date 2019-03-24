@@ -46,12 +46,6 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-// TODO check that blocks are not returned to early (e.g. not before the next row
-//      is fetched)
-
-// TODO check that, for SingleRowFetcher<true>, blocks are reposited (passed through) immediately
-//      after they have been fetched
-
 SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
   ResourceMonitor monitor;
   ExecutionState state;

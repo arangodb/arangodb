@@ -29,7 +29,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 MultiDependencySingleRowFetcher::DependencyInfo::DependencyInfo()
-    : _upstreamState{ExecutionState::HASMORE}, _rowIndex{0}, _currentRow{CreateInvalidInputRowHint{}} {}
+    : _upstreamState{ExecutionState::HASMORE}, _rowIndex{0} {}
 
 MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher(BlockFetcher<false>& executionBlock)
     : _blockFetcher(&executionBlock) {}
