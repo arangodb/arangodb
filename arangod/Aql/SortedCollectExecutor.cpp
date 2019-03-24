@@ -44,7 +44,7 @@ SortedCollectExecutor::CollectGroup::CollectGroup(bool count, Infos& infos)
     : groupLength(0),
       count(count),
       infos(infos),
-      _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}){
+      _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   for (auto const& aggName : infos.getAggregateTypes()) {
     aggregators.emplace_back(Aggregator::fromTypeString(infos.getTransaction(), aggName));
   }
@@ -141,7 +141,10 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
       _trxPtr(trxPtr) {}
 
 SortedCollectExecutor::SortedCollectExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher), _currentGroup(infos.getCount(), infos), _fetcherDone(false) {
+    : _infos(infos),
+      _fetcher(fetcher),
+      _currentGroup(infos.getCount(), infos),
+      _fetcherDone(false) {
   // reserve space for the current row
   _currentGroup.initialize(_infos.getGroupRegisters().size());
   // reset and recreate new group
@@ -167,7 +170,9 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
     }
     ++j;
   }
-
+  TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSome") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
   if (infos.getCollectRegister() != ExecutionNode::MaxRegisterId) {
     if (count) {
       // increase the count
@@ -231,8 +236,8 @@ void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& build
 }
 
 void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output) {
-  // Thanks to the edge case that we have to emmit a row even if we have no input
-  // We cannot assert here that the input row is valid ;(
+  // Thanks to the edge case that we have to emmit a row even if we have no
+  // input We cannot assert here that the input row is valid ;(
   size_t i = 0;
   for (auto& it : infos.getGroupRegisters()) {
     AqlValue val = this->groupValues[i];
@@ -291,7 +296,13 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
       }
       return {ExecutionState::DONE, {}};
     }
+    TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSomeOuter") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
 
+    TRI_IF_FAILURE("SortedCollectBlock::hasMore") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
 
     std::tie(state, input) = _fetcher.fetchRow();
 
