@@ -38,6 +38,8 @@
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/EnumerateCollectionExecutor.h"
+#include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutorTraits.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/HashedCollectExecutor.h"
@@ -366,13 +368,13 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
     }
     AqlItemBlock* block = requestBlock(nrItems, nrRegs);
     blockShell =
-        std::make_unique<AqlItemBlockShell>(_engine->itemBlockManager(),
+        std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
                                             std::unique_ptr<AqlItemBlock>{block});
   } else {
     AqlItemBlock* block = requestBlock(nrItems, nrRegs);
 
     blockShell =
-        std::make_unique<AqlItemBlockShell>(_engine->itemBlockManager(),
+        std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
                                             std::unique_ptr<AqlItemBlock>{block});
   }
 
@@ -384,8 +386,8 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
-template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>;
+template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ConstrainedSortExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<CountCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<DistinctCollectExecutor>;
@@ -397,9 +399,19 @@ template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<t
 template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, AllRowsFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Remove, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Remove, AllRowsFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Replace, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Replace, AllRowsFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Update, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Update, AllRowsFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Upsert, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Upsert, AllRowsFetcher>>;
 template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;

@@ -29,6 +29,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/SortRegister.h"
 #include "Basics/Common.h"
+#include "Cluster/ClusterComm.h"
 #include "Rest/GeneralRequest.h"
 
 #include <velocypack/Builder.h>

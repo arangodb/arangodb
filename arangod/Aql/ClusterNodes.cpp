@@ -305,6 +305,8 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
       alternativeRegId = (*it).second.registerId;
 
       TRI_ASSERT(alternativeRegId < ExecutionNode::MaxRegisterId);
+    } else {
+      TRI_ASSERT(alternativeRegId == ExecutionNode::MaxRegisterId);
     }
   }
 
