@@ -191,7 +191,6 @@ SET(ARANGOD_SOURCES
   Aql/CalculationExecutor.cpp
   Aql/ClusterBlocks.cpp
   Aql/ClusterNodes.cpp
-  Aql/CollectBlock.cpp
   Aql/CollectNode.cpp
   Aql/CollectOptions.cpp
   Aql/Collection.cpp
@@ -274,6 +273,7 @@ SET(ARANGOD_SOURCES
   Aql/ShortestPathNode.cpp
   Aql/SingleRowFetcher.cpp
   Aql/SortCondition.cpp
+  Aql/SortedCollectExecutor.cpp
   Aql/SortExecutor.cpp
   Aql/SortNode.cpp
   Aql/SortingGatherExecutor.cpp
