@@ -65,7 +65,7 @@ struct RequestInProgress {
   RequestInProgress(RequestInProgress const&) = delete;
   RequestInProgress& operator=(RequestInProgress const&) = delete;
 
-  RequestInProgress(std::unique_ptr<NewRequest> newRequest)
+  explicit RequestInProgress(std::unique_ptr<NewRequest> newRequest)
       : _newRequest(std::move(newRequest)),
         _requestHeaders(nullptr),
         _startTime(0.0),
