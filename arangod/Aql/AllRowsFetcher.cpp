@@ -107,7 +107,7 @@ std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> AllRowsFetcher::fe
       return {state, nullptr};
     }
   }
-
+  TRI_ASSERT(_aqlItemMatrix != nullptr);
   auto size = _aqlItemMatrix->numberOfBlocks();
   if (_blockToReturnNext >= size) {
     return {ExecutionState::DONE, nullptr};
@@ -117,6 +117,10 @@ std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> AllRowsFetcher::fe
 }
 
 ExecutionState AllRowsFetcher::upstreamState() {
+  if (_aqlItemMatrix == nullptr) {
+    // We have not pulled anything yet!
+    return ExecutionState::HASMORE;
+  }
   if (_blockToReturnNext >= _aqlItemMatrix->numberOfBlocks()) {
     return ExecutionState::DONE;
   }
