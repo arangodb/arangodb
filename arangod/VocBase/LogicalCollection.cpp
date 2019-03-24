@@ -149,10 +149,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _isSmart(Helper::readBooleanValue(info, StaticStrings::IsSmart, false)),
       _waitForSync(Helper::readBooleanValue(info, StaticStrings::WaitForSyncString, false)),
       _allowUserKeys(Helper::readBooleanValue(info, "allowUserKeys", true)),
-      _keyOptions(nullptr),
-      _keyGenerator(),
-      _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)),
-      _sharding() {
+#ifdef USE_ENTERPRISE
+      _smartJoinAttribute(::readStringValue(info, StaticStrings::SmartJoinAttribute, "")),
+#endif
+      _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)) {
   TRI_ASSERT(info.isObject());
 
   if (!TRI_vocbase_t::IsAllowedName(info)) {
@@ -181,6 +181,48 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   }
 
   _sharding = std::make_unique<ShardingInfo>(info, this);
+
+#ifdef USE_ENTERPRISE
+  if (ServerState::instance()->isCoordinator()) {
+    if (!info.get(StaticStrings::SmartJoinAttribute).isNone() &&
+        !hasSmartJoinAttribute()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
+                                     "smartJoinAttribute must contain a string attribute name");
+    }
+
+    if (hasSmartJoinAttribute()) {
+      auto const& sk = _sharding->shardKeys();
+      TRI_ASSERT(!sk.empty());
+
+      if (sk.size() != 1) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
+                                      "smartJoinAttribute can only be used for collections with a single shardKey value");
+      }
+      TRI_ASSERT(!sk.front().empty());
+      if (sk.front().back() != ':') {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
+                                      std::string("smartJoinAttribute can only be used for shardKeys ending on ':', got '") + sk.front() + "'");
+      }
+      
+      if (_isSmart) {
+        if (_type == TRI_COL_TYPE_EDGE) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
+                                         "cannot use smartJoinAttribute on a smart edge collection");
+        } else if (_type == TRI_COL_TYPE_DOCUMENT) {
+          VPackSlice sga = info.get(StaticStrings::GraphSmartGraphAttribute);
+          if (sga.isString() && sga.copyString() != info.get(StaticStrings::SmartJoinAttribute).copyString()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
+                                           "smartJoinAttribute must be equal to smartGraphAttribute");
+          }
+        }
+      }
+    }
+  }
+#else
+  // whatever we got passed in, in a non-enterprise build, we just ignore
+  // any specification for the smartJoinAttribute
+  _smartJoinAttribute.clear();
+#endif
 
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
@@ -377,10 +419,6 @@ TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   return _physical->revision(trx);
 }
-
-bool LogicalCollection::waitForSync() const { return _waitForSync; }
-
-bool LogicalCollection::isSmart() const { return _isSmart; }
 
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
@@ -615,6 +653,10 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   // Cluster Specific
   result.add(StaticStrings::IsSmart, VPackValue(_isSmart));
 
+  if (hasSmartJoinAttribute()) {
+    result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));
+  }
+        
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???

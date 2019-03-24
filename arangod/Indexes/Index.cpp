@@ -960,9 +960,9 @@ void Index::warmup(arangodb::transaction::Methods*, std::shared_ptr<basics::Loca
 Result& Index::addErrorMsg(Result& r, std::string const& key) {
   // now provide more context based on index
   r.appendErrorMessage(" - in index ");
-  r.appendErrorMessage(std::to_string(_iid));
+  r.appendErrorMessage(name());
   r.appendErrorMessage(" of type ");
-  r.appendErrorMessage(typeName());
+  r.appendErrorMessage(oldtypeName());
 
   // build fields string
   r.appendErrorMessage(" over '");
