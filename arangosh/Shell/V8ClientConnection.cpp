@@ -1467,7 +1467,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     int res = TRI_V8ToVPack(isolate, builder, body, false);
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, Logger::V8)
-          << "error converting request body " << TRI_errno_string(res);
+          << "error converting request body: " << TRI_errno_string(res);
       return v8::Null(isolate);
     }
     req->addVPack(std::move(buffer));
@@ -1526,7 +1526,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     int res = TRI_V8ToVPack(isolate, builder, body, false);
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, Logger::V8)
-          << "error converting request body " << TRI_errno_string(res);
+          << "error converting request body: " << TRI_errno_string(res);
       return v8::Null(isolate);
     }
     req->addVPack(std::move(buffer));

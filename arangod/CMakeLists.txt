@@ -438,6 +438,7 @@ SET(ARANGOD_SOURCES
   Replication/common-defines.cpp
   Replication/utilities.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
+  RestHandler/RestAdminExecuteHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAdminServerHandler.cpp

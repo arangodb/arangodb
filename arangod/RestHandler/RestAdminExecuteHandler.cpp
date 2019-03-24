@@ -23,12 +23,14 @@
 
 #include "RestAdminExecuteHandler.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "Actions/ActionFeature.h"
+#include "Actions/actions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Logger/Logger.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
+#include "V8Server/v8-actions.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -71,7 +73,8 @@ RestStatus RestAdminExecuteHandler::execute() {
     LOG_TOPIC(WARN, Logger::FIXME) << "about to execute: '" << Logger::CHARS(body, bodySize) << "'";
   
     // get a V8 context
-    V8Context* context = V8DealerFeature::DEALER->enterContext(&_vocbase,  false);
+    bool const allowUseDatabase = ActionFeature::ACTION->allowUseDatabase();
+    V8Context* context = V8DealerFeature::DEALER->enterContext(&_vocbase,  allowUseDatabase);
 
     // note: the context might be nullptr in case of shut-down
     if (context == nullptr) {
@@ -99,6 +102,19 @@ RestStatus RestAdminExecuteHandler::execute() {
       
       if (!action.IsEmpty()) {
         action->SetName(TRI_V8_ASCII_STRING(isolate, "source"));
+
+        TRI_GET_GLOBALS();
+
+        TRI_fake_action_t adminExecuteAction("_admin/execute", 2);
+
+        v8g->_currentRequest = TRI_RequestCppToV8(isolate, v8g, _request.get(), &adminExecuteAction); 
+        v8g->_currentResponse = v8::Object::New(isolate);
+       
+        auto guard = scopeGuard([&v8g, &isolate]() {
+          v8g->_currentRequest = v8::Undefined(isolate);
+          v8g->_currentResponse = v8::Undefined(isolate);
+        });
+           
         v8::Handle<v8::Value> args[] = {v8::Null(isolate)};
         rv = action->Call(current, 0, args);
       }
@@ -123,6 +139,9 @@ RestStatus RestAdminExecuteHandler::execute() {
         switch (_response->transportType()) {
           case Endpoint::TransportType::HTTP: {
             HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
+            if (httpResponse == nullptr) {
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast response object");
+            }
             httpResponse->body().appendText(errorMessage.data(), errorMessage.size());
             break;
           } 

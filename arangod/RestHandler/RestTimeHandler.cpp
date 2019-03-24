@@ -23,7 +23,6 @@
 
 #include "RestTimeHandler.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 
 #include <velocypack/Builder.h>

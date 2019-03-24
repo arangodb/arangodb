@@ -45,6 +45,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestHandler/RestAdminDatabaseHandler.h"
+#include "RestHandler/RestAdminExecuteHandler.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
@@ -98,6 +99,7 @@
 #include "Ssl/SslServerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::rest;
 using namespace arangodb::options;
@@ -457,6 +459,11 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler("/_admin/auth/reload",
                               RestHandlerCreator<RestAuthReloadHandler>::createNoData);
+  
+  if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
+    _handlerFactory->addHandler("/_admin/execute",
+                                RestHandlerCreator<RestAdminExecuteHandler>::createNoData);
+  }
   
   _handlerFactory->addHandler("/_admin/time",
                               RestHandlerCreator<RestTimeHandler>::createNoData);

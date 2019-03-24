@@ -361,7 +361,6 @@ void V8DealerFeature::start() {
                                << ", max: " << _nrMaxContexts;
 
   defineDouble("V8_CONTEXTS", static_cast<double>(_nrMaxContexts));
-  defineBoolean("ALLOW_ADMIN_EXECUTE", _allowAdminExecute);
 
   // setup instances
   {
