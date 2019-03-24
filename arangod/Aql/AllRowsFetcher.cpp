@@ -121,6 +121,9 @@ ExecutionState AllRowsFetcher::upstreamState() {
     // We have not pulled anything yet!
     return ExecutionState::HASMORE;
   }
+  if (_upstreamState == ExecutionState::WAITING) {
+    return ExecutionState::WAITING;
+  }
   if (_blockToReturnNext >= _aqlItemMatrix->numberOfBlocks()) {
     return ExecutionState::DONE;
   }
