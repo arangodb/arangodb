@@ -106,6 +106,8 @@ class DistinctCollectExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
+  inline size_t numberOfRowsInFlight() const { return 0; }
+
  private:
   Infos const& infos() const noexcept { return _infos; };
 

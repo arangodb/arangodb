@@ -610,8 +610,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
   }
 
   std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
-  size_t nrDone = 0;
-  size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
+  size_t nrGood = cc->performRequests(requests, 5.0 * 60.0,
                                       LogTopic("Pregel Conductor"), false);
   Utils::printResponses(requests);
   return nrGood == requests.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
@@ -752,10 +751,9 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
     requests.emplace_back("server:" + server, rest::RequestType::POST, base + path, body);
   }
 
-  size_t nrDone = 0;
-  size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
+  size_t nrGood = cc->performRequests(requests, 5.0 * 60.0,
                                       LogTopic("Pregel Conductor"), false);
-  LOG_TOPIC(TRACE, Logger::PREGEL) << "Send " << path << " to " << nrDone << " servers";
+  LOG_TOPIC(TRACE, Logger::PREGEL) << "Send " << path << " to " << nrGood << " servers";
   Utils::printResponses(requests);
   if (handle && nrGood == requests.size()) {
     for (ClusterCommRequest const& req : requests) {

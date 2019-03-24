@@ -35,7 +35,7 @@ struct ShortestPathOptions;
 
 class ShortestPathFinder {
  protected:
-  ShortestPathFinder(ShortestPathOptions& options);
+  explicit ShortestPathFinder(ShortestPathOptions& options);
 
  public:
   virtual ~ShortestPathFinder() {}

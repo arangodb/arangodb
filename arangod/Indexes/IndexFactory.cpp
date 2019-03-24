@@ -49,11 +49,10 @@ struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
                                arangodb::LogicalCollection&,
                                arangodb::velocypack::Slice const& definition,
                                TRI_idx_iid_t, bool) const override {
-    return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string(
-            "failure to instantiate index without a factory for definition: ") +
-            definition.toString());
+    std::string type = arangodb::basics::VelocyPackHelper::getStringValue(
+        definition, arangodb::StaticStrings::IndexType, "");
+    return arangodb::Result(TRI_ERROR_BAD_PARAMETER,
+                            "invalid index type '" + type + "'");
   }
 
   arangodb::Result normalize(          // normalize definition
@@ -62,11 +61,10 @@ struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
       bool,                                    // definition for index creation
       TRI_vocbase_t const&                     // index vocbase
       ) const override {
-    return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string(
-            "failure to normalize index without a factory for definition: ") +
-            definition.toString());
+    std::string type = arangodb::basics::VelocyPackHelper::getStringValue(
+        definition, arangodb::StaticStrings::IndexType, "");
+    return arangodb::Result(TRI_ERROR_BAD_PARAMETER,
+                            "invalid index type '" + type + "'");
   }
 };
 

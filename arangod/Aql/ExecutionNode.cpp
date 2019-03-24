@@ -1250,7 +1250,8 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
 
   IdExecutorInfos infos(nrRegs, std::move(toKeep), getRegsToClear());
 
-  return std::make_unique<ExecutionBlockImpl<IdExecutor>>(&engine, this, std::move(infos));
+  return std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(&engine, this,
+                                                                        std::move(infos));
 }
 
 /// @brief toVelocyPack, for SingletonNode
@@ -1330,6 +1331,8 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
                                                      outVariable, _random, _hint);
 
   c->projections(_projections);
+  c->_prototypeCollection = _prototypeCollection;
+  c->_prototypeOutVariable = _prototypeOutVariable;
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
@@ -1691,7 +1694,7 @@ void SubqueryNode::invalidateCost() {
   getSubquery()->invalidateCost();
 }
 
-bool SubqueryNode::isConst() const {
+bool SubqueryNode::isConst() {
   if (isModificationSubquery() || !isDeterministic()) {
     return false;
   }
@@ -1781,11 +1784,13 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
   auto outVar = getRegisterPlan()->varInfo.find(_outVariable->id);
   TRI_ASSERT(outVar != getRegisterPlan()->varInfo.end());
   RegisterId outReg = outVar->second.registerId;
+  // The const_cast has been taken from previous implementation.
   SubqueryExecutorInfos infos(inputRegisters, outputRegisters,
                               getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                              getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                              calcRegsToKeep(), *subquery, outReg, isConst());
-  return std::make_unique<ExecutionBlockImpl<SubqueryExecutor>>(engine, this,
+                              getRegisterPlan()->nrRegs[getDepth()],
+                              getRegsToClear(), calcRegsToKeep(), *subquery,
+                              outReg, const_cast<SubqueryNode*>(this)->isConst());
+  return std::make_unique<ExecutionBlockImpl<SubqueryExecutor>>(&engine, this,
                                                                 std::move(infos));
 }
 

@@ -38,11 +38,22 @@ namespace transaction {
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "TransactionManager") {
+    : ApplicationFeature(server, "TransactionManager"), _workItem(nullptr), _gcfunc() {
   setOptional(false);
   startsAfter("BasicsPhase");
 
   startsAfter("EngineSelector");
+      
+  _gcfunc = [this] (bool cancelled) {
+    if (!cancelled) {
+      MANAGER->garbageCollect(/*abortAll*/false);
+    }
+    
+    if (!ApplicationServer::isStopping() && !cancelled) {
+      auto off = std::chrono::seconds(1);
+      _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+    }
+  };
 }
 
 void ManagerFeature::prepare() {
@@ -50,8 +61,25 @@ void ManagerFeature::prepare() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE != nullptr);
   MANAGER = EngineSelectorFeature::ENGINE->createTransactionManager();
 }
+  
+void ManagerFeature::start() {
+  auto off = std::chrono::seconds(1);
+  _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+}
+  
+void ManagerFeature::beginShutdown() {
+  _workItem.reset();
+  // make sure no lingering managed trx remain
+  MANAGER->garbageCollect(/*abortAll*/true);
+  while (MANAGER->garbageCollect(/*abortAll*/true)) {
+    LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "still waiting for managed transaction";
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+}
 
-void ManagerFeature::unprepare() { MANAGER.reset(); }
+void ManagerFeature::unprepare() {
+  MANAGER.reset();
+}
 
 }  // namespace transaction
 }  // namespace arangodb

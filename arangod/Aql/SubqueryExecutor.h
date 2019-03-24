@@ -37,24 +37,29 @@ template <bool>
 class SingleRowFetcher;
 
 class SubqueryExecutorInfos : public ExecutorInfos {
+ public:
   SubqueryExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
                         std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
                         RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                        std::unordered_set<RegisterId>&& registersToClear,
+                        std::unordered_set<RegisterId> const& registersToClear,
                         std::unordered_set<RegisterId>&& registersToKeep,
                         ExecutionBlock& subQuery, RegisterId outReg, bool subqueryIsConst);
 
- public:
-  inline ExecutionBlock& getSubquery() { return _subQuery; }
+  SubqueryExecutorInfos() = delete;
+  SubqueryExecutorInfos(SubqueryExecutorInfos&&);
+  SubqueryExecutorInfos(SubqueryExecutorInfos const&) = delete;
+  ~SubqueryExecutorInfos();
+
+  inline ExecutionBlock& getSubquery() const { return _subQuery; }
   inline bool returnsData() const { return _returnsData; }
   inline RegisterId outputRegister() const { return _outReg; }
   inline bool isConst() const { return _isConst; }
 
  private:
   ExecutionBlock& _subQuery;
-  RegisterId _outReg;
-  bool _returnsData;
-  bool _isConst;
+  RegisterId const _outReg;
+  bool const _returnsData;
+  bool const _isConst;
 };
 
 class SubqueryExecutor {
@@ -86,6 +91,18 @@ class SubqueryExecutor {
    *         if something was written output.hasValue() == true
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+
+  /**
+   * @brief This executor is working on at most one input row at a time
+   * And it gurantees to produce eactly 1 output for every one input row.
+   */
+  inline size_t numberOfRowsInFlight() const {
+    if (_input) {
+      return 1;
+    } else {
+      return 0;
+    }
+  }
 
  private:
   /**

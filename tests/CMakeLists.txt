@@ -102,6 +102,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/FilterExecutorTest.cpp
   Aql/HashedCollectExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
+  Aql/MultiDependencySingleRowFetcherTest.cpp
   Aql/IdExecutorTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/RestAqlHandlerTest.cpp
@@ -109,6 +110,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ShortestPathExecutorTest.cpp
   Aql/SingleRowFetcherTest.cpp
   Aql/SortExecutorTest.cpp
+  Aql/SortedCollectExecutorTest.cpp
   Aql/SortLimit-test.cpp
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestExecutorHelper.cpp

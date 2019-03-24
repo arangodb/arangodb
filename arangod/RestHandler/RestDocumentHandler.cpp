@@ -21,13 +21,14 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestDocumentHandler.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
+#include "RestDocumentHandler.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -72,6 +73,27 @@ RestStatus RestDocumentHandler::execute() {
 
   // this handler is done
   return RestStatus::DONE;
+}
+
+/// @brief returns the short id of the server which should handle this request
+uint32_t RestDocumentHandler::forwardingTarget() {
+  if (!ServerState::instance()->isCoordinator()) {
+    return 0;
+  }
+
+  bool found = false;
+  std::string value = _request->header(StaticStrings::TransactionId, found);
+  if (found) {
+    uint64_t tid = basics::StringUtils::uint64(value);
+    if (!transaction::isCoordinatorTransactionId(tid)) {
+      TRI_ASSERT(transaction::isLegacyTransactionId(tid));
+      return 0;
+    }
+    uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
+    return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
+  }
+
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

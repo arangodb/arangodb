@@ -262,6 +262,16 @@ class ExecutionNode {
     }
   }
 
+  /// @brief get the singleton node of the node
+  ExecutionNode const* getSingleton() const {
+    auto node = this;
+    do {
+      node = node->getFirstDependency();
+    } while (node != nullptr && node->getType() != SINGLETON);
+
+    return node;
+  }
+
   /// @brief get the node and its dependencies as a vector
   void getDependencyChain(std::vector<ExecutionNode*>& result, bool includeSelf) {
     auto current = this;
@@ -946,7 +956,7 @@ class SubqueryNode : public ExecutionNode {
 
   bool isDeterministic() override final;
 
-  bool isConst() const;
+  bool isConst();
   bool mayAccessCollections();
 
  private:

@@ -1774,6 +1774,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
+  
   auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
@@ -2378,10 +2379,6 @@ static void JS_CountVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) 
   auto& collectionName = col->name();
   SingleCollectionTransaction trx(transaction::V8Context::Create(col->vocbase(), true),
                                   collectionName, AccessMode::Type::READ);
-
-  if (trx.isLockedShard(collectionName)) {
-    trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
-  }
 
   Result res = trx.begin();
 

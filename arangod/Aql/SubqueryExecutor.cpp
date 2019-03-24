@@ -32,16 +32,19 @@ SubqueryExecutorInfos::SubqueryExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId>&& registersToClear,
+    std::unordered_set<RegisterId> const& registersToClear,
     std::unordered_set<RegisterId>&& registersToKeep, ExecutionBlock& subQuery,
     RegisterId outReg, bool subqueryIsConst)
-    : ExecutorInfos(readableInputRegisters, writeableOutputRegisters,
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
+    : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
+                    nrOutputRegisters, registersToClear, std::move(registersToKeep)),
       _subQuery(subQuery),
       _outReg(outReg),
       _returnsData(subQuery.getPlanNode()->getType() == ExecutionNode::RETURN),
       _isConst(subqueryIsConst) {}
+
+SubqueryExecutorInfos::SubqueryExecutorInfos(SubqueryExecutorInfos&& other) = default;
+
+SubqueryExecutorInfos::~SubqueryExecutorInfos() = default;
 
 SubqueryExecutor::SubqueryExecutor(Fetcher& fetcher, SubqueryExecutorInfos& infos)
     : _fetcher(fetcher),
