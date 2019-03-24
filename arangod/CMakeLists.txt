@@ -236,6 +236,7 @@ SET(ARANGOD_SOURCES
   Aql/ModificationBlocks.cpp
   Aql/ModificationNodes.cpp
   Aql/ModificationOptions.cpp
+  Aql/MultiDependencySingleRowFetcher.cpp
   Aql/NoResultsExecutor.cpp
   Aql/NodeFinder.cpp
   Aql/Optimizer.cpp
@@ -275,6 +276,7 @@ SET(ARANGOD_SOURCES
   Aql/SortedCollectExecutor.cpp
   Aql/SortExecutor.cpp
   Aql/SortNode.cpp
+  Aql/SortingGatherExecutor.cpp
   Aql/SortRegister.cpp
   Aql/SubqueryBlock.cpp
   Aql/TraversalExecutor.cpp

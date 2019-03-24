@@ -136,6 +136,8 @@ class TraversalExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
+  inline size_t numberOfRowsInFlight() const { return 0; }
+
  private:
   /**
    * @brief compute the return state

@@ -50,8 +50,8 @@ class SingleRowFetcher;
 class SortedCollectExecutorInfos : public ExecutorInfos {
  public:
   SortedCollectExecutorInfos(
-      RegisterId nrInputRegisters,
-      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+      std::unordered_set<RegisterId> registersToClear,
       std::unordered_set<RegisterId> registersToKeep,
       std::unordered_set<RegisterId>&& readableInputRegisters,
       std::unordered_set<RegisterId>&& writeableOutputRegisters,
@@ -74,7 +74,9 @@ class SortedCollectExecutorInfos : public ExecutorInfos {
   std::vector<std::pair<RegisterId, RegisterId>> const& getAggregatedRegisters() const {
     return _aggregateRegisters;
   }
-  std::vector<std::string> const& getAggregateTypes() const { return _aggregateTypes; }
+  std::vector<std::string> const& getAggregateTypes() const {
+    return _aggregateTypes;
+  }
   bool getCount() const noexcept { return _count; };
   transaction::Methods* getTransaction() const { return _trxPtr; }
   RegisterId getCollectRegister() const noexcept { return _collectRegister; };
@@ -149,9 +151,7 @@ class SortedCollectExecutor {
     void initialize(size_t capacity);
     void reset(InputAqlItemRow& input);
 
-    bool isValid() const{
-      return _lastInputRow.isInitialized();
-    }
+    bool isValid() const { return _lastInputRow.isInitialized(); }
 
     void addLine(InputAqlItemRow& input);
     bool isSameGroup(InputAqlItemRow& input);
@@ -165,6 +165,7 @@ class SortedCollectExecutor {
     static const bool allowsBlockPassthrough = false;
     // TODO This should be true, but the current implementation in
     // ExecutionBlockImpl and the fetchers does not work with this.
+    // It will however always overfetch if activated
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -183,6 +184,18 @@ class SortedCollectExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
+  /**
+   * This executor has no chance to estimate how many rows
+   * it will produce exactly. It can however only
+   * overestimate never underestimate.
+   */
+  inline size_t numberOfRowsInFlight() const {
+    // We always need to be prepared for 1 more row.
+    // On empty input we can produce 1 row.
+    // Otherwise we will have an open group!
+    return 1;
+  }
+
  private:
   Infos const& infos() const noexcept { return _infos; };
 
@@ -194,7 +207,7 @@ class SortedCollectExecutor {
   /// @brief details about the current group
   CollectGroup _currentGroup;
 
-  bool _fetcherDone; // Flag if fetcher is done
+  bool _fetcherDone;  // Flag if fetcher is done
 };
 
 }  // namespace aql
