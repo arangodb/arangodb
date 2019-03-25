@@ -91,7 +91,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
 
   setAborted(false);
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: getting master state";
+  LOG_TOPIC("23d92", DEBUG, Logger::REPLICATION) << "client: getting master state";
   Result r = _state.master.getState(_state.connection, _state.isChildSyncer);
   if (r.fail()) {
     return r;
@@ -101,7 +101,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
       (_state.master.majorVersion == 3 && _state.master.minorVersion < 3)) {
     char const* msg =
         "global replication is not supported with a master < ArangoDB 3.3";
-    LOG_TOPIC(WARN, Logger::REPLICATION) << msg;
+    LOG_TOPIC("57394", WARN, Logger::REPLICATION) << msg;
     return Result(TRI_ERROR_INTERNAL, msg);
   }
 
@@ -113,13 +113,13 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "created logfile barrier";
+  LOG_TOPIC("0bf0e", DEBUG, Logger::REPLICATION) << "created logfile barrier";
   TRI_DEFER(
       if (!_state.isChildSyncer) { _state.barrier.remove(_state.connection); });
 
   if (!_state.isChildSyncer) {
     // start batch is required for the inventory request
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "sending start batch";
+    LOG_TOPIC("0da14", DEBUG, Logger::REPLICATION) << "sending start batch";
     r = _batch.start(_state.connection, _progress);
     if (r.fail()) {
       return r;
@@ -131,17 +131,17 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
     _batchPingTimer.reset();
     _batch.finish(_state.connection, _progress);
   });
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "sending start batch done";
+  LOG_TOPIC("62fb5", DEBUG, Logger::REPLICATION) << "sending start batch done";
 
   VPackBuilder builder;
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "fetching inventory";
+  LOG_TOPIC("c7021", DEBUG, Logger::REPLICATION) << "fetching inventory";
   r = fetchInventory(builder);
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "inventory done: " << r.errorNumber();
+  LOG_TOPIC("1fe0b", DEBUG, Logger::REPLICATION) << "inventory done: " << r.errorNumber();
   if (r.fail()) {
     return r;
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "inventory: " << builder.slice().toJson();
+  LOG_TOPIC("1bd5b", DEBUG, Logger::REPLICATION) << "inventory: " << builder.slice().toJson();
   VPackSlice const databases = builder.slice().get("databases");
   VPackSlice const state = builder.slice().get("state");
   if (!databases.isObject() || !state.isObject()) {
@@ -151,16 +151,16 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   }
 
   if (!_state.applier._skipCreateDrop) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "updating server inventory";
+    LOG_TOPIC("af241", DEBUG, Logger::REPLICATION) << "updating server inventory";
     Result r = updateServerInventory(databases);
     if (r.fail()) {
-      LOG_TOPIC(DEBUG, Logger::REPLICATION)
+      LOG_TOPIC("5fc1c", DEBUG, Logger::REPLICATION)
           << "updating server inventory failed";
       return r;
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "databases: " << databases.toJson();
+  LOG_TOPIC("d7e85", DEBUG, Logger::REPLICATION) << "databases: " << databases.toJson();
 
   try {
     // actually sync the database
@@ -254,7 +254,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
       Result r = methods::Databases::create(dbName, VPackSlice::emptyArraySlice(),
                                             VPackSlice::emptyObjectSlice());
       if (r.fail()) {
-        LOG_TOPIC(WARN, Logger::REPLICATION)
+        LOG_TOPIC("cf124", WARN, Logger::REPLICATION)
             << "Creating the db failed on replicant";
         return r;
       }
@@ -262,7 +262,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
       TRI_ASSERT(vocbase != nullptr);  // must be loaded now
       if (vocbase == nullptr) {
         char const* msg = "DB was created with wrong id on replicant";
-        LOG_TOPIC(WARN, Logger::REPLICATION) << msg;
+        LOG_TOPIC("a3b6f", WARN, Logger::REPLICATION) << msg;
         return Result(TRI_ERROR_INTERNAL, msg);
       }
     } else {
@@ -303,12 +303,12 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
           auto res = vocbase->dropCollection(collection->id(), false, -1.0).errorNumber();
 
           if (res != TRI_ERROR_NO_ERROR) {
-            LOG_TOPIC(ERR, Logger::REPLICATION)
+            LOG_TOPIC("f04bb", ERR, Logger::REPLICATION)
                 << "unable to drop collection " << collection->name() << ": "
                 << TRI_errno_string(res);
           }
         } catch (...) {
-          LOG_TOPIC(ERR, Logger::REPLICATION)
+          LOG_TOPIC("69fc4", ERR, Logger::REPLICATION)
               << "unable to drop collection " << collection->name();
         }
       }
@@ -332,7 +332,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
                           : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
 
     if (r.fail()) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "Dropping db failed on replicant";
+      LOG_TOPIC("0a282", WARN, Logger::REPLICATION) << "Dropping db failed on replicant";
       return r;
     }
 
@@ -400,7 +400,7 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   VPackSlice const slice = builder.slice();
 
   if (!slice.isObject()) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    LOG_TOPIC("1db22", DEBUG, Logger::REPLICATION)
         << "client: InitialSyncer::run - inventoryResponse is not an object";
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +

@@ -232,7 +232,7 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
     }
   }
 
-  LOG_TOPIC(TRACE, Logger::FIXME) << "optimization ends with " << _plans.size() << " plans";
+  LOG_TOPIC("5b5f6", TRACE, Logger::FIXME) << "optimization ends with " << _plans.size() << " plans";
 
   return TRI_ERROR_NO_ERROR;
 }

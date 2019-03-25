@@ -23,12 +23,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchViewBlock.h"
-#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "AqlHelper.h"
 #include "Basics/Exceptions.h"
@@ -80,9 +80,9 @@ inline irs::columnstore_reader::values_reader_f pkColumn(irs::sub_reader const& 
   return reader ? reader->values() : irs::columnstore_reader::values_reader_f{};
 }
 
-inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection( // find collection
-    arangodb::transaction::Methods& trx, // transaction
-    TRI_voc_cid_t cid // collection identifier
+inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find collection
+    arangodb::transaction::Methods& trx,  // transaction
+    TRI_voc_cid_t cid                     // collection identifier
 ) {
   TRI_ASSERT(trx.state());
 
@@ -93,7 +93,7 @@ inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection( // find co
   auto* collection = trx.state()->collection(cid, arangodb::AccessMode::Type::READ);
 
   if (!collection) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("ebced", WARN, arangodb::iresearch::TOPIC)
         << "failed to find collection while reading document from arangosearch "
            "view, cid '"
         << cid << "'";
@@ -141,20 +141,19 @@ using namespace arangodb::aql;
   return callbackFactories[size_t(engine->useRawDocumentPointers())](ctx);
 }
 
-IResearchViewBlockBase::IResearchViewBlockBase(
-    std::shared_ptr<IResearchView::Snapshot const> reader,
-    ExecutionEngine& engine,
-    IResearchViewNode const& en)
-  : ExecutionBlock(&engine, &en),
-    _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
-    _ctx(engine.getQuery(), en),
-    _reader(reader),
-    _filter(irs::filter::prepared::empty()),
-    _execCtx(*_trx, _ctx),
-    _inflight(0),
-    _hasMore(true),  // has more data initially
-    _volatileSort(true),
-    _volatileFilter(true) {
+IResearchViewBlockBase::IResearchViewBlockBase(std::shared_ptr<IResearchView::Snapshot const> reader,
+                                               ExecutionEngine& engine,
+                                               IResearchViewNode const& en)
+    : ExecutionBlock(&engine, &en),
+      _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
+      _ctx(engine.getQuery(), en),
+      _reader(reader),
+      _filter(irs::filter::prepared::empty()),
+      _execCtx(*_trx, _ctx),
+      _inflight(0),
+      _hasMore(true),  // has more data initially
+      _volatileSort(true),
+      _volatileFilter(true) {
   TRI_ASSERT(_reader);
   TRI_ASSERT(_trx);
 
@@ -162,9 +161,8 @@ IResearchViewBlockBase::IResearchViewBlockBase(
   _filterCtx.emplace(_execCtx);
 }
 
-std::pair<ExecutionState, Result> IResearchViewBlockBase::initializeCursor(AqlItemBlock* items,
-                                                                           size_t pos) {
-  const auto res = ExecutionBlock::initializeCursor(items, pos);
+std::pair<ExecutionState, Result> IResearchViewBlockBase::initializeCursor(InputAqlItemRow const& input) {
+  const auto res = ExecutionBlock::initializeCursor(input);
 
   if (res.first == ExecutionState::WAITING || !res.second.ok()) {
     // If we need to wait or get an error we return as is.
@@ -196,10 +194,9 @@ void IResearchViewBlockBase::reset() {
     if (!arangodb::iresearch::FilterFactory::filter(&root, queryCtx,
                                                     viewNode.filterCondition())) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "failed to build filter while querying arangosearch view, query '"
-        + viewNode.filterCondition().toVelocyPack(true)->toJson() + "'"
-      );
+          TRI_ERROR_BAD_PARAMETER,
+          "failed to build filter while querying arangosearch view, query '" +
+              viewNode.filterCondition().toVelocyPack(true)->toJson() + "'");
     }
 
     if (_volatileSort) {
@@ -242,7 +239,7 @@ bool IResearchViewBlockBase::readDocument(LogicalCollection const& collection,
 
   if (!pkValues(docId, tmpRef) ||
       !arangodb::iresearch::DocumentPrimaryKey::read(docPk, tmpRef)) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("6442f", WARN, arangodb::iresearch::TOPIC)
         << "failed to read document primary key while reading document from "
            "arangosearch view, doc_id '"
         << docId << "'";
@@ -461,7 +458,7 @@ bool IResearchViewBlock::next(ReadContext& ctx, size_t limit) {
     auto collection = lookupCollection(*_trx, cid);
 
     if (!collection) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("09c4f", WARN, arangodb::iresearch::TOPIC)
           << "failed to find collection while reading document from "
              "arangosearch view, cid '"
           << cid << "'";
@@ -543,9 +540,8 @@ size_t IResearchViewBlock::skip(size_t limit) {
 
 IResearchViewUnorderedBlock::IResearchViewUnorderedBlock(
     std::shared_ptr<IResearchView::Snapshot const> reader,
-    aql::ExecutionEngine& engine,
-    IResearchViewNode const& node)
-  : IResearchViewBlockBase(reader, engine, node), _readerOffset(0) {
+    aql::ExecutionEngine& engine, IResearchViewNode const& node)
+    : IResearchViewBlockBase(reader, engine, node), _readerOffset(0) {
   _volatileSort = false;  // do not evaluate sort
 }
 
@@ -558,7 +554,7 @@ bool IResearchViewUnorderedBlock::resetIterator() {
   _pkReader = ::pkColumn(segmentReader);
 
   if (!_pkReader) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("bd01b", WARN, arangodb::iresearch::TOPIC)
         << "encountered a sub-reader without a primary key column while "
            "executing a query, ignoring";
     return false;
@@ -581,7 +577,7 @@ bool IResearchViewUnorderedBlock::next(ReadContext& ctx, size_t limit) {
     auto collection = lookupCollection(*_trx, cid);
 
     if (!collection) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("8d4ea", WARN, arangodb::iresearch::TOPIC)
           << "failed to find collection while reading document from "
              "arangosearch view, cid '"
           << cid << "'";

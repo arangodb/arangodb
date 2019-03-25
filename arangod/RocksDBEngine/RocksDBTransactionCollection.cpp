@@ -110,7 +110,7 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       // use and usage-lock
       TRI_vocbase_col_status_e status;
 
-      LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
+      LOG_TRX("b72bb", TRACE, _transaction, nestingLevel) << "using collection " << _cid;
       TRI_set_errno(TRI_ERROR_NO_ERROR);  // clear error state so can get valid
                                           // error below
       _collection = _transaction->vocbase().useCollection(_cid, status);
@@ -172,7 +172,7 @@ void RocksDBTransactionCollection::release() {
   // the top level transaction releases all collections
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
-    LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
+    LOG_TRX("67a6b", TRACE, _transaction, 0) << "unusing collection " << _cid;
 
     if (_usageLocked) {
       _transaction->vocbase().releaseCollection(_collection.get());
@@ -306,7 +306,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
     timeout = 0.00000001;
   }
 
-  LOG_TRX(_transaction, nestingLevel) << "write-locking collection " << _cid;
+  LOG_TRX("f1246", TRACE, _transaction, nestingLevel) << "write-locking collection " << _cid;
   int res;
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be acquiring the collection's RW lock in
@@ -326,7 +326,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   }
 
   if (res == TRI_ERROR_LOCK_TIMEOUT && timeout >= 0.1) {
-    LOG_TOPIC(WARN, Logger::QUERIES)
+    LOG_TOPIC("4512c", WARN, Logger::QUERIES)
         << "timed out after " << timeout << " s waiting for "
         << AccessMode::typeString(type) << "-lock on collection '"
         << _collection->name() << "'";
@@ -362,7 +362,7 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   if (AccessMode::isWriteOrExclusive(type) && !AccessMode::isWriteOrExclusive(_lockType)) {
     // we should never try to write-unlock a collection that we have only
     // read-locked
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "logic error in doUnlock";
+    LOG_TOPIC("2b651", ERR, arangodb::Logger::ENGINES) << "logic error in doUnlock";
     TRI_ASSERT(false);
     return TRI_ERROR_INTERNAL;
   }
@@ -372,7 +372,7 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
-  LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;
+  LOG_TRX("372c0", TRACE, _transaction, nestingLevel) << "write-unlocking collection " << _cid;
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be releasing the collection's RW lock in
     // write mode

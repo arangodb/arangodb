@@ -442,7 +442,7 @@ bool FieldIterator::setStringValue(VPackSlice const value,
   }
 
   if (!pool) {
-    LOG_TOPIC(WARN, iresearch::TOPIC) << "got nullptr analyzer factory";
+    LOG_TOPIC("189da", WARN, iresearch::TOPIC) << "got nullptr analyzer factory";
 
     return false;
   }
@@ -457,7 +457,7 @@ bool FieldIterator::setStringValue(VPackSlice const value,
   auto analyzer = pool->get();
 
   if (!analyzer) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("22eee", WARN, arangodb::iresearch::TOPIC)
         << "got nullptr from analyzer factory, name '" << pool->name() << "'";
     return false;
   }

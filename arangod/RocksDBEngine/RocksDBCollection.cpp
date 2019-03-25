@@ -296,10 +296,10 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
          _indexes[2]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
     std::string msg =
         "got invalid indexes for collection '" + _logicalCollection.name() + "'";
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << msg;
+    LOG_TOPIC("0ef34", ERR, arangodb::Logger::ENGINES) << msg;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto it : _indexes) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "- " << it->context();
+      LOG_TOPIC("19e0b", ERR, arangodb::Logger::ENGINES) << "- " << it->context();
     }
 #endif
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
@@ -1298,7 +1298,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
-  /*LOG_TOPIC(ERR, Logger::ENGINES)
+  /*LOG_TOPIC("17502", ERR, Logger::ENGINES)
       << "Delete rev: " << revisionId << " trx: " << trx->state()->id()
       << " seq: " << mthds->sequenceNumber()
       << " objectID " << _objectId << " name: " << _logicalCollection->name();*/
@@ -1423,7 +1423,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(LocalDocumentId const& d
       }
     }
   } else {
-    LOG_TOPIC(DEBUG, Logger::ENGINES)
+    LOG_TOPIC("bd363", DEBUG, Logger::ENGINES)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
         << " objectID " << _objectId << " name: " << _logicalCollection.name();
     mdr.clear();
@@ -1487,7 +1487,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 
     cb(documentId, VPackSlice(ps.data()));
   } else {
-    LOG_TOPIC(DEBUG, Logger::ENGINES)
+    LOG_TOPIC("f63dd", DEBUG, Logger::ENGINES)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
         << " objectID " << _objectId << " name: " << _logicalCollection.name();
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
@@ -1548,7 +1548,7 @@ int RocksDBCollection::lockWrite(double timeout) {
     }
 
     if (now > startTime + timeout) {
-      LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+      LOG_TOPIC("d1e53", TRACE, arangodb::Logger::ENGINES)
           << "timed out after " << timeout << " s waiting for write-lock on collection '"
           << _logicalCollection.name() << "'";
 
@@ -1596,7 +1596,7 @@ int RocksDBCollection::lockRead(double timeout) {
     }
 
     if (now > startTime + timeout) {
-      LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+      LOG_TOPIC("dcbd2", TRACE, arangodb::Logger::ENGINES)
           << "timed out after " << timeout << " s waiting for read-lock on collection '"
           << _logicalCollection.name() << "'";
 
@@ -1681,7 +1681,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
 
   int64_t adjustment = snapNumberOfDocuments - count;
   if (adjustment != 0) {
-    LOG_TOPIC(WARN, Logger::REPLICATION)
+    LOG_TOPIC("ad6d3", WARN, Logger::REPLICATION)
         << "inconsistent collection count detected, "
         << "an offet of " << adjustment << " will be applied";
     adjustNumberDocuments(static_cast<TRI_voc_rid_t>(0), adjustment);
@@ -1746,7 +1746,7 @@ void RocksDBCollection::createCache() const {
   TRI_ASSERT(_cacheEnabled);
   TRI_ASSERT(_cache.get() == nullptr);
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
-  LOG_TOPIC(DEBUG, Logger::CACHE) << "Creating document cache";
+  LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
   _cache = CacheManagerFeature::MANAGER->createCache(cache::CacheType::Transactional);
   _cachePresent = (_cache.get() != nullptr);
   TRI_ASSERT(_cacheEnabled);
@@ -1759,7 +1759,7 @@ void RocksDBCollection::destroyCache() const {
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   // must have a cache...
   TRI_ASSERT(_cache.get() != nullptr);
-  LOG_TOPIC(DEBUG, Logger::CACHE) << "Destroying document cache";
+  LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";
   CacheManagerFeature::MANAGER->destroyCache(_cache);
   _cache.reset();
   _cachePresent = false;

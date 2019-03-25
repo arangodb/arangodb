@@ -275,7 +275,7 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(velocypack::Slice def
 
   if (!res.ok()) {
     TRI_set_errno(res.errorNumber());
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("77be6", ERR, arangodb::Logger::ENGINES)
         << "failed to instantiate index, error: " << res.errorNumber() << " "
         << res.errorMessage();
 
@@ -284,7 +284,7 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(velocypack::Slice def
 
   if (!index) {
     TRI_set_errno(TRI_ERROR_INTERNAL);
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("5384c", ERR, arangodb::Logger::ENGINES)
         << "failed to instantiate index, factory returned null instance";
 
     return nullptr;

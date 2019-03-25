@@ -62,7 +62,7 @@ arangodb::Result readLanguage(std::string& language) {
   }
 
   language = found;
-  LOG_TOPIC(TRACE, arangodb::Logger::CONFIG) << "using default language: " << found;
+  LOG_TOPIC("c499e", TRACE, arangodb::Logger::CONFIG) << "using default language: " << found;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -82,18 +82,18 @@ int writeLanguage(std::string const& language) {
     builder.close();
   } catch (...) {
     // out of memory
-    LOG_TOPIC(ERR, arangodb::Logger::CONFIG)
+    LOG_TOPIC("4fa50", ERR, arangodb::Logger::CONFIG)
         << "cannot save default language in file '" << filename << "': out of memory";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // save json info to file
-  LOG_TOPIC(DEBUG, arangodb::Logger::CONFIG)
+  LOG_TOPIC("08f3c", DEBUG, arangodb::Logger::CONFIG)
       << "Writing default language to file '" << filename << "'";
   bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(filename,
                                                                  builder.slice(), true);
   if (!ok) {
-    LOG_TOPIC(ERR, arangodb::Logger::CONFIG)
+    LOG_TOPIC("c2fd7", ERR, arangodb::Logger::CONFIG)
         << "could not save default language in file '" << filename
         << "': " << TRI_last_error();
     return TRI_ERROR_INTERNAL;
@@ -143,7 +143,7 @@ void LanguageCheckFeature::start() {
 
   if (language != previous) {
     // current not empty and not the same as previous, get out!
-    LOG_TOPIC(FATAL, arangodb::Logger::CONFIG)
+    LOG_TOPIC("7ef60", FATAL, arangodb::Logger::CONFIG)
         << "specified language '" << language
         << "' does not match previously used language '" << previous << "'";
     FATAL_ERROR_EXIT();

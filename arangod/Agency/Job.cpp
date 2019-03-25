@@ -84,7 +84,7 @@ bool Job::finish(std::string const& server, std::string const& shard,
     } else if (_snapshot.exists(toDoPrefix + _jobId).size() == 3) {
       _snapshot.hasAsBuilder(toDoPrefix + _jobId, pending);
     } else {
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
+      LOG_TOPIC("90730", DEBUG, Logger::AGENCY)
           << "Nothing in pending to finish up for job " << _jobId;
       return false;
     }
@@ -94,7 +94,7 @@ bool Job::finish(std::string const& server, std::string const& shard,
   try {
     jobType = pending.slice()[0].get("type").copyString();
   } catch (std::exception const&) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Failed to obtain type of job " << _jobId;
+    LOG_TOPIC("1edb8", WARN, Logger::AGENCY) << "Failed to obtain type of job " << _jobId;
   }
 
   // Additional payload, which is to be executed in the finish transaction
@@ -162,7 +162,7 @@ bool Job::finish(std::string const& server, std::string const& shard,
 
   write_ret_t res = singleWriteTransaction(_agent, finished);
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC("deb68", DEBUG, Logger::AGENCY)
         << "Successfully finished job " << jobType << "(" << _jobId << ")";
     _status = (success ? FINISHED : FAILED);
     return true;
@@ -421,7 +421,7 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot, std::string const& d
           ret.emplace_back(otherCollection,
                            sortedShardList(col.hasAsNode("shards").first)[steps]);
         } else {
-          LOG_TOPIC(ERR, Logger::SUPERVISION)
+          LOG_TOPIC("3092e", ERR, Logger::SUPERVISION)
               << "Shard distribution of clone(" << otherCollection
               << ") does not match ours (" << collection << ")";
         }
