@@ -46,8 +46,6 @@ v3.4.5 (2019-03-27)
 
 * fixed some escaping issues within the web ui.
 
-* fixed issue #8165: AQL optimizer does not pick up multiple Geo index
-
 * fixed issue #8359: How to update a document with unique index (constraints)?
 
 * when restarting a follower in active failover mode, try an incremental sync instead
