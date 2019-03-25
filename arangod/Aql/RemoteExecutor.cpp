@@ -26,6 +26,7 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/WakeupQueryCallback.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
@@ -401,7 +402,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
 }
 
 bool ExecutionBlockImpl<RemoteExecutor>::handleAsyncResult(ClusterCommResult* result) {
-  // So we cannot have the response beeing produced while sending the request.
+  // So we cannot have the response being produced while sending the request.
   // Make sure to cover against the race that this
   // Request is fullfilled before the register has taken place
   MUTEX_LOCKER(locker, _communicationMutex);

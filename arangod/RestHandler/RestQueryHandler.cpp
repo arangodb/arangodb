@@ -25,7 +25,6 @@
 
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
