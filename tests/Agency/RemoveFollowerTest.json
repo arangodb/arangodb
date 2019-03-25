@@ -11,7 +11,7 @@ R"=(
           },
           "collection2": {
             "s2": {
-              "servers": ["leader"]
+              "servers": ["leader", "follower1"]
             }
           },
           "collection3": {

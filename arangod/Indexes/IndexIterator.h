@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // In order to implement a new IndexIterator the following functions need to be
-// implmeneted.
+// implemented.
 //
 // typeName() returns a string descibing the type of the indexIterator
 //
@@ -53,9 +53,16 @@ namespace arangodb {
 class Index;
 class LogicalCollection;
 
+namespace aql {
+struct AstNode;
+struct Variable;
+};
+
 namespace transaction {
 class Methods;
 }
+
+struct IndexIteratorOptions;
 
 /// @brief a base class to iterate over the index. An iterator is requested
 /// at the index itself
@@ -76,8 +83,24 @@ class IndexIterator {
 
   virtual char const* typeName() const = 0;
 
+  /// @brief return the underlying collection
+  /// note: this may return a nullptr in case we are dealing with the EmptyIndexIterator! 
   LogicalCollection* collection() const { return _collection; }
+
   transaction::Methods* transaction() const { return _trx; }
+
+  /// @brief whether or not the index iterator supports rearming
+  virtual bool canRearm() const { return false; }
+
+  /// @brief rearm the iterator with a new condition
+  /// requires that canRearm() is true!
+  /// if returns true it means that rearming has worked, and the iterator
+  /// is ready to be used
+  /// if returns false it means that the iterator does not support
+  /// the provided condition and would only produce an empty result
+  virtual bool rearm(arangodb::aql::AstNode const* node,
+                     arangodb::aql::Variable const* variable,
+                     IndexIteratorOptions const& opts);
 
   virtual bool hasExtra() const {
     // The default index has no extra information
@@ -102,7 +125,7 @@ class IndexIterator {
   virtual void reset();
 
   virtual void skip(uint64_t count, uint64_t& skipped);
-
+  
  protected:
   LogicalCollection* _collection;
   transaction::Methods* _trx;
@@ -119,10 +142,20 @@ class EmptyIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "empty-index-iterator"; }
 
   bool next(LocalDocumentIdCallback const&, size_t) override { return false; }
+  bool nextExtra(ExtraCallback const&, size_t) override { return false; }
+  bool nextCovering(DocumentCallback const&, size_t) override { return false; }
 
   void reset() override {}
 
   void skip(uint64_t, uint64_t& skipped) override { skipped = 0; }
+  
+  /// @brief the iterator can easily claim to have extra information, however,
+  /// it never produces any results, so this is a cheap trick 
+  bool hasExtra() const override { return true; }
+
+  /// @brief the iterator can easily claim to have covering data, however,
+  /// it never produces any results, so this is a cheap trick 
+  bool hasCovering() const override { return true; }
 };
 
 /// @brief a wrapper class to iterate over several IndexIterators.

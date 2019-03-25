@@ -110,6 +110,9 @@ Path
 `path` defines which field to obfuscate. There can only be a single
 path per masking, but an unlimited amount of maskings per collection.
 
+Note that the top-level system attributes like `_key`, `_from` are
+never masked.
+
 To mask a top-level attribute value, the path is simply the attribute
 name, for instance `"name"` to mask the value `"foobar"`:
 
@@ -280,6 +283,9 @@ including the elements of the sub-array. The document:
 To mask the email address, you could use the paths `email.address`
 or `.address`.
 
+### Match all
+
+If the path is `"*"` then this match any leaf attribute.
 
 Masking Functions
 -----------------
@@ -298,17 +304,19 @@ The following masking functions are only available in the
 - [Phone Number](#phone-number)
 - [Email Address](#email-address)
 
-The masking function:
+The masking functions:
 
 - [Random String](#random-string)
+- [Random](#random)
 
-… is available in the Community Edition as well as the Enterprise Edition.
+… are available in the Community Edition as well as the Enterprise Edition.
 
 ### Random String
 
-This masking type will replace all values of attributes with key
-`name` with an anonymized string. It is not guaranteed that the string
-will be of the same length.
+This masking type will replace all values of attributes whose values are strings
+with key `name` with an anonymized string. It is not guaranteed that the
+string will be of the same length. Attribute whose values are not strings
+are not modified.
 
 A hash of the original string is computed. If the original string is
 shorter then the hash will be used. This will result in a longer
@@ -390,6 +398,12 @@ A document like:
   }
 }
 ```
+
+### Random
+
+This masking type works like random string for attributes with string
+values. Values Attributes with integer, decimal or boolean values are
+replaced by random integers, decimals or boolean.
 
 ### Xify Front
 

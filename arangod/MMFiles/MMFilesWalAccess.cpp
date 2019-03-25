@@ -466,6 +466,13 @@ struct MMFilesWalAccessContext : WalAccessContext {
           // get the marker's tick and check whether we should include it
           TRI_voc_tick_t foundTick = marker->getTick();
 
+          if (foundTick > state.lastCommittedTick) {
+            // don't read more than the last committed tick value, which we
+            // will return as part of the result as well
+            hasMore = false;
+            break;
+          }
+
           if (foundTick <= _filter.tickEnd) {
             lastScannedTick = foundTick;
           }

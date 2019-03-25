@@ -212,6 +212,7 @@ SET(ARANGOD_SOURCES
   Aql/ExecutionEngine.cpp
   Aql/ExecutionNode.cpp
   Aql/ExecutionPlan.cpp
+  Aql/ExecutionState.cpp
   Aql/ExecutionStats.cpp
   Aql/ExecutorExpressionContext.cpp
   Aql/ExecutorInfos.cpp
@@ -226,7 +227,9 @@ SET(ARANGOD_SOURCES
   Aql/IResearchViewNode.cpp
   Aql/IResearchViewOptimizerRules.cpp
   Aql/IdExecutor.cpp
+  Aql/InAndOutRowExpressionContext.cpp
   Aql/IndexExecutor.cpp
+  Aql/IndexHint.cpp
   Aql/IndexNode.cpp
   Aql/InputAqlItemRow.cpp
   Aql/LimitExecutor.cpp
@@ -243,6 +246,7 @@ SET(ARANGOD_SOURCES
   Aql/OutputAqlItemRow.cpp
   Aql/Parser.cpp
   Aql/PlanCache.cpp
+  Aql/PruneExpressionEvaluator.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp
@@ -494,7 +498,6 @@ SET(ARANGOD_SOURCES
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
-  RestServer/TransactionManagerFeature.cpp
   RestServer/TraverserEngineRegistryFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
@@ -527,6 +530,8 @@ SET(ARANGOD_SOURCES
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
+  Transaction/Manager.cpp
+  Transaction/ManagerFeature.cpp
   Transaction/V8Context.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp

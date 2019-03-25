@@ -26,7 +26,7 @@ Creating new indexes is by default done under an exclusive collection lock. The 
 available while the index is being created.  This "foreground" index creation can be undesirable, 
 if you have to perform it on a live system without a dedicated maintenance window.
 
-For potentially long running index  creation operations the _rocksdb_ storage-engine also supports 
+For potentially long running index creation operations the _RocksDB_ storage-engine also supports 
 creating indexes in "background". The collection remains (mostly) available during the index creation, 
 see the section [Creating Indexes in Background](#creating-indexes-in-background) for more information.
 
@@ -607,20 +607,23 @@ for highly connected graphs and with RocksDB storage engine.
 Creating Indexes in Background
 ------------------------------
 
+<small>Introduced in: v3.5.0</small>
+
 {% hint 'info' %}
-This section only applies to the *rocksdb* storage engine
+Background indexing is available for the *RocksDB* storage engine only.
 {% endhint %}
 
 Creating new indexes is by default done under an exclusive collection lock. This means
-that the collection (or the respective shards) are not available as long as the index
-is created. This "foreground" index creation can be undesirable, if you have to perform it
-on a live system without a dedicated maintenance window.
+that the collection (or the respective shards) are not available for write operations
+as long as the index is created. This "foreground" index creation can be undesirable, 
+if you have to perform it on a live system without a dedicated maintenance window.
 
-**STARTING FROM VERSION vX.Y.Z**, indexes can also be created in "background", not using an exclusive lock during the creation. 
-The collection remains available, other CRUD operations can run on the collection while the index is created.
-This can be achieved by using the *inBackground* option.
+Indexes can also be created in "background", not using an 
+exclusive lock during the entire index creation. The collection remains basically available, 
+so that other CRUD operations can run on the collection while the index is being created.
+This can be achieved by setting the *inBackground* attribute when creating an index.
 
-To create a indexes in the background in *arangosh* just specify `inBackground: true`, 
+To create an index in the background in *arangosh* just specify `inBackground: true`, 
 like in the following examples:
 
 ```js
@@ -640,25 +643,30 @@ db.collection.ensureIndex({ type: "fulltext", fields: [ "text" ], minLength: 4, 
 
 ### Behavior
 
-Indexes that are still in the build process will not be visible via the ArangoDB API. Nevertheless it is not
-possible to create the same index twice via the *ensureIndex* API. AQL Queries will not use these indexes either
-until the indexes report back as finished. Note that the initial *ensureIndex* call or HTTP request will block until the index is completely ready. Existing single-threaded client programs can safely specify the 
-*inBackground* option as *true* and continue to work as before.
+Indexes that are still in the build process will not be visible via the ArangoDB APIs. 
+Nevertheless it is not possible to create the same index twice via the *ensureIndex* API 
+while an index is still begin created. AQL queries also will not use these indexes until
+the index reports back as fully created. Note that the initial *ensureIndex* call or HTTP 
+request will still block until the index is completely ready. Existing single-threaded 
+client programs can thus safely set the *inBackground* option to *true* and continue to 
+work as before.
 
 {% hint 'info' %}
 Should you be building an index in the background you cannot rename or drop the collection.
-These operations will block until the index creation is finished.
+These operations will block until the index creation is finished. This is equally the case
+with foreground indexing.
 {% endhint %}
 
-Interrupted index build (i.e. due to a server crash) will remove the partially build index. 
-In the ArangoDB cluster the index might then be automatically recreated on affected shards.
+After an interrupted index build (i.e. due to a server crash) the partially built index
+will the removed. In the ArangoDB cluster the index might then be automatically recreated 
+on affected shards.
 
 ### Performance
 
-The background index creation might be slower than the "foreground" index creation and require more RAM. 
-Under a write heavy load (specifically many remove, update or replace) operations, 
-the background index creation needs to keep a list of removed documents in RAM. This might become unsustainable
-if this list grows to tens of millions of entries.
+Background index creation might be slower than the "foreground" index creation and require 
+more RAM. Under a write heavy load (specifically many remove, update or replace operations), 
+the background index creation needs to keep a list of removed documents in RAM. This might 
+become unsustainable if this list grows to tens of millions of entries.
 
 Building an index is always a write heavy operation (internally), it is always a good idea to build indexes
 during times with less load.

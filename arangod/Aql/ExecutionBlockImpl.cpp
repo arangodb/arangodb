@@ -66,18 +66,11 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _rowFetcher(_blockFetcher),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
-      _outputItemRow(nullptr),
+      _outputItemRow(),
       _query(*engine->getQuery()) {}
 
 template <class Executor>
-ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
-  if (_outputItemRow) {
-    std::unique_ptr<AqlItemBlock> block = _outputItemRow->stealBlock();
-    if (block != nullptr) {
-      _engine->itemBlockManager().returnBlock(std::move(block));
-    }
-  }
-}
+ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {}
 
 template <class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
@@ -137,7 +130,7 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
     // Count global but executor-specific statistics, like number of filtered
     // rows.
     _engine->_stats += executorStats;
-    if (_outputItemRow && _outputItemRow->produced()) {
+    if (_outputItemRow->produced()) {
       _outputItemRow->advanceRow();
     }
 
@@ -153,7 +146,7 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
       auto outputBlock = _outputItemRow->stealBlock();
       // This is not strictly necessary here, as we shouldn't be called again
       // after DONE.
-      _outputItemRow.reset(nullptr);
+      _outputItemRow.reset();
 
       return {state, std::move(outputBlock)};
     }
@@ -167,8 +160,10 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
   }
 
   auto outputBlock = _outputItemRow->stealBlock();
+  // we guarantee that we do return a valid pointer in the HASMORE case.
+  TRI_ASSERT(outputBlock != nullptr);
   // TODO OutputAqlItemRow could get "reset" and "isValid" methods and be reused
-  _outputItemRow.reset(nullptr);
+  _outputItemRow.reset();
 
   return {state, std::move(outputBlock)};
 }
@@ -354,17 +349,15 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
       }
     }
 #endif
-  } else if (std::is_same<Executor, SortExecutor>::value) {
+  } else if /* constexpr */ (Executor::Properties::inputSizeRestrictsOutputSize) {
     // The SortExecutor should refetch a block to save memory in case if only few elements to sort
     ExecutionState state;
     size_t expectedRows = 0;
-    std::tie(state, expectedRows) = _rowFetcher.preFetchNumberOfRows();
+    std::tie(state, expectedRows) = _rowFetcher.preFetchNumberOfRows(nrItems);
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(expectedRows == 0);
       return {state, nullptr};
     }
-    // All Rows Fetcher cannot return HASMORE
-    TRI_ASSERT(state == ExecutionState::DONE);
     nrItems = (std::min)(expectedRows, nrItems);
     if (nrItems == 0) {
       TRI_ASSERT(state == ExecutionState::DONE);

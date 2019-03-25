@@ -45,7 +45,9 @@ class SingleRowFetcher;
 class TraversalExecutorInfos : public ExecutorInfos {
  public:
   enum OutputName { VERTEX, EDGE, PATH };
-  struct OutputNameHash { size_t operator()(OutputName v) const noexcept { return size_t(v); } };
+  struct OutputNameHash {
+    size_t operator()(OutputName v) const noexcept { return size_t(v); }
+  };
 
   TraversalExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
                          std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
@@ -53,7 +55,7 @@ class TraversalExecutorInfos : public ExecutorInfos {
                          std::unordered_set<RegisterId> registersToClear,
                          std::unordered_set<RegisterId> registersToKeep,
                          std::unique_ptr<traverser::Traverser>&& traverser,
-    std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
+                         std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
                          std::string fixedSource, RegisterId inputRegister,
                          std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables);
 
@@ -101,6 +103,7 @@ class TraversalExecutor {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
+    static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = TraversalExecutorInfos;

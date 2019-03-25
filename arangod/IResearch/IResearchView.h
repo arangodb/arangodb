@@ -178,13 +178,16 @@ class IResearchView final: public arangodb::LogicalView {
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
  protected:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
   //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder,
-                                                bool detailed,
-                                                bool forPersistence) const override;
+  virtual arangodb::Result appendVelocyPackImpl( // append definition
+    arangodb::velocypack::Builder& builder, // definition destination
+    bool detailed, // detailed definition flag
+    bool forPersistence // for-persistence definition flag
+  ) const override;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief drop this IResearch View
@@ -235,7 +238,7 @@ class IResearchView final: public arangodb::LogicalView {
   void verifyKnownCollections();
 };
 
-}  // namespace iresearch
-}  // namespace arangodb
+} // iresearch
+} // arangodb
 
 #endif

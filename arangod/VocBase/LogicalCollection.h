@@ -164,8 +164,6 @@ class LogicalCollection : public LogicalDataSource {
   bool isSmart() const;
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
-  /// @brief is this a cluster-wide Plan (ClusterInfo) collection
-  bool isClusterGlobal() const { return _isAStub; }
 
   void waitForSync(bool value) { _waitForSync = value; }
 
@@ -271,6 +269,9 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief Find index by iid
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
 
+  /// @brief Find index by name
+  std::shared_ptr<Index> lookupIndex(std::string const&) const;
+
   bool dropIndex(TRI_idx_iid_t iid);
 
   // SECTION: Index access (local only)
@@ -279,7 +280,7 @@ class LogicalCollection : public LogicalDataSource {
   Result read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
               ManagedDocumentResult& mdr, bool lock);
   Result read(transaction::Methods*, arangodb::velocypack::Slice const&,
-              ManagedDocumentResult& result, bool);
+              ManagedDocumentResult& result, bool lock);
 
   /// @brief processes a truncate operation
   Result truncate(transaction::Methods& trx, OperationOptions& options);

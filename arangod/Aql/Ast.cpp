@@ -1304,129 +1304,65 @@ AstNode* Ast::createNodeCollectionDirection(uint64_t direction, AstNode const* c
   return node;
 }
 
-/// @brief create an AST traversal node with only vertex variable
-AstNode* Ast::createNodeTraversal(char const* vertexVarName, size_t vertexVarLength,
-                                  AstNode const* direction, AstNode const* start,
-                                  AstNode const* graph, AstNode const* options) {
-  if (vertexVarName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+/// @brief create an AST traversal node
+AstNode* Ast::createNodeTraversal(AstNode const* outVars, AstNode const* graphInfo) {
+  TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
+  TRI_ASSERT(graphInfo->type == NODE_TYPE_ARRAY);
   AstNode* node = createNode(NODE_TYPE_TRAVERSAL);
-  node->reserve(5);
+  node->reserve(outVars->numMembers() + graphInfo->numMembers());
 
-  if (options == nullptr) {
-    // no options given. now use default options
-    options = &NopNode;
+  TRI_ASSERT(graphInfo->numMembers() == 5);
+  TRI_ASSERT(outVars->numMembers() > 0);
+  TRI_ASSERT(outVars->numMembers() < 4);
+
+  // Add GraphInfo
+  for (size_t i = 0; i < graphInfo->numMembers(); ++i) {
+    node->addMember(graphInfo->getMemberUnchecked(i));
   }
 
-  node->addMember(direction);
-  node->addMember(start);
-  node->addMember(graph);
-  node->addMember(options);
-
-  AstNode* vertexVar = createNodeVariable(vertexVarName, vertexVarLength, false);
-  node->addMember(vertexVar);
-
-  TRI_ASSERT(node->numMembers() == 5);
+  // Add variables
+  for (size_t i = 0; i < outVars->numMembers(); ++i) {
+    node->addMember(outVars->getMemberUnchecked(i));
+  }
+  TRI_ASSERT(node->numMembers() == graphInfo->numMembers() + outVars->numMembers());
 
   _containsTraversal = true;
 
   return node;
 }
 
-/// @brief create an AST traversal node with vertex and edge variable
-AstNode* Ast::createNodeTraversal(char const* vertexVarName, size_t vertexVarLength,
-                                  char const* edgeVarName, size_t edgeVarLength,
-                                  AstNode const* direction, AstNode const* start,
-                                  AstNode const* graph, AstNode const* options) {
-  if (edgeVarName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-  AstNode* node = createNodeTraversal(vertexVarName, vertexVarLength, direction,
-                                      start, graph, options);
-
-  AstNode* edgeVar = createNodeVariable(edgeVarName, edgeVarLength, false);
-  node->addMember(edgeVar);
-
-  TRI_ASSERT(node->numMembers() == 6);
-
-  _containsTraversal = true;
-
-  return node;
-}
-
-/// @brief create an AST traversal node with vertex, edge and path variable
-AstNode* Ast::createNodeTraversal(char const* vertexVarName, size_t vertexVarLength,
-                                  char const* edgeVarName, size_t edgeVarLength,
-                                  char const* pathVarName, size_t pathVarLength,
-                                  AstNode const* direction, AstNode const* start,
-                                  AstNode const* graph, AstNode const* options) {
-  if (pathVarName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-  AstNode* node = createNodeTraversal(vertexVarName, vertexVarLength, edgeVarName,
-                                      edgeVarLength, direction, start, graph, options);
-
-  AstNode* pathVar = createNodeVariable(pathVarName, pathVarLength, false);
-  node->addMember(pathVar);
-
-  TRI_ASSERT(node->numMembers() == 7);
-
-  _containsTraversal = true;
-
-  return node;
-}
-
-/// @brief create an AST shortest path node with only vertex variable
-AstNode* Ast::createNodeShortestPath(char const* vertexVarName,
-                                     size_t vertexVarLength, uint64_t direction,
-                                     AstNode const* start, AstNode const* target,
-                                     AstNode const* graph, AstNode const* options) {
-  if (vertexVarName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+/// @brief create an AST shortest path node
+AstNode* Ast::createNodeShortestPath(AstNode const* outVars, AstNode const* graphInfo) {
+  TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
+  TRI_ASSERT(graphInfo->type == NODE_TYPE_ARRAY);
   AstNode* node = createNode(NODE_TYPE_SHORTEST_PATH);
+  node->reserve(outVars->numMembers() + graphInfo->numMembers());
 
-  node->reserve(6);
+  TRI_ASSERT(graphInfo->numMembers() == 5);
+  TRI_ASSERT(outVars->numMembers() > 0);
+  TRI_ASSERT(outVars->numMembers() < 3);
 
-  if (options == nullptr) {
-    // no options given. now use default options
-    options = &NopNode;
+  // Add GraphInfo
+  for (size_t i = 0; i < graphInfo->numMembers(); ++i) {
+    node->addMember(graphInfo->getMemberUnchecked(i));
   }
-  AstNode* dir = createNodeValueInt(direction);
-  node->addMember(dir);
-  node->addMember(start);
-  node->addMember(target);
-  node->addMember(graph);
-  node->addMember(options);
 
-  AstNode* vertexVar = createNodeVariable(vertexVarName, vertexVarLength, false);
-  node->addMember(vertexVar);
+  // Add variables
+  for (size_t i = 0; i < outVars->numMembers(); ++i) {
+    node->addMember(outVars->getMemberUnchecked(i));
+  }
+  TRI_ASSERT(node->numMembers() == graphInfo->numMembers() + outVars->numMembers());
 
-  TRI_ASSERT(node->numMembers() == 6);
+  _containsTraversal = true;
 
   return node;
 }
 
-/// @brief create an AST shortest path node with vertex and edge variable
-AstNode* Ast::createNodeShortestPath(char const* vertexVarName,
-                                     size_t vertexVarLength, char const* edgeVarName,
-                                     size_t edgeVarLength, uint64_t direction,
-                                     AstNode const* start, AstNode const* target,
-                                     AstNode const* graph, AstNode const* options) {
-  if (edgeVarName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+AstNode const* Ast::createNodeOptions(AstNode const* options) const {
+  if (options != nullptr) {
+    return options;
   }
-
-  AstNode* node = createNodeShortestPath(vertexVarName, vertexVarLength, direction,
-                                         start, target, graph, options);
-
-  AstNode* edgeVar = createNodeVariable(edgeVarName, edgeVarLength, false);
-  node->addMember(edgeVar);
-
-  TRI_ASSERT(node->numMembers() == 7);
-
-  return node;
+  return &NopNode;
 }
 
 /// @brief create an AST function call node

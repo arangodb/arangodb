@@ -55,6 +55,56 @@ AQL now allows the usage of floating point values without leading zeros, e.g.
 `.1234`. Previous versions of ArangoDB required a leading zero in front of
 the decimal separator, i.e `0.1234`.
 
+
+Background Index Creation
+-------------------------
+
+Creating new indexes is by default done under an exclusive collection lock. This means
+that the collection (or the respective shards) are not available for write operations
+as long as the index is created. This "foreground" index creation can be undesirable, 
+if you have to perform it on a live system without a dedicated maintenance window.
+
+Starting with ArangoDB 3.5, indexes can also be created in "background", not using an 
+exclusive lock during the entire index creation. The collection remains basically available, 
+so that other CRUD operations can run on the collection while the index is being created.
+This can be achieved by setting the *inBackground* attribute when creating an index.
+
+To create an index in the background in *arangosh* just specify `inBackground: true`, 
+like in the following example:
+
+```js
+db.collection.ensureIndex({ type: "hash", fields: [ "value" ], inBackground: true });
+```
+
+Indexes that are still in the build process will not be visible via the ArangoDB APIs. 
+Nevertheless it is not possible to create the same index twice via the *ensureIndex* API 
+while an index is still begin created. AQL queries also will not use these indexes until
+the index reports back as fully created. Note that the initial *ensureIndex* call or HTTP 
+request will still block until the index is completely ready. Existing single-threaded 
+client programs can thus safely set the *inBackground* option to *true* and continue to 
+work as before.
+
+Should you be building an index in the background you cannot rename or drop the collection.
+These operations will block until the index creation is finished. This is equally the case
+with foreground indexing.
+
+After an interrupted index build (i.e. due to a server crash) the partially built index
+will the removed. In the ArangoDB cluster the index might then be automatically recreated 
+on affected shards.
+
+Background index creation might be slower than the "foreground" index creation and require 
+more RAM. Under a write heavy load (specifically many remove, update or replace operations), 
+the background index creation needs to keep a list of removed documents in RAM. This might 
+become unsustainable if this list grows to tens of millions of entries.
+
+Building an index is always a write-heavy operation, so it is always a good idea to build 
+indexes during times with less load.
+
+Please note that background index creation is useful only in combination with the RocksDB 
+storage engine. With the MMFiles storage engine, creating an index will always block any
+other operations on the collection.
+
+
 TTL (time-to-live) Indexes
 --------------------------
 
@@ -118,6 +168,20 @@ controlled by the startup option `--ttl.max-total-removes`. The maximum number o
 documents in a single collection at once can be controlled by the startup option
 `--ttl.max-collection-removes`.
 
+
+HTTP API extensions
+-------------------
+
+The HTTP API for creating indexes at POST `/_api/index` has been extended two-fold:
+
+* to create a TTL (time-to-live) index, it is now possible to specify a value of `ttl`
+  in the `type` attribute. When creating a TTL index, the attribute `expireAfter` is 
+  also required. That attribute contains the expiration time (in seconds), which is
+  based on the documents' index attribute value.
+
+* to create an index in background, the attribute `inBackground` can be set to `true`.
+
+
 Web interface
 -------------
 
@@ -127,6 +191,51 @@ has been removed from the web interface when creating new indexes.
 The index types "hash", "skiplist" and "persistent" are just aliases of each other 
 when using the RocksDB engine, so there is no need to offer all of them in parallel.
 
+
+Client tools
+------------
+
+### Dump and restore all databases
+
+**arangodump** got an option `--all-databases` to make it dump all available databases
+instead of just a single database specified via the option `--server.database`.
+
+When set to true, this makes arangodump dump all available databases the current 
+user has access to. The option `--all-databases` cannot be used in combination with 
+the option `--server.database`. 
+
+When `--all-databases` is used, arangodump will create a subdirectory with the data 
+of each dumped database. Databases will be dumped one after the after. However, 
+inside each database, the collections of the database can be dumped in parallel 
+using multiple threads.
+When dumping all databases, the consistency guarantees of arangodump are the same
+as when dumping multiple single database individually, so the dump does not provide
+cross-database consistency of the data.
+
+**arangorestore** got an option `--all-databases` to make it restore all databases from
+inside the subdirectories of the specified dump directory, instead of just the
+single database specified via the option `--server.database`.
+
+Using the option for arangorestore only makes sense for dumps created with arangodump 
+and the `--all-databases` option. As for arangodump, arangorestore cannot be invoked 
+with the both options `--all-databases` and `--server.database` at the same time. 
+Additionally, the option `--force-same-database` cannot be used together with 
+`--all-databases`.
+  
+If the to-be-restored databases do not exist on the target server, then restoring data 
+into them will fail unless the option `--create-database` is also specified for
+arangorestore. Please note that in this case a database user must be used that has 
+access to the `_system` database, in order to create the databases on restore. 
+
+### Warning if connected to DBServer
+
+Under normal circumstances there should be no need to connect to a 
+database server in a cluster with one of the client tools, and it is 
+likely that any user operations carried out there with one of the client
+tools may cause trouble. 
+
+The client tools arangosh, arangodump and arangorestore will now emit 
+a warning when connecting with them to a database server node in a cluster.
 
 Miscellaneous
 -------------
@@ -150,6 +259,22 @@ entries, and will continue to work.
 
 Existing `_modules` collections will also remain functional.
 
+### Named indices
+
+Indices now have an additional `name` field, which allows for more useful
+identifiers. System indices, like the primary and edge indices, have default 
+names (`primary` and `edge`, respectively). If no `name` value is specified
+on index creation, one will be auto-generated (e.g. `idx_13820395`). The index
+name _cannot_ be changed after index creation. No two indices on the same
+collection may share the same name, but two indices on different collections 
+may.
+
+### Index Hints in AQL
+
+Users may now take advantage of the `indexHint` inline query option to override
+the internal optimizer decision regarding which index to use to serve content
+from a given collection. The index hint works with the named indices feature
+above, making it easy to specify which index to use.
 
 Internal
 --------

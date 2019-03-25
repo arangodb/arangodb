@@ -32,26 +32,19 @@ namespace arangodb {
 class LogicalCollection;
 class ManagedDocumentResult;
 
-namespace transaction {
-class Methods;
-}
-
 class MMFilesIndexLookupContext {
  public:
   MMFilesIndexLookupContext() = delete;
-  MMFilesIndexLookupContext(transaction::Methods* trx, LogicalCollection* collection,
+  MMFilesIndexLookupContext(LogicalCollection* collection,
                             ManagedDocumentResult* result, size_t numFields);
 
   ~MMFilesIndexLookupContext() {}
 
   uint8_t const* lookup(LocalDocumentId token) const;
 
-  ManagedDocumentResult* result() const { return _result; }
-
   inline size_t numFields() const { return _numFields; }
 
  private:
-  transaction::Methods* _trx;
   LogicalCollection* _collection;
   mutable ManagedDocumentResult* _result;
   size_t const _numFields;

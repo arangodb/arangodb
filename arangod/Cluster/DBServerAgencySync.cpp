@@ -90,7 +90,7 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
 
           collections.add(VPackValue(colname));
           VPackObjectBuilder col(&collections);
-          collection->properties(collections, true, false);
+          collection->properties(collections, /*detailed*/true, false);
 
           auto const& folls = collection->followers();
           std::string const theLeader = folls->getLeader();
@@ -254,10 +254,15 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
           }
           operations.push_back(AgencyOperation("Current/Version",
                                                AgencySimpleOperationType::INCREMENT_OP));
-          AgencyWriteTransaction currentTransaction(operations);
+          AgencyPrecondition precondition("Plan/Version",
+            AgencyPrecondition::Type::VALUE, plan->slice().get("Version"));
+          AgencyWriteTransaction currentTransaction(operations, precondition);
           AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
           if (!r.successful()) {
-            LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Error reporting to agency";
+            LOG_TOPIC(INFO, Logger::MAINTENANCE)
+              << "Error reporting to agency: _statusCode: " << r.errorCode()
+              << " message: " << r.errorMessage()
+              << ". This can be ignored, since it will be retried automaticlly.";
           } else {
             LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
                 << "Invalidating current in ClusterInfo";

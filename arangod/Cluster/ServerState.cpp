@@ -23,6 +23,7 @@
 
 #include "ServerState.h"
 
+#include <algorithm>
 #include <iomanip>
 
 #include <boost/uuid/uuid.hpp>
@@ -142,7 +143,7 @@ std::string ServerState::roleToString(ServerState::RoleEnum role) {
       return "UNDEFINED";
     case ROLE_SINGLE:
       return "SINGLE";
-    case ROLE_PRIMARY:
+    case ROLE_DBSERVER:
       return "PRIMARY";
     case ROLE_COORDINATOR:
       return "COORDINATOR";
@@ -160,7 +161,7 @@ std::string ServerState::roleToShortString(ServerState::RoleEnum role) {
       return "NONE";
     case ROLE_SINGLE:
       return "SNGL";
-    case ROLE_PRIMARY:
+    case ROLE_DBSERVER:
       return "PRMR";
     case ROLE_COORDINATOR:
       return "CRDN";
@@ -183,7 +184,7 @@ ServerState::RoleEnum ServerState::stringToRole(std::string const& value) {
     // note: DBSERVER is an alias for PRIMARY
     // internally and in all API values returned we will still use PRIMARY
     // for compatibility reasons
-    return ROLE_PRIMARY;
+    return ROLE_DBSERVER;
   } else if (value == "COORDINATOR") {
     return ROLE_COORDINATOR;
   } else if (value == "AGENT") {
@@ -395,7 +396,7 @@ std::string ServerState::roleToAgencyListKey(ServerState::RoleEnum role) {
 
 std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
   switch (role) {
-    case ROLE_PRIMARY:
+    case ROLE_DBSERVER:
       return "DBServer";
     case ROLE_COORDINATOR:
       return "Coordinator";
@@ -510,8 +511,8 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
 //////////////////////////////////////////////////////////////////////////////
 
 bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::RoleEnum& role) {
-  std::string agencyListKey = roleToAgencyListKey(role);
-  std::string latestIdKey = "Latest" + roleToAgencyKey(role) + "Id";
+  std::string const agencyListKey = roleToAgencyListKey(role);
+  std::string const latestIdKey = "Latest" + roleToAgencyKey(role) + "Id";
 
   VPackBuilder builder;
   builder.add(VPackValue("none"));
@@ -548,7 +549,11 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
        AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP)},
       AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true));
   // ok to fail..if it failed we are already registered
-  comm.sendTransactionWithFailover(creg, 0.0);
+  AgencyCommResult res = comm.sendTransactionWithFailover(creg, 0.0);
+
+  // coordinator is already/still registered from an previous unclean shutdown;
+  // must establish a new short ID
+  bool forceChangeShortId = (!res.successful() && isCoordinator(role));
 
   std::string targetIdPath = "Target/" + latestIdKey;
   std::string targetUrl = "Target/MapUniqueToShortID/" + _id;
@@ -571,7 +576,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
         {AgencyCommManager::path(), "Target", "MapUniqueToShortID", _id}));
 
     // already registered
-    if (!mapSlice.isNone()) {
+    if (!mapSlice.isNone() && !forceChangeShortId) {
       VPackSlice s = mapSlice.get("TransactionID");
       if (s.isNumber()) {
         uint32_t shortId = s.getNumericValue<uint32_t>();
@@ -606,7 +611,8 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
       VPackObjectBuilder b(&localIdBuilder);
       localIdBuilder.add("TransactionID", VPackValue(num + 1));
       std::stringstream ss;  // ShortName
-      ss << roleToAgencyKey(role) << std::setw(4) << std::setfill('0') << num + 1;
+      size_t width = std::max(std::to_string(num + 1).size(), static_cast<size_t>(4));
+      ss << roleToAgencyKey(role) << std::setw(width) << std::setfill('0') << num + 1;
       localIdBuilder.add("ShortName", VPackValue(ss.str()));
     }
 
@@ -618,8 +624,8 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
                                          localIdBuilder.slice()));
 
     preconditions.push_back(*(latestIdPrecondition.get()));
-    preconditions.push_back(
-        AgencyPrecondition(targetUrl, AgencyPrecondition::Type::EMPTY, true));
+    preconditions.push_back(AgencyPrecondition(targetUrl, AgencyPrecondition::Type::EMPTY,
+                                               !forceChangeShortId));
 
     AgencyWriteTransaction trx(operations, preconditions);
     result = comm.sendTransactionWithFailover(trx, 0.0);
@@ -628,6 +634,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
       setShortId(num + 1);  // save short ID for generating server-specific ticks
       return true;
     }
+
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
@@ -761,7 +768,7 @@ void ServerState::setState(StateEnum state) {
   }
 
   auto role = getRole();
-  if (role == ROLE_PRIMARY) {
+  if (role == ROLE_DBSERVER) {
     result = checkPrimaryState(state);
   } else if (role == ROLE_COORDINATOR) {
     result = checkCoordinatorState(state);

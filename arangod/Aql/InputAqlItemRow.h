@@ -58,7 +58,9 @@ class InputAqlItemRow {
   explicit InputAqlItemRow(CreateInvalidInputRowHint)
       : _blockShell(nullptr), _baseIndex(0) {}
 
-  InputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell, size_t baseIndex)
+  InputAqlItemRow(
+    // cppcheck-suppress passedByValue
+    std::shared_ptr<AqlItemBlockShell> blockShell, size_t baseIndex)
       : _blockShell(std::move(blockShell)), _baseIndex(baseIndex) {
     TRI_ASSERT(_blockShell != nullptr);
   }
@@ -86,12 +88,12 @@ class InputAqlItemRow {
   inline AqlValue stealValue(RegisterId registerId) {
     TRI_ASSERT(isInitialized());
     TRI_ASSERT(registerId < getNrRegisters());
-    AqlValue a = block().getValueReference(_baseIndex, registerId);
+    AqlValue const& a = block().getValueReference(_baseIndex, registerId);
     if (!a.isEmpty() && a.requiresDestruction()) {
       // Now no one is responsible for AqlValue a
       block().steal(a);
     }
-    // This cannot fail, caller needs to take immediate owner shops.
+    // This cannot fail, caller needs to take immediate ownership.
     return a;
   }
 

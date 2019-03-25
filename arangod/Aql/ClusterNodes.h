@@ -43,13 +43,6 @@ class IndexNode;
 class UpdateNode;
 class ReplaceNode;
 class RemoveNode;
-// TODO remove these forward declarations:
-class DistributeExecutor;
-template <class T>
-class ExecutionBlockImpl;
-template <>
-class ExecutionBlockImpl<DistributeExecutor>;
-
 struct Collection;
 
 /// @brief class RemoteNode
@@ -195,8 +188,6 @@ class ScatterNode : public ExecutionNode {
 /// @brief class DistributeNode
 class DistributeNode final : public ScatterNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
-  // TODO remove this friend, pass the necessary values in its constructor instead!
-  friend class ExecutionBlockImpl<DistributeExecutor>;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with an id

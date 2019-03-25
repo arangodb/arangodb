@@ -182,7 +182,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   ProgramOptions::ProcessingResult const& result = options->processingResult();
 
   // DBServer and Agent don't need JS. Agent role handled in AgencyFeature
-  if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_PRIMARY &&
+  if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_DBSERVER &&
       (!result.touched("console") ||
        !*(options->get<BooleanParameter>("console")->ptr))) {
     // specifiying --console requires JavaScript, so we can only turn it off

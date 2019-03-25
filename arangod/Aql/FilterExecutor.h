@@ -54,7 +54,7 @@ class FilterExecutorInfos : public ExecutorInfos {
   FilterExecutorInfos(FilterExecutorInfos const&) = delete;
   ~FilterExecutorInfos() = default;
 
-  RegisterId getInputRegister() const noexcept { return _inputRegister; };
+  RegisterId getInputRegister() const noexcept { return _inputRegister; }
 
  private:
   // This is exactly the value in the parent member ExecutorInfo::_inRegs,
@@ -70,6 +70,7 @@ class FilterExecutor {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
+    static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = FilterExecutorInfos;

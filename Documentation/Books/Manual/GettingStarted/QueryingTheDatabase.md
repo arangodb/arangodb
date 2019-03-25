@@ -210,7 +210,7 @@ The `UPDATE` keyword is followed by the document key (or a document / object
 with a `_key` attribute) to identify what to modify. The attributes to update
 are written as object after the `WITH` keyword. `IN` denotes in which collection
 to perform this operation in, just like `INTO` (both keywords are actually
-interchangable here). The full document with the changes applied is returned
+interchangeable here). The full document with the changes applied is returned
 if we use the `NEW` pseudo-variable:
 
 ```json

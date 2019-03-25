@@ -80,11 +80,14 @@ actions.defineHttp({
       return;
     }
 
-    let preconditions = {};
-    preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
-    // need to make sure it is not responsible for anything
-    if (node.Role === 'DBServer') {
-      let used = [];
+    let count = 0;    // Try for 60s if server still in use or not failed
+    let msg = "";
+    let used = [];
+    while (++count <= 60) {
+      let preconditions = {};
+      preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
+      // need to make sure it is not responsible for anything
+      used = [];
       preconditions = reducePlanServers(function (data, agencyKey, servers) {
         data[agencyKey] = {'old': servers};
         if (servers.indexOf(serverId) !== -1) {
@@ -100,36 +103,41 @@ actions.defineHttp({
         return data;
       }, preconditions);
 
-      if (used.length > 0) {
-        actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED,
-          'the server is still in use at the following locations: ' + JSON.stringify(used));
-        return;
+      preconditions["/arango/Supervision/DBServers/" + serverId]
+        = { "oldEmpty": true };
+
+      if (!checkServerLocked(serverId) && used.length === 0) {
+        let operations = {};
+        operations['/arango/Plan/Coordinators/' + serverId] = {'op': 'delete'};
+        operations['/arango/Plan/DBServers/' + serverId] = {'op': 'delete'};
+        operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
+        operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
+        operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
+
+        try {
+          global.ArangoAgency.write([[operations, preconditions]]);
+          actions.resultOk(req, res, actions.HTTP_OK, true);
+          return;
+        } catch (e) {
+          if (e.code === 412) {
+            console.log("removeServer: got precondition failed, retrying...");
+          } else {
+            console.warn("removeServer: could not talk to agency, retrying...");
+          }
+        }
+      } else {
+        if (used.length > 0) {
+          console.log("removeServer: server", serverId, "still in use in",
+                      used.length, "locations.");
+        } else {
+          console.log("removeServer: server", serverId, "locked in agency.");
+        }
       }
-    }
-
-    let operations = {};
-    operations['/arango/Plan/Coordinators/' + serverId] = {'op': 'delete'};
-    operations['/arango/Plan/DBServers/' + serverId] = {'op': 'delete'};
-    operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
-    operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
-    operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
-
-    try {
-      global.ArangoAgency.write([[operations, preconditions]]);
-    } catch (e) {
-      if (e.code === 412) {
-        actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED,
-          'you can only remove failed servers');
-        return;
-      }
-      throw e;
-    }
-
-    actions.resultOk(req, res, actions.HTTP_OK, true);
-    /* DBOnly:
-
-    Current/Databases/YYY/XXX
-    */
+      wait(1.0);
+    }  // while count
+    actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED,
+      'the server not failed, locked or is still in use at the following '
+      + 'locations: ' + JSON.stringify(used));
   }
 });
 
@@ -633,6 +641,17 @@ function reduceCurrentServers (reducer, data) {
       }, data);
     }, data);
   }, data);
+}
+
+function checkServerLocked (server) {
+  var locks = ArangoAgency.get('Supervision/DBServers');
+  try {
+    if (locks.arango.Supervision.DBServers.hasOwnProperty(server)) {
+      return true;
+    }
+  } catch (e) {
+  }
+  return false;
 }
 
 // //////////////////////////////////////////////////////////////////////////////

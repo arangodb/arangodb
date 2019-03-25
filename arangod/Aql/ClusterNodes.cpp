@@ -35,6 +35,7 @@
 #include "Aql/Query.h"
 #include "Aql/RemoteExecutor.h"
 #include "Aql/ScatterExecutor.h"
+
 #include "Transaction/Methods.h"
 
 #include <type_traits>
@@ -95,9 +96,6 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  // TODO I'm assuming here that input and output registers are the same for
-  // the remote block. This makes perfect sense imho, but I should verify it
-  // before merging back!
 
   RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
   RegisterId const nrInRegs = nrOutRegs;
@@ -281,10 +279,35 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
 
   ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
                       std::move(regsToKeep));
-  return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(&engine, this,
-                                                                  std::move(infos),
-                                                                  clients(),
-                                                                  collection());
+
+  RegisterId regId;
+  RegisterId alternativeRegId;
+
+  {  // set regId and alternativeRegId:
+
+    // get the variable to inspect . . .
+    VariableId varId = _variable->id;
+
+    // get the register id of the variable to inspect . . .
+    auto it = getRegisterPlan()->varInfo.find(varId);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    regId = (*it).second.registerId;
+
+    TRI_ASSERT(regId < ExecutionNode::MaxRegisterId);
+
+    if (_alternativeVariable != _variable) {
+      // use second variable
+      auto it = getRegisterPlan()->varInfo.find(_alternativeVariable->id);
+      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+      alternativeRegId = (*it).second.registerId;
+
+      TRI_ASSERT(alternativeRegId < ExecutionNode::MaxRegisterId);
+    }
+  }
+
+  return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(
+      &engine, this, std::move(infos), clients(), collection(), regId, alternativeRegId,
+      _allowSpecifiedKeys, _allowKeyConversionToObject, _createKeys);
 }
 
 /// @brief toVelocyPack, for DistributedNode

@@ -26,56 +26,44 @@
 
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
-#include "Utils/OperationResult.h"
-
-#include <velocypack/Buffer.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Options.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 
-// FORWARD declaration
 class LogicalCollection;
 
 struct OperationCursor {
- public:
-  int code;
-
  private:
   std::unique_ptr<IndexIterator> _indexIterator;
   bool _hasMore;
-  uint64_t _limit;
-  uint64_t const _batchSize;
 
  public:
-  explicit OperationCursor(int code)
-      : code(code), _hasMore(false), _limit(0), _batchSize(1000) {}
+  /// @brief creates an empty cursor
+  OperationCursor()
+      : _hasMore(false) {}
 
-  OperationCursor(IndexIterator* iterator, uint64_t batchSize)
-      : code(TRI_ERROR_NO_ERROR),
-        _indexIterator(iterator),
-        _hasMore(_indexIterator != nullptr),
-        _limit(UINT64_MAX),  // _limit is modified later on
-        _batchSize(batchSize) {}
+  /// @brief creates a cursor using an IndexIterator (which must be valid)
+  explicit OperationCursor(std::unique_ptr<IndexIterator> iterator);
 
   TEST_VIRTUAL ~OperationCursor() {}
 
+  /// @brief return a pointer to the cursor's current index iterator
+  /// (note: this may be a nullptr in the beginning)
   IndexIterator* indexIterator() const { return _indexIterator.get(); }
-
-  LogicalCollection* collection() const;
-
-  inline bool hasMore() {
-    if (_hasMore && _limit == 0) {
-      _hasMore = false;
-    }
-    return _hasMore;
+  
+  /// @brief inject a new iterator into the cursor. the cursor will
+  /// take over the ownership
+  void rearm(std::unique_ptr<IndexIterator> iterator) {
+    _indexIterator = std::move(iterator); 
+    TRI_ASSERT(_indexIterator != nullptr);
+    _hasMore = true;
   }
 
-  bool ok() const { return code == TRI_ERROR_NO_ERROR; }
+  /// @brief return the logical collection used by the iterator.
+  /// note that the collection may be a nullptr in case we are dealing with
+  /// an EmptyIndexIterator!
+  LogicalCollection* collection() const;
 
-  bool fail() const { return !ok(); }
+  inline bool hasMore() const { return _hasMore; }
 
   bool hasExtra() const;
   bool hasCovering() const;

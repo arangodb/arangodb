@@ -176,18 +176,16 @@ void ensureLink(arangodb::DatabaseFeature& db,
   json.close();
 
   bool created;
-  // re-insert link
-  if (!col->dropIndex(link->id()) || !col->createIndex(json.slice(), created) || !created) {
-    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failed to recreate the link '" << iid << "' to the collection '"
-        << cid << "' in the database '" << dbId;
-  }
-}
 
-void dropCollectionFromAllViews(arangodb::DatabaseFeature& db,
-                                TRI_voc_tick_t dbId, TRI_voc_cid_t collectionId) {
-  // NOOP since either the IResearchView has been dropped as well
-  //      or the IResearchView will validate and remove any stale links on start
+  // re-insert link
+  if (!col->dropIndex(link->id()) // index drop failure
+      || !col->createIndex(json.slice(), created) // index creation failure
+      || !created) { // index not created
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "Failed to recreate an arangosearch link '" << iid << "' to the collection '" << cid << "' in the database '" << dbId;
+
+    return;
+  }
 }
 
 }  // namespace
@@ -288,12 +286,6 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
   RocksDBLogType const type = RocksDBLogValue::type(blob);
 
   switch (type) {
-    case RocksDBLogType::CollectionDrop: {
-      // find database, iterate over all extant views and drop collection
-      TRI_voc_tick_t const dbId = RocksDBLogValue::databaseId(blob);
-      TRI_voc_cid_t const collectionId = RocksDBLogValue::collectionId(blob);
-      dropCollectionFromAllViews(*_dbFeature, dbId, collectionId);
-    } break;
     case RocksDBLogType::IndexCreate: {
       TRI_voc_tick_t const dbId = RocksDBLogValue::databaseId(blob);
       TRI_voc_cid_t const collectionId = RocksDBLogValue::collectionId(blob);

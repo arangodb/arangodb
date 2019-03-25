@@ -48,6 +48,8 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
@@ -218,6 +220,159 @@ struct IResearchQueryJoinSetup {
 
 TEST_CASE("IResearchQueryTestJoinVolatileBlock", "[iresearch][iresearch-query]") {
   // should not recreate iterator each loop iteration in case of deterministic/independent inner loop scope
+}
+
+TEST_CASE("IResearchQueryTestJoinSubquery", "[iresearch][iresearch-query]") {
+  IResearchQueryJoinSetup s;
+  UNUSED(s);
+
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+
+  std::shared_ptr<arangodb::LogicalCollection> entities;
+  std::shared_ptr<arangodb::LogicalCollection> links;
+  std::shared_ptr<arangodb::LogicalView> entities_view;
+  std::shared_ptr<arangodb::LogicalView> links_view;
+
+  // entities collection
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"entities\" }");
+    entities = vocbase.createCollection(json->slice());
+    REQUIRE((nullptr != entities));
+  }
+
+  // links collection
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"links\", \"type\": 3 }");
+    links = vocbase.createCollection(json->slice());
+    REQUIRE((nullptr != links));
+  }
+
+  // entities view
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\" : \"entities_view\", \"writebufferSizeMax\": 33554432, \"consolidationPolicy\": { \"type\": \"bytes_accum\", \"threshold\": 0.10000000149011612 }, \"globallyUniqueId\": \"hB4A95C21732A/218\", \"id\": \"218\", \"writebufferActive\": 0, \"consolidationIntervalMsec\": 60000, \"cleanupIntervalStep\": 10, \"links\": { \"entities\": { \"analyzers\": [ \"identity\" ], \"fields\": {}, \"includeAllFields\": true, \"storeValues\": \"id\", \"trackListPositions\": false } }, \"type\": \"arangosearch\", \"writebufferIdle\": 64 }"
+    );
+    REQUIRE(arangodb::LogicalView::create(entities_view, vocbase, json->slice()).ok());
+    REQUIRE((nullptr != entities_view));
+  }
+
+  // links view
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\" : \"links_view\", \"writebufferSizeMax\": 33554432, \"consolidationPolicy\": { \"type\": \"bytes_accum\", \"threshold\": 0.10000000149011612 }, \"globallyUniqueId\": \"hB4A95C21732A/181\", \"id\": \"181\", \"writebufferActive\": 0, \"consolidationIntervalMsec\": 60000, \"cleanupIntervalStep\": 10, \"links\": { \"links\": { \"analyzers\": [ \"identity\" ], \"fields\": {}, \"includeAllFields\": true, \"storeValues\": \"id\", \"trackListPositions\": false } }, \"type\": \"arangosearch\", \"writebufferIdle\": 64 }"
+    );
+    REQUIRE(arangodb::LogicalView::create(links_view, vocbase, json->slice()).ok());
+    REQUIRE((nullptr != links_view));
+  }
+
+  std::vector<std::string> const collections {
+    "entities", "links"
+  };
+
+  // populate views with the data
+  {
+    arangodb::OperationOptions opt;
+    TRI_voc_tick_t tick;
+
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      collections,
+      collections,
+      collections,
+      arangodb::transaction::Options()
+    );
+    CHECK((trx.begin().ok()));
+
+    // insert into entities collection
+    {
+      auto builder = arangodb::velocypack::Parser::fromJson(
+       "[{ \"_key\": \"person1\", \"_id\": \"entities/person1\", \"_rev\": \"_YOr40eu--_\", \"type\": \"person\", \"id\": \"person1\" },"
+       " { \"_key\": \"person5\", \"_id\": \"entities/person5\", \"_rev\": \"_YOr48rO---\", \"type\": \"person\", \"id\": \"person5\" },"
+       " { \"_key\": \"person4\", \"_id\": \"entities/person4\", \"_rev\": \"_YOr5IGu--_\", \"type\": \"person\", \"id\": \"person4\" },"
+       " { \"_key\": \"person3\", \"_id\": \"entities/person3\", \"_rev\": \"_YOr5PBK--_\", \"type\": \"person\", \"id\": \"person3\" }, "
+       " { \"_key\": \"person2\", \"_id\": \"entities/person2\", \"_rev\": \"_YOr5Umq--_\", \"type\": \"person\", \"id\": \"person2\" } ]");
+
+      auto root = builder->slice();
+      REQUIRE(root.isArray());
+
+      arangodb::ManagedDocumentResult mmdr;
+      for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
+        auto const res = entities->insert(&trx, doc, mmdr, opt, tick, false);
+        CHECK(res.ok());
+      }
+    }
+
+    // insert into links collection
+    {
+      auto builder = arangodb::velocypack::Parser::fromJson(
+      "[ { \"_key\": \"3301\", \"_id\": \"links/3301\", \"_from\": \"entities/person1\", \"_to\": \"entities/person2\", \"_rev\": \"_YOrbp_S--_\", \"type\": \"relationship\", \"subType\": \"married\", \"from\": \"person1\", \"to\": \"person2\" },"
+      "  { \"_key\": \"3377\", \"_id\": \"links/3377\", \"_from\": \"entities/person4\", \"_to\": \"entities/person5\", \"_rev\": \"_YOrbxN2--_\", \"type\": \"relationship\", \"subType\": \"married\", \"from\": \"person4\", \"to\": \"person5\" },"
+      "  { \"_key\": \"3346\", \"_id\": \"links/3346\", \"_from\": \"entities/person1\", \"_to\": \"entities/person3\", \"_rev\": \"_YOrb4kq--_\", \"type\": \"relationship\", \"subType\": \"married\", \"from\": \"person1\", \"to\": \"person3\" }]");
+
+      auto root = builder->slice();
+      REQUIRE(root.isArray());
+
+      arangodb::ManagedDocumentResult mmdr;
+      for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
+        auto const res = links->insert(&trx, doc, mmdr, opt, tick, false);
+        CHECK(res.ok());
+      }
+    }
+
+    CHECK((trx.commit().ok()));
+    CHECK((arangodb::iresearch::IResearchLinkHelper::find(*entities, *entities_view)->commit().ok()));
+    CHECK((arangodb::iresearch::IResearchLinkHelper::find(*links, *links_view)->commit().ok()));
+  }
+
+  // check query
+  {
+    auto expectedResultBuilder = arangodb::velocypack::Parser::fromJson(
+      "[ { \"id\": \"person1\", \"marriedIds\": [\"person2\", \"person3\"] },"
+      "  { \"id\": \"person2\", \"marriedIds\": [\"person1\" ] },"
+      "  { \"id\": \"person3\", \"marriedIds\": [\"person1\" ] },"
+      "  { \"id\": \"person4\", \"marriedIds\": [\"person5\" ] },"
+      "  { \"id\": \"person5\", \"marriedIds\": [\"person4\" ] } ]"
+    );
+
+    std::string const query =
+      "FOR org IN entities_view SEARCH org.type == 'person' "
+      "LET marriedIds = ("
+         "LET entityIds = ("
+         "  FOR l IN links_view SEARCH l.type == 'relationship' AND l.subType == 'married' AND (l.from == org.id OR l.to == org.id)"
+         "  RETURN DISTINCT l.from == org.id ? l.to : l.from"
+         ") "
+         "FOR entityId IN entityIds SORT entityId RETURN entityId "
+      ") "
+      "LIMIT 10 "
+      "SORT org._key "
+      "RETURN { id: org._key, marriedIds: marriedIds }";
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    auto expectedResult = expectedResultBuilder->slice();
+    CHECK(expectedResult.isArray());
+
+
+    arangodb::velocypack::ArrayIterator expectedResultIt(expectedResult);
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedResultIt.size() == resultIt.size());
+
+    // Check documents
+    for (;resultIt.valid(); resultIt.next(), expectedResultIt.next()) {
+      REQUIRE(expectedResultIt.valid());
+      auto const expectedDoc = expectedResultIt.value();
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc), resolved, true)));
+    }
+    CHECK(!expectedResultIt.valid());
+  }
 }
 
 TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-query]") {

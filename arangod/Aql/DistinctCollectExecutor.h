@@ -87,6 +87,7 @@ class DistinctCollectExecutor {
   struct Properties {
     static const bool preservesOrder = false;
     static const bool allowsBlockPassthrough = false;
+    static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = DistinctCollectExecutorInfos;
@@ -111,7 +112,7 @@ class DistinctCollectExecutor {
  private:
   Infos const& _infos;
   Fetcher& _fetcher;
-  std::unique_ptr<std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>> _seen;
+  std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual> _seen;
 };
 
 }  // namespace aql

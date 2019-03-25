@@ -78,7 +78,7 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
   virtual bool isSorted() const override { return IResearchLink::isSorted(); }
 
   virtual arangodb::IndexIterator* iteratorForCondition(
-      arangodb::transaction::Methods* trx, arangodb::ManagedDocumentResult* result,
+      arangodb::transaction::Methods* trx, 
       arangodb::aql::AstNode const* condNode, arangodb::aql::Variable const* var,
       arangodb::IndexIteratorOptions const& opts) override {
     TRI_ASSERT(false);  // should not be called

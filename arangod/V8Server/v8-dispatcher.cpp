@@ -357,7 +357,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   LOG_TOPIC(TRACE, Logger::FIXME) << "Adding queue " << key;
   ExecContextScope exscope(ExecContext::superuser());
-  auto ctx = transaction::V8Context::Create(*vocbase, false);
+  auto ctx = transaction::V8Context::Create(*vocbase, true);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
   Result res = trx.begin();
 
@@ -410,7 +410,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   LOG_TOPIC(TRACE, Logger::FIXME) << "Removing queue " << key;
   ExecContextScope exscope(ExecContext::superuser());
-  auto ctx = transaction::V8Context::Create(*vocbase, false);
+  auto ctx = transaction::V8Context::Create(*vocbase, true);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();

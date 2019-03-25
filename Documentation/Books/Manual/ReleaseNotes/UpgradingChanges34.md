@@ -738,19 +738,17 @@ This change will be visible only on systems which allow assigning names to
 threads.
 
 
-
-
 Deprecated features
 ===================
 
 The following features and APIs are deprecated in ArangoDB 3.4, and will be 
 removed in future versions of ArangoDB:
 
-* the JavaScript-based traversal REST API at `/_api/traversal`:
+* the JavaScript-based traversal REST API at `/_api/traversal` and the
+  underlaying traversal module `@arangodb/graph/traversal`:
 
   This API has several limitations (including low result set sizes) and has 
-  effectively been unmaintained since the introduction of AQL's general 
-  *TRAVERSAL* clause.
+  effectively been unmaintained since the introduction of native AQL traversal.
 
   It is recommended to migrate client applications that use the REST API at
   `/_api/traversal` to use AQL-based traversal queries instead.

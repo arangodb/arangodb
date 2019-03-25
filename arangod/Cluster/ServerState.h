@@ -38,7 +38,7 @@ class ServerState {
   enum RoleEnum : int {
     ROLE_UNDEFINED = 0,  // initial value
     ROLE_SINGLE,         // is set when cluster feature is off
-    ROLE_PRIMARY,
+    ROLE_DBSERVER,
     ROLE_COORDINATOR,
     ROLE_AGENT
   };
@@ -146,13 +146,13 @@ class ServerState {
   /// running in cluster mode.
   static bool isDBServer(ServerState::RoleEnum role) {
     TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
-    return (role == ServerState::ROLE_PRIMARY);
+    return (role == ServerState::ROLE_DBSERVER);
   }
 
   /// @brief whether or not the role is a cluster-related role
   static bool isClusterRole(ServerState::RoleEnum role) {
     TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
-    return (role == ServerState::ROLE_PRIMARY || role == ServerState::ROLE_COORDINATOR);
+    return (role == ServerState::ROLE_DBSERVER || role == ServerState::ROLE_COORDINATOR);
   }
 
   /// @brief whether or not the role is a cluster-related role

@@ -17,33 +17,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_TRANSACTION_CONTEXT_DATA_H
-#define ARANGOD_CLUSTER_CLUSTER_TRANSACTION_CONTEXT_DATA_H 1
+#ifndef ARANGODB_MASKINGS_ATTRIBUTE_RANDOM_MASK_H
+#define ARANGODB_MASKINGS_ATTRIBUTE_RANDOM_MASK_H 1
 
-#include "Basics/Common.h"
-#include "Transaction/ContextData.h"
-#include "VocBase/voc-types.h"
+#include "Maskings/RandomStringMask.h"
 
 namespace arangodb {
-class LogicalCollection;
-
-/// @brief transaction type
-class ClusterTransactionContextData final : public transaction::ContextData {
+namespace maskings {
+class RandomMask : public RandomStringMask {
  public:
-  ClusterTransactionContextData() = default;
-  ~ClusterTransactionContextData() = default;
+  static ParseResult<AttributeMasking> create(Path, Maskings*, VPackSlice const& def);
 
-  /// @brief pin data for the collection
-  /// there is nothing to do for the RocksDB engine
-  void pinData(arangodb::LogicalCollection*) override {}
+ public:
+  VPackValue mask(bool, std::string& buffer) const override;
+  VPackValue mask(int64_t, std::string& buffer) const override;
+  VPackValue mask(double, std::string& buffer) const override;
 
-  /// @brief whether or not the data for the collection is pinned
-  /// note that this is always true in RocksDB
-  bool isPinned(TRI_voc_cid_t) const override { return true; }
+ private:
+  explicit RandomMask(Maskings* maskings) : RandomStringMask(maskings) {}
 };
+}  // namespace maskings
 }  // namespace arangodb
 
 #endif

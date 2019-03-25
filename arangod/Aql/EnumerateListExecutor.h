@@ -50,18 +50,16 @@ class SingleRowFetcher;
 
 class EnumerateListExecutorInfos : public ExecutorInfos {
  public:
-  EnumerateListExecutorInfos(RegisterId inputRegister,
-                             RegisterId outputRegister,
-                             RegisterId nrInputRegisters,
-                             RegisterId nrOutputRegisters,
+  // cppcheck-suppress passedByValue
+  EnumerateListExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
+                             RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                              std::unordered_set<RegisterId> registersToClear,
                              std::unordered_set<RegisterId> registersToKeep);
 
   EnumerateListExecutorInfos() = delete;
-  EnumerateListExecutorInfos(EnumerateListExecutorInfos &&) = default;
+  EnumerateListExecutorInfos(EnumerateListExecutorInfos&&) = default;
   EnumerateListExecutorInfos(EnumerateListExecutorInfos const&) = delete;
   ~EnumerateListExecutorInfos() = default;
-
 
   RegisterId getInputRegister() const noexcept { return _inputRegister; };
   RegisterId getOutputRegister() const noexcept { return _outputRegister; };
@@ -82,6 +80,9 @@ class EnumerateListExecutor {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
+    /* With some more modifications this could be turned to true. Actually the
+       output of this block is input * itemsInList */
+    static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = EnumerateListExecutorInfos;
@@ -97,7 +98,6 @@ class EnumerateListExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
-
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);
   void initialize();
@@ -109,7 +109,6 @@ class EnumerateListExecutor {
   ExecutionState _rowState;
   size_t _inputArrayPosition;
   size_t _inputArrayLength;
-
 };
 
 }  // namespace aql

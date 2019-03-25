@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,31 +20,27 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_TRANSACTION_MANAGER_FEATURE_H
-#define ARANGODB_REST_SERVER_TRANSACTION_MANAGER_FEATURE_H 1
+#include "ExecutionState.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include <ostream>
 
 namespace arangodb {
+namespace aql {
 
-class TransactionManager;
-
-class TransactionManagerFeature final : public application_features::ApplicationFeature {
- public:
-  explicit TransactionManagerFeature(application_features::ApplicationServer& server);
-
-  void prepare() override final;
-  void unprepare() override final;
-
-  static TransactionManager* manager() {
-    TRI_ASSERT(MANAGER != nullptr);
-    return MANAGER.get();
+std::ostream& operator<<(std::ostream& ostream, ExecutionState state) {
+  switch (state) {
+    case ExecutionState::DONE:
+      ostream << "DONE";
+      break;
+    case ExecutionState::HASMORE:
+      ostream << "HASMORE";
+      break;
+    case ExecutionState::WAITING:
+      ostream << "WAITING";
+      break;
   }
+  return ostream;
+}
 
- private:
-  static std::unique_ptr<TransactionManager> MANAGER;
-};
-
+}  // namespace aql
 }  // namespace arangodb
-
-#endif

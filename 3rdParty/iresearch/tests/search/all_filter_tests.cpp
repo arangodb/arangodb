@@ -24,15 +24,12 @@
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
 #include "search/all_filter.hpp"
-#include "store/memory_directory.hpp"
-#include "store/fs_directory.hpp"
-#include "formats/formats.hpp"
 #include "search/score.hpp"
 
-NS_BEGIN(tests)
+NS_LOCAL
 
-class all_filter_test_case : public filter_test_case_base {
-protected:
+class all_filter_test_case : public tests::filter_test_case_base {
+ protected:
   void all_sequential() {
     // add segment
     {
@@ -80,7 +77,7 @@ protected:
       size_t collector_collect_term_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>(false);
+      auto& sort = order.add<tests::sort::custom_sort>(false);
 
       sort.collector_collect_field = [&collector_collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void {
         ++collector_collect_field_count;
@@ -112,7 +109,7 @@ protected:
     {
       docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
       irs::order order;
-      auto& sort = order.add<sort::custom_sort>(false);
+      auto& sort = order.add<tests::sort::custom_sort>(false);
 
       sort.prepare_field_collector_ = []()->irs::sort::field_collector::ptr { return nullptr; };
       sort.prepare_scorer = [](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_store&, const irs::attribute_view&)->irs::sort::scorer::ptr { return nullptr; };
@@ -125,7 +122,7 @@ protected:
       docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
       irs::order order;
 
-      order.add<sort::frequency_sort>(false);
+      order.add<tests::sort::frequency_sort>(false);
       check_query(irs::all(), order, docs, rdr);
     }
 
@@ -149,51 +146,26 @@ protected:
   }
 }; // all_filter_test_case
 
-NS_END // tests
-
-// ----------------------------------------------------------------------------
-// --SECTION--                           memory_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class memory_all_filter_test_case : public tests::all_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-}; // memory_all_filter_test_case
-
-TEST_F( memory_all_filter_test_case, all ) {
+TEST_P(all_filter_test_case, all) {
   all_sequential();
   all_order();
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                               fs_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
+INSTANTIATE_TEST_CASE_P(
+  all_filter_test,
+  all_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
 
-class fs_all_filter_test_case : public tests::all_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    auto dir = test_dir();
-
-    dir /= "index";
-
-    return new iresearch::fs_directory(dir.utf8());
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-}; // fs_all_filter_test_case
-
-TEST_F( fs_all_filter_test_case, all ) {
-  all_sequential();
-  all_order();
-}
+NS_END
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

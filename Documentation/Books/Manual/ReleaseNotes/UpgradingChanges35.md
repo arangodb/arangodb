@@ -6,11 +6,17 @@ upgrading to ArangoDB 3.5, and adjust any client programs if necessary.
 
 The following incompatible changes have been made in ArangoDB 3.5:
 
+Startup options
+---------------
+
+The hidden startup option `--rocksdb.delayed_write_rate` was renamed to the more
+consistent `--rocksdb.delayed-write-rate`. When the old option name is used, the 
+arangod startup will be aborted with a descriptive error message.
 
 Web interface
 -------------
 
-### Potentially different sort order for documents
+### Potentially different sort order of documents
 
 In the list of documents for a collection, the documents will now always be sorted
 in lexicographical order of their `_key` values. An exception for keys representing 
@@ -56,3 +62,14 @@ undefined.
 This change is about making queries as the above fail with a parse error, as an 
 unknown variable `key1` is accessed here, avoiding the undefined behavior. This is 
 also in line with what the documentation states about variable invalidation.
+
+Miscellaneous
+-------------
+
+### Index creation
+
+In previous versions of ArangoDB, if one attempted to create an index with a
+specified `_id`, and that `_id` was already in use, the server would typically
+return the existing index with matching `_id`. This is somewhat unintuitive, as
+it would ignore if the rest of the definition did not match. This behavior has
+been changed so that the server will now return a duplicate identifier error.
