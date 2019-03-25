@@ -258,9 +258,9 @@ inline arangodb::consensus::trans_ret_t generalTransaction(AgentInterface* _agen
 
   auto ret = _agent->transact(envelope);
 
-  if (ret.maxind > 0) {
+  /*if (ret.maxind > 0) {
     _agent->waitFor(ret.maxind);
-  }
+  }*/
 
   return ret;
 }
