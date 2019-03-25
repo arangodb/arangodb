@@ -34,6 +34,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
@@ -152,6 +153,7 @@ struct IResearchIndexSetup {
 
     // setup required application features
     features.emplace_back(new arangodb::AqlFeature(server), true); // required for arangodb::aql::Query(...)
+    features.emplace_back(new arangodb::AuthenticationFeature(server), false); // required for ExecContext in Collections::create(...)
     features.emplace_back(new arangodb::DatabaseFeature(server), false); // required for LogicalViewStorageEngine::modify(...)
     features.emplace_back(new arangodb::DatabasePathFeature(server), false); // requires for IResearchView::open()
     features.emplace_back(new arangodb::ShardingFeature(server), false);
