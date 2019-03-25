@@ -90,7 +90,8 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
 
           collections.add(VPackValue(colname));
           VPackObjectBuilder col(&collections);
-          collection->properties(collections, /*detailed*/true, false);
+          collection->properties(collections, /*detailed*/true,
+                                 /*forPersistence*/false);
 
           auto const& folls = collection->followers();
           std::string const theLeader = folls->getLeader();
