@@ -30,7 +30,6 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"

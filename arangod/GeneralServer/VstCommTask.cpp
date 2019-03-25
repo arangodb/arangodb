@@ -432,7 +432,7 @@ void VstCommTask::closeTask(rest::ResponseCode code) {
 
 std::unique_ptr<GeneralResponse> VstCommTask::createResponse(rest::ResponseCode responseCode,
                                                              uint64_t messageId) {
-  return std::unique_ptr<GeneralResponse>(new VstResponse(responseCode, messageId));
+  return std::make_unique<VstResponse>(responseCode, messageId);
 }
 
 // Returns true if and only if there was no error, if false is returned,
