@@ -505,7 +505,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
     curl_easy_getinfo(handle, CURLINFO_NAMELOOKUP_TIME, &namelookup);
 
     if (5.0 <= namelookup) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
           << "libcurl DNS lookup took " << namelookup
           << " seconds.  Consider using static IP addresses.";
     }
@@ -551,7 +551,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
         if (rip->_aborted) {
           callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
         } else {
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          LOG_TOPIC(ERR, arangodb::Logger::COMMUNICATION)
               << "got a write error from curl but request was not aborted";
           callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
         }
@@ -561,7 +561,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
         callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
         break;
       default:
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "curl return " << rc;
+        LOG_TOPIC(ERR, arangodb::Logger::COMMUNICATION) << "curl return " << rc;
         callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
         break;
     }
