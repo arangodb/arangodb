@@ -68,7 +68,7 @@
   ::arangodb::Logger::LINE(__LINE__)                          \
   << ::arangodb::Logger::FILE(__FILE__)                       \
   << ::arangodb::Logger::FUNCTION(__FUNCTION__)               \
-  << ( ::arangodb::Logger::getShowIds() ? "["#id"] " : "" ))
+  << ( ::arangodb::Logger::getShowIds() ? "[" id "] " : "" ))
 
 #define LOG_TOPIC(id, level, logger)                                        \
   !::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (logger))   \
@@ -99,10 +99,10 @@
 #endif
 
 #define LOG_DEVEL \
-  LOG_TOPIC(xxxxx, LOG_DEVEL_LEVEL, ::arangodb::Logger::FIXME) << "###### "
+  LOG_TOPIC("xxxxx", LOG_DEVEL_LEVEL, ::arangodb::Logger::FIXME) << "###### "
 
 #define LOG_DEVEL_IF(cond) \
-  LOG_TOPIC_IF(xxxxx, LOG_DEVEL_LEVEL, ::arangodb::Logger::FIXME, (cond)) << "###### "
+  LOG_TOPIC_IF("xxxxx", LOG_DEVEL_LEVEL, ::arangodb::Logger::FIXME, (cond)) << "###### "
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper class for macros

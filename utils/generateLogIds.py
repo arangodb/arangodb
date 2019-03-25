@@ -82,7 +82,7 @@ def do_operation(fullpath, project_path, target_file_handle, id_database, levels
                     if param in levels:
                         # replace with new id
                         uid = generate_id(location_string, param, rest, id_database)
-                        replacement = '{}({}, {}, {}'.format(macro ,uid, param, rest.replace('\\', '\\\\' ))
+                        replacement = '{}("{}", {},{}'.format(macro ,uid, param, rest.replace('\\', '\\\\' ))
                         output = "{} -- {}".format(location_string, replacement)
                         #print(output)
                         status = Status.OK_REPLACED
