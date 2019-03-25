@@ -237,6 +237,17 @@ tools may cause trouble.
 The client tools arangosh, arangodump and arangorestore will now emit 
 a warning when connecting with them to a database server node in a cluster.
 
+Startup option changes
+----------------------
+
+The value type of the hidden startup option `--rocksdb.recycle-log-file-num` has 
+been changed from numeric to boolean in ArangoDB 3.5, as the option is also a 
+boolean option in the underlying RocksDB library.
+
+Client configurations that use this configuration variable should adjust their
+configuration and set this variable to a boolean value instead of to a numeric
+value.
+
 Miscellaneous
 -------------
 

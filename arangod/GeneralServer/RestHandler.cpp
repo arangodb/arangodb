@@ -467,9 +467,9 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
   VPackBuilder builder(buffer);
   try {
     builder.add(VPackValue(VPackValueType::Object));
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
     builder.add(StaticStrings::Error, VPackValue(true));
     builder.add(StaticStrings::ErrorMessage, VPackValue(message));
-    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
     builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
     builder.close();
 
@@ -480,7 +480,8 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
     if (_request != nullptr) {
       _response->setContentType(_request->contentTypeResponse());
     }
-    _response->setPayload(std::move(buffer), true, options);
+    _response->setPayload(std::move(buffer), true, options,
+                          /*resolveExternals*/false);
   } catch (...) {
     // exception while generating error
   }

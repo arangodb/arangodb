@@ -64,31 +64,60 @@ Traverser& TraversalExecutorInfos::traverser() {
   return *_traverser.get();
 }
 
-bool TraversalExecutorInfos::useVertexOutput() const {
-  return _registerMapping.find(OutputName::VERTEX) != _registerMapping.end();
+bool TraversalExecutorInfos::usesOutputRegister(OutputName type) const {
+  return _registerMapping.find(type) != _registerMapping.end();
 }
 
-RegisterId TraversalExecutorInfos::vertexRegister() const {
-  TRI_ASSERT(useVertexOutput());
-  return _registerMapping.find(OutputName::VERTEX)->second;
+bool TraversalExecutorInfos::useVertexOutput() const {
+  return usesOutputRegister(OutputName::VERTEX);
 }
 
 bool TraversalExecutorInfos::useEdgeOutput() const {
-  return _registerMapping.find(OutputName::EDGE) != _registerMapping.end();
-}
-
-RegisterId TraversalExecutorInfos::edgeRegister() const {
-  TRI_ASSERT(useEdgeOutput());
-  return _registerMapping.find(OutputName::EDGE)->second;
+  return usesOutputRegister(OutputName::EDGE);
 }
 
 bool TraversalExecutorInfos::usePathOutput() const {
-  return _registerMapping.find(OutputName::PATH) != _registerMapping.end();
+  return usesOutputRegister(OutputName::PATH);
+}
+
+static std::string typeToString(TraversalExecutorInfos::OutputName type) {
+  switch(type) {
+    case TraversalExecutorInfos::VERTEX:
+      return std::string{"VERTEX"};
+    case TraversalExecutorInfos::EDGE:
+      return std::string{"EDGE"};
+    case TraversalExecutorInfos::PATH:
+      return std::string{"PATH"};
+    default:
+      return std::string{"<INVALID("} + std::to_string(type) + ")>";
+  }
+}
+
+RegisterId TraversalExecutorInfos::findRegisterChecked(OutputName type) const {
+  auto const& it = _registerMapping.find(type);
+  if (ADB_UNLIKELY(it == _registerMapping.end())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "Logic error: requested unused register type " + typeToString(type));
+  }
+  return it->second;
+}
+
+RegisterId TraversalExecutorInfos::getOutputRegister(OutputName type) const {
+  TRI_ASSERT(usesOutputRegister(type));
+  return findRegisterChecked(type);
+}
+
+RegisterId TraversalExecutorInfos::vertexRegister() const {
+  return getOutputRegister(OutputName::VERTEX);
+}
+
+RegisterId TraversalExecutorInfos::edgeRegister() const {
+  return getOutputRegister(OutputName::EDGE);
 }
 
 RegisterId TraversalExecutorInfos::pathRegister() const {
-  TRI_ASSERT(usePathOutput());
-  return _registerMapping.find(OutputName::PATH)->second;
+  return getOutputRegister(OutputName::PATH);
 }
 
 bool TraversalExecutorInfos::usesFixedSource() const {

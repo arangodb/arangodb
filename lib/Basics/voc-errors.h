@@ -1251,6 +1251,11 @@ constexpr int TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION                        
 /// Will be raised when a transaction was aborted.
 constexpr int TRI_ERROR_TRANSACTION_ABORTED                                     = 1654;
 
+/// 1655: ERROR_TRANSACTION_NOT_FOUND
+/// "transaction not found"
+/// Will be raised when a transaction was not found.
+constexpr int TRI_ERROR_TRANSACTION_NOT_FOUND                                   = 1655;
+
 /// 1700: ERROR_USER_INVALID_NAME
 /// "invalid user name"
 /// Will be raised when an invalid user name is used.

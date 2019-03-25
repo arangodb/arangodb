@@ -122,6 +122,8 @@ class EnumerateCollectionExecutor {
     _documentProducer = documentProducer;
   };
 
+  inline size_t numberOfRowsInFlight() const { return 0; }
+
  private:
   bool waitForSatellites(ExecutionEngine* engine, Collection const* collection) const;
 

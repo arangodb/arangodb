@@ -62,6 +62,7 @@ ArangoCollection = require('@arangodb/arango-collection').ArangoCollection;
 ArangoView = require('@arangodb/arango-view').ArangoView;
 var ArangoError = require('@arangodb').ArangoError;
 var ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;
+let ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief index id regex
@@ -1167,6 +1168,15 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
   arangosh.checkRequestResult(requestResult);
 
   return requestResult.result;
+};
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a transaction
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._createTransaction = function (data) {
+  return new ArangoTransaction(this, data);
 };
 
 // //////////////////////////////////////////////////////////////////////////////

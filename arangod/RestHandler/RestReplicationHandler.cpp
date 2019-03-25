@@ -2707,10 +2707,10 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
 
   {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    auto trx = std::make_unique<SingleCollectionTransaction>(ctx, col, access);
+    auto trx = std::make_shared<SingleCollectionTransaction>(ctx, col, access);
     query->setTransactionContext(ctx);
     // Inject will take over responsiblilty of transaction, even on error case.
-    query->injectTransaction(trx.release());
+    query->injectTransaction(std::move(trx));
   }
   auto trx = query->trx();
   TRI_ASSERT(trx != nullptr);
@@ -2734,7 +2734,9 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   if (isTombstoned(id)) {
     try {
       // Code does not matter, read only access, so we can roll back.
-      queryRegistry->destroy(&_vocbase, id, TRI_ERROR_QUERY_KILLED);
+      // we can ignore the openness here, as it was our thread that had
+      // inserted the query just a couple of instructions before
+      queryRegistry->destroy(_vocbase.name(), id, TRI_ERROR_QUERY_KILLED, true /*ignoreOpened*/);
     } catch (...) {
       // Maybe thrown in shutdown.
     }
@@ -2781,7 +2783,7 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id)
     }
     try {
       // Code does not matter, read only access, so we can roll back.
-      queryRegistry->destroy(&_vocbase, id, TRI_ERROR_QUERY_KILLED);
+      queryRegistry->destroy(_vocbase.name(), id, TRI_ERROR_QUERY_KILLED, false);
     } catch (...) {
       // All errors that show up here can only be
       // triggered if the query is destroyed in between.

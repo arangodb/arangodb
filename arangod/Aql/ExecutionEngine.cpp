@@ -419,8 +419,7 @@ struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
   ///        * In case the Network is broken, all non-reachable DBServers will
   ///        clean out their snippets after a TTL.
   ///        Returns the First Coordinator Engine, the one not in the registry.
-  ExecutionEngineResult buildEngines(QueryRegistry* registry,
-                                     std::unordered_set<ShardID>& lockedShards) {
+  ExecutionEngineResult buildEngines(QueryRegistry* registry) {
     // QueryIds are filled by responses of DBServer parts.
     MapRemoteToSnippet queryIds{};
 
@@ -429,7 +428,7 @@ struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
                                     _query->vocbase().name(), queryIds);
     });
 
-    ExecutionEngineResult res = _dbserverParts.buildEngines(queryIds, lockedShards);
+    ExecutionEngineResult res = _dbserverParts.buildEngines(queryIds);
     if (res.fail()) {
       return res;
     }
@@ -437,8 +436,7 @@ struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
     res = _coordinatorParts.buildEngines(_query, registry, _query->vocbase().name(),
-                                         _query->queryOptions().shardIds,
-                                         queryIds, lockedShards);
+                                         _query->queryOptions().shardIds, queryIds);
 
     if (res.ok()) {
       cleanupGuard.cancel();
@@ -538,13 +536,11 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
 
     if (isCoordinator) {
       try {
-        std::unordered_set<std::string> lockedShards;
-
         CoordinatorInstanciator inst(query);
 
         plan->root()->walk(inst);
 
-        auto result = inst.buildEngines(queryRegistry, lockedShards);
+        auto result = inst.buildEngines(queryRegistry);
         if (!result.ok()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
         }

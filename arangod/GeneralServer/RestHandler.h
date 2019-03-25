@@ -31,8 +31,13 @@
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
+namespace basics {
+class Exception;
+}
+
 class GeneralRequest;
 class RequestStatistics;
+class Result;
 
 enum class RestStatus { DONE, WAITING, FAIL };
 

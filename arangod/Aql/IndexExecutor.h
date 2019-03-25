@@ -184,6 +184,8 @@ class IndexExecutor {
     _documentProducer = std::move(documentProducer);
   }
 
+  inline size_t numberOfRowsInFlight() const { return 0; }
+
  private:
   bool advanceCursor();
   void executeExpressions(InputAqlItemRow& input);

@@ -47,8 +47,8 @@
 #include "Rest/HttpResponse.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Transaction/Context.h"
 #include "Transaction/Methods.h"
-#include "Transaction/SmartContext.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -236,7 +236,7 @@ void RestAqlHandler::setupClusterQuery() {
   collectionBuilder.close();
 
   // creates a StandaloneContext or a leasing context
-  auto ctx = transaction::SmartContext::Create(_vocbase);
+  auto ctx = createAQLTransactionContext();
 
   VPackBuilder answerBuilder;
   answerBuilder.openObject();
@@ -296,7 +296,7 @@ bool RestAqlHandler::registerSnippets(VPackSlice const snippetsSlice,
     // The first snippet will provide proper locking
     auto query = std::make_unique<Query>(false, _vocbase, planBuilder, options,
                                          (needToLock ? PART_MAIN : PART_DEPENDENT));
-
+    
     // enables the query to get the correct transaction
     query->setTransactionContext(ctx);
 
@@ -830,7 +830,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         closeGuard.cancel();
 
         // delete the query from the registry
-        _queryRegistry->destroy(&_vocbase, _qId, errorCode);
+        _queryRegistry->destroy(_vocbase.name(), _qId, errorCode, false);
         _qId = 0;
         answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
         answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));

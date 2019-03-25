@@ -211,10 +211,11 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
-  std::unordered_map<std::string, double> clusterIndexEstimates(bool allowUpdate);
+  /// @param tid the optional transaction ID to use
+  IndexEstMap clusterIndexEstimates(bool allowUpdate, TRI_voc_tid_t tid = 0);
 
   /// @brief sets the current index selectivity estimates
-  void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
+  void setClusterIndexEstimates(IndexEstMap&& estimates);
 
   /// @brief flushes the current index selectivity estimates
   void flushClusterIndexEstimates();

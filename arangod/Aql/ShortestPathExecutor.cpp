@@ -100,9 +100,30 @@ bool ShortestPathExecutorInfos::usesOutputRegister(OutputName type) const {
   return _registerMapping.find(type) != _registerMapping.end();
 }
 
+static std::string typeToString(ShortestPathExecutorInfos::OutputName type) {
+  switch(type) {
+    case ShortestPathExecutorInfos::VERTEX:
+      return std::string{"VERTEX"};
+    case ShortestPathExecutorInfos::EDGE:
+      return std::string{"EDGE"};
+    default:
+      return std::string{"<INVALID("} + std::to_string(type) + ")>";
+  }
+}
+
+RegisterId ShortestPathExecutorInfos::findRegisterChecked(OutputName type) const {
+  auto const& it = _registerMapping.find(type);
+  if (ADB_UNLIKELY(it == _registerMapping.end())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "Logic error: requested unused register type " + typeToString(type));
+  }
+  return it->second;
+}
+
 RegisterId ShortestPathExecutorInfos::getOutputRegister(OutputName type) const {
   TRI_ASSERT(usesOutputRegister(type));
-  return _registerMapping.find(type)->second;
+  return findRegisterChecked(type);
 }
 
 graph::TraverserCache* ShortestPathExecutorInfos::cache() const {

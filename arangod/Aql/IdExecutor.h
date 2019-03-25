@@ -57,6 +57,7 @@ class IdExecutorInfos : public ExecutorInfos {
   ~IdExecutorInfos() = default;
 };
 
+template <class UsedFetcher>
 class IdExecutor {
  public:
   struct Properties {
@@ -64,7 +65,8 @@ class IdExecutor {
     static const bool allowsBlockPassthrough = true;
     static const bool inputSizeRestrictsOutputSize = false;
   };
-  using Fetcher = ConstFetcher;
+  // Only Supports SingleRowFetcher and ConstFetcher
+  using Fetcher = UsedFetcher;
   using Infos = IdExecutorInfos;
   using Stats = NoStats;
 
@@ -78,6 +80,8 @@ class IdExecutor {
    *         if something was written output.hasValue() == true
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+
+  inline size_t numberOfRowsInFlight() const { return 0; }
 
  private:
   Fetcher& _fetcher;

@@ -92,12 +92,12 @@ class StaticStrings {
   static std::string const IndexExpireAfter;   // ttl index expire value
   static std::string const IndexFields;        // index fields
   static std::string const IndexId;            // index id
+  static std::string const IndexInBackground;  // index in background
+  static std::string const IndexIsBuilding;    // index build in-process
   static std::string const IndexName;          // index name
   static std::string const IndexSparse;        // index sparsity marker
   static std::string const IndexType;          // index type
   static std::string const IndexUnique;        // index uniqueness marker
-  static std::string const IndexIsBuilding;    // index build in-process
-  static std::string const IndexInBackground;  // index in background
 
   // static index names
   static std::string const IndexNameEdge;
@@ -160,6 +160,8 @@ class StaticStrings {
   static std::string const RequestForwardedTo;
   static std::string const ResponseCode;
   static std::string const Server;
+  static std::string const TransactionBody;
+  static std::string const TransactionId;
   static std::string const Unlimited;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
