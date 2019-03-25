@@ -1,6 +1,11 @@
 devel
 -----
 
+* fixed issue #8294: wrong equals behaviour on arrays with ArangoSearch
+
+* fixed internal issue #528: ArangoSearch range query sometimes doesn't work
+  correctly with numeric values
+
 * changed type of the startup option `--rocksdb.recycle-log-file-num` from 
   numeric to boolean, as this is also the type the options has in the RocksDB
   library.
