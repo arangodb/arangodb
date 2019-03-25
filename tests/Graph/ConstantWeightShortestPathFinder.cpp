@@ -394,17 +394,17 @@ TEST_CASE("ConstantWeightShortestPathFinder", "[graph]") {
       // One of the two has to be returned
       // This of course leads to output from the LOG_DEVEL in checkPath
       CHECK((checkPath(result, {"21", "22", "23", "24", "25"},
-                        {{},
-                         {"v/21", "v/22"},
-                         {"v/22", "v/23"},
-                         {"v/23", "v/24"},
-                         {"v/24", "v/25"}}) ||
+                       {{},
+                        {"v/21", "v/22"},
+                        {"v/22", "v/23"},
+                        {"v/23", "v/24"},
+                        {"v/24", "v/25"}}) ||
              checkPath(result, {"21", "26", "27", "28", "25"},
-                        {{},
-                         {"v/21", "v/26"},
-                         {"v/26", "v/27"},
-                         {"v/27", "v/28"},
-                         {"v/28", "v/25"}})));
+                       {{},
+                        {"v/21", "v/26"},
+                        {"v/26", "v/27"},
+                        {"v/27", "v/28"},
+                        {"v/28", "v/25"}})));
     }
 
     {

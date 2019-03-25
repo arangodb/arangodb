@@ -130,6 +130,8 @@ class ReturnExecutor {
     return {state, stats};
   }
 
+  inline size_t numberOfRowsInFlight() const { return 0; }
+
  private:
   ReturnExecutorInfos& _infos;
   Fetcher& _fetcher;

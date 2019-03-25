@@ -1,0 +1,1 @@
+{"type":2300,"data":{"_key":"knows_graph","_id":"_graphs/knows_graph","_rev":"_WOMzM2y--B","edgeDefinitions":[{"collection":"knows","from":["persons"],"to":["persons"]}],"numberOfShards":1,"orphanCollections":[],"replicationFactor":1}}
