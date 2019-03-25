@@ -334,7 +334,7 @@ void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
 
 void handleOnStatusCoordinator(Agent* agent, Node const& snapshot, HealthRecord& persisted,
                                HealthRecord& transisted, std::string const& serverID) {
-  
+
   if (transisted.status == Supervision::HEALTH_STATUS_FAILED) {
     // if the current foxxmaster server failed => reset the value to ""
     if (snapshot.hasAsString(foxxmaster).first == serverID) {
@@ -793,7 +793,7 @@ void Supervision::run() {
     while (!this->isStopping()) {
 
       auto lapStart = std::chrono::steady_clock::now();
-      
+
       {
         MUTEX_LOCKER(locker, _lock);
 
@@ -812,8 +812,9 @@ void Supervision::run() {
           if (_jobId == 0 || _jobId == _jobIdMax) {
             getUniqueIds();  // cannot fail but only hang
           }
-
+          LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin updateSnapshot";
           updateSnapshot();
+          LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Finished updateSnapshot";
 
           if (!_snapshot.has("Supervision/Maintenance")) {
             reportStatus("Normal");
@@ -828,7 +829,9 @@ void Supervision::run() {
               // 55 seconds is less than a minute, which fits to the
               // 60 seconds timeout in /_admin/cluster/health
               try {
+                LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin doChecks";
                 doChecks();
+                LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Finished doChecks";
               } catch (std::exception const& e) {
                 LOG_TOPIC(ERR, Logger::SUPERVISION)
                     << e.what() << " " << __FILE__ << " " << __LINE__;
@@ -843,9 +846,9 @@ void Supervision::run() {
                      "heartbeats: "
                   << _agent->leaderFor();
             }
-
+            LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin handleJobs";
             handleJobs();
-
+            LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Finished handleJobs";
           } else {
             reportStatus("Maintenance");
           }
@@ -875,7 +878,7 @@ void Supervision::run() {
 
       auto lapTime = std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::steady_clock::now() - lapStart).count();
-      
+
       if (lapTime < 1000000) {
         _cv.wait(static_cast<uint64_t>((1000000 - lapTime) * _frequency));
       }
@@ -1102,12 +1105,20 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
 bool Supervision::handleJobs() {
   _lock.assertLockedByCurrentThread();
   // Do supervision
-
+  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin shrinkCluster";
   shrinkCluster();
+
+  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin enforceReplication";
   enforceReplication();
+
+  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin cleanupLostCollections";
   cleanupLostCollections(_snapshot, _agent, std::to_string(_jobId++));
+
+  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin readyOrphanedIndexCreations";
   readyOrphanedIndexCreations();
 
+
+  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();
 
   return true;
@@ -1121,32 +1132,41 @@ void Supervision::workJobs() {
   auto todos = _snapshot.hasAsChildren(toDoPrefix).first;
   auto it = todos.begin();
   static std::string const FAILED = "failed";
-    
+
+  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin ToDos failed";
   while (it != todos.end()) {
     auto jobNode = *(it->second);
     if (jobNode.hasAsString("type").first.compare(0, FAILED.length(), FAILED) == 0) {
+      LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
       JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
         .run(_haveAborts);
+      LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
       it = todos.erase(it);
     } else {
       ++it;
     }
   }
-  
-  // Do not start other jobs, if above resilience jobs aborted stuff 
+
+  // Do not start other jobs, if above resilience jobs aborted stuff
   if (!_haveAborts) {
+    LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin ToDos";
     for (auto const& todoEnt : todos) {
       auto jobNode = *(todoEnt.second);
+      LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
       JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
         .run(dummy);
+      LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
     }
   }
 
+  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin Pendings";
   auto const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
   for (auto const& pendEnt : pends) {
     auto jobNode = *(pendEnt.second);
+    LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
     JobContext(PENDING, jobNode.hasAsString("jobId").first, _snapshot, _agent)
       .run(dummy);
+    LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
   }
 
 }
