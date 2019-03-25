@@ -1285,7 +1285,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             }
           }
 
-          // delete any conflicts first
+          bool existing = false;
+          // check any identifier conflicts first
           {
             // check ID first
             TRI_idx_iid_t iid = 0;
@@ -1295,9 +1296,14 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
               // lookup by id
               auto byId = physical->lookupIndex(iid);
               auto byDef = physical->lookupIndex(idxDef);
-              if (byId != nullptr && byId != byDef) {
-                // drop existing byId
-                physical->dropIndex(byId->id());
+              if (byId != nullptr) {
+                if (byDef != nullptr && byId != byDef) {
+                  // drop existing byId
+                  physical->dropIndex(byId->id());
+                } else {
+                  existing = true;
+                  idx = byId;
+                }
               }
             }
 
@@ -1309,15 +1315,22 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
               // lookup by name
               auto byName = physical->lookupIndex(name);
               auto byDef = physical->lookupIndex(idxDef);
-              if (byName != nullptr && byName != byDef) {
-                // drop existing byName
-                physical->dropIndex(byName->id());
+              if (byName != nullptr) {
+                if (byName != nullptr && byName != byDef) {
+                  // drop existing byName
+                  physical->dropIndex(byName->id());
+                } else {
+                  existing = true;
+                  idx = byName;
+                }
               }
             }
           }
 
-          bool created = false;
-          idx = physical->createIndex(idxDef, /*restore*/ true, created);
+          if (!existing) {
+            bool created = false;
+            idx = physical->createIndex(idxDef, /*restore*/ true, created);
+          }
           TRI_ASSERT(idx != nullptr);
         }
       } catch (arangodb::basics::Exception const& ex) {
