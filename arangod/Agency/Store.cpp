@@ -122,6 +122,7 @@ Store::Store(Agent* agent, std::string const& name)
 Store& Store::operator=(Store const& rhs) {
   if (&rhs != this) {
     MUTEX_LOCKER(otherLock, rhs._storeLock);
+    MUTEX_LOCKER(lock, _storeLock);
     _agent = rhs._agent;
     _timeTable = rhs._timeTable;
     _observerTable = rhs._observerTable;
@@ -135,6 +136,7 @@ Store& Store::operator=(Store const& rhs) {
 Store& Store::operator=(Store&& rhs) {
   if (&rhs != this) {
     MUTEX_LOCKER(otherLock, rhs._storeLock);
+    MUTEX_LOCKER(lock, _storeLock);
     _agent = std::move(rhs._agent);
     _timeTable = std::move(rhs._timeTable);
     _observerTable = std::move(rhs._observerTable);
@@ -387,26 +389,26 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
     std::string key = precond.key.copyString();
     std::vector<std::string> pv = split(key, '/');
 
-    Node node("precond");
+    Node const* node = &Node::dummyNode();
 
     // Check is guarded in ::apply
     bool found = _node.has(pv);
     if (found) {
-      node = _node(pv);
+      node = &_node(pv);
     }
 
     if (precond.value.isObject()) {
       for (auto const& op : VPackObjectIterator(precond.value)) {
         std::string const& oper = op.key.copyString();
         if (oper == "old") {  // old
-          if (node != op.value) {
+          if (*node != op.value) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
               break;
             }
           }
         } else if (oper == "oldNot") {  // oldNot
-          if (node == op.value) {
+          if (*node == op.value) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
               break;
@@ -421,7 +423,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
               break;
             }
           }
-          bool isArray = (node.type() == LEAF && node.slice().isArray());
+          bool isArray = (node->type() == LEAF && node->slice().isArray());
           if (op.value.getBool() ? !isArray : isArray) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
@@ -445,9 +447,9 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           }
         } else if (oper == "in") {  // in
           if (found) {
-            if (node.slice().isArray()) {
+            if (node->slice().isArray()) {
               bool _found = false;
-              for (auto const& i : VPackArrayIterator(node.slice())) {
+              for (auto const& i : VPackArrayIterator(node->slice())) {
                 if (i == op.value) {
                   _found = true;
                   continue;
@@ -468,9 +470,9 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (!found) {
             continue;
           } else {
-            if (node.slice().isArray()) {
+            if (node->slice().isArray()) {
               bool _found = false;
-              for (auto const& i : VPackArrayIterator(node.slice())) {
+              for (auto const& i : VPackArrayIterator(node->slice())) {
                 if (i == op.value) {
                   _found = true;
                   continue;
@@ -497,7 +499,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
         }
       }
     } else {
-      if (node != precond.value) {
+      if (*node != precond.value) {
         ret.push_back(precond.key);
         if (mode == FIRST_FAIL) {
           break;
@@ -688,25 +690,29 @@ void Store::clear() {
 }
 
 /// Apply a request to my key value store
-Store& Store::operator=(VPackSlice const& slice) {
-  TRI_ASSERT(slice.isArray());
+Store& Store::operator=(VPackSlice const& s) {
+  TRI_ASSERT(s.isObject());
+  TRI_ASSERT(s.hasKey("readDB"));
+  auto const& slice = s.get("readDB");
   TRI_ASSERT(slice.length() == 4);
 
   MUTEX_LOCKER(storeLocker, _storeLock);
   _node.applies(slice[0]);
 
-  TRI_ASSERT(slice[1].isObject());
-  for (auto const& entry : VPackObjectIterator(slice[1])) {
-    if (entry.value.isNumber()) {
-      auto const& key = entry.key.copyString();
-      if (_node.has(key)) {
-        auto tp = TimePoint(std::chrono::seconds(entry.value.getNumber<int>()));
-        _node(key).timeToLive(tp);
-        _timeTable.emplace(std::pair<TimePoint, std::string>(tp, key));
+  if (s.hasKey("version")) {
+    TRI_ASSERT(slice[1].isObject());
+    for (auto const& entry : VPackObjectIterator(slice[1])) {
+      if (entry.value.isNumber()) {
+        auto const& key = entry.key.copyString();
+        if (_node.has(key)) {
+          auto tp = TimePoint(std::chrono::seconds(entry.value.getNumber<int>()));
+          _node(key).timeToLive(tp);
+          _timeTable.emplace(std::pair<TimePoint, std::string>(tp, key));
+        }
       }
     }
   }
-
+  
   TRI_ASSERT(slice[2].isArray());
   for (auto const& entry : VPackArrayIterator(slice[2])) {
     TRI_ASSERT(entry.isObject());
@@ -783,7 +789,6 @@ bool Store::has(std::string const& path) const {
 /// Remove ttl entry for path, guarded by caller
 void Store::removeTTL(std::string const& uri) {
   _storeLock.assertLockedByCurrentThread();
-
   if (!_timeTable.empty()) {
     for (auto it = _timeTable.cbegin(); it != _timeTable.cend();) {
       if (it->second == uri) {

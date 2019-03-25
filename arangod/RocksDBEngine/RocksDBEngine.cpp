@@ -45,6 +45,7 @@
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RocksDBEngine/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
@@ -544,6 +545,8 @@ void RocksDBEngine::start() {
     _listener.reset(new RocksDBThrottle);
     _options.listeners.push_back(_listener);
   }
+
+  _options.listeners.push_back(std::make_shared<RocksDBBackgroundErrorListener>());
 
   if (opts->_totalWriteBufferSize > 0) {
     _options.db_write_buffer_size = opts->_totalWriteBufferSize;

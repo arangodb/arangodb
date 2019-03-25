@@ -797,7 +797,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
       VPackSlice i = result[0];
       VPackSlice ii = i.resolveExternals();
       try {
-        store = ii.get("readDB");
+        store = ii;
         index = basics::StringUtils::uint64(ii.get("_key").copyString());
         term = ii.get("term").getNumber<uint64_t>();
         return true;
@@ -1234,6 +1234,7 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
       }
       store.add("term", VPackValue(static_cast<double>(term)));
       store.add("_key", VPackValue(i_str.str()));
+      store.add("version", VPackValue(2));
     }
 
     TRI_ASSERT(_vocbase != nullptr);

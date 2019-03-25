@@ -46,6 +46,7 @@ struct Empty {
 };
 
 const Node::Children Node::dummyChildren = Node::Children();
+const Node Node::_dummyNode = Node("dumm-di-dumm");
 
 /// @brief Split strings by separator
 inline static std::vector<std::string> split(const std::string& str, char separator) {
@@ -400,9 +401,11 @@ TimePoint const& Node::timeToLive() const {
 
 // remove time to live entry for this node
 bool Node::removeTimeToLive() {
-  if (_ttl != std::chrono::system_clock::time_point()) {
-    store().removeTTL(uri());
-    _ttl = std::chrono::system_clock::time_point();
+  if (_store != nullptr) {
+    _store->removeTTL(uri());
+    if (_ttl != std::chrono::system_clock::time_point()) {
+      _ttl = std::chrono::system_clock::time_point();
+    }
   }
   return true;
 }
