@@ -71,7 +71,7 @@ RestStatus RestAdminExecuteHandler::execute() {
   }
 
   try {
-    LOG_TOPIC(WARN, Logger::FIXME) << "about to execute: '" << Logger::CHARS(body, bodySize) << "'";
+    LOG_TOPIC("c838e", WARN, Logger::FIXME) << "about to execute: '" << Logger::CHARS(body, bodySize) << "'";
     
     ssize_t forceContext = -1;
     bool found;
