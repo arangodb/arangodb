@@ -412,7 +412,6 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
     
     if (AccessMode::isWriteOrExclusive(mode)) {
       if (mtrx.type == MetaType::StandaloneAQL) {
-        LOG_DEVEL << "1111";
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
                                        "not allowed to write lock an AQL transaction");
       }
@@ -427,7 +426,6 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
         state = mtrx.state;
         break;
       }
-      LOG_DEVEL << "2222";
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
                                      "transaction is already in use");
     }
@@ -545,13 +543,11 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
     ManagedTrx& mtrx = it->second;
     TRY_WRITE_LOCKER(tryGuard, mtrx.rwlock);
     if (!tryGuard.isLocked()) {
-      LOG_DEVEL << "33333";
       return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
                        "transaction is in use");
     }
     
     if (mtrx.type == MetaType::StandaloneAQL) {
-      LOG_DEVEL << "444444";
       return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
                        "not allowed to change an AQL transaction");
     } else if (mtrx.type == MetaType::Tombstone) {
@@ -561,7 +557,6 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
       if (mtrx.finalStatus == status) {
         return res; // all good
       } else {
-        LOG_DEVEL << "55555";
         return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
                          "transaction was already committed / aborted");
       }
