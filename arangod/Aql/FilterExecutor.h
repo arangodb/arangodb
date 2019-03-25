@@ -54,7 +54,7 @@ class FilterExecutorInfos : public ExecutorInfos {
   FilterExecutorInfos(FilterExecutorInfos const&) = delete;
   ~FilterExecutorInfos() = default;
 
-  RegisterId getInputRegister() const noexcept { return _inputRegister; };
+  RegisterId getInputRegister() const noexcept { return _inputRegister; }
 
  private:
   // This is exactly the value in the parent member ExecutorInfo::_inRegs,
@@ -88,6 +88,8 @@ class FilterExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+
+  inline size_t numberOfRowsInFlight() const { return 0; }
 
  private:
   Infos& _infos;

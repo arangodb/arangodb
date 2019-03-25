@@ -191,7 +191,6 @@ SET(ARANGOD_SOURCES
   Aql/CalculationExecutor.cpp
   Aql/ClusterBlocks.cpp
   Aql/ClusterNodes.cpp
-  Aql/CollectBlock.cpp
   Aql/CollectNode.cpp
   Aql/CollectOptions.cpp
   Aql/Collection.cpp
@@ -203,6 +202,7 @@ SET(ARANGOD_SOURCES
   Aql/ConstrainedSortExecutor.cpp
   Aql/CountCollectExecutor.cpp
   Aql/DistinctCollectExecutor.cpp
+  Aql/DistributeExecutor.cpp
   Aql/DocumentProducingBlock.cpp
   Aql/DocumentProducingNode.cpp
   Aql/EngineInfoContainerCoordinator.cpp
@@ -214,6 +214,7 @@ SET(ARANGOD_SOURCES
   Aql/ExecutionEngine.cpp
   Aql/ExecutionNode.cpp
   Aql/ExecutionPlan.cpp
+  Aql/ExecutionState.cpp
   Aql/ExecutionStats.cpp
   Aql/ExecutorExpressionContext.cpp
   Aql/ExecutorInfos.cpp
@@ -224,15 +225,19 @@ SET(ARANGOD_SOURCES
   Aql/Functions.cpp
   Aql/GraphNode.cpp
   Aql/Graphs.cpp
+  Aql/HashedCollectExecutor.cpp
   Aql/InAndOutRowExpressionContext.cpp
   Aql/IdExecutor.cpp
   Aql/IndexExecutor.cpp
+  Aql/IndexHint.cpp
   Aql/IndexNode.cpp
   Aql/InputAqlItemRow.cpp
   Aql/LimitExecutor.cpp
-  Aql/ModificationBlocks.cpp
+  Aql/ModificationExecutor.cpp
+  Aql/ModificationExecutorTraits.cpp
   Aql/ModificationNodes.cpp
   Aql/ModificationOptions.cpp
+  Aql/MultiDependencySingleRowFetcher.cpp
   Aql/NoResultsExecutor.cpp
   Aql/NodeFinder.cpp
   Aql/Optimizer.cpp
@@ -258,17 +263,22 @@ SET(ARANGOD_SOURCES
   Aql/QueryString.cpp
   Aql/Range.cpp
   Aql/RegexCache.cpp
+  Aql/RemoteExecutor.cpp
   Aql/RestAqlHandler.cpp
   Aql/ReturnExecutor.cpp
+  Aql/ScatterExecutor.cpp
   Aql/Scopes.cpp
   Aql/SharedQueryState.cpp
   Aql/ShortStringStorage.cpp
   Aql/ShortestPathExecutor.cpp
   Aql/ShortestPathNode.cpp
+  Aql/SingleRemoteModificationExecutor.cpp
   Aql/SingleRowFetcher.cpp
   Aql/SortCondition.cpp
+  Aql/SortedCollectExecutor.cpp
   Aql/SortExecutor.cpp
   Aql/SortNode.cpp
+  Aql/SortingGatherExecutor.cpp
   Aql/SortRegister.cpp
   Aql/SubqueryBlock.cpp
   Aql/TraversalExecutor.cpp
@@ -315,6 +325,7 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterRepairDistributeShardsLike.cpp
   Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTraverser.cpp
+  Cluster/ClusterTrxMethods.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
   Cluster/CriticalThread.cpp
@@ -493,7 +504,6 @@ SET(ARANGOD_SOURCES
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
-  RestServer/TransactionManagerFeature.cpp
   RestServer/TraverserEngineRegistryFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
@@ -526,6 +536,8 @@ SET(ARANGOD_SOURCES
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
+  Transaction/Manager.cpp
+  Transaction/ManagerFeature.cpp
   Transaction/V8Context.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp

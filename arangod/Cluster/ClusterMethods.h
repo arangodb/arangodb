@@ -40,11 +40,15 @@ namespace velocypack {
 template <typename T>
 class Buffer;
 class Builder;
-class Slice;
 }  // namespace velocypack
 
+struct ClusterCommResult;
 struct OperationOptions;
+class TransactionState;
 struct TtlStatistics;
+
+/// @brief convert ClusterComm error into arango error code
+int handleGeneralCommErrors(arangodb::ClusterCommResult const* res);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a copy of all HTTP headers to forward
@@ -59,6 +63,11 @@ std::unordered_map<std::string, std::string> getForwardableRequestHeaders(Genera
 
 bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& oldValue,
                       VPackSlice const& newValue, bool isPatch);
+
+/// @brief check if the value of the smartJoinAttribute has changed
+bool smartJoinAttributeChanged(LogicalCollection const& collection, 
+                               VPackSlice const& oldValue,
+                               VPackSlice const& newValue, bool isPatch);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection
@@ -84,8 +93,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 /// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
-int countOnCoordinator(std::string const& dbname, std::string const& collname,
-                       transaction::Methods const& trx,
+int countOnCoordinator(transaction::Methods& trx, std::string const& collname,
                        std::vector<std::pair<std::string, uint64_t>>& result);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,14 +101,15 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string const& collname,
-                                      std::unordered_map<std::string, double>& result);
+                                      std::unordered_map<std::string, double>& result,
+                                      TRI_voc_tick_t tid = 0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Result createDocumentOnCoordinator(std::string const& dbname, std::string const& collname,
-                                   transaction::Methods const& trx,
+Result createDocumentOnCoordinator(transaction::Methods& trx,
+                                   std::string const& collname,
                                    OperationOptions const& options,
                                    arangodb::velocypack::Slice const& slice,
                                    arangodb::rest::ResponseCode& responseCode,
@@ -111,8 +120,7 @@ Result createDocumentOnCoordinator(std::string const& dbname, std::string const&
 /// @brief delete a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& collname,
-                                transaction::Methods const& trx,
+int deleteDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
                                 VPackSlice const slice, OperationOptions const& options,
                                 arangodb::rest::ResponseCode& responseCode,
                                 std::unordered_map<int, size_t>& errorCounters,
@@ -122,9 +130,8 @@ int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& co
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int getDocumentOnCoordinator(std::string const& dbname, std::string const& collname,
-                             transaction::Methods const& trx, VPackSlice slice,
-                             OperationOptions const& options,
+int getDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
+                             VPackSlice slice, OperationOptions const& options,
                              arangodb::rest::ResponseCode& responseCode,
                              std::unordered_map<int, size_t>& errorCounter,
                              std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
@@ -206,8 +213,8 @@ void fetchVerticesFromEngines(
 ///        Also returns the result in VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-int getFilteredEdgesOnCoordinator(std::string const& dbname, std::string const& collname,
-                                  transaction::Methods const& trx, std::string const& vertex,
+int getFilteredEdgesOnCoordinator(transaction::Methods const& trx,
+                                  std::string const& collname, std::string const& vertex,
                                   TRI_edge_direction_e const& direction,
                                   arangodb::rest::ResponseCode& responseCode,
                                   arangodb::velocypack::Builder& result);
@@ -217,8 +224,8 @@ int getFilteredEdgesOnCoordinator(std::string const& dbname, std::string const& 
 ////////////////////////////////////////////////////////////////////////////////
 
 int modifyDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    transaction::Methods const& trx, arangodb::velocypack::Slice const& slice,
+    transaction::Methods& trx, std::string const& collname,
+    arangodb::velocypack::Slice const& slice,
     OperationOptions const& options, bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::rest::ResponseCode& responseCode, std::unordered_map<int, size_t>& errorCounter,
@@ -228,7 +235,8 @@ int modifyDocumentOnCoordinator(
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int truncateCollectionOnCoordinator(std::string const& dbname, std::string const& collname);
+Result truncateCollectionOnCoordinator(transaction::Methods& trx,
+                                       std::string const& collname);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush Wal on all DBservers
@@ -267,7 +275,7 @@ class ClusterMethods {
       TRI_col_type_e collectionType, TRI_vocbase_t& vocbase,
       arangodb::velocypack::Slice parameters, bool ignoreDistributeShardsLikeErrors,
       bool waitForSyncReplication, bool enforceReplicationFactor);
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Persist collection in Agency and trigger shard creation process

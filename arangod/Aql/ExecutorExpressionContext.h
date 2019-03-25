@@ -34,7 +34,7 @@ class InputAqlItemRow;
 
 class ExecutorExpressionContext final : public QueryExpressionContext {
  public:
-  ExecutorExpressionContext(Query* query, InputAqlItemRow& inputRow,
+  ExecutorExpressionContext(Query* query, InputAqlItemRow const& inputRow,
                             std::vector<Variable const*> const& vars,
                             std::vector<RegisterId> const& regs)
       : QueryExpressionContext(query), _inputRow(inputRow), _vars(vars), _regs(regs) {}
@@ -52,7 +52,7 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
 
  private:
   /// @brief temporary storage for expression data context
-  InputAqlItemRow& _inputRow;
+  InputAqlItemRow const& _inputRow;
   std::vector<Variable const*> const& _vars;
   std::vector<RegisterId> const& _regs;
 };

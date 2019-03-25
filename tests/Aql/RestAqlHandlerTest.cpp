@@ -80,7 +80,7 @@ class FakeResponse : public GeneralResponse {
 SCENARIO("Successful query setup", "[aql][restaqlhandler]") {
 
   // We always work on DBServer
-  ServerState::instance()->setRole(ServerState::ROLE_PRIMARY);
+  ServerState::instance()->setRole(ServerState::ROLE_DBSERVER);
   auto body = std::make_shared<VPackBuilder>();
 
   std::string dbName = "UnitTestDB";

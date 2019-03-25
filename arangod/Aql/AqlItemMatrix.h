@@ -40,8 +40,6 @@ namespace aql {
  * @brief A Matrix of AqlItemRows
  */
 class AqlItemMatrix {
-  friend class AllRowsFetcher;
-
  public:
   explicit AqlItemMatrix(size_t nrRegs) : _size(0), _nrRegs(nrRegs) {}
   ~AqlItemMatrix() = default;
@@ -162,6 +160,13 @@ class AqlItemMatrix {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Internal Aql Logic Error: An executor "
                                    "block is reading out of bounds.");
+  }
+
+  inline size_t numberOfBlocks() const { return _blocks.size(); }
+
+  inline std::shared_ptr<AqlItemBlockShell> getBlock(size_t index) {
+    TRI_ASSERT(index < numberOfBlocks());
+    return _blocks.at(index).second;
   }
 
  private:

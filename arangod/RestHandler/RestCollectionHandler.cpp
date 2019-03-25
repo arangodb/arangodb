@@ -124,7 +124,10 @@ void RestCollectionHandler::handleCommandGet() {
 
   std::string const& sub = suffixes[1];
   bool skipGenerate = false;
-  Result found = methods::Collections::lookup(&_vocbase, name, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+  auto found = methods::Collections::lookup( // find collection
+    _vocbase, // vocbase to search
+    name, // collection name to find
+    [&](std::shared_ptr<LogicalCollection> const& coll)->void { // callback if found
     TRI_ASSERT(coll);
 
     if (sub == "checksum") {
@@ -299,15 +302,21 @@ void RestCollectionHandler::handleCommandPost() {
                 "indexBuckets", "keyOptions", StaticStrings::WaitForSyncString,
                 "cacheEnabled", StaticStrings::ShardKeys, StaticStrings::NumberOfShards,
                 StaticStrings::DistributeShardsLike, "avoidServers", StaticStrings::IsSmart,
-                "shardingStrategy", StaticStrings::GraphSmartGraphAttribute,
-                StaticStrings::ReplicationFactor, "servers"});
+                "shardingStrategy", StaticStrings::GraphSmartGraphAttribute, 
+                StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,
+                "servers"});
   VPackSlice const parameters = filtered.slice();
 
   // now we can create the collection
   std::string const& name = nameSlice.copyString();
   VPackBuilder builder;
   Result res = methods::Collections::create(
-      &_vocbase, name, type, parameters, waitForSyncReplication, enforceReplicationFactor,
+    _vocbase, // collection vocbase
+    name, // colection name
+    type, // collection type
+    parameters, // collection properties
+    waitForSyncReplication, // replication wait flag
+    enforceReplicationFactor, // replication factor flag
       [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
         TRI_ASSERT(coll);
         collectionRepresentation(builder, coll->name(),
@@ -346,7 +355,10 @@ void RestCollectionHandler::handleCommandPut() {
   std::string const& sub = suffixes[1];
   Result res;
   VPackBuilder builder;
-  Result found = methods::Collections::lookup(&_vocbase, name, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+  auto found = methods::Collections::lookup( // find collection
+    _vocbase, // vocbase to search
+    name, // collection name to find
+   [&](std::shared_ptr<LogicalCollection> const& coll)->void { // callback if found
     TRI_ASSERT(coll);
 
     if (sub == "load") {
@@ -372,24 +384,37 @@ void RestCollectionHandler::handleCommandPut() {
                                  /*showFigures*/ false, /*showCount*/ false,
                                  /*detailedCount*/ true);
       }
-    } else if (sub == "truncate") {
-      OperationOptions opts;
-
-      opts.waitForSync = _request->parsedValue("waitForSync", false);
-      opts.isSynchronousReplicationFrom =
-          _request->value("isSynchronousReplication");
-
-      auto ctx = transaction::StandaloneContext::Create(_vocbase);
-      SingleCollectionTransaction trx(ctx, *coll, AccessMode::Type::EXCLUSIVE);
-      trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-      trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-      res = trx.begin();
-
+    } else if (sub == "compact") {
+      res = coll->compact();
+      
       if (res.ok()) {
-        auto result = trx.truncate(coll->name(), opts);
-
-        res = trx.finish(result.result);
+        collectionRepresentation(builder, name, /*showProperties*/ false,
+                                 /*showFigures*/ false, /*showCount*/ false,
+                                 /*detailedCount*/ true);
       }
+    } else if (sub == "truncate") {
+      {
+        OperationOptions opts;
+
+        opts.waitForSync = _request->parsedValue("waitForSync", false);
+        opts.isSynchronousReplicationFrom =
+            _request->value("isSynchronousReplication");
+
+        auto trx = createTransaction(coll->name(), AccessMode::Type::EXCLUSIVE);
+        trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+        trx->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
+        res = trx->begin();
+
+        if (res.ok()) {
+          auto result = trx->truncate(coll->name(), opts);
+          res = trx->finish(result.result);
+        }
+      }
+      // wait for the transaction to finish first. only after that compact the
+      // data range(s) for the collection
+      // we shouldn't run compact() as part of the transaction, because the compact
+      // will be useless inside due to the snapshot the transaction has taken
+      coll->compact();
 
       if (res.ok()) {
         if (ServerState::instance()->isCoordinator()) {  // ClusterInfo::loadPlan eventually
@@ -446,7 +471,7 @@ void RestCollectionHandler::handleCommandPut() {
       if (res.is(TRI_ERROR_NOT_IMPLEMENTED)) {
         res.reset(TRI_ERROR_HTTP_NOT_FOUND,
                   "expecting one of the actions 'load', 'unload', 'truncate',"
-                  " 'properties', 'rename', 'loadIndexesIntoMemory'");
+                  " 'properties', 'compact', 'rename', 'loadIndexesIntoMemory'");
       }
     }
   });
@@ -475,14 +500,16 @@ void RestCollectionHandler::handleCommandDelete() {
   VPackBuilder builder;
   Result res;
   Result found = methods::Collections::lookup(
-      &_vocbase, name, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+    _vocbase, // vocbase to search
+    name, // collection name to find
+    [&](std::shared_ptr<LogicalCollection> const& coll)->void { // callback if found
         TRI_ASSERT(coll);
 
         auto cid = std::to_string(coll->id());
         VPackObjectBuilder obj(&builder, true);
 
         obj->add("id", VPackValue(cid));
-        res = methods::Collections::drop(&_vocbase, coll.get(), allowDropSystem, -1.0);
+        res = methods::Collections::drop(*coll, allowDropSystem, -1.0);
       });
 
   if (found.fail()) {
@@ -504,7 +531,9 @@ void RestCollectionHandler::collectionRepresentation(VPackBuilder& builder,
                                                      bool showProperties, bool showFigures,
                                                      bool showCount, bool detailedCount) {
   Result r = methods::Collections::lookup(
-      &_vocbase, name, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+    _vocbase, // vocbase to search
+    name, // collection to find
+    [&](std::shared_ptr<LogicalCollection> const& coll)->void { // callback if found
         TRI_ASSERT(coll);
         collectionRepresentation(builder, *coll, showProperties, showFigures,
                                  showCount, detailedCount);

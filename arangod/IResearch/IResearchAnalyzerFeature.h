@@ -59,6 +59,7 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   class AnalyzerPool : private irs::util::noncopyable {
    public:
     typedef std::shared_ptr<AnalyzerPool> ptr;
+    explicit AnalyzerPool(irs::string_ref const& name);
     irs::flags const& features() const noexcept { return _features; }
     irs::analysis::analyzer::ptr get() const noexcept;  // nullptr == error creating analyzer
     std::string const& name() const noexcept { return _name; }
@@ -66,7 +67,7 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     irs::string_ref const& type() const noexcept { return _type; }
 
    private:
-    friend class IResearchAnalyzerFeature; // required for calling AnalyzerPool::init()
+    friend class IResearchAnalyzerFeature; // required for calling AnalyzerPool::init(...) and AnalyzerPool::setKey(...)
 
     // 'make(...)' method wrapper for irs::analysis::analyzer types
     struct Builder {
@@ -78,13 +79,11 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
                                                          // AnalyzerBuilder::make(...))
     std::string _config;   // non-null type + non-null properties + key
     irs::flags _features;  // cached analyzer features
-    irs::string_ref _key;  // the key of the persisted configuration for this
-                           // pool, null == not persisted
+    irs::string_ref _key; // the key of the persisted configuration for this pool, null == static analyzer
     std::string _name;  // ArangoDB alias for an IResearch analyzer configuration
     irs::string_ref _properties;  // IResearch analyzer configuration
     irs::string_ref _type;        // IResearch analyzer name
 
-    explicit AnalyzerPool(irs::string_ref const& name);
     bool init(irs::string_ref const& type, irs::string_ref const& properties,
               irs::flags const& features = irs::flags::empty_instance());
     void setKey(irs::string_ref const& type);
@@ -100,10 +99,46 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     arangodb::auth::Level const& level // access level
   );
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return analyzer with the given prefixed name (or unprefixed and resides
+  ///         in defaultVocbase) is granted 'level' access
+  //////////////////////////////////////////////////////////////////////////////
+  static bool canUse( // check permissions
+    irs::string_ref const& analyzer, // analyzer name
+    TRI_vocbase_t const& defaultVocbase, // fallback vocbase if not part of name
+    arangodb::auth::Level const& level // access level
+  );
+
+  // FIXME TODO remove
   std::pair<AnalyzerPool::ptr, bool> emplace(
       irs::string_ref const& name, irs::string_ref const& type,
       irs::string_ref const& properties,
       irs::flags const& features = irs::flags::empty_instance()) noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief emplace an analyzer as per the specified parameters
+  /// @param result the result of the successful emplacement (out-param)
+  ///               first - the emplaced pool
+  ///               second - if an insertion of an new analyzer occured
+  /// @param name analyzer name (already normalized)
+  /// @param type the underlying IResearch analyzer type
+  /// @param properties the configuration for the underlying IResearch type
+  /// @param features the expected features the analyzer should produce
+  /// @param implicitCreation false == treat as error if creation is required
+  /// @return success
+  /// @note emplacement while inRecovery() will not allow adding new analyzers
+  ///       valid because for existing links the analyzer definition should
+  ///       already have been persisted and feature administration is not
+  ///       allowed during recovery
+  //////////////////////////////////////////////////////////////////////////////
+  typedef std::pair<AnalyzerPool::ptr, bool> EmplaceResult;
+  arangodb::Result emplace( // emplace an analyzer
+    EmplaceResult& result, // emplacement result on success (out-param)
+    irs::string_ref const& name, // analyzer name
+    irs::string_ref const& type, // analyzer type
+    irs::string_ref const& properties, // analyzer properties
+    irs::flags const& features = irs::flags::empty_instance() // analyzer features
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get analyzer or placeholder
@@ -112,6 +147,7 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   ///        after start() returns same as get(...)
   /// @param name analyzer name (used verbatim)
   //////////////////////////////////////////////////////////////////////////////
+  // FIXME TODO remove
   AnalyzerPool::ptr ensure(irs::string_ref const& name);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -125,6 +161,23 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   /// @return analyzer with the specified name or nullptr
   //////////////////////////////////////////////////////////////////////////////
   AnalyzerPool::ptr get(irs::string_ref const& name) const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief find analyzer
+  /// @param name analyzer name (already normalized)
+  /// @param type the underlying IResearch analyzer type
+  /// @param properties the configuration for the underlying IResearch type
+  /// @param features the expected features the analyzer should produce
+  /// @return analyzer matching the specified parameters or nullptr
+  /// @note will construct and cache the analyzer if missing only on db-server
+  ///       persistence in the cases of inRecovery or !storage engine will fail
+  //////////////////////////////////////////////////////////////////////////////
+  AnalyzerPool::ptr get( // find analyzer
+    irs::string_ref const& name, // analyzer name
+    irs::string_ref const& type, // analyzer type
+    irs::string_ref const& properties, // analyzer properties
+    irs::flags const& features // analyzer features
+  );
 
   static AnalyzerPool::ptr identity() noexcept;  // the identity analyzer
   static std::string const& name() noexcept;
@@ -165,14 +218,50 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   mutable irs::async_utils::read_write_mutex _mutex;
   bool _started;
 
+  // FIXME TODO remove
   std::pair<AnalyzerPool::ptr, bool> emplace(
       irs::string_ref const& name, irs::string_ref const& type,
       irs::string_ref const& properties, bool initAndPersist,
       irs::flags const& features = irs::flags::empty_instance()) noexcept;
 
   static Analyzers const& getStaticAnalyzers();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ensure an analyzer as per the specified parameters exists if
+  ///        possible
+  /// @param result the result of the successful emplacement (out-param)
+  ///               first - the emplaced pool
+  ///               second - if an insertion of an new analyzer occured
+  /// @param name analyzer name (already normalized)
+  /// @param type the underlying IResearch analyzer type
+  /// @param properties the configuration for the underlying IResearch type
+  /// @param features the expected features the analyzer should produce
+  /// @param allowCreation false == treat as an error if creation is required
+  /// @return success
+  /// @note ensure while inRecovery() will not allow new analyzer persistance
+  ///       valid because for existing links the analyzer definition should
+  ///       already have been persisted and feature administration is not
+  ///       allowed during recovery
+  /// @note for db-server analyzers are not persisted
+  ///       valid because the authoritative analyzer source is from coordinators
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result ensure( // ensure analyzer existence if possible
+    EmplaceResult& result, // emplacement result on success (out-param)
+    irs::string_ref const& name, // analyzer name
+    irs::string_ref const& type, // analyzer type
+    irs::string_ref const& properties, // analyzer properties
+    irs::flags const& features, // analyzer features
+    bool allowCreation
+  );
+
   bool loadConfiguration();
-  bool storeConfiguration(AnalyzerPool& pool);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief store the definition for the speicifed pool in the corresponding
+  ///        vocbase
+  /// @note on success will modify the '_key' of the pool
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result storeAnalyzer(AnalyzerPool& pool);
 };
 
 }  // namespace iresearch

@@ -55,6 +55,7 @@ class TransactionState;
 class MMFilesCollection final : public PhysicalCollection {
   friend class MMFilesCompactorThread;
   friend class MMFilesEngine;
+  friend class MMFilesIndexLookupContext;
 
  public:
   static inline MMFilesCollection* toMMFilesCollection(PhysicalCollection* physical) {
@@ -268,6 +269,9 @@ class MMFilesCollection final : public PhysicalCollection {
   ///////////////////////////////////
 
   Result truncate(transaction::Methods& trx, OperationOptions& options) override;
+
+  /// @brief compact-data operation
+  Result compact() override;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop

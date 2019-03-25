@@ -72,7 +72,7 @@ template <typename V, typename E>
 GraphStore<V, E>::GraphStore(TRI_vocbase_t& vb, GraphFormat<V, E>* graphFormat)
     : _vocbaseGuard(vb),
       _graphFormat(graphFormat),
-      _localVerticeCount(0),
+      _localVertexCount(0),
       _localEdgeCount(0),
       _runningThreads(0) {}
 
@@ -290,17 +290,17 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config, PregelShard sourceShar
 
   VertexEntry& entry = _index.back();
   if (_graphFormat->estimatedVertexSize() > 0) {
-    entry._vertexDataOffset = _localVerticeCount;
+    entry._vertexDataOffset = _localVertexCount;
     entry._edgeDataOffset = _localEdgeCount;
 
     // allocate space if needed
-    if (_vertexData->size() <= _localVerticeCount) {
+    if (_vertexData->size() <= _localVertexCount) {
       // lazy loading always uses vector backed storage
       ((VectorTypedBuffer<V>*)_vertexData)->appendEmptyElement();
     }
-    V* data = _vertexData->data() + _localVerticeCount;
+    V* data = _vertexData->data() + _localVertexCount;
     _graphFormat->copyVertexData(documentId, doc, data, sizeof(V));
-    _localVerticeCount++;
+    _localVertexCount++;
   }
 
   // load edges
@@ -380,17 +380,14 @@ void GraphStore<V, E>::_loadVertices(transaction::Methods& trx, ShardID const& v
   uint64_t originalVertexOffset = vertexOffset;
 
   PregelShard sourceShard = (PregelShard)_config->shardId(vertexShard);
-  std::unique_ptr<OperationCursor> cursor =
-      trx.indexScan(vertexShard, transaction::Methods::CursorType::ALL);
-
-  if (cursor->fail()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up shard '%s'",
-                                  vertexShard.c_str());
-  }
+  OperationCursor cursor(trx.indexScan(vertexShard, transaction::Methods::CursorType::ALL));
 
   // tell the formatter the number of docs we are about to load
-  LogicalCollection* collection = cursor->collection();
-  uint64_t number = collection->numberDocuments(&trx, transaction::CountType::Normal);
+  LogicalCollection* collection = cursor.collection();
+  uint64_t number = 0;
+  if (collection != nullptr) {
+    number = collection->numberDocuments(&trx, transaction::CountType::Normal);
+  }
   _graphFormat->willLoadVertices(number);
 
   auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
@@ -417,7 +414,7 @@ void GraphStore<V, E>::_loadVertices(transaction::Methods& trx, ShardID const& v
     vertexOffset++;
     edgeOffset += ventry._edgeCount;
   };
-  while (cursor->nextDocument(cb, 1000)) {
+  while (cursor.nextDocument(cb, 1000)) {
     if (_destroyed) {
       LOG_TOPIC(WARN, Logger::PREGEL) << "Aborted loading graph";
       break;
@@ -425,7 +422,7 @@ void GraphStore<V, E>::_loadVertices(transaction::Methods& trx, ShardID const& v
   }
 
   // Add all new vertices
-  _localVerticeCount += (vertexOffset - originalVertexOffset);
+  _localVertexCount += (vertexOffset - originalVertexOffset);
 
   if (!trx.commit().ok()) {
     LOG_TOPIC(WARN, Logger::PREGEL)
@@ -442,13 +439,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, ShardID const& edge
 
   traverser::EdgeCollectionInfo info(&trx, edgeShard, TRI_EDGE_OUT,
                                      StaticStrings::FromString, 0);
-  ManagedDocumentResult mmdr;
-  std::unique_ptr<OperationCursor> cursor = info.getEdges(documentID, &mmdr);
-  if (cursor->fail()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(cursor->code,
-                                  "while looking up edges '%s' from %s",
-                                  documentID.c_str(), edgeShard.c_str());
-  }
+  std::unique_ptr<OperationCursor> cursor = info.getEdges(documentID);
 
   auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
     if (slice.isExternal()) {

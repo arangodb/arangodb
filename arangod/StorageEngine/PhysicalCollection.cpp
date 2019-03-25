@@ -55,14 +55,15 @@ PhysicalCollection::PhysicalCollection(LogicalCollection& collection,
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
 /// to fetch current values!
-std::unordered_map<std::string, double> PhysicalCollection::clusterIndexEstimates(bool allowUpdate) const {
+IndexEstMap PhysicalCollection::clusterIndexEstimates(bool allowUpdate,
+                                                      TRI_voc_tick_t tid) const {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       "cluster index estimates called for non-cluster collection");
 }
 
 /// @brief sets the current index selectivity estimates
-void PhysicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates) {
+void PhysicalCollection::setClusterIndexEstimates(IndexEstMap&& estimates) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       "cluster index estimates called for non-cluster collection");
@@ -151,6 +152,16 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(TRI_idx_iid_t idxId) cons
   READ_LOCKER(guard, _indexesLock);
   for (auto const& idx : _indexes) {
     if (idx->id() == idxId) {
+      return idx;
+    }
+  }
+  return nullptr;
+}
+
+std::shared_ptr<Index> PhysicalCollection::lookupIndex(std::string const& idxName) const {
+  READ_LOCKER(guard, _indexesLock);
+  for (auto const& idx : _indexes) {
+    if (idx->name() == idxName) {
       return idx;
     }
   }

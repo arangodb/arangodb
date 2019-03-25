@@ -85,8 +85,8 @@ client programs can thus safely set the *inBackground* option to *true* and cont
 work as before.
 
 Should you be building an index in the background you cannot rename or drop the collection.
-These operations will block until the index creation is finished.
-{% endhint %}
+These operations will block until the index creation is finished. This is equally the case
+with foreground indexing.
 
 After an interrupted index build (i.e. due to a server crash) the partially built index
 will the removed. In the ArangoDB cluster the index might then be automatically recreated 
@@ -192,6 +192,62 @@ The index types "hash", "skiplist" and "persistent" are just aliases of each oth
 when using the RocksDB engine, so there is no need to offer all of them in parallel.
 
 
+Client tools
+------------
+
+### Dump and restore all databases
+
+**arangodump** got an option `--all-databases` to make it dump all available databases
+instead of just a single database specified via the option `--server.database`.
+
+When set to true, this makes arangodump dump all available databases the current 
+user has access to. The option `--all-databases` cannot be used in combination with 
+the option `--server.database`. 
+
+When `--all-databases` is used, arangodump will create a subdirectory with the data 
+of each dumped database. Databases will be dumped one after the after. However, 
+inside each database, the collections of the database can be dumped in parallel 
+using multiple threads.
+When dumping all databases, the consistency guarantees of arangodump are the same
+as when dumping multiple single database individually, so the dump does not provide
+cross-database consistency of the data.
+
+**arangorestore** got an option `--all-databases` to make it restore all databases from
+inside the subdirectories of the specified dump directory, instead of just the
+single database specified via the option `--server.database`.
+
+Using the option for arangorestore only makes sense for dumps created with arangodump 
+and the `--all-databases` option. As for arangodump, arangorestore cannot be invoked 
+with the both options `--all-databases` and `--server.database` at the same time. 
+Additionally, the option `--force-same-database` cannot be used together with 
+`--all-databases`.
+  
+If the to-be-restored databases do not exist on the target server, then restoring data 
+into them will fail unless the option `--create-database` is also specified for
+arangorestore. Please note that in this case a database user must be used that has 
+access to the `_system` database, in order to create the databases on restore. 
+
+### Warning if connected to DBServer
+
+Under normal circumstances there should be no need to connect to a 
+database server in a cluster with one of the client tools, and it is 
+likely that any user operations carried out there with one of the client
+tools may cause trouble. 
+
+The client tools arangosh, arangodump and arangorestore will now emit 
+a warning when connecting with them to a database server node in a cluster.
+
+Startup option changes
+----------------------
+
+The value type of the hidden startup option `--rocksdb.recycle-log-file-num` has 
+been changed from numeric to boolean in ArangoDB 3.5, as the option is also a 
+boolean option in the underlying RocksDB library.
+
+Client configurations that use this configuration variable should adjust their
+configuration and set this variable to a boolean value instead of to a numeric
+value.
+
 Miscellaneous
 -------------
 
@@ -214,6 +270,22 @@ entries, and will continue to work.
 
 Existing `_modules` collections will also remain functional.
 
+### Named indices
+
+Indices now have an additional `name` field, which allows for more useful
+identifiers. System indices, like the primary and edge indices, have default 
+names (`primary` and `edge`, respectively). If no `name` value is specified
+on index creation, one will be auto-generated (e.g. `idx_13820395`). The index
+name _cannot_ be changed after index creation. No two indices on the same
+collection may share the same name, but two indices on different collections 
+may.
+
+### Index Hints in AQL
+
+Users may now take advantage of the `indexHint` inline query option to override
+the internal optimizer decision regarding which index to use to serve content
+from a given collection. The index hint works with the named indices feature
+above, making it easy to specify which index to use.
 
 Internal
 --------

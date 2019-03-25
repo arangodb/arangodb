@@ -39,7 +39,6 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
@@ -332,8 +331,7 @@ Result MMFilesPersistentIndex::insert(transaction::Methods& trx,
     return addErrorMsg(res, r);
   }
 
-  ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(&trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&_collection, nullptr, numPaths());
   VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
   auto prefix = buildPrefix(trx.vocbase().id(), _collection.id(), _iid);
   VPackBuilder builder;
@@ -513,8 +511,7 @@ Result MMFilesPersistentIndex::remove(transaction::Methods& trx,
     return addErrorMsg(res, r);
   }
 
-  ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(&trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&_collection, nullptr, numPaths());
   VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
   VPackBuilder builder;
   std::vector<std::string> values;
@@ -698,7 +695,7 @@ arangodb::aql::AstNode* MMFilesPersistentIndex::specializeCondition(
 }
 
 IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*, arangodb::aql::AstNode const* node,
+    transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   VPackBuilder searchValues;

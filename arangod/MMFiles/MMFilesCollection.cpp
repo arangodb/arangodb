@@ -21,7 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MMFilesCollection.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
 #include "Basics/Exceptions.h"
@@ -51,6 +50,7 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesTransactionState.h"
+#include "MMFilesCollection.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -99,7 +99,7 @@ struct OpenIteratorState {
         _primaryIndex(static_cast<MMFilesCollection*>(collection->getPhysical())->primaryIndex()),
         _stats(),
         _trx(trx),
-        _context(trx, collection, &_mdr, 1) {
+        _context(collection, &_mdr, 1) {
     TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(trx != nullptr);
   }
@@ -375,7 +375,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(MMFilesMarker const* mar
   // no primary index lock required here because we are the only ones reading
   // from the index ATM
   MMFilesSimpleIndexElement* found =
-      state->_primaryIndex->lookupKeyRef(trx, keySlice, state->_mdr);
+      state->_primaryIndex->lookupKeyRef(trx, keySlice);
 
   // it is a new entry
   if (found == nullptr || !found->isSet()) {
@@ -479,7 +479,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(MMFilesMarker const* mar
   // no primary index lock required here because we are the only ones reading
   // from the index ATM
   MMFilesSimpleIndexElement found =
-      state->_primaryIndex->lookupKey(trx, keySlice, state->_mdr);
+      state->_primaryIndex->lookupKey(trx, keySlice);
 
   // it is a new entry, so we missed the create
   if (!found) {
@@ -704,7 +704,7 @@ int MMFilesCollection::close() {
     // We also have to unload the indexes.
     WRITE_LOCKER(writeLocker, _dataLock);
 
-    READ_LOCKER_EVENTUAL(guard, _indexesLock); 
+    READ_LOCKER_EVENTUAL(guard, _indexesLock);
 
     for (auto& idx : _indexes) {
       idx->unload();
@@ -719,11 +719,11 @@ int MMFilesCollection::close() {
                           _ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_RENAME) ||
                           _ditches.contains(MMFilesDitch::TRI_DITCH_REPLICATION) ||
                           _ditches.contains(MMFilesDitch::TRI_DITCH_COMPACTION));
-   
+
     if (!hasDocumentDitch && !hasOtherDitch) {
       // we can abort now
       break;
-    } 
+    }
 
     // give the cleanup thread more time to clean up
     {
@@ -733,9 +733,13 @@ int MMFilesCollection::close() {
 
     if ((++tries % 10) == 0) {
       if (hasDocumentDitch) {
-        LOG_TOPIC(WARN, Logger::ENGINES) << "waiting for cleanup of document ditches for collection '" << _logicalCollection.name() << "'. has other: " << hasOtherDitch; 
+        LOG_TOPIC(WARN, Logger::ENGINES)
+            << "waiting for cleanup of document ditches for collection '"
+            << _logicalCollection.name() << "'. has other: " << hasOtherDitch;
       } else {
-        LOG_TOPIC(WARN, Logger::ENGINES) << "waiting for cleanup of ditches for collection '" << _logicalCollection.name() << "'";
+        LOG_TOPIC(WARN, Logger::ENGINES)
+            << "waiting for cleanup of ditches for collection '"
+            << _logicalCollection.name() << "'";
       }
     }
 
@@ -2021,7 +2025,8 @@ Result MMFilesCollection::read(transaction::Methods* trx, VPackSlice const& key,
   return Result(TRI_ERROR_NO_ERROR);
 }
 
-Result MMFilesCollection::read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
+Result MMFilesCollection::read(transaction::Methods* trx,
+                               arangodb::velocypack::StringRef const& key,
                                ManagedDocumentResult& result, bool lock) {
   // copy string into a vpack string
   transaction::BuilderLeaser builder(trx);
@@ -2200,10 +2205,12 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
   TRI_ASSERT(info.isObject());
   std::shared_ptr<Index> idx = PhysicalCollection::lookupIndex(info);
 
-  if (idx != nullptr) {  
+  if (idx != nullptr) {
     // We already have this index.
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "there can only be one ttl index per collection");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "there can only be one ttl index per collection");
     }
     created = false;
     return idx;
@@ -2227,8 +2234,18 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
   }
 
   auto other = PhysicalCollection::lookupIndex(idx->id());
+  if (!other) {
+    other = PhysicalCollection::lookupIndex(idx->name());
+  }
   if (other) {
-    return other;
+    // definition shares an identifier with an existing index with a
+    // different definition
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+                                   "duplicate value for `" + 
+                                       arangodb::StaticStrings::IndexId +
+                                       "` or `" + 
+                                       arangodb::StaticStrings::IndexName +
+                                       "`");
   }
 
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
@@ -2459,11 +2476,6 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector,
                                 TransactionState const* state, double timeout) {
   TRI_ASSERT(state != nullptr);
 
-  if (state->isLockedShard(_logicalCollection.name())) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
-
   TRI_voc_tid_t tid = state->id();
 
   // LOCKING-DEBUG
@@ -2577,11 +2589,6 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector,
                                  TransactionState const* state, double timeout) {
   TRI_ASSERT(state != nullptr);
 
-  if (state->isLockedShard(_logicalCollection.name())) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
-
   TRI_voc_tid_t tid = state->id();
 
   // LOCKING-DEBUG
@@ -2694,11 +2701,6 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector,
 int MMFilesCollection::unlockRead(bool useDeadlockDetector, TransactionState const* state) {
   TRI_ASSERT(state != nullptr);
 
-  if (state->isLockedShard(_logicalCollection.name())) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
-
   TRI_voc_tid_t tid = state->id();
 
   if (useDeadlockDetector) {
@@ -2719,11 +2721,6 @@ int MMFilesCollection::unlockRead(bool useDeadlockDetector, TransactionState con
 /// @brief write unlocks a collection
 int MMFilesCollection::unlockWrite(bool useDeadlockDetector, TransactionState const* state) {
   TRI_ASSERT(state != nullptr);
-
-  if (state->isLockedShard(_logicalCollection.name())) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
 
   TRI_voc_tid_t tid = state->id();
 
@@ -2795,6 +2792,16 @@ Result MMFilesCollection::truncate(transaction::Methods& trx, OperationOptions& 
   }
 
   return Result();
+}
+
+/// @brief compact-data operation
+Result MMFilesCollection::compact() {
+  // this will only reset the last compaction timestamp,
+  // so the collection becomes eligible for the next round of compactions
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+  _lastCompactionStamp = 0.0;
+
+  return {};
 }
 
 LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions const& options) const {
@@ -3430,8 +3437,11 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
 
     if (_isDBServer) {
       // Need to check that no sharding keys have changed:
-      if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), false)) {
+      if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), true)) {
         return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+      }
+      if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc, builder->slice(), true)) {
+        return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
       }
     }
   } else {
@@ -3564,6 +3574,9 @@ Result MMFilesCollection::replace(transaction::Methods* trx, VPackSlice const ne
       // Need to check that no sharding keys have changed:
       if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), false)) {
         return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+      }
+      if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc, builder->slice(), false)) {
+        return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
       }
     }
   }

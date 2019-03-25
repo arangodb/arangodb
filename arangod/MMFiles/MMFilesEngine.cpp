@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFiles/MMFilesEngine.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
@@ -48,7 +49,6 @@
 #include "MMFiles/MMFilesRestHandlers.h"
 #include "MMFiles/MMFilesTransactionCollection.h"
 #include "MMFiles/MMFilesTransactionContextData.h"
-#include "MMFiles/MMFilesTransactionManager.h"
 #include "MMFiles/MMFilesTransactionState.h"
 #include "MMFiles/MMFilesV8Functions.h"
 #include "MMFiles/MMFilesWalAccess.h"
@@ -160,7 +160,7 @@ std::string const MMFilesEngine::FeatureName("MMFilesEngine");
 // create the storage engine
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer& server)
     : StorageEngine(server, EngineName, FeatureName,
-                    std::unique_ptr<IndexFactory>(new MMFilesIndexFactory())),
+                    std::make_unique<MMFilesIndexFactory>()),
       _isUpgrade(false),
       _maxTick(0),
       _walAccess(new MMFilesWalAccess()),
@@ -277,18 +277,17 @@ void MMFilesEngine::stop() {
   }
 }
 
-std::unique_ptr<TransactionManager> MMFilesEngine::createTransactionManager() {
-  return std::unique_ptr<TransactionManager>(new MMFilesTransactionManager());
+std::unique_ptr<transaction::Manager> MMFilesEngine::createTransactionManager() {
+  return std::make_unique<transaction::Manager>(/*keepData*/ true);
 }
 
 std::unique_ptr<transaction::ContextData> MMFilesEngine::createTransactionContextData() {
-  return std::unique_ptr<transaction::ContextData>(new MMFilesTransactionContextData());
+  return std::make_unique<MMFilesTransactionContextData>();
 }
 
 std::unique_ptr<TransactionState> MMFilesEngine::createTransactionState(
-    TRI_vocbase_t& vocbase, transaction::Options const& options) {
-  return std::unique_ptr<TransactionState>(
-      new MMFilesTransactionState(vocbase, TRI_NewTickServer(), options));
+    TRI_vocbase_t& vocbase, TRI_voc_tick_t tid, transaction::Options const& options) {
+  return std::make_unique<MMFilesTransactionState>(vocbase, tid, options);
 }
 
 std::unique_ptr<TransactionCollection> MMFilesEngine::createTransactionCollection(
@@ -301,7 +300,6 @@ std::unique_ptr<TransactionCollection> MMFilesEngine::createTransactionCollectio
 std::unique_ptr<PhysicalCollection> MMFilesEngine::createPhysicalCollection(
     LogicalCollection& collection, velocypack::Slice const& info) {
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
-
   return std::unique_ptr<PhysicalCollection>(new MMFilesCollection(collection, info));
 }
 
@@ -2043,10 +2041,15 @@ std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openExistingDatabase(
       LogicalView::ptr view;
       auto res = LogicalView::instantiate(view, *vocbase, it);
 
-      if (!res.ok() || !view) {
-        auto const message = "failed to instantiate view '" + name + "'";
+      if (!res.ok()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
 
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message.c_str());
+      if (!view) {
+        THROW_ARANGO_EXCEPTION_MESSAGE( // exception
+          TRI_ERROR_INTERNAL, // code
+          std::string("failed to instantiate view in vocbase'") + vocbase->name() + "' from definition: " + it.toString()
+        );
       }
 
       StorageEngine::registerView(*vocbase, view);

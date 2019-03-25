@@ -20,13 +20,13 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterCollection.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterMethods.h"
+#include "ClusterCollection.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterIndex.h"
 #include "Indexes/Index.h"
@@ -43,7 +43,6 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 
@@ -110,12 +109,12 @@ ClusterCollection::~ClusterCollection() {}
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
 /// to fetch current values!
-std::unordered_map<std::string, double> ClusterCollection::clusterIndexEstimates(bool allowUpdate) const {
-  return _selectivityEstimates.get(allowUpdate);
+IndexEstMap ClusterCollection::clusterIndexEstimates(bool allowUpdate, TRI_voc_tick_t tid) const {
+  return _selectivityEstimates.get(allowUpdate, tid);
 }
 
 /// @brief sets the current index selectivity estimates
-void ClusterCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates) {
+void ClusterCollection::setClusterIndexEstimates(IndexEstMap&& estimates) {
   _selectivityEstimates.set(std::move(estimates));
 }
 
@@ -315,6 +314,7 @@ void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
 
   if (indexesSlice.length() == 0 && _indexes.empty()) {
     engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
+
   } else {
     engine->indexFactory().prepareIndexes(_logicalCollection, indexesSlice, indexes);
   }
@@ -335,7 +335,7 @@ void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto it : _indexes) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it->context();
     }
 #endif
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
@@ -418,13 +418,19 @@ void ClusterCollection::invokeOnAllElements(transaction::Methods* trx,
 Result ClusterCollection::truncate(transaction::Methods& trx, OperationOptions& options) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
+  
+/// @brief compact-data operation
+Result ClusterCollection::compact() {
+  return {};
+}
 
 LocalDocumentId ClusterCollection::lookupKey(transaction::Methods* trx,
                                              VPackSlice const& key) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
+Result ClusterCollection::read(transaction::Methods* trx,
+                               arangodb::velocypack::StringRef const& key,
                                ManagedDocumentResult& result, bool) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }

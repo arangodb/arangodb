@@ -48,6 +48,8 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
@@ -178,9 +180,10 @@ struct IResearchQueryJoinSetup {
     auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
       arangodb::iresearch::IResearchAnalyzerFeature
     >();
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
-    analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
-    analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+    analyzers->emplace(result, "test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
+    analyzers->emplace(result, "test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
 
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
@@ -318,8 +321,8 @@ TEST_CASE("IResearchQueryTestJoinSubquery", "[iresearch][iresearch-query]") {
     }
 
     CHECK((trx.commit().ok()));
-    CHECK(dynamic_cast<arangodb::iresearch::IResearchView&>(*entities_view).commit().ok());
-    CHECK(dynamic_cast<arangodb::iresearch::IResearchView&>(*links_view).commit().ok());
+    CHECK((arangodb::iresearch::IResearchLinkHelper::find(*entities, *entities_view)->commit().ok()));
+    CHECK((arangodb::iresearch::IResearchLinkHelper::find(*links, *links_view)->commit().ok()));
   }
 
   // check query

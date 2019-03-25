@@ -127,8 +127,8 @@ void ArrayOutCache<M>::flushMessages() {
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
   }
-  size_t nrDone = 0;
-  ClusterComm::instance()->performRequests(requests, 120, nrDone,
+
+  ClusterComm::instance()->performRequests(requests, 120,
                                            LogTopic("Pregel message transfer"), false);
   Utils::printResponses(requests);
   this->_removeContainedMessages();
@@ -226,8 +226,8 @@ void CombiningOutCache<M>::flushMessages() {
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
   }
-  size_t nrDone = 0;
-  ClusterComm::instance()->performRequests(requests, 180, nrDone, LogTopic("Pregel"), false);
+
+  ClusterComm::instance()->performRequests(requests, 180, LogTopic("Pregel"), false);
   Utils::printResponses(requests);
   _removeContainedMessages();
 }

@@ -88,7 +88,7 @@ struct IResearchViewDBServerSetup {
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore); // need 2 connections or Agency callbacks will fail
     arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
 
-    arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_PRIMARY);
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
@@ -122,6 +122,7 @@ struct IResearchViewDBServerSetup {
     buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false); // required for TRI_vocbase_t instantiation
     buildFeatureEntry(new arangodb::ShardingFeature(server), false); // required for TRI_vocbase_t instantiation
     buildFeatureEntry(new arangodb::ViewTypesFeature(server), false); // required for TRI_vocbase_t::createView(...)
+    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(server), false); // required for IResearchLinkMeta::init(...)
     buildFeatureEntry(new arangodb::iresearch::IResearchFeature(server), false); // required for instantiating IResearchView*
     buildFeatureEntry(new arangodb::ClusterFeature(server), false);
     buildFeatureEntry(new arangodb::V8DealerFeature(server), false);

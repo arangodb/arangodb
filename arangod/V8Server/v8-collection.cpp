@@ -30,7 +30,6 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -908,7 +907,7 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  auto res = methods::Collections::drop(&vocbase, collection, allowDropSystem, timeout);
+  auto res = methods::Collections::drop(*collection, allowDropSystem, timeout);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1105,7 +1104,9 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
   // properties, which will break tests. We need an extra lookup
   VPackBuilder builder;
 
-  methods::Collections::lookup(&(consoleColl->vocbase()), consoleColl->name(),
+  methods::Collections::lookup(
+    consoleColl->vocbase(), // vocbase to search
+    consoleColl->name(), // collection to find
                                [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
                                  TRI_ASSERT(coll);
 
@@ -1772,6 +1773,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
+  
   auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
@@ -2042,27 +2044,31 @@ static void JS_TruncateVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
-  SingleCollectionTransaction trx(ctx, *collection, AccessMode::Type::EXCLUSIVE);
-  trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-  trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-  Result res = trx.begin();
+  {
+    auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
+    SingleCollectionTransaction trx(ctx, *collection, AccessMode::Type::EXCLUSIVE);
+    trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+    trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
+    Result res = trx.begin();
 
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION(res);
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+
+    auto result = trx.truncate(collection->name(), opOptions);
+
+    res = trx.finish(result.result);
+
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
   }
 
-  auto result = trx.truncate(collection->name(), opOptions);
-
-  res = trx.finish(result.result);
-
-  if (result.fail()) {
-    TRI_V8_THROW_EXCEPTION(result.result);
-  }
-
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  // wait for the transaction to finish first. only after that compact the
+  // data range(s) for the collection
+  // we shouldn't run compact() as part of the transaction, because the compact
+  // will be useless inside due to the snapshot the transaction has taken
+  collection->compact();
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -2372,10 +2378,6 @@ static void JS_CountVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) 
   auto& collectionName = col->name();
   SingleCollectionTransaction trx(transaction::V8Context::Create(col->vocbase(), true),
                                   collectionName, AccessMode::Type::READ);
-
-  if (trx.isLockedShard(collectionName)) {
-    trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
-  }
 
   Result res = trx.begin();
 

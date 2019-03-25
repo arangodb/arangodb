@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,33 +17,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_TRANSACTION_CONTEXT_DATA_H
-#define ARANGOD_CLUSTER_CLUSTER_TRANSACTION_CONTEXT_DATA_H 1
+#ifndef ARANGO_ROCKSDB_ROCKSDB_BACKGROUND_ERROR_LISTENER_H
+#define ARANGO_ROCKSDB_ROCKSDB_BACKGROUND_ERROR_LISTENER_H 1
 
-#include "Basics/Common.h"
-#include "Transaction/ContextData.h"
-#include "VocBase/voc-types.h"
+// public rocksdb headers
+#include <rocksdb/db.h>
+#include <rocksdb/listener.h>
 
 namespace arangodb {
-class LogicalCollection;
 
-/// @brief transaction type
-class ClusterTransactionContextData final : public transaction::ContextData {
+class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
  public:
-  ClusterTransactionContextData() = default;
-  ~ClusterTransactionContextData() = default;
+  virtual ~RocksDBBackgroundErrorListener();
 
-  /// @brief pin data for the collection
-  /// there is nothing to do for the RocksDB engine
-  void pinData(arangodb::LogicalCollection*) override {}
+  void OnBackgroundError(rocksdb::BackgroundErrorReason reason, rocksdb::Status* error) override;
 
-  /// @brief whether or not the data for the collection is pinned
-  /// note that this is always true in RocksDB
-  bool isPinned(TRI_voc_cid_t) const override { return true; }
-};
+ private:
+  bool _called = false;
+};  // class RocksDBThrottle
+
 }  // namespace arangodb
 
 #endif

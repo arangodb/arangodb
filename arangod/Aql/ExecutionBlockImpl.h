@@ -36,6 +36,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "OutputAqlItemRow.h"
@@ -90,7 +91,7 @@ class ExecutionEngine;
  *         xxxFetcher interface to get AqlItemRows from Upstream.
  */
 template <class Executor>
-class ExecutionBlockImpl : public ExecutionBlock {
+class ExecutionBlockImpl final : public ExecutionBlock {
   using Fetcher = typename Executor::Fetcher;
   using ExecutorStats = typename Executor::Stats;
   using Infos = typename Executor::Infos;
@@ -198,10 +199,8 @@ class ExecutionBlockImpl : public ExecutionBlock {
   std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
 
   /**
-   * @brief Inner getSome() part, without the tracing calls. Needed for the
-   *        skipSome() stub that uses this.
+   * @brief Inner getSome() part, without the tracing calls.
    */
-
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutTrace(size_t atMost);
 
   /**
@@ -224,7 +223,6 @@ class ExecutionBlockImpl : public ExecutionBlock {
 
   Query const& getQuery() const { return _query; }
 
- protected:
   Executor& executor() { return _executor; }
 
  private:

@@ -294,6 +294,7 @@ function printIndexes(indexes) {
     var maxCollectionLen = String('Collection').length;
     var maxUniqueLen = String('Unique').length;
     var maxSparseLen = String('Sparse').length;
+    var maxNameLen = String('Name').length;
     var maxTypeLen = String('Type').length;
     var maxSelectivityLen = String('Selectivity').length;
     var maxFieldsLen = String('Fields').length;
@@ -301,6 +302,10 @@ function printIndexes(indexes) {
       var l = String(index.node).length;
       if (l > maxIdLen) {
         maxIdLen = l;
+      }
+      l = index.name.length;
+      if (l > maxNameLen) {
+        maxNameLen = l;
       }
       l = index.type.length;
       if (l > maxTypeLen) {
@@ -316,6 +321,7 @@ function printIndexes(indexes) {
       }
     });
     var line = ' ' + pad(1 + maxIdLen - String('By').length) + header('By') + '   ' +
+      header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
       header('Type') + pad(1 + maxTypeLen - 'Type'.length) + '   ' +
       header('Collection') + pad(1 + maxCollectionLen - 'Collection'.length) + '   ' +
       header('Unique') + pad(1 + maxUniqueLen - 'Unique'.length) + '   ' +
@@ -344,6 +350,7 @@ function printIndexes(indexes) {
       );
       line = ' ' +
         pad(1 + maxIdLen - String(indexes[i].node).length) + variable(String(indexes[i].node)) + '   ' +
+        collection(indexes[i].name) + pad(1 + maxNameLen - indexes[i].name.length) + '   ' +
         keyword(indexes[i].type) + pad(1 + maxTypeLen - indexes[i].type.length) + '   ' +
         collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + '   ' +
         value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + '   ' +
@@ -420,14 +427,14 @@ class PrintedTable {
   setHeader(index, value) {
     this.content[index].header = value;
     this.content[index].size = Math.max(this.content[index].size, value.length);
-    print(this.content[index].size, value);
   }
 
   addCell(index, value, valueLength) {
+    // Value might be empty
+    value = value || "";
     valueLength = valueLength || value.length;
     this.content[index].cells.push({ formatted: value, size: valueLength });
     this.content[index].size = Math.max(this.content[index].size, valueLength);
-    print(this.content[index].size, value);
   }
 
   alignNewEntry() {
@@ -445,7 +452,6 @@ class PrintedTable {
     let line = ' ';
     let isFirst = true;
     for (let c of this.content) {
-      print(c.size, c.header.length);
       line += (isFirst ? '' : pad(3)) + header(c.header) + pad(1 + c.size - c.header.length);
       isFirst = false;
     }
@@ -1450,7 +1456,7 @@ function processQuery(query, explain, planIndex) {
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':
-        return keyword('DISTRIBUTE');
+        return keyword('DISTRIBUTE') + '  ' + annotation('/* create keys: ' + node.createKeys + ', variable: ') + variableName(node.variable) + ' ' + annotation('*/');
       case 'ScatterNode':
         return keyword('SCATTER');
       case 'GatherNode':

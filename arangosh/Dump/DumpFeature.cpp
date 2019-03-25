@@ -113,6 +113,55 @@ arangodb::Result fileError(arangodb::ManagedDirectory::File* file, bool isWritab
   return file->status();
 }
 
+/// @brief get a list of available databases to dump for the current user
+std::pair<arangodb::Result, std::vector<std::string>> getDatabases(arangodb::httpclient::SimpleHttpClient& client) {
+  std::string const url = "/_api/database/user";
+  
+  std::vector<std::string> databases;
+
+  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
+      client.request(arangodb::rest::RequestType::GET, url, "", 0));
+  auto check = ::checkHttpResponse(client, response);
+  if (check.fail()) {
+    LOG_TOPIC(ERR, arangodb::Logger::DUMP)
+        << "An error occurred while trying to determine list of databases: " << check.errorMessage();
+    return {check, databases};
+  }
+
+  // extract vpack body from response
+  std::shared_ptr<VPackBuilder> parsedBody;
+  try {
+    parsedBody = response->getBodyVelocyPack();
+  } catch (...) {
+    return {::ErrorMalformedJsonResponse, databases};
+  }
+  VPackSlice resBody = parsedBody->slice();
+  if (resBody.isObject()) {
+    resBody = resBody.get("result");
+  }
+  if (!resBody.isArray()) {
+    return {{TRI_ERROR_FAILED, "expecting list of databases to be an array"}, databases};
+  }
+
+  for (auto const& it : arangodb::velocypack::ArrayIterator(resBody)) {
+    if (it.isString()) {
+      databases.push_back(it.copyString());
+    }
+  }
+ 
+  // sort by name, with _system first   
+  std::sort(databases.begin(), databases.end(), [](std::string const& lhs, std::string const& rhs) {
+    if (lhs == "_system" && rhs != "_system") {
+      return true;
+    } else if (rhs == "_system" && lhs != "_system") {
+      return false;
+    }
+    return lhs < rhs;
+  });
+
+  return {{TRI_ERROR_NO_ERROR}, databases};
+}
+
 /// @brief start a batch via the replication API
 std::pair<arangodb::Result, uint64_t> startBatch(arangodb::httpclient::SimpleHttpClient& client,
                                                  std::string const& DBserver) {
@@ -560,6 +609,11 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
 
   options->addOption("--dump-data", "dump collection data",
                      new BooleanParameter(&_options.dumpData));
+  
+  options->addOption(
+      "--all-databases", "dump data of all databases",
+      new BooleanParameter(&_options.allDatabases))
+      .setIntroducedIn(30500);
 
   options->addOption(
       "--force", "continue dumping even in the face of some server-side errors",
@@ -603,7 +657,7 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
   if (1 == n) {
     _options.outputPath = positionals[0];
   } else if (1 < n) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC(FATAL, arangodb::Logger::DUMP)
         << "expecting at most one directory, got " +
                arangodb::basics::StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
@@ -616,8 +670,15 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
       boost::algorithm::clamp(_options.maxChunkSize, _options.initialChunkSize, ::MaxChunkSize);
 
   if (_options.tickEnd < _options.tickStart) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC(FATAL, arangodb::Logger::DUMP)
         << "invalid values for --tick-start or --tick-end";
+    FATAL_ERROR_EXIT();
+  }
+  
+  if (options->processingResult().touched("server.database") &&
+      _options.allDatabases) {
+    LOG_TOPIC(FATAL, arangodb::Logger::DUMP)
+        << "cannot use --server.database and --all-databases at the same time";
     FATAL_ERROR_EXIT();
   }
 
@@ -632,7 +693,7 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
       boost::algorithm::clamp(_options.threadCount, 1,
                               4 * static_cast<uint32_t>(TRI_numberProcessors()));
   if (_options.threadCount != clamped) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "capping --threads value to " << clamped;
+    LOG_TOPIC(WARN, Logger::DUMP) << "capping --threads value to " << clamped;
     _options.threadCount = clamped;
   }
 }
@@ -1014,18 +1075,18 @@ void DumpFeature::start() {
   if (_directory->status().fail()) {
     switch (_directory->status().errorNumber()) {
       case TRI_ERROR_FILE_EXISTS:
-        LOG_TOPIC(FATAL, Logger::FIXME) << "cannot write to output directory '"
-                                        << _options.outputPath << "'";
+        LOG_TOPIC(FATAL, Logger::DUMP) << "cannot write to output directory '"
+                                       << _options.outputPath << "'";
 
         break;
       case TRI_ERROR_CANNOT_OVERWRITE_FILE:
-        LOG_TOPIC(FATAL, Logger::FIXME)
+        LOG_TOPIC(FATAL, Logger::DUMP)
             << "output directory '" << _options.outputPath
             << "' already exists. use \"--overwrite true\" to "
                "overwrite data in it";
         break;
       default:
-        LOG_TOPIC(ERR, Logger::FIXME) << _directory->status().errorMessage();
+        LOG_TOPIC(ERR, Logger::DUMP) << _directory->status().errorMessage();
         break;
     }
     FATAL_ERROR_EXIT();
@@ -1034,24 +1095,29 @@ void DumpFeature::start() {
   // get database name to operate on
   auto client = application_features::ApplicationServer::getFeature<ClientFeature>(
       "Client");
-  auto dbName = client->databaseName();
 
   // get a client to use in main thread
   auto httpClient = _clientManager.getConnectedClient(_options.force, true, true);
 
   // check if we are in cluster or single-server mode
   Result result{TRI_ERROR_NO_ERROR};
-  std::tie(result, _options.clusterMode) = _clientManager.getArangoIsCluster(*httpClient);
+  std::string role;
+  std::tie(result, role) = _clientManager.getArangoIsCluster(*httpClient);
+  _options.clusterMode = (role == "COORDINATOR");
   if (result.fail()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+    LOG_TOPIC(FATAL, arangodb::Logger::DUMP)
         << "Error: could not detect ArangoDB instance type: " << result.errorMessage();
     FATAL_ERROR_EXIT();
+  }
+
+  if (role == "DBSERVER" || role == "PRIMARY") {
+    LOG_TOPIC(WARN, arangodb::Logger::DUMP) << "You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator. This is an unsupported operation!";
   }
 
   // special cluster-mode parameter checks
   if (_options.clusterMode) {
     if (_options.tickStart != 0 || _options.tickEnd != 0) {
-      LOG_TOPIC(ERR, Logger::FIXME)
+      LOG_TOPIC(ERR, Logger::DUMP)
           << "Error: cannot use tick-start or tick-end on a cluster";
       FATAL_ERROR_EXIT();
     }
@@ -1063,33 +1129,68 @@ void DumpFeature::start() {
   if (_options.progress) {
     LOG_TOPIC(INFO, Logger::DUMP)
         << "Connected to ArangoDB '" << client->endpoint() << "', database: '"
-        << dbName << "', username: '" << client->username() << "'";
+        << client->databaseName() << "', username: '" << client->username() << "'";
 
     LOG_TOPIC(INFO, Logger::DUMP)
         << "Writing dump to output directory '" << _directory->path()
         << "' with " << _options.threadCount << " thread(s)";
   }
 
+  // final result
   Result res;
-  try {
-    if (!_options.clusterMode) {
-      res = runDump(*httpClient, dbName);
-    } else {
-      res = runClusterDump(*httpClient, dbName);
-    }
-  } catch (basics::Exception const& ex) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception: " << ex.what();
-    res = {ex.code(), ex.what()};
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception: " << ex.what();
-    res = {TRI_ERROR_INTERNAL, ex.what()};
-  } catch (...) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "caught unknown exception";
-    res = {TRI_ERROR_INTERNAL};
+
+  std::vector<std::string> databases;
+  if (_options.allDatabases) {
+    // get list of available databases
+    std::tie(res, databases) = ::getDatabases(*httpClient);
+  } else {
+    // use just the single database that was specified
+    databases.push_back(client->databaseName());
   }
 
+  if (res.ok()) {
+    for (auto const& db : databases) {
+      if (_options.allDatabases) {
+        // inject current database
+        LOG_TOPIC(INFO, Logger::DUMP) << "Dumping database '" << db << "'";
+        client->setDatabaseName(db);
+        httpClient = _clientManager.getConnectedClient(_options.force, false, true);
+  
+        _directory = std::make_unique<ManagedDirectory>(arangodb::basics::FileUtils::buildFilename(_options.outputPath, db),
+                                                        true, true);
+  
+        if (_directory->status().fail()) {
+          res = _directory->status();
+          LOG_TOPIC(ERR, Logger::DUMP) << _directory->status().errorMessage();
+          break;
+        }
+      }
+
+      try {
+        if (!_options.clusterMode) {
+          res = runDump(*httpClient, db);
+        } else {
+          res = runClusterDump(*httpClient, db);
+        }
+      } catch (basics::Exception const& ex) {
+        LOG_TOPIC(ERR, Logger::DUMP) << "caught exception: " << ex.what();
+        res = {ex.code(), ex.what()};
+      } catch (std::exception const& ex) {
+        LOG_TOPIC(ERR, Logger::DUMP) << "caught exception: " << ex.what();
+        res = {TRI_ERROR_INTERNAL, ex.what()};
+      } catch (...) {
+        LOG_TOPIC(ERR, Logger::DUMP) << "caught unknown exception";
+        res = {TRI_ERROR_INTERNAL};
+      }
+
+      if (res.fail() && !_options.force) {
+        break;
+      }
+    }
+  }
+  
   if (res.fail()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "An error occurred: " + res.errorMessage();
+    LOG_TOPIC(ERR, Logger::DUMP) << "An error occurred: " + res.errorMessage();
     _exitCode = EXIT_FAILURE;
   }
 

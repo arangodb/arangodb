@@ -87,7 +87,7 @@ JOB_STATUS CleanOutServer::status() {
     std::string timeCreatedString = tmp_time.first;
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
-    if (now - timeCreated > std::chrono::duration<double>(7200.0)) {
+    if (now - timeCreated > std::chrono::duration<double>(86400.0)) { // 1 day
       abort();
       return FAILED;
     }
@@ -519,8 +519,8 @@ arangodb::Result CleanOutServer::abort() {
   }
 
   // Abort all our subjobs:
-  Node::Children const todos = _snapshot.hasAsChildren(toDoPrefix).first;
-  Node::Children const pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  Node::Children const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
 
   for (auto const& subJob : todos) {
     if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {

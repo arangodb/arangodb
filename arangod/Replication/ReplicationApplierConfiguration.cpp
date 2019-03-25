@@ -59,12 +59,11 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration()
       _adaptivePolling(true),
       _autoResync(false),
       _includeSystem(true),
+      _includeFoxxQueues(false),
       _requireFromPresent(true),
       _incremental(false),
       _verbose(false),
-      _restrictType(RestrictType::None),
-      _restrictCollections(),
-      _includeFoxxQueues(false) {}
+      _restrictType(RestrictType::None) {}
 
 /// @brief reset the configuration to defaults
 void ReplicationApplierConfiguration::reset() {
@@ -91,12 +90,12 @@ void ReplicationApplierConfiguration::reset() {
   _adaptivePolling = true;
   _autoResync = false;
   _includeSystem = true;
+  _includeFoxxQueues = false;
   _requireFromPresent = true;
   _incremental = false;
   _verbose = false;
   _restrictType = RestrictType::None;
   _restrictCollections.clear();
-  _includeFoxxQueues = false;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _force32mode = false;
 #endif
@@ -140,6 +139,7 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
   builder.add("autoResyncRetries", VPackValue(_autoResyncRetries));
   builder.add("maxPacketSize", VPackValue(_maxPacketSize));
   builder.add("includeSystem", VPackValue(_includeSystem));
+  builder.add("includeFoxxQueues", VPackValue(_includeFoxxQueues));
   builder.add("requireFromPresent", VPackValue(_requireFromPresent));
   builder.add("verbose", VPackValue(_verbose));
   builder.add("incremental", VPackValue(_incremental));
@@ -270,6 +270,11 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   value = slice.get("includeSystem");
   if (value.isBoolean()) {
     configuration._includeSystem = value.getBoolean();
+  }
+  
+  value = slice.get("includeFoxxQueues");
+  if (value.isBoolean()) {
+    configuration._includeFoxxQueues = value.getBoolean();
   }
 
   value = slice.get("requireFromPresent");

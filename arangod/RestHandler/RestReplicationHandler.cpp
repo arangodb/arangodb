@@ -699,7 +699,8 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     for (auto const& p : *shardMap) {
       auto currentServerList = cic->servers(p.first /* shardId */);
       if (currentServerList.size() == 0 || p.second.size() == 0 ||
-          currentServerList[0] != p.second[0]) {
+          currentServerList[0] != p.second[0] ||
+          (!p.second[0].empty() && p.second[0][0] == '_')) {
         isReady = false;
       }
       if (!ClusterHelpers::compareServerLists(p.second, currentServerList)) {
@@ -1006,17 +1007,21 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
           || TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE ==
                  result.errorNumber()) {
         // some collections must not be dropped
-        auto res = truncateCollectionOnCoordinator(dbName, name);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          return Result(
-              res,
-              std::string(
-                  "unable to truncate collection (dropping is forbidden): '") +
-                  name + "'");
+        auto ctx = transaction::StandaloneContext::Create(_vocbase);
+        SingleCollectionTransaction trx(ctx, name, AccessMode::Type::EXCLUSIVE);
+        
+        Result res = trx.begin();
+        if (res.fail()) {
+          return res;
         }
-
-        return Result(res);
+        
+        OperationOptions options;
+        OperationResult result = trx.truncate(name, options);
+        res = trx.finish(result.result);
+        if (res.fail()) {
+          res.appendErrorMessage(". Unable to truncate collection (dropping is forbidden)");
+        }
+        return res;
       }
 
       if (!result.ok()) {
@@ -2701,10 +2706,10 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
 
   {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    auto trx = std::make_unique<SingleCollectionTransaction>(ctx, col, access);
+    auto trx = std::make_shared<SingleCollectionTransaction>(ctx, col, access);
     query->setTransactionContext(ctx);
     // Inject will take over responsiblilty of transaction, even on error case.
-    query->injectTransaction(trx.release());
+    query->injectTransaction(std::move(trx));
   }
   auto trx = query->trx();
   TRI_ASSERT(trx != nullptr);
@@ -2728,7 +2733,9 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   if (isTombstoned(id)) {
     try {
       // Code does not matter, read only access, so we can roll back.
-      queryRegistry->destroy(&_vocbase, id, TRI_ERROR_QUERY_KILLED);
+      // we can ignore the openness here, as it was our thread that had
+      // inserted the query just a couple of instructions before
+      queryRegistry->destroy(_vocbase.name(), id, TRI_ERROR_QUERY_KILLED, true /*ignoreOpened*/);
     } catch (...) {
       // Maybe thrown in shutdown.
     }
@@ -2775,7 +2782,7 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id)
     }
     try {
       // Code does not matter, read only access, so we can roll back.
-      queryRegistry->destroy(&_vocbase, id, TRI_ERROR_QUERY_KILLED);
+      queryRegistry->destroy(_vocbase.name(), id, TRI_ERROR_QUERY_KILLED, false);
     } catch (...) {
       // All errors that show up here can only be
       // triggered if the query is destroyed in between.

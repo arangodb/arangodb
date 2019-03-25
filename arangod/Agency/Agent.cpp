@@ -383,9 +383,6 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
       {
         WRITE_LOCKER(oLocker, _outputLock);
         _commitIndex = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
-        if (_commitIndex >= _state.nextCompactionAfter()) {
-          _compactor.wakeUp();
-        }
       }
       return priv_rpc_ret_t(true, t);
     } else {
@@ -412,7 +409,8 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
     CONDITION_LOCKER(guard, _waitForCV);
     _commitIndex = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
     _waitForCV.broadcast();
-    if (_commitIndex >= _state.nextCompactionAfter()) {
+    if (leaderCommitIndex >= _state.nextCompactionAfter() &&
+        payload[nqs - 1].get("index").getNumber<index_t>() >= _state.nextCompactionAfter()) {
       _compactor.wakeUp();
     }
   }
@@ -604,6 +602,7 @@ void Agent::sendAppendEntriesRPC() {
           builder.add("term", VPackValue(entry.term));
           builder.add("query", VPackSlice(entry.entry->data()));
           builder.add("clientId", VPackValue(entry.clientId));
+          builder.add("timestamp", VPackValue(entry.timestamp.count()));
           builder.close();
           highest = entry.index;
           ++toLog;

@@ -58,9 +58,11 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
     RegisterId reg;
     std::string value;
 
-    InputVertex(std::string const value)
-        : type(CONSTANT), reg(0), value(value) {}
-    InputVertex(RegisterId reg) : type(REGISTER), reg(reg), value("") {}
+    // cppcheck-suppress passedByValue
+    explicit InputVertex(std::string value)
+        : type(CONSTANT), reg(0), value(std::move(value)) {}
+    explicit InputVertex(RegisterId reg)
+        : type(REGISTER), reg(reg), value("") {}
   };
 
   enum OutputName { VERTEX, EDGE };
@@ -121,6 +123,9 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
   graph::TraverserCache* cache() const;
 
  private:
+  RegisterId findRegisterChecked(OutputName type) const;
+
+ private:
   /// @brief the shortest path finder.
   std::unique_ptr<arangodb::graph::ShortestPathFinder> _finder;
 
@@ -150,7 +155,7 @@ class ShortestPathExecutor {
 
   ShortestPathExecutor() = delete;
   ShortestPathExecutor(ShortestPathExecutor&&) = default;
-  ShortestPathExecutor(ShortestPathExecutor const&) = default;
+
   ShortestPathExecutor(Fetcher& fetcher, Infos&);
   ~ShortestPathExecutor();
 
@@ -166,6 +171,8 @@ class ShortestPathExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+
+  inline size_t numberOfRowsInFlight() const { return 0; }
 
  private:
   /**

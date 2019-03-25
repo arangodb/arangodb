@@ -192,6 +192,13 @@ typedef long suseconds_t;
 // Windows debug mode also seems to define DEBUG preproc symbol
 #undef DEBUG
 #endif
+  
+  
+#ifdef ARANGODB_USE_CATCH_TESTS
+#define TEST_VIRTUAL virtual
+#else
+#define TEST_VIRTUAL
+#endif
 
 /// @brief helper macro for calculating strlens for static strings at
 /// a compile-time (unless compiled with fno-builtin-strlen etc.)
