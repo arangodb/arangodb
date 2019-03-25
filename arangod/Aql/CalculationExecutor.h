@@ -204,6 +204,10 @@ CalculationExecutor<calculationType>::produceRow(OutputAqlItemRow& output) {
 
   doEvaluation(row, output);
 
+  // _hasEnteredContext implies the query has entered the context, but not
+  // the other way round because it may be owned by exterior.
+  TRI_ASSERT(!_hasEnteredContext || _infos.getQuery().hasEnteredContext());
+
   TRI_IF_FAILURE("CalculationBlock::afterEvaluation") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
