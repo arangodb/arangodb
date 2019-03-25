@@ -43,7 +43,6 @@ class ExecutionPlan;
 /// @brief abstract base class for modification operations
 class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
-  friend class ModificationBlock;
 
   /// @brief constructor with a vocbase and a collection and options
  protected:
@@ -152,8 +151,6 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
 class RemoveNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RemoveBlock;
-  friend class ModificationBlock;
   friend class RedundantCalculationsReplacer;
 
  public:
@@ -200,8 +197,6 @@ class RemoveNode : public ModificationNode {
 class InsertNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class InsertBlock;
-  friend class ModificationBlock;
   friend class RedundantCalculationsReplacer;
 
  public:
@@ -235,7 +230,7 @@ class InsertNode : public ModificationNode {
   void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
     vars.emplace(_inVariable);
   }
-  
+
   Variable const* inVariable() const { return _inVariable; }
 
   void setInVariable(Variable const* var) { _inVariable = var; }
@@ -248,10 +243,6 @@ class InsertNode : public ModificationNode {
 class UpdateReplaceNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class UpdateBlock;
-  friend class ReplaceBlock;
-  friend class UpdateReplaceBlock;
-  friend class ModificationBlock;
   friend class RedundantCalculationsReplacer;
 
  public:
@@ -299,8 +290,6 @@ class UpdateReplaceNode : public ModificationNode {
 class UpdateNode : public UpdateReplaceNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class UpdateBlock;
-  friend class ModificationBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
@@ -334,8 +323,6 @@ class UpdateNode : public UpdateReplaceNode {
 class ReplaceNode : public UpdateReplaceNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class ReplaceBlock;
-  friend class ModificationBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
@@ -369,8 +356,6 @@ class ReplaceNode : public UpdateReplaceNode {
 class UpsertNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class UpsertBlock;
-  friend class ModificationBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
@@ -418,7 +403,7 @@ class UpsertNode : public ModificationNode {
   Variable const* inDocVariable() const { return _inDocVariable; }
 
   void setInDocVariable(Variable const* var) { _inDocVariable = var; }
-  
+
   Variable const* insertVariable() const { return _insertVariable; }
 
   void setInsertVariable(Variable const* var) { _insertVariable = var; }
