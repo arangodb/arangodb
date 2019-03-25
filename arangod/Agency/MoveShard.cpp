@@ -83,7 +83,6 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     _isLeader = tmp_isLeader.first.isTrue();
     _remainsFollower =
         tmp_remainsFollower.second ? tmp_remainsFollower.first.isTrue() : _isLeader;
-    // TODO: _toServerIsFollower is ignored here... should it be false by default?
     _toServerIsFollower = false;
     _creator = tmp_creator.first;
   } else {
