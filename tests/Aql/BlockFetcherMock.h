@@ -45,6 +45,7 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher<passBlocksThrough>
   // NOLINTNEXTLINE google-default-arguments
   std::pair<arangodb::aql::ExecutionState, std::shared_ptr<arangodb::aql::AqlItemBlockShell>> fetchBlock(
       size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
+  inline size_t numberDependencies() const override { return 1; }
 
  private:
   using FetchBlockReturnItem =
@@ -73,6 +74,46 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher<passBlocksThrough>
   size_t _numFetchBlockCalls;
 
   ::arangodb::aql::ResourceMonitor& _monitor;
+  ::arangodb::aql::AqlItemBlockManager _itemBlockManager;
+};
+
+template <bool passBlocksThrough>
+class MultiBlockFetcherMock : public ::arangodb::aql::BlockFetcher<passBlocksThrough> {
+ public:
+  MultiBlockFetcherMock(arangodb::aql::ResourceMonitor& monitor,
+                        ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps);
+
+ public:
+  // mock methods
+  // NOLINTNEXTLINE google-default-arguments
+  std::pair<arangodb::aql::ExecutionState, std::shared_ptr<arangodb::aql::AqlItemBlockShell>> fetchBlock(
+      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override {
+    // This is never allowed to be called.
+    TRI_ASSERT(false);
+    return {::arangodb::aql::ExecutionState::DONE, nullptr};
+  }
+
+  // NOLINTNEXTLINE google-default-arguments
+  std::pair<arangodb::aql::ExecutionState, std::shared_ptr<arangodb::aql::AqlItemBlockShell>> fetchBlockForDependency(
+      size_t dependency,
+      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
+
+  inline size_t numberDependencies() const override {
+    return _dependencyMocks.size();
+  }
+
+ public:
+  // additional test methods
+  BlockFetcherMock<passBlocksThrough>& getDependencyMock(size_t dependency) {
+    TRI_ASSERT(dependency < _dependencyMocks.size());
+    return _dependencyMocks[dependency];
+  }
+  bool allBlocksFetched() const;
+
+  size_t numFetchBlockCalls() const;
+
+ private:
+  std::vector<BlockFetcherMock<passBlocksThrough>> _dependencyMocks;
   ::arangodb::aql::AqlItemBlockManager _itemBlockManager;
 };
 

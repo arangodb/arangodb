@@ -647,8 +647,8 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
         .AlwaysReturn(&block);
 
     fakeit::When(OverloadedMethod(mockRegistry, destroy,
-                                  void(std::string const&, QueryId, int)))
-        .Do([&](std::string const& vocbase, QueryId id, int errorCode) {
+                                  void(std::string const&, QueryId, int, bool)))
+        .Do([&](std::string const& vocbase, QueryId id, int errorCode, bool ignoreOpened) {
           REQUIRE(vocbase == dbname);
           REQUIRE(id == secondId);
           REQUIRE(errorCode == TRI_ERROR_INTERNAL);
@@ -742,7 +742,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
 
       // Assert unregister of second engine.
       fakeit::Verify(OverloadedMethod(mockRegistry, destroy,
-                                      void(std::string const&, QueryId, int)))
+                                      void(std::string const&, QueryId, int, bool)))
           .Exactly(1);
     }
 
@@ -788,7 +788,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
       fakeit::Verify(Method(mockRegistry, insert)).Exactly(1);
 
       // Assert unregister of second engine.
-      fakeit::Verify(OverloadedMethod(mockRegistry, destroy, void(std::string const&, QueryId, int))).Exactly(0);
+      fakeit::Verify(OverloadedMethod(mockRegistry, destroy, void(std::string const&, QueryId, int, bool))).Exactly(0);
 
     }
     */

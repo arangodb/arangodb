@@ -116,7 +116,7 @@ function ReplicationSuite() {
 
       if (slaveState.state.lastError.errorNum > 0) {
         console.topic("replication=error", "slave has errored:", JSON.stringify(slaveState.state.lastError));
-        throw slaveState.state.lastError;
+        throw JSON.stringify(slaveState.state.lastError);
       }
 
       if (!slaveState.state.running) {

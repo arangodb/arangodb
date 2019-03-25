@@ -49,10 +49,10 @@ const genInvalidValue = function () {
 
 const setUp = function () {
   tearDown();
-  col = db._create(collectionName, {numberOfShards: 3});
+  col = db._create(collectionName, { numberOfShards: 3 });
   let list = [];
   for (let i = 0; i < 2000; ++i) {
-    list.push({val: i});
+    list.push({ val: i });
   }
   col.save(list);
   assertEqual(2000, col.count());
@@ -86,18 +86,57 @@ const validateDocsAreUpdated = function (docs, invalid, areUpdated) {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function aqlUpdateOptionsSuite () {
+
+function aqlInsertOptionsSuite() {
+
+  return {
+    setUp, tearDown,
+    testErrorMessageOnUniqueConstraintViolated: function () {
+      let q = `FOR doc IN [{ "_key" : "paff"}]
+                 INSERT doc IN ${collectionName}`;
+      db._query(q);
+      assertEqual(2001, col.count());
+
+      // check generic message
+      try {
+        db._query(q);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
+      }
+      assertEqual(2001, col.count());
+
+      // check if we get details, when operation was not silent (retuning something)
+      q = `FOR doc IN [{ "_key" : "paff"}]
+             INSERT doc IN ${collectionName}
+             RETURN NEW
+          `;
+      try {
+        db._query(q);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
+        assertMatch(/conflicting key/, err.message);
+        assertMatch(/_key/, err.message);
+        assertMatch(/paff/, err.message);
+      }
+      assertEqual(2001, col.count());
+    }
+  };
+};
+
+function aqlUpdateOptionsSuite() {
 
   return {
     setUp, tearDown,
 
-    testUpdateSingleWithInvalidRev : function () {
+    testUpdateSingleWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `UPDATE {_key: @key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
         try {
-          db._query(q, {key: d._key});
+          db._query(q, { key: d._key });
           fail();
         } catch (err) {
           assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
@@ -106,12 +145,12 @@ function aqlUpdateOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testUpdateManyWithInvalidRev : function () {
+    testUpdateManyWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPDATE {_key: doc._key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
       try {
-        db._query(q, {docs: [...docs]});
+        db._query(q, { docs: [...docs] });
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
@@ -120,7 +159,7 @@ function aqlUpdateOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testUpdateEnumerationWithInvalidRev : function () {
+    testUpdateEnumerationWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 UPDATE {_key: doc._key, _rev: "invalid", val: "${invalid}"}
@@ -136,26 +175,26 @@ function aqlUpdateOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testUpdateSingleWithInvalidRevIgnore : function () {
+    testUpdateSingleWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `UPDATE {_key: @key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateManyWithInvalidRevIgnore : function () {
+    testUpdateManyWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPDATE {_key: doc._key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateEnumerationWithInvalidRevIgnore : function () {
+    testUpdateEnumerationWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 UPDATE {_key: doc._key, _rev: "invalid", val: "${invalid}"}
@@ -166,26 +205,26 @@ function aqlUpdateOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateSingleWithInvalidRevDefault : function () {
+    testUpdateSingleWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `UPDATE {_key: @key, _rev: "invalid", val: "${invalid}"} IN ${collectionName}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateManyWithInvalidRevDefault : function () {
+    testUpdateManyWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPDATE {_key: doc._key, _rev: "invalid", val: "${invalid}"} IN ${collectionName}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateEnumerationWithInvalidRevDefault : function () {
+    testUpdateEnumerationWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 UPDATE {_key: doc._key, _rev: "invalid", val: "${invalid}"}
@@ -196,31 +235,31 @@ function aqlUpdateOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateSingleWithValidRev : function () {
+    testUpdateSingleWithValidRev: function () {
       const invalid = genInvalidValue();
       let q = `UPDATE {_key: @key, _rev: @rev, val: "${invalid}"}
                IN ${collectionName}
                OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key, rev: d._rev});
+        db._query(q, { key: d._key, rev: d._rev });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateManyWithValidRev : function () {
+    testUpdateManyWithValidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs
                UPDATE {_key: doc._key, _rev: doc._rev, val: "${invalid}"}
                IN ${collectionName}
                OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateEnumerationWithValidRev : function () {
+    testUpdateEnumerationWithValidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                UPDATE {_key: doc._key, _rev: doc._rev, val: "${invalid}"}
@@ -234,18 +273,18 @@ function aqlUpdateOptionsSuite () {
   };
 };
 
-function aqlUpdateWithOptionsSuite () {
+function aqlUpdateWithOptionsSuite() {
 
   return {
     setUp, tearDown,
 
-    testUpdateWithSingleWithInvalidRev : function () {
+    testUpdateWithSingleWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `UPDATE {_key: @key, _rev: "invalid"} WITH {val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
         try {
-          db._query(q, {key: d._key});
+          db._query(q, { key: d._key });
           fail();
         } catch (err) {
           assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
@@ -254,12 +293,12 @@ function aqlUpdateWithOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testUpdateWithManyWithInvalidRev : function () {
+    testUpdateWithManyWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPDATE {_key: doc._key, _rev: "invalid"} WITH {val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
       try {
-        db._query(q, {docs: [...docs]});
+        db._query(q, { docs: [...docs] });
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
@@ -268,7 +307,7 @@ function aqlUpdateWithOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testUpdateWithEnumerationWithInvalidRev : function () {
+    testUpdateWithEnumerationWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 UPDATE {_key: doc._key, _rev: "invalid"} WITH {val: "${invalid}"}
@@ -284,26 +323,26 @@ function aqlUpdateWithOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testUpdateWithSingleWithInvalidRevIgnore : function () {
+    testUpdateWithSingleWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `UPDATE {_key: @key, _rev: "invalid"} WITH {val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithManyWithInvalidRevIgnore : function () {
+    testUpdateWithManyWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPDATE {_key: doc._key, _rev: "invalid"} WITH {val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithEnumerationWithInvalidRevIgnore : function () {
+    testUpdateWithEnumerationWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 UPDATE {_key: doc._key, _rev: "invalid"} WITH {val: "${invalid}"}
@@ -314,26 +353,26 @@ function aqlUpdateWithOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithSingleWithInvalidRevDefault : function () {
+    testUpdateWithSingleWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `UPDATE {_key: @key, _rev: "invalid"} WITH {val: "${invalid}"} IN ${collectionName}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithManyWithInvalidRevDefault : function () {
+    testUpdateWithManyWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPDATE {_key: doc._key, _rev: "invalid"} WITH {val: "${invalid}"} IN ${collectionName}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithEnumerationWithInvalidRevDefault : function () {
+    testUpdateWithEnumerationWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 UPDATE {_key: doc._key, _rev: "invalid"} WITH {val: "${invalid}"}
@@ -344,7 +383,7 @@ function aqlUpdateWithOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithSingleWithValidRev : function () {
+    testUpdateWithSingleWithValidRev: function () {
       const invalid = genInvalidValue();
       let q = `UPDATE {_key: @key, _rev: @rev}
                WITH {val: "${invalid}"}
@@ -352,12 +391,12 @@ function aqlUpdateWithOptionsSuite () {
                OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key, rev: d._rev});
+        db._query(q, { key: d._key, rev: d._rev });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithManyWithValidRev : function () {
+    testUpdateWithManyWithValidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs
                UPDATE {_key: doc._key, _rev: doc._rev}
@@ -365,12 +404,12 @@ function aqlUpdateWithOptionsSuite () {
                IN ${collectionName}
                OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithEnumerationWithValidRev : function () {
+    testUpdateWithEnumerationWithValidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                UPDATE {_key: doc._key, _rev: doc._rev}
@@ -385,31 +424,31 @@ function aqlUpdateWithOptionsSuite () {
   };
 };
 
-function aqlUpdateWithRevOptionsSuite () {
+function aqlUpdateWithRevOptionsSuite() {
 
   return {
     setUp, tearDown,
 
-    testUpdateWithRevSingleWithInvalidRev : function () {
+    testUpdateWithRevSingleWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `UPDATE {_key: @key} WITH {_rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithRevManyWithInvalidRev : function () {
+    testUpdateWithRevManyWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPDATE {_key: doc._key} WITH {_rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithRevEnumerationWithInvalidRev : function () {
+    testUpdateWithRevEnumerationWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 UPDATE {_key: doc._key} WITH {_rev: "invalid", val: "${invalid}"}
@@ -420,26 +459,26 @@ function aqlUpdateWithRevOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithRevSingleWithInvalidRevIgnore : function () {
+    testUpdateWithRevSingleWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `UPDATE {_key: @key} WITH {_rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithRevManyWithInvalidRevIgnore : function () {
+    testUpdateWithRevManyWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPDATE {_key: doc._key} WITH {_rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithRevEnumerationWithInvalidRevIgnore : function () {
+    testUpdateWithRevEnumerationWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 UPDATE {_key: doc._key} WITH {_rev: "invalid", val: "${invalid}"}
@@ -450,26 +489,26 @@ function aqlUpdateWithRevOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithRevSingleWithInvalidRevDefault : function () {
+    testUpdateWithRevSingleWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `UPDATE {_key: @key} WITH {_rev: "invalid", val: "${invalid}"} IN ${collectionName}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithRevManyWithInvalidRevDefault : function () {
+    testUpdateWithRevManyWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPDATE {_key: doc._key} WITH {_rev: "invalid", val: "${invalid}"} IN ${collectionName}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithRevEnumerationWithInvalidRevDefault : function () {
+    testUpdateWithRevEnumerationWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 UPDATE {_key: doc._key} WITH {_rev: "invalid", val: "${invalid}"}
@@ -482,18 +521,18 @@ function aqlUpdateWithRevOptionsSuite () {
   };
 };
 
-function aqlReplaceOptionsSuite () {
+function aqlReplaceOptionsSuite() {
 
   return {
     setUp, tearDown,
 
-    testReplaceSingleWithInvalidRev : function () {
+    testReplaceSingleWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `REPLACE {_key: @key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
         try {
-          db._query(q, {key: d._key});
+          db._query(q, { key: d._key });
           fail();
         } catch (err) {
           assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
@@ -502,12 +541,12 @@ function aqlReplaceOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testReplaceManyWithInvalidRev : function () {
+    testReplaceManyWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs REPLACE {_key: doc._key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
       try {
-        db._query(q, {docs: [...docs]});
+        db._query(q, { docs: [...docs] });
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
@@ -516,7 +555,7 @@ function aqlReplaceOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testReplaceEnumerationWithInvalidRev : function () {
+    testReplaceEnumerationWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 REPLACE {_key: doc._key, _rev: "invalid", val: "${invalid}"}
@@ -532,26 +571,26 @@ function aqlReplaceOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testReplaceSingleWithInvalidRevIgnore : function () {
+    testReplaceSingleWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `REPLACE {_key: @key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceManyWithInvalidRevIgnore : function () {
+    testReplaceManyWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs REPLACE {_key: doc._key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceEnumerationWithInvalidRevIgnore : function () {
+    testReplaceEnumerationWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 REPLACE {_key: doc._key, _rev: "invalid", val: "${invalid}"}
@@ -562,26 +601,26 @@ function aqlReplaceOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceSingleWithInvalidRevDefault : function () {
+    testReplaceSingleWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `REPLACE {_key: @key, _rev: "invalid", val: "${invalid}"} IN ${collectionName}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceManyWithInvalidRevDefault : function () {
+    testReplaceManyWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs REPLACE {_key: doc._key, _rev: "invalid", val: "${invalid}"} IN ${collectionName}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceEnumerationWithInvalidRevDefault : function () {
+    testReplaceEnumerationWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 REPLACE {_key: doc._key, _rev: "invalid", val: "${invalid}"}
@@ -592,31 +631,31 @@ function aqlReplaceOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceSingleWithValidRev : function () {
+    testReplaceSingleWithValidRev: function () {
       const invalid = genInvalidValue();
       let q = `REPLACE {_key: @key, _rev: @rev, val: "${invalid}"}
                IN ${collectionName}
                OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key, rev: d._rev});
+        db._query(q, { key: d._key, rev: d._rev });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceManyWithValidRev : function () {
+    testReplaceManyWithValidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs
                REPLACE {_key: doc._key, _rev: doc._rev, val: "${invalid}"}
                IN ${collectionName}
                OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceEnumerationWithValidRev : function () {
+    testReplaceEnumerationWithValidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                REPLACE {_key: doc._key, _rev: doc._rev, val: "${invalid}"}
@@ -631,18 +670,18 @@ function aqlReplaceOptionsSuite () {
   };
 };
 
-function aqlReplaceWithOptionsSuite () {
+function aqlReplaceWithOptionsSuite() {
 
   return {
     setUp, tearDown,
 
-    testReplaceWithSingleWithInvalidRev : function () {
+    testReplaceWithSingleWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `REPLACE {_key: @key, _rev: "invalid"} WITH { val: "${invalid}" } IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
         try {
-          db._query(q, {key: d._key});
+          db._query(q, { key: d._key });
           fail();
         } catch (err) {
           assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
@@ -651,12 +690,12 @@ function aqlReplaceWithOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testReplaceWithManyWithInvalidRev : function () {
+    testReplaceWithManyWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs REPLACE {_key: doc._key, _rev: "invalid"} WITH { val: "${invalid}" } IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
       try {
-        db._query(q, {docs: [...docs]});
+        db._query(q, { docs: [...docs] });
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
@@ -665,7 +704,7 @@ function aqlReplaceWithOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testReplaceWithEnumerationWithInvalidRev : function () {
+    testReplaceWithEnumerationWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 REPLACE {_key: doc._key, _rev: "invalid"} WITH { val: "${invalid}" }
@@ -681,26 +720,26 @@ function aqlReplaceWithOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testReplaceWithSingleWithInvalidRevIgnore : function () {
+    testReplaceWithSingleWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `REPLACE {_key: @key, _rev: "invalid"} WITH { val: "${invalid}" } IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceWithManyWithInvalidRevIgnore : function () {
+    testReplaceWithManyWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs REPLACE {_key: doc._key, _rev: "invalid"} WITH { val: "${invalid}" } IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceWithEnumerationWithInvalidRevIgnore : function () {
+    testReplaceWithEnumerationWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 REPLACE {_key: doc._key, _rev: "invalid"} WITH { val: "${invalid}" }
@@ -711,26 +750,26 @@ function aqlReplaceWithOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceWithSingleWithInvalidRevDefault : function () {
+    testReplaceWithSingleWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `REPLACE {_key: @key, _rev: "invalid"} WITH { val: "${invalid}" } IN ${collectionName}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceWithManyWithInvalidRevDefault : function () {
+    testReplaceWithManyWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs REPLACE {_key: doc._key, _rev: "invalid"} WITH { val: "${invalid}" } IN ${collectionName}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceWithEnumerationWithInvalidRevDefault : function () {
+    testReplaceWithEnumerationWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 REPLACE {_key: doc._key, _rev: "invalid"} WITH { val: "${invalid}" }
@@ -741,7 +780,7 @@ function aqlReplaceWithOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceWithSingleWithValidRev : function () {
+    testReplaceWithSingleWithValidRev: function () {
       const invalid = genInvalidValue();
       let q = `REPLACE {_key: @key, _rev: @rev}
                WITH {val: "${invalid}"}
@@ -749,12 +788,12 @@ function aqlReplaceWithOptionsSuite () {
                OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key, rev: d._rev});
+        db._query(q, { key: d._key, rev: d._rev });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceWithManyWithValidRev : function () {
+    testReplaceWithManyWithValidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs
                REPLACE {_key: doc._key, _rev: doc._rev}
@@ -762,12 +801,12 @@ function aqlReplaceWithOptionsSuite () {
                IN ${collectionName}
                OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceWithEnumerationWithValidRev : function () {
+    testReplaceWithEnumerationWithValidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                REPLACE {_key: doc._key, _rev: doc._rev}
@@ -783,31 +822,31 @@ function aqlReplaceWithOptionsSuite () {
   };
 };
 
-function aqlReplaceWithRevOptionsSuite () {
+function aqlReplaceWithRevOptionsSuite() {
 
   return {
     setUp, tearDown,
 
-    testReplaceWithRevSingleWithInvalidRev : function () {
+    testReplaceWithRevSingleWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `REPLACE {_key: @key} WITH { _rev: "invalid", val: "${invalid}" } IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-          db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceWithRevManyWithInvalidRev : function () {
+    testReplaceWithRevManyWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs REPLACE {_key: doc._key} WITH { _rev: "invalid", val: "${invalid}" } IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceWithRevEnumerationWithInvalidRev : function () {
+    testReplaceWithRevEnumerationWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 REPLACE {_key: doc._key} WITH { _rev: "invalid", val: "${invalid}" }
@@ -818,26 +857,26 @@ function aqlReplaceWithRevOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceWithRevSingleWithInvalidRevIgnore : function () {
+    testReplaceWithRevSingleWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `REPLACE {_key: @key} WITH { _rev: "invalid", val: "${invalid}" } IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceWithRevManyWithInvalidRevIgnore : function () {
+    testReplaceWithRevManyWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs REPLACE {_key: doc._key} WITH { _rev: "invalid", val: "${invalid}" } IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceWithRevEnumerationWithInvalidRevIgnore : function () {
+    testReplaceWithRevEnumerationWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 REPLACE {_key: doc._key} WITH { _rev: "invalid", val: "${invalid}" }
@@ -848,26 +887,26 @@ function aqlReplaceWithRevOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceWithRevSingleWithInvalidRevDefault : function () {
+    testReplaceWithRevSingleWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `REPLACE {_key: @key} WITH { _rev: "invalid", val: "${invalid}" } IN ${collectionName}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceWithRevManyWithInvalidRevDefault : function () {
+    testReplaceWithRevManyWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs REPLACE {_key: doc._key} WITH { _rev: "invalid", val: "${invalid}" } IN ${collectionName}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testReplaceWithRevEnumerationWithInvalidRevDefault : function () {
+    testReplaceWithRevEnumerationWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 REPLACE {_key: doc._key} WITH { _rev: "invalid", val: "${invalid}" }
@@ -886,18 +925,18 @@ function aqlReplaceWithRevOptionsSuite () {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function aqlRemoveOptionsSuite () {
+function aqlRemoveOptionsSuite() {
 
   return {
     setUp, tearDown,
 
-    testRemoveSingleWithInvalidRev : function () {
+    testRemoveSingleWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `REMOVE {_key: @key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
         try {
-          db._query(q, {key: d._key});
+          db._query(q, { key: d._key });
           fail();
         } catch (err) {
           assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
@@ -906,12 +945,12 @@ function aqlRemoveOptionsSuite () {
       assertEqual(2000, col.count(), `We removed the document`);
     },
 
-    testRemoveManyWithInvalidRev : function () {
+    testRemoveManyWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs REMOVE {_key: doc._key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
       try {
-        db._query(q, {docs: [...docs]});
+        db._query(q, { docs: [...docs] });
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
@@ -919,7 +958,7 @@ function aqlRemoveOptionsSuite () {
       assertEqual(2000, col.count(), `We removed the document`);
     },
 
-    testRemoveEnumerationWithInvalidRev : function () {
+    testRemoveEnumerationWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 REMOVE {_key: doc._key, _rev: "invalid", val: "${invalid}"}
@@ -934,26 +973,26 @@ function aqlRemoveOptionsSuite () {
       assertEqual(2000, col.count(), `We removed the document`);
     },
 
-    testRemoveSingleWithInvalidRevIgnore : function () {
+    testRemoveSingleWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `REMOVE {_key: @key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       assertEqual(2000 - 1, col.count(), `We did not remove the document`);
     },
 
-    testRemoveManyWithInvalidRevIgnore : function () {
+    testRemoveManyWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs REMOVE {_key: doc._key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       assertEqual(2000 - 10, col.count(), `We did not remove the document`);
     },
 
-    testRemoveEnumerationWithInvalidRevIgnore : function () {
+    testRemoveEnumerationWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 REMOVE {_key: doc._key, _rev: "invalid", val: "${invalid}"}
@@ -964,26 +1003,26 @@ function aqlRemoveOptionsSuite () {
       assertEqual(0, col.count(), `We did not remove the document`);
     },
 
-    testRemoveSingleWithInvalidRevDefault : function () {
+    testRemoveSingleWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `REMOVE {_key: @key, _rev: "invalid", val: "${invalid}"} IN ${collectionName}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       assertEqual(2000 - 1, col.count(), `We did not remove the document`);
     },
 
-    testRemoveManyWithInvalidRevDefault : function () {
+    testRemoveManyWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs REMOVE {_key: doc._key, _rev: "invalid", val: "${invalid}"} IN ${collectionName}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       assertEqual(2000 - 10, col.count(), `We did not remove the document`);
     },
 
-    testRemoveEnumerationWithInvalidRevDefault : function () {
+    testRemoveEnumerationWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 REMOVE {_key: doc._key, _rev: "invalid", val: "${invalid}"}
@@ -1001,18 +1040,18 @@ function aqlRemoveOptionsSuite () {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function aqlUpsertOptionsSuite () {
+function aqlUpsertOptionsSuite() {
 
   return {
     setUp, tearDown,
 
-    testUpsertSingleWithInvalidRev : function () {
+    testUpsertSingleWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `UPSERT {_key: @key} INSERT {} UPDATE {_rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
         try {
-          db._query(q, {key: d._key});
+          db._query(q, { key: d._key });
           fail();
         } catch (err) {
           assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
@@ -1022,12 +1061,12 @@ function aqlUpsertOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testUpsertManyWithInvalidRev : function () {
+    testUpsertManyWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPSERT {_key: doc._key} INSERT {} UPDATE {_rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
       try {
-        db._query(q, {docs: [...docs]});
+        db._query(q, { docs: [...docs] });
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
@@ -1037,7 +1076,7 @@ function aqlUpsertOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testUpsertEnumerationWithInvalidRev : function () {
+    testUpsertEnumerationWithInvalidRev: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 UPSERT {_key: doc._key} INSERT {}
@@ -1055,31 +1094,31 @@ function aqlUpsertOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testUpsertSingleWithInvalidRevIgnore : function () {
+    testUpsertSingleWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `UPSERT {_key: @key} INSERT {}
                UPDATE {_rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpsertManyWithInvalidRevIgnore : function () {
+    testUpsertManyWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPSERT {_key: doc._key} INSERT {}
                UPDATE {_rev: "invalid", val: "${invalid}"} IN ${collectionName}
                OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpsertEnumerationWithInvalidRevIgnore : function () {
+    testUpsertEnumerationWithInvalidRevIgnore: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 UPSERT {_key: doc._key} INSERT {}
@@ -1092,29 +1131,29 @@ function aqlUpsertOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpsertSingleWithInvalidRevDefault : function () {
+    testUpsertSingleWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `UPSERT {_key: @key} INSERT {} UPDATE {_rev: "invalid", val: "${invalid}"} IN ${collectionName}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        db._query(q, { key: d._key });
       }
       assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpsertManyWithInvalidRevDefault : function () {
+    testUpsertManyWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPSERT {_key: doc._key} INSERT {}
                 UPDATE {_rev: "invalid", val: "${invalid}"} IN ${collectionName}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      db._query(q, { docs: [...docs] });
 
       assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpsertEnumerationWithInvalidRevDefault : function () {
+    testUpsertEnumerationWithInvalidRevDefault: function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 UPSERT {_key: doc._key} INSERT {}
@@ -1257,6 +1296,7 @@ function aqlUpsertOptionsSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
+jsunity.run(aqlInsertOptionsSuite);
 jsunity.run(aqlUpdateOptionsSuite);
 jsunity.run(aqlUpdateWithOptionsSuite);
 jsunity.run(aqlUpdateWithRevOptionsSuite);
