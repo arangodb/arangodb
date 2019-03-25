@@ -33,23 +33,23 @@ GreetingsFeature::GreetingsFeature(application_features::ApplicationServer& serv
 }
 
 void GreetingsFeature::prepare() {
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+  LOG_TOPIC("e52b0", INFO, arangodb::Logger::FIXME)
       << "" << rest::Version::getVerboseVersionString();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+  LOG_TOPIC("0458b", WARN, arangodb::Logger::FIXME)
     << "==========================================================";
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+  LOG_TOPIC("12670", WARN, arangodb::Logger::FIXME)
     << "== This is a maintainer version intended for debugging. ==";
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+  LOG_TOPIC("e7f25", WARN, arangodb::Logger::FIXME)
     << "==           DO NOT USE IN PRODUCTION!                  ==";
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+  LOG_TOPIC("bd666", WARN, arangodb::Logger::FIXME)
     << "==========================================================";
 #endif
 }
 
 void GreetingsFeature::unprepare() {
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB has been shut down";
+  LOG_TOPIC("4bcb9", INFO, arangodb::Logger::FIXME) << "ArangoDB has been shut down";
 }
 
 }  // namespace arangodb

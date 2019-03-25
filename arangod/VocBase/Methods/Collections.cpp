@@ -292,7 +292,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
           }
 
           if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
-            LOG_TOPIC(WARN, Logger::FIXME)
+            LOG_TOPIC("116bb", WARN, Logger::FIXME)
                 << "Updating user failed with error: " << r.errorMessage()
                 << ". giving up!";
 
@@ -300,7 +300,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
           }
 
           // try again in case of conflict
-          LOG_TOPIC(TRACE, Logger::FIXME)
+          LOG_TOPIC("ff123", TRACE, Logger::FIXME)
               << "Updating user failed with error: " << r.errorMessage()
               << ". trying again";
         }
@@ -335,7 +335,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
           }
 
           if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
-            LOG_TOPIC(WARN, Logger::FIXME)
+            LOG_TOPIC("02ef2", WARN, Logger::FIXME)
                 << "Updating user failed with error: " << r.errorMessage()
                 << ". giving up!";
 
@@ -343,7 +343,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
           }
 
           // try again in case of conflict
-          LOG_TOPIC(TRACE, Logger::FIXME)
+          LOG_TOPIC("bfe67", TRACE, Logger::FIXME)
               << "Updating user failed with error: " << r.errorMessage()
               << ". trying again";
         }
@@ -502,7 +502,7 @@ static int RenameGraphCollections(TRI_vocbase_t* vocbase, std::string const& old
 
   V8Context* context = dealer->enterContext(vocbase, false);
   if (context == nullptr) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "RenameGraphCollections: no V8 context";
+    LOG_TOPIC("8f0aa", WARN, Logger::FIXME) << "RenameGraphCollections: no V8 context";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   TRI_DEFER(dealer->exitContext(context));
@@ -648,13 +648,13 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
       }
 
       if (++tries == 10) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "Enumerating users failed with "
+        LOG_TOPIC("678fd", WARN, Logger::FIXME) << "Enumerating users failed with "
                                        << res.errorMessage() << ". giving up!";
         break;
       }
 
       // try again in case of conflict
-      LOG_TOPIC(TRACE, Logger::FIXME)
+      LOG_TOPIC("e6816", TRACE, Logger::FIXME)
           << "Enumerating users failed with error: " << res.errorMessage()
           << ". trying again";
     }

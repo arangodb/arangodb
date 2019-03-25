@@ -81,7 +81,7 @@ void ArrayOutCache<M>::flushMessages() {
     return;
   }
 
-  // LOG_TOPIC(INFO, Logger::PREGEL) << "Beginning to send messages to other
+  // LOG_TOPIC("7af7f", INFO, Logger::PREGEL) << "Beginning to send messages to other
   // machines";
   uint64_t gss = this->_config->globalSuperstep();
   if (this->_sendToNextGSS) {
@@ -172,7 +172,7 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
       vertexMap.emplace(key, data);
 
       if (++(this->_containedMessages) >= this->_batchSize) {
-        // LOG_TOPIC(INFO, Logger::PREGEL) << "Hit buffer limit";
+        // LOG_TOPIC("23bc7", INFO, Logger::PREGEL) << "Hit buffer limit";
         flushMessages();
       }
     }

@@ -55,12 +55,12 @@ void LockfileFeature::start() {
     } catch (...) {
     }
     if (otherPID.empty()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("5e4c0", FATAL, arangodb::Logger::FIXME)
           << "failed to read/write lockfile, please check the file permissions "
              "of the lockfile '"
           << _lockFilename << "'";
     } else {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("1f4eb", FATAL, arangodb::Logger::FIXME)
           << "database is locked by process " << otherPID
           << "; please stop it first and check that the lockfile '" << _lockFilename
           << "' goes away. If you are sure no other arangod process is "
@@ -74,7 +74,7 @@ void LockfileFeature::start() {
     res = TRI_UnlinkFile(_lockFilename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("ffea2", FATAL, arangodb::Logger::FIXME)
           << "failed to remove an abandoned lockfile in the database "
              "directory, please check the file permissions of the lockfile '"
           << _lockFilename << "': " << TRI_errno_string(res);
@@ -84,7 +84,7 @@ void LockfileFeature::start() {
   res = TRI_CreateLockFile(_lockFilename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("c2704", FATAL, arangodb::Logger::FIXME)
         << "failed to lock the database directory using '" << _lockFilename
         << "': " << TRI_errno_string(res);
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_COULD_NOT_LOCK);

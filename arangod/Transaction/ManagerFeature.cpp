@@ -73,7 +73,7 @@ void ManagerFeature::beginShutdown() {
   MANAGER->garbageCollect(/*abortAll*/true);
   // make sure no lingering managed trx remain
   while (MANAGER->garbageCollect(/*abortAll*/true)) {
-    LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "still waiting for managed transaction";
+    LOG_TOPIC("96298", WARN, Logger::TRANSACTIONS) << "still waiting for managed transaction";
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 }

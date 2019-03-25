@@ -47,13 +47,13 @@ RestHandler* RestHandlerFactory::createHandler(std::unique_ptr<GeneralRequest> r
 
   if (it != _constructors.end()) {
     // direct match!
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("f397b", TRACE, arangodb::Logger::FIXME)
         << "found direct handler for path '" << path << "'";
     return it->second.first(req.release(), res.release(), it->second.second);
   }
 
   // no direct match, check prefix matches
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+  LOG_TOPIC("7f285", TRACE, arangodb::Logger::FIXME)
       << "no direct handler found, trying prefixes";
 
   std::string const* prefix = nullptr;
@@ -81,14 +81,14 @@ RestHandler* RestHandlerFactory::createHandler(std::unique_ptr<GeneralRequest> r
 
   size_t l;
   if (prefix == nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("7c476", TRACE, arangodb::Logger::FIXME)
         << "no prefix handler found, using catch all";
 
     it = _constructors.find(ROOT_PATH);
     l = 1;
   } else {
     TRI_ASSERT(!prefix->empty());
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found prefix match '" << *prefix << "'";
+    LOG_TOPIC("516d1", TRACE, arangodb::Logger::FIXME) << "found prefix match '" << *prefix << "'";
 
     it = _constructors.find(*prefix);
     l = prefix->size() + 1;
@@ -112,7 +112,7 @@ RestHandler* RestHandlerFactory::createHandler(std::unique_ptr<GeneralRequest> r
 
   req->setPrefix(it->first);
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+  LOG_TOPIC("e3fca", TRACE, arangodb::Logger::FIXME)
       << "found handler for path '" << it->first << "'";
   return it->second.first(req.release(), res.release(), it->second.second);
 }

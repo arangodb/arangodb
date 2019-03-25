@@ -173,7 +173,7 @@ void RocksDBIndex::createCache() {
   TRI_ASSERT(!_collection.system() && !ServerState::instance()->isCoordinator());
   TRI_ASSERT(_cache.get() == nullptr);
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
-  LOG_TOPIC(DEBUG, Logger::CACHE) << "Creating index cache";
+  LOG_TOPIC("49e6c", DEBUG, Logger::CACHE) << "Creating index cache";
   _cache = CacheManagerFeature::MANAGER->createCache(cache::CacheType::Transactional);
   _cachePresent = (_cache.get() != nullptr);
   TRI_ASSERT(_cacheEnabled);
@@ -186,7 +186,7 @@ void RocksDBIndex::destroyCache() {
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   // must have a cache...
   TRI_ASSERT(_cache.get() != nullptr);
-  LOG_TOPIC(DEBUG, Logger::CACHE) << "Destroying index cache";
+  LOG_TOPIC("b5d85", DEBUG, Logger::CACHE) << "Destroying index cache";
   CacheManagerFeature::MANAGER->destroyCache(_cache);
   _cache.reset();
   _cachePresent = false;
