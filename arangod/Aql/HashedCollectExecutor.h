@@ -115,7 +115,8 @@ class HashedCollectExecutor {
     static const bool allowsBlockPassthrough = false;
     // TODO This should be true, but the current implementation in
     // ExecutionBlockImpl and the fetchers does not work with this.
-    static const bool inputSizeRestrictsOutputSize = false;
+    // It will however always only overfetch if activated, never underfetch
+    static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = HashedCollectExecutorInfos;
@@ -134,7 +135,12 @@ class HashedCollectExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
-  inline size_t numberOfRowsInFlight() const { return 0; }
+  inline size_t numberOfRowsInFlight() const {
+    // We always need to be prepared for 1 more row.
+    // On empty input we can produce 1 row.
+    // Otherwise we will have an open group!
+    return 0;
+  }
 
  private:
   using AggregateValuesType = std::vector<std::unique_ptr<Aggregator>>;
