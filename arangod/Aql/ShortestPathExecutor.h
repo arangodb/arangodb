@@ -123,6 +123,9 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
   graph::TraverserCache* cache() const;
 
  private:
+  RegisterId findRegisterChecked(OutputName type) const;
+
+ private:
   /// @brief the shortest path finder.
   std::unique_ptr<arangodb::graph::ShortestPathFinder> _finder;
 
@@ -168,6 +171,8 @@ class ShortestPathExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+
+  inline size_t numberOfRowsInFlight() const { return 0; }
 
  private:
   /**

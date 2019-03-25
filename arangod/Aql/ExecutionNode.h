@@ -65,6 +65,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <boost/optional.hpp>
 #include <type_traits>
 
 namespace arangodb {
@@ -260,6 +261,16 @@ class ExecutionNode {
       TRI_ASSERT(it != nullptr);
       result.emplace_back(it);
     }
+  }
+
+  /// @brief get the singleton node of the node
+  ExecutionNode const* getSingleton() const {
+    auto node = this;
+    do {
+      node = node->getFirstDependency();
+    } while (node != nullptr && node->getType() != SINGLETON);
+
+    return node;
   }
 
   /// @brief get the node and its dependencies as a vector
@@ -543,6 +554,15 @@ class ExecutionNode {
   }
 
   std::unordered_set<RegisterId> calcRegsToKeep() const;
+
+  RegisterId variableToRegisterId(Variable const*) const;
+
+  boost::optional<RegisterId> variableToRegisterOptionalId(Variable const* var) const {
+    if (var) {
+      return variableToRegisterId(var);
+    }
+    return boost::none;
+  }
 
  protected:
   /// @brief node id

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryRegistry.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
@@ -60,7 +61,7 @@ QueryRegistry::~QueryRegistry() {
   // holding the lock
   for (auto& p : toDelete) {
     try {  // just in case
-      destroy(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED);
+      destroy(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED, false);
     } catch (...) {
     }
   }
@@ -82,6 +83,9 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl,
   // now insert into table of running queries
   {
     WRITE_LOCKER(writeLocker, _lock);
+    if (_disallowInserts) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
 
     auto result = _queries[vocbase.name()].emplace(id, std::move(p));
     if (!result.second) {
@@ -119,7 +123,13 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
   qi->_isOpen = true;
 
   if (!qi->_isPrepared) {
-    qi->_query->prepare(this);
+    try {
+      qi->_query->prepare(this);
+    } catch (...) {
+      qi->_isOpen = false;
+      qi->_expires = 0.0;
+      throw;
+    }
     qi->_isPrepared = true;
   }
 
@@ -152,7 +162,13 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 
   if (!qi->_isPrepared) {
     qi->_isPrepared = true;
-    qi->_query->prepare(this);
+    try {
+      qi->_query->prepare(this);
+    } catch (...) {
+      qi->_isOpen = false;
+      qi->_expires = 0.0;
+      throw;
+    }
   }
 
   qi->_isOpen = false;
@@ -161,7 +177,7 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 }
 
 /// @brief destroy
-void QueryRegistry::destroy(std::string const& vocbase, QueryId id, int errorCode) {
+void QueryRegistry::destroy(std::string const& vocbase, QueryId id, int errorCode, bool ignoreOpened) {
   std::unique_ptr<QueryInfo> queryInfo;
 
   {
@@ -181,9 +197,10 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id, int errorCod
           TRI_ERROR_BAD_PARAMETER, "query with given vocbase and id not found");
     }
 
-    if (q->second->_isOpen) {
+    if (q->second->_isOpen && !ignoreOpened) {
       // query in use by another thread/request
       q->second->_query->kill();
+      q->second->_expires = 0.0;
       return;
     }
 
@@ -211,11 +228,6 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id, int errorCod
     queryInfo->_query->trx()->commit();
   }
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "query with id " << id << " is now destroyed";
-}
-
-/// @brief destroy
-void QueryRegistry::destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode) {
-  destroy(vocbase->name(), id, errorCode);
 }
 
 ResultT<bool> QueryRegistry::isQueryInUse(TRI_vocbase_t* vocbase, QueryId id) {
@@ -268,7 +280,7 @@ void QueryRegistry::expireQueries() {
   for (auto& p : toDelete) {
     try {  // just in case
       LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "timeout for query with id " << p.second;
-      destroy(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED);
+      destroy(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED, false);
     } catch (...) {
     }
   }
@@ -299,12 +311,31 @@ void QueryRegistry::destroyAll() {
     try {
       LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
           << "Timeout for query with id " << p.second << " due to shutdown";
-      destroy(p.first, p.second, TRI_ERROR_SHUTTING_DOWN);
+      destroy(p.first, p.second, TRI_ERROR_SHUTTING_DOWN, false);
     } catch (...) {
       // ignore any errors here
     }
   }
+
+  size_t count = 0;
+  {    
+    READ_LOCKER(readlock, _lock);
+    for (auto& p : _queries) {
+      count += p.second.size();
+    }
+  }
+  if (count > 0) {
+    LOG_TOPIC(INFO, arangodb::Logger::AQL)
+        << "number of remaining queries in query registry at shutdown: " << count;
+  }
 }
+
+void QueryRegistry::disallowInserts() {
+  WRITE_LOCKER(writelock, _lock);
+  _disallowInserts = true;
+  // from here on, there shouldn't be any more inserts into the registry
+}
+
 
 QueryRegistry::QueryInfo::QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared)
     : _vocbase(&(query->vocbase())),
