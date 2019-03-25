@@ -160,7 +160,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           auto remoteBlock = dynamic_cast<ExecutionBlockImpl<RemoteExecutor>*>(r.get());
           TRI_ASSERT(remoteBlock->server() == serverID);
-          TRI_ASSERT(remoteBlock->ownName() == ""); // NOLINT(readability-container-size-empty)
+          TRI_ASSERT(remoteBlock->ownName() == "");  // NOLINT(readability-container-size-empty)
           TRI_ASSERT(remoteBlock->queryId() == snippetId);
 #endif
 
@@ -446,9 +446,15 @@ struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(AqlItemBlock* items,
-                                                                    size_t pos) {
-  auto res = _root->initializeCursor(items, pos);
+std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(
+    std::unique_ptr<AqlItemBlock>&& items, size_t pos) {
+  InputAqlItemRow inputRow{CreateInvalidInputRowHint{}};
+  if (items != nullptr) {
+    auto shell =
+        std::make_shared<AqlItemBlockShell>(itemBlockManager(), std::move(items));
+    inputRow = InputAqlItemRow{std::move(shell), pos};
+  }
+  auto res = _root->initializeCursor(inputRow);
   if (res.first == ExecutionState::WAITING) {
     return res;
   }

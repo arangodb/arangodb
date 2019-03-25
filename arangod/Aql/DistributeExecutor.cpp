@@ -63,7 +63,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::traceS
 
 /// @brief initializeCursor
 std::pair<ExecutionState, Result> ExecutionBlockImpl<DistributeExecutor>::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+    InputAqlItemRow const& input) {
   // local clean up
   _distBuffer.clear();
   _distBuffer.reserve(_nrClients);
@@ -72,7 +72,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<DistributeExecutor>::initia
     _distBuffer.emplace_back();
   }
 
-  return BlockWithClients::initializeCursor(items, pos);
+  return BlockWithClients::initializeCursor(input);
 }
 
 /// @brief getSomeForShard

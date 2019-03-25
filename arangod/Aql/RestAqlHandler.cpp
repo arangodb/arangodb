@@ -296,7 +296,7 @@ bool RestAqlHandler::registerSnippets(VPackSlice const snippetsSlice,
     // The first snippet will provide proper locking
     auto query = std::make_unique<Query>(false, _vocbase, planBuilder, options,
                                          (needToLock ? PART_MAIN : PART_DEPENDENT));
-    
+
     // enables the query to get the correct transaction
     query->setTransactionContext(ctx);
 
@@ -798,7 +798,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         } else {
           auto items = std::make_unique<AqlItemBlock>(query->resourceMonitor(),
                                                       querySlice.get("items"));
-          auto tmpRes = query->engine()->initializeCursor(items.get(), pos);
+          auto tmpRes = query->engine()->initializeCursor(std::move(items), pos);
           if (tmpRes.first == ExecutionState::WAITING) {
             return RestStatus::WAITING;
           }

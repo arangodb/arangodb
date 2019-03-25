@@ -59,8 +59,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   std::pair<aql::ExecutionState, size_t> skipSome(size_t atMost) override final;
 
   // here we release our docs from this collection
-  virtual std::pair<aql::ExecutionState, Result> initializeCursor(aql::AqlItemBlock* items,
-                                                                  size_t pos) override;
+  virtual std::pair<aql::ExecutionState, Result> initializeCursor(aql::InputAqlItemRow const& input) override;
 
  protected:
   class ReadContext {
