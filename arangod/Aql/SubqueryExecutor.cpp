@@ -51,7 +51,6 @@ SubqueryExecutor::SubqueryExecutor(Fetcher& fetcher, SubqueryExecutorInfos& info
       _infos(infos),
       _state(ExecutionState::HASMORE),
       _subqueryInitialized(false),
-      _constSubqueryComputed(false),
       _shutdownDone(false),
       _shutdownResult(TRI_ERROR_INTERNAL),
       _subquery(infos.getSubquery()),
@@ -79,7 +78,7 @@ std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRow(OutputAqlItemRow
       // Continue in subquery
 
       // Const case
-      if (_infos.isConst() && _constSubqueryComputed) {
+      if (_infos.isConst() && !_input.isFirstRowInBlock()) {
         // Simply write
         writeOutput(output);
         return {_state, NoStats{}};
@@ -126,7 +125,7 @@ std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRow(OutputAqlItemRow
       }
 
       TRI_ASSERT(_input);
-      if (!_infos.isConst() || !_constSubqueryComputed) {
+      if (!_infos.isConst() || _input.isFirstRowInBlock()) {
         auto initRes = _subquery.initializeCursor(_input);
         if (initRes.first == ExecutionState::WAITING) {
           return {ExecutionState::WAITING, NoStats{}};
@@ -145,23 +144,30 @@ std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRow(OutputAqlItemRow
 }
 
 void SubqueryExecutor::writeOutput(OutputAqlItemRow& output) {
-  _constSubqueryComputed = true;
   _subqueryInitialized = false;
   TRI_IF_FAILURE("SubqueryBlock::getSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   if (_infos.returnsData()) {
-    TRI_ASSERT(_subqueryResults != nullptr);
-    AqlValue resultDocVec{_subqueryResults.get()};
-    AqlValueGuard guard{resultDocVec, true};
-    output.moveValueInto(_infos.outputRegister(), _input, guard);
+    if (!_infos.isConst() || _input.isFirstRowInBlock()) {
+      // In the non const case, or if we are the first row.
+      // We need to copy the data, and hand over ownership
+      TRI_ASSERT(_subqueryResults != nullptr);
+      AqlValue resultDocVec{_subqueryResults.get()};
+      AqlValueGuard guard{resultDocVec, true};
+      output.moveValueInto(_infos.outputRegister(), _input, guard);
+      // Responsibility is handed over
+      _subqueryResults.release();
+      TRI_ASSERT(_subqueryResults == nullptr);
+    } else {
+      // In this case we can simply reference the last written value
+      // We are not responsible for anything ourselfes anymore
+      TRI_ASSERT(_subqueryResults == nullptr);
+      bool didReuse = output.reuseLastStoredValue(_infos.outputRegister(), _input);
+      TRI_ASSERT(didReuse);
+    }
   } else {
     output.copyRow(_input);
-  }
-  if (!_infos.isConst()) {
-    // Responsibility is handed over
-    _subqueryResults.release();
-    TRI_ASSERT(_subqueryResults == nullptr);
   }
   _input = InputAqlItemRow(CreateInvalidInputRowHint{});
 }

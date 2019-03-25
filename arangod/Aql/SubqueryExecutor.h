@@ -121,9 +121,6 @@ class SubqueryExecutor {
   // Flag if the current subquery is initialized and worked on
   bool _subqueryInitialized;
 
-  // Flag for const subqueries, they are only computed once
-  bool _constSubqueryComputed;
-
   // Flag if we have correctly triggered shutdown
   bool _shutdownDone;
 

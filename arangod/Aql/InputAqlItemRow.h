@@ -113,6 +113,13 @@ class InputAqlItemRow {
 
   explicit operator bool() const noexcept { return isInitialized(); }
 
+  inline bool isFirstRowInBlock() const noexcept {
+    TRI_ASSERT(isInitialized());
+    TRI_ASSERT(blockShell().hasBlock());
+    TRI_ASSERT(_baseIndex < block().size());
+    return _baseIndex == 0;
+  }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /**
    * @brief Compare the underlying block. Only for assertions.
@@ -138,7 +145,7 @@ class InputAqlItemRow {
     return *_blockShell;
   }
 
-  inline AqlItemBlockShell const& blockShell() const { 
+  inline AqlItemBlockShell const& blockShell() const {
     TRI_ASSERT(_blockShell != nullptr);
     return *_blockShell;
   }
