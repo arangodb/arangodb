@@ -1875,7 +1875,8 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
   StringUtils::tolowerInPlace(&ls);
   StringUtils::tolowerInPlace(&ts);
 
-  LogTopic const& topic = ts.empty() ? Logger::FIXME : *LogTopic::lookup(ts);
+  LogTopic const* topicPtr = LogTopic::lookup(ts);
+  LogTopic const& topic = ( ts.empty() || topicPtr == nullptr ) ? Logger::FIXME : *topicPtr;
 
   if (args[1]->IsArray()) {
     auto loglines = v8::Handle<v8::Array>::Cast(args[1]);
