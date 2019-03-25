@@ -31,7 +31,7 @@ StoreCallback::StoreCallback(std::string const& path, std::string const& body)
 
 bool StoreCallback::operator()(arangodb::ClusterCommResult* res) {
   if (res->status != CL_COMM_SENT) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << res->endpoint + _path << "(" << res->status
+    LOG_TOPIC("7c4cc", DEBUG, Logger::AGENCY) << res->endpoint + _path << "(" << res->status
                                      << ", " << res->errorMessage << "): " << _body;
   }
   return true;

@@ -142,7 +142,7 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
 bool SupervisedScheduler::start() {
   _manager.reset(new SupervisedSchedulerManagerThread(*this));
   if (!_manager->start()) {
-    LOG_TOPIC(ERR, Logger::THREADS) << "could not start supervisor thread";
+    LOG_TOPIC("00443", ERR, Logger::THREADS) << "could not start supervisor thread";
     return false;
   }
 
@@ -169,7 +169,7 @@ void SupervisedScheduler::shutdown() {
       break;
     }
 
-    LOG_TOPIC(WARN, Logger::THREADS)
+    LOG_TOPIC("a1690", WARN, Logger::THREADS)
         << "Scheduler received shutdown, but there are still tasks on the "
         << "queue: jobsSubmitted=" << jobsSubmitted << " jobsDone=" << jobsDone;
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -186,7 +186,7 @@ void SupervisedScheduler::shutdown() {
   while (!cleanupAbandonedThreads()) {
     if (++tries > 5 * 5) {
       // spam only after some time (5 seconds here)
-      LOG_TOPIC(WARN, Logger::THREADS)
+      LOG_TOPIC("ed0b2", WARN, Logger::THREADS)
       << "Scheduler received shutdown, but there are still abandoned threads";
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -224,10 +224,10 @@ void SupervisedScheduler::runWorker() {
       work->_handler();
       state->_working = false;
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::THREADS)
+      LOG_TOPIC("a235e", ERR, Logger::THREADS)
           << "scheduler loop caught exception: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(ERR, Logger::THREADS)
+      LOG_TOPIC("d4121", ERR, Logger::THREADS)
           << "scheduler loop caught unknown exception";
     }
 
@@ -321,7 +321,7 @@ void SupervisedScheduler::sortoutLongRunningThreads() {
     }
 
     if ((now - state->_lastJobStarted) > std::chrono::seconds(5)) {
-      LOG_TOPIC(TRACE, Logger::THREADS) << "Detach long running thread.";
+      LOG_TOPIC("efcaa", TRACE, Logger::THREADS) << "Detach long running thread.";
 
       {
         std::unique_lock<std::mutex> guard(_mutex);
@@ -386,11 +386,11 @@ void SupervisedScheduler::startOneThread() {
   if (!_workerStates.back()->start()) {
     // failed to start a worker
     _workerStates.pop_back();  // pop_back deletes shared_ptr, which deletes thread
-    LOG_TOPIC(ERR, Logger::THREADS)
+    LOG_TOPIC("913b5", ERR, Logger::THREADS)
         << "could not start additional worker thread";
 
   } else {
-    LOG_TOPIC(TRACE, Logger::THREADS) << "Started new thread";
+    LOG_TOPIC("f9de8", TRACE, Logger::THREADS) << "Started new thread";
     _conditionSupervisor.wait(guard);
   }
 }
@@ -417,7 +417,7 @@ void SupervisedScheduler::stopOneThread() {
   _numWorker--;
 
   if (state->_thread->isRunning()) {
-    LOG_TOPIC(TRACE, Logger::THREADS) << "Abandon one thread.";
+    LOG_TOPIC("73365", TRACE, Logger::THREADS) << "Abandon one thread.";
     _abandonedWorkerStates.push_back(std::move(state));
   } else {
     state.reset();  // reset the shared_ptr. At this point we delete the thread object

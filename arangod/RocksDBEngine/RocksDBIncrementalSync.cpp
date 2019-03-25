@@ -190,7 +190,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     options.isSynchronousReplicationFrom = syncer._state.leaderId;
   }
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "syncing chunk. low: '" << lowString
+  LOG_TOPIC("295ed", TRACE, Logger::REPLICATION) << "syncing chunk. low: '" << lowString
                                         << "', high: '" << highString << "'";
 
   // no match
@@ -375,7 +375,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     syncer._state.barrier.extend(syncer._state.connection);
   }
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
+  LOG_TOPIC("48f94", TRACE, Logger::REPLICATION)
       << "will refetch " << toFetch.size() << " documents for this chunk";
 
   keyBuilder->clear();
@@ -857,7 +857,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           std::to_string(numberDocumentsDueToCounter));
 
       if (numberDocumentsAfterSync != numberDocumentsDueToCounter) {
-        LOG_TOPIC(WARN, Logger::REPLICATION)
+        LOG_TOPIC("118bd", WARN, Logger::REPLICATION)
             << "number of remaining documents in collection '" + col->name() +
                    "' is " + std::to_string(numberDocumentsAfterSync) +
                    " and differs from number of documents returned by "

@@ -82,7 +82,7 @@ struct Job {
     try {
       status();  // This runs everything to to with state PENDING if needed!
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY)
+      LOG_TOPIC("e2d06", WARN, Logger::AGENCY)
           << "Exception caught in status() method: " << e.what();
       finish(server, shard, false, e.what());
     }
@@ -95,7 +95,7 @@ struct Job {
         }
       }
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "Exception caught in create() or "
+      LOG_TOPIC("5ac04", WARN, Logger::AGENCY) << "Exception caught in create() or "
                                          "start() method: "
                                       << e.what();
       finish("", "", false, e.what());
@@ -205,7 +205,7 @@ inline arangodb::consensus::write_ret_t singleWriteTransaction(AgentInterface* _
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::SUPERVISION)
+    LOG_TOPIC("5be90", ERR, Logger::SUPERVISION)
         << "Supervision failed to build single-write transaction: " << e.what();
   }
 
@@ -252,7 +252,7 @@ inline arangodb::consensus::trans_ret_t generalTransaction(AgentInterface* _agen
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::SUPERVISION)
+    LOG_TOPIC("aae99", ERR, Logger::SUPERVISION)
         << "Supervision failed to build transaction: " << e.what();
   }
 
@@ -288,7 +288,7 @@ inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::SUPERVISION)
+    LOG_TOPIC("d03d5", ERR, Logger::SUPERVISION)
         << "Supervision failed to build transaction for transient: " << e.what();
   }
 

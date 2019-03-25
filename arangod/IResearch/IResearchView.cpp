@@ -175,20 +175,20 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
       res = IResearchLinkHelper::updateLinks(collections, *impl, links);
 
       if (!res.ok()) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("d683b", WARN, arangodb::iresearch::TOPIC)
           << "failed to create links while creating arangosearch view '" << impl->name() <<  "': " << res.errorNumber() << " " <<  res.errorMessage();
       }
     } catch (arangodb::basics::Exception const& e) {
       IR_LOG_EXCEPTION();
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("eddb2", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while creating links while creating arangosearch view '" << impl->name() << "': " << e.code() << " " << e.what();
     } catch (std::exception const& e) {
       IR_LOG_EXCEPTION();
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("dc829", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while creating links while creating arangosearch view '" << impl->name() << "': " << e.what();
     } catch (...) {
       IR_LOG_EXCEPTION();
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("6491c", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while creating links while creating arangosearch view '" << impl->name() << "'";
     }
 
@@ -427,7 +427,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl( // append JSON
       linkBuilder.openObject();
 
       if (!link->properties(linkBuilder, false).ok()) { // link definitions are not output if forPersistence
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("713ad", WARN, arangodb::iresearch::TOPIC)
           << "failed to generate json for arangosearch link '" << link->id() << "' while generating json for arangosearch view '" << name() << "'";
 
         return true; // skip invalid link definitions
@@ -642,7 +642,7 @@ bool IResearchView::link(AsyncLinkPtr const& link) {
 
   if (!res.ok()) {
     _links.erase(cid); // undo meta modification
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("faae3", WARN, arangodb::iresearch::TOPIC)
       << "failed to persist logical view while emplacing collection '" << cid << "' into arangosearch View '" << name() << "': " << res.errorMessage();
 
     return false;
@@ -725,7 +725,7 @@ void IResearchView::open() {
   if (engine) {
     _inRecovery = engine->inRecovery();
   } else {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("8b864", WARN, arangodb::iresearch::TOPIC)
       << "failure to get storage engine while opening arangosearch view: " << name();
     // assume not inRecovery()
   }
@@ -763,7 +763,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
     arangodb::HashSet<TRI_voc_cid_t> const* shards /*= nullptr*/,
     void const* key /*= nullptr*/) const {
   if (!trx.state()) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("47098", WARN, arangodb::iresearch::TOPIC)
         << "failed to get transaction state while creating arangosearch view "
            "snapshot";
 
@@ -817,7 +817,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
       auto res = const_cast<IResearchView*>(this)->commit();
 
       if (!res.ok()) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("fd776", WARN, arangodb::iresearch::TOPIC)
             << "failed to sync while creating snapshot for arangosearch view '"
             << name() << "', previous snapshot will be used instead, error: '"
             << res.errorMessage() << "'";
@@ -836,7 +836,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
     state.cookie(key, std::move(ptr));
 
     if (!ctx) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("61271", WARN, arangodb::iresearch::TOPIC)
           << "failed to store state into a TransactionState for snapshot of "
              "arangosearch view '"
           << name() << "', tid '" << state.id() << "'";
@@ -858,7 +858,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
                                    // is part of the transaction
 
       if (!link) {
-        LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("d63ff", ERR, arangodb::iresearch::TOPIC)
             << "failed to find an arangosearch link in collection '" << cid
             << "' for arangosearch view '" << name() << "', skipping it";
         state.cookie(key, nullptr);  // unset cookie
@@ -869,7 +869,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
       auto snapshot = link->snapshot();
 
       if (!static_cast<irs::directory_reader const&>(snapshot)) {
-        LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("e76eb", ERR, arangodb::iresearch::TOPIC)
             << "failed to get snaphot of arangosearch link in collection '"
             << cid << "' for arangosearch view '" << name() << "', skipping it";
         state.cookie(key, nullptr);  // unset cookie
@@ -880,7 +880,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
       ctx->add(cid, std::move(snapshot));
     }
   } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("29b30", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while collecting readers for snapshot of "
            "arangosearch view '"
         << name() << "', tid '" << state.id() << "': " << e.code() << " " << e.what();
@@ -888,7 +888,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
 
     return nullptr;
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("ffe73", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while collecting readers for snapshot of "
            "arangosearch view '"
         << name() << "', tid '" << state.id() << "': " << e.what();
@@ -896,7 +896,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
 
     return nullptr;
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("c54e8", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while collecting readers for snapshot of "
            "arangosearch view '"
         << name() << "', tid '" << state.id() << "'";
@@ -928,7 +928,7 @@ arangodb::Result IResearchView::unlink(TRI_voc_cid_t cid) noexcept {
 
     if (!res.ok()) {
       _links.swap(links);  // restore original collections
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("9d678", WARN, arangodb::iresearch::TOPIC)
           << "failed to persist logical view while unlinking collection '" << cid
           << "' from arangosearch view '" << name() << "': " << res.errorMessage();
 
@@ -1059,7 +1059,7 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
 
     return IResearchLinkHelper::updateLinks(collections, *this, links, stale);
   } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(WARN, iresearch::TOPIC)
+    LOG_TOPIC("74705", WARN, iresearch::TOPIC)
       << "caught exception while updating properties for arangosearch view '" << name() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
 
@@ -1068,7 +1068,7 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
       std::string("error updating properties for arangosearch view '") + name() + "'"
     );
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, iresearch::TOPIC)
+    LOG_TOPIC("27f54", WARN, iresearch::TOPIC)
       << "caught exception while updating properties for arangosearch view '" << name() << "': " << e.what();
     IR_LOG_EXCEPTION();
 
@@ -1077,7 +1077,7 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
       std::string("error updating properties for arangosearch view '") + name() + "'"
     );
   } catch (...) {
-    LOG_TOPIC(WARN, iresearch::TOPIC)
+    LOG_TOPIC("99bbe", WARN, iresearch::TOPIC)
       << "caught exception while updating properties for arangosearch view '" << name() << "'";
     IR_LOG_EXCEPTION();
 
@@ -1116,7 +1116,7 @@ void IResearchView::verifyKnownCollections() {
                // collection)
 
     if (!collection) {
-      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("40976", TRACE, arangodb::iresearch::TOPIC)
           << "collection '" << cid
           << "' no longer exists! removing from arangosearch view '" << name() << "'";
       itr = _links.erase(itr);
@@ -1128,7 +1128,7 @@ void IResearchView::verifyKnownCollections() {
     auto link = IResearchLinkHelper::find(*collection, *this);
 
     if (!link) {
-      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("d0509", TRACE, arangodb::iresearch::TOPIC)
           << "collection '" << collection->name()
           << "' no longer linked! removing from arangosearch view '" << name() << "'";
       itr = _links.erase(itr);

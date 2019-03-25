@@ -123,10 +123,10 @@ void MMFilesDitches::destroy() {
         type == MMFilesDitch::TRI_DITCH_COMPACTION) {
       delete ptr;
     } else if (type == MMFilesDitch::TRI_DITCH_DOCUMENT) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("2899f", ERR, arangodb::Logger::ENGINES)
           << "logic error. shouldn't have document ditches on unload";
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "unknown ditch type";
+      LOG_TOPIC("621bb", ERR, arangodb::Logger::ENGINES) << "unknown ditch type";
     }
 
     ptr = next;

@@ -42,7 +42,7 @@ static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
 bool TransactionCollection::isLocked(AccessMode::Type accessType, int nestingLevel) const {
   if (accessType > _accessType) {
     // wrong lock type
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("39ef2", WARN, arangodb::Logger::ENGINES)
         << "logic error. checking wrong lock type";
     return false;
   }

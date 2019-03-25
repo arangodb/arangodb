@@ -89,6 +89,8 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.use-microtime", "use microtime instead",
                      new BooleanParameter(&_useMicrotime));
 
+  options->addOption("--log.ids", "log unique message ids", new BooleanParameter(&_showIds));
+
   options->addOption("--log.role", "log server role", new BooleanParameter(&_showRole));
 
   options->addOption("--log.file-mode",
@@ -187,7 +189,7 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       int result = std::stoi(_fileMode, nullptr, 8);
       LogAppenderFile::setFileMode(result);
     } catch (...) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("797c2", FATAL, arangodb::Logger::FIXME)
           << "expecting an octal number for log.file-mode, got '" << _fileMode << "'";
       FATAL_ERROR_EXIT();
     }
@@ -202,7 +204,7 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       group* g = getgrgid(gidNumber);
 
       if (g == nullptr) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("174c2", FATAL, arangodb::Logger::FIXME)
             << "unknown numeric gid '" << _fileGroup << "'";
         FATAL_ERROR_EXIT();
       }
@@ -216,13 +218,13 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         gidNumber = g->gr_gid;
       } else {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("11a2c", FATAL, arangodb::Logger::FIXME)
             << "cannot convert groupname '" << _fileGroup
             << "' to numeric gid: " << TRI_last_error();
         FATAL_ERROR_EXIT();
       }
 #else
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("1c96f", FATAL, arangodb::Logger::FIXME)
           << "cannot convert groupname '" << _fileGroup << "' to numeric gid";
       FATAL_ERROR_EXIT();
 #endif
@@ -242,6 +244,7 @@ void LoggerFeature::prepare() {
 #endif
 
   Logger::setLogLevel(_levels);
+  Logger::setShowIds(_showIds);
   Logger::setShowRole(_showRole);
   Logger::setUseColor(_useColor);
   Logger::setUseLocalTime(_useLocalTime);

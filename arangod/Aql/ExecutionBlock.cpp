@@ -191,7 +191,7 @@ void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
     }
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       auto node = getPlanNode();
-      LOG_TOPIC(INFO, Logger::QUERIES)
+      LOG_TOPIC("ca7db", INFO, Logger::QUERIES)
           << "getSome type=" << node->getTypeString() << " atMost = " << atMost
           << " this=" << (uintptr_t)this << " id=" << node->id();
     }
@@ -220,13 +220,13 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       ExecutionNode const* node = getPlanNode();
-      LOG_TOPIC(INFO, Logger::QUERIES)
+      LOG_TOPIC("07a60", INFO, Logger::QUERIES)
           << "getSome done type=" << node->getTypeString() << " this=" << (uintptr_t)this
           << " id=" << node->id() << " state=" << ::stateToString(state);
 
       if (_profile >= PROFILE_LEVEL_TRACE_2) {
         if (result == nullptr) {
-          LOG_TOPIC(INFO, Logger::QUERIES)
+          LOG_TOPIC("daa64", INFO, Logger::QUERIES)
               << "getSome type=" << node->getTypeString() << " result: nullptr";
         } else {
           VPackBuilder builder;
@@ -234,7 +234,7 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
             VPackObjectBuilder guard(&builder);
             result->toVelocyPack(_trx, builder);
           }
-          LOG_TOPIC(INFO, Logger::QUERIES) << "getSome type=" << node->getTypeString()
+          LOG_TOPIC("fcd9c", INFO, Logger::QUERIES) << "getSome type=" << node->getTypeString()
                                            << " result: " << builder.toJson();
         }
       }
@@ -249,7 +249,7 @@ void ExecutionBlock::traceSkipSomeBegin(size_t atMost) {
     }
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       auto node = getPlanNode();
-      LOG_TOPIC(INFO, Logger::QUERIES)
+      LOG_TOPIC("dba8a", INFO, Logger::QUERIES)
           << "skipSome type=" << node->getTypeString() << " atMost = " << atMost
           << " this=" << (uintptr_t)this << " id=" << node->id();
     }
@@ -276,7 +276,7 @@ void ExecutionBlock::traceSkipSomeEnd(size_t skipped, ExecutionState state) {
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       ExecutionNode const* node = getPlanNode();
-      LOG_TOPIC(INFO, Logger::QUERIES)
+      LOG_TOPIC("d1950", INFO, Logger::QUERIES)
           << "skipSome done type=" << node->getTypeString() << " this=" << (uintptr_t)this
           << " id=" << node->id() << " state=" << ::stateToString(state);
     }

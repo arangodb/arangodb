@@ -80,7 +80,7 @@ std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(std::string const& name,
   }
 
   // some debug output
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+  LOG_TOPIC("93939", DEBUG, arangodb::Logger::FIXME)
       << "created JavaScript " << (action->_isPrefix ? "prefix " : "")
       << "action '" << url << "'";
   return action;

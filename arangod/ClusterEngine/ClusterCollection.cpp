@@ -331,11 +331,11 @@ void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
     std::string msg =
         "got invalid indexes for collection '" + _logicalCollection.name() + "'";
 
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+    LOG_TOPIC("f71d2", ERR, arangodb::Logger::FIXME) << msg;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto it : _indexes) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it->context();
+      LOG_TOPIC("f83f5", ERR, arangodb::Logger::FIXME) << "- " << it->context();
     }
 #endif
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
