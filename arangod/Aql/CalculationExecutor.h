@@ -131,20 +131,17 @@ class CalculationExecutor {
   InputAqlItemRow _currentRow;
   ExecutionState _rowState;
 
-  // true iff we actually entered a V8 context and didn't exit it yet.
-  // Necessary to discern externally owned contexts, but only for an assertion
-  // in maintainer mode.
+  // true iff we entered a V8 context and didn't exit it yet.
+  // Necessary for owned contexts, which will not be exited when we call
+  // exitContext; but only for assertions in maintainer mode.
   bool _hasEnteredContext;
 };
 
 template<CalculationType calculationType>
 template<CalculationType U, typename>
 inline void CalculationExecutor<calculationType>::enterContext() {
-  bool const hadAlreadyEnteredContext =_infos.getQuery().hasEnteredContext();
   _infos.getQuery().enterContext();
-  if (!hadAlreadyEnteredContext) {
-    _hasEnteredContext = true;
-  }
+  _hasEnteredContext = true;
 }
 
 template<CalculationType calculationType>
@@ -217,6 +214,9 @@ CalculationExecutor<calculationType>::produceRow(OutputAqlItemRow& output) {
   //   hasEnteredContext => state == HASMORE,
   // as we only leave the context open when there are rows left in the current
   // block.
+  // Note that _infos.getQuery().hasEnteredContext() may be true, even if
+  // _hasEnteredContext is false, if (and only if) the query context is owned
+  // by exterior.
   TRI_ASSERT(!shouldExitContextBetweenBlocks() || !_hasEnteredContext ||
              state == ExecutionState::HASMORE);
 
@@ -248,11 +248,12 @@ inline void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
 
   // enterContext is safe to call even if we've already entered.
 
-  // If we should exit the context between two blocks, because client or upstream
-  // might send us to sleep, it is expected that we enter the context exactly on the
-  // first row of every block.
+  // If we should exit the context between two blocks, because client or
+  // upstream might send us to sleep, it is expected that we enter the context
+  // exactly on the first row of every block.
   TRI_ASSERT(!shouldExitContextBetweenBlocks() ||
-             _infos.getQuery().hasEnteredContext() == !input.isFirstRowInBlock());
+             _hasEnteredContext == !input.isFirstRowInBlock());
+
   enterContext();
   auto contextGuard = scopeGuard([this]() { exitContext(); });
 
