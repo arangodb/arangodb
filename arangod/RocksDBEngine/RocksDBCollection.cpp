@@ -371,7 +371,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
         VPackBuilder builder;
         other->toVelocyPack(builder, static_cast<std::underlying_type<Index::Serialize>::type>(
                                          Index::Serialize::Basics));
-        LOG_TOPIC(WARN, Logger::ENGINES)
+        LOG_TOPIC("29d1c", WARN, Logger::ENGINES)
             << "attempted to create index '" << info.toJson()
             << "' but found conflicting index '" << builder.slice().toJson() << "'";
 #endif
