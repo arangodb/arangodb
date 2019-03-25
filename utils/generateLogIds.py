@@ -25,6 +25,8 @@ g_hash_algorithm = hashlib.md5()
 
 
 def generate_id(location_string, params, rest, id_database):
+    sys.exit(1) #this needs to respect the quotes in the id string to work
+
     id_len = 5
     g_hash_algorithm.update((location_string + params + rest).encode())
     digest = g_hash_algorithm.hexdigest()
@@ -107,7 +109,7 @@ def do_operation(fullpath, project_path, target_file_handle, id_database, levels
                         # still unmodified
                         continue
 
-                    elif len(param) == 5:
+                    elif len(param) == 7 and param.startswith('"') and param.endswith('"'):
                         # we need to store / check the id
                         uid = param
 
