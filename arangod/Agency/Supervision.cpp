@@ -1133,7 +1133,9 @@ void Supervision::workJobs() {
   auto it = todos.begin();
   static std::string const FAILED = "failed";
 
-  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin ToDos failed";
+
+
+  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin ToDos of type Failed*";
   while (it != todos.end()) {
     auto jobNode = *(it->second);
     if (jobNode.hasAsString("type").first.compare(0, FAILED.length(), FAILED) == 0) {
@@ -1149,8 +1151,14 @@ void Supervision::workJobs() {
 
   // Do not start other jobs, if above resilience jobs aborted stuff
   if (!_haveAborts) {
+    bool selectRandom = false;
+
     LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin ToDos";
     for (auto const& todoEnt : todos) {
+      if (selectRandom && rand() % todos.size() > 100) {
+        continue ;
+      }
+
       auto jobNode = *(todoEnt.second);
       LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
       JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
