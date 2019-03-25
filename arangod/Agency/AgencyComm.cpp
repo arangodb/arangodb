@@ -1181,41 +1181,22 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "checking if agency is initialized";
 
-  while (true) {
-    while (shouldInitializeStructure()) {
+  while (!application_features::ApplicationServer::isStopping() &&
+         shouldInitializeStructure()) {
+
+    LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
+      << "Agency is fresh. Needs initial structure.";
+    
+    if (tryInitializeStructure()) {
       LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
-          << "Agency is fresh. Needs initial structure.";
-      // mop: we are the chosen one .. great success
-
-      if (tryInitializeStructure()) {
-        LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
-            << "Successfully initialized agency";
-        break;
-      }
-
-      LOG_TOPIC(WARN, Logger::AGENCYCOMM)
-          << "Initializing agency failed. We'll try again soon";
-      // We should really have exclusive access, here, this is strange!
-      std::this_thread::sleep_for(std::chrono::seconds(1));
+        << "Successfully initialized agency";
+      break;
     }
-
-    AgencyCommResult result = getValues("InitDone");
-
-    if (result.successful()) {
-      VPackSlice value = result.slice()[0].get(
-          std::vector<std::string>({AgencyCommManager::path(), "InitDone"}));
-      if (value.isBoolean() && value.getBoolean()) {
-        // expecting a value of "true"
-        LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "Found an initialized agency";
-        break;
-      }
-    } else {
-      if (result.httpCode() == 401) {
-        // unauthorized
-        LOG_TOPIC(FATAL, Logger::STARTUP) << "Unauthorized. Wrong credentials.";
-        FATAL_ERROR_EXIT();
-      }
-    }
+    
+    LOG_TOPIC(WARN, Logger::AGENCYCOMM)
+      << "Initializing agency failed. We'll try again soon";
+    // We should really have exclusive access, here, this is strange!
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
         << "Waiting for agency to get initialized";
@@ -1346,10 +1327,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   auto waitSomeTime = [&waitInterval, &result]() -> bool {
     // Returning true means timeout because of shutdown:
-    auto serverFeature = application_features::ApplicationServer::getFeature<ServerFeature>(
-        "Server");
-    if (serverFeature->isStopping() ||
-        !application_features::ApplicationServer::isRetryOK()) {
+    if (!application_features::ApplicationServer::isRetryOK()) {
       LOG_TOPIC(INFO, Logger::AGENCYCOMM)
           << "Unsuccessful AgencyComm: Timeout because of shutdown "
           << "errorCode: " << result.errorCode()
@@ -1404,8 +1382,6 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
     // Some reporting:
     if (tries > 20) {
       auto serverState = application_features::ApplicationServer::server->state();
-      application_features::ApplicationServer::getFeature<ServerFeature>(
-          "Server");
       std::string serverStateStr;
       switch (serverState) {
         case arangodb::application_features::ServerState::UNINITIALIZED:
@@ -1797,10 +1773,9 @@ bool AgencyComm::tryInitializeStructure() {
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
         << "Initializing agency with " << builder.toJson();
 
-    AgencyOperation initOperation("", AgencyValueOperationType::SET, builder.slice());
-
-    AgencyWriteTransaction initTransaction;
-    initTransaction.operations.push_back(initOperation);
+    AgencyWriteTransaction initTransaction(
+      AgencyOperation("", AgencyValueOperationType::SET, builder.slice()),
+      AgencyPrecondition("Plan", AgencyPrecondition::Type::EMPTY, true));
 
     AgencyCommResult result = sendTransactionWithFailover(initTransaction);
     if (result.httpCode() == TRI_ERROR_HTTP_UNAUTHORIZED) {
@@ -1821,19 +1796,60 @@ bool AgencyComm::tryInitializeStructure() {
 }
 
 bool AgencyComm::shouldInitializeStructure() {
-  VPackBuilder builder;
-  builder.add(VPackValue(false));
 
-  // "InitDone" key should not previously exist
-  auto result = casValue("InitDone", builder.slice(), false, 60.0,
-                         AgencyCommManager::CONNECTION_OPTIONS._requestTimeout);
+  size_t nFail = 0;
 
-  if (!result.successful()) {
-    // somebody else has or is initializing the agency
-    LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
-        << "someone else is initializing the agency";
-    return false;
+  while (!application_features::ApplicationServer::isStopping()) {
+
+    auto result = getValues("Plan");
+
+    if (!result.successful()) { // Not 200 - 299
+      
+      if (result.httpCode() == 401) {
+        // unauthorized
+        LOG_TOPIC(FATAL, Logger::STARTUP) << "Unauthorized. Wrong credentials.";
+        FATAL_ERROR_EXIT();
+      }
+      
+      // Agency not ready yet
+      LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
+        << "waiting for agency to become ready";
+      continue;
+      
+    } else {
+
+      // Sanity
+      if (result.slice().isArray() && result.slice().length() == 1) {
+
+        // No plan entry? Should initialise
+        if (result.slice()[0] == VPackSlice::emptyObjectSlice()) {
+          LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
+            << "agency initialisation should be performed";
+          return true;
+        } else {
+          LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
+            << "agency initialisation under way or done";
+          return false;
+        }
+      } else {
+        // Should never get here
+        TRI_ASSERT(false);
+        if (nFail++ < 3) {
+          LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) << "What the hell just happened?";
+        } else {
+          LOG_TOPIC(FATAL, Logger::AGENCYCOMM)
+            << "Illegal response from agency during bootstrap: "
+            << result.slice().toJson();
+          FATAL_ERROR_EXIT();
+        }
+        continue;
+      }
+      
+    }
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+
   }
 
-  return true;
+  return false;
 }
