@@ -24,7 +24,7 @@ errors.
 
 To ensure that the ids are unique we run the script `./utils/generateLogIds.py`
 during CI runs. The script will fail with a non-zero status if id collisions
-are found. You can use `openssl rand -hex 3 | sed 's/.//;s/\(.*\)/"\1"/'`
+are found. You can use `openssl rand -hex 3 | sed 's/.//;s/\(.*\)/"\1"/'` or
 anything that suits you to generate a **5 hex digit log** id.
 
 CMake
