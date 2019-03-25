@@ -100,7 +100,7 @@ bool Job::finish(std::string const& server, std::string const& shard,
   // Additional payload, which is to be executed in the finish transaction
   Slice operations = Slice::emptyObjectSlice();
   Slice preconditions  = Slice::emptyObjectSlice();
-  
+
   if (payload != nullptr) {
     Slice slice = payload->slice();
     TRI_ASSERT(slice.isObject() || slice.isArray());
@@ -138,7 +138,7 @@ bool Job::finish(std::string const& server, std::string const& shard,
           finished.add(oper.key.copyString(), oper.value);
         }
       }
-      
+
       // --- Remove blocks if specified:
       if (started && !server.empty()) {
         addReleaseServer(finished, server);
@@ -155,7 +155,7 @@ bool Job::finish(std::string const& server, std::string const& shard,
         for (auto const& prec : VPackObjectIterator(preconditions)) {
           finished.add(prec.key.copyString(), prec.value);
         }
-      }      
+      }
     } // -- preconditions
 
   }
@@ -410,8 +410,8 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot, std::string const& d
 
   for (const auto& colptr : snapshot.hasAsChildren(databasePath).first) {  // collections
 
-    auto const col = *colptr.second;
-    auto const otherCollection = colptr.first;
+    auto const &col = *colptr.second;
+    auto const &otherCollection = colptr.first;
 
     if (otherCollection != collection && col.has("distributeShardsLike") &&  // use .has() form to prevent logging of missing
         col.hasAsSlice("distributeShardsLike").first.copyString() == collection) {
@@ -419,7 +419,7 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot, std::string const& d
       if (theirshards.size() > 0) {  // do not care about virtual collections
         if (theirshards.size() == myshards.size()) {
           ret.emplace_back(otherCollection,
-                           sortedShardList(col.hasAsNode("shards").first)[steps]);
+                           theirshards[steps]);
         } else {
           LOG_TOPIC(ERR, Logger::SUPERVISION)
               << "Shard distribution of clone(" << otherCollection
