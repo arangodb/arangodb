@@ -439,7 +439,8 @@ void ClusterTrxMethods::addTransactionHeader(transaction::Methods const& trx,
         state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
       return;  // do not add header to servers without a snippet
     }
-    TRI_ASSERT(state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
+    TRI_ASSERT(state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
+               transaction::isLeaderTransactionId(state.id()));
     transaction::BuilderLeaser builder(trx.transactionContextPtr());
     ::buildTransactionBody(state, server, *builder.get());
     headers.emplace(StaticStrings::TransactionBody, builder->toJson());
