@@ -326,7 +326,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
   fillColls(collections.get("write"), writes) &&
   fillColls(collections.get("exclusive"), exclusives);
   if (!isValid) {
-    return res.reset(TRI_ERROR_BAD_PARAMETER, "invalid 'collections'");
+    return res.reset(TRI_ERROR_BAD_PARAMETER, "invalid 'collections' attribute");
   }
   
   std::unique_ptr<TransactionState> state;
@@ -412,6 +412,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
     
     if (AccessMode::isWriteOrExclusive(mode)) {
       if (mtrx.type == MetaType::StandaloneAQL) {
+        LOG_DEVEL << "1111";
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
                                        "not allowed to write lock an AQL transaction");
       }
@@ -426,6 +427,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
         state = mtrx.state;
         break;
       }
+      LOG_DEVEL << "2222";
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
                                      "transaction is already in use");
     }
@@ -529,7 +531,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
   const size_t bucket = getBucket(tid);
   bool wasExpired = false;
   
-  TransactionState* state = nullptr;
+  std::unique_ptr<TransactionState> state;
   {
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
@@ -543,11 +545,13 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
     ManagedTrx& mtrx = it->second;
     TRY_WRITE_LOCKER(tryGuard, mtrx.rwlock);
     if (!tryGuard.isLocked()) {
+      LOG_DEVEL << "33333";
       return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
                        "transaction is in use");
     }
     
     if (mtrx.type == MetaType::StandaloneAQL) {
+      LOG_DEVEL << "444444";
       return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
                        "not allowed to change an AQL transaction");
     } else if (mtrx.type == MetaType::Tombstone) {
@@ -557,6 +561,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
       if (mtrx.finalStatus == status) {
         return res; // all good
       } else {
+        LOG_DEVEL << "55555";
         return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
                          "transaction was already committed / aborted");
       }
@@ -568,9 +573,9 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
       wasExpired = true;
     }
     
-    state = mtrx.state;
-    mtrx.type = MetaType::Tombstone;
+    state.reset(mtrx.state);
     mtrx.state = nullptr;
+    mtrx.type = MetaType::Tombstone;
     mtrx.expires = now + tombstoneTTL;
     mtrx.finalStatus = status;
     // it is sufficient to pretend that the operation already succeeded
@@ -595,7 +600,9 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
     return res.reset(TRI_ERROR_TRANSACTION_ABORTED, "transaction was not running");
   }
   
-  auto ctx = std::make_shared<ManagedContext>(tid, state, AccessMode::Type::NONE);
+  auto ctx = std::make_shared<ManagedContext>(tid, state.get(), AccessMode::Type::NONE);
+  state.release(); // now owned by ctx
+  
   transaction::Options trxOpts;
   MGMethods trx(ctx, trxOpts);
   TRI_ASSERT(trx.state()->isRunning());
@@ -615,8 +622,8 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
     if (res.ok() && wasExpired) {
       res.reset(TRI_ERROR_TRANSACTION_ABORTED);
     }
+    TRI_ASSERT(!trx.state()->isRunning());
   }
-  TRI_ASSERT(!trx.state()->isRunning());
   
   return res;
 }
