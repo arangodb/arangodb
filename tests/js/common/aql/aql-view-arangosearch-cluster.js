@@ -656,8 +656,8 @@ function IResearchAqlTestSuite(args) {
         "FOR v IN 2..2 OUTBOUND doc UnitTestsGraph " +
         "RETURN v").toArray();
 
-      results.forEach(function(res) {
-        assertTrue(res.length, 1);
+      results.forEach(function(res, index) {
+        assertTrue(res.length, 1, "result length not 1 at index " + index);
         assertEqual(res[0].vName, "vEnd");
       });
     },

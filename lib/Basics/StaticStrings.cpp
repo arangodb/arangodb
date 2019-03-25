@@ -195,6 +195,7 @@ std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
 std::string const StaticStrings::ShardKeys("shardKeys");
+std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");

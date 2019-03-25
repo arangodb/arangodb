@@ -26,8 +26,8 @@
 #include "AqlItemBlockHelper.h"
 #include "BlockFetcherHelper.h"
 #include "BlockFetcherMock.h"
-#include "TestExecutorHelper.h"
 #include "TestEmptyExecutorHelper.h"
+#include "TestExecutorHelper.h"
 #include "WaitingExecutionBlockMock.h"
 #include "catch.hpp"
 #include "fakeit.hpp"
@@ -85,8 +85,7 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
 
   fakeit::When(Method(mockEngine, itemBlockManager)).AlwaysReturn(blockManager);
   fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
-  fakeit::When(
-      ConstOverloadedMethod(mockQuery, queryOptions, QueryOptions const&()))
+  fakeit::When(ConstOverloadedMethod(mockQuery, queryOptions, QueryOptions const&()))
       .AlwaysDo([&]() -> QueryOptions const& { return lqueryOptions; });
   fakeit::When(OverloadedMethod(mockQuery, queryOptions, QueryOptions & ()))
       .AlwaysDo([&]() -> QueryOptions& { return lqueryOptions; });
@@ -112,22 +111,22 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
       std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
       blockDeque.push_back(std::move(block));
 
-      WaitingExecutionBlockMock dependency{&engine, node,
-                                           std::move(blockDeque)};
+      WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
 
-      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node,
-                                                    std::move(infos));
+      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
       testee.addDependency(&dependency);
 
       size_t atMost = 1000;
       std::tie(state, block) = testee.getSome(atMost);
       REQUIRE(state == ExecutionState::WAITING);
       std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(block != nullptr);
       REQUIRE(block->size() == 1);
       REQUIRE(state == ExecutionState::DONE);
 
       // done should stay done!
       std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(block == nullptr);
       REQUIRE(state == ExecutionState::DONE);
     }
 
@@ -136,11 +135,9 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
       std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
       blockDeque.push_back(std::move(block));
 
-      WaitingExecutionBlockMock dependency{&engine, node,
-                                           std::move(blockDeque)};
+      WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
 
-      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node,
-                                                    std::move(infos));
+      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
       testee.addDependency(&dependency);
 
       size_t atMost = 1;
@@ -184,11 +181,9 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
       blockDeque.push_back(std::move(blockd));
       blockDeque.push_back(std::move(blocke));
 
-      WaitingExecutionBlockMock dependency{&engine, node,
-                                           std::move(blockDeque)};
+      WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
 
-      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node,
-                                                    std::move(infos));
+      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
       testee.addDependency(&dependency);
       size_t atMost = 1;
       size_t total = 0;
@@ -249,11 +244,9 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
       blockDeque.push_back(std::move(blockd));
       blockDeque.push_back(std::move(blocke));
 
-      WaitingExecutionBlockMock dependency{&engine, node,
-                                           std::move(blockDeque)};
+      WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
 
-      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node,
-                                                    std::move(infos));
+      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
       testee.addDependency(&dependency);
       size_t atMost = 2;
       size_t total = 0;
@@ -309,11 +302,9 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
       blockDeque.push_back(std::move(blockd));
       blockDeque.push_back(std::move(blocke));
 
-      WaitingExecutionBlockMock dependency{&engine, node,
-                                           std::move(blockDeque)};
+      WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
 
-      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node,
-                                                    std::move(infos));
+      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
       testee.addDependency(&dependency);
       size_t atMost = 1;
       size_t skipped = 0;
@@ -373,11 +364,10 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
       std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
       blockDeque.push_back(std::move(block));
 
-      WaitingExecutionBlockMock dependency{&engine, node,
-                                           std::move(blockDeque)};
+      WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
 
       ExecutionBlockImpl<TestEmptyExecutorHelper> testee(&engine, node,
-                                                    std::move(emptyInfos));
+                                                         std::move(emptyInfos));
       testee.addDependency(&dependency);
 
       size_t atMost = 1000;
