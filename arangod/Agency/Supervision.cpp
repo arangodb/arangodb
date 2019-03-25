@@ -1151,7 +1151,7 @@ void Supervision::workJobs() {
 
   // Do not start other jobs, if above resilience jobs aborted stuff
   if (!_haveAborts) {
-    bool selectRandom = false;
+    bool selectRandom = todos.size() > 100;
 
     LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin ToDos";
     for (auto const& todoEnt : todos) {
