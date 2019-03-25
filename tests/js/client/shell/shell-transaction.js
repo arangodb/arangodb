@@ -3486,7 +3486,7 @@ function transactionAQLStreamSuite () {
         });
         let tc = trx.collection(cn);
 
-        let cursor1 = trx.query('FOR i IN @@cn FILTER i.value1 == 1 REMOVE i._key IN @@cn', { '@cn': cn });
+        let cursor1 = trx.query('FOR i IN @@cn FILTER i.value1 == 1 REMOVE i._key IN @@cn', { '@cn': cn }, {}, {stream:true});
         while (cursor1.hasNext()) {
           cursor1.next();
         }
@@ -3497,7 +3497,7 @@ function transactionAQLStreamSuite () {
         assertEqual(4500, tc.count());
 
         tc = trx.collection(cn + 'Vertex');
-        cursor2 = trx.query('FOR i IN @@vc UPDATE {_key: i._key, updated:1} IN @@vc', { '@vc': cn + 'Vertex' });
+        cursor2 = trx.query('FOR i IN @@vc UPDATE {_key: i._key, updated:1} IN @@vc', { '@vc': cn + 'Vertex' }, {}, {stream:true});
         while (cursor2.hasNext()) {
           cursor2.next();
         }
