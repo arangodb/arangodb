@@ -23,13 +23,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ExecutionBlock.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
-#include "ExecutionBlock.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -119,14 +120,13 @@ void ExecutionBlock::throwIfKilled() {
   }
 }
 
-std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(AqlItemBlock* items,
-                                                                             size_t pos) {
+std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(InputAqlItemRow const& input) {
   if (_dependencyPos == _dependencies.end()) {
     // We need to start again.
     _dependencyPos = _dependencies.begin();
   }
   for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
-    auto res = (*_dependencyPos)->initializeCursor(items, pos);
+    auto res = (*_dependencyPos)->initializeCursor(input);
     if (res.first == ExecutionState::WAITING || !res.second.ok()) {
       // If we need to wait or get an error we return as is.
       return res;
@@ -632,4 +632,3 @@ RegisterId ExecutionBlock::getNrOutputRegisters() const {
 
   return outputNrRegs;
 }
-

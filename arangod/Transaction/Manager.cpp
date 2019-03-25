@@ -434,9 +434,12 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
     allTransactionsLocker.unlock();
     std::this_thread::yield();
     
-    if (i++ > 16) {
+    if (i++ > 32) {
       LOG_TOPIC(DEBUG, Logger::TRANSACTIONS) << "waiting on trx lock " << tid;
       i = 0;
+      if (application_features::ApplicationServer::isStopping()) {
+        return nullptr; // shutting down
+      }
     }
   } while (true);
   

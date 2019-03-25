@@ -68,7 +68,8 @@ class ExecutionEngine {
   TEST_VIRTUAL Query* getQuery() const { return _query; }
 
   /// @brief initializeCursor, could be called multiple times
-  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos);
+  std::pair<ExecutionState, Result> initializeCursor(std::unique_ptr<AqlItemBlock>&& items,
+                                                     size_t pos);
 
   /// @brief shutdown, will be called exactly once for the whole query, blocking
   /// variant
@@ -103,7 +104,9 @@ class ExecutionEngine {
   RegisterId resultRegister() const { return _resultRegister; }
 
   /// @brief accessor to the memory recyler for AqlItemBlocks
-  TEST_VIRTUAL AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
+  TEST_VIRTUAL AqlItemBlockManager& itemBlockManager() {
+    return _itemBlockManager;
+  }
 
  public:
   /// @brief execution statistics for the query
@@ -131,7 +134,6 @@ class ExecutionEngine {
 
   /// @brief whether or not shutdown() was executed
   bool _wasShutdown;
-
 };
 }  // namespace aql
 }  // namespace arangodb
