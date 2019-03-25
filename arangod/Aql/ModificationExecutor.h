@@ -125,12 +125,12 @@ struct IgnoreDocumentNotFound : BoolWrapper {
   explicit IgnoreDocumentNotFound(bool b) : BoolWrapper(b){};
 };
 
-class ModificationExecutorInfos : public ExecutorInfos {
- public:
+struct ModificationExecutorInfos : public ExecutorInfos {
   ModificationExecutorInfos(
       boost::optional<RegisterId> input1RegisterId, boost::optional<RegisterId> input2RegisterId,
       boost::optional<RegisterId> input3RegisterId, boost::optional<RegisterId> outputNewRegisterId,
-      boost::optional<RegisterId> outputOldRegisterId, RegisterId nrInputRegisters,
+      boost::optional<RegisterId> outputOldRegisterId,
+      boost::optional<RegisterId> outputRegisterId, RegisterId nrInputRegisters,
       RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
       std::unordered_set<RegisterId> registersToKeep, transaction::Methods* trx,
       OperationOptions options, aql::Collection const* aqlCollection,
@@ -139,7 +139,8 @@ class ModificationExecutorInfos : public ExecutorInfos {
       IsReplace isReplace, IgnoreDocumentNotFound ignoreDocumentNotFound)
       : ExecutorInfos(makeSet({wrap(input1RegisterId), wrap(input2RegisterId),
                                wrap(input3RegisterId)}) /*input registers*/,
-                      makeSet({wrap(outputOldRegisterId), wrap(outputNewRegisterId)}) /*output registers*/,
+                      makeSet({wrap(outputOldRegisterId), wrap(outputNewRegisterId),
+                               wrap(outputRegisterId)}) /*output registers*/,
                       nrInputRegisters, nrOutputRegisters,
                       std::move(registersToClear), std::move(registersToKeep)),
         _trx(trx),
@@ -155,7 +156,8 @@ class ModificationExecutorInfos : public ExecutorInfos {
         _input2RegisterId(input2RegisterId),
         _input3RegisterId(input3RegisterId),
         _outputNewRegisterId(outputNewRegisterId),
-        _outputOldRegisterId(outputOldRegisterId) {}
+        _outputOldRegisterId(outputOldRegisterId),
+        _outputRegisterId(outputRegisterId) {}
 
   ModificationExecutorInfos() = delete;
   ModificationExecutorInfos(ModificationExecutorInfos&&) = default;
@@ -183,6 +185,7 @@ class ModificationExecutorInfos : public ExecutorInfos {
 
   boost::optional<RegisterId> _outputNewRegisterId;
   boost::optional<RegisterId> _outputOldRegisterId;
+  boost::optional<RegisterId> _outputRegisterId;  // single remote
 };
 
 template <typename FetcherType>
@@ -233,11 +236,12 @@ class ModificationExecutor : public ModificationExecutorBase<FetcherType> {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
-/** 
- * This executor immedieately  returns every actually consumed row
- * All other rows belong to the fetcher.
- */
+  /**
+   * This executor immedieately  returns every actually consumed row
+   * All other rows belong to the fetcher.
+   */
   inline size_t numberOfRowsInFlight() const { return 0; }
+
  private:
   Modifier _modifier;
 };

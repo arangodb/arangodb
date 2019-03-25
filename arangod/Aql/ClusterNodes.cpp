@@ -39,6 +39,7 @@
 #include "Aql/RemoteExecutor.h"
 #include "Aql/SortingGatherExecutor.h"
 #include "Aql/ScatterExecutor.h"
+#include "Aql/SingleRemoteModificationExecutor.h"
 
 #include "Transaction/Methods.h"
 
@@ -496,7 +497,52 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(
 /// @brief creates corresponding SingleRemoteOperationNode
 std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<SingleRemoteOperationBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+
+  TRI_ASSERT(previousNode != nullptr);
+
+  auto in = variableToRegisterOptionalId(_inVariable);
+  auto out = variableToRegisterOptionalId(_outVariable);
+  auto outputNew = variableToRegisterOptionalId(_outVariableNew);
+  auto outputOld = variableToRegisterOptionalId(_outVariableOld);
+
+  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+
+  SingleRemoteModificationInfos infos(
+      in /*input1*/, boost::none /*input1*/, boost::none /*input1*/, outputNew,
+      outputOld, out /*output*/,
+      getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
+      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
+      calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
+      _collection, ProducesResults(false /*producesResults()*/),
+      ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
+      IgnoreErrors(_options.ignoreErrors), DoCount(true /*countStats()*/),
+      IsReplace(false) /*(needed by upsert)*/,
+      IgnoreDocumentNotFound(_options.ignoreDocumentNotFound), _key,
+      this->hasParent(), this->_replaceIndexNode);
+
+  if (_mode == NodeType::INDEX) {
+    return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<IndexTag>>>(
+        &engine, this, std::move(infos));
+  } else if (_mode == NodeType::INSERT) {
+    return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Insert>>>(
+        &engine, this, std::move(infos));
+  } else if (_mode == NodeType::REMOVE) {
+    return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Remove>>>(
+        &engine, this, std::move(infos));
+  } else if (_mode == NodeType::REPLACE) {
+    return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Replace>>>(
+        &engine, this, std::move(infos));
+  } else if (_mode == NodeType::UPDATE) {
+    return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Update>>>(
+        &engine, this, std::move(infos));
+  } else if (_mode == NodeType::UPSERT) {
+    return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Upsert>>>(
+        &engine, this, std::move(infos));
+  } else {
+    TRI_ASSERT(false);
+    return nullptr;
+  }
 }
 
 /// @brief toVelocyPack, for SingleRemoteOperationNode

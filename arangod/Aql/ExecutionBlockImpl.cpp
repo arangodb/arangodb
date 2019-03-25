@@ -51,6 +51,7 @@
 #include "Aql/ShortestPathExecutor.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
+#include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SortedCollectExecutor.h"
 #include "Aql/SortingGatherExecutor.h"
 #include "Aql/TraversalExecutor.h"
@@ -409,6 +410,12 @@ template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Update, 
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Update, AllRowsFetcher>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Upsert, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Upsert, AllRowsFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<IndexTag>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Insert>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Remove>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Update>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Replace>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Upsert>>;
 template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<true>>;

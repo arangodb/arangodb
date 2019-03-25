@@ -156,9 +156,6 @@ void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
   }
 
   auto code = first->first;
-
-  // Try to figure out exact error. This will
-  // only work if operation was not silent.
   std::string message;
   try {
     if (opRes.slice().isArray()) {
@@ -174,11 +171,9 @@ void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
     // Fall-through to returning the generic error message,
     // which better than forwarding an internal error here.
   }
-
   if (!message.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(code, message);
   }
-
   // Throw generic error, as no error message was found.
   THROW_ARANGO_EXCEPTION(code);
 }
