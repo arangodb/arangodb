@@ -224,9 +224,10 @@ inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find c
 }
 
 template <bool ordered>
-void IResearchViewExecutor<ordered>::fillPkBuffer(
-    irs::doc_iterator& it, irs::columnstore_reader::values_reader_f const& values) {
-  while (!_pkBuffer.full() && it.next()) {
+void IResearchViewExecutor<ordered>::fillPkBuffer(irs::doc_iterator& it,
+                                                  irs::columnstore_reader::values_reader_f const& values,
+                                                  size_t atMost) {
+  while (!_pkBuffer.full() && it.next() && _pkBuffer.size() < atMost) {
     irs::bytes_ref key;
     irs::doc_id_t const docId = it.value();
     if (values(docId, key)) {
@@ -250,15 +251,15 @@ void IResearchViewExecutor<ordered>::fillPkBuffer(
   }
 }
 
-template<bool ordered>
+template <bool ordered>
 LocalDocumentId IResearchViewExecutor<ordered>::getNextPk(
-  irs::doc_iterator &it, irs::columnstore_reader::values_reader_f const &values
-) {
+    irs::doc_iterator& it,
+    irs::columnstore_reader::values_reader_f const& values, size_t atMost) {
   LocalDocumentId id = LocalDocumentId::none();
 
   if (_pkBuffer.empty()) {
     // Try to fill the buffer if it's empty
-    fillPkBuffer(it, values);
+    fillPkBuffer(it, values, atMost);
   }
 
   if (!_pkBuffer.empty()) {
@@ -298,7 +299,7 @@ bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
     TRI_ASSERT(_pkReader);
 
     // try to read a document PK from iresearch
-    LocalDocumentId documentId = getNextPk(*_itr, _pkReader);
+    LocalDocumentId documentId = getNextPk(*_itr, _pkReader, ctx.outputRow.numRowsLeftToWrite());
 
     // read document from underlying storage engine, if we got an id
     if (documentId.isSet() &&
