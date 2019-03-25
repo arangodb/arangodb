@@ -503,5 +503,12 @@ bool IResearchViewExecutor<ordered>::readDocument(
   return collection.readDocumentWithCallback(infos().getQuery().trx(), docPk, callback);
 }
 
+template<bool ordered>
+size_t IResearchViewExecutor<ordered>::numberOfRowsInFlight() const {
+  // not implemented
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
 template class ::arangodb::aql::IResearchViewExecutor<false>;
 template class ::arangodb::aql::IResearchViewExecutor<true>;

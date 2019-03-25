@@ -144,6 +144,9 @@ class IResearchViewExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
+  // not implemented!
+  inline size_t numberOfRowsInFlight() const;
+
  private:
   class ReadContext {
    private:
