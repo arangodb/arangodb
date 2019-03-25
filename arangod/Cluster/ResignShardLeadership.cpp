@@ -67,7 +67,7 @@ ResignShardLeadership::ResignShardLeadership(MaintenanceFeature& feature,
   TRI_ASSERT(desc.has(SHARD));
 
   if (!error.str().empty()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
+    LOG_TOPIC("2aa84", ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -79,7 +79,7 @@ bool ResignShardLeadership::first() {
   std::string const& database = _description.get(DATABASE);
   std::string const& collection = _description.get(SHARD);
 
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC("14f43", DEBUG, Logger::MAINTENANCE)
       << "trying to withdraw as leader of shard '" << database << "/" << collection;
 
   // This starts a write transaction, just to wait for any ongoing
@@ -99,7 +99,7 @@ bool ResignShardLeadership::first() {
       std::stringstream error;
       error << "Failed to lookup local collection " << collection
             << " in database " + database;
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+      LOG_TOPIC("e06ca", ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
       _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
@@ -131,7 +131,7 @@ bool ResignShardLeadership::first() {
   } catch (std::exception const& e) {
     std::stringstream error;
     error << "exception thrown when resigning:" << e.what();
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
+    LOG_TOPIC("173dd", ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     return false;
   }

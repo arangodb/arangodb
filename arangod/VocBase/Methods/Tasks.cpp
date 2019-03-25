@@ -183,7 +183,7 @@ void Task::shutdownTasks() {
     }
 
     if (++iterations % 10 == 0) {
-      LOG_TOPIC(INFO, Logger::FIXME) << "waiting for " << size << " task(s) to complete";
+      LOG_TOPIC("3966b", INFO, Logger::FIXME) << "waiting for " << size << " task(s) to complete";
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
@@ -421,20 +421,20 @@ void Task::work(ExecContext const* exec) {
             TRI_GET_GLOBALS();
 
             v8g->_canceled = true;
-            LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+            LOG_TOPIC("131e8", WARN, arangodb::Logger::FIXME)
                 << "caught non-catchable exception (aka termination) in job";
           }
         }
       } catch (arangodb::basics::Exception const& ex) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("d6729", ERR, arangodb::Logger::FIXME)
             << "caught exception in V8 user task: " << TRI_errno_string(ex.code())
             << " " << ex.what();
       } catch (std::bad_alloc const&) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("bfe8a", ERR, arangodb::Logger::FIXME)
             << "caught exception in V8 user task: "
             << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
       } catch (...) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("342ec", ERR, arangodb::Logger::FIXME)
             << "caught unknown exception in V8 user task";
       }
     }

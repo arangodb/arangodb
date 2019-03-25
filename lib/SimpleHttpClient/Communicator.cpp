@@ -179,7 +179,7 @@ Ticket Communicator::addRequest(std::unique_ptr<NewRequest> newRequest) {
 
   newRequest->_ticketId = id;
   
-  LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+  LOG_TOPIC("ada3a", TRACE, Logger::COMMUNICATION)
       << "putting request to " << newRequest->_destination << " onto queue with ticket id " << newRequest->_ticketId;
 
   {
@@ -195,7 +195,7 @@ Ticket Communicator::addRequest(std::unique_ptr<NewRequest> newRequest) {
 #endif
 
   if (numBytes != 1) {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION)
+    LOG_TOPIC("18eee", WARN, Logger::COMMUNICATION)
         << "Couldn't wake up pipe. numBytes was " + std::to_string(numBytes);
   }
 
@@ -275,8 +275,8 @@ void Communicator::createRequestInProgress(std::unique_ptr<NewRequest> newReques
   Ticket const ticketId = newRequest->_ticketId;
 
   if (!_enabled) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::COMMUNICATION)
-        << "Request to  '" << newRequest->_destination
+    LOG_TOPIC("7cc49", DEBUG, arangodb::Logger::COMMUNICATION)
+        << "Request to '" << newRequest->_destination
         << "' was not even started because communication is disabled";
     callErrorFn(ticketId, newRequest->_destination,
                 newRequest->_callbacks, TRI_COMMUNICATOR_DISABLED, {nullptr});
@@ -474,7 +474,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   }
    
   if (!curlHandle) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION)
+    LOG_TOPIC("35608", ERR, Logger::COMMUNICATION)
         << "In progress id not found via _handlesInProgress.find("
         << rip->_newRequest->_ticketId << ")";
     return;
@@ -485,18 +485,18 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   //   object destroyed.  use shared_from_this() if ever essential.
   rip->_newRequest->_callbacks._scheduleMe([curlHandle, handle, rc, rip] { 
     double connectTime = 0.0;
-    LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+    LOG_TOPIC("44845", TRACE, Logger::COMMUNICATION)
         << ::buildPrefix(rip->_newRequest->_ticketId) << "curl rc is : " << rc << " after "
         << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
 
     if (CURLE_OPERATION_TIMEDOUT == rc) {
       curl_easy_getinfo(handle, CURLINFO_CONNECT_TIME, &connectTime);
-      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+      LOG_TOPIC("23b08", TRACE, Logger::COMMUNICATION)
           << ::buildPrefix(rip->_newRequest->_ticketId) << "CURLINFO_CONNECT_TIME is " << connectTime;
     }  // if
 
     if (strlen(rip->_errorBuffer) != 0) {
-      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+      LOG_TOPIC("e1537", TRACE, Logger::COMMUNICATION)
           << ::buildPrefix(rip->_newRequest->_ticketId)
           << "curl error details: " << rip->_errorBuffer;
     }
@@ -505,7 +505,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
     curl_easy_getinfo(handle, CURLINFO_NAMELOOKUP_TIME, &namelookup);
 
     if (5.0 <= namelookup) {
-      LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
+      LOG_TOPIC("93273", WARN, arangodb::Logger::FIXME)
           << "libcurl DNS lookup took " << namelookup
           << " seconds.  Consider using static IP addresses.";
     }
@@ -551,7 +551,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
         if (rip->_aborted) {
           callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
         } else {
-          LOG_TOPIC(ERR, arangodb::Logger::COMMUNICATION)
+          LOG_TOPIC("1d6e6", ERR, arangodb::Logger::FIXME)
               << "got a write error from curl but request was not aborted";
           callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
         }
@@ -561,7 +561,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
         callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
         break;
       default:
-        LOG_TOPIC(ERR, arangodb::Logger::COMMUNICATION) << "curl return " << rc;
+        LOG_TOPIC("a1f90", ERR, arangodb::Logger::FIXME) << "curl return " << rc;
         callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
         break;
     }
@@ -585,7 +585,7 @@ size_t Communicator::readBody(void* data, size_t size, size_t nitems, void* user
 void Communicator::logHttpBody(std::string const& prefix, std::string const& data) {
   std::string::size_type n = 0;
   while (n < data.length()) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << prefix << " " << data.substr(n, 80);
+    LOG_TOPIC("0d0b4", DEBUG, Logger::COMMUNICATION) << prefix << " " << data.substr(n, 80);
     n += 80;
   }
 }
@@ -598,7 +598,7 @@ void Communicator::logHttpHeaders(std::string const& prefix, std::string const& 
     if (n == std::string::npos) {
       break;
     }
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+    LOG_TOPIC("36b7e", DEBUG, Logger::COMMUNICATION)
         << prefix << " " << headerData.substr(last, n - last);
     last = n + 2;
   }
@@ -622,7 +622,7 @@ int Communicator::curlDebug(CURL* handle, curl_infotype type, char* data,
 
   switch (type) {
     case CURLINFO_TEXT:
-      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << prefix << "Text: " << dataStr;
+      LOG_TOPIC("a8ed6", TRACE, Logger::COMMUNICATION) << prefix << "Text: " << dataStr;
       break;
     case CURLINFO_HEADER_OUT:
       logHttpHeaders(prefix + "Header >>", dataStr);
@@ -637,11 +637,11 @@ int Communicator::curlDebug(CURL* handle, curl_infotype type, char* data,
       logHttpBody(prefix + "Body <<", dataStr);
       break;
     case CURLINFO_SSL_DATA_OUT:
-      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+      LOG_TOPIC("b22fd", TRACE, Logger::COMMUNICATION)
           << prefix << "SSL outgoing data of size " << std::to_string(size);
       break;
     case CURLINFO_SSL_DATA_IN:
-      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+      LOG_TOPIC("5e31f", TRACE, Logger::COMMUNICATION)
           << prefix << "SSL incoming data of size " << std::to_string(size);
       break;
     case CURLINFO_END:
@@ -700,7 +700,7 @@ void Communicator::abortRequest(Ticket ticketId) {
     return;
   }
 
-  LOG_TOPIC(WARN, Logger::REQUESTS)
+  LOG_TOPIC("c8c2e", WARN, Logger::REQUESTS)
       << ::buildPrefix(handle->second->_rip._newRequest->_ticketId)
       << "aborting request to " << handle->second->_rip._newRequest->_destination;
   handle->second->_rip._aborted = true;
@@ -737,7 +737,7 @@ void Communicator::callErrorFn(Ticket const& ticketId, std::string const& destin
   auto total = TRI_microtime() - start;
 
   if (total > CALLBACK_WARN_TIME) {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION)
+    LOG_TOPIC("5f298", WARN, Logger::COMMUNICATION)
         << ::buildPrefix(ticketId) << "error callback for request to "
         << destination << " took " << total << "s";
   }
@@ -755,7 +755,7 @@ void Communicator::callSuccessFn(Ticket const& ticketId, std::string const& dest
   auto total = TRI_microtime() - start;
 
   if (total > CALLBACK_WARN_TIME) {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION)
+    LOG_TOPIC("0e074", WARN, Logger::COMMUNICATION)
         << ::buildPrefix(ticketId) << "success callback for request to "
         << destination << " took " << total << "s";
   }

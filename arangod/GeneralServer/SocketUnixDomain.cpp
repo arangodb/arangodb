@@ -61,7 +61,7 @@ void SocketUnixDomain::close(asio_ns::error_code& ec) {
   if (_socket->is_open()) {
     _socket->close(ec);
     if (ec && ec != asio_ns::error::not_connected) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+      LOG_TOPIC("8f724", DEBUG, Logger::COMMUNICATION)
           << "closing socket failed with: " << ec.message();
     }
   }

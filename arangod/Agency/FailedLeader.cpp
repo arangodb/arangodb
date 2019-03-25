@@ -73,7 +73,7 @@ FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency";
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
+    LOG_TOPIC("cae01", ERR, Logger::SUPERVISION) << err.str();
     finish("", _shard, false, err.str());
     _status = FAILED;
   }
@@ -129,7 +129,7 @@ void FailedLeader::rollback() {
 
 bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   using namespace std::chrono;
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("46046", INFO, Logger::SUPERVISION)
       << "Create failedLeader for " + _shard + " from " + _from;
 
   if (b == nullptr) {
@@ -189,7 +189,7 @@ bool FailedLeader::start(bool& aborts) {
     _to = commonHealthyInSync;
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("0ced0", INFO, Logger::SUPERVISION)
       << "Start failedLeader for " + _shard + " from " + _from + " to " + _to;
 
   using namespace std::chrono;
@@ -213,7 +213,7 @@ bool FailedLeader::start(bool& aborts) {
       if (jobIdNode.second) {
         jobIdNode.first.toBuilder(todo);
       } else {
-        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
+        LOG_TOPIC("96395", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
                                                     " from agency snapshot";
         return false;
       }
@@ -315,17 +315,17 @@ bool FailedLeader::start(bool& aborts) {
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("b1a8c", DEBUG, Logger::SUPERVISION)
       << "FailedLeader transaction: " << pending.toJson();
 
   trans_ret_t res = generalTransaction(_agent, pending);
 
   if (!res.accepted) {  // lost leadership
-    LOG_TOPIC(INFO, Logger::SUPERVISION) << "Leadership lost! Job " << _jobId << " handed off.";
+    LOG_TOPIC("1f01f", INFO, Logger::SUPERVISION) << "Leadership lost! Job " << _jobId << " handed off.";
     return false;
   }
 
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("c7421", DEBUG, Logger::SUPERVISION)
       << "FailedLeader result: " << res.result->toJson();
 
   // Something went south. Let's see
@@ -350,7 +350,7 @@ bool FailedLeader::start(bool& aborts) {
     slice = result.get(std::vector<std::string>(
         {agencyPrefix, "Supervision", "Health", _to, "Status"}));
     if (slice.isString() && slice.copyString() != "GOOD") {
-      LOG_TOPIC(INFO, Logger::SUPERVISION)
+      LOG_TOPIC("7e2ef", INFO, Logger::SUPERVISION)
           << "Will not failover from " << _from << " to " << _to
           << " as target server is no longer in good condition. Will retry.";
       return false;
@@ -360,7 +360,7 @@ bool FailedLeader::start(bool& aborts) {
     slice = result.get(std::vector<std::string>(
         {agencyPrefix, "Plan", "Collections", _database, _collection, "shards", _shard}));
     if (!slice.isNone()) {
-      LOG_TOPIC(INFO, Logger::SUPERVISION)
+      LOG_TOPIC("eedcf", INFO, Logger::SUPERVISION)
           << "Plan no longer holds the expected server list. Will retry.";
     }
 
@@ -368,7 +368,7 @@ bool FailedLeader::start(bool& aborts) {
     slice = result.get(
         std::vector<std::string>({agencyPrefix, "Supervision", "DBServers", _to}));
     if (!slice.isNone()) {
-      LOG_TOPIC(INFO, Logger::SUPERVISION)
+      LOG_TOPIC("aff11", INFO, Logger::SUPERVISION)
           << "Destination server " << _to << " meanwhile is blocked by job "
           << slice.copyString();
     }
@@ -377,7 +377,7 @@ bool FailedLeader::start(bool& aborts) {
     slice = result.get(
         std::vector<std::string>({agencyPrefix, "Supervision", "Shards", _shard}));
     if (!slice.isNone()) {
-      LOG_TOPIC(INFO, Logger::SUPERVISION) << "Shard  " << _shard << " meanwhile is blocked by job "
+      LOG_TOPIC("71bb2", INFO, Logger::SUPERVISION) << "Shard  " << _shard << " meanwhile is blocked by job "
                                            << slice.copyString();
     }
   }
@@ -424,7 +424,7 @@ JOB_STATUS FailedLeader::status() {
                                           clone.shard + "/servers");
     if (plan_slice.second && cur_slice.second &&
         plan_slice.first[0] != cur_slice.first[0]) {
-      LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      LOG_TOPIC("0d8ca", DEBUG, Logger::SUPERVISION)
           << "FailedLeader waiting for " << sub + "/" + shard;
       break;
     }
@@ -433,7 +433,7 @@ JOB_STATUS FailedLeader::status() {
 
   if (done) {
     if (finish("", shard)) {
-      LOG_TOPIC(INFO, Logger::SUPERVISION)
+      LOG_TOPIC("1ead6", INFO, Logger::SUPERVISION)
           << "Finished failedLeader for " + _shard + " from " + _from + " to " + _to;
       return FINISHED;
     }

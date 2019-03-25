@@ -109,7 +109,7 @@ int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
     VPackSlice serversRegistered = result.slice()[0].get(std::vector<std::string>(
         {AgencyCommManager::path(), "Supervision", "Health"}));
 
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Server Status: " << serversRegistered.toJson();
+    LOG_TOPIC("68f55", INFO, Logger::PREGEL) << "Server Status: " << serversRegistered.toJson();
 
     if (serversRegistered.isObject()) {
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
@@ -160,7 +160,7 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
   auto const& conductors = _listeners.find(shard);
   auto const& currentPrimary = _primaryServers.find(shard);
   if (conductors == _listeners.end() || currentPrimary == _primaryServers.end()) {
-    LOG_TOPIC(ERR, Logger::PREGEL) << "Shard is not properly registered";
+    LOG_TOPIC("30077", ERR, Logger::PREGEL) << "Shard is not properly registered";
     return;
   }
 
@@ -174,7 +174,7 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
         for (Conductor* cc : conductors->second) {
           cc->startRecovery();
         }
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Recovery action was initiated";
+        LOG_TOPIC("e9429", INFO, Logger::PREGEL) << "Recovery action was initiated";
         break;
       }
     }

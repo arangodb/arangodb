@@ -870,7 +870,7 @@ bool GraphOperations::hasPermissionsFor(std::string const& collection, auth::Lev
 
   ExecContext const* execContext = ExecContext::CURRENT;
   if (execContext == nullptr) {
-    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
+    LOG_TOPIC("08e1f", DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
     return true;
   }
 
@@ -878,7 +878,7 @@ bool GraphOperations::hasPermissionsFor(std::string const& collection, auth::Lev
     return true;
   }
 
-  LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "Not allowed.";
+  LOG_TOPIC("ef8d1", DEBUG, Logger::GRAPHS) << logprefix << "Not allowed.";
   return false;
 }
 
@@ -893,7 +893,7 @@ Result GraphOperations::checkEdgeDefinitionPermissions(EdgeDefinition const& edg
 
   ExecContext const* execContext = ExecContext::CURRENT;
   if (execContext == nullptr) {
-    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
+    LOG_TOPIC("18e8e", DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -908,12 +908,12 @@ Result GraphOperations::checkEdgeDefinitionPermissions(EdgeDefinition const& edg
     // We need RO on all collections. And, in case any collection does not
     // exist, we need RW on the database.
     if (!execContext->canUseCollection(col, auth::Level::RO)) {
-      LOG_TOPIC(DEBUG, Logger::GRAPHS)
+      LOG_TOPIC("e8a53", DEBUG, Logger::GRAPHS)
           << logprefix << "No read access to " << databaseName << "." << col;
       return TRI_ERROR_FORBIDDEN;
     }
     if (!collectionExists(col) && !canUseDatabaseRW) {
-      LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "Creation of " << databaseName
+      LOG_TOPIC("2bcf2", DEBUG, Logger::GRAPHS) << logprefix << "Creation of " << databaseName
                                        << "." << col << " is not allowed.";
       return TRI_ERROR_FORBIDDEN;
     }

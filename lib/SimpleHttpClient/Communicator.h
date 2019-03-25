@@ -176,7 +176,7 @@ class ConnectionCount {
   void advanceCursor() {
     nextMinute += std::chrono::seconds(60);
     cursorMinute = (cursorMinute + 1) % eMinutesTracked;
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+    LOG_TOPIC("954d3", DEBUG, Logger::COMMUNICATION)
         << "ConnectionCount::advanceCursor cursorMinute " << cursorMinute
         << ", retired period " << maxInMinute[cursorMinute]
         << ", newMaxConnections " << newMaxConnections(0);

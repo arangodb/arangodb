@@ -65,7 +65,7 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
     if (!application_features::ApplicationServer::isStopping()) {
       // only log errors if we are not already shutting down...
       // in case of shutdown this error is somewhat expected
-      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("fb402", ERR, arangodb::Logger::CLUSTER)
           << "Callback getValues to agency was not successful: " << result.errorCode()
           << " " << result.errorMessage();
     }
@@ -91,13 +91,13 @@ void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData, bool forc
   // Only called from refetchAndUpdate, we always have the mutex when
   // we get here!
   if (!_lastData || !_lastData->slice().equals(newData->slice()) || forceCheck) {
-    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    LOG_TOPIC("2bd14", DEBUG, Logger::CLUSTER)
         << "AgencyCallback: Got new value " << newData->slice().typeName()
         << " " << newData->toJson() << " forceCheck=" << forceCheck;
     if (execute(newData)) {
       _lastData = newData;
     } else {
-      LOG_TOPIC(DEBUG, Logger::CLUSTER)
+      LOG_TOPIC("337dc", DEBUG, Logger::CLUSTER)
           << "Callback was not successful for " << newData->toJson();
     }
   }
@@ -106,7 +106,7 @@ void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData, bool forc
 bool AgencyCallback::executeEmpty() {
   // only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Executing (empty)";
+  LOG_TOPIC("96022", DEBUG, Logger::CLUSTER) << "Executing (empty)";
   bool result = _cb(VPackSlice::noneSlice());
   if (result) {
     _cv.signal();
@@ -117,7 +117,7 @@ bool AgencyCallback::executeEmpty() {
 bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
   // only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Executing";
+  LOG_TOPIC("add4e", DEBUG, Logger::CLUSTER) << "Executing";
   bool result = _cb(newData->slice());
   if (result) {
     _cv.signal();
@@ -130,7 +130,7 @@ void AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
   // before entering this function!
   if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0)) &&
       application_features::ApplicationServer::isRetryOK()) {
-    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    LOG_TOPIC("1514e", DEBUG, Logger::CLUSTER)
         << "Waiting done and nothing happended. Refetching to be sure";
     // mop: watches have not triggered during our sleep...recheck to be sure
     refetchAndUpdate(false, true);  // Force a check

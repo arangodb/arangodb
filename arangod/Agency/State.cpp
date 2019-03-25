@@ -91,7 +91,7 @@ inline static std::string stringify(index_t index) {
 bool State::persist(index_t index, term_t term, uint64_t millis,
                     arangodb::velocypack::Slice const& entry,
                     std::string const& clientId) const {
-  LOG_TOPIC(TRACE, Logger::AGENCY) << "persist index=" << index << " term=" << term
+  LOG_TOPIC("b735e", TRACE, Logger::AGENCY) << "persist index=" << index << " term=" << term
                                    << " entry: " << entry.toJson();
 
   Builder body;
@@ -121,13 +121,13 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
   try {
     result = trx.insert("log", body.slice(), _options);
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to persist log entry:" << e.what();
+    LOG_TOPIC("ec1ca", ERR, Logger::AGENCY) << "Failed to persist log entry:" << e.what();
     return false;
   }
 
   res = trx.finish(result.result);
 
-  LOG_TOPIC(TRACE, Logger::AGENCY)
+  LOG_TOPIC("e0321", TRACE, Logger::AGENCY)
       << "persist done index=" << index << " term=" << term
       << " entry: " << entry.toJson() << " ok:" << res.ok();
 
@@ -137,7 +137,7 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
 bool State::persistconf(index_t index, term_t term, uint64_t millis,
                         arangodb::velocypack::Slice const& entry,
                         std::string const& clientId) const {
-  LOG_TOPIC(TRACE, Logger::AGENCY)
+  LOG_TOPIC("7d1c0", TRACE, Logger::AGENCY)
       << "persist configuration index=" << index << " term=" << term
       << " entry: " << entry.toJson();
 
@@ -202,7 +202,7 @@ bool State::persistconf(index_t index, term_t term, uint64_t millis,
     logResult = trx.insert("log", log.slice(), _options);
     confResult = trx.replace("configuration", configuration.slice(), _options);
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to persist log entry:" << e.what();
+    LOG_TOPIC("ced35", ERR, Logger::AGENCY) << "Failed to persist log entry:" << e.what();
     return false;
   }
 
@@ -213,7 +213,7 @@ bool State::persistconf(index_t index, term_t term, uint64_t millis,
     _agent->updateConfiguration(config);
   }
 
-  LOG_TOPIC(TRACE, Logger::AGENCY)
+  LOG_TOPIC("089ba", TRACE, Logger::AGENCY)
       << "persist done index=" << index << " term=" << term
       << " entry: " << entry.toJson() << " ok:" << res.ok();
 
@@ -285,11 +285,11 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
 
   if (!success) {  // log to disk or die
     if (leading) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
+      LOG_TOPIC("f5adb", FATAL, Logger::AGENCY)
           << "RAFT leader fails to persist log entries!";
       FATAL_ERROR_EXIT();
     } else {
-      LOG_TOPIC(ERR, Logger::AGENCY)
+      LOG_TOPIC("50f4c", ERR, Logger::AGENCY)
           << "RAFT follower fails to persist log entries!";
       return 0;
     }
@@ -299,11 +299,11 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
     _log.push_back(log_t(idx, term, buf, clientId));  // log to RAM or die
   } catch (std::bad_alloc const&) {
     if (leading) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
+      LOG_TOPIC("81502", FATAL, Logger::AGENCY)
           << "RAFT leader fails to allocate volatile log entries!";
       FATAL_ERROR_EXIT();
     } else {
-      LOG_TOPIC(ERR, Logger::AGENCY)
+      LOG_TOPIC("18c09", ERR, Logger::AGENCY)
           << "RAFT follower fails to allocate volatile log entries!";
       return 0;
     }
@@ -314,7 +314,7 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
       _clientIdLookupTable.emplace(  // keep track of client or die
           std::pair<std::string, index_t>(clientId, idx));
     } catch (...) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
+      LOG_TOPIC("4ab75", FATAL, Logger::AGENCY)
           << "RAFT leader fails to expand client lookup table!";
       FATAL_ERROR_EXIT();
     }
@@ -329,7 +329,7 @@ index_t State::logFollower(query_t const& transactions) {
   size_t nqs = slices.length();
 
   while (!_ready && !_agent->isStopping()) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Waiting for state to get ready ...";
+    LOG_TOPIC("8dd4c", DEBUG, Logger::AGENCY) << "Waiting for state to get ready ...";
     std::this_thread::sleep_for(std::chrono::duration<double>(0.1));
   }
 
@@ -382,7 +382,7 @@ index_t State::logFollower(query_t const& transactions) {
       Store snapshot(_agent, "snapshot");
       snapshot = slices[0].get("readDB");
       if (!storeLogFromSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
-        LOG_TOPIC(FATAL, Logger::AGENCY)
+        LOG_TOPIC("f7250", FATAL, Logger::AGENCY)
             << "Could not restore received log snapshot.";
         FATAL_ERROR_EXIT();
       }
@@ -440,7 +440,7 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
   TRI_ASSERT(slices.isArray());
   size_t ndups = gotSnapshot ? 1 : 0;
 
-  LOG_TOPIC(TRACE, Logger::AGENCY) << "removeConflicts " << slices.toJson();
+  LOG_TOPIC("4083e", TRACE, Logger::AGENCY) << "removeConflicts " << slices.toJson();
   try {
     // If we've got a snapshot anything we might have is obsolete, note that
     // this happens if and only if we decided at the call site that we actually
@@ -456,7 +456,7 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
       VPackSlice slice = slices[ndups];
       index_t idx = slice.get("index").getUInt();
       if (idx > lastIndex) {
-        LOG_TOPIC(TRACE, Logger::AGENCY)
+        LOG_TOPIC("e3d7a", TRACE, Logger::AGENCY)
             << "removeConflicts " << idx << " > " << lastIndex << " break.";
         break;
       }
@@ -474,7 +474,7 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
         // empty. Furthermore, compacted indices are always committed by
         // a majority, thus they will never be overwritten. This means
         // that pos here is always a positive index.
-        LOG_TOPIC(DEBUG, Logger::AGENCY)
+        LOG_TOPIC("ec8d0", DEBUG, Logger::AGENCY)
             << "Removing " << _log.size() - pos << " entries from log starting with "
             << idx << "==" << _log.at(pos).index << " and " << trm << "="
             << _log.at(pos).term;
@@ -500,7 +500,7 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
         // completely empty!
         _log.erase(_log.begin() + pos, _log.end());
 
-        LOG_TOPIC(TRACE, Logger::AGENCY) << "removeConflicts done: ndups=" << ndups
+        LOG_TOPIC("1321d", TRACE, Logger::AGENCY) << "removeConflicts done: ndups=" << ndups
                                          << " first log entry: " << _log.front().index
                                          << " last log entry: " << _log.back().index;
 
@@ -510,7 +510,7 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+    LOG_TOPIC("9e1df", DEBUG, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
   }
 
   return ndups;
@@ -565,7 +565,7 @@ log_t State::atNoLock(index_t index) const {
         std::string(
             "Access before the start of the log deque: (first, requested): (") +
         std::to_string(_cur) + ", " + std::to_string(index);
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << excMessage;
+    LOG_TOPIC("06fe5", DEBUG, Logger::AGENCY) << excMessage;
     throw std::out_of_range(excMessage);
   }
 
@@ -575,7 +575,7 @@ log_t State::atNoLock(index_t index) const {
         std::string(
             "Access beyond the end of the log deque: (last, requested): (") +
         std::to_string(_cur + _log.size()) + ", " + std::to_string(index) + ")";
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << excMessage;
+    LOG_TOPIC("96882", DEBUG, Logger::AGENCY) << excMessage;
     throw std::out_of_range(excMessage);
   }
 
@@ -774,7 +774,7 @@ bool State::loadPersisted() {
     return (lc && lr);
   }
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Couldn't find persisted log";
+  LOG_TOPIC("9e72a", DEBUG, Logger::AGENCY) << "Couldn't find persisted log";
   createCollections();
 
   return true;
@@ -814,7 +814,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
         term = ii.get("term").getNumber<uint64_t>();
         return true;
       } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+        LOG_TOPIC("8ef2a", ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
       }
     } else if (result.length() == 0) {
       // No compaction snapshot yet
@@ -824,7 +824,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
     }
   } else {
     // We should never be here! Just die!
-    LOG_TOPIC(FATAL, Logger::AGENCY)
+    LOG_TOPIC("013d3", FATAL, Logger::AGENCY)
         << "Error retrieving last persisted compaction. The result was not an "
            "Array";
     FATAL_ERROR_EXIT();
@@ -868,7 +868,7 @@ bool State::loadCompacted() {
       _lastCompactionAt = _cur;
       _nextCompactionAfter = _cur + _agent->config().compactionStepSize();
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+      LOG_TOPIC("bc330", ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     }
   }
 
@@ -911,11 +911,11 @@ bool State::loadOrPersistConfiguration() {
     }
 
     try {
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Merging configuration " << resolved.toJson();
+      LOG_TOPIC("504da", DEBUG, Logger::AGENCY) << "Merging configuration " << resolved.toJson();
       _agent->mergeConfiguration(resolved);
 
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY)
+      LOG_TOPIC("6acd2", ERR, Logger::AGENCY)
           << "Failed to merge persisted configuration into runtime "
              "configuration: "
           << e.what();
@@ -926,7 +926,7 @@ bool State::loadOrPersistConfiguration() {
 
     MUTEX_LOCKER(guard, _configurationWriteLock);
 
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "New agency!";
+    LOG_TOPIC("a27cb", DEBUG, Logger::AGENCY) << "New agency!";
 
     TRI_ASSERT(_agent != nullptr);
 
@@ -966,14 +966,14 @@ bool State::loadOrPersistConfiguration() {
     try {
       result = trx.insert("configuration", doc.slice(), _options);
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY)
+      LOG_TOPIC("4384a", ERR, Logger::AGENCY)
           << "Failed to persist configuration entry:" << e.what();
       FATAL_ERROR_EXIT();
     }
 
     res = trx.finish(result.result);
 
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC("c5d88", DEBUG, Logger::AGENCY)
         << "Persisted configuration: " << doc.slice().toJson();
 
     return res.ok();
@@ -1032,7 +1032,7 @@ bool State::loadRemaining() {
           buf->append(value.startAs<char const>(), value.byteSize());
           term_t term(ii.get("term").getNumber<uint64_t>());
           for (index_t i = lastIndex + 1; i < index; ++i) {
-            LOG_TOPIC(WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
+            LOG_TOPIC("f95c7", WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
             _log.push_back(log_t(i, term, buf, std::string()));
             lastIndex = i;
           }
@@ -1046,7 +1046,7 @@ bool State::loadRemaining() {
                                      ii.get(StaticStrings::KeyString).copyString()),
                                  ii.get("term").getNumber<uint64_t>(), tmp, clientId));
           } catch (std::exception const& e) {
-            LOG_TOPIC(ERR, Logger::AGENCY)
+            LOG_TOPIC("44208", ERR, Logger::AGENCY)
                 << "Failed to convert " + ii.get(StaticStrings::KeyString).copyString() +
                        " to integer."
                 << e.what();
@@ -1085,7 +1085,7 @@ bool State::compact(index_t cind, index_t keep) {
   {
     MUTEX_LOCKER(_logLocker, _logLock);
     if (cind <= _cur) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
+      LOG_TOPIC("69afe", DEBUG, Logger::AGENCY)
           << "Not compacting log at index " << cind
           << ", because we already have a later snapshot at index " << _cur;
       return true;
@@ -1104,7 +1104,7 @@ bool State::compact(index_t cind, index_t keep) {
     return false;
   }
   if (index > cind) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
+    LOG_TOPIC("2cda3", ERR, Logger::AGENCY)
         << "Strange, last compaction snapshot " << index << " is younger than "
         << "currently attempted snapshot " << cind;
     return false;
@@ -1118,7 +1118,7 @@ bool State::compact(index_t cind, index_t keep) {
                              false /* do not perform callbacks */);
 
     if (!persistCompactionSnapshot(cind, last.term, snapshot)) {
-      LOG_TOPIC(ERR, Logger::AGENCY)
+      LOG_TOPIC("3b34a", ERR, Logger::AGENCY)
           << "Could not persist compaction snapshot.";
       return false;
     }
@@ -1131,12 +1131,12 @@ bool State::compact(index_t cind, index_t keep) {
     removeObsolete(cind);
   } catch (std::exception const& e) {
     if (!_agent->isStopping()) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to compact persisted store.";
-      LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+      LOG_TOPIC("13fc9", ERR, Logger::AGENCY) << "Failed to compact persisted store.";
+      LOG_TOPIC("33ff0", ERR, Logger::AGENCY) << e.what();
     } else {
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to compact persisted store "
+      LOG_TOPIC("474ae", INFO, Logger::AGENCY) << "Failed to compact persisted store "
                                          "(no problem, already in shutdown).";
-      LOG_TOPIC(INFO, Logger::AGENCY) << e.what();
+      LOG_TOPIC("62b5d", INFO, Logger::AGENCY) << e.what();
     }
   }
   return true;
@@ -1262,18 +1262,18 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
       result = trx.insert("compact", store.slice(), _options);
       if (!result.ok()) {
         if (result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-          LOG_TOPIC(DEBUG, Logger::AGENCY)
+          LOG_TOPIC("b1b55", DEBUG, Logger::AGENCY)
             << "Failed to insert compacted agency state, will attempt to update: "
             << result.errorMessage();
           result = trx.replace("compact", store.slice(), _options);
         } else {
-          LOG_TOPIC(FATAL, Logger::AGENCY)
+          LOG_TOPIC("a9124", FATAL, Logger::AGENCY)
             << "Failed to persist compacted agency state" << result.errorMessage();
           FATAL_ERROR_EXIT();
         }
       }
     } catch (std::exception const& e) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
+      LOG_TOPIC("41965", FATAL, Logger::AGENCY)
         << "Failed to persist compacted agency state: " << e.what();
       FATAL_ERROR_EXIT();
     }
@@ -1287,7 +1287,7 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
     return res.ok();
   }
 
-  LOG_TOPIC(ERR, Logger::AGENCY)
+  LOG_TOPIC("65d2a", ERR, Logger::AGENCY)
       << "Failed to persist snapshot for compaction!";
 
   return false;
@@ -1300,13 +1300,13 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
   _logLock.assertLockedByCurrentThread();
 
   if (!persistCompactionSnapshot(index, term, snapshot)) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
+    LOG_TOPIC("a3f20", ERR, Logger::AGENCY)
         << "Could not persist received log snapshot.";
     return false;
   }
 
   // Now we need to completely erase our log, both persisted and volatile:
-  LOG_TOPIC(DEBUG, Logger::AGENCY)
+  LOG_TOPIC("acd42", DEBUG, Logger::AGENCY)
       << "Removing complete log because of new snapshot.";
 
   // persisted logs
@@ -1365,7 +1365,7 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY)
+  LOG_TOPIC("4c42c", DEBUG, Logger::AGENCY)
       << "Updated persisted agency configuration: " << builder.slice().toJson();
 }
 
@@ -1402,13 +1402,13 @@ query_t State::allLogs() const {
     try {
       everything->add("compact", compqResult.result->slice());
     } catch (std::exception const&) {
-      LOG_TOPIC(ERR, Logger::AGENCY)
+      LOG_TOPIC("1face", ERR, Logger::AGENCY)
           << "Failed to assemble compaction part of everything package";
     }
     try {
       everything->add("logs", logsqResult.result->slice());
     } catch (std::exception const&) {
-      LOG_TOPIC(ERR, Logger::AGENCY)
+      LOG_TOPIC("fe816", ERR, Logger::AGENCY)
           << "Failed to assemble remaining part of everything package";
     }
   }
@@ -1496,7 +1496,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
     store = ii.get("readDB");
     index = arangodb::basics::StringUtils::uint64(ii.get("_key").copyString());
     term = ii.get("term").getNumber<uint64_t>();
-    LOG_TOPIC(INFO, Logger::AGENCY)
+    LOG_TOPIC("d838b", INFO, Logger::AGENCY)
         << "Read snapshot at index " << index << " with term " << term;
   }
 
@@ -1531,13 +1531,13 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
                     ii.get("term").getNumber<uint64_t>(), tmp, clientId);
 
         if (entry.index <= index) {
-          LOG_TOPIC(WARN, Logger::AGENCY)
+          LOG_TOPIC("c8f91", WARN, Logger::AGENCY)
               << "Found unnecessary log entry with index " << entry.index
               << " and term " << entry.term;
         } else {
           b.add(VPackSlice(entry.entry->data()));
           if (entry.index != index + 1) {
-            LOG_TOPIC(WARN, Logger::AGENCY)
+            LOG_TOPIC("ae564", WARN, Logger::AGENCY)
                 << "Did not find log entries for indexes " << index + 1
                 << " to " << entry.index - 1 << ", skipping...";
           }
