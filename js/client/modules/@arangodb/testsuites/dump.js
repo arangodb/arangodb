@@ -29,7 +29,8 @@ const functionsDocumentation = {
   'dump': 'dump tests',
   'dump_authentication': 'dump tests with authentication',
   'dump_encrypted': 'encrypted dump tests',
-  'dump_maskings': 'masked dump tests'
+  'dump_maskings': 'masked dump tests',
+  'dump_multiple': 'restore multiple DBs at once'
 };
 
 const optionsDocumentation = [
