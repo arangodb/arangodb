@@ -205,10 +205,6 @@ CalculationExecutor<calculationType>::produceRow(OutputAqlItemRow& output) {
   // the other way round because it may be owned by exterior.
   TRI_ASSERT(!_hasEnteredContext || _infos.getQuery().hasEnteredContext());
 
-  TRI_IF_FAILURE("CalculationBlock::afterEvaluation") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
   // The following only affects V8Conditions. If we should exit the V8 context
   // between blocks, because we might have to wait for client or upstream, then
   //   hasEnteredContext => state == HASMORE,
