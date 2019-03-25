@@ -164,7 +164,7 @@ ArangoTransaction.prototype.query = function(query, bindVars, cursorOptions, opt
 
   let isStream = false;
   if (options && options.stream) {
-    isStream = this._options.stream;
+    isStream = options.stream;
   }
 
   return new ArangoQueryCursor(this._database, requestResult, isStream);

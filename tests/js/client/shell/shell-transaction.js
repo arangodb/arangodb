@@ -3351,6 +3351,211 @@ function transactionTraversalSuite () {
   };
 }
 
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
+
+function transactionAQLStreamSuite () {
+  'use strict';
+  const cn = 'UnitTestsTransaction';
+  let c;
+
+  return {
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
+
+    setUp: function () {
+      db._drop(cn);
+      db._drop(cn + 'Vertex');
+      db._drop(cn + 'Edge');
+      c = db._create(cn, {numberOfShards: 2, replicationFactor: 2});
+      db._create(cn + 'Vertex', {numberOfShards: 2, replicationFactor: 2});
+      db._createEdgeCollection(cn + 'Edge', {numberOfShards: 2, replicationFactor: 2});
+
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: String(i) });
+      }
+      db.UnitTestsTransactionVertex.insert(docs);
+
+      docs = [];
+      for (let i = 1; i < 100; ++i) {
+        docs.push({ _from: cn + 'Vertex/' + i, _to: cn + 'Vertex/' + (i + 1)});
+      }
+      db.UnitTestsTransactionEdge.insert(docs);
+
+      c.ensureIndex({ type: 'skiplist', fields: ["value1"]});
+      c.ensureIndex({ type: 'skiplist', fields: ["value2"]});
+
+      docs = [];
+      for (let i = 0; i < 5000; i++) {
+        docs.push({value1: i % 10, value2: i % 25 , value3: i % 25 });
+      }
+      c.insert(docs);
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
+      db._drop(cn);
+      db._drop(cn + 'Vertex');
+      db._drop(cn + 'Edge');
+    },
+
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: trx using no collections
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testNoCollectionsInfiniteAql: function () {
+      let trx, cursor;
+      try {
+        trx = db._createTransaction({
+          collections: {}
+        });
+
+        cursor = trx.query('FOR i IN 1..10000000000000 RETURN i', {}, {}, {stream: true});
+        let i = 0;
+        while (cursor.hasNext() && i++ < 2000) {
+          assertEqual(i, cursor.next());
+        }
+
+      } catch(err) {
+        print(err);
+        fail();
+      } finally {
+        if (cursor) {
+          cursor.dispose();
+        }
+        if (trx) {
+          trx.commit();
+        }
+      }
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: trx with embedded AQL
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testAqlStreamQueries: function () {
+      const queries = [
+        `FOR doc IN ${cn} RETURN doc`,
+        `FOR doc IN ${cn} FILTER doc.value1 == 1 UPDATE doc WITH { value1: 1 } INTO ${cn}`,
+        `FOR doc IN ${cn} FILTER doc.value1 == 1 REPLACE doc WITH { value1: 2 } INTO ${cn}`,
+        `FOR doc IN ${cn} FILTER doc.value1 == 2 INSERT { value2: doc.value1 } INTO ${cn}`,
+        `FOR doc IN ${cn} FILTER doc.value1 == 2 INSERT { value2: doc.value1 } INTO ${cn}`,
+        `FOR doc IN ${cn} FILTER doc.value3 >= 4 RETURN doc`,
+        `FOR doc IN ${cn} COLLECT a = doc.value1 INTO groups = doc RETURN { val: a, doc: groups }`
+      ];
+
+      queries.forEach(q => {
+        let trx, cursor;
+        try {
+          trx = db._createTransaction({collections: {write: cn}});
+  
+          cursor = trx.query(q, {}, {}, {stream: true});
+          assertEqual(undefined, cursor.count());
+          while (cursor.hasNext()) {
+            cursor.next();
+          }
+  
+        } catch(err) {
+          fail();
+        } finally {
+          if (cursor) {
+            cursor.dispose();
+          }
+          if (trx) {
+            trx.commit();
+          }
+        }
+      });
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: trx with embedded AQL
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testAqlMultiWrite: function () {
+      const cn1 = cn;
+      const cn2 = + 'Vertex';
+      let obj = {
+        collections: {
+          write: [ cn1, cn2 ]
+        }
+      };
+
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        let tc2 = trx.collection(c2.name());
+        
+        var ops;
+        ops = trx.query('FOR i IN @@cn1 REMOVE i._key IN @@cn1', { '@cn1': cn1 }).getExtra().stats;
+        assertEqual(10, ops.writesExecuted);
+        assertEqual(0, tc1.count());
+
+        ops = trx.query('FOR i IN @@cn2 REMOVE i._key IN @@cn2', { '@cn2': cn2 }).getExtra().stats;
+        assertEqual(10, ops.writesExecuted);
+        assertEqual(0, tc2.count());
+
+      } catch(err) {
+        fail();
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
+      assertEqual(0, c1.count());
+      assertEqual(0, c2.count());
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: use of undeclared traversal collection in transaction
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testUndeclaredTraversalCollection: function () {
+
+      let result;
+      // begin trx
+      let trx = db._createTransaction({
+        collections: {
+          read: [ cn + 'Edge' ],
+          write: [ cn + 'Edge' ]
+        }
+      });
+      try {
+        let tedge = trx.collection(cn + 'Edge');
+
+        let results = trx.query('WITH ' + cn + 'Vertex FOR v, e IN ANY "' + cn + 'Vertex/20" ' + 
+                            cn + 'Edge FILTER v._id == "' + cn + 
+                            'Vertex/21" LIMIT 1 RETURN e').toArray();
+
+        if (results.length > 0) {
+          result = results[0];
+          tedge.remove(result);
+          return 1;
+        }
+      } catch (err) {
+        fail();
+      } finally {
+        trx.commit();
+      }
+      // end trx
+
+      assertEqual(1, result);
+    }
+
+  };
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes the test suites
 // //////////////////////////////////////////////////////////////////////////////
@@ -3364,5 +3569,6 @@ jsunity.run(transactionBarriersSuite);
 jsunity.run(transactionCountSuite);
 jsunity.run(transactionCrossCollectionSuite);
 jsunity.run(transactionTraversalSuite);
+jsunity.run(transactionAQLStreamSuite);
 
 return jsunity.done();
