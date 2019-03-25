@@ -67,10 +67,9 @@ SubqueryExecutor::~SubqueryExecutor() = default;
  */
 
 std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRow(OutputAqlItemRow& output) {
-  if (_state == ExecutionState::DONE && !_subqueryInitialized) {
-    // We have seen DONE upstream, and we have no subquery in progress
-    // NOTE this has to be initilizad as we might get DONE fro upstream
-    // + WAITING in initCursor of Subquery.
+  if (_state == ExecutionState::DONE && !_input.isInitialized()) {
+    // We have seen DONE upstream, and we have discarded our local reference
+    // to the last input, we will not be able to produce results anymore.
     return {_state, NoStats{}};
   }
   while (true) {
@@ -148,28 +147,28 @@ void SubqueryExecutor::writeOutput(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("SubqueryBlock::getSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  if (_infos.returnsData()) {
-    if (!_infos.isConst() || _input.isFirstRowInBlock()) {
-      // In the non const case, or if we are the first row.
-      // We need to copy the data, and hand over ownership
-      TRI_ASSERT(_subqueryResults != nullptr);
-      AqlValue resultDocVec{_subqueryResults.get()};
-      AqlValueGuard guard{resultDocVec, true};
-      output.moveValueInto(_infos.outputRegister(), _input, guard);
-      // Responsibility is handed over
-      _subqueryResults.release();
-      TRI_ASSERT(_subqueryResults == nullptr);
-    } else {
-      // In this case we can simply reference the last written value
-      // We are not responsible for anything ourselfes anymore
-      TRI_ASSERT(_subqueryResults == nullptr);
-      bool didReuse = output.reuseLastStoredValue(_infos.outputRegister(), _input);
-      TRI_ASSERT(didReuse);
-    }
+  if (!_infos.isConst() || _input.isFirstRowInBlock()) {
+    // In the non const case, or if we are the first row.
+    // We need to copy the data, and hand over ownership
+    TRI_ASSERT(_subqueryResults != nullptr);
+
+    // We asser !returnsData => _subqueryResults is empty
+    TRI_ASSERT(_infos.returnsData() || _subqueryResults->empty());
+    AqlValue resultDocVec{_subqueryResults.get()};
+    AqlValueGuard guard{resultDocVec, true};
+    output.moveValueInto(_infos.outputRegister(), _input, guard);
+    // Responsibility is handed over
+    _subqueryResults.release();
+    TRI_ASSERT(_subqueryResults == nullptr);
   } else {
-    output.copyRow(_input);
+    // In this case we can simply reference the last written value
+    // We are not responsible for anything ourselfes anymore
+    TRI_ASSERT(_subqueryResults == nullptr);
+    bool didReuse = output.reuseLastStoredValue(_infos.outputRegister(), _input);
+    TRI_ASSERT(didReuse);
   }
   _input = InputAqlItemRow(CreateInvalidInputRowHint{});
+  TRI_ASSERT(output.produced());
 }
 
 /// @brief shutdown, tell dependency and the subquery
