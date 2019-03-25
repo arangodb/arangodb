@@ -92,10 +92,9 @@ function aqlInsertOptionsSuite () {
   return {
     setUp, tearDown,
     testErrorMessageOnUniqueConstraintViolated : function () {
-      let q = `FOR doc IN [{ "_key" : "paff"}, { "_key" : "peng"}]
-                 INSERT doc IN ${collectionName}`;
+      let q = `INSERT {"_key" : "paff"} INTO ${collectionName}`;
       db._query(q);
-      assertEqual(2002, col.count())
+      assertEqual(2001, col.count())
 
       // check generic message
       try {
@@ -103,14 +102,10 @@ function aqlInsertOptionsSuite () {
         fail()
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
-        assertEqual(err.errorMessage, "AQL: " + errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.message + " (while executing)");
       }
 
       // check if we get details, when operation was not silent (retuning something)
-      q = `FOR doc IN [{ "_key" : "paff"}, { "_key" : "peng"}]
-             INSERT doc IN ${collectionName}
-             RETURN NEW
-          `;
+      let q = `INSERT {"_key" : "paff"} INTO ${collectionName} RETURN NEW `;
       try {
         db._query(q);
         fail()

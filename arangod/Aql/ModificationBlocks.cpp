@@ -360,11 +360,12 @@ void ModificationBlock::handleBabyResult(OperationResult const& opRes,
       for (auto doc : VPackArrayIterator(opRes.slice())) {
         if (!doc.isObject() || !doc.hasKey("errorNum") ||
             doc.get("errorNum").getInt() != code) {
-          continue;
+           continue;
         }
         VPackSlice msg = doc.get("errorMessage");
         if (msg.isString()) {
           message = msg.copyString();
+          break;
         }
       }
     }
