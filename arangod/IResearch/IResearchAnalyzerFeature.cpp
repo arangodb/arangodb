@@ -128,7 +128,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
                                     arangodb::transaction::Methods* trx,
                                     arangodb::aql::VPackFunctionParameters const& args) {
   if (2 != args.size() || !args[0].isString() || !args[1].isString()) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("740fd", WARN, arangodb::iresearch::TOPIC)
         << "invalid arguments passed while computing result for function "
            "'TOKENS'";
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
@@ -142,7 +142,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
   if (!analyzers) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("fbd91", WARN, arangodb::iresearch::TOPIC)
         << "failure to find feature 'arangosearch' while computing result for "
            "function 'TOKENS'";
     TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -170,7 +170,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   }
 
   if (!pool) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("0d256", WARN, arangodb::iresearch::TOPIC)
         << "failure to find arangosearch analyzer pool name '" << name
         << "' while computing result for function 'TOKENS'";
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
@@ -181,7 +181,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   auto analyzer = pool->get();
 
   if (!analyzer) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("d7477", WARN, arangodb::iresearch::TOPIC)
         << "failure to find arangosearch analyzer name '" << name
         << "' while computing result for function 'TOKENS'";
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
@@ -190,7 +190,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   }
 
   if (!analyzer->reset(data)) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("45a2d", WARN, arangodb::iresearch::TOPIC)
         << "failure to reset arangosearch analyzer name '" << name
         << "' while computing result for function 'TOKENS'";
     TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -201,7 +201,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   auto& values = analyzer->attributes().get<irs::term_attribute>();
 
   if (!values) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("f46f2", WARN, arangodb::iresearch::TOPIC)
         << "failure to retrieve values from arangosearch analyzer name '"
         << name << "' while computing result for function 'TOKENS'";
     TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -214,7 +214,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
 
   if (!buffer) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("97cd0", WARN, arangodb::iresearch::TOPIC)
         << "failure to allocate result buffer while computing result for "
            "function 'TOKENS'";
 
@@ -286,7 +286,7 @@ arangodb::SystemDatabaseFeature::ptr getSystemDatabase() {
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
 
   if (!database) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("f8c9f", WARN, arangodb::iresearch::TOPIC)
         << "failure to find feature '" << arangodb::SystemDatabaseFeature::name()
         << "' while getting the system database";
 
@@ -305,7 +305,7 @@ bool iresearchAnalyzerLegacyAnalyzers( // upgrade task
   >();
 
   if (!analyzers) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("6b6b5", WARN, arangodb::iresearch::TOPIC)
       << "failure to find '" << arangodb::iresearch::IResearchAnalyzerFeature::name() << "' feature while registering legacy static analyzers with vocbase '" << vocbase.name() << "'";
     TRI_set_errno(TRI_ERROR_INTERNAL);
 
@@ -319,7 +319,7 @@ bool iresearchAnalyzerLegacyAnalyzers( // upgrade task
     >();
 
     if (!sysDatabase) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("8783e", WARN, arangodb::iresearch::TOPIC)
         << "failure to find '" << arangodb::SystemDatabaseFeature::name() << "' feature while registering legacy static analyzers with vocbase '" << vocbase.name() << "'";
       TRI_set_errno(TRI_ERROR_INTERNAL);
 
@@ -380,12 +380,12 @@ bool iresearchAnalyzerLegacyAnalyzers( // upgrade task
       );
 
       if (!res.ok()) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("ec566", WARN, arangodb::iresearch::TOPIC)
           << "failure while registering a legacy static analyzer '" << name << "' with vocbase '" << vocbase.name() << "': " << res.errorNumber() << " " << res.errorMessage();
 
         success = false;
       } else if (!result.first) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("1dc1d", WARN, arangodb::iresearch::TOPIC)
           << "failure while registering a legacy static analyzer '" << name << "' with vocbase '" << vocbase.name() << "'";
 
         success = false;
@@ -520,17 +520,17 @@ bool IResearchAnalyzerFeature::AnalyzerPool::init(irs::string_ref const& type,
       return true;
     }
   } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("62062", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while initializing an arangosearch analizer type '" << _type
         << "' properties '" << _properties << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("a9196", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while initializing an arangosearch analizer type '"
         << _type << "' properties '" << _properties << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("7524a", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while initializing an arangosearch analizer type '"
         << _type << "' properties '" << _properties << "'";
     IR_LOG_EXCEPTION();
@@ -580,20 +580,20 @@ irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const
     // FIXME do not use shared_ptr
     return _cache.emplace(_type, _properties).release();
   } catch (arangodb::basics::Exception const& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("c9256", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while instantiating an arangosearch analizer type "
            "'"
         << _type << "' properties '" << _properties << "': " << e.code() << " "
         << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("93baf", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while instantiating an arangosearch analizer type "
            "'"
         << _type << "' properties '" << _properties << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("08db9", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while instantiating an arangosearch analizer type "
            "'"
         << _type << "' properties '" << _properties << "'";
@@ -705,7 +705,7 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
     auto pool = itr.first->second;
 
     if (!pool) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("2bdc6", WARN, arangodb::iresearch::TOPIC)
           << "failure creating an arangosearch analyzer instance for name '"
           << name << "' type '" << type << "' properties '" << properties << "'";
       TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
@@ -727,7 +727,7 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
 
     if (itr.second) {  // new pool
       if (!_started) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("b8db7", WARN, arangodb::iresearch::TOPIC)
             << "cannot garantee collision-free persistance while creating an "
                "arangosearch analyzer instance for name '"
             << name << "' type '" << type << "' properties '" << properties << "'";
@@ -737,7 +737,7 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
       }
 
       if (!pool->init(type, properties, features)) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("dfe77", WARN, arangodb::iresearch::TOPIC)
             << "failure initializing an arangosearch analyzer instance for "
                "name '"
             << name << "' type '" << type << "' properties '" << properties << "'";
@@ -749,7 +749,7 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
       auto res = storeAnalyzer(*pool);
 
       if (!res.ok()) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("ab445", WARN, arangodb::iresearch::TOPIC)
           << "failure persisting an arangosearch analyzer instance for name '"
           << name << "' type '" << type << "' properties '" << properties
           << "': " << res.errorNumber() << " " << res.errorMessage();
@@ -761,7 +761,7 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
       _customAnalyzers[itr.first->first] = itr.first->second;  // mark as custom
       erase = false;
     } else if (type != pool->_type || properties != pool->_properties) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("f3d4e", WARN, arangodb::iresearch::TOPIC)
           << "name collision detected while registering an arangosearch "
              "analizer name '"
           << name << "' type '" << type << "' properties '" << properties
@@ -774,7 +774,7 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
       auto res = storeAnalyzer(*pool);
 
       if (!res.ok()) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("322a6", WARN, arangodb::iresearch::TOPIC)
           << "failure persisting an arangosearch analyzer instance for name '"
           << name << "' type '" << type << "' properties '" << properties
           << "': " << res.errorNumber() << " " << res.errorMessage();
@@ -786,19 +786,19 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
 
     return std::make_pair(pool, itr.second);
   } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("ac568", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while registering an arangosearch analizer name '"
         << name << "' type '" << type << "' properties '" << properties
         << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("8f3b4", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while registering an arangosearch analizer name '"
         << name << "' type '" << type << "' properties '" << properties
         << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("9030d", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while registering an arangosearch analizer name '"
         << name << "' type '" << type << "' properties '" << properties << "'";
     IR_LOG_EXCEPTION();
@@ -944,7 +944,7 @@ size_t IResearchAnalyzerFeature::erase(irs::string_ref const& name) noexcept {
     auto pool = itr->second;
 
     if (!pool) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("ea7df", WARN, arangodb::iresearch::TOPIC)
           << "removal of an unset arangosearch analizer name '" << name << "'";
       _analyzers.erase(itr->first);  // ok to erase since found in '_customAnalyzers'
       _customAnalyzers.erase(itr);
@@ -957,7 +957,7 @@ size_t IResearchAnalyzerFeature::erase(irs::string_ref const& name) noexcept {
       auto vocbase = getSystemDatabase();
 
       if (!vocbase) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("68dc6", WARN, arangodb::iresearch::TOPIC)
             << "failure to get system database while removing arangosearch "
                "analyzer name '"
             << pool->name() << "'";
@@ -971,7 +971,7 @@ size_t IResearchAnalyzerFeature::erase(irs::string_ref const& name) noexcept {
       auto res = trx.begin();
 
       if (!res.ok()) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("13ff5", WARN, arangodb::iresearch::TOPIC)
             << "failure to start transaction while removing configuration for "
                "arangosearch analyzer name '"
             << pool->name() << "'";
@@ -991,7 +991,7 @@ size_t IResearchAnalyzerFeature::erase(irs::string_ref const& name) noexcept {
 
       // stataic analyzers are not persisted
       if (!result.ok() && result.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("4e7f4", WARN, arangodb::iresearch::TOPIC)
             << "failure to persist AnalyzerPool configuration while removing "
                "arangosearch analyzer name '"
             << pool->name() << "'";
@@ -1001,7 +1001,7 @@ size_t IResearchAnalyzerFeature::erase(irs::string_ref const& name) noexcept {
       }
 
       if (!trx.commit().ok()) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("68afe", WARN, arangodb::iresearch::TOPIC)
             << "failure to commit AnalyzerPool configuration while removing "
                "arangosearch analyzer name '"
             << pool->name() << "'";
@@ -1018,17 +1018,17 @@ size_t IResearchAnalyzerFeature::erase(irs::string_ref const& name) noexcept {
 
     return 1;
   } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("3cbe0", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while removing an arangosearch analizer name '"
         << name << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("e4cd7", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while removing an arangosearch analizer name '"
         << name << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("1afcb", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while removing an arangosearch analizer name '"
         << name << "'";
     IR_LOG_EXCEPTION();
@@ -1047,7 +1047,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
         _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
 
     if (itr == _analyzers.end()) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("4049d", WARN, arangodb::iresearch::TOPIC)
           << "failure to find arangosearch analyzer name '" << name << "'";
 
       return nullptr;
@@ -1059,21 +1059,21 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
       return pool;
     }
 
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("1a29c", WARN, arangodb::iresearch::TOPIC)
         << "failure to get arangosearch analyzer name '" << name << "'";
     TRI_set_errno(TRI_ERROR_INTERNAL);
   } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("29eff", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while retrieving an arangosearch analizer name '"
         << name << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("ce8d5", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while retrieving an arangosearch analizer name '"
         << name << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("5505f", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while retrieving an arangosearch analizer name '"
         << name << "'";
     IR_LOG_EXCEPTION();
@@ -1099,7 +1099,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
   );
 
   if (!res.ok()) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("ed6a3", WARN, arangodb::iresearch::TOPIC)
       << "failure to get arangosearch analyzer name '" << name << "': " << res.errorNumber() << " " << res.errorMessage();
     TRI_set_errno(TRI_ERROR_INTERNAL);
 
@@ -1126,7 +1126,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
 
         if (!pool || !pool->init(IdentityAnalyzer::type().name(),
                                  irs::string_ref::NIL, extraFeatures)) {
-          LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          LOG_TOPIC("26de1", WARN, arangodb::iresearch::TOPIC)
               << "failure creating an arangosearch static analyzer instance "
                  "for name '"
               << name << "'";
@@ -1191,7 +1191,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
           PTR_NAMED(AnalyzerPool, pool, name);
 
           if (!pool || !pool->init(type, args, extraFeatures)) {
-            LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+            LOG_TOPIC("e25f5", WARN, arangodb::iresearch::TOPIC)
                 << "failure creating an arangosearch static analyzer instance "
                    "for name '"
                 << name << "'";
@@ -1240,7 +1240,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
   auto vocbase = getSystemDatabase();
 
   if (!vocbase) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("3cc73", WARN, arangodb::iresearch::TOPIC)
         << "failure to get system database while loading arangosearch analyzer "
            "persisted configuration";
 
@@ -1253,7 +1253,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
   auto res = trx.begin();
 
   if (!res.ok()) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("16400", WARN, arangodb::iresearch::TOPIC)
         << "failure to start transaction while loading arangosearch analyzer "
            "persisted configuration";
 
@@ -1263,7 +1263,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
   auto* collection = trx.documentCollection();
 
   if (!collection) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("ead4b", WARN, arangodb::iresearch::TOPIC)
         << "failure to get collection while loading arangosearch analyzer "
            "persisted configuration";
     trx.abort();
@@ -1276,7 +1276,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
     ManagedDocumentResult result;
 
     if (!collection->readDocument(&trx, token, result)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("377b5", WARN, arangodb::iresearch::TOPIC)
           << "skipping failed read of an arangosearch analyzer persisted "
              "configuration token: "
           << token.id();
@@ -1292,7 +1292,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
         !slice.get("type").isString() || !slice.hasKey("properties") ||
         !(slice.get("properties").isNull() || slice.get("properties").isString() ||
           slice.get("properties").isArray() || slice.get("properties").isObject())) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("e8578", WARN, arangodb::iresearch::TOPIC)
           << "skipping invalid arangosearch analyzer persisted configuration "
              "entry: "
           << slice.toJson();
@@ -1321,7 +1321,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
     auto& pool = entry.first;
 
     if (!pool) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("91db1", WARN, arangodb::iresearch::TOPIC)
           << "failure creating an arangosearch analyzer instance for name '"
           << name << "' type '" << type << "' properties '" << properties << "'";
 
@@ -1334,7 +1334,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
     }
 
     if (!entry.second && initialized.find(name) != initialized.end()) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("1eb5e", WARN, arangodb::iresearch::TOPIC)
           << "name collision detected while registering an arangosearch "
              "analizer name '"
           << name << "' type '" << type << "' properties '" << properties
@@ -1357,7 +1357,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
         staticAnalyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>())) !=
             staticAnalyzers.end()) {
       if (type != pool->_type || properties != pool->_properties) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("d3a5e", WARN, arangodb::iresearch::TOPIC)
             << "name collision with a static analyzer detected while "
                "registering an arangosearch analizer name '"
             << name << "' type '" << type << "' properties '" << properties
@@ -1374,7 +1374,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
                 "' properties '" + std::string(pool->_properties) + "'");
       }
 
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("a0a10", WARN, arangodb::iresearch::TOPIC)
           << "name collision with a static analyzer detected while registering "
              "an arangosearch analizer name '"
           << name << "' type '" << type << "' properties '" << properties << "'";
@@ -1386,7 +1386,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
               std::string(name) + "' type '" + std::string(type) +
               "' properties '" + std::string(properties) + "'");
     } else if (!pool->init(type, properties)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("6fac5", WARN, arangodb::iresearch::TOPIC)
           << "failure initializing an arangosearch analyzer instance for name '"
           << name << "' type '" << type << "' properties '" << properties << "'";
 
@@ -1434,7 +1434,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
     // ensure all records were initialized
     for (auto& entry : _customAnalyzers) {
       if (initialized.find(entry.first) == initialized.end()) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("38291", WARN, arangodb::iresearch::TOPIC)
             << "uninitialized AnalyzerPool deletected while validating "
                "analyzers, arangosearch analyzer name '"
             << entry.first << "'";
@@ -1443,7 +1443,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
     }
 
     if (!trx.commit().ok()) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("7a050", WARN, arangodb::iresearch::TOPIC)
           << "failure to commit transaction while loading AnalyzerFeature "
              "configuration";
       return false;
@@ -1453,16 +1453,16 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
 
     return true;
   } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("40979", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while loading configuration: " << e.code() << " "
         << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("36c78", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while loading configuration: " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("47651", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while loading configuration";
     IR_LOG_EXCEPTION();
   }
@@ -1537,7 +1537,7 @@ void IResearchAnalyzerFeature::start() {
     if (functions) {
       addFunctions(*functions);
     } else {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("7dcd9", WARN, arangodb::iresearch::TOPIC)
           << "failure to find feature 'AQLFunctions' while registering "
              "IResearch functions";
     }
@@ -1554,7 +1554,7 @@ void IResearchAnalyzerFeature::start() {
     auto vocbase = getSystemDatabase();
 
     if (!vocbase) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("a5692", WARN, arangodb::iresearch::TOPIC)
           << "failure to get system database while starting feature "
              "'IResearchAnalyzer'";
       // assume configuration collection exists
@@ -1565,7 +1565,7 @@ void IResearchAnalyzerFeature::start() {
         auto* engine = arangodb::EngineSelectorFeature::ENGINE;
 
         if (!engine) {
-          LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          LOG_TOPIC("f113f", WARN, arangodb::iresearch::TOPIC)
               << "failure to get storage engine while starting feature "
                  "'IResearchAnalyzer'";
           // assume not inRecovery(), create collection immediately
@@ -1575,7 +1575,7 @@ void IResearchAnalyzerFeature::start() {
                   "Database");
 
           if (!feature) {
-            LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+            LOG_TOPIC("13812", WARN, arangodb::iresearch::TOPIC)
                 << "failure to find feature 'Database' while starting feature "
                    "'IResearchAnalyzer'";
             // can't register post-recovery callback, create collection

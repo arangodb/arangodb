@@ -147,7 +147,7 @@ class AqlItemMatrix {
         mostLikelyIndex += 1 + numBlocksRightFromHere / 2;
       } else {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        LOG_TOPIC_IF(WARN, Logger::AQL, iterations > 1)
+        LOG_TOPIC_IF("c8c68", WARN, Logger::AQL, iterations > 1)
             << "Suboptimal AqlItemMatrix index lookup: Did " << iterations
             << " iterations.";
 #endif

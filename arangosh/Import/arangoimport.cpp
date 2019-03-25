@@ -77,12 +77,12 @@ int main(int argc, char* argv[]) {
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("65114", ERR, arangodb::Logger::FIXME)
           << "arangoimport terminated because of an unhandled exception: "
           << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("63aa2", ERR, arangodb::Logger::FIXME)
           << "arangoimport terminated because of an unhandled exception of "
              "unknown type";
       ret = EXIT_FAILURE;

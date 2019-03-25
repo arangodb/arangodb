@@ -87,16 +87,16 @@ void ClusterCommResult::setDestination(std::string const& dest, bool logConnecti
         serverID = "";
         status = CL_COMM_BACKEND_UNAVAILABLE;
         if (logConnectionErrors) {
-          LOG_TOPIC(ERR, Logger::CLUSTER)
+          LOG_TOPIC("c3f33", ERR, Logger::CLUSTER)
               << "cannot find responsible server for shard '" << shardID << "'";
         } else {
-          LOG_TOPIC(INFO, Logger::CLUSTER)
+          LOG_TOPIC("6d506", INFO, Logger::CLUSTER)
               << "cannot find responsible server for shard '" << shardID << "'";
         }
         return;
       }
     }
-    LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Responsible server: " << serverID;
+    LOG_TOPIC("7b207", DEBUG, Logger::CLUSTER) << "Responsible server: " << serverID;
   } else if (dest.substr(0, 7) == "server:") {
     shardID = "";
     serverID = dest.substr(7);
@@ -112,9 +112,9 @@ void ClusterCommResult::setDestination(std::string const& dest, bool logConnecti
     status = CL_COMM_BACKEND_UNAVAILABLE;
     errorMessage = "did not understand destination'" + dest + "'";
     if (logConnectionErrors) {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "did not understand destination '" << dest << "'";
+      LOG_TOPIC("1671f", ERR, Logger::CLUSTER) << "did not understand destination '" << dest << "'";
     } else {
-      LOG_TOPIC(INFO, Logger::CLUSTER) << "did not understand destination '" << dest << "'";
+      LOG_TOPIC("ea4e3", INFO, Logger::CLUSTER) << "did not understand destination '" << dest << "'";
     }
     return;
   }
@@ -128,10 +128,10 @@ void ClusterCommResult::setDestination(std::string const& dest, bool logConnecti
     }
     errorMessage = "did not find endpoint of server '" + serverID + "'";
     if (logConnectionErrors) {
-      LOG_TOPIC(ERR, Logger::CLUSTER)
+      LOG_TOPIC("32152", ERR, Logger::CLUSTER)
           << "did not find endpoint of server '" << serverID << "'";
     } else {
-      LOG_TOPIC(INFO, Logger::CLUSTER)
+      LOG_TOPIC("bd3e0", INFO, Logger::CLUSTER)
           << "did not find endpoint of server '" << serverID << "'";
     }
   }
@@ -324,7 +324,7 @@ void ClusterComm::startBackgroundThreads() {
     if (thread->start()) {
       _backgroundThreads.push_back(thread);
     } else {
-      LOG_TOPIC(FATAL, Logger::CLUSTER)
+      LOG_TOPIC("a46a0", FATAL, Logger::CLUSTER)
           << "ClusterComm background thread does not work";
       FATAL_ERROR_EXIT();
     }  // else
@@ -819,7 +819,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
       for (size_t i = 0; i < requests.size(); i++) {
         if (!requests[i].done) {
           if (now >= dueTime[i]) {
-            LOG_TOPIC(TRACE, logTopic)
+            LOG_TOPIC("60ecb", TRACE, logTopic)
                 << "ClusterComm::performRequests: sending request to "
                 << requests[i].destination << ":" << requests[i].path
                 << "body:" << requests[i].getBody();
@@ -863,7 +863,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
       auto it = opIDtoIndex.find(res.operationID);
       if (it == opIDtoIndex.end()) {
         // Ooops, we got a response to which we did not send the request
-        LOG_TOPIC(TRACE, Logger::CLUSTER)
+        LOG_TOPIC("41ac1", TRACE, Logger::CLUSTER)
             << "Received ClusterComm response for a request we did not send!";
         continue;
       }
@@ -893,7 +893,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
             res.answer_code == rest::ResponseCode::NO_CONTENT) {
           nrGood++;
         }
-        LOG_TOPIC(TRACE, Logger::CLUSTER)
+        LOG_TOPIC("fb401", TRACE, Logger::CLUSTER)
             << "ClusterComm::performRequests: "
             << "got answer from " << requests[index].destination << ":"
             << requests[index].path << " with return code " << (int)res.answer_code;
@@ -917,7 +917,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
           requests[index].done = true;
           nrDone++;
         }
-        LOG_TOPIC(ERR, Logger::CLUSTER)
+        LOG_TOPIC("54766", ERR, Logger::CLUSTER)
             << "ClusterComm::performRequests: "
             << "got BACKEND_UNAVAILABLE or TIMEOUT from "
             << requests[index].destination << ":" << requests[index].path;
@@ -925,7 +925,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         requests[index].result = res;
         requests[index].done = true;
         nrDone++;
-        LOG_TOPIC(ERR, Logger::CLUSTER)
+        LOG_TOPIC("8f0bc", ERR, Logger::CLUSTER)
             << "ClusterComm::performRequests: "
             << "got no answer from " << requests[index].destination << ":"
             << requests[index].path << " with status "
@@ -933,14 +933,14 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
       }
     }
   } catch (...) {
-    LOG_TOPIC(ERR, Logger::CLUSTER) << "ClusterComm::performRequests: "
+    LOG_TOPIC("b2fb4", ERR, Logger::CLUSTER) << "ClusterComm::performRequests: "
                                     << "caught exception, ignoring...";
   }
 
   // We only get here if the global timeout was triggered, not all
   // requests are marked by done!
 
-  LOG_TOPIC(DEBUG, logTopic) << "ClusterComm::performRequests: "
+  LOG_TOPIC("a8502", DEBUG, logTopic) << "ClusterComm::performRequests: "
                              << "got timeout, this will be reported...";
 
   // Forget about
@@ -1110,7 +1110,7 @@ void ClusterCommThread::abortRequestsToFailedServers() {
 
 void ClusterCommThread::run() {
   TRI_ASSERT(_communicator != nullptr);
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "starting ClusterComm thread";
+  LOG_TOPIC("74eda", DEBUG, Logger::CLUSTER) << "starting ClusterComm thread";
   auto lastAbortCheck = std::chrono::steady_clock::now();
   while (!isStopping()) {
     try {
@@ -1121,23 +1121,23 @@ void ClusterCommThread::run() {
       }
       _communicator->work_once();
       _communicator->wait();
-      LOG_TOPIC(TRACE, Logger::CLUSTER) << "done waiting in ClusterCommThread";
+      LOG_TOPIC("9a40f", TRACE, Logger::CLUSTER) << "done waiting in ClusterCommThread";
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("786aa", ERR, arangodb::Logger::CLUSTER)
           << "caught exception in ClusterCommThread: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("b55a2", ERR, arangodb::Logger::CLUSTER)
           << "caught unknown exception in ClusterCommThread";
     }
   }
   _communicator->abortRequests();
-  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+  LOG_TOPIC("2f95e", DEBUG, Logger::CLUSTER)
       << "waiting for curl to stop remaining handles";
   while (_communicator->work_once() > 0) {
     std::this_thread::sleep_for(std::chrono::microseconds(10));
   }
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "stopped ClusterComm thread";
+  LOG_TOPIC("5d12a", DEBUG, Logger::CLUSTER) << "stopped ClusterComm thread";
 }
 
 /// @brief logs a connection error (backend unavailable)
@@ -1150,8 +1150,8 @@ void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult co
   msg += " at endpoint '" + result->endpoint + "', timeout: " + std::to_string(timeout);
 
   if (useErrorLogLevel) {
-    LOG_TOPIC(ERR, Logger::CLUSTER) << msg;
+    LOG_TOPIC("30467", ERR, Logger::CLUSTER) << msg;
   } else {
-    LOG_TOPIC(INFO, Logger::CLUSTER) << msg;
+    LOG_TOPIC("b82cb", INFO, Logger::CLUSTER) << msg;
   }
 }

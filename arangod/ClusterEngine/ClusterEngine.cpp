@@ -171,7 +171,7 @@ void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
 // -----------------------
 
 void ClusterEngine::getDatabases(arangodb::velocypack::Builder& result) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << "getting existing databases";
+  LOG_TOPIC("4e3f9", TRACE, Logger::STARTUP) << "getting existing databases";
   // we should only ever need system here
   VPackArrayBuilder arr(&result);
   VPackObjectBuilder obj(&result);

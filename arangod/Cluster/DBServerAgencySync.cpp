@@ -49,7 +49,7 @@ DBServerAgencySync::DBServerAgencySync(HeartbeatThread* heartbeat)
     : _heartbeat(heartbeat) {}
 
 void DBServerAgencySync::work() {
-  LOG_TOPIC(TRACE, Logger::CLUSTER) << "starting plan update handler";
+  LOG_TOPIC("57898", TRACE, Logger::CLUSTER) << "starting plan update handler";
 
   _heartbeat->setReady();
 
@@ -68,7 +68,7 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
   }
 
   if (dbfeature == nullptr) {
-    LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to get feature database";
+    LOG_TOPIC("d0ef2", ERR, Logger::HEARTBEAT) << "Failed to get feature database";
     return Result(TRI_ERROR_INTERNAL, "Failed to get feature database");
   }
 
@@ -140,7 +140,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   using namespace std::chrono;
   using clock = std::chrono::steady_clock;
 
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC("62fd8", DEBUG, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute starting";
 
   auto* sysDbFeature =
@@ -152,7 +152,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   DBServerAgencySyncResult result;
 
   if (vocbase == nullptr) {
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+    LOG_TOPIC("18d67", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::execute no vocbase";
     result.errorMessage = "DBServerAgencySync::execute no vocbase";
     return result;
@@ -166,7 +166,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   if (plan == nullptr) {
     // TODO increase log level, except during shutdown?
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+    LOG_TOPIC("0a6f2", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::execute no plan";
     result.errorMessage = "DBServerAgencySync::execute no plan";
     return result;
@@ -190,19 +190,19 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     VPackObjectBuilder o(&rb);
 
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseOne";
+    LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseOne";
     tmp = arangodb::maintenance::phaseOne(plan->slice(), local.slice(),
                                           serverId, *mfeature, rb);
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+    LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne done";
 
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo";
+    LOG_TOPIC("ef730", DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo";
     local.clear();
     glc = getLocalCollections(local);
     // We intentionally refetch local collections here, such that phase 2
     // can already see potential changes introduced by phase 1. The two
     // phases are sufficiently independent that this is OK.
-    LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+    LOG_TOPIC("d15b5", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - local state: " << local.toJson();
     if (!glc.ok()) {
       result.errorMessage = "Could not do getLocalCollections for phase 2.";
@@ -212,22 +212,22 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     auto current = clusterInfo->getCurrent();
     if (current == nullptr) {
       // TODO increase log level, except during shutdown?
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+      LOG_TOPIC("f5cac", DEBUG, Logger::MAINTENANCE)
           << "DBServerAgencySync::execute no current";
       result.errorMessage = "DBServerAgencySync::execute no current";
       return result;
     }
-    LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+    LOG_TOPIC("deb49", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
 
     tmp = arangodb::maintenance::phaseTwo(plan->slice(), current->slice(),
                                           local.slice(), serverId, *mfeature, rb);
 
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+    LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";
 
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Failed to handle plan change: " << e.what();
+    LOG_TOPIC("cd308", ERR, Logger::MAINTENANCE) << "Failed to handle plan change: " << e.what();
   }
 
   if (rb.isClosed()) {
@@ -236,7 +236,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       std::vector<std::string> path = {maintenance::PHASE_TWO, "agency"};
       if (report.hasKey(path) && report.get(path).isObject()) {
         auto agency = report.get(path);
-        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        LOG_TOPIC("9c099", DEBUG, Logger::MAINTENANCE)
             << "DBServerAgencySync reporting to Current: " << agency.toJson();
 
         // Report to current
@@ -259,12 +259,12 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
           AgencyWriteTransaction currentTransaction(operations, precondition);
           AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
           if (!r.successful()) {
-            LOG_TOPIC(INFO, Logger::MAINTENANCE)
+            LOG_TOPIC("d73b8", INFO, Logger::MAINTENANCE)
               << "Error reporting to agency: _statusCode: " << r.errorCode()
               << " message: " << r.errorMessage()
               << ". This can be ignored, since it will be retried automatically.";
           } else {
-            LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+            LOG_TOPIC("9b0b3", DEBUG, Logger::MAINTENANCE)
                 << "Invalidating current in ClusterInfo";
             clusterInfo->invalidateCurrent();
           }
@@ -290,7 +290,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   auto took = duration<double>(clock::now() - start).count();
   if (took > 30.0) {
-    LOG_TOPIC(WARN, Logger::MAINTENANCE) << "DBServerAgencySync::execute "
+    LOG_TOPIC("83cb8", WARN, Logger::MAINTENANCE) << "DBServerAgencySync::execute "
                                             "took "
                                          << took << " s to execute handlePlanChange";
   }

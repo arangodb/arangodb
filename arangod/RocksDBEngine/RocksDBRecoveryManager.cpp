@@ -104,7 +104,7 @@ void RocksDBRecoveryManager::start() {
 void RocksDBRecoveryManager::runRecovery() {
   auto res = parseRocksWAL();
   if (res.fail()) {
-    LOG_TOPIC(FATAL, Logger::ENGINES)
+    LOG_TOPIC("be0ce", FATAL, Logger::ENGINES)
         << "failed during rocksdb WAL recovery: " << res.errorMessage();
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_RECOVERY);
   }
@@ -167,7 +167,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   Result shutdownWBReader() {
     Result rv = basics::catchVoidToResult([&]() -> void {
       // update ticks after parsing wal
-      LOG_TOPIC(TRACE, Logger::ENGINES) << "max tick found in WAL: " << _maxTick
+      LOG_TOPIC("a4ec8", TRACE, Logger::ENGINES) << "max tick found in WAL: " << _maxTick
                                         << ", last HLC value: " << _maxHLC;
 
       TRI_UpdateTickServer(_maxTick);
@@ -176,7 +176,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       auto dbfeature =
           ApplicationServer::getFeature<DatabaseFeature>("Database");
 
-      LOG_TOPIC(TRACE, Logger::ENGINES)
+      LOG_TOPIC("922bc", TRACE, Logger::ENGINES)
           << "finished WAL scan with " << _deltas.size() << " entries";
 
       for (auto& pair : _deltas) {
@@ -415,7 +415,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
  public:
   rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                         const rocksdb::Slice& value) override {
-    LOG_TOPIC(TRACE, Logger::ENGINES) << "recovering PUT " << RocksDBKey(key);
+    LOG_TOPIC("3e5c5", TRACE, Logger::ENGINES) << "recovering PUT " << RocksDBKey(key);
     incTick();
 
     updateMaxTick(column_family_id, key, value);
@@ -496,7 +496,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
   rocksdb::Status DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
-    LOG_TOPIC(TRACE, Logger::ENGINES) << "recovering DELETE " << RocksDBKey(key);
+    LOG_TOPIC("5f341", TRACE, Logger::ENGINES) << "recovering DELETE " << RocksDBKey(key);
     handleDeleteCF(column_family_id, key);
     RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     for (auto helper : engine->recoveryHelpers()) {
@@ -507,7 +507,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
   rocksdb::Status SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
-    LOG_TOPIC(TRACE, Logger::ENGINES) << "recovering SINGLE DELETE " << RocksDBKey(key);
+    LOG_TOPIC("aa997", TRACE, Logger::ENGINES) << "recovering SINGLE DELETE " << RocksDBKey(key);
     handleDeleteCF(column_family_id, key);
 
     RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
@@ -520,7 +520,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status DeleteRangeCF(uint32_t column_family_id, const rocksdb::Slice& begin_key,
                                 const rocksdb::Slice& end_key) override {
-    LOG_TOPIC(TRACE, Logger::ENGINES)
+    LOG_TOPIC("ed6f5", TRACE, Logger::ENGINES)
         << "recovering DELETE RANGE from " << RocksDBKey(begin_key) << " to "
         << RocksDBKey(end_key);
     incTick();
@@ -559,7 +559,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         if (!truncateIndexes(objectId)) {
           // unable to truncate indexes of the collection.
           // may be due to collection having been deleted etc.
-          LOG_TOPIC(WARN, Logger::ENGINES)
+          LOG_TOPIC("04032", WARN, Logger::ENGINES)
               << "unable to truncate indexes for objectId " << objectId;
         }
 
@@ -630,7 +630,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
         if (!s.ok()) {
           rv = rocksutils::convertStatus(s);
           std::string msg = "error during WAL scan: " + rv.errorMessage();
-          LOG_TOPIC(ERR, Logger::ENGINES) << msg;
+          LOG_TOPIC("ee333", ERR, Logger::ENGINES) << msg;
           rv.reset(rv.errorNumber(), std::move(msg));  // update message
           break;
         }

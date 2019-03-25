@@ -121,7 +121,7 @@ void ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opti
   }
 
   if (1 < n) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("80a8c", ERR, arangodb::Logger::FIXME)
         << "you cannot specify more than one type ("
         << "jslint, execute, execute-string, check-syntax, unit-tests)";
   }
@@ -163,10 +163,10 @@ void ShellFeature::start() {
         break;
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception: " << ex.what();
+    LOG_TOPIC("98f7d", ERR, arangodb::Logger::FIXME) << "caught exception: " << ex.what();
     ok = false;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception";
+    LOG_TOPIC("4a477", ERR, arangodb::Logger::FIXME) << "caught unknown exception";
     ok = false;
   }
 

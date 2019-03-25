@@ -301,7 +301,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
                          dumper.dump(marker);
                          buffer.appendChar('\n');
-                         // LOG_TOPIC(INFO, Logger::REPLICATION) <<
+                         // LOG_TOPIC("cda47", INFO, Logger::REPLICATION) <<
                          // marker.toJson(&opts);
                        });
   }
@@ -333,12 +333,12 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
   if (length > 0) {
     _response->setResponseCode(rest::ResponseCode::OK);
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    LOG_TOPIC("078ad", DEBUG, Logger::REPLICATION)
         << "WAL tailing after " << filter.tickStart << ", lastIncludedTick "
         << result.lastIncludedTick() << ", fromTickIncluded "
         << result.fromTickIncluded();
   } else {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    LOG_TOPIC("29624", DEBUG, Logger::REPLICATION)
         << "No more data in WAL after " << filter.tickStart;
     _response->setResponseCode(rest::ResponseCode::NO_CONTENT);
   }

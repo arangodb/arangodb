@@ -204,10 +204,10 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
   // we need at least one io thread and context
   if (_numIoThreads == 0) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "Need at least one io-context thread.";
+    LOG_TOPIC("1ade3", WARN, Logger::FIXME) << "Need at least one io-context thread.";
     _numIoThreads = 1;
   } else if (_numIoThreads > _maxIoThreads) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "IO-contexts are limited to " << _maxIoThreads;
+    LOG_TOPIC("80dcf", WARN, Logger::FIXME) << "IO-contexts are limited to " << _maxIoThreads;
     _numIoThreads = _maxIoThreads;
   }
 }
@@ -269,7 +269,7 @@ void GeneralServerFeature::buildServers() {
             "SslServer");
 
     if (ssl == nullptr) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("8df10", FATAL, arangodb::Logger::FIXME)
           << "no ssl context is known, cannot create https server, "
              "please enable SSL";
       FATAL_ERROR_EXIT();

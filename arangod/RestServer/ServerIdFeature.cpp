@@ -71,7 +71,7 @@ void ServerIdFeature::start() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("75509", ERR, arangodb::Logger::FIXME)
         << "reading/creating server id file failed: " << TRI_errno_string(res);
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -112,7 +112,7 @@ int ServerIdFeature::readId() {
     return TRI_ERROR_INTERNAL;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "using existing server id: " << foundId;
+  LOG_TOPIC("281bf", TRACE, arangodb::Logger::FIXME) << "using existing server id: " << foundId;
 
   if (foundId == 0) {
     return TRI_ERROR_INTERNAL;
@@ -143,19 +143,19 @@ int ServerIdFeature::writeId() {
     builder.close();
   } catch (...) {
     // out of memory
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save server id in file '"
+    LOG_TOPIC("6cac3", ERR, arangodb::Logger::FIXME) << "cannot save server id in file '"
                                             << _idFilename << "': out of memory";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // save json info to file
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+  LOG_TOPIC("f6cbd", DEBUG, arangodb::Logger::FIXME)
       << "Writing server id to file '" << _idFilename << "'";
   bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(_idFilename,
                                                                  builder.slice(), true);
 
   if (!ok) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("26de4", ERR, arangodb::Logger::FIXME)
         << "could not save server id in file '" << _idFilename
         << "': " << TRI_last_error();
 

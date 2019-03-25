@@ -93,7 +93,7 @@ inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find c
   auto* collection = trx.state()->collection(cid, arangodb::AccessMode::Type::READ);
 
   if (!collection) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("ebced", WARN, arangodb::iresearch::TOPIC)
         << "failed to find collection while reading document from arangosearch "
            "view, cid '"
         << cid << "'";
@@ -239,7 +239,7 @@ bool IResearchViewBlockBase::readDocument(LogicalCollection const& collection,
 
   if (!pkValues(docId, tmpRef) ||
       !arangodb::iresearch::DocumentPrimaryKey::read(docPk, tmpRef)) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("6442f", WARN, arangodb::iresearch::TOPIC)
         << "failed to read document primary key while reading document from "
            "arangosearch view, doc_id '"
         << docId << "'";
@@ -458,7 +458,7 @@ bool IResearchViewBlock::next(ReadContext& ctx, size_t limit) {
     auto collection = lookupCollection(*_trx, cid);
 
     if (!collection) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("09c4f", WARN, arangodb::iresearch::TOPIC)
           << "failed to find collection while reading document from "
              "arangosearch view, cid '"
           << cid << "'";
@@ -554,7 +554,7 @@ bool IResearchViewUnorderedBlock::resetIterator() {
   _pkReader = ::pkColumn(segmentReader);
 
   if (!_pkReader) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("bd01b", WARN, arangodb::iresearch::TOPIC)
         << "encountered a sub-reader without a primary key column while "
            "executing a query, ignoring";
     return false;
@@ -577,7 +577,7 @@ bool IResearchViewUnorderedBlock::next(ReadContext& ctx, size_t limit) {
     auto collection = lookupCollection(*_trx, cid);
 
     if (!collection) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("8d4ea", WARN, arangodb::iresearch::TOPIC)
           << "failed to find collection while reading document from "
              "arangosearch view, cid '"
           << cid << "'";

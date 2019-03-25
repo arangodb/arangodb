@@ -563,7 +563,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
         TRI_ASSERT(root != nullptr);
 
       } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AQL)
+        LOG_TOPIC("bc9d5", ERR, Logger::AQL)
             << "Coordinator query instantiation failed: " << e.what();
         throw;
       }

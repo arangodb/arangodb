@@ -75,32 +75,32 @@ void MaintenanceWorker::run() {
 
         default:
           _loopState = eSTOP;
-          LOG_TOPIC(ERR, Logger::CLUSTER)
+          LOG_TOPIC("dc389", ERR, Logger::CLUSTER)
               << "MaintenanceWorkerRun:  unexpected state (" << _loopState << ")";
 
       }  // switch
 
     } catch (std::exception const& ex) {
       if (_curAction) {
-        LOG_TOPIC(ERR, Logger::CLUSTER)
+        LOG_TOPIC("dd8e8", ERR, Logger::CLUSTER)
             << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
             << " state:" << _loopState << " action:" << *_curAction;
 
         _curAction->setState(FAILED);
       } else {
-        LOG_TOPIC(ERR, Logger::CLUSTER)
+        LOG_TOPIC("16d4c", ERR, Logger::CLUSTER)
             << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
             << " state:" << _loopState;
       }
     } catch (...) {
       if (_curAction) {
-        LOG_TOPIC(ERR, Logger::CLUSTER)
+        LOG_TOPIC("ac2a2", ERR, Logger::CLUSTER)
             << "MaintenanceWorkerRun: caught error, state: " << _loopState
             << " state:" << _loopState << " action:" << *_curAction;
 
         _curAction->setState(FAILED);
       } else {
-        LOG_TOPIC(ERR, Logger::CLUSTER)
+        LOG_TOPIC("88771", ERR, Logger::CLUSTER)
             << "MaintenanceWorkerRun: caught error, state: " << _loopState
             << " state:" << _loopState;
       }

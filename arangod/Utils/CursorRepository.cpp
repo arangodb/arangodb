@@ -80,10 +80,10 @@ CursorRepository::~CursorRepository() {
     }
 
     if (tries == 0) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+      LOG_TOPIC("4596e", INFO, arangodb::Logger::FIXME)
           << "waiting for used cursors to become unused";
     } else if (tries == 120) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("033f6", WARN, arangodb::Logger::FIXME)
           << "giving up waiting for unused cursors";
     }
 

@@ -136,10 +136,10 @@ void FollowerInfo::add(ServerID const& sid) {
            _docColl->name()}));
 
       if (!currentEntry.isObject()) {
-        LOG_TOPIC(ERR, Logger::CLUSTER)
+        LOG_TOPIC("b753d", ERR, Logger::CLUSTER)
             << "FollowerInfo::add, did not find object in " << path;
         if (!currentEntry.isNone()) {
-          LOG_TOPIC(ERR, Logger::CLUSTER) << "Found: " << currentEntry.toJson();
+          LOG_TOPIC("568de", ERR, Logger::CLUSTER) << "Found: " << currentEntry.toJson();
         }
       } else {
         auto newValue = newShardEntry(currentEntry, sid, true);
@@ -158,18 +158,18 @@ void FollowerInfo::add(ServerID const& sid) {
           success = true;
           break;  //
         } else {
-          LOG_TOPIC(WARN, Logger::CLUSTER)
+          LOG_TOPIC("1d5fe", WARN, Logger::CLUSTER)
               << "FollowerInfo::add, could not cas key " << path;
         }
       }
     } else {
-      LOG_TOPIC(ERR, Logger::CLUSTER)
+      LOG_TOPIC("dcf54", ERR, Logger::CLUSTER)
           << "FollowerInfo::add, could not read " << path << " in agency.";
     }
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
   } while (TRI_microtime() < startTime + 30);
   if (!success) {
-    LOG_TOPIC(ERR, Logger::CLUSTER)
+    LOG_TOPIC("6295b", ERR, Logger::CLUSTER)
         << "FollowerInfo::add, timeout in agency operation for key " << path;
   }
 }
@@ -189,7 +189,7 @@ bool FollowerInfo::remove(ServerID const& sid) {
     return false;
   }
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+  LOG_TOPIC("ce460", DEBUG, Logger::CLUSTER)
       << "Removing follower " << sid << " from " << _docColl->name();
 
   MUTEX_LOCKER(locker, _mutex);
@@ -242,10 +242,10 @@ bool FollowerInfo::remove(ServerID const& sid) {
            _docColl->name()}));
 
       if (!currentEntry.isObject()) {
-        LOG_TOPIC(ERR, Logger::CLUSTER)
+        LOG_TOPIC("01896", ERR, Logger::CLUSTER)
             << "FollowerInfo::remove, did not find object in " << path;
         if (!currentEntry.isNone()) {
-          LOG_TOPIC(ERR, Logger::CLUSTER) << "Found: " << currentEntry.toJson();
+          LOG_TOPIC("57c84", ERR, Logger::CLUSTER) << "Found: " << currentEntry.toJson();
         }
       } else {
         auto newValue = newShardEntry(currentEntry, sid, false);
@@ -264,14 +264,14 @@ bool FollowerInfo::remove(ServerID const& sid) {
           success = true;
           break;  //
         } else {
-          LOG_TOPIC(WARN, Logger::CLUSTER)
+          LOG_TOPIC("2db38", WARN, Logger::CLUSTER)
               << "FollowerInfo::remove, could not cas key " << path
               << ". status code: " << res2._statusCode
               << ", incriminating body: " << res2.bodyRef();
         }
       }
     } else {
-      LOG_TOPIC(ERR, Logger::CLUSTER)
+      LOG_TOPIC("b7333", ERR, Logger::CLUSTER)
           << "FollowerInfo::remove, could not read " << path << " in agency.";
     }
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
@@ -279,11 +279,11 @@ bool FollowerInfo::remove(ServerID const& sid) {
            application_features::ApplicationServer::isRetryOK());
   if (!success) {
     _followers = _oldFollowers;
-    LOG_TOPIC(ERR, Logger::CLUSTER)
+    LOG_TOPIC("c0e76", ERR, Logger::CLUSTER)
         << "FollowerInfo::remove, timeout in agency operation for key " << path;
   }
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Removing follower " << sid << " from "
+  LOG_TOPIC("be0cb", DEBUG, Logger::CLUSTER) << "Removing follower " << sid << " from "
                                     << _docColl->name() << "succeeded: " << success;
 
   return success;

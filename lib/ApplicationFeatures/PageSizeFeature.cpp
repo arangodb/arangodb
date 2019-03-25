@@ -37,7 +37,7 @@ PageSizeFeature::PageSizeFeature(application_features::ApplicationServer& server
 
 void PageSizeFeature::prepare() {
   PageSize = static_cast<size_t>(getpagesize());
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "page size is " << PageSize;
+  LOG_TOPIC("c6b86", TRACE, arangodb::Logger::FIXME) << "page size is " << PageSize;
 }
 
 }  // namespace arangodb

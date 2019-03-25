@@ -75,7 +75,7 @@ RocksDBTransactionState::~RocksDBTransactionState() {
 
 /// @brief start a transaction
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
-  LOG_TRX(TRACE, this, nestingLevel())
+  LOG_TRX("0c057", TRACE, this, nestingLevel())
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
@@ -264,7 +264,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       TRI_ASSERT(x <= 1 && _numLogdata == x);
     } else {
       if (_numLogdata != (2 + _numRemoves)) {
-        LOG_TOPIC(ERR, Logger::ENGINES) << "_numInserts " << _numInserts << "  "
+        LOG_TOPIC("772e1", ERR, Logger::ENGINES) << "_numInserts " << _numInserts << "  "
                                         << "_numRemoves " << _numRemoves << "  "
                                         << "_numUpdates " << _numUpdates << "  "
                                         << "_numLogdata " << _numLogdata;
@@ -373,7 +373,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
 
 /// @brief commit a transaction
 Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX(TRACE, this, nestingLevel())
+  LOG_TRX("5cb03", TRACE, this, nestingLevel())
       << "committing " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
@@ -401,7 +401,7 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
 
 /// @brief abort and rollback a transaction
 Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX(TRACE, this, nestingLevel()) << "aborting " << AccessMode::typeString(_type) << " transaction";
+  LOG_TRX("5b226", TRACE, this, nestingLevel()) << "aborting " << AccessMode::typeString(_type) << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   Result result;
   if (nestingLevel() == 0) {
@@ -568,7 +568,7 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
 
   TRI_ASSERT(!hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC(DEBUG, Logger::ENGINES) << "INTERMEDIATE COMMIT!";
+  LOG_TOPIC("0fe63", DEBUG, Logger::ENGINES) << "INTERMEDIATE COMMIT!";
 #endif
 
   Result res = internalCommit();
