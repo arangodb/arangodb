@@ -112,8 +112,10 @@ std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> AllRowsFetcher::fe
   if (_blockToReturnNext >= size) {
     return {ExecutionState::DONE, nullptr};
   }
-  return {(_blockToReturnNext + 1 < size ? ExecutionState::HASMORE : ExecutionState::DONE),
-          _aqlItemMatrix->getBlock(_blockToReturnNext++)};
+  auto blk = _aqlItemMatrix->getBlock(_blockToReturnNext);
+  ++_blockToReturnNext;
+  return {(_blockToReturnNext < size ? ExecutionState::HASMORE : ExecutionState::DONE),
+          std::move(blk)};
 }
 
 ExecutionState AllRowsFetcher::upstreamState() {
