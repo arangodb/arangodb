@@ -130,12 +130,21 @@ class CalculationExecutor {
 
   InputAqlItemRow _currentRow;
   ExecutionState _rowState;
+
+  // true iff we actually entered a V8 context and didn't exit it yet.
+  // Necessary to discern externally owned contexts, but only for an assertion
+  // in maintainer mode.
+  bool _hasEnteredContext;
 };
 
 template<CalculationType calculationType>
 template<CalculationType U, typename>
 inline void CalculationExecutor<calculationType>::enterContext() {
+  bool const hadAlreadyEnteredContext =_infos.getQuery().hasEnteredContext();
   _infos.getQuery().enterContext();
+  if (!hadAlreadyEnteredContext) {
+    _hasEnteredContext = true;
+  }
 }
 
 template<CalculationType calculationType>
@@ -146,6 +155,7 @@ inline void CalculationExecutor<calculationType>::exitContext() {
     // different threads
     _infos.getExpression().invalidate();
     _infos.getQuery().exitContext();
+    _hasEnteredContext = false;
   }
 }
 
@@ -203,8 +213,8 @@ CalculationExecutor<calculationType>::produceRow(OutputAqlItemRow& output) {
   //   hasEnteredContext => state == HASMORE,
   // as we only leave the context open when there are rows left in the current
   // block.
-  TRI_ASSERT(!shouldExitContextBetweenBlocks() ||
-             !_infos.getQuery().hasEnteredContext() || state == ExecutionState::HASMORE);
+  TRI_ASSERT(!shouldExitContextBetweenBlocks() || !_hasEnteredContext ||
+             state == ExecutionState::HASMORE);
 
   return {state, NoStats{}};
 }
