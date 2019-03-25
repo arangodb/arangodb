@@ -113,9 +113,9 @@ struct AQLStandaloneContext final : public SmartContext {
 /// Can be used to reuse transaction state between multiple
 /// transaction::Methods instances. Mainly for legacy clients
 /// that do not send the transaction ID header
-struct SimpleSmartContext final : public SmartContext {
+struct StandaloneSmartContext final : public SmartContext {
   
-  explicit SimpleSmartContext(TRI_vocbase_t& vocbase);
+  explicit StandaloneSmartContext(TRI_vocbase_t& vocbase);
   
   /// @brief get parent transaction (if any)
   TransactionState* getParentTransaction() const override;
