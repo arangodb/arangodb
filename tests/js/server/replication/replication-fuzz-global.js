@@ -77,7 +77,9 @@ function ReplicationSuite() {
       verbose: true,
       includeSystem: false,
       requireFromPresent: true,
-      incremental: true
+      incremental: true,
+      autoResync: true,
+      autoResyncRetries: 5 
     });
 
     let state = {};
@@ -97,7 +99,7 @@ function ReplicationSuite() {
 
       if (slaveState.state.lastError.errorNum > 0) {
         console.topic("replication=error", "slave has errored:", JSON.stringify(slaveState.state.lastError));
-        break;
+        throw JSON.stringify(slaveState.state.lastError);
       }
 
       if (!slaveState.state.running) {

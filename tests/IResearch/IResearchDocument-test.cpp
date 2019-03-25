@@ -172,12 +172,13 @@ struct IResearchDocumentSetup {
     auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
       arangodb::iresearch::IResearchAnalyzerFeature
     >();
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     // ensure that there will be no exception on 'emplace'
     InvalidAnalyzer::returnNullFromMake = false;
 
-    analyzers->emplace("iresearch-document-empty", "iresearch-document-empty", "en", irs::flags{ TestAttribute::type() }); // cache analyzer
-    analyzers->emplace("iresearch-document-invalid", "iresearch-document-invalid", "en", irs::flags{ TestAttribute::type() }); // cache analyzer
+    analyzers->emplace(result, "iresearch-document-empty", "iresearch-document-empty", "en", irs::flags{ TestAttribute::type() }); // cache analyzer
+    analyzers->emplace(result, "iresearch-document-invalid", "iresearch-document-invalid", "en", irs::flags{ TestAttribute::type() }); // cache analyzer
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
@@ -1390,8 +1391,9 @@ SECTION("FieldIterator_nullptr_analyzer") {
     // ensure that there will be no exception on 'emplace'
     InvalidAnalyzer::returnNullFromMake = false;
 
-    analyzers.emplace("empty", "iresearch-document-empty", "en", irs::flags{TestAttribute::type()});
-    analyzers.emplace("invalid", "iresearch-document-invalid", "en", irs::flags{TestAttribute::type()});
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    analyzers.emplace(result, "empty", "iresearch-document-empty", "en", irs::flags{TestAttribute::type()});
+    analyzers.emplace(result, "invalid", "iresearch-document-invalid", "en", irs::flags{TestAttribute::type()});
   }
 
   // last analyzer invalid

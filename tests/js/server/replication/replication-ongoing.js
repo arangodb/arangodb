@@ -128,7 +128,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
 
     if (slaveState.state.lastError.errorNum > 0) {
       console.topic('replication=error', 'slave has errored:', JSON.stringify(slaveState.state.lastError));
-      break;
+      throw JSON.stringify(slaveState.state.lastError);
     }
 
     if (!slaveState.state.running) {

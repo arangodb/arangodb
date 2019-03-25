@@ -64,6 +64,11 @@ std::unordered_map<std::string, std::string> getForwardableRequestHeaders(Genera
 bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& oldValue,
                       VPackSlice const& newValue, bool isPatch);
 
+/// @brief check if the value of the smartJoinAttribute has changed
+bool smartJoinAttributeChanged(LogicalCollection const& collection, 
+                               VPackSlice const& oldValue,
+                               VPackSlice const& newValue, bool isPatch);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +101,8 @@ int countOnCoordinator(transaction::Methods& trx, std::string const& collname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string const& collname,
-                                      std::unordered_map<std::string, double>& result);
+                                      std::unordered_map<std::string, double>& result,
+                                      TRI_voc_tick_t tid = 0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document in a coordinator

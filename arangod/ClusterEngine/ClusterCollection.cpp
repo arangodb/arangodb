@@ -109,12 +109,12 @@ ClusterCollection::~ClusterCollection() {}
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
 /// to fetch current values!
-std::unordered_map<std::string, double> ClusterCollection::clusterIndexEstimates(bool allowUpdate) const {
-  return _selectivityEstimates.get(allowUpdate);
+IndexEstMap ClusterCollection::clusterIndexEstimates(bool allowUpdate, TRI_voc_tick_t tid) const {
+  return _selectivityEstimates.get(allowUpdate, tid);
 }
 
 /// @brief sets the current index selectivity estimates
-void ClusterCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates) {
+void ClusterCollection::setClusterIndexEstimates(IndexEstMap&& estimates) {
   _selectivityEstimates.set(std::move(estimates));
 }
 
@@ -417,6 +417,11 @@ void ClusterCollection::invokeOnAllElements(transaction::Methods* trx,
 
 Result ClusterCollection::truncate(transaction::Methods& trx, OperationOptions& options) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
+}
+  
+/// @brief compact-data operation
+Result ClusterCollection::compact() {
+  return {};
 }
 
 LocalDocumentId ClusterCollection::lookupKey(transaction::Methods* trx,

@@ -98,6 +98,8 @@ class EnumerateListExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
+  inline size_t numberOfRowsInFlight() const { return 0; }
+
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);
   void initialize();

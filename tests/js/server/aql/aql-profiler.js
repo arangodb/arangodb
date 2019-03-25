@@ -359,7 +359,7 @@ function ahuacatlProfilerTestSuite () {
           { type: SingletonBlock, calls: 1, items: 1 },
           { type: CalculationBlock, calls: 1, items: 1 },
           { type: EnumerateListBlock, calls: batches, items: rows },
-          { type: HashedCollectBlock, calls: 1, items: rows },
+          { type: HashedCollectBlock, calls: batches, items: rows },
           { type: SortBlock, calls: batches, items: rows },
           { type: ReturnBlock, calls: batches, items: rows },
         ];
@@ -383,7 +383,7 @@ function ahuacatlProfilerTestSuite () {
           { type: CalculationBlock, calls: 1, items: 1 },
           { type: EnumerateListBlock, calls: batches, items: rows },
           { type: CalculationBlock, calls: batches, items: rows },
-          { type: HashedCollectBlock, calls: 1, items: rowsAfterCollect },
+          { type: HashedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
           { type: SortBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
           { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
         ];
@@ -409,7 +409,7 @@ function ahuacatlProfilerTestSuite () {
           { type: CalculationBlock, calls: 1, items: 1 },
           { type: EnumerateListBlock, calls: batches, items: rows },
           { type: CalculationBlock, calls: batches, items: rows },
-          { type: HashedCollectBlock, calls: 1, items: rowsAfterCollect },
+          { type: HashedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
           { type: SortBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
           { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
         ];

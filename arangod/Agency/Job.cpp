@@ -227,17 +227,17 @@ std::string Job::randomIdleAvailableServer(Node const& snap, Slice const& exclud
 }
 
 // The following counts in a given server list how many of the servers are
-// in Status "GOOD".
-size_t Job::countGoodServersInList(Node const& snap, VPackSlice const& serverList) {
+// in Status "GOOD" or "BAD".
+size_t Job::countGoodOrBadServersInList(Node const& snap, VPackSlice const& serverList) {
   size_t count = 0;
   if (!serverList.isArray()) {
     // No array, strange, return 0
     return count;
   }
-  auto health = snap.hasAsChildren(healthPrefix);
+  auto const& health = snap.hasAsChildren(healthPrefix);
   // Do we have a Health substructure?
   if (health.second) {
-    Node::Children& healthData = health.first; // List of servers in Health
+    Node::Children const& healthData = health.first; // List of servers in Health
     for (VPackSlice const serverName : VPackArrayIterator(serverList)) {
       if (serverName.isString()) {
         // serverName not a string? Then don't count
@@ -248,7 +248,8 @@ size_t Job::countGoodServersInList(Node const& snap, VPackSlice const& serverLis
           // Only check if found
           std::shared_ptr<Node> healthNode = it->second;
           // Check its status:
-          if (healthNode->hasAsString("Status").first == "GOOD") {
+          auto status = healthNode->hasAsString("Status");
+          if (status.first == "GOOD" || status.first == "BAD") {
             ++count;
           }
         }
@@ -259,13 +260,13 @@ size_t Job::countGoodServersInList(Node const& snap, VPackSlice const& serverLis
 }
 
 // The following counts in a given server list how many of the servers are
-// in Status "GOOD".
-size_t Job::countGoodServersInList(Node const& snap, std::vector<std::string> const& serverList) {
+ // in Status "GOOD" or "BAD".
+size_t Job::countGoodOrBadServersInList(Node const& snap, std::vector<std::string> const& serverList) {
   size_t count = 0;
-  auto health = snap.hasAsChildren(healthPrefix);
+  auto const& health = snap.hasAsChildren(healthPrefix);
   // Do we have a Health substructure?
   if (health.second) {
-    Node::Children& healthData = health.first; // List of servers in Health
+    Node::Children const& healthData = health.first; // List of servers in Health
     for (auto& serverStr : serverList) {
       // Now look up this server:
       auto it = healthData.find(serverStr);
@@ -273,7 +274,8 @@ size_t Job::countGoodServersInList(Node const& snap, std::vector<std::string> co
         // Only check if found
         std::shared_ptr<Node> healthNode = it->second;
         // Check its status:
-        if (healthNode->hasAsString("Status").first == "GOOD") {
+        auto status = healthNode->hasAsString("Status");
+        if (status.first == "GOOD" || status.first == "BAD") {
           ++count;
         }
       }
@@ -298,10 +300,9 @@ bool Job::isInServerList(Node const& snap, std::string const& prefix, std::strin
       }
     }
   } else {  // an object
-    Node::Children children;
-    std::tie(children, has) = snap.hasAsChildren(prefix);
-    if (has) {
-      for (auto const& srv : children) {
+    auto const& children  = snap.hasAsChildren(prefix);
+    if (children.second) {
+      for (auto const& srv : children.first) {
         if (srv.first == server) {
           found = true;
           break;
@@ -326,7 +327,6 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
 
     bool has;
     VPackSlice slice;
-    Node::Children children;
 
     if (isArray) {
       std::tie(slice, has) = snapshot.hasAsSlice(prefix);
@@ -336,9 +336,11 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
         }
       }
     } else {
-      std::tie(children, has) = snapshot.hasAsChildren(prefix);
-      for (auto const& srv : children) {
-        ret.erase(std::remove(ret.begin(), ret.end(), srv.first), ret.end());
+      auto const& children = snapshot.hasAsChildren(prefix);
+      if (children.second) {
+        for (auto const& srv : children.first) {
+          ret.erase(std::remove(ret.begin(), ret.end(), srv.first), ret.end());
+        }
       }
     }
   };
@@ -411,8 +413,7 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot, std::string const& d
     auto const col = *colptr.second;
     auto const otherCollection = colptr.first;
 
-    if (otherCollection != collection && col.has("distributeShardsLike") &&  // use .has() form to prevent
-                                                                             // logging of missing
+    if (otherCollection != collection && col.has("distributeShardsLike") &&  // use .has() form to prevent logging of missing
         col.hasAsSlice("distributeShardsLike").first.copyString() == collection) {
       auto const theirshards = sortedShardList(col("shards"));
       if (theirshards.size() > 0) {  // do not care about virtual collections

@@ -214,8 +214,9 @@ struct IResearchFilterSetup {
     auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
       arangodb::iresearch::IResearchAnalyzerFeature
     >();
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
-    analyzers->emplace("test_analyzer", "TestCharAnalyzer", "abc"); // cache analyzer
+    analyzers->emplace(result, "test_analyzer", "TestCharAnalyzer", "abc"); // cache analyzer
   }
 
   ~IResearchFilterSetup() {

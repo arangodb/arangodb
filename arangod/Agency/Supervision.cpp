@@ -68,7 +68,7 @@ struct HealthRecord {
         engine(en),
         version(0) {}
 
-  explicit HealthRecord(Node const& node) { *this = node; }
+  HealthRecord(Node const& node) { *this = node; }
 
   HealthRecord& operator=(Node const& node) {
     version = 0;
@@ -168,12 +168,13 @@ Supervision::Supervision()
       _okThreshold(5.),
       _jobId(0),
       _jobIdMax(0),
-      _haveAborts(false),
       _selfShutdown(false),
       _upgraded(false) {}
 
 Supervision::~Supervision() {
-  shutdown();
+  if (!isStopping()) {
+    shutdown();
+  }
 }
 
 static std::string const syncPrefix = "/Sync/ServerStates/";
@@ -244,7 +245,7 @@ void Supervision::upgradeHealthRecords(Builder& builder) {
     HealthRecord hr;
     {
       VPackObjectBuilder oo(&b);
-      for (auto recPair : _snapshot.hasAsChildren(healthPrefix).first) {
+      for (auto const& recPair : _snapshot.hasAsChildren(healthPrefix).first) {
         if (recPair.second->has("ShortName") &&
             recPair.second->has("Endpoint")) {
           hr = *recPair.second;
@@ -850,23 +851,24 @@ void Supervision::run() {
         }
       }
 
-      // If anything was rafted, we need to
-      index_t leaderIndex = _agent->index();
-      
-      if (leaderIndex != 0) {
-        // No point in progressing, if indexes cannot be advanced
-        while (!this->isStopping() && _agent->leading()) { 
-
-          auto result = _agent->waitFor(leaderIndex);
-          if (result == Agent::raft_commit_t::TIMEOUT) { // Oh snap
-            // Note that we can get UNKNOWN if we have lost leadership or
-            // if we are shutting down. In both cases we just leave the loop.
-            LOG_TOPIC(WARN, Logger::SUPERVISION) << "Waiting for commits to be done ... ";
-            continue; 
-          } else {                                       // Good we can continue
-            break;
+      // If anything was rafted, we need to wait until it is replicated,
+      // otherwise it is not "committed" in the Raft sense. However, let's
+      // only wait for our changes not for new ones coming in during the wait.
+      if (_agent->leading()) {
+        index_t leaderIndex = _agent->index();
+        if (leaderIndex != 0) {
+          while (!this->isStopping() && _agent->leading()) {
+            auto result = _agent->waitFor(leaderIndex);
+            if (result == Agent::raft_commit_t::TIMEOUT) { // Oh snap
+              // Note that we can get UNKNOWN if we have lost leadership or
+              // if we are shutting down. In both cases we just leave the loop.
+              LOG_TOPIC(WARN, Logger::SUPERVISION)
+                << "Waiting for commits to be done ... ";
+              continue;
+            } else {                       // Good we can continue
+              break;
+            }
           }
-
         }
       }
       
@@ -1139,7 +1141,7 @@ void Supervision::workJobs() {
     }
   }
 
-  auto pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  auto const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
   for (auto const& pendEnt : pends) {
     auto jobNode = *(pendEnt.second);
     JobContext(PENDING, jobNode.hasAsString("jobId").first, _snapshot, _agent)
@@ -1169,8 +1171,7 @@ void Supervision::readyOrphanedIndexCreations() {
           indexes = collection("indexes").getArray();
           if (indexes.length() > 0) {
             for (auto const& planIndex : VPackArrayIterator(indexes)) {
-              if (planIndex.hasKey(StaticStrings::IndexIsBuilding) &&
-                  collection.has("shards")) {
+              if (planIndex.hasKey(StaticStrings::IndexIsBuilding) && collection.has("shards")) {
                 auto const& planId = planIndex.get("id");
                 auto const& shards = collection("shards");
                 if (collection.has("numberOfShards") &&
@@ -1256,6 +1257,28 @@ void Supervision::readyOrphanedIndexCreations() {
 
 void Supervision::enforceReplication() {
   _lock.assertLockedByCurrentThread();
+
+  // First check the number of AddFollower and RemoveFollower jobs in ToDo:
+  // We always maintain that we have at most maxNrAddRemoveJobsInTodo
+  // AddFollower or RemoveFollower jobs in ToDo. These are all long-term
+  // cleanup jobs, so they can be done over time. This is to ensure that
+  // there is no overload on the Agency job system. Therefore, if this
+  // number is at least maxNrAddRemoveJobsInTodo, we skip the rest of
+  // the function:
+  int const maxNrAddRemoveJobsInTodo = 15;
+
+  auto todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  int nrAddRemoveJobsInTodo = 0;
+  for (auto it = todos.begin(); it != todos.end(); ++it) {
+    auto jobNode = *(it->second);
+    auto t = jobNode.hasAsString("type");
+    if (t.second && (t.first == "addFollower" || t.first == "removeFollower")) {
+      if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
+        return;
+      }
+    }
+  }
+
   auto const& plannedDBs = _snapshot.hasAsChildren(planColPrefix).first;
 
   for (const auto& db_ : plannedDBs) {  // Planned databases
@@ -1272,7 +1295,7 @@ void Supervision::enforceReplication() {
         if (replFact2.second && replFact2.first == "satellite") {
           // satellites => distribute to every server
           auto available = Job::availableServers(_snapshot);
-          replicationFactor = Job::countGoodServersInList(_snapshot, available);
+          replicationFactor = Job::countGoodOrBadServersInList(_snapshot, available);
         } else {
           LOG_TOPIC(DEBUG, Logger::SUPERVISION)
               << "no replicationFactor entry in " << col.toJson();
@@ -1297,7 +1320,7 @@ void Supervision::enforceReplication() {
             }
           }
           size_t actualReplicationFactor
-            = 1 + Job::countGoodServersInList(_snapshot, onlyFollowers.slice());
+            = 1 + Job::countGoodOrBadServersInList(_snapshot, onlyFollowers.slice());
             // leader plus GOOD followers
           size_t apparentReplicationFactor = shard.slice().length();
 
@@ -1333,11 +1356,17 @@ void Supervision::enforceReplication() {
                 AddFollower(_snapshot, _agent, std::to_string(_jobId++),
                             "supervision", db_.first, col_.first, shard_.first)
                     .create();
+                if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
+                  return;
+                }
               } else if (apparentReplicationFactor > replicationFactor &&
                          actualReplicationFactor >= replicationFactor) {
                 RemoveFollower(_snapshot, _agent, std::to_string(_jobId++),
                                "supervision", db_.first, col_.first, shard_.first)
                     .create();
+                if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
+                  return;
+                }
               }
             }
           }

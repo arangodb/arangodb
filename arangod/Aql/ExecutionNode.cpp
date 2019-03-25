@@ -680,8 +680,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
           VPackObjectBuilder guardInner(&nodes);
           nodes.add("VariableId", VPackValue(oneVarInfo.first));
           nodes.add("depth", VPackValue(oneVarInfo.second.depth));
-          nodes.add("RegisterId",
-                    VPackValue(oneVarInfo.second.registerId));
+          nodes.add("RegisterId", VPackValue(oneVarInfo.second.registerId));
         }
       }
       nodes.add(VPackValue("nrRegs"));
@@ -1218,19 +1217,18 @@ void ExecutionNode::removeDependencies() {
 }
 
 std::unordered_set<RegisterId> ExecutionNode::calcRegsToKeep() const {
-  std::unordered_set<RegisterId> regsToKeep{};
-  regsToKeep.reserve(getVarsUsedLater().size());
   ExecutionNode const* const previousNode = getFirstDependency();
   // Only the Singleton has no previousNode, and it does not call this method.
   TRI_ASSERT(previousNode != nullptr);
+
+  bool inserted = false;
   RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
-  std::unordered_map<VariableId, VarInfo> const& varInfo = getRegisterPlan()->varInfo;
+  std::unordered_set<RegisterId> regsToKeep{};
+  regsToKeep.reserve(getVarsUsedLater().size());
+
   for (auto const var : getVarsUsedLater()) {
-    auto const it = varInfo.find(var->id);
-    TRI_ASSERT(it != varInfo.end());
-    RegisterId const reg = it->second.registerId;
+    auto reg = variableToRegisterId(var);
     if (reg < nrInRegs) {
-      bool inserted;
       std::tie(std::ignore, inserted) = regsToKeep.emplace(reg);
       TRI_ASSERT(inserted);
     }
@@ -1238,6 +1236,15 @@ std::unordered_set<RegisterId> ExecutionNode::calcRegsToKeep() const {
 
   return regsToKeep;
 };
+
+RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
+  TRI_ASSERT(variable != nullptr);
+  auto it = getRegisterPlan()->varInfo.find(variable->id);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId rv = it->second.registerId;
+  TRI_ASSERT(rv < ExecutionNode::MaxRegisterId);
+  return rv;
+}
 
 // This is the general case and will not work if e.g. there is no predecessor.
 ExecutorInfos ExecutionNode::createRegisterInfos(
@@ -1270,25 +1277,26 @@ RegisterId ExecutionNode::getNrOutputRegisters() const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  std::unordered_set<RegisterId> toKeep;
+  // number in == number out
+  // Other nodes get the nrInRegs from the previous node.
+  // That is why we do not use `calcRegsToKeep()`
   RegisterId const nrRegs = getRegisterPlan()->nrRegs[getDepth()];
 
+  std::unordered_set<RegisterId> toKeep;
   if (::isInSubQuery(this)) {
-    auto const& varinfo = this->getRegisterPlan()->varInfo;
     for (auto const& var : this->getVarsUsedLater()) {
-      auto it2 = varinfo.find(var->id);
-      if (it2 != varinfo.end()) {
-        auto val = (*it2).second.registerId;
-        if (val < nrRegs) {
-          toKeep.insert(val);
-        }
+      auto val = variableToRegisterId(var);
+      if (val < nrRegs) {
+        auto rv = toKeep.insert(val);
+        TRI_ASSERT(rv.second);
       }
     }
   }
 
   IdExecutorInfos infos(nrRegs, std::move(toKeep), getRegsToClear());
 
-  return std::make_unique<ExecutionBlockImpl<IdExecutor>>(&engine, this, std::move(infos));
+  return std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(&engine, this,
+                                                                        std::move(infos));
 }
 
 /// @brief toVelocyPack, for SingletonNode
@@ -1339,14 +1347,12 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
-  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-  RegisterId outputRegister = it->second.registerId;
 
   transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
 
   EnumerateCollectionExecutorInfos infos(
-      outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+      variableToRegisterId(_outVariable),
+      getRegisterPlan()->nrRegs[previousNode->getDepth()],
       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
       &engine, this->_collection, _outVariable, this->isVarUsedLater(_outVariable),
       this->projections(), trxPtr, this->coveringIndexAttributePositions(),
@@ -1368,6 +1374,8 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
                                                      outVariable, _random, _hint);
 
   c->projections(_projections);
+  c->_prototypeCollection = _prototypeCollection;
+  c->_prototypeOutVariable = _prototypeOutVariable;
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
@@ -1416,15 +1424,8 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-
-  auto it = getRegisterPlan()->varInfo.find(_inVariable->id);
-  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-  RegisterId inputRegister = it->second.registerId;
-
-  it = getRegisterPlan()->varInfo.find(_outVariable->id);
-  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-  RegisterId outRegister = it->second.registerId;
-
+  RegisterId inputRegister = variableToRegisterId(_inVariable);
+  RegisterId outRegister = variableToRegisterId(_outVariable);
   EnumerateListExecutorInfos infos(inputRegister, outRegister,
                                    getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                    getRegisterPlan()->nrRegs[getDepth()],
@@ -1622,9 +1623,8 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
-  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-  RegisterId outputRegister = it->second.registerId;
+
+  RegisterId outputRegister = variableToRegisterId(_outVariable);
 
   arangodb::HashSet<Variable const*> inVars;
   _expression->variables(inVars);
@@ -1634,15 +1634,9 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   std::vector<RegisterId> expInRegs;
   expInRegs.reserve(inVars.size());
 
-  auto& varInfo = getRegisterPlan()->varInfo;
   for (auto& var : inVars) {
-    TRI_ASSERT(var != nullptr);
-    auto infoIter = varInfo.find(var->id);
-    TRI_ASSERT(infoIter != varInfo.end());
-    TRI_ASSERT(infoIter->second.registerId < ExecutionNode::MaxRegisterId);
-
     expInVars.emplace_back(var);
-    expInRegs.emplace_back(infoIter->second.registerId);
+    expInRegs.emplace_back(variableToRegisterId(var));
   }
 
   bool const isReference = (expression()->node()->type == NODE_TYPE_REFERENCE);
@@ -1958,9 +1952,7 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  auto it = getRegisterPlan()->varInfo.find(_inVariable->id);
-  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-  RegisterId inputRegister = it->second.registerId;
+  RegisterId inputRegister = variableToRegisterId(_inVariable);
 
   FilterExecutorInfos infos(inputRegister,
                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
@@ -2025,9 +2017,7 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  auto it = getRegisterPlan()->varInfo.find(_inVariable->id);
-  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-  RegisterId inputRegister = it->second.registerId;
+  RegisterId inputRegister = variableToRegisterId(_inVariable);
 
   // TODO - remove LOGGING once register planning changes have been made and the ReturnExecutor is final
   // LOG_DEVEL << "-------------------------------";

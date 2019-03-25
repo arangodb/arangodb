@@ -66,6 +66,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <boost/optional.hpp>
 #include <type_traits>
 
 namespace arangodb {
@@ -260,6 +261,16 @@ class ExecutionNode {
       TRI_ASSERT(it != nullptr);
       result.emplace_back(it);
     }
+  }
+
+  /// @brief get the singleton node of the node
+  ExecutionNode const* getSingleton() const {
+    auto node = this;
+    do {
+      node = node->getFirstDependency();
+    } while (node != nullptr && node->getType() != SINGLETON);
+
+    return node;
   }
 
   /// @brief get the node and its dependencies as a vector
@@ -544,6 +555,15 @@ class ExecutionNode {
 
   std::unordered_set<RegisterId> calcRegsToKeep() const;
 
+  RegisterId variableToRegisterId(Variable const*) const;
+
+  boost::optional<RegisterId> variableToRegisterOptionalId(Variable const* var) const {
+    if (var) {
+      return variableToRegisterId(var);
+    }
+    return boost::none;
+  }
+
   virtual ExecutorInfos createRegisterInfos(
       std::shared_ptr<std::unordered_set<RegisterId>>&& readableInputRegisters,
       std::shared_ptr<std::unordered_set<RegisterId>>&& writableOutputRegisters) const;
@@ -595,7 +615,7 @@ class ExecutionNode {
   std::unordered_set<RegisterId> _regsToClear;
 
  public:
-  /// @brief maximum register id that can be assigned.
+  /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
   static constexpr RegisterId MaxRegisterId = 1000;
 

@@ -23,16 +23,6 @@
 #ifndef APPLICATION_FEATURES_DATABASE_FEATURE_H
 #define APPLICATION_FEATURES_DATABASE_FEATURE_H 1
 
-#if !defined(USE_CATCH_TESTS) && !defined(EXPAND_APPLICATION_FEATURES_DATABASE_FEATURE_H)
-  #define DO_EXPAND_APPLICATION_FEATURES_DATABASE_FEATURE_H(VAL) VAL ## 1
-  #define EXPAND_APPLICATION_FEATURES_DATABASE_FEATURE_H(VAL) DO_EXPAND_APPLICATION_FEATURES_DATABASE_FEATURE_H(VAL)
-  #if defined(TEST_VIRTUAL) && (EXPAND_APPLICATION_FEATURES_DATABASE_FEATURE_H(TEST_VIRTUAL) != 1)
-    #define USE_CATCH_TESTS
-  #endif
-  #undef EXPAND_APPLICATION_FEATURES_DATABASE_FEATURE_H
-  #undef DO_EXPAND_APPLICATION_FEATURES_DATABASE_FEATURE_H
-#endif
-
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/DataProtector.h"
 #include "Basics/Mutex.h"
@@ -91,7 +81,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void unprepare() override final;
 
   // used by catch tests
-  #ifdef USE_CATCH_TESTS
+  #ifdef ARANGODB_USE_CATCH_TESTS
     inline int loadDatabases(velocypack::Slice const& databases) {
       return iterateDatabases(databases);
     }

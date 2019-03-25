@@ -302,8 +302,9 @@ void RestCollectionHandler::handleCommandPost() {
                 "indexBuckets", "keyOptions", StaticStrings::WaitForSyncString,
                 "cacheEnabled", StaticStrings::ShardKeys, StaticStrings::NumberOfShards,
                 StaticStrings::DistributeShardsLike, "avoidServers", StaticStrings::IsSmart,
-                "shardingStrategy", StaticStrings::GraphSmartGraphAttribute,
-                StaticStrings::ReplicationFactor, "servers"});
+                "shardingStrategy", StaticStrings::GraphSmartGraphAttribute, 
+                StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,
+                "servers"});
   VPackSlice const parameters = filtered.slice();
 
   // now we can create the collection
@@ -383,22 +384,37 @@ void RestCollectionHandler::handleCommandPut() {
                                  /*showFigures*/ false, /*showCount*/ false,
                                  /*detailedCount*/ true);
       }
-    } else if (sub == "truncate") {
-      OperationOptions opts;
-
-      opts.waitForSync = _request->parsedValue("waitForSync", false);
-      opts.isSynchronousReplicationFrom =
-          _request->value("isSynchronousReplication");
-
-      auto trx = createTransaction(coll->name(), AccessMode::Type::EXCLUSIVE);
-      trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-      trx->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-      res = trx->begin();
-
+    } else if (sub == "compact") {
+      res = coll->compact();
+      
       if (res.ok()) {
-        auto result = trx->truncate(coll->name(), opts);
-        res = trx->finish(result.result);
+        collectionRepresentation(builder, name, /*showProperties*/ false,
+                                 /*showFigures*/ false, /*showCount*/ false,
+                                 /*detailedCount*/ true);
       }
+    } else if (sub == "truncate") {
+      {
+        OperationOptions opts;
+
+        opts.waitForSync = _request->parsedValue("waitForSync", false);
+        opts.isSynchronousReplicationFrom =
+            _request->value("isSynchronousReplication");
+
+        auto trx = createTransaction(coll->name(), AccessMode::Type::EXCLUSIVE);
+        trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+        trx->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
+        res = trx->begin();
+
+        if (res.ok()) {
+          auto result = trx->truncate(coll->name(), opts);
+          res = trx->finish(result.result);
+        }
+      }
+      // wait for the transaction to finish first. only after that compact the
+      // data range(s) for the collection
+      // we shouldn't run compact() as part of the transaction, because the compact
+      // will be useless inside due to the snapshot the transaction has taken
+      coll->compact();
 
       if (res.ok()) {
         if (ServerState::instance()->isCoordinator()) {  // ClusterInfo::loadPlan eventually
@@ -455,7 +471,7 @@ void RestCollectionHandler::handleCommandPut() {
       if (res.is(TRI_ERROR_NOT_IMPLEMENTED)) {
         res.reset(TRI_ERROR_HTTP_NOT_FOUND,
                   "expecting one of the actions 'load', 'unload', 'truncate',"
-                  " 'properties', 'rename', 'loadIndexesIntoMemory'");
+                  " 'properties', 'compact', 'rename', 'loadIndexesIntoMemory'");
       }
     }
   });
