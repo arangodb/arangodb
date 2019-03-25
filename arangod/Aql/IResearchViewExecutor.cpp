@@ -135,6 +135,7 @@ IResearchViewExecutor<ordered>::IResearchViewExecutor(IResearchViewExecutor::Fet
       _fetcher(fetcher),
       _inputRow(CreateInvalidInputRowHint{}),
       _upstreamState(ExecutionState::HASMORE),
+      _pkBuffer(ExecutionBlock::DefaultBatchSize()),
       _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
       _ctx(&infos.getQuery(), infos.numberOfOutputRegisters(),
            infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
@@ -222,32 +223,52 @@ inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find c
   return collection->collection();
 }
 
-LocalDocumentId readPK(irs::doc_iterator& it,
-                       irs::columnstore_reader::values_reader_f const& values) {
-  LocalDocumentId documentId;
-
-  if (it.next()) {
+template <bool ordered>
+void IResearchViewExecutor<ordered>::fillPkBuffer(
+    irs::doc_iterator& it, irs::columnstore_reader::values_reader_f const& values) {
+  while (!_pkBuffer.full() && it.next()) {
     irs::bytes_ref key;
     irs::doc_id_t const docId = it.value();
     if (values(docId, key)) {
+      LocalDocumentId documentId;
       bool const readSuccess =
           arangodb::iresearch::DocumentPrimaryKey::read(documentId, key);
 
       TRI_ASSERT(readSuccess == documentId.isSet());
 
-      if (!readSuccess) {
-        // TODO This warning was previously emitted only in the ordered case.
-        // Must it stay that way?
-        // TODO Maybe this should be an exception?
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-            << "failed to read document primary key while reading document "
+      if (readSuccess) {
+        _pkBuffer.push_back(documentId);
+      } else {
+        std::stringstream str;
+        str << "failed to read document primary key while reading document "
                "from arangosearch view, doc_id '"
             << docId << "'";
+        _infos.getQuery().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                          str.str().c_str());
       }
     }
   }
+}
 
-  return documentId;
+template<bool ordered>
+LocalDocumentId IResearchViewExecutor<ordered>::getNextPk(
+  irs::doc_iterator &it, irs::columnstore_reader::values_reader_f const &values
+) {
+  LocalDocumentId id = LocalDocumentId::none();
+
+  if (_pkBuffer.empty()) {
+    // Try to fill the buffer if it's empty
+    fillPkBuffer(it, values);
+  }
+
+  if (!_pkBuffer.empty()) {
+    // Read a key if there's something in the buffer
+    id = _pkBuffer.front();
+    _pkBuffer.pop_front();
+    return id;
+  }
+
+  return id;
 }
 
 template <bool ordered>
@@ -264,18 +285,20 @@ bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
     auto collection = lookupCollection(*infos().getQuery().trx(), cid);
 
     if (!collection) {
-      // TODO shouldn't this be an exception?
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to find collection while reading document from "
+      std::stringstream str;
+      str << "failed to find collection while reading document from "
              "arangosearch view, cid '"
           << cid << "'";
+      _infos.getQuery().registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                        str.str().c_str());
+
       continue;
     }
 
     TRI_ASSERT(_pkReader);
 
     // try to read a document PK from iresearch
-    LocalDocumentId documentId = readPK(*_itr, _pkReader);
+    LocalDocumentId documentId = getNextPk(*_itr, _pkReader);
 
     // read document from underlying storage engine, if we got an id
     if (documentId.isSet() &&

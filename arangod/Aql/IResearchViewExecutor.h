@@ -32,6 +32,8 @@
 #include "Indexes/IndexIterator.h"
 #include "VocBase/LocalDocumentId.h"
 
+#include <boost/circular_buffer.hpp>
+
 namespace iresearch {
 class score;
 }
@@ -175,6 +177,12 @@ class IResearchViewExecutor {
                     irs::columnstore_reader::values_reader_f const& pkValues,
                     IndexIterator::DocumentCallback const& callback);
 
+  LocalDocumentId getNextPk(irs::doc_iterator& it,
+                            irs::columnstore_reader::values_reader_f const& values);
+
+  void fillPkBuffer(irs::doc_iterator& it,
+                    irs::columnstore_reader::values_reader_f const& values);
+
  private:
   Infos const& _infos;
   Fetcher& _fetcher;
@@ -184,6 +192,9 @@ class IResearchViewExecutor {
   ExecutionState _upstreamState;
 
   // IResearchViewBlockBase members:
+  using KeyBuffer =
+      boost::circular_buffer_space_optimized<arangodb::LocalDocumentId, std::allocator<arangodb::LocalDocumentId>>;
+  KeyBuffer _pkBuffer;                 // buffer for primary keys
   irs::attribute_view _filterCtx;  // filter context
   iresearch::ViewExpressionContext _ctx;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> _reader;
