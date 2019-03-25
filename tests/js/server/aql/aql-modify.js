@@ -94,26 +94,26 @@ function aqlInsertOptionsSuite () {
     testErrorMessageOnUniqueConstraintViolated : function () {
       let q = `INSERT {"_key" : "paff"} INTO ${collectionName}`;
       db._query(q);
-      assertEqual(2001, col.count())
+      assertEqual(2001, col.count());
 
       // check generic message
       try {
         db._query(q);
-        fail()
+        fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
       }
 
       // check if we get details, when operation was not silent (retuning something)
-      let q = `INSERT {"_key" : "paff"} INTO ${collectionName} RETURN NEW `;
+      q = `INSERT {"_key" : "paff"} INTO ${collectionName} RETURN NEW `;
       try {
         db._query(q);
-        fail()
+        fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
         assertMatch(/conflicting key/, err.message);
         assertMatch(/_key/, err.message);
-        assertMatch(/peng/, err.message);
+        assertMatch(/paff/, err.message);
       }
     }
   };
