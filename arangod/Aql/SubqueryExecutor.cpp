@@ -51,7 +51,11 @@ SubqueryExecutor::SubqueryExecutor(Fetcher& fetcher, SubqueryExecutorInfos& info
       _infos(infos),
       _state(ExecutionState::HASMORE),
       _subqueryInitialized(false),
+      _constSubqueryComputed(false),
+      _shutdownDone(false),
+      _shutdownResult(TRI_ERROR_INTERNAL),
       _subquery(infos.getSubquery()),
+      _subqueryResults(nullptr),
       _input(CreateInvalidInputRowHint{}) {}
 
 SubqueryExecutor::~SubqueryExecutor() = default;
