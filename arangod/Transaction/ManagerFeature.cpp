@@ -41,8 +41,8 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "TransactionManager"), _workItem(nullptr), _gcfunc() {
   setOptional(false);
   startsAfter("BasicsPhase");
-
   startsAfter("EngineSelector");
+  startsBefore("Database");
       
   _gcfunc = [this] (bool cancelled) {
     if (!cancelled) {
@@ -69,8 +69,9 @@ void ManagerFeature::start() {
   
 void ManagerFeature::beginShutdown() {
   _workItem.reset();
-  // make sure no lingering managed trx remain
+  // at this point all cursor should have been aborted already
   MANAGER->garbageCollect(/*abortAll*/true);
+  // make sure no lingering managed trx remain
   while (MANAGER->garbageCollect(/*abortAll*/true)) {
     LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "still waiting for managed transaction";
     std::this_thread::sleep_for(std::chrono::seconds(1));

@@ -170,6 +170,10 @@ ArangoTransaction.prototype.query = function(query, bindVars, cursorOptions, opt
   return new ArangoQueryCursor(this._database, requestResult, isStream);
 };
 
+ArangoTransactionCollection.prototype.name = function() {
+  return this._collection.name();
+};
+
 ArangoTransactionCollection.prototype.document = function(id) {
   if (this._transaction.id() === 0) {
     throw new ArangoError({

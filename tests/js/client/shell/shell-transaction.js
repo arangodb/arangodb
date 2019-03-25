@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertFalse, assertEqual */
+/* global fail, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
@@ -3422,7 +3422,6 @@ function transactionAQLStreamSuite () {
         }
 
       } catch(err) {
-        print(err);
         fail();
       } finally {
         if (cursor) {
@@ -3477,47 +3476,57 @@ function transactionAQLStreamSuite () {
     // / @brief test: trx with embedded AQL
     // //////////////////////////////////////////////////////////////////////////////
 
-    testAqlMultiWrite: function () {
-      const cn1 = cn;
-      const cn2 = + 'Vertex';
-      let obj = {
-        collections: {
-          write: [ cn1, cn2 ]
-        }
-      };
-
-      let trx;
+    testAqlMultiWriteStream: function () {
+      let trx, cursor1, cursor2;
       try {
-        trx = db._createTransaction(obj);
-        let tc1 = trx.collection(c1.name());
-        let tc2 = trx.collection(c2.name());
-        
-        var ops;
-        ops = trx.query('FOR i IN @@cn1 REMOVE i._key IN @@cn1', { '@cn1': cn1 }).getExtra().stats;
-        assertEqual(10, ops.writesExecuted);
-        assertEqual(0, tc1.count());
+        trx = db._createTransaction({
+          collections: {
+            write: [ cn, cn + 'Vertex']
+          }
+        });
+        let tc = trx.collection(cn);
 
-        ops = trx.query('FOR i IN @@cn2 REMOVE i._key IN @@cn2', { '@cn2': cn2 }).getExtra().stats;
-        assertEqual(10, ops.writesExecuted);
-        assertEqual(0, tc2.count());
+        let cursor1 = trx.query('FOR i IN @@cn FILTER i.value1 == 1 REMOVE i._key IN @@cn', { '@cn': cn });
+        while (cursor1.hasNext()) {
+          cursor1.next();
+        }
+        let extras = cursor1.getExtra();
+        assertNotUndefined(extras);
+        assertNotUndefined(extras.stats);
+        assertEqual(500, extras.stats.writesExecuted);
+        assertEqual(4500, tc.count());
+
+        tc = trx.collection(cn + 'Vertex');
+        cursor2 = trx.query('FOR i IN @@vc UPDATE {_key: i._key, updated:1} IN @@vc', { '@vc': cn + 'Vertex' });
+        while (cursor2.hasNext()) {
+          cursor2.next();
+        }
+        extras = cursor2.getExtra();
+        assertNotUndefined(extras);
+        assertNotUndefined(extras.stats);
+        assertEqual(100, extras.stats.writesExecuted);
+        assertEqual(100, tc.count());
 
       } catch(err) {
         fail();
       } finally {
+        if (cursor1) {
+          cursor1.dispose();
+        }
+        if (cursor2) {
+          cursor2.dispose();
+        }
         if (trx) {
           trx.commit();
         }
       }
-
-      assertEqual(0, c1.count());
-      assertEqual(0, c2.count());
     },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: use of undeclared traversal collection in transaction
     // //////////////////////////////////////////////////////////////////////////////
 
-    testUndeclaredTraversalCollection: function () {
+    testUndeclaredTraversalCollectionStream: function () {
 
       let result;
       // begin trx
@@ -3532,7 +3541,7 @@ function transactionAQLStreamSuite () {
 
         let results = trx.query('WITH ' + cn + 'Vertex FOR v, e IN ANY "' + cn + 'Vertex/20" ' + 
                             cn + 'Edge FILTER v._id == "' + cn + 
-                            'Vertex/21" LIMIT 1 RETURN e').toArray();
+                            'Vertex/21" LIMIT 1 RETURN e', {}, {}, {stream: true}).toArray();
 
         if (results.length > 0) {
           result = results[0];
@@ -3548,7 +3557,6 @@ function transactionAQLStreamSuite () {
 
       assertEqual(1, result);
     }
-
   };
 }
 
