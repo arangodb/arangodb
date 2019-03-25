@@ -160,9 +160,10 @@ void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
   try {
     if (opRes.slice().isArray()) {
       for (auto doc : VPackArrayIterator(opRes.slice())) {
-        if (doc.hasKey("errorNum") && doc.get("errorNum").getInt() == code) {
+        if (doc.isObject() && doc.hasKey("errorNum") && doc.get("errorNum").getInt() == code) {
           if (doc.hasKey("errorMessage")) {
             message = doc.get("errorMessage").copyString();
+            break;
           }
         }
       }
