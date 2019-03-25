@@ -23,15 +23,21 @@ documents found in the input directory *dump*. Please note that the input direct
 must have been created by running *arangodump* before.
 
 _arangorestore_ will by default connect to the *_system* database using the default
-endpoint. If you want to connect to a different database or a different endpoint,
-or use authentication, you can use the following command-line options:
+endpoint. To override the endpoint, or specify a different user, use one of the
+following commandline parameters:
 
-- `--server.database <string>`: name of the database to connect to
 - `--server.endpoint <string>`: endpoint to connect to
 - `--server.username <string>`: username
 - `--server.password <string>`: password to use (omit this and you'll be prompted for the
   password)
 - `--server.authentication <bool>`: whether or not to use authentication
+
+If you want to connect to a different database or dump all databases you can additionaly
+use the following command-line options (please note that the specified user must have access
+to the databases):
+
+- `--all-databases true`: must have access to all databases, and not specify a database.
+- `--server.database <string>`: name of the database to connect to
 
 Since version 2.6 _arangorestore_ provides the option *--create-database*. Setting this
 option to *true* will create the target database if it does not exist. When creating the
