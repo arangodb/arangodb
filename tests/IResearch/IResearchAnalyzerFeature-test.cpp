@@ -1908,7 +1908,7 @@ SECTION("test_start") {
     });
     CHECK((expected.empty()));
   }
-*/
+
   // FIXME TODO remove test since there is no more ensure()
   // test feature start load configuration (inRecovery, with configuration collection, uninitialized analyzers)
   {
