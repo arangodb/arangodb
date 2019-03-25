@@ -81,7 +81,7 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
                idx->isAttributeExpanded(attributeData.second) &&
                idx->attributeMatches(attributeData.second, isPrimaryIndex)) {
       // check for  'value' IN doc.value  AND  'value' IN doc.value[*]
-      what = other;  // if what should be used later
+      // what = other;  // activate this if what needs to be used later
     } else {
       return false;
     }

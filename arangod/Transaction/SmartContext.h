@@ -115,7 +115,7 @@ struct AQLStandaloneContext final : public SmartContext {
 /// that do not send the transaction ID header
 struct StandaloneSmartContext final : public SmartContext {
   
-  StandaloneSmartContext(TRI_vocbase_t& vocbase);
+  explicit StandaloneSmartContext(TRI_vocbase_t& vocbase);
   
   /// @brief get parent transaction (if any)
   TransactionState* getParentTransaction() const override;

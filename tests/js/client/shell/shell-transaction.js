@@ -1887,14 +1887,12 @@ function transactionRollbackSuite () {
     testRollbackAfterFlush: function () {
       c1 = db._create(cn1);
 
-      let obj = {
+      // begin trx
+      let trx = db._createTransaction({
         collections: {
           write: [ cn1 ]
         }
-      };
-
-      // begin trx
-      let trx = db._createTransaction(obj);
+      });
       try {
         let tc1 = trx.collection(c1.name());
         
@@ -2575,14 +2573,12 @@ function transactionRollbackSuite () {
       c1.save({ _key: 'foo' });
       c1.save({ _key: 'bar' });
 
-      let obj = {
+      // begin trx
+      let trx = db._createTransaction({
         collections: {
           write: [ cn1 ]
         }
-      };
-
-      // begin trx
-      let trx = db._createTransaction(obj);
+      });
       try {
         let tc1 = trx.collection(c1.name());
         

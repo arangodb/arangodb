@@ -132,6 +132,8 @@ class CountCollectExecutor {
   void incrCount() noexcept { _count++; };
   uint64_t getCount() noexcept { return _count; };
 
+  inline size_t numberOfRowsInFlight() const { return 0; }
+
  private:
   Infos const& infos() const noexcept { return _infos; };
 

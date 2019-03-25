@@ -32,6 +32,8 @@
 namespace arangodb {
 namespace aql {
 
+class InputAqlItemRow;
+
 // Deleter usable for smart pointers that return an AqlItemBlock to its manager
 class AqlItemBlockDeleter {
  public:
@@ -65,8 +67,10 @@ class AqlItemBlockDeleter {
  * dependencies of Executors, Fetchers etc. on internal knowledge of ItemBlocks,
  * and probably shrinks ExecutorInfos.
  */
-class AqlItemBlockShell {
+class AqlItemBlockShell : public std::enable_shared_from_this<AqlItemBlockShell> {
  public:
+  AqlItemBlockShell(AqlItemBlockShell const&) = delete;
+
   using SmartAqlItemBlockPtr = std::unique_ptr<AqlItemBlock, AqlItemBlockDeleter>;
 
   inline AqlItemBlock const& block() const { return *_block; }
@@ -84,6 +88,8 @@ class AqlItemBlockShell {
   std::unique_ptr<AqlItemBlock> stealBlockCompat() {
     return std::unique_ptr<AqlItemBlock>(stealBlock().release());
   }
+
+  void forRowInBlock(std::function<void(InputAqlItemRow&&)> callback);
 
  private:
   SmartAqlItemBlockPtr _block;
