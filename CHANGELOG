@@ -1,6 +1,9 @@
 v3.4.5 (2019-03-27)
 -------------------
 
+* fixed internal-issue #3787: Let user know about conflicting attribute in
+  AQL queries if information is available.
+
 * fixed issue #8294: wrong equals behaviour on arrays with ArangoSearch
 
 * fixed internal issue #528: ArangoSearch range query sometimes doesn't work
