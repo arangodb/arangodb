@@ -353,7 +353,7 @@ bool byRange(irs::boolean_filter* filter, arangodb::aql::AstNode const& attribut
     }
 
     if (!min.execute(ctx)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("1e23d", WARN, arangodb::iresearch::TOPIC)
           << "Failed to evaluate lower boundary from node '"
           << arangodb::aql::AstNode::toString(&minValueNode)
           << "'";
@@ -370,7 +370,7 @@ bool byRange(irs::boolean_filter* filter, arangodb::aql::AstNode const& attribut
     }
 
     if (!max.execute(ctx)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("5a0a4", WARN, arangodb::iresearch::TOPIC)
           << "Failed to evaluate upper boundary from node '"
           << arangodb::aql::AstNode::toString(&maxValueNode)
           << "'";
@@ -379,7 +379,7 @@ bool byRange(irs::boolean_filter* filter, arangodb::aql::AstNode const& attribut
   }
 
   if (min.type() != max.type()) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("03078", WARN, arangodb::iresearch::TOPIC)
         << "Failed to build range query, lower boundary '" << arangodb::aql::AstNode::toString(&minValueNode)
         << "' mismatches upper boundary '" << arangodb::aql::AstNode::toString(&maxValueNode) << "'";
     return false;
@@ -1828,7 +1828,7 @@ bool fromFuncInRange(irs::boolean_filter* filter, QueryContext const& ctx,
                      FilterContext const& filterCtx,
                      arangodb::aql::AstNode const& args) {
   if (!args.isDeterministic()) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("dff45", WARN, arangodb::iresearch::TOPIC)
         << "Unable to handle non-deterministic arguments for 'IN_RANGE' "
            "function";
     return false;  // nondeterministic
@@ -1837,7 +1837,7 @@ bool fromFuncInRange(irs::boolean_filter* filter, QueryContext const& ctx,
   auto const argc = args.numMembers();
 
   if (argc != 5) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("2f5a8", WARN, arangodb::iresearch::TOPIC)
         << "'IN_RANGE' AQL function: Invalid number of arguments passed "
            "(should be 5)";
     return false;
@@ -1848,7 +1848,7 @@ bool fromFuncInRange(irs::boolean_filter* filter, QueryContext const& ctx,
       arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
 
   if (!field) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("7c56a", WARN, arangodb::iresearch::TOPIC)
         << "'IN_RANGE' AQL function: Unable to parse 1st argument as an "
            "attribute identifier";
     return false;
@@ -1860,7 +1860,7 @@ bool fromFuncInRange(irs::boolean_filter* filter, QueryContext const& ctx,
       bool& include,
       irs::string_ref const& argName) -> bool {
     if (!arg) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("8ec00", WARN, arangodb::iresearch::TOPIC)
           << "'IN_RANGE' AQL function: " << argName << " argument is invalid";
       return false;
     }
@@ -1869,13 +1869,13 @@ bool fromFuncInRange(irs::boolean_filter* filter, QueryContext const& ctx,
 
     if (filter || includeValue.isConstant()) {
       if (!includeValue.execute(ctx)) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("32f3b", WARN, arangodb::iresearch::TOPIC)
             << "'IN_RANGE' AQL function: Failed to evaluate " << argName << " argument";
         return false;
       }
 
       if (arangodb::iresearch::SCOPED_VALUE_TYPE_BOOL != includeValue.type()) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("57a29", WARN, arangodb::iresearch::TOPIC)
             << "'IN_RANGE' AQL function: " << argName << " argument has invalid type '"
             << includeValue.type() << "' (boolean expected)";
         return false;
@@ -1891,7 +1891,7 @@ bool fromFuncInRange(irs::boolean_filter* filter, QueryContext const& ctx,
   auto const* lhsArg = args.getMemberUnchecked(1);
 
   if (!lhsArg) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("f1167", WARN, arangodb::iresearch::TOPIC)
         << "'IN_RANGE' AQL function: 2nd argument is invalid";
     return false;
   }
@@ -1900,7 +1900,7 @@ bool fromFuncInRange(irs::boolean_filter* filter, QueryContext const& ctx,
   auto const* rhsArg = args.getMemberUnchecked(2);
 
   if (!rhsArg) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("d5fe6", WARN, arangodb::iresearch::TOPIC)
         << "'IN_RANGE' AQL function: 3rd argument is invalid";
     return false;
   }
