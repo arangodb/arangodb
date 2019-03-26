@@ -115,7 +115,7 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
 
   VPackBuilder inBuilder;
   VPackSlice inSlice = VPackSlice::emptyObjectSlice();
-  if (_info._input1RegisterId == ExecutionNode::MaxRegisterId) {  // IF NOT REMOVE OR SELECT
+  if (_info._input1RegisterId != ExecutionNode::MaxRegisterId) {  // IF NOT REMOVE OR SELECT
     AqlValue const& inDocument = input.getValue(_info._input1RegisterId);
     inBuilder.add(inDocument.slice());
     inSlice = inBuilder.slice();
