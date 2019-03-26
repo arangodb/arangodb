@@ -738,7 +738,7 @@ void Agent::advanceCommitIndex() {
     WRITE_LOCKER(oLocker, _outputLock);
     if (index > _commitIndex) {
       CONDITION_LOCKER(guard, _waitForCV);
-      LOG_TOPIC(TRACE, Logger::AGENCY)
+      LOG_TOPIC(ERR, Logger::AGENCY)
           << "Critical mass for commiting " << _commitIndex + 1 << " through "
           << index << " to read db";
       // Change _readDB and _commitIndex atomically together:
@@ -747,6 +747,9 @@ void Agent::advanceCommitIndex() {
                               _commitIndex, t, true);
 
       _commitIndex = index;
+      LOG_TOPIC(ERR, Logger::AGENCY)
+          << "Critical mass for commiting " << _commitIndex + 1 << " through "
+          << index << " to read db, done";
       // Wake up rest handlers:
       _waitForCV.broadcast();
 

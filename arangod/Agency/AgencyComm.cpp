@@ -1461,6 +1461,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
       if (isWriteTrans && !clientIds.empty() && result._sent &&
           (result._statusCode == 0 || result._statusCode == 503)) {
         isInquiry = true;
+        conTimeout = 16.0;
       }
 
       // This leaves the redirect, timeout and 503 cases, which are handled
@@ -1535,7 +1536,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
     // In case of a timeout, we increase the patience:
     if (result._statusCode == 0) {
-      if (conTimeout < 15.0) {  // double until we have 16s
+      if (conTimeout < 33.0) {  // double until we have 64s
         conTimeout *= 2;
       }
     }
