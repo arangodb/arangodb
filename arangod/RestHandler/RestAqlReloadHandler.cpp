@@ -18,30 +18,34 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_ACTIONS_H
-#define ARANGOD_V8_SERVER_V8_ACTIONS_H 1
+#include "RestAqlReloadHandler.h"
 
-#include "Basics/Common.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
+#include "V8Server/V8DealerFeature.h"
 
-#include <v8.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
 
-class TRI_action_t;
-struct TRI_v8_global_t;
+using namespace arangodb;
+using namespace arangodb::rest;
 
-namespace arangodb {
-class GeneralRequest;
+RestAqlReloadHandler::RestAqlReloadHandler(GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(request, response) {}
+
+RestStatus RestAqlReloadHandler::execute() {
+  V8DealerFeature::DEALER->addGlobalContextMethod("reloadAql");
+  
+  VPackBuilder result;
+  result.openObject(true);
+  result.add(StaticStrings::Error, VPackValue(false));
+  result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+  result.close();
+  
+  generateResult(rest::ResponseCode::OK, result.slice());
+  return RestStatus::DONE;
 }
-
-v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
-                                          TRI_v8_global_t const* v8g,
-                                          arangodb::GeneralRequest* request,
-                                          TRI_action_t const* action);
-
-void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context);
-
-void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context);
-
-#endif
