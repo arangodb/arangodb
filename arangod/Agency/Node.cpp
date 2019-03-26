@@ -995,7 +995,7 @@ std::pair<Slice, bool> Node::hasAsSlice(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC(TRACE, Logger::SUPERVISION)
         << "hasAsSlice had exception processing " << url;
   }  // catch
 
