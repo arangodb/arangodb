@@ -551,7 +551,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
           }
         }
         if (!inserted) {
-          LOG_TOPIC(DEBUG, arangodb::Logger::CACHE)
+          LOG_TOPIC("c1809", DEBUG, arangodb::Logger::CACHE)
               << "Failed to cache: " << fromTo.toString();
           delete entry;
         }
@@ -807,7 +807,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);
   if (expectedCount < 100000) {
-    LOG_TOPIC(DEBUG, Logger::ENGINES) << "Skipping the multithreaded loading";
+    LOG_TOPIC("ac653", DEBUG, Logger::ENGINES) << "Skipping the multithreaded loading";
     auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx,
                                                              bounds.start(),
                                                              bounds.end());
@@ -826,7 +826,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   // get the first and last actual key
   it->Seek(bounds.start());
   if (!it->Valid()) {
-    LOG_TOPIC(DEBUG, Logger::ENGINES)
+    LOG_TOPIC("7b7dc", DEBUG, Logger::ENGINES)
         << "Cannot use multithreaded edge index warmup";
     auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx,
                                                              bounds.start(),
@@ -837,7 +837,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   std::string firstKey = it->key().ToString();
   it->SeekForPrev(bounds.end());
   if (!it->Valid()) {
-    LOG_TOPIC(DEBUG, Logger::ENGINES)
+    LOG_TOPIC("24334", DEBUG, Logger::ENGINES)
         << "Cannot use multithreaded edge index warmup";
     auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx,
                                                              bounds.start(),
@@ -850,7 +850,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   std::string q1 = firstKey, q2, q3, q4, q5 = lastKey;
   q3 = FindMedian(it.get(), q1, q5);
   if (q3 == lastKey) {
-    LOG_TOPIC(DEBUG, Logger::ENGINES)
+    LOG_TOPIC("14caa", DEBUG, Logger::ENGINES)
         << "Cannot use multithreaded edge index warmup";
     auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx,
                                                              bounds.start(),
@@ -1015,7 +1015,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
       }
     }
   }
-  LOG_TOPIC(DEBUG, Logger::ENGINES) << "loaded n: " << n;
+  LOG_TOPIC("99a29", DEBUG, Logger::ENGINES) << "loaded n: " << n;
 }
 
 // ===================== Helpers ==================

@@ -694,7 +694,7 @@ struct DMIDMasterContext : public MasterContext {
         setAggregatedValue<int64_t>(RESTART_COUNTER_AGG, restartCount + 1);
         setAggregatedValue<float>(PROFITABILITY_AGG, newThreshold);
         setAggregatedValue<int64_t>(ITERATION_AGG, 1);
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Restarting with threshold " << newThreshold;
+        LOG_TOPIC("99eb1", INFO, Logger::PREGEL) << "Restarting with threshold " << newThreshold;
       }
     }
 
@@ -713,16 +713,16 @@ struct DMIDMasterContext : public MasterContext {
       if (globalSuperstep() <= RW_ITERATIONBOUND + 4) {
         VertexSumAggregator* convergedDA = (VertexSumAggregator*)getAggregator(DA_AGG);
 
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Aggregator DA at step: " << globalSuperstep();
+        LOG_TOPIC("db510", INFO, Logger::PREGEL) << "Aggregator DA at step: " << globalSuperstep();
         convergedDA->forEach([&](PregelID const& _id, double entry) {
-          LOG_TOPIC(INFO, Logger::PREGEL) << _id.key;
+          LOG_TOPIC("df98d", INFO, Logger::PREGEL) << _id.key;
         });
       }
       if (globalSuperstep() == RW_ITERATIONBOUND + 6) {
         VertexSumAggregator* leadershipVector =
             (VertexSumAggregator*)getAggregator(LS_AGG);
         leadershipVector->forEach([&](PregelID const& _id, double entry) {
-          LOG_TOPIC(INFO, Logger::PREGEL) << "Aggregator LS:" << _id.key;
+          LOG_TOPIC("c82d2", INFO, Logger::PREGEL) << "Aggregator LS:" << _id.key;
         });
       }
     }
@@ -754,7 +754,7 @@ struct DMIDMasterContext : public MasterContext {
     vecFD->forEach([&](PregelID const& _id, double entry) {
       if (entry > averageFD) {
         initGL->aggregate(_id.shard, _id.key, 1.0);
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Global Leader " << _id.key;
+        LOG_TOPIC("a3665", INFO, Logger::PREGEL) << "Global Leader " << _id.key;
       }
     });
     // setAggregatedValue(DMIDComputation.GL_AGG, initGL);

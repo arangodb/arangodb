@@ -73,7 +73,7 @@ class LogicalView : public LogicalDataSource {
     auto impl = dynamic_cast<typename target_type_t::pointer>(&view);
 
     if (!impl) {
-      LOG_TOPIC(ERR, Logger::VIEWS)
+      LOG_TOPIC("62e7f", ERR, Logger::VIEWS)
           << "invalid convertion attempt from '" << typeid(Source).name() << "'"
           << " to '" << typeid(typename target_type_t::value_type).name() << "'";
       TRI_ASSERT(false);

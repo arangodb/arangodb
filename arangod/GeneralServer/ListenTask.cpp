@@ -55,12 +55,12 @@ bool ListenTask::start() {
   try {
     _acceptor->open();
   } catch (asio_ns::system_error const& err) {
-    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
+    LOG_TOPIC("c476e", WARN, arangodb::Logger::COMMUNICATION)
         << "failed to open endpoint '" << _endpoint->specification()
         << "' with error: " << err.what();
     return false;
   } catch (std::exception const& err) {
-    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
+    LOG_TOPIC("7c359", WARN, arangodb::Logger::COMMUNICATION)
         << "failed to open endpoint '" << _endpoint->specification()
         << "' with error: " << err.what();
     return false;
@@ -79,17 +79,17 @@ void ListenTask::accept() {
 
     if (ec) {
       if (ec == asio_ns::error::operation_aborted) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
+        LOG_TOPIC("74339", WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
         return;
       }
 
       ++_acceptFailures;
 
       if (_acceptFailures < MAX_ACCEPT_ERRORS) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
+        LOG_TOPIC("644df", WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
       } else if (_acceptFailures == MAX_ACCEPT_ERRORS) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        LOG_TOPIC("302eb", WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
+        LOG_TOPIC("40ca3", WARN, arangodb::Logger::FIXME)
             << "too many accept failures, stopping to report";
       }
     }

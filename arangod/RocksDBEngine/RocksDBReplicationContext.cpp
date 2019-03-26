@@ -104,7 +104,7 @@ void RocksDBReplicationContext::removeVocbase(TRI_vocbase_t& vocbase) {
   while (it != _iterators.end()) {
     if (it->second->vocbase.id() == vocbase.id()) {
       if (it->second->isUsed()) {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "trying to delete used context";
+        LOG_TOPIC("543d4", ERR, Logger::REPLICATION) << "trying to delete used context";
       } else {
         found = true;
         it = _iterators.erase(it);
@@ -124,12 +124,12 @@ void RocksDBReplicationContext::releaseIterators(TRI_vocbase_t& vocbase, TRI_voc
   auto it = _iterators.find(cid);
   if (it != _iterators.end()) {
     if (it->second->isUsed()) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "trying to delete used iterator";
+      LOG_TOPIC("74164", ERR, Logger::REPLICATION) << "trying to delete used iterator";
     } else {
       _iterators.erase(it);
     }
   } else {
-    LOG_TOPIC(ERR, Logger::REPLICATION)
+    LOG_TOPIC("5a0a1", ERR, Logger::REPLICATION)
         << "trying to delete non-existent iterator";
   }
 }
@@ -387,7 +387,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
           TRI_ASSERT(ps.size() > 0);
           docRev = TRI_ExtractRevisionId(VPackSlice(ps.data()));
         } else {
-          LOG_TOPIC(WARN, Logger::REPLICATION)
+          LOG_TOPIC("32e3b", WARN, Logger::REPLICATION)
               << "inconsistent primary index, "
               << "did not find document with key " << key.toString();
           TRI_ASSERT(false);
@@ -428,7 +428,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   if (cIter->isNumberDocumentsExclusive) {
     int64_t adjustment = snapNumDocs - cIter->numberDocuments;
     if (adjustment != 0) {
-      LOG_TOPIC(WARN, Logger::REPLICATION)
+      LOG_TOPIC("4986d", WARN, Logger::REPLICATION)
           << "inconsistent collection count detected, "
           << "an offet of " << adjustment << " will be applied";
       auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
@@ -534,7 +534,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
         docRev = TRI_ExtractRevisionId(VPackSlice(ps.data()));
       } else {
         arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
-        LOG_TOPIC(WARN, Logger::REPLICATION)
+        LOG_TOPIC("41803", WARN, Logger::REPLICATION)
             << "inconsistent primary index, "
             << "did not find document with key " << key.toString();
         TRI_ASSERT(false);
@@ -638,7 +638,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     }
 
     if (!hasMore) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "Not enough data at " << oldPos;
+      LOG_TOPIC("b34fe", ERR, Logger::REPLICATION) << "Not enough data at " << oldPos;
       b.close();
       return rv.reset(TRI_ERROR_FAILED, "Not enough data");
     }
@@ -673,7 +673,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
           b.add(VPackSlice(ps.data()));
         } else {
           arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
-          LOG_TOPIC(WARN, Logger::REPLICATION)
+          LOG_TOPIC("d79df", WARN, Logger::REPLICATION)
               << "inconsistent primary index, "
               << "did not find document with key " << key.toString();
           TRI_ASSERT(false);

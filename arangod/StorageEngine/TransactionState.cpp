@@ -100,7 +100,7 @@ TransactionState::Cookie::ptr TransactionState::cookie(void const* key,
 int TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cname,
                                     AccessMode::Type accessType,
                                     int nestingLevel, bool force) {
-  LOG_TRX(this, nestingLevel) << "adding collection " << cid;
+  LOG_TRX("ad6d0", TRACE, this, nestingLevel) << "adding collection " << cid;
 
   // upgrade transaction type if required
   if (nestingLevel == 0) {
@@ -321,7 +321,7 @@ int TransactionState::checkCollectionPermission(std::string const& cname,
     TRI_ASSERT(level != auth::Level::UNDEFINED);  // not allowed here
 
     if (level == auth::Level::NONE) {
-      LOG_TOPIC(TRACE, Logger::AUTHORIZATION)
+      LOG_TOPIC("24971", TRACE, Logger::AUTHORIZATION)
           << "User " << exec->user() << " has collection auth::Level::NONE";
 
       return TRI_ERROR_FORBIDDEN;
@@ -330,7 +330,7 @@ int TransactionState::checkCollectionPermission(std::string const& cname,
     bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
 
     if (level == auth::Level::RO && collectionWillWrite) {
-      LOG_TOPIC(TRACE, Logger::AUTHORIZATION)
+      LOG_TOPIC("d3e61", TRACE, Logger::AUTHORIZATION)
           << "User " << exec->user() << " has no write right for collection " << cname;
 
       return TRI_ERROR_ARANGO_READ_ONLY;
@@ -389,7 +389,7 @@ void TransactionState::clearQueryCache() {
 void TransactionState::updateStatus(transaction::Status status) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_status != transaction::Status::CREATED && _status != transaction::Status::RUNNING) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "trying to update transaction status with "
+    LOG_TOPIC("257ea", ERR, Logger::FIXME) << "trying to update transaction status with "
                                      "an invalid state. current: "
                                   << _status << ", future: " << status;
   }

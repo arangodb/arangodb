@@ -653,7 +653,7 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       }
     }
 
-    LOG_TOPIC(TRACE, Logger::FIXME)
+    LOG_TOPIC("7278d", TRACE, Logger::FIXME)
         << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted()
         << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size()
         << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort
@@ -735,7 +735,7 @@ bool transaction::Methods::findIndexHandleForAndNode(
 
     // enable the following line to see index candidates considered with their
     // abilities and scores
-    LOG_TOPIC(TRACE, Logger::FIXME)
+    LOG_TOPIC("fdbeb", TRACE, Logger::FIXME)
         << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted()
         << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size()
         << ", supportsFilter: " << supportsFilter
@@ -1043,7 +1043,7 @@ Result transaction::Methods::commit() {
     // first commit transaction on subordinate servers
     Result res = ClusterTrxMethods::commitTransaction(*this);
     if (res.fail()) {  // do not commit locally
-      LOG_TOPIC(WARN, Logger::TRANSACTIONS)
+      LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
           << "failed to commit on subordinates " << res.errorMessage();
       return res;
     }
@@ -1071,7 +1071,7 @@ Result transaction::Methods::abort() {
     // first commit transaction on subordinate servers
     Result res = ClusterTrxMethods::abortTransaction(*this);
     if (res.fail()) {  // do not commit locally
-      LOG_TOPIC(WARN, Logger::TRANSACTIONS)
+      LOG_TOPIC("d89a8", WARN, Logger::TRANSACTIONS)
       << "failed to abort on subordinates: " << res.errorMessage();
     }
   }
@@ -2700,11 +2700,11 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
           auto const& followerInfo = collection->followers();
           if (followerInfo->remove((*followers)[i])) {
             _state->removeKnownServer((*followers)[i]);
-            LOG_TOPIC(WARN, Logger::REPLICATION)
+            LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
                 << "truncateLocal: dropping follower " << (*followers)[i]
                 << " for shard " << collectionName;
           } else {
-            LOG_TOPIC(ERR, Logger::REPLICATION)
+            LOG_TOPIC("359bc", ERR, Logger::REPLICATION)
                 << "truncateLocal: could not drop follower " << (*followers)[i]
                 << " for shard " << collectionName;
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
@@ -3512,11 +3512,11 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
       if (followerInfo->remove((*followers)[i])) {
         // TODO: what happens if a server is re-added during a transaction ?
         _state->removeKnownServer((*followers)[i]);
-        LOG_TOPIC(WARN, Logger::REPLICATION)
+        LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
             << "synchronous replication: dropping follower " << (*followers)[i]
             << " for shard " << collection.name();
       } else {
-        LOG_TOPIC(ERR, Logger::REPLICATION)
+        LOG_TOPIC("db473", ERR, Logger::REPLICATION)
             << "synchronous replication: could not drop follower "
             << (*followers)[i] << " for shard " << collection.name();
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);

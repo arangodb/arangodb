@@ -373,7 +373,7 @@ bool ScopedAqlValue::execute(arangodb::iresearch::QueryContext const& ctx) {
     _value = expr.execute(ctx.trx, ctx.ctx, _destroy);
   } catch (arangodb::basics::Exception const& e) {
     // can't execute expression
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC) << e.message();
+    LOG_TOPIC("0c06a", WARN, arangodb::iresearch::TOPIC) << e.message();
     return false;
   } catch (...) {
     // can't execute expression

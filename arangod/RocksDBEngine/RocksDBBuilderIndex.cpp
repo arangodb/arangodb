@@ -248,7 +248,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
   }
 
   // if an error occured drop() will be called
-  LOG_TOPIC(DEBUG, Logger::ENGINES)
+  LOG_TOPIC("dfa3b", DEBUG, Logger::ENGINES)
       << "SNAPSHOT CAPTURED " << numDocsWritten << " " << res.errorMessage();
 
   return res;
@@ -457,7 +457,7 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
     }
   };
 
-  LOG_TOPIC(DEBUG, Logger::ENGINES) << "Scanning from " << startingFrom;
+  LOG_TOPIC("fa362", DEBUG, Logger::ENGINES) << "Scanning from " << startingFrom;
 
   for (; iterator->Valid(); iterator->Next()) {
     rocksdb::BatchResult batch = iterator->GetBatch();
@@ -485,7 +485,7 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
   }
 
   if (!iterator->status().ok() && res.ok()) {
-    LOG_TOPIC(ERR, Logger::ENGINES) << "iterator error " << iterator->status().ToString();
+    LOG_TOPIC("8e3a4", ERR, Logger::ENGINES) << "iterator error " << iterator->status().ToString();
     res = rocksutils::convertStatus(iterator->status());
   }
 
@@ -498,7 +498,7 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::ENGINES) << "WAL REPLAYED insertions: " << replay.numInserted
+  LOG_TOPIC("5796c", DEBUG, Logger::ENGINES) << "WAL REPLAYED insertions: " << replay.numInserted
                                     << "; deletions: " << replay.numRemoved
                                     << "; lastScannedTick " << lastScannedTick;
 

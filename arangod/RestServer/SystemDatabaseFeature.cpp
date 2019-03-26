@@ -60,7 +60,7 @@ void SystemDatabaseFeature::start() {
     return;
   }
 
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+  LOG_TOPIC("59d62", WARN, arangodb::Logger::FIXME)
       << "failure to find feature 'Database' while starting feature '"
       << FEATURE_NAME << "'";
   FATAL_ERROR_EXIT();

@@ -574,7 +574,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
     for (uint64_t j = 0; j < replicationFactor; ++j) {
       if (j >= dbServers.size()) {
         if (warnAboutReplicationFactor) {
-          LOG_TOPIC(WARN, Logger::CLUSTER)
+          LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
               << "createCollectionCoordinator: replicationFactor is "
               << "too large for the number of DBservers";
         }
@@ -1990,7 +1990,7 @@ int fetchEdgesFromEngines(std::string const& dbname,
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
-        LOG_TOPIC(ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
+        LOG_TOPIC("a23b5", ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
         continue;
       }
       arangodb::velocypack::StringRef idRef(id);
@@ -2096,7 +2096,7 @@ void fetchVerticesFromEngines(
       VPackSlice id = val.slice().get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
-        LOG_TOPIC(ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
+        LOG_TOPIC("e0b50", ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
         continue;
       }
       TRI_ASSERT(id.isString());
@@ -2678,7 +2678,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
   }
 
   if (nrok != (int)DBservers.size()) {
-    LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("48327", WARN, arangodb::Logger::CLUSTER)
         << "could not flush WAL on all servers. confirmed: " << nrok
         << ", expected: " << DBservers.size();
     return globalErrorCode;
@@ -2913,7 +2913,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
     // the default behaviour however is to bail out and inform the user
     // that the requested replicationFactor is not possible right now
     if (dbServers.size() < replicationFactor) {
-      LOG_TOPIC(DEBUG, Logger::CLUSTER)
+      LOG_TOPIC("9ce2e", DEBUG, Logger::CLUSTER)
           << "Do not have enough DBServers for requested replicationFactor,"
           << " nrDBServers: " << dbServers.size()
           << " replicationFactor: " << replicationFactor;
@@ -2925,7 +2925,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
     if (!avoid.empty()) {
       // We need to remove all servers that are in the avoid list
       if (dbServers.size() - avoid.size() < replicationFactor) {
-        LOG_TOPIC(DEBUG, Logger::CLUSTER)
+        LOG_TOPIC("03682", DEBUG, Logger::CLUSTER)
             << "Do not have enough DBServers for requested replicationFactor,"
             << " (after considering avoid list),"
             << " nrDBServers: " << dbServers.size() << " replicationFactor: " << replicationFactor
@@ -3054,7 +3054,7 @@ int fetchEdgesFromEngines(std::string const& dbname,
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
-        LOG_TOPIC(ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
+        LOG_TOPIC("da49d", ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
         continue;
       }
       arangodb::velocypack::StringRef idRef(id);
