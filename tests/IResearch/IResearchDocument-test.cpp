@@ -84,7 +84,7 @@ class EmptyAnalyzer: public irs::analysis::analyzer {
 
  private:
   irs::attribute_view _attrs;
-  TestAttribute _attr;
+  irs::frequency _attr;
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "iresearch-document-empty");
@@ -177,8 +177,8 @@ struct IResearchDocumentSetup {
     // ensure that there will be no exception on 'emplace'
     InvalidAnalyzer::returnNullFromMake = false;
 
-    analyzers->emplace(result, "iresearch-document-empty", "iresearch-document-empty", "en", irs::flags{ TestAttribute::type() }); // cache analyzer
-    analyzers->emplace(result, "iresearch-document-invalid", "iresearch-document-invalid", "en", irs::flags{ TestAttribute::type() }); // cache analyzer
+    analyzers->emplace(result, "iresearch-document-empty", "iresearch-document-empty", "en", irs::flags{ irs::frequency::type() }); // cache analyzer
+    analyzers->emplace(result, "iresearch-document-invalid", "iresearch-document-invalid", "en", irs::flags{ irs::frequency::type() }); // cache analyzer
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
@@ -710,7 +710,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
     auto const expected_analyzer = irs::analysis::analyzers::get("iresearch-document-empty", irs::text_format::json, "en");
     auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(irs::flags({TestAttribute::type()}) == field.features());
+    CHECK(irs::flags({irs::frequency::type()}) == field.features());
   }
 
   ++it;
@@ -1385,15 +1385,15 @@ SECTION("FieldIterator_nullptr_analyzer") {
     InvalidAnalyzer::returnNullFromMake = false;
 
     analyzers.start();
-    analyzers.erase("empty");
-    analyzers.erase("invalid");
+    analyzers.remove("empty");
+    analyzers.remove("invalid");
 
     // ensure that there will be no exception on 'emplace'
     InvalidAnalyzer::returnNullFromMake = false;
 
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    analyzers.emplace(result, "empty", "iresearch-document-empty", "en", irs::flags{TestAttribute::type()});
-    analyzers.emplace(result, "invalid", "iresearch-document-invalid", "en", irs::flags{TestAttribute::type()});
+    analyzers.emplace(result, "empty", "iresearch-document-empty", "en", irs::flags{irs::frequency::type()});
+    analyzers.emplace(result, "invalid", "iresearch-document-invalid", "en", irs::flags{irs::frequency::type()});
   }
 
   // last analyzer invalid
