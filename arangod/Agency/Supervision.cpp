@@ -1014,9 +1014,7 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
             auto const& servername = servers[0].copyString();
 
             if (failedServers.find(servername) != failedServers.end()) {
-              // lost shard
-              LOG_TOPIC(TRACE, Logger::SUPERVISION)
-                  << "Found a lost shard: " << shard.first;
+              // potentially lost shard
               auto const& shardname = shard.first;
 
               auto const& planurl = "/arango/Plan/Collections/" + dbname + "/" +
@@ -1029,6 +1027,8 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
               if (snapshot.has(planurl)) {
                 continue;
               }
+              LOG_TOPIC(TRACE, Logger::SUPERVISION)
+                  << "Found a lost shard: " << shard.first;
               // Now remove that shard
               {
                 VPackArrayBuilder trx(builder.get());
@@ -1133,7 +1133,8 @@ void Supervision::workJobs() {
   auto it = todos.begin();
   static std::string const FAILED = "failed";
 
-  bool selectRandom = todos.size() > 50;
+  //bool selectRandom = todos.size() > 50;
+  bool selectRandom = false;  // temporarily disabled
 
   LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin ToDos of type Failed*";
   while (it != todos.end()) {
@@ -1175,7 +1176,7 @@ void Supervision::workJobs() {
 
   LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin Pendings";
   auto const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
-  selectRandom = pends.size() > 50;
+  //selectRandom = pends.size() > 50;     temporarily disabled
 
   for (auto const& pendEnt : pends) {
     if (selectRandom && rand() % pends.size() > 50) {
