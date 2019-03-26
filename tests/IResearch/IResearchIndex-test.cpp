@@ -34,6 +34,11 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterFeature.h"
+
+#if USE_ENTERPRISE
+  #include "Enterprise/Ldap/LdapFeature.h"
+#endif
+
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -167,6 +172,10 @@ struct IResearchIndexSetup {
     features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true); // required for arangodb::aql::Query::execute(...)
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true); // required for use of iresearch analyzers
     features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true); // required for creating views of type 'iresearch'
+
+    #if USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+    #endif
 
     // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
     arangodb::application_features::ApplicationServer::server->addFeature(
