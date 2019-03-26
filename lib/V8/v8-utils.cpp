@@ -892,6 +892,16 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     LOG_TOPIC("d6bdb", TRACE, arangodb::Logger::FIXME)
         << "downloading file. endpoint: " << endpoint << ", relative URL: " << url;
 
+    V8SecurityFeature* v8security =
+       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+           "V8Security");
+    TRI_ASSERT(v8security != nullptr);
+
+    if (!v8security->isAllowedToConnectToEndpoint(endpoint)) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                    "not allowed to connect to this endpoint");
+    }
+
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
 
     if (ep == nullptr) {

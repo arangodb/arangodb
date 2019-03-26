@@ -44,16 +44,27 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   /// users via JavaScript actions. will use _environmentVariablesFilter*
   bool shouldExposeEnvironmentVariable(std::string const& name) const;
 
+  /// @brief tests if the IP address or domain/host name given should be accessible
+  /// via the JS_Download (internal.download) function in JavaScript actions
+  /// the endpoint is passed in via protocol (e.g. tcp://, ssl://, unix://) and port
+  /// number (if applicable)
+  bool isAllowedToConnectToEndpoint(std::string const& endpoint) const;
+
  private:
   /// @brief regular expression string for startup options filtering
   std::string _startupOptionsFilter;
   /// @brief regular expression generated from _startupOptionsFilter
   std::regex _startupOptionsFilterRegex;
+  /// @brief regular expression string for forbidden IP address/host names
+  /// to connect to via JS_Download/internal.download
+  std::string _endpointsFilter;
  
   /// @brief regular expression string for environment variables filtering
   std::string _environmentVariablesFilter;
   /// @brief regular expression generated from _environmentVariablesFilter
   std::regex _environmentVariablesFilterRegex;
+  /// @brief regular expression generated from _endpointsFilter
+  std::regex _endpointsFilterRegex;
 };
 
 }  // namespace arangodb
