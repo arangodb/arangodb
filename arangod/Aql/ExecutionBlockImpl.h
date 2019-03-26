@@ -36,6 +36,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "OutputAqlItemRow.h"
@@ -173,7 +174,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    */
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
-  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   Infos const& infos() const { return _infos; }
 

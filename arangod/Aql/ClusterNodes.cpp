@@ -22,19 +22,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterNodes.h"
+
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/DistributeExecutor.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/GraphNode.h"
+#include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
 #include "Aql/RemoteExecutor.h"
+#include "Aql/SortingGatherExecutor.h"
 #include "Aql/ScatterExecutor.h"
+#include "Aql/SingleRemoteModificationExecutor.h"
 
 #include "Transaction/Methods.h"
 
@@ -96,7 +101,6 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-
   RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
   RegisterId const nrInRegs = nrOutRegs;
 
@@ -123,7 +127,7 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
   // TODO This is only for me to find out about the current behaviour. Should
   // probably be either removed, or made into an assert.
   if (!regsToClear.empty()) {
-    LOG_TOPIC(WARN, Logger::AQL) << "RemoteBlock has registers to clear. "
+    LOG_TOPIC("4fd06", WARN, Logger::AQL) << "RemoteBlock has registers to clear. "
                                  << "Shouldn't this be done before network?";
   }
 #endif
@@ -205,7 +209,7 @@ bool ScatterNode::readClientsFromVelocyPack(VPackSlice base) {
   auto const clientsSlice = base.get("clients");
 
   if (!clientsSlice.isArray()) {
-    LOG_TOPIC(ERR, Logger::AQL)
+    LOG_TOPIC("49ba1", ERR, Logger::AQL)
         << "invalid serialized ScatterNode definition, 'clients' attribute is "
            "expected to be an array of string";
     return false;
@@ -214,7 +218,7 @@ bool ScatterNode::readClientsFromVelocyPack(VPackSlice base) {
   size_t pos = 0;
   for (auto const clientSlice : velocypack::ArrayIterator(clientsSlice)) {
     if (!clientSlice.isString()) {
-      LOG_TOPIC(ERR, Logger::AQL)
+      LOG_TOPIC("c6131", ERR, Logger::AQL)
           << "invalid serialized ScatterNode definition, 'clients' attribute "
              "is expected to be an array of string but got not a string at "
              "line "
@@ -302,6 +306,8 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
       alternativeRegId = (*it).second.registerId;
 
       TRI_ASSERT(alternativeRegId < ExecutionNode::MaxRegisterId);
+    } else {
+      TRI_ASSERT(alternativeRegId == ExecutionNode::MaxRegisterId);
     }
   }
 
@@ -381,7 +387,7 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
     auto const sortModeSlice = base.get("sortmode");
 
     if (!toSortMode(VelocyPackHelper::getStringRef(sortModeSlice, ""), _sortmode)) {
-      LOG_TOPIC(ERR, Logger::AQL) << "invalid sort mode detected while "
+      LOG_TOPIC("2c6f3", ERR, Logger::AQL) << "invalid sort mode detected while "
                                      "creating 'GatherNode' from vpack";
     }
   }
@@ -426,11 +432,27 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
   if (_elements.empty()) {
-    return std::make_unique<UnsortingGatherBlock>(engine, *this);
+    TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
+               getRegisterPlan()->nrRegs[getDepth()]);
+    IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
+                          calcRegsToKeep(), getRegsToClear());
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<true>>>>(
+        &engine, this, std::move(infos));
   }
+  std::vector<SortRegister> sortRegister;
+  SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
+  SortingGatherExecutorInfos infos(make_shared_unordered_set(),
+                                   make_shared_unordered_set(),
+                                   getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                                   getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                                   calcRegsToKeep(), std::move(sortRegister),
+                                   _plan->getAst()->query()->trx(), sortMode());
 
-  return std::make_unique<SortingGatherBlock>(engine, *this);
+  return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(&engine, this,
+                                                                     std::move(infos));
 }
 
 /// @brief estimateCost
@@ -475,7 +497,52 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(
 /// @brief creates corresponding SingleRemoteOperationNode
 std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<SingleRemoteOperationBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+
+  TRI_ASSERT(previousNode != nullptr);
+
+  auto in = variableToRegisterOptionalId(_inVariable);
+  auto out = variableToRegisterOptionalId(_outVariable);
+  auto outputNew = variableToRegisterOptionalId(_outVariableNew);
+  auto outputOld = variableToRegisterOptionalId(_outVariableOld);
+
+  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+
+  SingleRemoteModificationInfos infos(
+      in /*input1*/, boost::none /*input1*/, boost::none /*input1*/, outputNew,
+      outputOld, out /*output*/,
+      getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
+      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
+      calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
+      _collection, ProducesResults(false /*producesResults()*/),
+      ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
+      IgnoreErrors(_options.ignoreErrors), DoCount(true /*countStats()*/),
+      IsReplace(false) /*(needed by upsert)*/,
+      IgnoreDocumentNotFound(_options.ignoreDocumentNotFound), _key,
+      this->hasParent(), this->_replaceIndexNode);
+
+  if (_mode == NodeType::INDEX) {
+    return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<IndexTag>>>(
+        &engine, this, std::move(infos));
+  } else if (_mode == NodeType::INSERT) {
+    return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Insert>>>(
+        &engine, this, std::move(infos));
+  } else if (_mode == NodeType::REMOVE) {
+    return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Remove>>>(
+        &engine, this, std::move(infos));
+  } else if (_mode == NodeType::REPLACE) {
+    return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Replace>>>(
+        &engine, this, std::move(infos));
+  } else if (_mode == NodeType::UPDATE) {
+    return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Update>>>(
+        &engine, this, std::move(infos));
+  } else if (_mode == NodeType::UPSERT) {
+    return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Upsert>>>(
+        &engine, this, std::move(infos));
+  } else {
+    TRI_ASSERT(false);
+    return nullptr;
+  }
 }
 
 /// @brief toVelocyPack, for SingleRemoteOperationNode

@@ -42,7 +42,7 @@ class Query;
 /// Should be used in conjunction with the RestCursorHandler
 class QueryResultCursor final : public arangodb::Cursor {
  public:
-  QueryResultCursor(TRI_vocbase_t& vocbase, CursorId id, aql::QueryResult&& result,
+  QueryResultCursor(TRI_vocbase_t& vocbase, aql::QueryResult&& result,
                     size_t batchSize, double ttl, bool hasCount);
 
   ~QueryResultCursor() = default;
@@ -83,10 +83,12 @@ class QueryResultCursor final : public arangodb::Cursor {
 /// cursor is deleted (or query exhausted)
 class QueryStreamCursor final : public arangodb::Cursor {
  public:
-  QueryStreamCursor(TRI_vocbase_t& vocbase, CursorId id, std::string const& query,
+  QueryStreamCursor(TRI_vocbase_t& vocbase, std::string const& query,
                     std::shared_ptr<velocypack::Builder> bindVars,
-                    std::shared_ptr<velocypack::Builder> opts, size_t batchSize,
-                    double ttl, bool contextOwnedByExterior);
+                    std::shared_ptr<velocypack::Builder> opts,
+                    size_t batchSize, double ttl,
+                    bool contextOwnedByExterior,
+                    std::shared_ptr<transaction::Context> ctx);
 
   ~QueryStreamCursor();
 
@@ -117,7 +119,7 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
  private:
   DatabaseGuard _guard;
-  int64_t _exportCount;  // used by RocksDBRestExportHandler
+  int64_t _exportCount;  // used by RocksDBRestExportHandler (<0 is not used)
   /// current query
   std::unique_ptr<aql::Query> _query;
   /// buffered results

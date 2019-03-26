@@ -161,7 +161,7 @@ class RDBNearIterator final : public IndexIterator {
     rocksdb::Comparator const* cmp = _index->comparator();
     // list of sorted intervals to scan
     std::vector<geo::Interval> const scan = _near.intervals();
-    // LOG_TOPIC(INFO, Logger::ENGINES) << "# intervals: " << scan.size();
+    // LOG_TOPIC("b1eea", INFO, Logger::ENGINES) << "# intervals: " << scan.size();
     // size_t seeks = 0;
 
     for (size_t i = 0; i < scan.size(); i++) {
@@ -195,7 +195,7 @@ class RDBNearIterator final : public IndexIterator {
       }
 
       if (seek) {  // try to avoid seeking at all cost
-        // LOG_TOPIC(INFO, Logger::ENGINES) << "[Scan] seeking:" << it.min;
+        // LOG_TOPIC("0afaa", INFO, Logger::ENGINES) << "[Scan] seeking:" << it.min;
         // seeks++;
         _iter->Seek(bds.start());
       }
@@ -209,7 +209,7 @@ class RDBNearIterator final : public IndexIterator {
     }
 
     _near.didScanIntervals();  // calculate next bounds
-    // LOG_TOPIC(INFO, Logger::ENGINES) << "# seeks: " << seeks;
+    // LOG_TOPIC("e82ee", INFO, Logger::ENGINES) << "# seeks: " << seeks;
   }
 
   /// find the first indexed entry to estimate the # of entries

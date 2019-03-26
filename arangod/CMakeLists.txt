@@ -191,7 +191,6 @@ SET(ARANGOD_SOURCES
   Aql/CalculationExecutor.cpp
   Aql/ClusterBlocks.cpp
   Aql/ClusterNodes.cpp
-  Aql/CollectBlock.cpp
   Aql/CollectNode.cpp
   Aql/CollectOptions.cpp
   Aql/Collection.cpp
@@ -234,9 +233,11 @@ SET(ARANGOD_SOURCES
   Aql/IndexNode.cpp
   Aql/InputAqlItemRow.cpp
   Aql/LimitExecutor.cpp
-  Aql/ModificationBlocks.cpp
+  Aql/ModificationExecutor.cpp
+  Aql/ModificationExecutorTraits.cpp
   Aql/ModificationNodes.cpp
   Aql/ModificationOptions.cpp
+  Aql/MultiDependencySingleRowFetcher.cpp
   Aql/NoResultsExecutor.cpp
   Aql/NodeFinder.cpp
   Aql/Optimizer.cpp
@@ -271,12 +272,15 @@ SET(ARANGOD_SOURCES
   Aql/ShortStringStorage.cpp
   Aql/ShortestPathExecutor.cpp
   Aql/ShortestPathNode.cpp
+  Aql/SingleRemoteModificationExecutor.cpp
   Aql/SingleRowFetcher.cpp
   Aql/SortCondition.cpp
+  Aql/SortedCollectExecutor.cpp
   Aql/SortExecutor.cpp
   Aql/SortNode.cpp
+  Aql/SortingGatherExecutor.cpp
   Aql/SortRegister.cpp
-  Aql/SubqueryBlock.cpp
+  Aql/SubqueryExecutor.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalNode.cpp
@@ -438,13 +442,16 @@ SET(ARANGOD_SOURCES
   Replication/common-defines.cpp
   Replication/utilities.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
+  RestHandler/RestAdminExecuteHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
   RestHandler/RestAdminStatisticsHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
+  RestHandler/RestAqlReloadHandler.cpp
   RestHandler/RestAqlUserFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
+  RestHandler/RestAuthReloadHandler.cpp
   RestHandler/RestBaseHandler.cpp
   RestHandler/RestBatchHandler.cpp
   RestHandler/RestCollectionHandler.cpp
@@ -472,6 +479,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestStatusHandler.cpp
   RestHandler/RestTasksHandler.cpp
+  RestHandler/RestTimeHandler.cpp
   RestHandler/RestTransactionHandler.cpp
   RestHandler/RestTtlHandler.cpp
   RestHandler/RestUploadHandler.cpp

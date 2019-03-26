@@ -75,14 +75,14 @@ void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> option
   if (1 == positionals.size()) {
     _directory = positionals[0];
   } else if (1 < positionals.size()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("aeb40", FATAL, arangodb::Logger::FIXME)
         << "expected at most one database directory, got '"
         << StringUtils::join(positionals, ",") << "'";
     FATAL_ERROR_EXIT();
   }
 
   if (_directory.empty()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("9aba1", FATAL, arangodb::Logger::FIXME)
         << "no database path has been supplied, giving up, please use "
            "the '--database.directory' option";
     FATAL_ERROR_EXIT();
@@ -94,7 +94,7 @@ void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> option
   auto ctx = ArangoGlobalContext::CONTEXT;
 
   if (ctx == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to get global context.";
+    LOG_TOPIC("19066", ERR, arangodb::Logger::FIXME) << "failed to get global context.";
     FATAL_ERROR_EXIT();
   }
 
@@ -109,7 +109,7 @@ void DatabasePathFeature::prepare() {
 
   if (_requiredDirectoryState == "non-existing") {
     if (basics::FileUtils::isDirectory(_directory)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
+      LOG_TOPIC("25452", FATAL, arangodb::Logger::STARTUP)
           << "database directory '" << _directory
           << "' already exists, but option "
              "'--database.required-directory-state' was set to 'non-existing'";
@@ -120,7 +120,7 @@ void DatabasePathFeature::prepare() {
 
   // existing, empty, populated when we get here
   if (!basics::FileUtils::isDirectory(_directory)) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
+    LOG_TOPIC("3b1df", FATAL, arangodb::Logger::STARTUP)
         << "database directory '" << _directory
         << "' does not exist, but option '--database.required-directory-state' "
            "was set to '"
@@ -144,7 +144,7 @@ void DatabasePathFeature::prepare() {
   }
 
   if (_requiredDirectoryState == "empty" && !files.empty()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
+    LOG_TOPIC("508c5", FATAL, arangodb::Logger::STARTUP)
         << "database directory '" << _directory
         << "' is not empty, but option '--database.required-directory-state' "
            "was set to '"
@@ -155,7 +155,7 @@ void DatabasePathFeature::prepare() {
   if (_requiredDirectoryState == "populated" &&
       (std::find(files.begin(), files.end(), "ENGINE") == files.end() ||
        std::find(files.begin(), files.end(), "SERVER") == files.end())) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
+    LOG_TOPIC("962c7", FATAL, arangodb::Logger::STARTUP)
         << "database directory '" << _directory
         << "' is not properly populated, but option "
            "'--database.required-directory-state' was set to '"
@@ -175,10 +175,10 @@ void DatabasePathFeature::start() {
     int res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo, systemErrorStr);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+      LOG_TOPIC("24783", INFO, arangodb::Logger::FIXME)
           << "created database directory '" << _directory << "'";
     } else {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("1e987", FATAL, arangodb::Logger::FIXME)
           << "unable to create database directory '" << _directory
           << "': " << systemErrorStr;
       FATAL_ERROR_EXIT();

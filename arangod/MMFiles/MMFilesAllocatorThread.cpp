@@ -126,17 +126,17 @@ void MMFilesAllocatorThread::run() {
       }
     } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("47ea3", ERR, arangodb::Logger::ENGINES)
           << "got unexpected error in allocatorThread: " << TRI_errno_string(res);
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("8ff31", ERR, arangodb::Logger::ENGINES)
           << "got unspecific error in allocatorThread";
     }
 
     if (worked) {
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        LOG_TOPIC("a8415", ERR, arangodb::Logger::ENGINES)
             << "unable to create new WAL reserve logfile: " << TRI_errno_string(res);
       }
 

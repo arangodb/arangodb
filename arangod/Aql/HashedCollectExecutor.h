@@ -49,16 +49,15 @@ class SingleRowFetcher;
 
 class HashedCollectExecutorInfos : public ExecutorInfos {
  public:
-  HashedCollectExecutorInfos(
-      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-      std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep,
-      std::unordered_set<RegisterId>&& readableInputRegisters,
-      std::unordered_set<RegisterId>&& writeableOutputRegisters,
-      std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters, RegisterId collectRegister,
-      std::vector<std::string>&& aggregateTypes,
-      std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-      transaction::Methods* trxPtr, bool count);
+  HashedCollectExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                             std::unordered_set<RegisterId> registersToClear,
+                             std::unordered_set<RegisterId> registersToKeep,
+                             std::unordered_set<RegisterId>&& readableInputRegisters,
+                             std::unordered_set<RegisterId>&& writeableOutputRegisters,
+                             std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
+                             RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
+                             std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
+                             transaction::Methods* trxPtr, bool count);
 
   HashedCollectExecutorInfos() = delete;
   HashedCollectExecutorInfos(HashedCollectExecutorInfos&&) = default;
@@ -72,9 +71,7 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
   std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const {
     return _aggregateRegisters;
   }
-  std::vector<std::string> getAggregateTypes () const {
-    return _aggregateTypes;
-  }
+  std::vector<std::string> getAggregateTypes() const { return _aggregateTypes; }
   bool getCount() const noexcept { return _count; }
   transaction::Methods* getTransaction() const { return _trxPtr; }
   RegisterId getInputRegister() const noexcept { return _inputRegister; }
@@ -137,21 +134,24 @@ class HashedCollectExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
+  inline size_t numberOfRowsInFlight() const { return 0; }
+
  private:
   using AggregateValuesType = std::vector<std::unique_ptr<Aggregator>>;
   using GroupKeyType = std::vector<AqlValue>;
   using GroupValueType = std::unique_ptr<AggregateValuesType>;
-  using GroupMapType = std::unordered_map<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
+  using GroupMapType =
+      std::unordered_map<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
 
   Infos const& infos() const noexcept { return _infos; }
 
   /**
-  * @brief Shall be executed until it returns DONE, then never again.
-  * Consumes all input, writes groups and calculates aggregates, and initializes
-  * _currentGroup to _allGroups.begin().
-  *
-  * @return DONE or WAITING
-  */
+   * @brief Shall be executed until it returns DONE, then never again.
+   * Consumes all input, writes groups and calculates aggregates, and
+   * initializes _currentGroup to _allGroups.begin().
+   *
+   * @return DONE or WAITING
+   */
   ExecutionState init();
 
   void destroyAllGroupsAqlValues();
@@ -159,8 +159,7 @@ class HashedCollectExecutor {
   static std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*>
   createAggregatorFactories(HashedCollectExecutor::Infos const& infos);
 
-  std::pair<GroupValueType, GroupKeyType>
-  buildNewGroup(InputAqlItemRow& input, size_t n);
+  std::pair<GroupValueType, GroupKeyType> buildNewGroup(InputAqlItemRow& input, size_t n);
 
   GroupMapType::iterator findOrEmplaceGroup(InputAqlItemRow& input);
 

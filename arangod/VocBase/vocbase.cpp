@@ -248,7 +248,7 @@ void TRI_vocbase_t::registerCollection(bool doLock,
                  "'. collection id " + std::to_string(cid) +
                  " has same name as already added collection " +
                  std::to_string(_dataSourceByName[name]->id()));
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+      LOG_TOPIC("405f9", ERR, arangodb::Logger::FIXME) << msg;
 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_NAME, msg);
     }
@@ -262,7 +262,7 @@ void TRI_vocbase_t::registerCollection(bool doLock,
         msg.append(std::string("duplicate collection identifier ") +
                    std::to_string(collection->id()) + " for name '" + name +
                    "'");
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+        LOG_TOPIC("0ef12", ERR, arangodb::Logger::FIXME) << msg;
 
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, msg);
       }
@@ -278,7 +278,7 @@ void TRI_vocbase_t::registerCollection(bool doLock,
         std::string msg;
         msg.append(std::string("duplicate entry for collection uuid '") +
                    collection->guid() + "'");
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+        LOG_TOPIC("d4958", ERR, arangodb::Logger::FIXME) << msg;
 
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, msg);
       }
@@ -349,9 +349,9 @@ void TRI_vocbase_t::registerView(bool doLock,
     auto it = _dataSourceByName.emplace(name, view);
 
     if (!it.second) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("560a6", ERR, arangodb::Logger::FIXME)
           << "duplicate entry for view name '" << name << "'";
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("0168f", ERR, arangodb::Logger::FIXME)
           << "view id " << id << " has same name as already added view "
           << _dataSourceByName[name]->id();
 
@@ -365,7 +365,7 @@ void TRI_vocbase_t::registerView(bool doLock,
       if (!it2.second) {
         _dataSourceByName.erase(name);
 
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("cb53a", ERR, arangodb::Logger::FIXME)
             << "duplicate view identifier '" << view->id() << "' for name '"
             << name << "'";
 
@@ -380,7 +380,7 @@ void TRI_vocbase_t::registerView(bool doLock,
       auto it2 = _dataSourceByUuid.emplace(view->guid(), view);
 
       if (!it2.second) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("a30ae", ERR, arangodb::Logger::FIXME)
             << "duplicate view globally-unique identifier '" << view->guid()
             << "' for name '" << name << "'";
 
@@ -431,7 +431,7 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
     WRITE_LOCKER_EVENTUAL(statusLock, collection._lock);
 
     if (TRI_VOC_COL_STATUS_DELETED != collection.status()) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("57377", ERR, arangodb::Logger::FIXME)
           << "someone resurrected the collection '" << collection.name() << "'";
       return false;
     }
@@ -642,19 +642,19 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     try {
       collection->open(ignoreDatafileErrors);
     } catch (arangodb::basics::Exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("b092e", ERR, arangodb::Logger::FIXME)
           << "caught exception while opening collection '" << collection->name()
           << "': " << ex.what();
       collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
       return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("0daf1", ERR, arangodb::Logger::FIXME)
           << "caught exception while opening collection '" << collection->name()
           << "': " << ex.what();
       collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
       return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("4711a", ERR, arangodb::Logger::FIXME)
           << "caught unknown exception while opening collection '"
           << collection->name() << "'";
       collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
@@ -677,7 +677,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   }
 
   std::string const colName(collection->name());
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+  LOG_TOPIC("56df6", ERR, arangodb::Logger::FIXME)
       << "unknown collection status " << collection->status() << " for '"
       << colName << "'";
 
@@ -1838,13 +1838,13 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl
   auto it = _replicationClients.find(serverId);
 
   if (it != _replicationClients.end()) {
-    LOG_TOPIC(TRACE, Logger::REPLICATION)
+    LOG_TOPIC("f1c60", TRACE, Logger::REPLICATION)
         << "updating replication client entry for server '" << serverId
         << "' using TTL " << ttl;
     std::get<0>((*it).second) = timestamp;
     std::get<1>((*it).second) = expires;
   } else {
-    LOG_TOPIC(TRACE, Logger::REPLICATION)
+    LOG_TOPIC("a895c", TRACE, Logger::REPLICATION)
         << "replication client entry for server '" << serverId << "' not found";
   }
 }
@@ -1866,7 +1866,7 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
     if (it == _replicationClients.end()) {
       // insert new client entry
       _replicationClients.emplace(serverId, std::make_tuple(timestamp, expires, lastFetchedTick));
-      LOG_TOPIC(TRACE, Logger::REPLICATION)
+      LOG_TOPIC("69c75", TRACE, Logger::REPLICATION)
           << "inserting replication client entry for server '" << serverId
           << "' using TTL " << ttl << ", last tick: " << lastFetchedTick;
     } else {
@@ -1875,11 +1875,11 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
       std::get<1>((*it).second) = expires;
       if (lastFetchedTick > 0) {
         std::get<2>((*it).second) = lastFetchedTick;
-        LOG_TOPIC(TRACE, Logger::REPLICATION)
+        LOG_TOPIC("47d4a", TRACE, Logger::REPLICATION)
             << "updating replication client entry for server '" << serverId
             << "' using TTL " << ttl << ", last tick: " << lastFetchedTick;
       } else {
-        LOG_TOPIC(TRACE, Logger::REPLICATION)
+        LOG_TOPIC("fce26", TRACE, Logger::REPLICATION)
             << "updating replication client entry for server '" << serverId
             << "' using TTL " << ttl;
       }
@@ -1904,7 +1904,7 @@ std::vector<std::tuple<TRI_server_id_t, double, double, TRI_voc_tick_t>> TRI_voc
 }
 
 void TRI_vocbase_t::garbageCollectReplicationClients(double expireStamp) {
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
+  LOG_TOPIC("11a30", TRACE, Logger::REPLICATION)
       << "garbage collecting replication client entries";
 
   WRITE_LOCKER(writeLocker, _replicationClientsLock);
@@ -1915,7 +1915,7 @@ void TRI_vocbase_t::garbageCollectReplicationClients(double expireStamp) {
     while (it != _replicationClients.end()) {
       double const expires = std::get<1>((*it).second);
       if (expireStamp > expires) {
-        LOG_TOPIC(DEBUG, Logger::REPLICATION)
+        LOG_TOPIC("8d7db", DEBUG, Logger::REPLICATION)
             << "removing expired replication client for server id " << it->first;
         it = _replicationClients.erase(it);
       } else {
@@ -2166,7 +2166,7 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld, bool warn)
     auto r = NumberUtils::atoi_positive_unchecked<TRI_voc_rid_t>(p, p + len);
     if (warn && r > tickLimit) {
       // An old tick value that could be confused with a time stamp
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("66a3a", WARN, arangodb::Logger::FIXME)
           << "Saw old _rev value that could be confused with a time stamp!";
     }
     isOld = true;

@@ -646,7 +646,7 @@ bool arangodb::basics::parseDateTime(std::string const& dateTimeIn, arangodb::tp
   boost::algorithm::trim(dateTime);
   
   if (!std::regex_match(dateTime, ::iso8601Regex)) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+    LOG_TOPIC("f19ee", DEBUG, arangodb::Logger::FIXME)
         << "regex failed for datetime '" << dateTime << "'";
     return false;
   }
@@ -657,7 +657,7 @@ bool arangodb::basics::parseDateTime(std::string const& dateTimeIn, arangodb::tp
     strDate.pop_back();
   }
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "parse datetime '" << strDate << "'";
+  LOG_TOPIC("c3c7a", DEBUG, arangodb::Logger::FIXME) << "parse datetime '" << strDate << "'";
 
   if (strDate.find("T") != std::string::npos || strDate.find(" ") != std::string::npos) {  // split into ymd / time
     std::vector<std::string> strs;
@@ -708,7 +708,7 @@ bool arangodb::basics::parseDateTime(std::string const& dateTimeIn, arangodb::tp
     return false;
   }
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+  LOG_TOPIC("29671", DEBUG, arangodb::Logger::FIXME)
       << "parsed YMD " << parsedYear << " " << parsedMonth << " " << parsedDay;
 
   date_tp = sys_days(year{parsedYear} / parsedMonth / parsedDay);
@@ -718,7 +718,7 @@ bool arangodb::basics::parseDateTime(std::string const& dateTimeIn, arangodb::tp
     std::smatch time_parts;
 
     if (!std::regex_match(strTime, time_parts, ::timeRegex)) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "regex failed for time " << strTime;
+      LOG_TOPIC("33cf9", DEBUG, arangodb::Logger::FIXME) << "regex failed for time " << strTime;
       return false;
     }
 

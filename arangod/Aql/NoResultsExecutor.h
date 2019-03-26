@@ -63,6 +63,8 @@ class NoResultsExecutor {
    *         if something was written output.hasValue() == true
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+
+  inline size_t numberOfRowsInFlight() const { return 0; }
 };
 }  // namespace aql
 }  // namespace arangodb

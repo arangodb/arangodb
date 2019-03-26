@@ -32,7 +32,6 @@
 #include <iterator>
 #include <vector>
 #include "Basics/Common.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 
 namespace arangodb {

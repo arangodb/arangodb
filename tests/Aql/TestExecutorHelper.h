@@ -89,6 +89,8 @@ class TestExecutorHelper {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
+  inline size_t numberOfRowsInFlight() const { return 0; }
+
  public:
   Infos& _infos;
 

@@ -23,12 +23,10 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/SingleRowFetcher.h"
+#include "SingleRowFetcher.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/BlockFetcher.h"
-#include "Aql/FilterExecutor.h"
-#include "SingleRowFetcher.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

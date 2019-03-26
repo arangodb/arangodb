@@ -65,6 +65,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <boost/optional.hpp>
 #include <type_traits>
 
 namespace arangodb {
@@ -268,7 +269,7 @@ class ExecutionNode {
     do {
       node = node->getFirstDependency();
     } while (node != nullptr && node->getType() != SINGLETON);
-    
+
     return node;
   }
 
@@ -553,6 +554,15 @@ class ExecutionNode {
   }
 
   std::unordered_set<RegisterId> calcRegsToKeep() const;
+
+  RegisterId variableToRegisterId(Variable const*) const;
+
+  boost::optional<RegisterId> variableToRegisterOptionalId(Variable const* var) const {
+    if (var) {
+      return variableToRegisterId(var);
+    }
+    return boost::none;
+  }
 
  protected:
   /// @brief node id
@@ -895,7 +905,6 @@ class CalculationNode : public ExecutionNode {
 class SubqueryNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class SubqueryBlock;
 
  public:
   SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);

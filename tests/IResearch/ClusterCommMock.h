@@ -66,7 +66,7 @@ class ClusterCommMock: public arangodb::ClusterComm {
      std::string const& path,
      std::shared_ptr<std::string const> body,
      std::unordered_map<std::string, std::string> const& headerFields,
-     std::shared_ptr<arangodb::ClusterCommCallback> callback,
+     std::shared_ptr<arangodb::ClusterCommCallback> const& callback,
      arangodb::ClusterCommTimeout timeout,
      bool singleRequest,
      arangodb::ClusterCommTimeout initTimeout

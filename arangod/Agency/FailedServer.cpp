@@ -50,7 +50,7 @@ FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
+    LOG_TOPIC("ac06a", ERR, Logger::SUPERVISION) << err.str();
     finish(tmp_server.first, "", false, err.str());
     _status = FAILED;
   }
@@ -68,13 +68,13 @@ bool FailedServer::start(bool& aborts) {
   if (status.second && status.first != "FAILED") {
     std::stringstream reason;
     reason << "Server " << _server << " is no longer failed. Not starting FailedServer job";
-    LOG_TOPIC(INFO, Logger::SUPERVISION) << reason.str();
+    LOG_TOPIC("a04da", INFO, Logger::SUPERVISION) << reason.str();
     finish(_server, "", false, reason.str());
     return false;
   } else if(!status.second) {
     std::stringstream reason;
     reason << "Server " << _server << " no longer in health. Already removed. Abort.";
-    LOG_TOPIC(INFO, Logger::SUPERVISION) << reason.str();
+    LOG_TOPIC("1479a", INFO, Logger::SUPERVISION) << reason.str();
     finish(_server, "", false, reason.str()); // Finish or abort?
     return false;
   }
@@ -98,7 +98,7 @@ bool FailedServer::start(bool& aborts) {
       if (toDoJob.second) {
         toDoJob.first.toBuilder(todo);
       } else {
-        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
+        LOG_TOPIC("729c3", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
                                                     " from agency snapshot";
         return false;
       }
@@ -142,7 +142,7 @@ bool FailedServer::start(bool& aborts) {
               try {
                 number = replicationFactor.getNumber<uint64_t>();
               } catch(...) {
-                LOG_TOPIC(ERR, Logger::SUPERVISION) << "Failed to read replicationFactor. job: "
+                LOG_TOPIC("f5290", ERR, Logger::SUPERVISION) << "Failed to read replicationFactor. job: "
                   << _jobId << " " << collection.hasAsString("id").first;
                 continue ;
               }
@@ -177,7 +177,7 @@ bool FailedServer::start(bool& aborts) {
                         _jobId, database.first, collptr.first, shard.first, _server)
                         .create(transactions);
                     } else {
-                      LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Do intentionally nothing for failed follower of satellite collection. job: "
+                      LOG_TOPIC("c6c32", DEBUG, Logger::SUPERVISION) << "Do intentionally nothing for failed follower of satellite collection. job: "
                         << _jobId;
                     }
                   }
@@ -217,21 +217,21 @@ bool FailedServer::start(bool& aborts) {
   write_ret_t res = singleWriteTransaction(_agent, *transactions);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("bbd90", DEBUG, Logger::SUPERVISION)
       << "Pending job for failed DB Server " << _server;
 
 
     return true;
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("a3459", INFO, Logger::SUPERVISION)
       << "Precondition failed for starting FailedServer " + _jobId;
 
   return false;
 }
 
 bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("352fa", DEBUG, Logger::SUPERVISION)
       << "Todo: Handle failover for db server " + _server;
 
   using namespace std::chrono;
@@ -287,7 +287,7 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
   if (selfCreate) {
     write_ret_t res = singleWriteTransaction(_agent, *_jb);
     if (!res.accepted || res.indices.size() != 1 || res.indices[0] == 0) {
-      LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
+      LOG_TOPIC("70ce1", INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
       return false;
     }
   }
@@ -338,7 +338,7 @@ JOB_STATUS FailedServer::status() {
   // FIXME: thus the deleteTodos here is unnecessary
 
   if (deleteTodos) {
-    LOG_TOPIC(INFO, Logger::SUPERVISION)
+    LOG_TOPIC("7a010", INFO, Logger::SUPERVISION)
         << "Server " << _server
         << " is healthy again. Will try to delete"
            " any jobs which have not yet started!";
@@ -348,7 +348,7 @@ JOB_STATUS FailedServer::status() {
     write_ret_t res = singleWriteTransaction(_agent, *deleteTodos);
 
     if (!res.accepted || res.indices.size() != 1 || !res.indices[0]) {
-      LOG_TOPIC(WARN, Logger::SUPERVISION)
+      LOG_TOPIC("e8735", WARN, Logger::SUPERVISION)
           << "Server was healthy. Tried deleting subjobs but failed :(";
       return _status;
     }

@@ -88,7 +88,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency";
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
+    LOG_TOPIC("cfbc3", ERR, Logger::SUPERVISION) << err.str();
     finish("", _shard, false, err.str());
     _status = FAILED;
   }
@@ -99,7 +99,7 @@ MoveShard::~MoveShard() {}
 void MoveShard::run(bool& aborts) { runHelper(_to, _shard, aborts); }
 
 bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("02579", DEBUG, Logger::SUPERVISION)
       << "Todo: Move shard " + _shard + " from " + _from + " to " << _to;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
@@ -166,7 +166,7 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
 
   _status = NOTFOUND;
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
+  LOG_TOPIC("cb317", INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
   return false;
 }
 
@@ -200,7 +200,7 @@ bool MoveShard::start(bool&) {
 
   // Check that the shard is not locked:
   if (_snapshot.has(blockedShardsPrefix + _shard)) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("0ae5a", DEBUG, Logger::SUPERVISION)
         << "shard " << _shard
         << " is currently locked, not starting MoveShard job " << _jobId;
     return false;
@@ -208,7 +208,7 @@ bool MoveShard::start(bool&) {
 
   // Check that the toServer is not locked:
   if (_snapshot.has(blockedServersPrefix + _to)) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("de054", DEBUG, Logger::SUPERVISION)
         << "server " << _to
         << " is currently"
            " locked, not starting MoveShard job "
@@ -219,7 +219,7 @@ bool MoveShard::start(bool&) {
   // Check that the toServer is in state "GOOD":
   std::string health = checkServerHealth(_snapshot, _to);
   if (health != "GOOD") {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("00639", DEBUG, Logger::SUPERVISION)
         << "server " << _to << " is currently " << health
         << ", not starting MoveShard job " << _jobId;
     return false;
@@ -316,7 +316,7 @@ bool MoveShard::start(bool&) {
       if (!tmp_todo.second) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
-        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
+        LOG_TOPIC("2482a", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
                                                     " from agency snapshot";
         return false;
       }
@@ -326,7 +326,7 @@ bool MoveShard::start(bool&) {
       } catch (std::exception const& e) {
         // Just in case, this is never going to happen, since when _jb is
         // set, then the current job is stored under ToDo.
-        LOG_TOPIC(WARN, Logger::SUPERVISION)
+        LOG_TOPIC("34af0", WARN, Logger::SUPERVISION)
             << e.what() << ": " << __FILE__ << ":" << __LINE__;
         return false;
       }
@@ -393,12 +393,12 @@ bool MoveShard::start(bool&) {
   write_ret_t res = singleWriteTransaction(_agent, pending);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("45120", DEBUG, Logger::SUPERVISION)
         << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
     return true;
   }
 
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("0a925", DEBUG, Logger::SUPERVISION)
       << "Start precondition failed for MoveShard job " + _jobId;
   return false;
 }
@@ -653,12 +653,12 @@ JOB_STATUS MoveShard::pendingLeader() {
   write_ret_t res = singleWriteTransaction(_agent, trx);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("f8c21", DEBUG, Logger::SUPERVISION)
         << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
     return (finishedAfterTransaction ? FINISHED : PENDING);
   }
 
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("521eb", DEBUG, Logger::SUPERVISION)
       << "Precondition failed for MoveShard job " + _jobId;
   return PENDING;
 }
@@ -792,7 +792,7 @@ arangodb::Result MoveShard::abort() {
       auto const& cur = _snapshot.hasAsArray(
         curColPrefix + _database + "/" + i.collection + "/" + i.shard + "/" + "servers");
       if (cur.second && cur.first[0].copyString() == _to) {
-        LOG_TOPIC(INFO, Logger::SUPERVISION) <<
+        LOG_TOPIC("72a82", INFO, Logger::SUPERVISION) <<
           "MoveShard can no longer abort through reversion to where it started. Flight forward";
         finish(_to, _shard, true, "job aborted - new leader already in place");
         return result;
@@ -869,7 +869,7 @@ arangodb::Result MoveShard::abort() {
   } else if (res.indices[0] == 0) {
     if (_isLeader) {
       // Tough luck. Things have changed. We'll move on
-      LOG_TOPIC(INFO, Logger::SUPERVISION) <<
+      LOG_TOPIC("513e6", INFO, Logger::SUPERVISION) <<
         "MoveShard can no longer abort through reversion to where it started. Flight forward";
       finish(_to, _shard, true, "job aborted - new leader already in place");
       return result;
