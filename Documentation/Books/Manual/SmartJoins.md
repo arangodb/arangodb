@@ -43,8 +43,8 @@ different shard keys or strategies. However, it comes with the additional cost o
 having to do 4 x 4 requests to perform the join.
 
 
-Smart joins using distributeShardsLike
---------------------------------------
+Sharding two collections identically using distributeShardsLike
+---------------------------------------------------------------
 
 In the specific case that the two collections have the same number of shards, the 
 data of the two collections can be co-located on the same server for the same shard 
@@ -129,8 +129,13 @@ We can see that shard 1 of *c1* ("s2011664") has the same number of documents as
 shard 1 of *c2* ("s20116692), that shard 2 of *c1* ("s2011661") has the same
 number of documents as shard2 of *c2* ("s2011666") etc.
 Additionally, we can see from the shard-to-server distribution above that the
-corresponding shards from *c1* and *c2* always reside on the same node. This is
-precondition for running joins locally, and it is satisfied!
+corresponding shards from *c1* and *c2* always reside on the same node.
+This is a precondition for running joins locally, and thanks to the effects of
+`distributeShardsLike` it is now satisfied!
+
+
+Smart joins using distributeShardsLike
+--------------------------------------
 
 With the two collections in place like this, an AQL query that uses a FILTER condition
 that refers from the shard key of the one collection to the shard key of the other collection
