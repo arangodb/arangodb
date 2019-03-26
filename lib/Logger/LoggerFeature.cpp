@@ -89,7 +89,9 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.use-microtime", "use microtime instead",
                      new BooleanParameter(&_useMicrotime));
 
-  options->addOption("--log.ids", "log unique message ids", new BooleanParameter(&_showIds));
+  options->addOption("--log.ids", "log unique message ids", 
+                     new BooleanParameter(&_showIds))
+                     .setIntroducedIn(30500);
 
   options->addOption("--log.role", "log server role", new BooleanParameter(&_showRole));
 
