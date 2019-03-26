@@ -1135,7 +1135,6 @@ void Supervision::workJobs() {
 
   size_t const maximalJobsPerRound = 1000;
   bool selectRandom = todos.size() > maximalJobsPerRound;
-  bool selectRandom = false;  // temporarily disabled
 
   LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin ToDos of type Failed*";
   while (it != todos.end()) {
