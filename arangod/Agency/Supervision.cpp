@@ -168,6 +168,7 @@ Supervision::Supervision()
       _okThreshold(5.),
       _jobId(0),
       _jobIdMax(0),
+      _haveAborts(false),
       _selfShutdown(false),
       _upgraded(false) {}
 
@@ -245,7 +246,7 @@ void Supervision::upgradeHealthRecords(Builder& builder) {
     HealthRecord hr;
     {
       VPackObjectBuilder oo(&b);
-      for (auto recPair : _snapshot.hasAsChildren(healthPrefix).first) {
+      for (auto const& recPair : _snapshot.hasAsChildren(healthPrefix).first) {
         if (recPair.second->has("ShortName") &&
             recPair.second->has("Endpoint")) {
           hr = *recPair.second;
@@ -333,6 +334,7 @@ void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
 
 void handleOnStatusCoordinator(Agent* agent, Node const& snapshot, HealthRecord& persisted,
                                HealthRecord& transisted, std::string const& serverID) {
+  
   if (transisted.status == Supervision::HEALTH_STATUS_FAILED) {
     // if the current foxxmaster server failed => reset the value to ""
     if (snapshot.hasAsString(foxxmaster).first == serverID) {
@@ -384,6 +386,7 @@ void handleOnStatusSingle(Agent* agent, Node const& snapshot, HealthRecord& pers
   }
 }
 
+
 void handleOnStatus(Agent* agent, Node const& snapshot, HealthRecord& persisted,
                     HealthRecord& transisted, std::string const& serverID,
                     uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope) {
@@ -398,6 +401,7 @@ void handleOnStatus(Agent* agent, Node const& snapshot, HealthRecord& persisted,
         << "Unknown server type. No supervision action taken. " << serverID;
   }
 }
+
 
 // Build transaction for removing unattended servers from health monitoring
 query_t arangodb::consensus::removeTransactionBuilder(std::vector<std::string> const& todelete) {
@@ -787,6 +791,9 @@ void Supervision::run() {
     TRI_ASSERT(_agent != nullptr);
 
     while (!this->isStopping()) {
+
+      auto lapStart = std::chrono::steady_clock::now();
+      
       {
         MUTEX_LOCKER(locker, _lock);
 
@@ -815,6 +822,8 @@ void Supervision::run() {
               upgradeAgency();
             }
 
+            _haveAborts = false;
+
             if (_agent->leaderFor() > 55 || earlyBird()) {
               // 55 seconds is less than a minute, which fits to the
               // 60 seconds timeout in /_admin/cluster/health
@@ -842,7 +851,34 @@ void Supervision::run() {
           }
         }
       }
-      _cv.wait(static_cast<uint64_t>(1000000 * _frequency));
+
+      // If anything was rafted, we need to wait until it is replicated,
+      // otherwise it is not "committed" in the Raft sense. However, let's
+      // only wait for our changes not for new ones coming in during the wait.
+      if (_agent->leading()) {
+        index_t leaderIndex = _agent->index();
+        if (leaderIndex != 0) {
+          while (!this->isStopping() && _agent->leading()) {
+            auto result = _agent->waitFor(leaderIndex);
+            if (result == Agent::raft_commit_t::TIMEOUT) { // Oh snap
+              // Note that we can get UNKNOWN if we have lost leadership or
+              // if we are shutting down. In both cases we just leave the loop.
+              LOG_TOPIC(WARN, Logger::SUPERVISION)
+                << "Waiting for commits to be done ... ";
+              continue;
+            } else {                       // Good we can continue
+              break;
+            }
+          }
+        }
+      }
+
+      auto lapTime = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - lapStart).count();
+      
+      if (lapTime < 1000000) {
+        _cv.wait(static_cast<uint64_t>((1000000 - lapTime) * _frequency));
+      }
     }
   }
 
@@ -1071,6 +1107,7 @@ bool Supervision::handleJobs() {
   enforceReplication();
   cleanupLostCollections(_snapshot, _agent, std::to_string(_jobId++));
   readyOrphanedIndexCreations();
+
   workJobs();
 
   return true;
@@ -1080,15 +1117,38 @@ bool Supervision::handleJobs() {
 void Supervision::workJobs() {
   _lock.assertLockedByCurrentThread();
 
-  for (auto const& todoEnt : _snapshot.hasAsChildren(toDoPrefix).first) {
-    JobContext(TODO, (*todoEnt.second).hasAsString("jobId").first, _snapshot, _agent)
-        .run();
+  bool dummy = false;
+  auto todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  auto it = todos.begin();
+  static std::string const FAILED = "failed";
+    
+  while (it != todos.end()) {
+    auto jobNode = *(it->second);
+    if (jobNode.hasAsString("type").first.compare(0, FAILED.length(), FAILED) == 0) {
+      JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
+        .run(_haveAborts);
+      it = todos.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  
+  // Do not start other jobs, if above resilience jobs aborted stuff 
+  if (!_haveAborts) {
+    for (auto const& todoEnt : todos) {
+      auto jobNode = *(todoEnt.second);
+      JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
+        .run(dummy);
+    }
   }
 
-  for (auto const& pendEnt : _snapshot.hasAsChildren(pendingPrefix).first) {
-    JobContext(PENDING, (*pendEnt.second).hasAsString("jobId").first, _snapshot, _agent)
-        .run();
+  auto const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  for (auto const& pendEnt : pends) {
+    auto jobNode = *(pendEnt.second);
+    JobContext(PENDING, jobNode.hasAsString("jobId").first, _snapshot, _agent)
+      .run(dummy);
   }
+
 }
 
 void Supervision::readyOrphanedIndexCreations() {
@@ -1198,6 +1258,28 @@ void Supervision::readyOrphanedIndexCreations() {
 
 void Supervision::enforceReplication() {
   _lock.assertLockedByCurrentThread();
+
+  // First check the number of AddFollower and RemoveFollower jobs in ToDo:
+  // We always maintain that we have at most maxNrAddRemoveJobsInTodo
+  // AddFollower or RemoveFollower jobs in ToDo. These are all long-term
+  // cleanup jobs, so they can be done over time. This is to ensure that
+  // there is no overload on the Agency job system. Therefore, if this
+  // number is at least maxNrAddRemoveJobsInTodo, we skip the rest of
+  // the function:
+  int const maxNrAddRemoveJobsInTodo = 15;
+
+  auto todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  int nrAddRemoveJobsInTodo = 0;
+  for (auto it = todos.begin(); it != todos.end(); ++it) {
+    auto jobNode = *(it->second);
+    auto t = jobNode.hasAsString("type");
+    if (t.second && (t.first == "addFollower" || t.first == "removeFollower")) {
+      if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
+        return;
+      }
+    }
+  }
+
   auto const& plannedDBs = _snapshot.hasAsChildren(planColPrefix).first;
 
   for (const auto& db_ : plannedDBs) {  // Planned databases
@@ -1206,18 +1288,20 @@ void Supervision::enforceReplication() {
       auto const& col = *(col_.second);
 
       size_t replicationFactor;
-      if (col.hasAsUInt("replicationFactor").second) {
-        replicationFactor = col.hasAsUInt("replicationFactor").first;
+      auto replFact = col.hasAsUInt("replicationFactor");
+      if (replFact.second) {
+        replicationFactor = replFact.first;
       } else {
-        LOG_TOPIC(DEBUG, Logger::SUPERVISION)
-            << "no replicationFactor entry in " << col.toJson();
-        continue;
-      }
-
-      // mop: satellites => distribute to every server
-      if (replicationFactor == 0) {
-        auto available = Job::availableServers(_snapshot);
-        replicationFactor = available.size();
+        auto replFact2 = col.hasAsString("replicationFactor");
+        if (replFact2.second && replFact2.first == "satellite") {
+          // satellites => distribute to every server
+          auto available = Job::availableServers(_snapshot);
+          replicationFactor = Job::countGoodOrBadServersInList(_snapshot, available);
+        } else {
+          LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+              << "no replicationFactor entry in " << col.toJson();
+          continue;
+        }
       }
 
       bool clone = col.has("distributeShardsLike");
@@ -1225,9 +1309,24 @@ void Supervision::enforceReplication() {
       if (!clone) {
         for (auto const& shard_ : col.hasAsChildren("shards").first) {  // Pl shards
           auto const& shard = *(shard_.second);
+          VPackBuilder onlyFollowers;
+          {
+            VPackArrayBuilder guard(&onlyFollowers);
+            bool first = true;
+            for (auto const& pp : VPackArrayIterator(shard.slice())) {
+              if (!first) {
+                onlyFollowers.add(pp);
+              }
+              first = false;
+            }
+          }
+          size_t actualReplicationFactor
+            = 1 + Job::countGoodOrBadServersInList(_snapshot, onlyFollowers.slice());
+            // leader plus GOOD followers
+          size_t apparentReplicationFactor = shard.slice().length();
 
-          size_t actualReplicationFactor = shard.slice().length();
-          if (actualReplicationFactor != replicationFactor) {
+          if (actualReplicationFactor != replicationFactor ||
+              apparentReplicationFactor != replicationFactor) {
             // Check that there is not yet an addFollower or removeFollower
             // or moveShard job in ToDo for this shard:
             auto const& todo = _snapshot.hasAsChildren(toDoPrefix).first;
@@ -1257,11 +1356,18 @@ void Supervision::enforceReplication() {
               if (actualReplicationFactor < replicationFactor) {
                 AddFollower(_snapshot, _agent, std::to_string(_jobId++),
                             "supervision", db_.first, col_.first, shard_.first)
-                    .run();
-              } else {
+                    .create();
+                if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
+                  return;
+                }
+              } else if (apparentReplicationFactor > replicationFactor &&
+                         actualReplicationFactor >= replicationFactor) {
                 RemoveFollower(_snapshot, _agent, std::to_string(_jobId++),
                                "supervision", db_.first, col_.first, shard_.first)
-                    .run();
+                    .create();
+                if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
+                  return;
+                }
               }
             }
           }
@@ -1378,11 +1484,8 @@ void Supervision::shrinkCluster() {
           if (replFact > maxReplFact) {
             maxReplFact = replFact;
           }
-        } else {
-          LOG_TOPIC(WARN, Logger::SUPERVISION)
-              << "Cannot retrieve replication factor for collection " << collptr.first;
-          return;
         }
+        // Note that this could be a satellite collection, in any case, ignore:
       }
     }
 
@@ -1398,9 +1501,10 @@ void Supervision::shrinkCluster() {
         std::sort(availServers.begin(), availServers.end());
 
         // Schedule last server for cleanout
+        bool dummy;
         CleanOutServer(_snapshot, _agent, std::to_string(_jobId++),
                        "supervision", availServers.back())
-            .run();
+            .run(dummy);
       }
     }
   }

@@ -297,9 +297,6 @@ class Traverser {
   /// @brief Builder for the start value slice. Leased from transaction
   transaction::BuilderLeaser _startIdBuilder;
 
-  /// @brief toggle if this path should be pruned on next step
-  bool _pruneNext;
-
   /// @brief indicator if this traversal is done
   bool _done;
 

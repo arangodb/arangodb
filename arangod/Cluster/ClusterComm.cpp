@@ -251,10 +251,7 @@ ClusterComm::ClusterComm(bool ignored)
 /// @brief ClusterComm destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterComm::~ClusterComm() {
-  stopBackgroundThreads();
-  cleanupAllQueues();
-}
+ClusterComm::~ClusterComm() { stopBackgroundThreads(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getter for our singleton instance
@@ -449,7 +446,12 @@ OperationID ClusterComm::asyncRequest(
                           initTimeout](int errorCode, std::unique_ptr<GeneralResponse> response) {
       {
         CONDITION_LOCKER(locker, somethingReceived);
-        responses.erase(result->operationID);
+        size_t numErased = responses.erase(result->operationID);
+        if (numErased == 0) {
+          // Request has been dropped, noone cares for it anymore.
+          // So do not call the callback (might be gone anyways)
+          return;
+        }
       }
       result->fromError(errorCode, std::move(response));
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
@@ -461,7 +463,12 @@ OperationID ClusterComm::asyncRequest(
     callbacks._onSuccess = [callback, result, this](std::unique_ptr<GeneralResponse> response) {
       {
         CONDITION_LOCKER(locker, somethingReceived);
-        responses.erase(result->operationID);
+        size_t numErased = responses.erase(result->operationID);
+        if (numErased == 0) {
+          // Request has been dropped, noone cares for it anymore.
+          // So do not call the callback (might be gone anyways)
+          return;
+        }
       }
       TRI_ASSERT(response.get() != nullptr);
       result->fromResponse(std::move(response));
@@ -471,6 +478,8 @@ OperationID ClusterComm::asyncRequest(
   } else {
     callbacks._onError = [result, doLogConnectionErrors, this,
                           initTimeout](int errorCode, std::unique_ptr<GeneralResponse> response) {
+      // If the result has been removed from responses we are the last ones
+      // having a shared_ptr So it will be gone after this callback
       CONDITION_LOCKER(locker, somethingReceived);
       result->fromError(errorCode, std::move(response));
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
@@ -479,6 +488,8 @@ OperationID ClusterComm::asyncRequest(
       somethingReceived.broadcast();
     };
     callbacks._onSuccess = [result, this](std::unique_ptr<GeneralResponse> response) {
+      // If the result has been removed from responses we are the last ones
+      // having a shared_ptr So it will be gone after this callback
       TRI_ASSERT(response.get() != nullptr);
       CONDITION_LOCKER(locker, somethingReceived);
       result->fromResponse(std::move(response));
@@ -488,12 +499,15 @@ OperationID ClusterComm::asyncRequest(
 
   TRI_ASSERT(request != nullptr);
   CONDITION_LOCKER(locker, somethingReceived);
+  // Call a random communicator
+  auto communicatorPtr = communicator();
   auto ticketId =
-      communicator()->addRequest(createCommunicatorDestination(result->endpoint, path),
-                                 std::move(request), callbacks, opt);
+      communicatorPtr->addRequest(createCommunicatorDestination(result->endpoint, path),
+                                  std::move(request), callbacks, opt);
 
   result->operationID = ticketId;
-  responses.emplace(ticketId, AsyncResponse{TRI_microtime(), result});
+  responses.emplace(ticketId, AsyncResponse{TRI_microtime(), result,
+                                            std::move(communicatorPtr)});
   return ticketId;
 }
 
@@ -737,122 +751,24 @@ ClusterCommResult const ClusterComm::wait(ClientTransactionID const& clientTrans
 void ClusterComm::drop(ClientTransactionID const& clientTransactionID,
                        CoordTransactionID const coordTransactionID,
                        OperationID const operationID, ShardID const& shardID) {
-  QueueIterator q;
-  QueueIterator nextq;
-  IndexIterator i;
-
-  // First look through the send queue:
+  // Loop through the responses queue
   {
-    CONDITION_LOCKER(sendLocker, somethingToSend);
-
-    for (q = toSend.begin(); q != toSend.end();) {
-      ClusterCommOperation* op = *q;
-      if ((0 != operationID && operationID == op->result.operationID) ||
-          match(clientTransactionID, coordTransactionID, shardID, &op->result)) {
-        if (op->result.status == CL_COMM_SENDING) {
-          op->result.dropped = true;
-          q++;
-        } else {
-          nextq = q;
-          nextq++;
-          i = toSendByOpID.find(op->result.operationID);  // cannot fail
-          TRI_ASSERT(i != toSendByOpID.end());
-          TRI_ASSERT(q == i->second);
-          toSendByOpID.erase(i);
-          toSend.erase(q);
-          q = nextq;
-        }
+    // Lock out the communicators to write responses in this very moment.
+    CONDITION_LOCKER(guard, somethingReceived);
+    ResponseIterator q = responses.begin();
+    while (q != responses.end()) {
+      ClusterCommResult* result = q->second.result.get();
+      // The result is not allowed to be deleted
+      TRI_ASSERT(result != nullptr);
+      if ((0 != operationID && result->operationID == operationID) ||
+          match(clientTransactionID, coordTransactionID, shardID, result)) {
+        // Abort on communicator does not trigger a function that requires responses list.
+        q->second.communicator->abortRequest(q->first);
+        q = responses.erase(q);
       } else {
         q++;
       }
     }
-  }
-  // Now look through the receive queue:
-  {
-    CONDITION_LOCKER(locker, somethingReceived);
-
-    for (q = received.begin(); q != received.end();) {
-      ClusterCommOperation* op = *q;
-      if ((0 != operationID && operationID == op->result.operationID) ||
-          match(clientTransactionID, coordTransactionID, shardID, &op->result)) {
-        nextq = q;
-        nextq++;
-        i = receivedByOpID.find(op->result.operationID);  // cannot fail
-        if (i != receivedByOpID.end() && q == i->second) {
-          receivedByOpID.erase(i);
-        }
-        received.erase(q);
-        delete op;
-        q = nextq;
-      } else {
-        q++;
-      }
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief move an operation from the send to the receive queue
-////////////////////////////////////////////////////////////////////////////////
-
-bool ClusterComm::moveFromSendToReceived(OperationID operationID) {
-  TRI_ASSERT(false);
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "In moveFromSendToReceived " << operationID;
-
-  CONDITION_LOCKER(locker, somethingReceived);
-  CONDITION_LOCKER(sendLocker, somethingToSend);
-
-  IndexIterator i = toSendByOpID.find(operationID);  // cannot fail
-  // TRI_ASSERT(i != toSendByOpID.end());
-  // KV: Except the operation has been dropped in the meantime
-
-  QueueIterator q = i->second;
-  ClusterCommOperation* op = *q;
-  TRI_ASSERT(op->result.operationID == operationID);
-  toSendByOpID.erase(i);
-  toSend.erase(q);
-  std::unique_ptr<ClusterCommOperation> opPtr(op);
-  if (op->result.dropped) {
-    return false;
-  }
-  if (op->result.status == CL_COMM_SENDING) {
-    // Note that in the meantime the status could have changed to
-    // CL_COMM_ERROR, CL_COMM_TIMEOUT or indeed to CL_COMM_RECEIVED in
-    // these cases, we do not want to overwrite this result
-    op->result.status = CL_COMM_SENT;
-  }
-  received.push_back(op);
-  opPtr.release();
-  q = received.end();
-  q--;
-  receivedByOpID[operationID] = q;
-  somethingReceived.broadcast();
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleanup all queues
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterComm::cleanupAllQueues() {
-  {
-    CONDITION_LOCKER(locker, somethingToSend);
-
-    for (auto& it : toSend) {
-      delete it;
-    }
-    toSendByOpID.clear();
-    toSend.clear();
-  }
-
-  {
-    CONDITION_LOCKER(locker, somethingReceived);
-
-    for (auto& it : received) {
-      delete it;
-    }
-    receivedByOpID.clear();
-    received.clear();
   }
 }
 
@@ -1243,9 +1159,6 @@ void ClusterCommThread::beginShutdown() {
   // different thread than the ClusterCommThread. Therefore we can still
   // use the condition variable to wake up the ClusterCommThread.
   Thread::beginShutdown();
-
-  CONDITION_LOCKER(guard, _cc->somethingToSend);
-  guard.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

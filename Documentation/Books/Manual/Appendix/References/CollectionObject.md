@@ -6,6 +6,7 @@ The following methods exist on the collection object (returned by *db.name*):
 *Collection*
 
 * [collection.checksum()](../../DataModeling/Collections/CollectionMethods.md#checksum)
+* [collection.compact()](../../DataModeling/Collections/CollectionMethods.md#compact)
 * [collection.count()](../../DataModeling/Documents/DocumentMethods.md#count)
 * [collection.drop()](../../DataModeling/Collections/CollectionMethods.md#drop)
 * [collection.figures()](../../DataModeling/Collections/CollectionMethods.md#figures)
@@ -37,7 +38,7 @@ The following methods exist on the collection object (returned by *db.name*):
 * [collection.exists(object)](../../DataModeling/Documents/DocumentMethods.md#exists)
 * [collection.firstExample(example)](../../DataModeling/Documents/DocumentMethods.md#first-example)
 * [collection.inEdges(vertex-id)](../../DataModeling/Documents/DocumentMethods.md#edges)
-* [collection.insert(data)](../../DataModeling/Documents/DocumentMethods.md#insert)
+* [collection.insert(data)](../../DataModeling/Documents/DocumentMethods.md#insert--save)
 * [collection.edges(vertices)](../../DataModeling/Documents/DocumentMethods.md#edges)
 * [collection.iterate(iterator,options)](../../DataModeling/Documents/DocumentMethods.md#misc)
 * [collection.outEdges(vertex-id)](../../DataModeling/Documents/DocumentMethods.md#edges)
@@ -48,6 +49,6 @@ The following methods exist on the collection object (returned by *db.name*):
 * [collection.rename()](../../DataModeling/Collections/CollectionMethods.md#rename)
 * [collection.replace(selector, data)](../../DataModeling/Documents/DocumentMethods.md#replace)
 * [collection.replaceByExample(example, data)](../../DataModeling/Documents/DocumentMethods.md#replace-by-example)
-* [collection.save(data)](../../DataModeling/Documents/DocumentMethods.md#insert)
+* [collection.save(data)](../../DataModeling/Documents/DocumentMethods.md#insert--save)
 * [collection.update(selector, data)](../../DataModeling/Documents/DocumentMethods.md#update)
 * [collection.updateByExample(example, data)](../../DataModeling/Documents/DocumentMethods.md#update-by-example)

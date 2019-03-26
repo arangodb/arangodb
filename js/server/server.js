@@ -65,7 +65,12 @@
       }
 
       // start the queue manager once
-      require('@arangodb/foxx/queues/manager').run();
+      try {
+        require('@arangodb/foxx/queues/manager').run();
+      } catch (err) {
+        require("console").warn("unable to start Foxx queues manager: " + String(err));
+        // continue with the startup!
+      }
     }
 
     // check available versions

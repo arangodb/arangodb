@@ -47,7 +47,6 @@
 
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
-#include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
@@ -316,7 +315,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
 
     if (result.ok()) {
-      TRI_ASSERT(numOps > 0);  // simon: should hold unless we're beeing stupid
+      TRI_ASSERT(numOps > 0);  // simon: should hold unless we're being stupid
       rocksdb::SequenceNumber postCommitSeq = _rocksTransaction->GetCommitedSeqNumber();
       if (ADB_LIKELY(numOps > 0)) {
         postCommitSeq += numOps - 1;  // add to get to the next batch

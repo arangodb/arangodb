@@ -537,10 +537,11 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
     });
 
+    t = TRI_microtime() - t;
     if (replutils::hasFailed(response.get())) {
-      stats.waitedForDump += TRI_microtime() - t;
+      stats.waitedForDump += t;
       sharedStatus->gotResponse(
-          replutils::buildHttpError(response.get(), url, _config.connection));
+          replutils::buildHttpError(response.get(), url, _config.connection), t);
       return;
     }
 
@@ -610,15 +611,15 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       // fallthrough here in case everything went well
     }
 
-    stats.waitedForDump += TRI_microtime() - t;
+    stats.waitedForDump += t;
 
     if (replutils::hasFailed(response.get())) {
       // failure
       sharedStatus->gotResponse(
-          replutils::buildHttpError(response.get(), url, _config.connection));
+          replutils::buildHttpError(response.get(), url, _config.connection), t);
     } else {
       // success!
-      sharedStatus->gotResponse(std::move(response));
+      sharedStatus->gotResponse(std::move(response), t);
     }
   } catch (basics::Exception const& ex) {
     sharedStatus->gotResponse(Result(ex.code(), ex.what()));
@@ -1312,6 +1313,9 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   if (_config.applier._includeSystem) {
     url += "&includeSystem=true";
   }
+  if (_config.applier._includeFoxxQueues) {
+    url += "&includeFoxxQueues=true";
+  }
 
   // send request
   _config.progress.set("fetching master inventory from " + url);
@@ -1385,7 +1389,8 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
                     "collection name is missing in response");
     }
 
-    if (TRI_ExcludeCollectionReplication(masterName, _config.applier._includeSystem)) {
+    if (TRI_ExcludeCollectionReplication(masterName, _config.applier._includeSystem,
+                                         _config.applier._includeFoxxQueues)) {
       continue;
     }
 

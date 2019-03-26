@@ -300,9 +300,10 @@ void ModificationBlock::handleResult(int code, bool ignoreErrors,
 }
 
 /// @brief process the result of a data-modification operation
-void ModificationBlock::handleBabyResult(std::unordered_map<int, size_t> const& errorCounter,
+void ModificationBlock::handleBabyResult(OperationResult const& opRes,
                                          size_t numBabies, bool ignoreAllErrors,
                                          bool ignoreDocumentNotFound) {
+  std::unordered_map<int, size_t> const& errorCounter = opRes.countErrorCodes;
   if (errorCounter.empty()) {
     // update the success counter
     // All successful.
@@ -350,7 +351,35 @@ void ModificationBlock::handleBabyResult(std::unordered_map<int, size_t> const& 
     TRI_ASSERT(first != errorCounter.end());
   }
 
-  THROW_ARANGO_EXCEPTION(first->first);
+  auto code = first->first;
+
+  // check if we can find a specific error message
+  std::string message;
+  try {
+    if (opRes.slice().isArray()) {
+      for (auto doc : VPackArrayIterator(opRes.slice())) {
+        if (!doc.isObject() || !doc.hasKey("errorNum") ||
+            doc.get("errorNum").getInt() != code) {
+           continue;
+        }
+        VPackSlice msg = doc.get("errorMessage");
+        if (msg.isString()) {
+          message = msg.copyString();
+          break;
+        }
+      }
+    }
+  } catch (...) {
+    // fall-through to returning the generic error message, which better than
+    // forwarding an internal error here
+  }
+
+  if (!message.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(code, std::move(message));
+  }
+
+  // no specific error message found. now respond with a generic error message
+  THROW_ARANGO_EXCEPTION(code);
 }
 
 RemoveBlock::RemoveBlock(ExecutionEngine* engine, RemoveNode const* ep)
@@ -461,7 +490,7 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
 
     OperationResult opRes = _trx->remove(_collection->name(), toRemove, options);
 
-    handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toRemove.length()),
+    handleBabyResult(opRes, static_cast<size_t>(toRemove.length()),
                      ep->_options.ignoreErrors, ignoreDocumentNotFound);
 
     if (opRes.fail()) {
@@ -588,8 +617,7 @@ std::unique_ptr<AqlItemBlock> InsertBlock::work() {
 
     OperationResult opRes = _trx->insert(_collection->name(), toInsert, options);
 
-    handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toInsert.length()),
-                     ep->_options.ignoreErrors);
+    handleBabyResult(opRes, static_cast<size_t>(toInsert.length()), ep->_options.ignoreErrors);
 
     if (opRes.fail()) {
       THROW_ARANGO_EXCEPTION(opRes.result);
@@ -796,7 +824,7 @@ std::unique_ptr<AqlItemBlock> UpdateReplaceBlock::work() {
     // perform update/replace
     OperationResult opRes = apply(toUpdate, options);
 
-    handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toUpdate.length()),
+    handleBabyResult(opRes, static_cast<size_t>(toUpdate.length()),
                      ep->_options.ignoreErrors, ignoreDocumentNotFound);
 
     if (opRes.fail()) {
@@ -1030,8 +1058,8 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
         THROW_ARANGO_EXCEPTION(opResInsert.result);
       }
 
-      handleBabyResult(opResInsert.countErrorCodes,
-                       static_cast<size_t>(toInsert.length()), ep->_options.ignoreErrors);
+      handleBabyResult(opResInsert, static_cast<size_t>(toInsert.length()),
+                       ep->_options.ignoreErrors);
 
       resultListInsert = opResInsert.slice();
       if (!resultListInsert.isArray()) {
@@ -1053,8 +1081,8 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
         THROW_ARANGO_EXCEPTION(opResUpdate.result);
       }
 
-      handleBabyResult(opResUpdate.countErrorCodes,
-                       static_cast<size_t>(toUpdate.length()), ep->_options.ignoreErrors);
+      handleBabyResult(opResUpdate, static_cast<size_t>(toUpdate.length()),
+                       ep->_options.ignoreErrors);
 
       resultListUpdate = opResUpdate.slice();
       if (!resultListUpdate.isArray()) {

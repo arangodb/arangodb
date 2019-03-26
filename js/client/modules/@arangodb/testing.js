@@ -136,6 +136,7 @@ const optionsDefaults = {
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
+  'getSockStat': true,
   'arangosearch':true,
   'jsonReply': false,
   'loopEternal': false,
@@ -153,6 +154,7 @@ const optionsDefaults = {
   'exceptionCount': 1,
   'sanitizer': false,
   'activefailover': false,
+  'singles': 2,
   'skipLogAnalysis': true,
   'skipMemoryIntense': false,
   'skipNightly': true,
@@ -279,6 +281,11 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
   let onlyFailedMessages = '';
   let failedMessages = '';
   let SuccessMessages = '';
+  let bucketName = "";
+  if (options.testBuckets) {
+    let n = options.testBuckets.split('/');
+    bucketName = "_" + n[1];
+  }
   try {
     /* jshint forin: false */
     for (let testrunName in res) {
@@ -330,7 +337,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
       }
 
       if (isSuccess) {
-        SuccessMessages += '* Test "' + testrunName + '"\n';
+        SuccessMessages += '* Test "' + testrunName + bucketName + '"\n';
 
         for (let name in successCases) {
           if (!successCases.hasOwnProperty(name)) {
@@ -346,7 +353,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
           }
         }
       } else {
-        let m = '* Test "' + testrunName + '"\n';
+        let m = '* Test "' + testrunName + bucketName + '"\n';
         onlyFailedMessages += m;
         failedMessages += m;
 
@@ -650,9 +657,12 @@ function iterateTests(cases, options, jsonReply) {
     const currentTest = caselist[n];
     var localOptions = _.cloneDeep(options);
     localOptions.skipTest = skipTest;
-
+    let printTestName = currentTest;
+    if (options.testBuckets) {
+      printTestName += " - " + options.testBuckets;
+    }
     print(BLUE + '================================================================================');
-    print('Executing test', currentTest);
+    print('Executing test', printTestName);
     print('================================================================================\n' + RESET);
 
     if (localOptions.verbose) {

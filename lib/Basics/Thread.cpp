@@ -236,7 +236,7 @@ void Thread::shutdown() {
 
   if (_state.load() != ThreadState::STOPPED) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "cannot shutdown thread, giving up";
+        << "cannot shutdown thread '" << _name << "', giving up";
     FATAL_ERROR_ABORT();
   }
 }
@@ -265,7 +265,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
 
   if (state != ThreadState::CREATED) {
     LOG_TOPIC(FATAL, Logger::THREADS)
-        << "called started on an already started thread, thread is in state "
+        << "called start on an already started thread '" << _name << "', thread is in state "
         << stringify(state);
     FATAL_ERROR_ABORT();
   }

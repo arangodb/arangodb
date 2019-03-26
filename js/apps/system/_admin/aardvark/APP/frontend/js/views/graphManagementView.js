@@ -558,7 +558,7 @@
         reducedCollection;
 
       searchInput = $('#graphManagementSearchInput');
-      searchString = $('#graphManagementSearchInput').val();
+      searchString = arangoHelper.escapeHtml($('#graphManagementSearchInput').val());
       reducedCollection = this.collection.filter(
         function (u) {
           return u.get('_key').indexOf(searchString) !== -1;

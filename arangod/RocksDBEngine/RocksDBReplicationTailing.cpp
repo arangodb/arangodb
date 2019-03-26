@@ -194,7 +194,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
           LogicalCollection* coll = loadCollection(cid);
           TRI_ASSERT(coll != nullptr);
           {
-            uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
+            uint64_t tick = _currentSequence; 
             VPackObjectBuilder marker(&_builder, true);
             marker->add("tick", VPackValue(std::to_string(tick)));
             marker->add("type", VPackValue(REPLICATION_COLLECTION_TRUNCATE));
@@ -563,7 +563,8 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
       if (collection == nullptr) {
         return false;
       }
-      return !TRI_ExcludeCollectionReplication(collection->name(), _includeSystem);
+      return !TRI_ExcludeCollectionReplication(collection->name(), _includeSystem,
+                                               /*includeFoxxQueues*/ false);
     }
     return false;
   }
@@ -625,6 +626,9 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase, uint64_t ti
   uint64_t lastTick = tickStart;         // generally contains begin of last wb
   uint64_t lastWrittenTick = tickStart;  // contains end tick of last wb
   uint64_t lastScannedTick = tickStart;
+  
+  // prevent purging of WAL files while we are in here
+  RocksDBFilePurgePreventer purgePreventer(rocksutils::globalRocksEngine()->disallowPurging());
 
   // LOG_TOPIC(WARN, Logger::ENGINES) << "1. Starting tailing: tickStart " <<
   // tickStart << " tickEnd " << tickEnd << " chunkSize " << chunkSize;//*/

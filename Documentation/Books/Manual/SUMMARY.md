@@ -79,6 +79,7 @@
     * [Limitations](Programs/Arangodump/Limitations.md)
   * [Arangorestore](Programs/Arangorestore/README.md)
     * [Examples](Programs/Arangorestore/Examples.md)
+    * [Fast Cluster Restore](Programs/Arangorestore/FastClusterRestore.md)
     * [Options](Programs/Arangorestore/Options.md)
   * [Arangoimport](Programs/Arangoimport/README.md)
     * [Examples JSON](Programs/Arangoimport/ExamplesJson.md)
@@ -240,6 +241,7 @@
     * [Auth and OAuth2](Foxx/Migrating2x/Auth.md)
     * [Foxx Queries](Foxx/Migrating2x/Queries.md)
 * [Satellite Collections](Satellites.md)
+* [Smart Joins](SmartJoins.md)
 
 ## OPERATIONS
 
@@ -288,6 +290,7 @@
       * [Helm](Deployment/Kubernetes/Helm.md)
       * [Authentication](Deployment/Kubernetes/Authentication.md)
       * [Scaling](Deployment/Kubernetes/Scaling.md)
+      * [Draining Nodes](Deployment/Kubernetes/Drain.md)
       * [Upgrading](Deployment/Kubernetes/Upgrading.md)
       * [ArangoDB Configuration & Secrets](Deployment/Kubernetes/ConfigAndSecrets.md)
       * [Metrics](Deployment/Kubernetes/Metrics.md)
@@ -363,6 +366,7 @@
   <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
   * [Datacenter to datacenter replication](Security/DC2DC/README.md)
 * [Monitoring](Monitoring/README.md)
+  * [Log Levels](Monitoring/LogLevels.md)
   <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
   * [Datacenter to datacenter replication](Monitoring/DC2DC/README.md)
 * [Troubleshooting](Troubleshooting/README.md)

@@ -84,13 +84,15 @@ void TraversalNode::TraversalEdgeConditionBuilder::toVelocyPack(VPackBuilder& bu
 
 TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                              AstNode const* direction, AstNode const* start,
-                             AstNode const* graph, std::unique_ptr<BaseOptions> options)
+                             AstNode const* graph, std::unique_ptr<Expression> pruneExpression,
+                             std::unique_ptr<BaseOptions> options)
     : GraphNode(plan, id, vocbase, direction, graph, std::move(options)),
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
       _condition(nullptr),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {
+      _toCondition(nullptr),
+      _pruneExpression(std::move(pruneExpression)) {
   TRI_ASSERT(start != nullptr);
 
   auto ast = _plan->getAst();
@@ -134,6 +136,10 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocb
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                      "invalid start vertex. Must either be an "
                                      "_id string or an object with _id.");
+  }
+
+  if (_pruneExpression) {
+    _pruneExpression->variables(_pruneVariables);
   }
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -237,6 +243,17 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
       std::string key = cond.key.copyString();
       auto ecbuilder = std::make_unique<TraversalEdgeConditionBuilder>(this, cond.value);
       _edgeConditions.emplace(StringUtils::uint64(key), std::move(ecbuilder));
+    }
+  }
+
+  list = base.get("expression");
+  if (!list.isNone()) {
+    _pruneExpression = std::make_unique<aql::Expression>(plan, plan->getAst(), base);
+    TRI_ASSERT(base.hasKey("pruneVariables"));
+    list = base.get("pruneVariables");
+    TRI_ASSERT(list.isArray());
+    for (auto const& varinfo : VPackArrayIterator(list)) {
+      _pruneVariables.emplace(plan->getAst()->variables()->createVariable(varinfo));
     }
   }
 
@@ -372,6 +389,17 @@ void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) cons
   nodes.add(VPackValue("indexes"));
   _options->toVelocyPackIndexes(nodes);
 
+  if (_pruneExpression != nullptr) {
+    // The Expression constructor expects only this name
+    nodes.add(VPackValue("expression"));
+    _pruneExpression->toVelocyPack(nodes, flags);
+    nodes.add(VPackValue("pruneVariables"));
+    nodes.openArray();
+    for (auto const& var : _pruneVariables) {
+      var->toVelocyPack(nodes);
+    }
+    nodes.close();
+  }
   // And close it:
   nodes.close();
 }
@@ -607,6 +635,14 @@ void TraversalNode::registerGlobalCondition(bool isConditionOnEdge, AstNode cons
 void TraversalNode::getConditionVariables(std::vector<Variable const*>& res) const {
   for (auto const& it : _conditionVariables) {
     if (it != _tmpObjVariable) {
+      res.emplace_back(it);
+    }
+  }
+}
+
+void TraversalNode::getPruneVariables(std::vector<Variable const*>& res) const {
+  if (_pruneExpression) {
+    for (auto const& it : _pruneVariables) {
       res.emplace_back(it);
     }
   }

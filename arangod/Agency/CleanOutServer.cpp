@@ -58,7 +58,7 @@ CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
 
 CleanOutServer::~CleanOutServer() {}
 
-void CleanOutServer::run() { runHelper(_server, ""); }
+void CleanOutServer::run(bool& aborts) { runHelper(_server, "", aborts); }
 
 JOB_STATUS CleanOutServer::status() {
   if (_status != PENDING) {
@@ -87,7 +87,7 @@ JOB_STATUS CleanOutServer::status() {
     std::string timeCreatedString = tmp_time.first;
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
-    if (now - timeCreated > std::chrono::duration<double>(7200.0)) {
+    if (now - timeCreated > std::chrono::duration<double>(86400.0)) { // 1 day
       abort();
       return FAILED;
     }
@@ -121,7 +121,7 @@ JOB_STATUS CleanOutServer::status() {
         reportTrx.add("op", VPackValue("push"));
         reportTrx.add("new", VPackValue(_server));
       }
-      reportTrx.add(VPackValue("/Target/ToBeCleanedServers"));
+      reportTrx.add(VPackValue(toBeCleanedPrefix));
       {
         VPackObjectBuilder guard4(&reportTrx);
         reportTrx.add("op", VPackValue("erase"));
@@ -196,7 +196,7 @@ bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
   return false;
 }
 
-bool CleanOutServer::start() {
+bool CleanOutServer::start(bool& aborts) {
   // If anything throws here, the run() method catches it and finishes
   // the job.
 
@@ -318,7 +318,7 @@ bool CleanOutServer::start() {
       addBlockServer(*pending, _server, _jobId);
 
       // Put ourselves in list of servers to be cleaned:
-      pending->add(VPackValue("/Target/ToBeCleanedServers"));
+      pending->add(VPackValue(toBeCleanedPrefix));
       {
         VPackObjectBuilder guard4(pending.get());
         pending->add("op", VPackValue("push"));
@@ -388,34 +388,58 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           continue;
         }
 
-        decltype(servers) serversCopy(servers);  // a copy
+        auto replicationFactor = collection.hasAsString("replicationFactor");
+        bool isSatellite = replicationFactor.second && replicationFactor.first == "satellite";
 
-        // Only destinations, which are not already holding this shard
-        for (auto const& dbserver : VPackArrayIterator(shard.second->slice())) {
-          serversCopy.erase(std::remove(serversCopy.begin(), serversCopy.end(),
-                                        dbserver.copyString()),
-                            serversCopy.end());
-        }
+
 
         bool isLeader = (found == 0);
 
-        // Among those a random destination:
-        std::string toServer;
-        if (serversCopy.empty()) {
-          LOG_TOPIC(DEBUG, Logger::SUPERVISION)
-              << "No servers remain as target for MoveShard";
-          return false;
+        if (isSatellite) {
+          if (isLeader) {
+
+            std::string toServer = Job::findNonblockedCommonHealthyInSyncFollower(
+              _snapshot, database.first, collptr.first, shard.first);
+
+            MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                    _jobId, database.first, collptr.first, shard.first, _server,
+                    toServer, isLeader, false)
+              .create(trx);
+
+          } else {
+            // Intentionally do nothing. RemoveServer will remove the failed follower
+            LOG_TOPIC(DEBUG, Logger::SUPERVISION) <<
+              "Do nothing for cleanout of follower of the satellite collection " << collection.hasAsString("id").first;
+            continue ;
+          }
+        } else {
+          decltype(servers) serversCopy(servers);  // a copy
+
+          // Only destinations, which are not already holding this shard
+          for (auto const& dbserver : VPackArrayIterator(shard.second->slice())) {
+            serversCopy.erase(std::remove(serversCopy.begin(), serversCopy.end(),
+                                          dbserver.copyString()),
+                              serversCopy.end());
+          }
+
+          // Among those a random destination:
+          std::string toServer;
+          if (serversCopy.empty()) {
+            LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+                << "No servers remain as target for MoveShard";
+            return false;
+          }
+
+          toServer = serversCopy.at(
+              arangodb::RandomGenerator::interval(static_cast<int64_t>(0),
+                                                  serversCopy.size() - 1));
+
+          // Schedule move into trx:
+          MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                    _jobId, database.first, collptr.first, shard.first, _server,
+                    toServer, isLeader, false)
+              .create(trx);
         }
-
-        toServer = serversCopy.at(
-            arangodb::RandomGenerator::interval(static_cast<int64_t>(0),
-                                                serversCopy.size() - 1));
-
-        // Schedule move into trx:
-        MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                  _jobId, database.first, collptr.first, shard.first, _server,
-                  toServer, isLeader, false)
-            .create(trx);
       }
     }
   }
@@ -495,21 +519,32 @@ arangodb::Result CleanOutServer::abort() {
   }
 
   // Abort all our subjobs:
-  Node::Children const todos = _snapshot.hasAsChildren(toDoPrefix).first;
-  Node::Children const pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  Node::Children const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
 
   for (auto const& subJob : todos) {
-    if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
+    if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
       JobContext(TODO, subJob.first, _snapshot, _agent).abort();
     }
   }
   for (auto const& subJob : pends) {
-    if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
+    if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
       JobContext(PENDING, subJob.first, _snapshot, _agent).abort();
     }
   }
 
-  finish(_server, "", false, "job aborted");
+  auto payload = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder p(payload.get());
+    payload->add(VPackValue(toBeCleanedPrefix));
+    {
+      VPackObjectBuilder pp(payload.get());
+      payload->add("op", VPackValue("erase"));
+      payload->add("val", VPackValue(_server));
+    }
+  }
+
+  finish(_server, "", false, "job aborted", payload);
 
   return result;
 }

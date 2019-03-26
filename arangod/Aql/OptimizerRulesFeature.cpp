@@ -289,14 +289,6 @@ void OptimizerRulesFeature::addRules() {
                  OptimizerRule::substituteSingleDocumentOperations,
                  DoesNotCreateAdditionalPlans, CanBeDisabled);
 
-#if 0
-    registerRule("optimize-cluster-single-shard", optimizeClusterSingleShardRule,
-                 OptimizerRule::optimizeClusterSingleShardRule, DoesNotCreateAdditionalPlans, CanBeDisabled);
-
-    registerRule("optimize-cluster-joins", optimizeClusterJoinsRule,
-                 OptimizerRule::optimizeClusterJoinsRule, DoesNotCreateAdditionalPlans, CanBeDisabled);
-#endif
-
     // distribute operations in cluster
     registerRule("scatter-in-cluster", scatterInClusterRule, OptimizerRule::scatterInClusterRule,
                  DoesNotCreateAdditionalPlans, CanNotBeDisabled);
@@ -328,6 +320,10 @@ void OptimizerRulesFeature::addRules() {
 #ifdef USE_ENTERPRISE
     registerRule("remove-satellite-joins", removeSatelliteJoinsRule,
                  OptimizerRule::removeSatelliteJoinsRule,
+                 DoesNotCreateAdditionalPlans, CanBeDisabled);
+    
+    registerRule("smart-joins", smartJoinsRule,
+                 OptimizerRule::smartJoinsRule,
                  DoesNotCreateAdditionalPlans, CanBeDisabled);
 #endif
 

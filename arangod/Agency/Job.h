@@ -48,6 +48,7 @@ extern std::string const failedPrefix;
 extern std::string const finishedPrefix;
 extern std::string const toDoPrefix;
 extern std::string const cleanedPrefix;
+extern std::string const toBeCleanedPrefix;
 extern std::string const failedServersPrefix;
 extern std::string const planColPrefix;
 extern std::string const curColPrefix;
@@ -72,9 +73,9 @@ struct Job {
 
   virtual ~Job();
 
-  virtual void run() = 0;
+  virtual void run(bool& aborts) = 0;
 
-  void runHelper(std::string const& server, std::string const& shard) {
+  void runHelper(std::string const& server, std::string const& shard, bool& aborts) {
     if (_status == FAILED) {  // happens when the constructor did not work
       return;
     }
@@ -87,10 +88,10 @@ struct Job {
     }
     try {
       if (_status == TODO) {
-        start();
+        start(aborts);
       } else if (_status == NOTFOUND) {
         if (create(nullptr)) {
-          start();
+          start(aborts);
         }
       }
     } catch (std::exception const& e) {
@@ -112,7 +113,7 @@ struct Job {
   virtual bool create(std::shared_ptr<VPackBuilder> b) = 0;
 
   // Returns if job was actually started (i.e. false if directly failed!)
-  virtual bool start() = 0;
+  virtual bool start(bool& aborts) = 0;
 
   static bool abortable(Node const& snapshot, std::string const& jobId);
 
@@ -121,9 +122,12 @@ struct Job {
 
   /// @brief Get a random server, which is not blocked, in good condition and
   ///        excluding "exclude" vector
-  static std::string randomIdleGoodAvailableServer(Node const& snap,
+  static std::string randomIdleAvailableServer(Node const& snap,
                                                    std::vector<std::string> const& exclude);
-  static std::string randomIdleGoodAvailableServer(Node const& snap, VPackSlice const& exclude);
+  static std::string randomIdleAvailableServer(Node const& snap, VPackSlice const& exclude);
+  static size_t countGoodOrBadServersInList(Node const& snap, VPackSlice const& serverList);
+  static size_t countGoodOrBadServersInList(Node const& snap, std::vector<std::string> const& serverList);
+  static bool isInServerList(Node const& snap, std::string const& prefix, std::string const& server, bool isArray);
 
   /// @brief Get servers from plan, which are not failed or cleaned out
   static std::vector<std::string> availableServers(const arangodb::consensus::Node&);
@@ -140,7 +144,7 @@ struct Job {
                                                                std::string const& shrd);
 
   JOB_STATUS _status;
-  Node const _snapshot;
+  Node const& _snapshot;
   AgentInterface* _agent;
   std::string _jobId;
   std::string _creator;
@@ -151,7 +155,7 @@ struct Job {
 
   static void doForAllShards(
       Node const& snapshot, std::string& database, std::vector<shard_t>& shards,
-      std::function<void(Slice plan, Slice current, std::string& planPath)> worker);
+      std::function<void(Slice plan, Slice current, std::string& planPath, std::string& curPath)> worker);
 
   // The following methods adds an operation to a transaction object or
   // a condition to a precondition object. In all cases, the builder trx

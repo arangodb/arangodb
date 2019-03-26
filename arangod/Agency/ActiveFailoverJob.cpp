@@ -59,7 +59,7 @@ ActiveFailoverJob::ActiveFailoverJob(Node const& snapshot, AgentInterface* agent
 
 ActiveFailoverJob::~ActiveFailoverJob() {}
 
-void ActiveFailoverJob::run() { runHelper(_server, ""); }
+void ActiveFailoverJob::run(bool& aborts) { runHelper(_server, "", aborts); }
 
 bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Todo: Handle failover for leader " + _server;
@@ -130,7 +130,7 @@ bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
   return false;
 }
 
-bool ActiveFailoverJob::start() {
+bool ActiveFailoverJob::start(bool&) {
   // If anything throws here, the run() method catches it and finishes
   // the job.
 

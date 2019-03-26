@@ -83,6 +83,23 @@
     "section" : "console",
     "type" : "boolean"
   },
+  "console.history" : {
+    "category" : "option",
+    "default" : true,
+    "deprecatedIn" : null,
+    "description" : "whether or not to load and persist command-line history",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.4.5",
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "console",
+    "type" : "boolean"
+  },
   "console.pager" : {
     "category" : "option",
     "default" : false,
@@ -314,6 +331,7 @@
   "javascript.module-directory" : {
     "category" : "option",
     "default" : [
+      "./enterprise/js"
     ],
     "deprecatedIn" : null,
     "description" : "additional paths containing JavaScript modules",
@@ -466,6 +484,40 @@
     "enterpriseOnly" : false,
     "hidden" : true,
     "introducedIn" : null,
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "log",
+    "type" : "string"
+  },
+  "log.file-group" : {
+    "category" : "option",
+    "default" : "",
+    "deprecatedIn" : null,
+    "description" : "group to use for new log file, user must be a member of this group",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.4.5",
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "log",
+    "type" : "string"
+  },
+  "log.file-mode" : {
+    "category" : "option",
+    "default" : "",
+    "deprecatedIn" : null,
+    "description" : "mode to use for new log file, umask will be applied as well",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.4.5",
+      "v3.5.0"
+    ],
     "obsolete" : false,
     "requiresValue" : true,
     "section" : "log",
