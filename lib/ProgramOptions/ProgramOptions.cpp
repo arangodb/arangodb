@@ -115,17 +115,20 @@ void ProgramOptions::printSectionsHelp() const {
   std::cout << std::endl;
 }
 
-// returns a VPack representation of the option values
+// returns a VPack representation of the option values, with optional
+// filters applied to filter out specific options. 
+// the filter function is expected to return true
+// for any options that should become part of the result
 VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
-                                     std::unordered_set<std::string> const& exclude) const {
+                                     std::function<bool(std::string const&)> const& filter) const {
   VPackBuilder builder;
   builder.openObject();
 
   walk(
-      [&builder, &exclude, &detailed](Section const& section, Option const& option) {
+      [&builder, &filter, &detailed](Section const& section, Option const& option) {
         std::string full(option.fullName());
-        if (exclude.find(full) != exclude.end()) {
-          // excluded option
+        
+        if (!filter(full)) {
           return;
         }
 

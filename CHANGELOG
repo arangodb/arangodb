@@ -1,6 +1,26 @@
 devel
 -----
 
+* added option `--javascript.startup-options-filter` for filtering certain
+  startup options out before passing their values to JavaScript actions.
+
+  If specified, this option must be valid ECMAScript regular expression. 
+  Any startup option whose name that matches the regular expression will 
+  not be exposed to JavaScript actions. Option names are passed into the
+  filter without the two leading dashes.
+
+  For example, to hide all options from the `server` and the `ssl` sections,
+  plus all options whose name contains "timeout", one could use the regular
+  expression "((server|ssl)\.|timeout)"
+
+* added option `--javascript.environment-variables-filter` for filtering certain
+  environment variables out before passing their values to JavaScript actions.
+
+  If specified, this option must be a valid ECMAScript regular expression.
+  Any environment variable whose name that matches the regular expression
+  will not be exposed to JavaScript actions. The matching will be performed
+  in a case-sensitive way. 
+
 * added "--log.ids" option to arangod
 
   The default value for this option is `true`. Setting the option to `false`

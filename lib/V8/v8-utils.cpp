@@ -37,6 +37,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -305,9 +306,21 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("options()");
   }
+  
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
 
-  VPackBuilder builder = ApplicationServer::server->options(
-      {"server.password", "ldap.bindpasswd"});
+  auto filter = [v8security](std::string const& name) {
+    if (name.find("passwd") != std::string::npos ||
+        name.find("password") != std::string::npos) {
+      return false;
+    }
+    return v8security->shouldExposeStartupOption(name);
+  };
+
+  VPackBuilder builder = ApplicationServer::server->options(filter);
   auto result = TRI_VPackToV8(isolate, builder.slice());
 
   TRI_V8_RETURN(result);
