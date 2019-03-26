@@ -481,7 +481,7 @@ The following optimizer rules may appear in the `rules` attribute of cluster pla
   determine the values of all the collection's shard keys from the query, and when the
   shard keys are covered by a single index (this is always true if the shard key is
   the default `_key`).
-* `smart-joins`: will appear when the query optimize can reduce an inter-node join
+* `smart-joins`: will appear when the query optimizer can reduce an inter-node join
   to a server-local join. This rule is only active in the *Enterprise Edition* of
   ArangoDB, and will only be employed when joining two collections with like sharding
   via their shard keys.
