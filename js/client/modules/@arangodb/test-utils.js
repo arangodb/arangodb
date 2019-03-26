@@ -410,21 +410,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if (options.replication) {
-    whichFilter.filter = 'replication';
-    if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
-      whichFilter.filter = 'testcase';
-      return ((testname.search(options.test) >= 0) &&
-              (testname.indexOf('replication') !== -1));
-    } else {
-      return testname.indexOf('replication') !== -1;
-    }
-  } else if (testname.indexOf('replication') !== -1) {
-
-    whichFilter.filter = 'replication';
-    return false;
-  }
-
   if ((testname.indexOf('-cluster') !== -1) && !options.cluster) {
     whichFilter.filter = 'noncluster';
     return false;
