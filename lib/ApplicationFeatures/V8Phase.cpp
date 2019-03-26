@@ -33,6 +33,7 @@ V8FeaturePhase::V8FeaturePhase(ApplicationServer& server)
   startsAfter("Action");
   startsAfter("V8Dealer");
   startsAfter("V8Platform");
+  startsAfter("V8Security");
 }
 
 }  // namespace application_features

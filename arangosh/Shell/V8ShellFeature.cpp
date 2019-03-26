@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -78,6 +79,7 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
   startsAfter("BasicsPhase");
   startsAfter("Console");
   startsAfter("V8Platform");
+  startsAfter("V8Security");
   startsAfter("Random");
 }
 
@@ -95,7 +97,7 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--javascript.copy-directory",
-      "target directory to copy files from 'javascript.startup-directory' into"
+      "target directory to copy files from 'javascript.startup-directory' into "
       "(only used when `--javascript.copy-installation` is enabled)",
       new StringParameter(&_copyDirectory));
 

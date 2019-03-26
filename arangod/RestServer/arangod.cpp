@@ -54,6 +54,7 @@
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8Phase.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -219,6 +220,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new UpgradeFeature(server, &ret, nonServerFeatures));
     server.addFeature(new V8DealerFeature(server));
     server.addFeature(new V8PlatformFeature(server));
+    server.addFeature(new V8SecurityFeature(server));
     server.addFeature(new VersionFeature(server));
     server.addFeature(new ViewTypesFeature(server));
     server.addFeature(new aql::AqlFunctionFeature(server));

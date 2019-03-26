@@ -110,6 +110,7 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
 
   startsAfter("Action");
   startsAfter("V8Platform");
+  startsAfter("V8Security");
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
