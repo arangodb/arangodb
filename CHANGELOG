@@ -1,3 +1,10 @@
+v3.4.6 (2019-XX-XX)
+-------------------
+
+* fixed internal issuel #3546: improved the shards view in the web ui if there
+  is only one shard to display.
+
+
 v3.4.5 (2019-03-27)
 -------------------
 
