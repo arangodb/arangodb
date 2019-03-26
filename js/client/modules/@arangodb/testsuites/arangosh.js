@@ -258,7 +258,7 @@ function permissions(options) {
   fs.makeDirectoryRecursive(rootDir);
 
   tests.forEach(function (f, i) {
-    let content = fs.read(f)
+    let content = fs.read(f);
     content = `(function(){ const getOptions = true; ${content}
 }())`;
     
