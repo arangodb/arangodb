@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed internal issue #3789: restricted the allowed query names for user
+  defined custom queries within the web ui.
+
 * added "--log.ids" option to arangod
 
   The default value for this option is `true`. Setting the option to `false`
