@@ -1746,6 +1746,8 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add("NumberOfDBServers", VPackSlice::nullSlice());
       builder.add(VPackValue("CleanedServers"));
       { VPackArrayBuilder dd(&builder); }
+      builder.add(VPackValue("ToBeCleanedServers"));
+      { VPackArrayBuilder dd(&builder); }
       builder.add(VPackValue("FailedServers"));
       { VPackObjectBuilder dd(&builder); }
       builder.add("Lock", VPackValue("UNLOCKED"));
