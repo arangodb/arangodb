@@ -55,10 +55,8 @@
             $('.fa-database').show();
             $('#databaseInputName').remove();
 
-            var sortedArr = _.pairs(permissions.result);
-            sortedArr.sort();
-            sortedArr = _.object(sortedArr);
-            _.each(sortedArr, function (rule, db) {
+            var sortedObj = self.sortDatabases(permissions.result);
+            _.each(sortedObj, function (rule, db) {
               if (frontendConfig.authenticationEnabled) {
                 $('#loginDatabase').append(
                   '<option>' + db + '</option>'
@@ -114,6 +112,21 @@
       self.checkVersion();
 
       return this;
+    },
+
+    sortDatabases: function (obj) {
+      var sorted;
+
+      if (frontendConfig.authenticationEnabled) {
+        // key, value tuples of database name and permission
+        sorted = _.pairs(obj);
+        sorted = _.sortBy(sorted, function (i) { return i[0].toLowerCase(); });
+        sorted = _.object(sorted);
+      } else {
+        // array contained only the database names
+        sorted = _.sortBy(obj, function (i) { return i.toLowerCase(); });
+      }
+      return sorted;
     },
 
     checkVersion: function () {
@@ -211,10 +224,8 @@
           $('.fa-database').show();
           $('#databaseInputName').remove();
 
-          var sortedArr = _.pairs(permissions.result);
-          sortedArr.sort();
-          sortedArr = _.object(sortedArr);
-          _.each(sortedArr, function (rule, db) {
+          var sortedObj = self.sortDatabases(permissions.result);
+          _.each(sortedObj, function (rule, db) {
             if (frontendConfig.authenticationEnabled) {
               $('#loginDatabase').append(
                 '<option>' + db + '</option>'
