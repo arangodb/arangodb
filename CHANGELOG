@@ -1,12 +1,11 @@
-v3.4.6 (2019-XX-XX)
+v3.4.5 (2019-03-27)
 -------------------
 
 * fixed internal issue #3789: restricted the allowed query names for user
   defined custom queries within the web ui.
 
-
-v3.4.5 (2019-03-27)
--------------------
+* fixed internal issuel #3546: improved the shards view in the web ui if there
+  is only one shard to display.
 
 * fixed a display issues when editing a graph within the web ui
 
