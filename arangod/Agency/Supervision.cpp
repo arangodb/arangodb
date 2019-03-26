@@ -346,7 +346,7 @@ void handleOnStatusCoordinator(Agent* agent, Node const& snapshot, HealthRecord&
           create.add(foxxmaster, VPackValue(""));
         }
       }
-      singleWriteTransaction(agent, create);
+      singleWriteTransaction(agent, create, false);
     }
   }
 }
@@ -607,7 +607,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       if (!this->isStopping()) {
         // Replicate special event and only then transient store
         if (changed) {
-          write_ret_t res = singleWriteTransaction(_agent, *pReport);
+          write_ret_t res = singleWriteTransaction(_agent, *pReport, false);
           if (res.accepted && res.indices.front() != 0) {
             ++_jobId;  // Job was booked
             transient(_agent, *tReport);
@@ -744,7 +744,7 @@ void Supervision::reportStatus(std::string const& status) {
   }
 
   if (persist) {
-    write_ret_t res = singleWriteTransaction(_agent, *report);
+    write_ret_t res = singleWriteTransaction(_agent, *report, false);
   }
 }
 

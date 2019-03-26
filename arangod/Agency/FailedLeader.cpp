@@ -156,7 +156,7 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   if (b == nullptr) {
     _jb->close(); // object
     _jb->close(); // array
-    write_ret_t res = singleWriteTransaction(_agent, *_jb);
+    write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
     return (res.accepted && res.indices.size() == 1 && res.indices[0]);
   }
 

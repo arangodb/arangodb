@@ -160,7 +160,7 @@ bool Job::finish(std::string const& server, std::string const& shard,
 
   }
 
-  write_ret_t res = singleWriteTransaction(_agent, finished);
+  write_ret_t res = singleWriteTransaction(_agent, finished, false);
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Successfully finished job " << jobType << "(" << _jobId << ")";

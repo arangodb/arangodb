@@ -136,7 +136,7 @@ JOB_STATUS CleanOutServer::status() {
   }
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, reportTrx);
+  write_ret_t res = singleWriteTransaction(_agent, reportTrx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0] != 0) {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
@@ -184,7 +184,7 @@ bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
     return true;
   }
 
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
@@ -344,7 +344,7 @@ bool CleanOutServer::start(bool& aborts) {
   }  // array for transaction done
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, *pending);
+  write_ret_t res = singleWriteTransaction(_agent, *pending, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Pending: Clean out server " + _server;
