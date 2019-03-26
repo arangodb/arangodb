@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed internal issuel #3546: improved the shards view in the web ui if there
+  is only one shard to display.
+
 * added "--log.ids" option to arangod
 
   The default value for this option is `true`. Setting the option to `false`
