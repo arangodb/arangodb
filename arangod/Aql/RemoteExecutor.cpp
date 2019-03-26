@@ -34,6 +34,63 @@
 #include <lib/Rest/CommonDefines.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+namespace {
+
+// identical code to RecursiveMutexLocker in ClusterInfo.cpp
+template <typename T>
+class RecursiveMutexLocker {
+ public:
+  RecursiveMutexLocker(T& mutex, std::atomic<std::thread::id>& owner,
+                       arangodb::basics::LockerType type, bool acquire,
+                       char const* file, int line)
+      : _locker(&mutex, type, false, file, line), _owner(owner), _update(noop) {
+    if (acquire) {
+      lock();
+    }
+  }
+
+  ~RecursiveMutexLocker() { unlock(); }
+
+  bool isLocked() { return _locker.isLocked(); }
+
+  void lock() {
+    // recursive locking of the same instance is not yet supported (create a new
+    // instance instead)
+    TRI_ASSERT(_update != owned);
+
+    if (std::this_thread::get_id() != _owner.load()) {  // not recursive
+      _locker.lock();
+      _owner.store(std::this_thread::get_id());
+      _update = owned;
+    }
+  }
+
+  void unlock() { _update(*this); }
+
+ private:
+  arangodb::basics::MutexLocker<T> _locker;
+  std::atomic<std::thread::id>& _owner;
+  void (*_update)(RecursiveMutexLocker& locker);
+
+  static void noop(RecursiveMutexLocker&) {}
+  static void owned(RecursiveMutexLocker& locker) {
+    static std::thread::id unowned;
+    locker._owner.store(unowned);
+    locker._locker.unlock();
+    locker._update = noop;
+  }
+};
+
+#define NAME__(name, line) name##line
+#define NAME_EXPANDER__(name, line) NAME__(name, line)
+#define NAME(name) NAME_EXPANDER__(name, __LINE__)
+#define RECURSIVE_MUTEX_LOCKER_NAMED(name, lock, owner, acquire)        \
+  RecursiveMutexLocker<typename std::decay<decltype(lock)>::type> name( \
+      lock, owner, arangodb::basics::LockerType::BLOCKING, acquire, __FILE__, __LINE__)
+#define RECURSIVE_MUTEX_LOCKER(lock, owner) \
+  RECURSIVE_MUTEX_LOCKER_NAMED(NAME(RecursiveLocker), lock, owner, true)
+
+}  // namespace
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -390,7 +447,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
 
   // Make sure to cover against the race that this
   // Request is fullfilled before the register has taken place
-  MUTEX_LOCKER(locker, _communicationMutex);
+  RECURSIVE_MUTEX_LOCKER(_communicationMutex, _communicationMutexOwner);
   // We can only track one request at a time.
   // So assert there is no other request in flight!
   TRI_ASSERT(_lastTicketId == 0);
@@ -405,7 +462,7 @@ bool ExecutionBlockImpl<RemoteExecutor>::handleAsyncResult(ClusterCommResult* re
   // So we cannot have the response being produced while sending the request.
   // Make sure to cover against the race that this
   // Request is fullfilled before the register has taken place
-  MUTEX_LOCKER(locker, _communicationMutex);
+  RECURSIVE_MUTEX_LOCKER(_communicationMutex, _communicationMutexOwner);
   if (_lastTicketId == result->operationID) {
     // TODO Handle exceptions thrown while we are in this code
     // Query will not be woken up again.

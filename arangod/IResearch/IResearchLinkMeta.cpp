@@ -234,7 +234,7 @@ bool IResearchLinkMeta::init( // initialize meta
           auto analyzer = analyzers->get(name);
 
           if (!analyzer) {
-            errorField = fieldName + "=>" + std::string(name);
+            errorField = fieldName + "=>" + value.copyString(); // original (non-normalized) 'name' valie
 
             return false;
           }
