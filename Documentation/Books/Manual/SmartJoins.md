@@ -1,6 +1,8 @@
 Smart Joins
 ===========
 
+<small>Introduced in: v3.4.5, v3.5.0</small>
+
 {% hint 'info' %}
 This feature is only available in the
 [**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
