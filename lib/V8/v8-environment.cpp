@@ -118,7 +118,7 @@ static void EnvQuery(v8::Local<v8::Name> property,
 
   int32_t rc = -1;  // Not found unless proven otherwise.
   if (!canExpose(isolate, property)) {
-    TRI_V8_RETURN(rc);
+    return;
   }
 #ifndef _WIN32
   v8::String::Utf8Value key(isolate, property);
