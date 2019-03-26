@@ -18,30 +18,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_ACTIONS_H
-#define ARANGOD_V8_SERVER_V8_ACTIONS_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_AQL_RELOAD_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_AQL_RELOAD_HANDLER_H 1
 
-#include "Basics/Common.h"
-
-#include <v8.h>
-
-class TRI_action_t;
-struct TRI_v8_global_t;
+#include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-class GeneralRequest;
-}
+class RestAqlReloadHandler : public arangodb::RestBaseHandler {
+ public:
+  RestAqlReloadHandler(GeneralRequest*, GeneralResponse*);
 
-v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
-                                          TRI_v8_global_t const* v8g,
-                                          arangodb::GeneralRequest* request,
-                                          TRI_action_t const* action);
-
-void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context);
-
-void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context);
+ public:
+  char const* name() const override final { return "RestAqlReloadHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  RestStatus execute() override;
+};
+}  // namespace arangodb
 
 #endif

@@ -1149,7 +1149,22 @@ bool fromFuncAnalyzer(irs::boolean_filter* filter, QueryContext const& ctx,
       return false;
     }
 
-    analyzer = analyzerFeature->get(analyzerIdValue);
+    if (ctx.trx) {
+      auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
+        arangodb::SystemDatabaseFeature // featue type
+      >();
+      auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+
+      if (sysVocbase) {
+        analyzer = analyzerFeature->get( // get analyzer
+          arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
+            analyzerIdValue, ctx.trx->vocbase(), *sysVocbase // args
+          )
+        );
+      }
+    } else {
+      analyzer = analyzerFeature->get(analyzerIdValue); // verbatim
+    }
 
     if (!analyzer) {
       LOG_TOPIC("404c9", WARN, arangodb::iresearch::TOPIC)

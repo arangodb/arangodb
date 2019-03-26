@@ -45,13 +45,16 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestHandler/RestAdminDatabaseHandler.h"
+#include "RestHandler/RestAdminExecuteHandler.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
 #include "RestHandler/RestAdminStatisticsHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
+#include "RestHandler/RestAqlReloadHandler.h"
 #include "RestHandler/RestAqlUserFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
+#include "RestHandler/RestAuthReloadHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCollectionHandler.h"
 #include "RestHandler/RestControlPregelHandler.h"
@@ -79,6 +82,7 @@
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestTasksHandler.h"
 #include "RestHandler/RestTestHandler.h"
+#include "RestHandler/RestTimeHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestTtlHandler.h"
 #include "RestHandler/RestUploadHandler.h"
@@ -95,6 +99,7 @@
 #include "Ssl/SslServerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::rest;
 using namespace arangodb::options;
@@ -448,7 +453,21 @@ void GeneralServerFeature::defineHandlers() {
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addHandler("/_admin/actions",
                               RestHandlerCreator<MaintenanceRestHandler>::createNoData);
+  
+  _handlerFactory->addHandler("/_admin/aql/reload",
+                              RestHandlerCreator<RestAqlReloadHandler>::createNoData);
 
+  _handlerFactory->addHandler("/_admin/auth/reload",
+                              RestHandlerCreator<RestAuthReloadHandler>::createNoData);
+  
+  if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
+    _handlerFactory->addHandler("/_admin/execute",
+                                RestHandlerCreator<RestAdminExecuteHandler>::createNoData);
+  }
+  
+  _handlerFactory->addHandler("/_admin/time",
+                              RestHandlerCreator<RestTimeHandler>::createNoData);
+  
   _handlerFactory->addPrefixHandler("/_api/job",
                                     RestHandlerCreator<arangodb::RestJobHandler>::createData<AsyncJobManager*>,
                                     _jobManager.get());
