@@ -1,6 +1,8 @@
 v3.4.5 (2019-03-27)
 -------------------
 
+* fixed a display issues when editing a graph within the web ui
+
 * fixed internal-issue #3787: Let user know about conflicting attribute in
   AQL queries if information is available.
 
@@ -154,6 +156,7 @@ v3.4.4 (2019-03-12)
 * fixed overflow in Windows NowNanos in RocksDB
 
 * fixed issue #8165: AQL optimizer does not pick up multiple geo index
+
 
 * when creating a new database with an initial user, set the database permission
   for this user as specified in the documentation
