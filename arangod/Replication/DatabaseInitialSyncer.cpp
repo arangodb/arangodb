@@ -1285,7 +1285,6 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             }
           }
 
-          bool existing = false;
           // check any identifier conflicts first
           {
             // check ID first
@@ -1297,11 +1296,10 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
               auto byId = physical->lookupIndex(iid);
               auto byDef = physical->lookupIndex(idxDef);
               if (byId != nullptr) {
-                if (byDef != nullptr && byId != byDef) {
+                if (byDef == nullptr || byId != byDef) {
                   // drop existing byId
                   physical->dropIndex(byId->id());
                 } else {
-                  existing = true;
                   idx = byId;
                 }
               }
@@ -1316,18 +1314,22 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
               auto byName = physical->lookupIndex(name);
               auto byDef = physical->lookupIndex(idxDef);
               if (byName != nullptr) {
-                if (byName != nullptr && byName != byDef) {
+                if (byDef == nullptr || byName != byDef) {
                   // drop existing byName
                   physical->dropIndex(byName->id());
+                } else if (idx != nullptr && byName != idx) {
+                  // drop existing byName and byId
+                  physical->dropIndex(byName->id());
+                  physical->dropIndex(idx->id());
+                  idx = nullptr;
                 } else {
-                  existing = true;
                   idx = byName;
                 }
               }
             }
           }
 
-          if (!existing) {
+          if (idx == nullptr) {
             bool created = false;
             idx = physical->createIndex(idxDef, /*restore*/ true, created);
           }
