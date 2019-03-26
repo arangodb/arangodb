@@ -63,6 +63,81 @@ AQL now allows the usage of floating point values without leading zeros, e.g.
 the decimal separator, i.e `0.1234`.
 
 
+Smart Joins
+-----------
+
+The "smart joins" feature available in the ArangoDB Enterprise Edition allows running 
+joins between two sharded collections with performance close to that of a local join 
+operation. 
+
+The prerequisite for this is that the two collections have an identical sharding setup,
+established via the `distributeShardsLike` attribute of one of the collections.
+
+Quick example setup for two collections with identical sharding:
+
+    > db._create("products", { numberOfShards: 3, shardKeys: ["_key"] });
+    > db._create("orders", { distributeShardsLike: "products", shardKeys: ["productId"] });
+    > db.orders.ensureIndex({ type: "hash", fields: ["productId"] });
+    
+Now an AQL query that joins the two collections via their shard keys will benefit from
+the smart join optimization, e.g.
+
+    FOR p IN products 
+      FOR o IN orders 
+        FILTER p._key == o.productId 
+        RETURN o
+
+In this query's execution plan, the extra hop via the coordinator can be saved
+that is normally there for generic joins. Thanks to the smart join optimization,
+the query's execution is as simple as:
+
+    Execution plan:
+     Id   NodeType                  Site  Est.   Comment
+      1   SingletonNode             DBS      1   * ROOT
+      3   EnumerateCollectionNode   DBS      9     - FOR o IN orders   /* full collection scan, 3 shard(s) */
+      7   IndexNode                 DBS      0       - FOR p IN products   /* primary index scan, scan only, 3 shard(s) */
+     10   RemoteNode                COOR     0         - REMOTE
+     11   GatherNode                COOR     0         - GATHER
+      6   ReturnNode                COOR     0         - RETURN o
+
+Without the smart join optimization, there will be an extra hop via the 
+coordinator for shipping the data from each shard of the one collection to
+each shard of the other collection, which will be a lot more expensive:
+
+    Execution plan:
+     Id   NodeType        Site  Est.   Comment
+      1   SingletonNode   DBS      1   * ROOT
+     16   IndexNode       DBS      3     - FOR p IN products   /* primary index scan, index only, projections: `_key`, 3 shard(s) */
+     14   RemoteNode      COOR     3       - REMOTE
+     15   GatherNode      COOR     3       - GATHER
+      8   ScatterNode     COOR     3       - SCATTER
+      9   RemoteNode      DBS      3       - REMOTE
+      7   IndexNode       DBS      3       - FOR o IN orders   /* hash index scan, 3 shard(s) */
+     10   RemoteNode      COOR     3         - REMOTE
+     11   GatherNode      COOR     3         - GATHER
+      6   ReturnNode      COOR     3         - RETURN o
+
+In the end, smart joins can optimize away a lot of the inter-node network
+requests normally required for performing a join between sharded collections.
+The performance advantage of smart joins compared to regular joins will grow 
+with the number of shards of the underlying collections.
+
+In general, for two collections with `n` shards each, the minimal number of 
+network requests for the general join (_no_ smart joins optimization) will be 
+`n * (n + 2)`. The number of network requests increases quadratically with the 
+number of shards. 
+
+Smart joins can get away with a minimal number of `n` requests here, which scales
+linearly with the number of shards.
+
+Smart joins will also be especially advantageous for queries that have to ship a lot
+of data around for performing the join, but that will filter out most of the data
+after the join. In this case smart joins should greatly outperform the general join,
+as they will eliminate most of the inter-node data shipping overhead.
+
+Also see the [Smart Joins](../SmartJoins.md) page.
+
+
 Background Index Creation
 -------------------------
 
