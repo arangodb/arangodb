@@ -25,7 +25,7 @@ g_hash_algorithm = hashlib.md5()
 
 
 def generate_id(location_string, params, rest, id_database):
-    sys.exit(1) #this needs to respect the quotes in the id string to work
+    sys.exit(1) #disabled on purpose
 
     id_len = 5
     g_hash_algorithm.update((location_string + params + rest).encode())
@@ -111,7 +111,7 @@ def do_operation(fullpath, project_path, target_file_handle, id_database, levels
 
                     elif len(param) == 7 and param.startswith('"') and param.endswith('"'):
                         # we need to store / check the id
-                        uid = param
+                        uid = param[1:-1]
 
                         if uid in id_database:
                             print("collision check failed - the following lines contain equal ids:")
