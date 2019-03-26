@@ -135,6 +135,12 @@ class DumpRestoreHelper {
     return this.validate(this.results.setup);
   }
 
+  runCleanupSuite(path) {
+    this.print('Cleaning up');
+    this.results.cleanup = this.arangosh(path, this.clientAuth);
+    return this.validate(this.results.setup);
+  }
+
   dumpFrom(database) {
     this.print('dump');
     if (!this.dumpConfig.haveSetAllDatabases()) {
@@ -274,11 +280,13 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
   const helper = new DumpRestoreHelper(instanceInfo, options, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
  
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
+  const cleanupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCleanup));
   const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
   if (
     !helper.runSetupSuite(setupFile) ||
     !helper.dumpFrom('UnitTestsDumpSrc') ||
+    !helper.runCleanupSuite(cleanupFile) ||  
     !helper.restoreTo('UnitTestsDumpDst') ||
     !helper.runTests(testFile,'UnitTestsDumpDst') ||
     !helper.tearDown(tearDownFile)) {
@@ -314,6 +322,7 @@ function dump (options) {
   let c = getClusterStrings(options);
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump-' + options.storageEngine + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
     dumpCheckGraph: 'check-graph.js',
@@ -327,6 +336,7 @@ function dumpMultiple (options) {
   let c = getClusterStrings(options);
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCleanup: 'cleanup-multiple.js',
     dumpAgain: 'dump-' + options.storageEngine + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
     dumpCheckGraph: 'check-graph-multiple.js'
@@ -371,6 +381,7 @@ function dumpAuthentication (options) {
   _.defaults(dumpAuthOpts, options);
   let tstFiles = {
     dumpSetup: 'dump-authentication-setup.js',
+    dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump-authentication.js',
     dumpTearDown: 'dump-teardown.js',
     foxxTest: 'check-foxx.js'
@@ -412,6 +423,7 @@ function dumpEncrypted (options) {
   
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump-' + options.storageEngine + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
     foxxTest: 'check-foxx.js'
@@ -442,6 +454,7 @@ function dumpMaskings (options) {
 
   let tstFiles = {
     dumpSetup: 'dump-maskings-setup.js',
+    dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump-maskings.js',
     dumpTearDown: 'dump-teardown.js'
   };
