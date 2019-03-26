@@ -87,15 +87,9 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   void loadJavaScriptFileInAllContexts(TRI_vocbase_t*, std::string const& file,
                                        VPackBuilder* builder);
 
-  /// @brief forceContext == -1 means that any free context may be
-  /// picked, or a new one will be created if we have not exceeded
-  /// the maximum number of contexts
-  /// forceContext == -2 means that any free context may be picked,
-  /// or a new one will be created if we have not exceeded or exactly
-  /// reached the maximum number of contexts. this can be used to
-  /// force the creation of another context for high priority tasks
-  /// forceContext >= 0 means picking the context with that exact id
-  V8Context* enterContext(TRI_vocbase_t*, bool allowUseDatabase, ssize_t forceContext = -1);
+  /// @brief enter a V8 context
+  /// currently returns a nullptr if no context can be acquired in time
+  V8Context* enterContext(TRI_vocbase_t*, bool allowUseDatabase);
   void exitContext(V8Context*);
 
   void defineContextUpdate(std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,

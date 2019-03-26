@@ -73,17 +73,9 @@ RestStatus RestAdminExecuteHandler::execute() {
   try {
     LOG_TOPIC("c838e", WARN, Logger::FIXME) << "about to execute: '" << Logger::CHARS(body, bodySize) << "'";
     
-    ssize_t forceContext = -1;
-    bool found;
-    std::string const& c = _request->header("x-arango-v8-context", found);
-
-    if (found && !c.empty()) {
-      forceContext = basics::StringUtils::int32(c);
-    }
-  
     // get a V8 context
     bool const allowUseDatabase = ActionFeature::ACTION->allowUseDatabase();
-    V8Context* context = V8DealerFeature::DEALER->enterContext(&_vocbase,  allowUseDatabase, forceContext);
+    V8Context* context = V8DealerFeature::DEALER->enterContext(&_vocbase,  allowUseDatabase);
 
     // note: the context might be nullptr in case of shut-down
     if (context == nullptr) {

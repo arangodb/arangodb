@@ -861,16 +861,9 @@ void V8DealerFeature::prepareLockedContext(TRI_vocbase_t* vocbase, V8Context* co
   }
 }
 
-/// @brief forceContext == -1 means that any free context may be
-/// picked, or a new one will be created if we have not exceeded
-/// the maximum number of contexts
-/// forceContext == -2 means that any free context may be picked,
-/// or a new one will be created if we have not exceeded or exactly
-/// reached the maximum number of contexts. this can be used to
-/// force the creation of another context for high priority tasks
-/// forceContext >= 0 means picking the context with that exact id
-V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, bool allowUseDatabase,
-                                         ssize_t forceContext) {
+/// @brief enter a V8 context
+/// currently returns a nullptr if no context can be acquired in time
+V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, bool allowUseDatabase) {
   TRI_ASSERT(vocbase != nullptr);
 
   if (_stopping) {
@@ -891,75 +884,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, bool allowUseDa
 
   V8Context* context = nullptr;
 
-  // this is for TESTING / DEBUGGING / INIT only
-  if (forceContext >= 0) {
-    size_t id = static_cast<size_t>(forceContext);
-
-    while (!_stopping) {
-      {
-        CONDITION_LOCKER(guard, _contextCondition);
-
-        if (_stopping) {
-          break;
-        }
-
-        for (auto it = _idleContexts.begin(); it != _idleContexts.end(); ++it) {
-          if ((*it)->id() == id) {
-            context = (*it);
-            _idleContexts.erase(it);
-            _busyContexts.emplace(context);
-            break;
-          }
-        }
-
-        if (context == nullptr) {
-          // still not found
-          for (auto it = _dirtyContexts.begin(); it != _dirtyContexts.end(); ++it) {
-            if ((*it)->id() == id) {
-              context = (*it);
-              _dirtyContexts.erase(it);
-              _busyContexts.emplace(context);
-              break;
-            }
-          }
-        }
-
-        if (context != nullptr) {
-          // found the context
-          TRI_ASSERT(guard.isLocked());
-          break;
-        }
-
-        // check if such context exists at all
-        bool found = false;
-        for (auto& it : _contexts) {
-          if (it->id() == id) {
-            found = true;
-            break;
-          }
-        }
-
-        if (!found) {
-          vocbase->release();
-          LOG_TOPIC("ba767", WARN, arangodb::Logger::V8)
-              << "specified V8 context #" << id << " not found";
-          return nullptr;
-        }
-      }
-
-      LOG_TOPIC("603d8", DEBUG, arangodb::Logger::V8)
-          << "waiting for V8 context #" << id << " to become available";
-      std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
-    }
-
-    if (context == nullptr) {
-      vocbase->release();
-      return nullptr;
-    }
-  }
-
   // look for a free context
-  else {
+  {
     CONDITION_LOCKER(guard, _contextCondition);
 
     while (_idleContexts.empty() && !_stopping) {

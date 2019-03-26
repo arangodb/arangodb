@@ -112,19 +112,8 @@ class v8_action_t final : public TRI_action_t {
       allowUseDatabaseInRestActions = true;
     }
 
-    // this is for TESTING / DEBUGGING only - do not document this feature
-    ssize_t forceContext = -1;
-    bool found;
-
-    std::string const& c = request->header("x-arango-v8-context", found);
-
-    if (found && !c.empty()) {
-      forceContext = StringUtils::int32(c);
-    }
-
     // get a V8 context
-    V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, allowUseDatabaseInRestActions,
-                                                               forceContext);
+    V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, allowUseDatabaseInRestActions);
 
     // note: the context might be nullptr in case of shut-down
     if (context == nullptr) {
