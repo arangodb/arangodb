@@ -59,11 +59,6 @@ the decimal separator, i.e `0.1234`.
 Smart Joins
 -----------
 
-{% hint 'info' %}
-This feature is only available in the
-[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
-{% endhint %}
-
 The "smart joins" feature available in the ArangoDB Enterprise Edition allows running 
 joins between two sharded collections with performance close to that of a local join 
 operation. 
