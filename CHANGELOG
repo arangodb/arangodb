@@ -1,8 +1,12 @@
 devel
 -----
 
+
 * fixed internal issuel #3546: improved the shards view in the web ui if there
   is only one shard to display.
+
+* upgraded bundled RocksDB version to 6.0
+
 
 * added "--log.ids" option to arangod
 

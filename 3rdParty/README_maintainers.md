@@ -91,7 +91,24 @@ Most changes can be ported upstream:
 https://github.com/facebook/rocksdb
 
 On Upgrade:
-- thirdparty.inc needs to be adjusted to use the snappy we specify
+- `./thirdparty.inc` needs to be adjusted to use the snappy we specify see old commit
+
+    -set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
+    -set(SNAPPY_INCLUDE ${SNAPPY_HOME}/build/native/inc/inc)
+    -set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/lib/native/debug/amd64/snappy.lib)
+    -set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
+    +#set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
+    +#set(SNAPPY_INCLUDE ${SNAPPY_HOME}/build/native/inc/inc)
+    +#set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/lib/native/debug/amd64/snappy.lib)
+    +#set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
+
+- fix timestamp in `./CMakeLists.txt` to avoid recompilation
+
+    -string(TIMESTAMP GIT_DATE_TIME "%Y/%m/%d %H:%M:%S" UTC)
+    +string(TIMESTAMP TS "%Y/%m/%d %H:%M:%S" UTC )
+    +set(GIT_DATE_TIME "${TS}" CACHE STRING "the time we first built rocksdb")
+
+
 
 ## s2geometry
 
