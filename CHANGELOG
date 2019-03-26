@@ -1,3 +1,11 @@
+v3.4.6 (2019-XX-XX)
+-------------------
+
+* internal issue #2276: fixed the sorting of the databases in the database 
+  selection dropdown in the web ui. The sort order differed wheter
+	authentication was enabled or disabled.
+
+
 v3.4.5 (2019-03-27)
 -------------------
 
