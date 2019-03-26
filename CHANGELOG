@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed internal issue #3789: restricted the allowed query names for user
+  defined custom queries within the web ui.
+  
 * upgraded bundled RocksDB version to 6.0
 
 * added "--log.ids" option to arangod
