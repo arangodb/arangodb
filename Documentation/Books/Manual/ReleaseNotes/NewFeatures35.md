@@ -128,7 +128,7 @@ of data around for performing the join, but that will filter out most of the dat
 after the join. In this case smart joins should greatly outperform the general join,
 as they will eliminate most of the inter-node data shipping overhead.
 
-More information on smart joins can be found [here](../SmartJoins.md)
+Also see the [Smart Joins](../SmartJoins.md) page.
 
 
 Background Index Creation
