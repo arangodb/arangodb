@@ -280,7 +280,7 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type, std::string const
       // check port over-/underrun
       if (value < (std::numeric_limits<uint16_t>::min)() ||
           value > (std::numeric_limits<uint16_t>::max)()) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("7ccf9", ERR, arangodb::Logger::FIXME)
             << "specified port number '" << value << "' is outside the allowed range";
         return nullptr;
       }
@@ -314,7 +314,7 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type, std::string const
     // check port over-/underrun
     if (value < (std::numeric_limits<uint16_t>::min)() ||
         value > (std::numeric_limits<uint16_t>::max)()) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("127ce", ERR, arangodb::Logger::FIXME)
           << "specified port number '" << value << "' is outside the allowed range";
       return nullptr;
     }
@@ -381,7 +381,7 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   bool ok = TRI_SetNonBlockingSocket(s);
 
   if (!ok) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot switch to non-blocking: " << errno
+    LOG_TOPIC("572b6", ERR, arangodb::Logger::FIXME) << "cannot switch to non-blocking: " << errno
                                             << " (" << strerror(errno) << ")";
 
     return false;
@@ -391,7 +391,7 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   ok = TRI_SetCloseOnExecSocket(s);
 
   if (!ok) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("1ef8e", ERR, arangodb::Logger::FIXME)
         << "cannot set close-on-exit: " << errno << " (" << strerror(errno) << ")";
 
     return false;

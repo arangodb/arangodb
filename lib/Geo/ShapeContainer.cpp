@@ -166,7 +166,7 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer* coverer) const n
     }
 
     case ShapeContainer::Type::EMPTY:
-      LOG_TOPIC(ERR, Logger::FIXME) << "Invalid GeoShape usage";
+      LOG_TOPIC("8f601", ERR, Logger::FIXME) << "Invalid GeoShape usage";
       TRI_ASSERT(false);
   }
 
@@ -603,7 +603,7 @@ bool ShapeContainer::intersects(S2Polygon const* other) const {
       return other->Contains(p);
     }
     case ShapeContainer::Type::S2_POLYLINE: {
-      LOG_TOPIC(ERR, Logger::FIXME)
+      LOG_TOPIC("2cb3c", ERR, Logger::FIXME)
           << "intersection with polyline is not well defined";
       return false;  // numerically not well defined
     }

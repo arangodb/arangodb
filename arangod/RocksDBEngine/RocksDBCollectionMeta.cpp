@@ -218,7 +218,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
     rocksdb::Slice value((char*)tmp.start(), tmp.size());
     rocksdb::Status s = batch.Put(cf, key.string(), value);
     if (!s.ok()) {
-      LOG_TOPIC(WARN, Logger::ENGINES)
+      LOG_TOPIC("1d7f3", WARN, Logger::ENGINES)
           << "writing counter for collection with objectId '"
           << rcoll->objectId() << "' failed: " << s.ToString();
       return res.reset(rocksutils::convertStatus(s));
@@ -242,10 +242,10 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
 
     RocksDBValue value = RocksDBValue::KeyGeneratorValue(tmp.slice());
     rocksdb::Status s = batch.Put(cf, key.string(), value.string());
-    LOG_TOPIC(TRACE, Logger::ENGINES) << "writing key generator coll " << coll.name();
+    LOG_TOPIC("17610", TRACE, Logger::ENGINES) << "writing key generator coll " << coll.name();
 
     if (!s.ok()) {
-      LOG_TOPIC(WARN, Logger::ENGINES) << "writing key generator data failed";
+      LOG_TOPIC("333fe", WARN, Logger::ENGINES) << "writing key generator data failed";
       return res.reset(rocksutils::convertStatus(s));
     }
   }
@@ -268,7 +268,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
     }
 
     if (est->needToPersist() || force) {
-      LOG_TOPIC(TRACE, Logger::ENGINES)
+      LOG_TOPIC("82a07", TRACE, Logger::ENGINES)
           << "beginning estimate serialization for index '" << idx->objectId() << "'";
       output.clear();
 
@@ -277,7 +277,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
       appliedSeq = std::min(appliedSeq, seq);
       TRI_ASSERT(output.size() > sizeof(uint64_t));
 
-      LOG_TOPIC(TRACE, Logger::ENGINES)
+      LOG_TOPIC("6b761", TRACE, Logger::ENGINES)
           << "serialized estimate for index '" << idx->objectId()
           << "' valid through seq " << seq;
 
@@ -285,7 +285,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
       rocksdb::Slice value(output);
       rocksdb::Status s = batch.Put(cf, key.string(), value);
       if (!s.ok()) {
-        LOG_TOPIC(WARN, Logger::ENGINES) << "writing index estimates failed";
+        LOG_TOPIC("ff233", WARN, Logger::ENGINES) << "writing index estimates failed";
         return res.reset(rocksutils::convertStatus(s));
       }
     }
@@ -354,7 +354,7 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
     if (!s.ok() && !s.IsNotFound()) {
       return rocksutils::convertStatus(s);
     } else if (s.IsNotFound()) {  // expected with nosync recovery tests
-      LOG_TOPIC(WARN, Logger::ENGINES)
+      LOG_TOPIC("ecdbb", WARN, Logger::ENGINES)
           << "recalculating index estimate for index "
           << "type '" << idx->typeName() << "' with id '" << idx->id() << "'";
       idx->recalculateEstimates();
@@ -368,13 +368,13 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
       TRI_ASSERT(committedSeq <= db->GetLatestSequenceNumber());
 
       auto est = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(committedSeq, estimateInput);
-      LOG_TOPIC(DEBUG, Logger::ENGINES)
+      LOG_TOPIC("63f3b", DEBUG, Logger::ENGINES)
           << "found index estimator for objectId '" << idx->objectId() << "' committed seqNr '"
           << committedSeq << "' with estimate " << est->computeEstimate();
 
       idx->setEstimator(std::move(est));
     } else {
-      LOG_TOPIC(ERR, Logger::ENGINES)
+      LOG_TOPIC("dcd98", ERR, Logger::ENGINES)
           << "unsupported index estimator format in index "
           << "with objectId '" << idx->objectId() << "'";
     }
@@ -413,14 +413,14 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
   key.constructCounterValue(objectId);
   rocksdb::Status s = db->Delete(wo, cf, key.string());
   if (!s.ok()) {
-    LOG_TOPIC(ERR, Logger::ENGINES) << "could not delete counter value: " << s.ToString();
+    LOG_TOPIC("93718", ERR, Logger::ENGINES) << "could not delete counter value: " << s.ToString();
     // try to remove the key generator value regardless
   }
 
   key.constructKeyGeneratorValue(objectId);
   s = db->Delete(wo, cf, key.string());
   if (!s.ok() && !s.IsNotFound()) {
-    LOG_TOPIC(ERR, Logger::ENGINES)
+    LOG_TOPIC("af3dc", ERR, Logger::ENGINES)
         << "could not delete key generator value: " << s.ToString();
     return rocksutils::convertStatus(s);
   }

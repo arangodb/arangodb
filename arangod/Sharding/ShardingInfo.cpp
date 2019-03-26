@@ -79,7 +79,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
         if (i.isString()) {
           _avoidServers.push_back(i.copyString());
         } else {
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          LOG_TOPIC("e5bc6", ERR, arangodb::Logger::FIXME)
               << "avoidServers must be a vector of strings we got "
               << avoidServersSlice.toJson() << ". discarding!";
           _avoidServers.clear();

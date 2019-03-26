@@ -20,6 +20,13 @@ reduce memory usage and, for some queries, also execution time for the sorting.
 If the optimization is applied, it will show as "sort-limit" rule in the query execution
 plan.
 
+### Index Hints in AQL
+
+Users may now take advantage of the `indexHint` inline query option to override
+the internal optimizer decision regarding which index to use to serve content
+from a given collection. The index hint works with the named indices feature
+above, making it easy to specify which index to use.
+
 ### Sorted primary index (RocksDB engine)
 
 The query optimizer can now make use of the sortedness of primary indexes if the
@@ -280,12 +287,37 @@ name _cannot_ be changed after index creation. No two indices on the same
 collection may share the same name, but two indices on different collections 
 may.
 
-### Index Hints in AQL
+### ID values in log messages
 
-Users may now take advantage of the `indexHint` inline query option to override
-the internal optimizer decision regarding which index to use to serve content
-from a given collection. The index hint works with the named indices feature
-above, making it easy to specify which index to use.
+By default, ArangoDB and its client tools now show a 5 digit unique ID value in
+any of their log messages, e.g.
+
+    2019-03-25T21:23:19Z [8144] INFO [cf3f4] ArangoDB (version 3.5.0 enterprise [linux]) is ready for business. Have fun!.
+
+In this message, the `cf3f4` is the message's unique ID value. ArangoDB users can
+use this ID to build custom monitoring or alerting based on specific log ID values.
+Existing log ID values are supposed to stay constant in future releases of arangod.
+
+Additionally the unique log ID values can be used by the ArangoDB support to find
+out which component of the product exactly generated a log message. The IDs also
+make disambiguation of identical log messages easier.
+
+The presence of these ID values in log messages may confuse custom log message filtering 
+or routing mechanisms that parse log messages and that rely on the old log message
+format.
+
+This can be fixed adjusting any existing log message parsers and making them aware
+of the ID values. The ID values are always 5 byte strings, consisting of the characters
+`[0-9a-f]`. ID values are placed directly behind the log level (e.g. `INFO`) for
+general log messages that do not contain a log topic, and directly behind the log
+topic for messages that contain a topic, e.g. 
+
+    2019-03-25T21:23:19Z [8144] INFO [cf3f4] ArangoDB (version 3.5.0 enterprise [linux]) is ready for business. Have fun!.
+    2019-03-25T21:23:16Z [8144] INFO {authentication} [3844e] Authentication is turned on (system only), authentication for unix sockets is turned on
+
+Alternatively, the log IDs can be suppressed in all log messages by setting the startup
+option `--log.ids false` when starting arangod or any of the client tools.
+
 
 Internal
 --------

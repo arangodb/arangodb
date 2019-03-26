@@ -39,8 +39,11 @@ class Callbacks {
   typedef std::function<void(std::function<void()>)> ScheduleMeCallback;
 
   Callbacks() {}
-  Callbacks(OnSuccessCallback onSuccess, OnErrorCallback onError)
+  Callbacks(OnSuccessCallback const& onSuccess, OnErrorCallback const& onError)
       : _onSuccess(onSuccess), _onError(onError), _scheduleMe(defaultScheduleMe) {}
+
+  Callbacks(OnSuccessCallback&& onSuccess, OnErrorCallback&& onError)
+      : _onSuccess(std::move(onSuccess)), _onError(std::move(onError)), _scheduleMe(defaultScheduleMe) {}
 
  public:
   OnSuccessCallback _onSuccess;

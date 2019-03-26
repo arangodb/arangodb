@@ -225,7 +225,7 @@ void QueryStreamCursor::kill() {
 std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder,
                                                           std::function<void()> const& ch) {
   TRI_ASSERT(batchSize() > 0);
-  LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
+  LOG_TOPIC("9af59", TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
                                     << _query->queryString().extract(1024) << "'";
 
   // We will get a different RestHandler on every dump, so we need to update the
@@ -272,7 +272,7 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder,
 
 Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
   TRI_ASSERT(batchSize() > 0);
-  LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
+  LOG_TOPIC("9dada", TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
                                     << _query->queryString().extract(1024) << "'";
 
   std::shared_ptr<SharedQueryState> ss = _query->sharedState();

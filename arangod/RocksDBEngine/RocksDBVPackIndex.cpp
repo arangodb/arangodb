@@ -412,7 +412,7 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased, LocalDocumentId const& 
                                    VPackSlice const& doc, SmallVector<RocksDBKey>& elements,
                                    SmallVector<uint64_t>& hashes) {
   if (doc.isNone()) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("51c6c", ERR, arangodb::Logger::ENGINES)
         << "encountered invalid marker with slice of type None";
     return TRI_ERROR_INTERNAL;
   }

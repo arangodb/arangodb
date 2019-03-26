@@ -82,7 +82,7 @@ int MMFilesPathBasedIndex::fillElement(std::vector<T*>& elements,
                                        LocalDocumentId const& documentId,
                                        VPackSlice const& doc) {
   if (doc.isNone()) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("e5ac9", ERR, arangodb::Logger::ENGINES)
         << "encountered invalid marker with slice of type None";
     return TRI_ERROR_INTERNAL;
   }
