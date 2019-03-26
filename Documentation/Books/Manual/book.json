@@ -16,6 +16,7 @@
     "ga",
     "callouts@git+https://github.com/Simran-B/gitbook-plugin-callouts.git",
     "arangodb-outdated@git+https://github.com/Simran-B/gitbook-plugin-arangodb-outdated.git",
+    "meta",
     "edit-link",
     "localized-footer"
   ],
@@ -35,6 +36,10 @@
   "pluginsConfig": {
     "arangodb-outdated": {
       "eolDate": "2019-03-31"
+    },
+    "meta": {
+      "name": "robots",
+      "content": "noindex, nofollow"
     },
     "addcssjs": {
       "js": ["styles/header.js", "styles/hs.js"],
