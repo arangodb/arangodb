@@ -391,6 +391,14 @@ bool Node::addTimeToLive(long millis) {
   return true;
 }
 
+void Node::timeToLive(TimePoint const& ttl) {
+  _ttl = ttl;
+}
+
+TimePoint const& Node::timeToLive() const {
+  return _ttl;
+}
+
 // remove time to live entry for this node
 bool Node::removeTimeToLive() {
   if (_store != nullptr) {
