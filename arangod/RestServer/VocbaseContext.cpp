@@ -79,13 +79,13 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
                               /*dbLevel*/ auth::Level::NONE);
   } else if (req.user().empty()) {
     std::string msg = "only jwt can be used to authenticate as superuser";
-    LOG_TOPIC(WARN, Logger::AUTHENTICATION) << msg;
+    LOG_TOPIC("2d0f6", WARN, Logger::AUTHENTICATION) << msg;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
 
   auth::UserManager* um = auth->userManager();
   if (um == nullptr) {
-    LOG_TOPIC(WARN, Logger::AUTHENTICATION)
+    LOG_TOPIC("aae8a", WARN, Logger::AUTHENTICATION)
         << "users are not supported on this server";
     return nullptr;
   }

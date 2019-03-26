@@ -96,7 +96,7 @@ class v8_action_t final : public TRI_action_t {
     if (it == _callbacks.end()) {
       _callbacks[isolate].Reset(isolate, callback);
     } else {
-      LOG_TOPIC(ERR, Logger::V8) << "cannot recreate callback for '" << _url << "'";
+      LOG_TOPIC("982a6", ERR, Logger::V8) << "cannot recreate callback for '" << _url << "'";
     }
   }
 
@@ -141,7 +141,7 @@ class v8_action_t final : public TRI_action_t {
       auto it = _callbacks.find(context->_isolate);
 
       if (it == _callbacks.end()) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        LOG_TOPIC("94556", WARN, arangodb::Logger::FIXME)
             << "no callback function for JavaScript action '" << _url << "'";
 
         result.isValid = true;
@@ -456,7 +456,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       VPackSlice slice = request->payload();
       std::string jsonString = slice.toJson();
 
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+      LOG_TOPIC("8afce", DEBUG, Logger::COMMUNICATION)
           << "json handed into v8 request:\n"
           << jsonString;
 
@@ -750,7 +750,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             } catch (...) {  // do nothing
                              // json could not be converted
                              // there was no json - change content type?
-              LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+              LOG_TOPIC("32d35", DEBUG, Logger::COMMUNICATION)
                   << "failed to parse json:\n"
                   << out;
             }
@@ -980,7 +980,7 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
       response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
 
       std::string jsError = TRI_StringifyV8Exception(isolate, &tryCatch);
-      LOG_TOPIC(WARN, arangodb::Logger::V8)
+      LOG_TOPIC("b8286", WARN, arangodb::Logger::V8)
           << "Caught an error while executing an action: " << jsError;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // TODO how to generalize this?
@@ -1056,7 +1056,7 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (v8ActionForName != nullptr) {
     v8ActionForName->createCallback(isolate, callback);
   } else {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("43be9", WARN, arangodb::Logger::FIXME)
         << "cannot create callback for V8 action";
   }
 

@@ -167,7 +167,7 @@ Result LogicalView::drop() {
   auto* engine = arangodb::ClusterInfo::instance();
 
   if (!engine) {
-    LOG_TOPIC(ERR, Logger::VIEWS)
+    LOG_TOPIC("694fd", ERR, Logger::VIEWS)
         << "failure to get storage engine while enumerating views";
 
     return false;

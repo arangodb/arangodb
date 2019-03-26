@@ -76,7 +76,7 @@ SocketTask::SocketTask(GeneralServer& server, GeneralServer::IoContext& context,
 }
 
 SocketTask::~SocketTask() {
-  LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+  LOG_TOPIC("28f00", DEBUG, Logger::COMMUNICATION)
       << "Shutting down connection " << (_peer ? _peer->peerPort() : 0);
 
   if (_connectionStatistics != nullptr) {
@@ -90,7 +90,7 @@ SocketTask::~SocketTask() {
   }
 
   if (err) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to cancel _keepAliveTimer";
+    LOG_TOPIC("985c1", ERR, Logger::COMMUNICATION) << "unable to cancel _keepAliveTimer";
   }
 
   // _peer could be nullptr if it was moved out of a HttpCommTask, during
@@ -112,19 +112,19 @@ SocketTask::~SocketTask() {
 bool SocketTask::start() {
   if (_closedSend.load(std::memory_order_acquire) ||
       _closedReceive.load(std::memory_order_acquire)) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "cannot start, channel closed";
+    LOG_TOPIC("91b78", DEBUG, Logger::COMMUNICATION) << "cannot start, channel closed";
     return false;
   }
 
   if (_closeRequested.load(std::memory_order_acquire)) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+    LOG_TOPIC("47145", DEBUG, Logger::COMMUNICATION)
         << "cannot start, close already in progress";
     return false;
   }
 
-  LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+  LOG_TOPIC("556fd", DEBUG, Logger::COMMUNICATION)
       << "starting communication between server <-> client on socket";
-  LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+  LOG_TOPIC("68744", DEBUG, Logger::COMMUNICATION)
       << _connectionInfo.serverAddress << ":" << _connectionInfo.serverPort << " <-> "
       << _connectionInfo.clientAddress << ":" << _connectionInfo.clientPort;
 
@@ -145,7 +145,7 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
 
   if (_closedSend.load(std::memory_order_acquire) ||
       _abandoned.load(std::memory_order_acquire)) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Connection abandoned or closed";
+    LOG_TOPIC("01285", DEBUG, Logger::COMMUNICATION) << "Connection abandoned or closed";
     buffer.release();
     return;
   }
@@ -204,7 +204,7 @@ void SocketTask::closeStreamNoLock() {
   bool mustCloseReceive = !_closedReceive.load(std::memory_order_acquire);
 
   if (_peer != nullptr) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "closing stream";
+    LOG_TOPIC("f0947", DEBUG, Logger::COMMUNICATION) << "closing stream";
     asio_ns::error_code err;  // an error we do not care about
     _peer->shutdown(err, mustCloseSend, mustCloseReceive);
   }
@@ -242,7 +242,7 @@ void SocketTask::resetKeepAlive() {
     auto self = shared_from_this();
     _keepAliveTimer->async_wait([self, this](const asio_ns::error_code& error) {
       if (!error) {  // error will be true if timer was canceled
-        LOG_TOPIC(ERR, Logger::COMMUNICATION)
+        LOG_TOPIC("5c1e0", ERR, Logger::COMMUNICATION)
             << "keep alive timout - closing stream!";
         closeStream();
       }
@@ -265,7 +265,7 @@ bool SocketTask::reserveMemory() {
   TRI_ASSERT(_peer->runningInThisThread());
 
   if (_readBuffer.reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
-    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
+    LOG_TOPIC("1997b", WARN, arangodb::Logger::COMMUNICATION)
         << "out of memory while reading from client";
     closeStreamNoLock();
     return false;
@@ -291,12 +291,12 @@ bool SocketTask::trySyncRead() {
   }
 
   if (err) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "read failed with " << err.message();
+    LOG_TOPIC("62289", DEBUG, Logger::COMMUNICATION) << "read failed with " << err.message();
     return false;
   }
 
   if (!reserveMemory()) {
-    LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
+    LOG_TOPIC("dd32f", TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
     return false;
   }
 
@@ -314,7 +314,7 @@ bool SocketTask::trySyncRead() {
   }
 
   if (err != asio_ns::error::would_block && err != asio_ns::error::try_again) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+    LOG_TOPIC("91480", DEBUG, Logger::COMMUNICATION)
         << "trySyncRead failed with: " << err.message();
   }
 
@@ -352,7 +352,7 @@ bool SocketTask::processAll() {
     }
 
     if (res.fail()) {
-      LOG_TOPIC(ERR, Logger::COMMUNICATION) << res.errorMessage();
+      LOG_TOPIC("a3c44", ERR, Logger::COMMUNICATION) << res.errorMessage();
       _closeRequested.store(true, std::memory_order_release);
       break;
     }
@@ -397,11 +397,11 @@ void SocketTask::asyncReadSome() {
         compactify();
       }
     } catch (asio_ns::system_error const& err) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync read failed with: " << err.what();
+      LOG_TOPIC("d5bb6", DEBUG, Logger::COMMUNICATION) << "sync read failed with: " << err.what();
       closeStreamNoLock();
       return;
     } catch (...) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "general error on stream";
+      LOG_TOPIC("00e8a", DEBUG, Logger::COMMUNICATION) << "general error on stream";
 
       closeStreamNoLock();
       return;
@@ -413,7 +413,7 @@ void SocketTask::asyncReadSome() {
     return;
   }
   if (!reserveMemory()) {
-    LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
+    LOG_TOPIC("fcd45", TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
     return;
   }
 
@@ -429,7 +429,7 @@ void SocketTask::asyncReadSome() {
                      if (_abandoned.load(std::memory_order_acquire)) {
                        return;
                      } else if (ec) {
-                       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+                       LOG_TOPIC("29dca", DEBUG, Logger::COMMUNICATION)
                            << "read on stream failed with: " << ec.message();
                        closeStream();
                        return;
@@ -494,7 +494,7 @@ void SocketTask::asyncWriteSome() {
 
     // write could have blocked which is the only acceptable error
     if (err && err != asio_ns::error::would_block && err != asio_ns::error::try_again) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+      LOG_TOPIC("e25ec", DEBUG, Logger::COMMUNICATION)
           << "sync write on stream failed with: " << err.message();
       closeStreamNoLock();
       return;
@@ -523,7 +523,7 @@ void SocketTask::asyncWriteSome() {
                         return;
                       }
                       if (ec) {
-                        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+                        LOG_TOPIC("8ed36", DEBUG, Logger::COMMUNICATION)
                             << "write on failed with: " << ec.message();
                         closeStream();
                         return;

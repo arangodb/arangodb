@@ -30,6 +30,7 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionStats.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/WakeupQueryCallback.h"
 #include "Basics/Exceptions.h"
@@ -70,9 +71,8 @@ BlockWithClients::BlockWithClients(ExecutionEngine* engine, ExecutionNode const*
   }
 }
 
-std::pair<ExecutionState, Result> BlockWithClients::initializeCursor(AqlItemBlock* items,
-                                                                     size_t pos) {
-  return ExecutionBlock::initializeCursor(items, pos);
+std::pair<ExecutionState, Result> BlockWithClients::initializeCursor(InputAqlItemRow const& input) {
+  return ExecutionBlock::initializeCursor(input);
 }
 
 /// @brief shutdown

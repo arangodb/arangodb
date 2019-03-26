@@ -57,7 +57,7 @@ RocksDBSavePoint::~RocksDBSavePoint() {
       // not performed an intermediate commit in-between
       rollback();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::ENGINES)
+      LOG_TOPIC("519ed", ERR, Logger::ENGINES)
           << "caught exception during rollback to savepoint: " << ex.what();
     } catch (...) {
       // whatever happens during rollback, no exceptions are allowed to escape

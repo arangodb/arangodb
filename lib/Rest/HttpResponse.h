@@ -46,7 +46,6 @@ class HttpResponse : public GeneralResponse {
   static bool HIDE_PRODUCT_HEADER;
 
  public:
-  explicit HttpResponse(ResponseCode);
   explicit HttpResponse(ResponseCode code, basics::StringBuffer* leased);
   ~HttpResponse();
 

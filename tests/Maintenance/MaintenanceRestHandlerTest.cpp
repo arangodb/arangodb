@@ -33,6 +33,7 @@
 #include <velocypack/vpack.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/StringBuffer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Cluster/MaintenanceRestHandler.h"
@@ -40,7 +41,7 @@
 // GeneralResponse only has a "protected" constructor.
 class TestResponse : public arangodb::HttpResponse {
 public:
-  TestResponse() : arangodb::HttpResponse(arangodb::rest::ResponseCode::OK) {};
+  TestResponse() : arangodb::HttpResponse(arangodb::rest::ResponseCode::OK, new arangodb::basics::StringBuffer(false)) {};
 
 }; // class TestResponse
 

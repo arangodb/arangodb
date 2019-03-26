@@ -218,6 +218,8 @@ class Logger {
 
   static void setRole(char role);
   static void setOutputPrefix(std::string const&);
+  static void setShowIds(bool);
+  static bool getShowIds() { return _showIds; };
   static void setShowLineNumber(bool);
   static void setShowRole(bool);
   static bool getShowRole() { return _showRole; };
@@ -279,6 +281,7 @@ class Logger {
   static bool _keepLogRotate;
   static bool _useMicrotime;
   static bool _logRequestParameters;
+  static bool _showIds;
   static char _role;  // current server role to log
   static TRI_pid_t _cachedPid;
   static std::string _outputPrefix;

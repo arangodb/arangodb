@@ -80,7 +80,7 @@ void MMFilesWalSlot::finalize(MMFilesWalMarker const* marker) {
 
   TRI_IF_FAILURE("WalSlotCrc") {
     // intentionally corrupt the marker
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("8753a", WARN, arangodb::Logger::ENGINES)
         << "intentionally writing corrupt marker into datafile";
     dfm->setCrc(0xdeadbeef);
   }
@@ -110,7 +110,7 @@ void MMFilesWalSlot::fill(void* src, size_t size) {
 
   TRI_IF_FAILURE("WalSlotCrc") {
     // intentionally corrupt the marker
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("1fc9c", WARN, arangodb::Logger::ENGINES)
         << "intentionally writing corrupt marker into datafile";
     marker->setCrc(0xdeadbeef);
   }

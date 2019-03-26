@@ -355,7 +355,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   doc.add("runAsUser", VPackValue(runAsUser));
   doc.close();
 
-  LOG_TOPIC(TRACE, Logger::FIXME) << "Adding queue " << key;
+  LOG_TOPIC("aeb56", TRACE, Logger::FIXME) << "Adding queue " << key;
   ExecContextScope exscope(ExecContext::superuser());
   auto ctx = transaction::V8Context::Create(*vocbase, true);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
@@ -408,7 +408,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "deleteQueue() needs db RW permissions");
   }
 
-  LOG_TOPIC(TRACE, Logger::FIXME) << "Removing queue " << key;
+  LOG_TOPIC("2cef9", TRACE, Logger::FIXME) << "Removing queue " << key;
   ExecContextScope exscope(ExecContext::superuser());
   auto ctx = transaction::V8Context::Create(*vocbase, true);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::WRITE);

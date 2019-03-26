@@ -180,7 +180,7 @@ void StatisticsWorker::collectGarbage(std::string const& name, double start) con
   res = trx.finish(result.result);
 
   if (res.fail()) {
-    LOG_TOPIC(WARN, Logger::STATISTICS)
+    LOG_TOPIC("14fa9", WARN, Logger::STATISTICS)
         << "removing outdated statistics failed: " << res.errorMessage();
   }
 }
@@ -243,13 +243,13 @@ void StatisticsWorker::historianAverage() {
       saveSlice(stat15, statistics15Collection);
     }
   } catch (velocypack::Exception const& ex) {
-    LOG_TOPIC(DEBUG, Logger::STATISTICS)
+    LOG_TOPIC("1c429", DEBUG, Logger::STATISTICS)
         << "vpack exception in historian average: " << ex.what();
   } catch (basics::Exception const& ex) {
-    LOG_TOPIC(DEBUG, Logger::STATISTICS)
+    LOG_TOPIC("40480", DEBUG, Logger::STATISTICS)
         << "exception in historian average: " << ex.what();
   } catch (...) {
-    LOG_TOPIC(DEBUG, Logger::STATISTICS)
+    LOG_TOPIC("570d6", DEBUG, Logger::STATISTICS)
         << "unknown exception in historian average";
   }
 }
@@ -438,7 +438,7 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
       }
     } catch (std::exception const& ex) {
       // should almost never happen now
-      LOG_TOPIC(WARN, Logger::STATISTICS)
+      LOG_TOPIC("e4102", WARN, Logger::STATISTICS)
           << "caught exception during statistics processing: " << ex.what();
     }
   }
@@ -990,7 +990,7 @@ void StatisticsWorker::saveSlice(VPackSlice const& slice, std::string const& col
   Result res = trx.begin();
 
   if (!res.ok()) {
-    LOG_TOPIC(WARN, Logger::STATISTICS) << "could not start transaction on "
+    LOG_TOPIC("ecdb9", WARN, Logger::STATISTICS) << "could not start transaction on "
                                         << collection << ": " << res.errorMessage();
     return;
   }
@@ -1002,7 +1002,7 @@ void StatisticsWorker::saveSlice(VPackSlice const& slice, std::string const& col
   // result stays valid!
   res = trx.finish(result.result);
   if (res.fail()) {
-    LOG_TOPIC(WARN, Logger::STATISTICS) << "could not commit stats to " << collection
+    LOG_TOPIC("82af5", WARN, Logger::STATISTICS) << "could not commit stats to " << collection
                                         << ": " << res.errorMessage();
   }
 }
@@ -1045,7 +1045,7 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
 
   // check if the collection already existed. this is acceptable too
   if (r.fail() && !r.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
-    LOG_TOPIC(WARN, Logger::STATISTICS)
+    LOG_TOPIC("e32fd", WARN, Logger::STATISTICS)
         << "could not create statistics collection '" << collection
         << "': error: " << r.errorMessage();
   }
@@ -1074,7 +1074,7 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
         Result idxRes = methods::Indexes::ensureIndex(coll.get(), t.slice(), true, output);
 
         if (!idxRes.ok()) {
-          LOG_TOPIC(WARN, Logger::STATISTICS)
+          LOG_TOPIC("7356a", WARN, Logger::STATISTICS)
               << "could not create the skiplist index for statistics "
                  "collection '"
               << collection << "': error: " << idxRes.errorMessage();
@@ -1127,10 +1127,10 @@ void StatisticsWorker::run() {
         historianAverage();
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::STATISTICS)
+      LOG_TOPIC("92a40", WARN, Logger::STATISTICS)
           << "caught exception in StatisticsWorker: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(WARN, Logger::STATISTICS)
+      LOG_TOPIC("9a4f9", WARN, Logger::STATISTICS)
           << "caught unknown exception in StatisticsWorker";
     }
 

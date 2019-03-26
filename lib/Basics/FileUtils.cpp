@@ -147,7 +147,7 @@ static void throwFileReadError(std::string const& filename) {
   int res = TRI_errno();
 
   std::string message("read failed for file '" + filename + "': " + strerror(res));
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << message;
+  LOG_TOPIC("a0898", TRACE, arangodb::Logger::FIXME) << message;
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
 }
@@ -208,7 +208,7 @@ static void throwFileWriteError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
   std::string message("write failed for file '" + filename + "': " + TRI_last_error());
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "" << message;
+  LOG_TOPIC("a8930", TRACE, arangodb::Logger::FIXME) << "" << message;
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
 }
@@ -606,7 +606,7 @@ static void throwProgramError(std::string const& filename) {
   int res = TRI_errno();
 
   std::string message("open failed for file '" + filename + "': " + strerror(res));
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << message;
+  LOG_TOPIC("a557b", TRACE, arangodb::Logger::FIXME) << message;
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }

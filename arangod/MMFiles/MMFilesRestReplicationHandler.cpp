@@ -516,7 +516,7 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
 
   if (res != TRI_ERROR_NO_ERROR) {
     std::string const err = "failed to determine open transactions";
-    LOG_TOPIC(ERR, Logger::REPLICATION) << err;
+    LOG_TOPIC("5b093", ERR, Logger::REPLICATION) << err;
     generateError(rest::ResponseCode::BAD, res, err);
     return;
   }
@@ -949,7 +949,7 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+  LOG_TOPIC("8311f", TRACE, arangodb::Logger::REPLICATION)
       << "requested collection dump for collection '" << collection
       << "', tickStart: " << tickStart << ", tickEnd: " << tickEnd;
 
