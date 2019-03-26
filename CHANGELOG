@@ -2,8 +2,8 @@ devel
 -----
 
 * internal issue #2276: fixed the sorting of the databases in the database 
-  selection dropdown in the web ui. The sort order differed wheter
-	authentication was enabled or disabled.
+  selection dropdown in the web ui. The sort order differed based on whether
+  authentication was enabled or disabled.
 
 * added "--log.ids" option to arangod
 
