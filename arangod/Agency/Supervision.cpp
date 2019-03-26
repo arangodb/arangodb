@@ -1133,10 +1133,16 @@ void Supervision::workJobs() {
   auto it = todos.begin();
   static std::string const FAILED = "failed";
 
-
+  bool selectRandom = todos.size() > 50;
 
   LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin ToDos of type Failed*";
   while (it != todos.end()) {
+    if (selectRandom && rand() % todos.size() > 50) {
+      LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
+      ++it;
+      continue;
+    }
+ 
     auto jobNode = *(it->second);
     if (jobNode.hasAsString("type").first.compare(0, FAILED.length(), FAILED) == 0) {
       LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
@@ -1151,12 +1157,11 @@ void Supervision::workJobs() {
 
   // Do not start other jobs, if above resilience jobs aborted stuff
   if (!_haveAborts) {
-    bool selectRandom = todos.size() > 100;
-
     LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin ToDos";
     for (auto const& todoEnt : todos) {
-      if (selectRandom && rand() % todos.size() > 100) {
-        continue ;
+      if (selectRandom && rand() % todos.size() > 50) {
+        LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
+        continue;
       }
 
       auto jobNode = *(todoEnt.second);
@@ -1167,9 +1172,16 @@ void Supervision::workJobs() {
     }
   }
 
+
   LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin Pendings";
   auto const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  selectRandom = pends.size() > 50;
+
   for (auto const& pendEnt : pends) {
+    if (selectRandom && rand() % pends.size() > 50) {
+      LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Skipped Pending Job";
+      continue;
+    }
     auto jobNode = *(pendEnt.second);
     LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
     JobContext(PENDING, jobNode.hasAsString("jobId").first, _snapshot, _agent)
