@@ -42,8 +42,8 @@ static bool canExpose(v8::Isolate* isolate, v8::Local<v8::Name> property) {
   }
   v8::String::Utf8Value const key(isolate, property);
   std::string utf8String(*key, key.length());
-  
-  arangodb::V8SecurityFeature* v8platform =
+
+  arangodb::V8SecurityFeature* v8security =
       arangodb::application_features::ApplicationServer::getFeature<arangodb::V8SecurityFeature>(
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
@@ -90,7 +90,7 @@ static void EnvSetter(v8::Local<v8::Name> property, v8::Local<v8::Value> value,
                       const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
-  
+
   if (!canExpose(isolate, property)) {
     TRI_V8_RETURN(value);
   }
@@ -115,7 +115,7 @@ static void EnvQuery(v8::Local<v8::Name> property,
                      const v8::PropertyCallbackInfo<v8::Integer>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
-  
+
   int32_t rc = -1;  // Not found unless proven otherwise.
   if (!canExpose(isolate, property)) {
     TRI_V8_RETURN(rc);
