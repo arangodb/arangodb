@@ -1133,12 +1133,13 @@ void Supervision::workJobs() {
   auto it = todos.begin();
   static std::string const FAILED = "failed";
 
-  //bool selectRandom = todos.size() > 50;
+  size_t const maximalJobsPerRound = 1000;
+  bool selectRandom = todos.size() > maximalJobsPerRound;
   bool selectRandom = false;  // temporarily disabled
 
   LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin ToDos of type Failed*";
   while (it != todos.end()) {
-    if (selectRandom && rand() % todos.size() > 50) {
+    if (selectRandom && rand() % todos.size() > maximalJobsPerRound) {
       LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
       ++it;
       continue;
@@ -1160,7 +1161,7 @@ void Supervision::workJobs() {
   if (!_haveAborts) {
     LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin ToDos";
     for (auto const& todoEnt : todos) {
-      if (selectRandom && rand() % todos.size() > 50) {
+      if (selectRandom && rand() % todos.size() > maximalJobsPerRound) {
         LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
         continue;
       }
@@ -1176,10 +1177,10 @@ void Supervision::workJobs() {
 
   LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin Pendings";
   auto const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
-  //selectRandom = pends.size() > 50;     temporarily disabled
+  selectRandom = pends.size() > maximalJobsPerRound;
 
   for (auto const& pendEnt : pends) {
-    if (selectRandom && rand() % pends.size() > 50) {
+    if (selectRandom && rand() % pends.size() > maximalJobsPerRound) {
       LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Skipped Pending Job";
       continue;
     }
@@ -1307,7 +1308,7 @@ void Supervision::enforceReplication() {
   // there is no overload on the Agency job system. Therefore, if this
   // number is at least maxNrAddRemoveJobsInTodo, we skip the rest of
   // the function:
-  int const maxNrAddRemoveJobsInTodo = 15;
+  int const maxNrAddRemoveJobsInTodo = 500;
 
   auto todos = _snapshot.hasAsChildren(toDoPrefix).first;
   int nrAddRemoveJobsInTodo = 0;
