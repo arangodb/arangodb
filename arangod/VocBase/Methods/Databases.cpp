@@ -85,7 +85,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
     AgencyCommResult commRes = agency.getValues("Plan/Databases/" + vocbase->name());
     if (!commRes.successful()) {
       // Error in communication, note that value not found is not an error
-      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+      LOG_TOPIC("87642", TRACE, Logger::COMMUNICATION)
           << "rest database handler: no agency communication";
       return Result(commRes.errorCode(), commRes.errorMessage());
     }
@@ -284,7 +284,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   }
 
   if (upgradeRes.fail()) {
-    LOG_TOPIC(ERR, Logger::FIXME)
+    LOG_TOPIC("1964a", ERR, Logger::FIXME)
         << "Could not create database: " << upgradeRes.errorMessage();
     return std::move(upgradeRes).result();
   }

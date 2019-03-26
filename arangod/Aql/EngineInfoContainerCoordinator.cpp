@@ -78,7 +78,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
   TRI_ASSERT(engine->root() != nullptr);
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Storing Coordinator engine: " << _id;
+  LOG_TOPIC("16287", DEBUG, arangodb::Logger::AQL) << "Storing Coordinator engine: " << _id;
 
   // For _id == 0 this thread will always maintain the handle to
   // the engine and will clean up. We do not keep track of it seperately

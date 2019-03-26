@@ -175,7 +175,7 @@ Result checkTransactionResult(TRI_voc_tid_t desiredTid,
                         VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage,
                                                          msg));
   }
-  LOG_TOPIC(DEBUG, Logger::TRANSACTIONS)
+  LOG_TOPIC("fb343", DEBUG, Logger::TRANSACTIONS)
       << " failed to begin transaction on " << result.endpoint;
 
   return res.reset(TRI_ERROR_TRANSACTION_INTERNAL);  // unspecified error
@@ -196,11 +196,11 @@ Result checkTransactionResult(TRI_voc_tid_t desiredTid,
         if (cc) {
           if (cc->followers()->remove(follower)) {
             // TODO: what happens if a server is re-added during a transaction ?
-            LOG_TOPIC(WARN, Logger::REPLICATION)
+            LOG_TOPIC("ea508", WARN, Logger::REPLICATION)
             << "synchronous replication: dropping follower " << follower
             << " for shard " << tc.collectionName();
           } else {
-            LOG_TOPIC(ERR, Logger::REPLICATION)
+            LOG_TOPIC("1b077", ERR, Logger::REPLICATION)
             << "synchronous replication: could not drop follower "
             << follower << " for shard " << tc.collectionName();
             res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
@@ -252,7 +252,7 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
   std::shared_ptr<std::string> body;
   std::vector<ClusterCommRequest> requests;
   for (std::string const& server : state.knownServers()) {
-    LOG_TOPIC(DEBUG, Logger::TRANSACTIONS) << "Leader "
+    LOG_TOPIC("d8457", DEBUG, Logger::TRANSACTIONS) << "Leader "
     << transaction::statusString(status) << " on " << server;
     requests.emplace_back("server:" + server, rtype, path, body);
   }
@@ -286,11 +286,11 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
           if (cc) {
             if (cc->followers()->remove(follower)) {
               // TODO: what happens if a server is re-added during a transaction ?
-              LOG_TOPIC(WARN, Logger::REPLICATION)
+              LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
               << "synchronous replication: dropping follower " << follower
               << " for shard " << tc.collectionName();
             } else {
-              LOG_TOPIC(ERR, Logger::REPLICATION)
+              LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
               << "synchronous replication: could not drop follower "
               << follower << " for shard " << tc.collectionName();
               res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
@@ -391,15 +391,15 @@ Result ClusterTrxMethods::beginTransactionOnFollowers(transaction::Methods& trx,
       Result r =
           ::checkTransactionResult(tid, transaction::Status::RUNNING, requests[i].result);
       if (r.fail()) {
-        LOG_TOPIC(INFO, Logger::REPLICATION)
+        LOG_TOPIC("217e3", INFO, Logger::REPLICATION)
                   << "dropping follower because it did not start trx "
                   << state.id() << ", error: '" << r.errorMessage() << "'";
         if (info.remove(followers[i])) {
           // TODO: what happens if a server is re-added during a transaction ?
-          LOG_TOPIC(WARN, Logger::REPLICATION)
+          LOG_TOPIC("c70a6", WARN, Logger::REPLICATION)
               << "synchronous replication: dropping follower " << followers[i];
         } else {
-          LOG_TOPIC(ERR, Logger::REPLICATION)
+          LOG_TOPIC("fe8e1", ERR, Logger::REPLICATION)
               << "synchronous replication: could not drop follower " << followers[i];
           res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
         }

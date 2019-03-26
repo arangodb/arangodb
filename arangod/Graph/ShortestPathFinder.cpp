@@ -64,7 +64,7 @@ void ShortestPathFinder::destroyEngines() {
             message += std::string(": ") + res->errorMessage;
           }
 
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << message;
+          LOG_TOPIC("d31a4", ERR, arangodb::Logger::FIXME) << message;
         }
       }
     }

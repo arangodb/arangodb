@@ -65,13 +65,13 @@ void RocksDBBackgroundThread::run() {
         double start = TRI_microtime();
         Result res = _engine->settingsManager()->sync(false);
         if (res.fail()) {
-          LOG_TOPIC(WARN, Logger::ENGINES)
+          LOG_TOPIC("a3d0c", WARN, Logger::ENGINES)
               << "background settings sync failed: " << res.errorMessage();
         }
 
         double end = TRI_microtime();
         if ((end - start) > 0.75) {
-          LOG_TOPIC(WARN, Logger::ENGINES)
+          LOG_TOPIC("3ad54", WARN, Logger::ENGINES)
               << "slow background settings sync: " << Logger::FIXED(end - start, 6)
               << " s";
         }
@@ -112,10 +112,10 @@ void RocksDBBackgroundThread::run() {
         }
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::ENGINES)
+      LOG_TOPIC("8236f", WARN, Logger::ENGINES)
           << "caught exception in rocksdb background thread: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(WARN, Logger::ENGINES)
+      LOG_TOPIC("a5f59", WARN, Logger::ENGINES)
           << "caught unknown exception in rocksdb background";
     }
   }

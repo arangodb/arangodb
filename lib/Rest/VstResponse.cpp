@@ -141,7 +141,7 @@ VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
   _header = builder.steal();
   if (_vpackPayloads.empty()) {
     if (_generateBody) {
-      LOG_TOPIC(INFO, Logger::REQUESTS)
+      LOG_TOPIC("db6b3", INFO, Logger::REQUESTS)
           << "Response should generate body but no data available";
       _generateBody = false;  // no body available
     }

@@ -264,7 +264,7 @@ std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) 
     }
   }
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+  LOG_TOPIC("817e8", DEBUG, arangodb::Logger::FIXME)
       << "CollectionNameResolver: was not able to resolve id " << cid;
   return "_unknown";
 }
@@ -353,7 +353,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(std::st
       try {
         ptr = ci->getView(_vocbase.name(), nameOrId);
       } catch (...) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("426e6", ERR, arangodb::Logger::FIXME)
             << "caught exception while resolving cluster data-source: " << nameOrId;
       }
     }

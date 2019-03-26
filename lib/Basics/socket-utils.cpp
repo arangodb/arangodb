@@ -38,7 +38,7 @@ int TRI_closesocket(TRI_socket_t s) {
     if (res != 0) {
       // Windows complains about shutting down a socket that was not bound
       // so we will not print out the error here
-      // LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "socket shutdown error: "
+      // LOG_TOPIC("52a7b", WARN, arangodb::Logger::FIXME) << "socket shutdown error: "
       // << WSAGetLastError();
     } else {
       char buf[256];
@@ -50,7 +50,7 @@ int TRI_closesocket(TRI_socket_t s) {
     res = closesocket(s.fileHandle);
 
     if (res != 0) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("f8bf5", WARN, arangodb::Logger::FIXME)
           << "socket close error: " << WSAGetLastError();
     }
   }
@@ -60,7 +60,7 @@ int TRI_closesocket(TRI_socket_t s) {
 
     if (res == -1) {
       int myerrno = errno;
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("977f8", WARN, arangodb::Logger::FIXME)
           << "socket close error: " << myerrno << ": " << strerror(myerrno);
     }
   }

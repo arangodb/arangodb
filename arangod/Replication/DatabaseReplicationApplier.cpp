@@ -141,7 +141,7 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
   _configuration.toVelocyPack(builder, true, true);
   builder.close();
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+  LOG_TOPIC("3407a", DEBUG, Logger::REPLICATION)
       << "storing applier configuration " << builder.slice().toJson() << " for "
       << _databaseName;
 

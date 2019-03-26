@@ -37,7 +37,7 @@ AqlItemBlockManager::~AqlItemBlockManager() = default;
 
 /// @brief request a block with the specified size
 AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrRegs) {
-  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "requesting AqlItemBlock of "
+  // LOG_TOPIC("47298", TRACE, arangodb::Logger::FIXME) << "requesting AqlItemBlock of "
   // << nrItems << " x " << nrRegs;
   size_t const targetSize = nrItems * nrRegs;
 
@@ -52,7 +52,7 @@ AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrReg
       TRI_ASSERT(block != nullptr);
       TRI_ASSERT(block->numEntries() == 0);
       block->rescale(nrItems, nrRegs);
-      // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "returned cached
+      // LOG_TOPIC("7157d", TRACE, arangodb::Logger::FIXME) << "returned cached
       // AqlItemBlock with dimensions " << block->size() << " x " <<
       // block->getNrRegs();
       break;
@@ -65,7 +65,7 @@ AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrReg
 
   if (block == nullptr) {
     block = new AqlItemBlock(_resourceMonitor, nrItems, nrRegs);
-    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "created AqlItemBlock with
+    // LOG_TOPIC("eb998", TRACE, arangodb::Logger::FIXME) << "created AqlItemBlock with
     // dimensions " << block->size() << " x " << block->getNrRegs();
   }
 
@@ -80,7 +80,7 @@ AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrReg
 void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
   TRI_ASSERT(block != nullptr);
 
-  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "returning AqlItemBlock of
+  // LOG_TOPIC("93865", TRACE, arangodb::Logger::FIXME) << "returning AqlItemBlock of
   // dimensions " << block->size() << " x " << block->getNrRegs();
 
   size_t const targetSize = block->capacity();

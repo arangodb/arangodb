@@ -170,7 +170,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     result = nullptr;
 
     if (tries++ >= _params._maxRetries) {
-      LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT)
+      LOG_TOPIC("de0be", WARN, arangodb::Logger::HTTPCLIENT)
           << "" << _params._retryMessage << " - no retries left";
       break;
     }
@@ -185,7 +185,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     }
 
     if (!_params._retryMessage.empty() && (_params._maxRetries - tries) > 0) {
-      LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT)
+      LOG_TOPIC("2b48f", WARN, arangodb::Logger::HTTPCLIENT)
           << "" << _params._retryMessage
           << " - retries left: " << (_params._maxRetries - tries);
     }
@@ -328,7 +328,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
             return nullptr;
           }
           this->close();  // this sets the state to IN_CONNECT for a retry
-          LOG_TOPIC(DEBUG, arangodb::Logger::HTTPCLIENT) << _errorMessage;
+          LOG_TOPIC("e5154", DEBUG, arangodb::Logger::HTTPCLIENT) << _errorMessage;
 
           std::this_thread::sleep_for(std::chrono::microseconds(5000));
           break;
@@ -540,7 +540,7 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
   // append hostname
   std::string hostname = _connection->getEndpoint()->host();
 
-  LOG_TOPIC(DEBUG, Logger::HTTPCLIENT)
+  LOG_TOPIC("908b8", DEBUG, Logger::HTTPCLIENT)
       << "request to " << hostname << ": "
       << GeneralRequest::translateMethod(method) << ' ' << *l;
 
@@ -596,7 +596,7 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
 
   _writeBuffer.ensureNullTerminated();
 
-  LOG_TOPIC(TRACE, arangodb::Logger::HTTPCLIENT) << "request: " << _writeBuffer;
+  LOG_TOPIC("12c4b", TRACE, arangodb::Logger::HTTPCLIENT) << "request: " << _writeBuffer;
 
   if (_state == DEAD) {
     _connection->resetNumConnectRetries();

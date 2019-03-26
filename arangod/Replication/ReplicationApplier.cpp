@@ -58,16 +58,16 @@ struct ApplierThread : public Thread {
       setAborted(false);
       Result res = runApplier();
       if (res.fail() && res.isNot(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
-        LOG_TOPIC(ERR, Logger::REPLICATION)
+        LOG_TOPIC("6fe50", ERR, Logger::REPLICATION)
             << "error while running applier thread for "
             << _applier->databaseName() << ": " << res.errorMessage();
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::REPLICATION)
+      LOG_TOPIC("f6e01", WARN, Logger::REPLICATION)
           << "caught exception in ApplierThread for "
           << _applier->databaseName() << ": " << ex.what();
     } catch (...) {
-      LOG_TOPIC(WARN, Logger::REPLICATION)
+      LOG_TOPIC("24dd2", WARN, Logger::REPLICATION)
           << "caught unknown exception in ApplyThread for "
           << _applier->databaseName();
     }
@@ -227,7 +227,7 @@ void ReplicationApplier::markThreadTailing() {
   _state._phase = ReplicationApplierState::ActivityPhase::TAILING;
   setProgressNoLock("applier started tailing");
 
-  LOG_TOPIC(INFO, Logger::REPLICATION)
+  LOG_TOPIC("e00c1", INFO, Logger::REPLICATION)
       << "started tailing in replication applier for " << _databaseName;
 }
 
@@ -236,7 +236,7 @@ void ReplicationApplier::markThreadStopped() {
   _state._phase = ReplicationApplierState::ActivityPhase::INACTIVE;
   setProgressNoLock("applier shut down");
 
-  LOG_TOPIC(INFO, Logger::REPLICATION) << "stopped replication applier for " << _databaseName;
+  LOG_TOPIC("21c52", INFO, Logger::REPLICATION) << "stopped replication applier for " << _databaseName;
 }
 
 /// Perform some common ops for startReplication / startTailing
@@ -284,7 +284,7 @@ void ReplicationApplier::doStart(std::function<void()>&& cb,
     _configuration.toVelocyPack(b, false, false);
     b.close();
 
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    LOG_TOPIC("63158", DEBUG, Logger::REPLICATION)
         << "starting applier with configuration " << b.slice().toJson();
   }
 
@@ -329,7 +329,7 @@ void ReplicationApplier::startTailing(TRI_voc_tick_t initialTick, bool useTick,
   }
   doStart(
       [&]() {
-        LOG_TOPIC(DEBUG, Logger::REPLICATION)
+        LOG_TOPIC("9917a", DEBUG, Logger::REPLICATION)
             << "requesting replication applier start for " << _databaseName
             << ". initialTick: " << initialTick << ", useTick: " << useTick;
         std::shared_ptr<TailingSyncer> syncer =
@@ -339,11 +339,11 @@ void ReplicationApplier::startTailing(TRI_voc_tick_t initialTick, bool useTick,
       ReplicationApplierState::ActivityPhase::TAILING);
 
   if (useTick) {
-    LOG_TOPIC(INFO, Logger::REPLICATION)
+    LOG_TOPIC("a9913", INFO, Logger::REPLICATION)
         << "started replication applier for " << _databaseName << ", endpoint '"
         << _configuration._endpoint << "' from tick " << initialTick;
   } else {
-    LOG_TOPIC(INFO, Logger::REPLICATION)
+    LOG_TOPIC("b681e", INFO, Logger::REPLICATION)
         << "re-started replication applier for " << _databaseName
         << ", endpoint '" << _configuration._endpoint << "' from previous state";
   }
@@ -394,7 +394,7 @@ void ReplicationApplier::removeState() {
   _state.reset(false);
 
   if (TRI_ExistsFile(filename.c_str())) {
-    LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing replication state file '"
+    LOG_TOPIC("87a61", TRACE, Logger::REPLICATION) << "removing replication state file '"
                                           << filename << "' for " << _databaseName;
     int res = TRI_UnlinkFile(filename.c_str());
 
@@ -420,7 +420,7 @@ Result ReplicationApplier::resetState(bool reducedSet) {
   _state.reset(resetPhase, reducedSet);
 
   if (!filename.empty() && TRI_ExistsFile(filename.c_str())) {
-    LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing replication state file '"
+    LOG_TOPIC("2914f", TRACE, Logger::REPLICATION) << "removing replication state file '"
                                           << filename << "' for " << _databaseName;
     int res = TRI_UnlinkFile(filename.c_str());
 
@@ -429,7 +429,7 @@ Result ReplicationApplier::resetState(bool reducedSet) {
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+  LOG_TOPIC("87584", DEBUG, Logger::REPLICATION)
     << "' with lastProcessedContinuousTick: " << _state._lastProcessedContinuousTick
     << ", lastAppliedContinuousTick: " << _state._lastAppliedContinuousTick
     << ", safeResumeTick: " << _state._safeResumeTick;
@@ -482,7 +482,7 @@ bool ReplicationApplier::loadStateNoLock() {
     return false;
   }
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
+  LOG_TOPIC("d946f", TRACE, Logger::REPLICATION)
       << "looking for replication state file '" << filename << "' for " << _databaseName;
 
   if (!TRI_ExistsFile(filename.c_str())) {
@@ -490,7 +490,7 @@ bool ReplicationApplier::loadStateNoLock() {
     return false;
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "replication state file '" << filename
+  LOG_TOPIC("3e515", DEBUG, Logger::REPLICATION) << "replication state file '" << filename
                                         << "' found for " << _databaseName;
 
   VPackBuilder builder;
@@ -549,7 +549,7 @@ void ReplicationApplier::persistState(bool doSync) {
   VPackBuilder builder;
   _state.toVelocyPack(builder, false);
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
+  LOG_TOPIC("8771f", TRACE, Logger::REPLICATION)
       << "saving replication applier state to file '" << filename << "' for "
       << _databaseName;
 
@@ -559,7 +559,7 @@ void ReplicationApplier::persistState(bool doSync) {
 }
 
 Result ReplicationApplier::persistStateResult(bool doSync) {
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
+  LOG_TOPIC("fa5ea", TRACE, Logger::REPLICATION)
     << "saving replication applier state. last applied continuous tick: "
     << this->_state._lastAppliedContinuousTick
     << ", safe resume tick: " << this->_state._safeResumeTick;
@@ -570,15 +570,15 @@ Result ReplicationApplier::persistStateResult(bool doSync) {
     persistState(doSync);
   } catch (basics::Exception const& ex) {
     std::string errorMsg = std::string("unable to save replication applier state: ") + ex.what();
-    LOG_TOPIC(WARN, Logger::REPLICATION) << errorMsg;
+    LOG_TOPIC("a98dc", WARN, Logger::REPLICATION) << errorMsg;
     rv.reset(ex.code(), errorMsg);
   } catch (std::exception const& ex) {
     std::string errorMsg = std::string("unable to save replication applier state: ") + ex.what();
-    LOG_TOPIC(WARN, Logger::REPLICATION) << errorMsg;
+    LOG_TOPIC("0d891", WARN, Logger::REPLICATION) << errorMsg;
     rv.reset(TRI_ERROR_INTERNAL, errorMsg);
   } catch (...) {
     std::string errorMsg = std::string("caught unknown exception while saving applier state");
-    LOG_TOPIC(WARN, Logger::REPLICATION) << errorMsg;
+    LOG_TOPIC("2f0c1", WARN, Logger::REPLICATION) << errorMsg;
     rv.reset(TRI_ERROR_INTERNAL, errorMsg);
   }
 
@@ -660,7 +660,7 @@ void ReplicationApplier::setProgress(std::string const& msg) {
 void ReplicationApplier::setErrorNoLock(arangodb::Result const& rr) {
   // log error message
   if (rr.isNot(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
-    LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier error for " << _databaseName
+    LOG_TOPIC("ab64e", ERR, Logger::REPLICATION) << "replication applier error for " << _databaseName
                                         << ": " << rr.errorMessage();
   }
 
@@ -690,7 +690,7 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
     return;
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+  LOG_TOPIC("73c1a", DEBUG, Logger::REPLICATION)
       << "requesting replication applier stop for " << _databaseName;
 
   _state._phase = ReplicationApplierState::ActivityPhase::SHUTDOWN;
@@ -706,7 +706,7 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
       writeLocker.unlock();
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
       if (std::chrono::steady_clock::now() - start > std::chrono::minutes(3)) {
-        LOG_TOPIC(ERR, Logger::REPLICATION)
+        LOG_TOPIC("0b9c8", ERR, Logger::REPLICATION)
             << "replication applier is not stopping";
         TRI_ASSERT(false);
         start = std::chrono::steady_clock::now();
