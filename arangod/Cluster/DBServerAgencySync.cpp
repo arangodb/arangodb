@@ -58,6 +58,7 @@ void DBServerAgencySync::work() {
 }
 
 Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
+
   using namespace arangodb::basics;
   Result result;
   DatabaseFeature* dbfeature = nullptr;
@@ -243,21 +244,30 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         // Report to current
         if (!agency.isEmptyObject()) {
           std::vector<AgencyOperation> operations;
+          std::vector<AgencyPrecondition> preconditions;
           for (auto const& ao : VPackObjectIterator(agency)) {
             auto const key = ao.key.copyString();
             auto const op = ao.value.get("op").copyString();
+
+            if (ao.value.hasKey("precondition")) {
+              auto const precondition = ao.value.get("precondition");
+              preconditions.push_back(
+                AgencyPrecondition(
+                  precondition.keyAt(0).copyString(), AgencyPrecondition::Type::VALUE, precondition.valueAt(0)));
+            }
+            
             if (op == "set") {
               auto const value = ao.value.get("payload");
               operations.push_back(AgencyOperation(key, AgencyValueOperationType::SET, value));
             } else if (op == "delete") {
               operations.push_back(AgencyOperation(key, AgencySimpleOperationType::DELETE_OP));
             }
+            
           }
           operations.push_back(AgencyOperation("Current/Version",
                                                AgencySimpleOperationType::INCREMENT_OP));
-          AgencyPrecondition precondition("Plan/Version",
-            AgencyPrecondition::Type::VALUE, plan->slice().get("Version"));
-          AgencyWriteTransaction currentTransaction(operations, precondition);
+
+          AgencyWriteTransaction currentTransaction(operations, preconditions);
           AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
           if (!r.successful()) {
             LOG_TOPIC(INFO, Logger::MAINTENANCE)

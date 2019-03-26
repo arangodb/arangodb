@@ -619,7 +619,9 @@ arangodb::Result arangodb::maintenance::phaseOne(VPackSlice const& plan,
                                                  std::string const& serverId,
                                                  MaintenanceFeature& feature,
                                                  VPackBuilder& report) {
+
   arangodb::Result result;
+  
 
   report.add(VPackValue(PHASE_ONE));
   {
@@ -847,7 +849,16 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           {
             VPackObjectBuilder o(&report);
             report.add(OP, VP_SET);
+            // Report new current entry ...
             report.add("payload", localCollectionInfo.slice());
+            // ... if and only if plan for this shard has changed in the meantime
+            report.add(VPackValue("precondition"));
+            {
+              VPackObjectBuilder p(&report);
+              report.add(
+                PLAN_COLLECTIONS + dbName + "/" + colName + "/shards/" + shName,
+                pdbs.get(std::vector<std::string>{dbName, colName, "shards", shName}));
+            }
           }
         }
       } else {  // Follower
@@ -1097,6 +1108,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(VPackSlice const& plan,
                                                  std::string const& serverId,
                                                  MaintenanceFeature& feature,
                                                  VPackBuilder& report) {
+
   MaintenanceFeature::errors_t allErrors;
   feature.copyAllErrors(allErrors);
 
