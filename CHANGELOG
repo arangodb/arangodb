@@ -21,6 +21,8 @@ devel
   will not be exposed to JavaScript actions. The matching will be performed
   in a case-sensitive way. 
 
+* upgraded bundled RocksDB version to 6.0
+
 * added "--log.ids" option to arangod
 
   The default value for this option is `true`. Setting the option to `false`
