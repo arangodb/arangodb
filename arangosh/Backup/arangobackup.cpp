@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
     context.installHup();
 
     std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
-        argv[0], "Usage: arangobackup [operation] [<options>]",
+        argv[0], "Usage: arangobackup " + BackupFeature::operationList("|") + " [<options>]",
         "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;

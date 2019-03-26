@@ -48,6 +48,11 @@ class BackupFeature : public application_features::ApplicationFeature {
    */
   static std::string featureName();
 
+  /**
+   * @brief Construct a list of the valid operations, using the given separator
+   *
+  static std::string operationList(std::string const& separator);
+  
  public:
   struct Options {
     std::string credentials;
