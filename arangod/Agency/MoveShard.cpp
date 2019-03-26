@@ -145,7 +145,6 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->add("toServer", VPackValue(_to));
     _jb->add("isLeader", VPackValue(_isLeader));
     _jb->add("remainsFollower", VPackValue(_remainsFollower));
-    // TODO: _toServerIsFollower is not serialize here... should it be ignored?
     _jb->add("jobId", VPackValue(_jobId));
     _jb->add("timeCreated", VPackValue(now));
   }
