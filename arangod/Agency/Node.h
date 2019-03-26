@@ -231,6 +231,18 @@ class Node {
   /// @brief Is string
   bool isString() const;
 
+  /**
+   * @brief Get seconds this node still has to live. (Must be guarded by caller)
+   * @return  seconds to live (int64_t::max, if none set)
+   */
+  TimePoint const& timeToLive() const;
+
+  /**
+   * @brief Set expiry for this node
+   * @param Time point of expiry
+   */
+  void timeToLive(TimePoint const& ttl);
+
   /// @brief accessor to Node object
   /// @return  second is true if url exists, first populated if second true
   std::pair<Node const&, bool> hasAsNode(std::string const&) const;

@@ -1806,12 +1806,12 @@ bool AgencyComm::shouldInitializeStructure() {
       
       if (result.httpCode() == 401) {
         // unauthorized
-        LOG_TOPIC(FATAL, Logger::STARTUP) << "Unauthorized. Wrong credentials.";
+        LOG_TOPIC("32781", FATAL, Logger::STARTUP) << "Unauthorized. Wrong credentials.";
         FATAL_ERROR_EXIT();
       }
       
       // Agency not ready yet
-      LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
+      LOG_TOPIC("36253", TRACE, Logger::AGENCYCOMM)
         << "waiting for agency to become ready";
       continue;
       
@@ -1822,11 +1822,11 @@ bool AgencyComm::shouldInitializeStructure() {
 
         // No plan entry? Should initialise
         if (result.slice()[0] == VPackSlice::emptyObjectSlice()) {
-          LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
+          LOG_TOPIC("98732", DEBUG, Logger::AGENCYCOMM)
             << "agency initialisation should be performed";
           return true;
         } else {
-          LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
+          LOG_TOPIC("abedb", DEBUG, Logger::AGENCYCOMM)
             << "agency initialisation under way or done";
           return false;
         }
@@ -1834,9 +1834,9 @@ bool AgencyComm::shouldInitializeStructure() {
         // Should never get here
         TRI_ASSERT(false);
         if (nFail++ < 3) {
-          LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) << "What the hell just happened?";
+          LOG_TOPIC("fed52", DEBUG, Logger::AGENCYCOMM) << "What the hell just happened?";
         } else {
-          LOG_TOPIC(FATAL, Logger::AGENCYCOMM)
+          LOG_TOPIC("54fea", FATAL, Logger::AGENCYCOMM)
             << "Illegal response from agency during bootstrap: "
             << result.slice().toJson();
           FATAL_ERROR_EXIT();
