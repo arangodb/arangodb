@@ -26,6 +26,10 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include <regex>
 
+namespace v8 {
+class Isolate;
+}
+
 namespace arangodb {
 
 class V8SecurityFeature final : public application_features::ApplicationFeature {
@@ -38,17 +42,21 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   
   /// @brief tests if the value of the startup option should be exposed to end
   /// users via JavaScript actions. will use _startupOptionsFilter*
-  bool shouldExposeStartupOption(std::string const& name) const;
+  bool shouldExposeStartupOption(v8::Isolate* isolate, std::string const& name) const;
   
   /// @brief tests if the value of the environment variable should be exposed to end
   /// users via JavaScript actions. will use _environmentVariablesFilter*
-  bool shouldExposeEnvironmentVariable(std::string const& name) const;
+  bool shouldExposeEnvironmentVariable(v8::Isolate* isolate, std::string const& name) const;
 
   /// @brief tests if the IP address or domain/host name given should be accessible
   /// via the JS_Download (internal.download) function in JavaScript actions
   /// the endpoint is passed in via protocol (e.g. tcp://, ssl://, unix://) and port
   /// number (if applicable)
-  bool isAllowedToConnectToEndpoint(std::string const& endpoint) const;
+  bool isAllowedToConnectToEndpoint(v8::Isolate* isolate, std::string const& endpoint) const;
+
+  /// @brief tests if the path (or path component) shall be accessible for the
+  /// calling JavaScript code
+  bool isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path) const;
 
  private:
   /// @brief regular expression string for startup options filtering

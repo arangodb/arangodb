@@ -28,6 +28,8 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
+#include <v8.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -88,14 +90,19 @@ void V8SecurityFeature::start() {
   _endpointsFilterRegex = std::regex(_endpointsFilter, std::regex::nosubs | std::regex::ECMAScript);
 }
 
-bool V8SecurityFeature::shouldExposeStartupOption(std::string const& name) const {
+bool V8SecurityFeature::shouldExposeStartupOption(v8::Isolate* isolate, std::string const& name) const {
   return _startupOptionsFilter.empty() || !std::regex_search(name, _startupOptionsFilterRegex);
 }
   
-bool V8SecurityFeature::shouldExposeEnvironmentVariable(std::string const& name) const {
+bool V8SecurityFeature::shouldExposeEnvironmentVariable(v8::Isolate* isolate, std::string const& name) const {
   return _environmentVariablesFilter.empty() || !std::regex_search(name, _environmentVariablesFilterRegex);
 }
 
-bool V8SecurityFeature::isAllowedToConnectToEndpoint(std::string const& name) const {
+bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate, std::string const& name) const {
   return _endpointsFilter.empty() || !std::regex_search(name, _endpointsFilterRegex);
+}
+  
+bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path) const {
+  // TODO: needs implementation
+  return true;
 }

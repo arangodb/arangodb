@@ -312,12 +312,12 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  auto filter = [v8security](std::string const& name) {
+  auto filter = [v8security, isolate](std::string const& name) {
     if (name.find("passwd") != std::string::npos ||
         name.find("password") != std::string::npos) {
       return false;
     }
-    return v8security->shouldExposeStartupOption(name);
+    return v8security->shouldExposeStartupOption(isolate, name);
   };
 
   VPackBuilder builder = ApplicationServer::server->options(filter);
@@ -897,7 +897,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
            "V8Security");
     TRI_ASSERT(v8security != nullptr);
 
-    if (!v8security->isAllowedToConnectToEndpoint(endpoint)) {
+    if (!v8security->isAllowedToConnectToEndpoint(isolate, endpoint)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                     "not allowed to connect to this endpoint");
     }
