@@ -218,7 +218,7 @@ std::pair<ExecutionState, Result> SubqueryBlock::shutdown() {
   if (!_hasShutdownMainQuery) {
     ExecutionState state;
     Result res;
-    std::tie(state, res) = ExecutionBlock::shutdown(errorCode);
+    std::tie(state, res) = ExecutionBlock::shutdown();
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(res.ok());
       return {state, res};
