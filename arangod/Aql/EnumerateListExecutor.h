@@ -50,6 +50,7 @@ class SingleRowFetcher;
 
 class EnumerateListExecutorInfos : public ExecutorInfos {
  public:
+  // cppcheck-suppress passedByValue
   EnumerateListExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
                              RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                              std::unordered_set<RegisterId> registersToClear,
@@ -96,6 +97,8 @@ class EnumerateListExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+
+  inline size_t numberOfRowsInFlight() const { return 0; }
 
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);

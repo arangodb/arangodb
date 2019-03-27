@@ -96,14 +96,14 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string con
 
   // load our keys and certificates
   if (!SSL_CTX_use_certificate_chain_file(sslctx.native_handle(), keyfile.c_str())) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("c6a00", ERR, arangodb::Logger::FIXME)
         << "cannot read certificate from '" << keyfile << "': " << lastSSLError();
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "unable to read certificate from file");
   }
 
   if (!SSL_CTX_use_PrivateKey_file(sslctx.native_handle(), keyfile.c_str(), SSL_FILETYPE_PEM)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("98712", ERR, arangodb::Logger::FIXME)
         << "cannot read key from '" << keyfile << "': " << lastSSLError();
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "unable to read key from keyfile");

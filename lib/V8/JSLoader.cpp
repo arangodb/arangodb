@@ -54,7 +54,7 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript(v8::Isolate* isolate,
 
   if (i == _scripts.end()) {
     // correct the path/name
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("37167", ERR, arangodb::Logger::FIXME)
         << "unknown script '" << StringUtils::correctPath(name) << "'";
     return v8::Undefined(isolate);
   }
@@ -93,7 +93,7 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate, v8::Handle<v8::Conte
 
   if (i == _scripts.end()) {
     // correct the path/name
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("3f81d", ERR, arangodb::Logger::FIXME)
         << "unknown script '" << StringUtils::correctPath(name) << "'";
     return eFailLoad;
   }

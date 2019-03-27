@@ -65,8 +65,11 @@ void MMFilesWalRecoveryFeature::start() {
   int res = logfileManager->runRecovery();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("c6422", FATAL, arangodb::Logger::ENGINES)
         << "unable to finish WAL recovery: " << TRI_errno_string(res);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    FATAL_ERROR_ABORT();
+#endif
     FATAL_ERROR_EXIT();
   }
 
@@ -81,7 +84,7 @@ void MMFilesWalRecoveryFeature::start() {
       ApplicationServer::getFeature<DatabaseFeature>("Database");
   databaseFeature->recoveryDone();
 
-  LOG_TOPIC(INFO, arangodb::Logger::ENGINES)
+  LOG_TOPIC("8767f", INFO, arangodb::Logger::ENGINES)
       << "DB recovery finished successfully";
 }
 

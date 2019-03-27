@@ -243,6 +243,7 @@
     * [Auth and OAuth2](Foxx/Migrating2x/Auth.md)
     * [Foxx Queries](Foxx/Migrating2x/Queries.md)
 * [Satellite Collections](Satellites.md)
+* [Smart Joins](SmartJoins.md)
 
 ## OPERATIONS
 
@@ -354,8 +355,8 @@
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
   <!-- SYNC: https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ -->
   * [ArangoDB Starter Administration](Administration/Starter/README.md)
-    * [ArangoDB Starter Removal Procedure](Administration/Starter/Removal.md)
-    * [ArangoDB Starter Recovery Procedure](Administration/Starter/Recovery.md)
+    * [Removal Procedure](Administration/Starter/Removal.md)
+    * [Recovery Procedure](Administration/Starter/Recovery.md)
 * [Security](Security/README.md)
   * [Change Root Password](Security/ChangeRootPassword.md)
   * [Encryption at Rest](Security/Encryption/README.md)
@@ -367,6 +368,7 @@
   <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
   * [Datacenter to datacenter replication](Security/DC2DC/README.md)
 * [Monitoring](Monitoring/README.md)
+  * [Log Levels](Monitoring/LogLevels.md)
   <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
   * [Datacenter to datacenter replication](Monitoring/DC2DC/README.md)
 * [Troubleshooting](Troubleshooting/README.md)

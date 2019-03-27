@@ -53,6 +53,11 @@ class OutputAqlItemRow {
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
                             CopyRowBehaviour = CopyRowBehaviour::CopyInputRows);
 
+  OutputAqlItemRow(OutputAqlItemRow const&) = delete;
+  OutputAqlItemRow& operator=(OutputAqlItemRow const&) = delete;
+  OutputAqlItemRow(OutputAqlItemRow&&) = delete;
+  OutputAqlItemRow& operator=(OutputAqlItemRow&&) = delete;
+
   // Clones the given AqlValue
   void cloneValueInto(RegisterId registerId, InputAqlItemRow const& sourceRow,
                       AqlValue const& value) {
@@ -96,6 +101,28 @@ class OutputAqlItemRow {
     }
   }
 
+  // Reuses the value of the given register that has been inserted in the output
+  // row before. This call cannot be used on the first row of this output block.
+  // If the reusing does not work this call will return `false` caller needs to
+  // react accordingly.
+  bool reuseLastStoredValue(RegisterId registerId, InputAqlItemRow const& sourceRow) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (!isOutputRegister(registerId)) {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_IN_WRONG_REGISTER);
+    }
+#endif
+    if (_lastBaseIndex == _baseIndex) {
+      return false;
+    }
+    // Do not clone the value, we explicitly want recycle it.
+    AqlValue ref = block().getValue(_lastBaseIndex, registerId);
+    // The initial row is still responsible
+    AqlValueGuard guard{ref, false};
+    moveValueInto(registerId, sourceRow, guard);
+    return true;
+  }
+
   void copyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing = false) {
     // While violating the following asserted states would do no harm, the
     // implementation as planned should only copy a row after all values have
@@ -116,6 +143,7 @@ class OutputAqlItemRow {
 #endif
       _inputRowCopied = true;
       _lastSourceRow = sourceRow;
+      _lastBaseIndex = _baseIndex;
       return;
     }
 
@@ -160,7 +188,7 @@ class OutputAqlItemRow {
    */
   std::unique_ptr<AqlItemBlock> stealBlock();
 
-  bool isFull() { return numRowsWritten() >= block().size(); }
+  bool isFull() const { return numRowsWritten() >= block().size(); }
 
   /**
    * @brief Returns the number of rows that were fully written.
@@ -206,20 +234,20 @@ class OutputAqlItemRow {
   }
 
  private:
-  AqlItemBlockShell& blockShell() { return *_blockShell; }
-  AqlItemBlockShell const& blockShell() const { return *_blockShell; }
+  inline AqlItemBlockShell& blockShell() { return *_blockShell; }
+  inline AqlItemBlockShell const& blockShell() const { return *_blockShell; }
 
   std::unordered_set<RegisterId> const& outputRegisters() const {
     return *_outputRegisters;
-  };
+  }
 
   std::unordered_set<RegisterId> const& registersToKeep() const {
     return *_registersToKeep;
-  };
+  }
 
   std::unordered_set<RegisterId> const& registersToClear() const {
     return *_registersToClear;
-  };
+  }
 
   bool isOutputRegister(RegisterId registerId) const {
     return outputRegisters().find(registerId) != outputRegisters().end();
@@ -275,10 +303,10 @@ class OutputAqlItemRow {
 
   bool allValuesWritten() const {
     return _numValuesWritten == numRegistersToWrite();
-  };
+  }
 
-  AqlItemBlock const& block() const { return blockShell().block(); }
-  AqlItemBlock& block() { return blockShell().block(); }
+  inline AqlItemBlock const& block() const { return blockShell().block(); }
+  inline AqlItemBlock& block() { return blockShell().block(); }
 
   void doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing);
 };

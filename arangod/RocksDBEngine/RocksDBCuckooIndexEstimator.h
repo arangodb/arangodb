@@ -54,7 +54,7 @@ namespace arangodb {
 template <class T, uint64_t Seed>
 class HashWithSeed {
  public:
-  uint64_t operator()(T const& t) const {
+  uint64_t operator()(T const& t) const noexcept {
     // Some implementation like Fnv or xxhash looking at bytes in type T,
     // taking the seed into account.
     auto p = reinterpret_cast<void const*>(&t);
@@ -92,7 +92,7 @@ class RocksDBCuckooIndexEstimator {
       // Not responsible for anything
     }
 
-    bool operator==(const Slot& other) { return _data == other._data; }
+    bool operator==(const Slot& other) const { return _data == other._data; }
 
     uint16_t* fingerprint() const {
       TRI_ASSERT(_data != nullptr);
@@ -213,7 +213,7 @@ class RocksDBCuckooIndexEstimator {
         break;
       }
       default: {
-        LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+        LOG_TOPIC("bcd09", WARN, arangodb::Logger::ENGINES)
             << "unable to restore index estimates: invalid format found";
         // Do not construct from serialization, use other constructor instead
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -344,7 +344,7 @@ class RocksDBCuckooIndexEstimator {
     READ_LOCKER(locker, _lock, this);
     if (0 == _nrTotal) {
       TRI_ASSERT(0 == _nrUsed);
-      // If we do not have any documents we have a rather constant estimate.
+      // If we do not have any documents, we have a rather constant estimate.
       return 1.0;
     }
     TRI_ASSERT(_nrUsed <= _nrTotal);
@@ -497,7 +497,7 @@ class RocksDBCuckooIndexEstimator {
       }
       if (foundSomething) {
         _needToPersist.store(true);
-        LOG_TOPIC(TRACE, Logger::ENGINES) << "buffered updates with stamp " << seq;
+        LOG_TOPIC("69002", TRACE, Logger::ENGINES) << "buffered updates with stamp " << seq;
       }
     });
     return res;

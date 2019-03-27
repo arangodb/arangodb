@@ -56,6 +56,7 @@
 #include "Aql/CostEstimate.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/Expression.h"
+#include "Aql/IndexHint.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
@@ -64,6 +65,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <boost/optional.hpp>
 #include <type_traits>
 
 namespace arangodb {
@@ -259,6 +261,16 @@ class ExecutionNode {
       TRI_ASSERT(it != nullptr);
       result.emplace_back(it);
     }
+  }
+
+  /// @brief get the singleton node of the node
+  ExecutionNode const* getSingleton() const {
+    auto node = this;
+    do {
+      node = node->getFirstDependency();
+    } while (node != nullptr && node->getType() != SINGLETON);
+
+    return node;
   }
 
   /// @brief get the node and its dependencies as a vector
@@ -543,6 +555,15 @@ class ExecutionNode {
 
   std::unordered_set<RegisterId> calcRegsToKeep() const;
 
+  RegisterId variableToRegisterId(Variable const*) const;
+
+  boost::optional<RegisterId> variableToRegisterOptionalId(Variable const* var) const {
+    if (var) {
+      return variableToRegisterId(var);
+    }
+    return boost::none;
+  }
+
  protected:
   /// @brief node id
   size_t _id;
@@ -584,7 +605,7 @@ class ExecutionNode {
   std::unordered_set<RegisterId> _regsToClear;
 
  public:
-  /// @brief maximum register id that can be assigned.
+  /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
   static constexpr RegisterId MaxRegisterId = 1000;
 
@@ -637,11 +658,12 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief constructor with a vocbase and a collection name
  public:
   EnumerateCollectionNode(ExecutionPlan* plan, size_t id, aql::Collection const* collection,
-                          Variable const* outVariable, bool random)
+                          Variable const* outVariable, bool random, IndexHint const& hint)
       : ExecutionNode(plan, id),
         DocumentProducingNode(outVariable),
         CollectionAccessingNode(collection),
-        _random(random) {}
+        _random(random),
+        _hint(hint) {}
 
   EnumerateCollectionNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -675,9 +697,15 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief enable random iteration of documents in collection
   void setRandom() { _random = true; }
 
+  /// @brief user hint regarding which index ot use
+  IndexHint const& hint() const { return _hint; }
+
  private:
   /// @brief whether or not we want random iteration
   bool _random;
+
+  /// @brief a possible hint from the user regarding which index to use
+  IndexHint _hint;
 };
 
 /// @brief class EnumerateListNode
@@ -877,7 +905,6 @@ class CalculationNode : public ExecutionNode {
 class SubqueryNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class SubqueryBlock;
 
  public:
   SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);

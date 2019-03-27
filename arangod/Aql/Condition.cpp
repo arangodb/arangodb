@@ -375,7 +375,7 @@ size_t countNodes(AstNode* node) {
 Condition::~Condition() {
   // memory for nodes is not owned and thus not freed by the condition
   // all nodes belong to the AST
-  // LOG_TOPIC(ERR, Logger::FIXME) << "nodes in tree: " << ::countNodes(_root);
+  // LOG_TOPIC("12fb9", ERR, Logger::FIXME) << "nodes in tree: " << ::countNodes(_root);
 }
 
 /// @brief export the condition as VelocyPack
@@ -462,12 +462,14 @@ std::pair<bool, bool> Condition::findIndexes(EnumerateCollectionNode const* node
   }
   if (_root == nullptr) {
     size_t dummy;
-    return trx->getIndexForSortCondition(collectionName, sortCondition, reference,
-                                         itemsInIndex, usedIndexes, dummy);
+    return std::make_pair<bool, bool>(
+        false, trx->getIndexForSortCondition(collectionName, sortCondition, reference, itemsInIndex,
+                                             node->hint(), usedIndexes, dummy));
   }
 
   return trx->getBestIndexHandlesForFilterCondition(collectionName, _ast, _root,
-                                                    reference, sortCondition, itemsInIndex,
+                                                    reference, sortCondition,
+                                                    itemsInIndex, node->hint(),
                                                     usedIndexes, _isSorted);
 }
 
@@ -1334,7 +1336,7 @@ AstNode* switchSidesInCompare(Ast* ast, AstNode* node) {
       newOperator->type = NODE_TYPE_OPERATOR_BINARY_LE;
       break;
     default:
-      LOG_TOPIC(ERR, Logger::QUERIES)
+      LOG_TOPIC("14324", ERR, Logger::QUERIES)
           << "normalize condition tries to swap children"
           << "of wrong node type - this needs to be fixed";
       TRI_ASSERT(false);

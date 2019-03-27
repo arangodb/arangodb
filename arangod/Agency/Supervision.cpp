@@ -168,11 +168,14 @@ Supervision::Supervision()
       _okThreshold(5.),
       _jobId(0),
       _jobIdMax(0),
+      _haveAborts(false),
       _selfShutdown(false),
       _upgraded(false) {}
 
 Supervision::~Supervision() {
-  shutdown();
+  if (!isStopping()) {
+    shutdown();
+  }
 }
 
 static std::string const syncPrefix = "/Sync/ServerStates/";
@@ -243,7 +246,7 @@ void Supervision::upgradeHealthRecords(Builder& builder) {
     HealthRecord hr;
     {
       VPackObjectBuilder oo(&b);
-      for (auto recPair : _snapshot.hasAsChildren(healthPrefix).first) {
+      for (auto const& recPair : _snapshot.hasAsChildren(healthPrefix).first) {
         if (recPair.second->has("ShortName") &&
             recPair.second->has("Endpoint")) {
           hr = *recPair.second;
@@ -284,7 +287,7 @@ void Supervision::upgradeAgency() {
     upgradeHealthRecords(builder);
   }
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Upgrading the agency:" << builder.toJson();
+  LOG_TOPIC("f7315", DEBUG, Logger::AGENCY) << "Upgrading the agency:" << builder.toJson();
 
   if (builder.slice().length() > 0) {
     generalTransaction(_agent, builder);
@@ -394,7 +397,7 @@ void handleOnStatus(Agent* agent, Node const& snapshot, HealthRecord& persisted,
   } else if (serverID.compare(0, 4, "SNGL") == 0) {
     handleOnStatusSingle(agent, snapshot, persisted, transisted, serverID, jobId, envelope);
   } else {
-    LOG_TOPIC(ERR, Logger::SUPERVISION)
+    LOG_TOPIC("86191", ERR, Logger::SUPERVISION)
         << "Unknown server type. No supervision action taken. " << serverID;
   }
 }
@@ -614,7 +617,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
         }
       }
     } else {
-      LOG_TOPIC(INFO, Logger::SUPERVISION)
+      LOG_TOPIC("a55cd", INFO, Logger::SUPERVISION)
           << "Short name for << " << serverID
           << " not yet available.  Skipping health check.";
     }  // else
@@ -630,7 +633,7 @@ bool Supervision::earlyBird() const {
   std::vector<std::string> pcpath{"Plan", "Coordinators"};
 
   if (!_snapshot.has(pdbpath)) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("3206f", DEBUG, Logger::SUPERVISION)
         << "No Plan/DBServers key in persistent store";
     return false;
   }
@@ -638,7 +641,7 @@ bool Supervision::earlyBird() const {
   VPackSlice dbservers = dbserversB.slice();
 
   if (!_snapshot.has(pcpath)) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("b0e08", DEBUG, Logger::SUPERVISION)
         << "No Plan/Coordinators key in persistent store";
     return false;
   }
@@ -646,7 +649,7 @@ bool Supervision::earlyBird() const {
   VPackSlice coordinators = coordinatorsB.slice();
 
   if (!_transient.has(tpath)) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("fe42a", DEBUG, Logger::SUPERVISION)
         << "No Sync/ServerStates key in transient store";
     return false;
   }
@@ -694,9 +697,9 @@ bool Supervision::updateSnapshot() {
 // All checks, guarded by main thread
 bool Supervision::doChecks() {
   _lock.assertLockedByCurrentThread();
-  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_PRIMARY) ==
+  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_DBSERVER) ==
              "DBServers");
-  check(ServerState::roleToAgencyListKey(ServerState::ROLE_PRIMARY));
+  check(ServerState::roleToAgencyListKey(ServerState::ROLE_DBSERVER));
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR) ==
              "Coordinators");
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR));
@@ -768,7 +771,7 @@ void Supervision::run() {
             done = true;
           }
         } catch (...) {
-          LOG_TOPIC(WARN, Logger::SUPERVISION)
+          LOG_TOPIC("4bc80", WARN, Logger::SUPERVISION)
               << "Main node in agency gone. Contact your db administrator.";
         }
       }
@@ -778,7 +781,7 @@ void Supervision::run() {
       break;
     }
 
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Waiting for ArangoDB to "
+    LOG_TOPIC("9a79b", DEBUG, Logger::SUPERVISION) << "Waiting for ArangoDB to "
                                              "initialize its data.";
   }
 
@@ -827,15 +830,15 @@ void Supervision::run() {
               try {
                 doChecks();
               } catch (std::exception const& e) {
-                LOG_TOPIC(ERR, Logger::SUPERVISION)
+                LOG_TOPIC("e0869", ERR, Logger::SUPERVISION)
                     << e.what() << " " << __FILE__ << " " << __LINE__;
               } catch (...) {
-                LOG_TOPIC(ERR, Logger::SUPERVISION)
+                LOG_TOPIC("ac4c4", ERR, Logger::SUPERVISION)
                     << "Supervision::doChecks() generated an uncaught "
                        "exception.";
               }
             } else {
-              LOG_TOPIC(INFO, Logger::SUPERVISION)
+              LOG_TOPIC("7928f", INFO, Logger::SUPERVISION)
                   << "Postponing supervision for now, waiting for incoming "
                      "heartbeats: "
                   << _agent->leaderFor();
@@ -849,26 +852,24 @@ void Supervision::run() {
         }
       }
 
-      // If anything was rafted, we need to
-      index_t leaderIndex = _agent->index();
-      
-      if (leaderIndex != 0) {
-        while (true) { // No point in progressing, if indexes cannot be advanced
-
-          // avoid getting trapped as last agent standing
-          if (this->isStopping()) {
-            break;
+      // If anything was rafted, we need to wait until it is replicated,
+      // otherwise it is not "committed" in the Raft sense. However, let's
+      // only wait for our changes not for new ones coming in during the wait.
+      if (_agent->leading()) {
+        index_t leaderIndex = _agent->index();
+        if (leaderIndex != 0) {
+          while (!this->isStopping() && _agent->leading()) {
+            auto result = _agent->waitFor(leaderIndex);
+            if (result == Agent::raft_commit_t::TIMEOUT) { // Oh snap
+              // Note that we can get UNKNOWN if we have lost leadership or
+              // if we are shutting down. In both cases we just leave the loop.
+              LOG_TOPIC("c72b0", WARN, Logger::SUPERVISION)
+                << "Waiting for commits to be done ... ";
+              continue;
+            } else {                       // Good we can continue
+              break;
+            }
           }
-
-          auto result = _agent->waitFor(leaderIndex);
-          if (result == Agent::raft_commit_t::UNKNOWN ||
-              result == Agent::raft_commit_t::TIMEOUT) { // Oh snap
-            LOG_TOPIC(WARN, Logger::SUPERVISION) << "Waiting for commits to be done ... ";
-            continue; 
-          } else {                                       // Good we can continue
-            break;
-          }
-
         }
       }
       
@@ -908,7 +909,7 @@ void Supervision::handleShutdown() {
   _lock.assertLockedByCurrentThread();
 
   _selfShutdown = true;
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Waiting for clients to shut down";
+  LOG_TOPIC("f1f68", DEBUG, Logger::SUPERVISION) << "Waiting for clients to shut down";
   auto const& serversRegistered =
       _snapshot.hasAsChildren(currentServersRegisteredPrefix).first;
   bool serversCleared = true;
@@ -917,10 +918,10 @@ void Supervision::handleShutdown() {
       continue;
     }
 
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Waiting for " << server.first << " to shutdown";
+    LOG_TOPIC("d212a", DEBUG, Logger::SUPERVISION) << "Waiting for " << server.first << " to shutdown";
 
     if (serverHealth(server.first) != HEALTH_STATUS_GOOD) {
-      LOG_TOPIC(WARN, Logger::SUPERVISION)
+      LOG_TOPIC("3db81", WARN, Logger::SUPERVISION)
           << "Server " << server.first << " did not shutdown properly it seems!";
       continue;
     }
@@ -946,12 +947,12 @@ void Supervision::handleShutdown() {
       }
       auto result = _agent->write(del);
       if (result.indices.size() != 1) {
-        LOG_TOPIC(ERR, Logger::SUPERVISION)
+        LOG_TOPIC("3bba4", ERR, Logger::SUPERVISION)
             << "Invalid resultsize of " << result.indices.size()
             << " found during shutdown";
       } else {
         if (!_agent->waitFor(result.indices.at(0))) {
-          LOG_TOPIC(ERR, Logger::SUPERVISION)
+          LOG_TOPIC("d98af", ERR, Logger::SUPERVISION)
               << "Result was not written to followers during shutdown";
         }
       }
@@ -1011,7 +1012,7 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
 
             if (failedServers.find(servername) != failedServers.end()) {
               // lost shard
-              LOG_TOPIC(TRACE, Logger::SUPERVISION)
+              LOG_TOPIC("0baaa", TRACE, Logger::SUPERVISION)
                   << "Found a lost shard: " << shard.first;
               auto const& shardname = shard.first;
 
@@ -1141,7 +1142,7 @@ void Supervision::workJobs() {
     }
   }
 
-  auto pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  auto const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
   for (auto const& pendEnt : pends) {
     auto jobNode = *(pendEnt.second);
     JobContext(PENDING, jobNode.hasAsString("jobId").first, _snapshot, _agent)
@@ -1171,8 +1172,7 @@ void Supervision::readyOrphanedIndexCreations() {
           indexes = collection("indexes").getArray();
           if (indexes.length() > 0) {
             for (auto const& planIndex : VPackArrayIterator(indexes)) {
-              if (planIndex.hasKey(StaticStrings::IndexIsBuilding) &&
-                  collection.has("shards")) {
+              if (planIndex.hasKey(StaticStrings::IndexIsBuilding) && collection.has("shards")) {
                 auto const& planId = planIndex.get("id");
                 auto const& shards = collection("shards");
                 if (collection.has("numberOfShards") &&
@@ -1247,7 +1247,7 @@ void Supervision::readyOrphanedIndexCreations() {
 
           write_ret_t res = _agent->write(envelope);
           if (!res.successful()) {
-            LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+            LOG_TOPIC("38482", DEBUG, Logger::SUPERVISION)
                 << "failed to report ready index to agency. Will retry.";
           }
         }
@@ -1258,6 +1258,28 @@ void Supervision::readyOrphanedIndexCreations() {
 
 void Supervision::enforceReplication() {
   _lock.assertLockedByCurrentThread();
+
+  // First check the number of AddFollower and RemoveFollower jobs in ToDo:
+  // We always maintain that we have at most maxNrAddRemoveJobsInTodo
+  // AddFollower or RemoveFollower jobs in ToDo. These are all long-term
+  // cleanup jobs, so they can be done over time. This is to ensure that
+  // there is no overload on the Agency job system. Therefore, if this
+  // number is at least maxNrAddRemoveJobsInTodo, we skip the rest of
+  // the function:
+  int const maxNrAddRemoveJobsInTodo = 15;
+
+  auto todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  int nrAddRemoveJobsInTodo = 0;
+  for (auto it = todos.begin(); it != todos.end(); ++it) {
+    auto jobNode = *(it->second);
+    auto t = jobNode.hasAsString("type");
+    if (t.second && (t.first == "addFollower" || t.first == "removeFollower")) {
+      if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
+        return;
+      }
+    }
+  }
+
   auto const& plannedDBs = _snapshot.hasAsChildren(planColPrefix).first;
 
   for (const auto& db_ : plannedDBs) {  // Planned databases
@@ -1274,9 +1296,9 @@ void Supervision::enforceReplication() {
         if (replFact2.second && replFact2.first == "satellite") {
           // satellites => distribute to every server
           auto available = Job::availableServers(_snapshot);
-          replicationFactor = Job::countGoodServersInList(_snapshot, available);
+          replicationFactor = Job::countGoodOrBadServersInList(_snapshot, available);
         } else {
-          LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+          LOG_TOPIC("d3b54", DEBUG, Logger::SUPERVISION)
               << "no replicationFactor entry in " << col.toJson();
           continue;
         }
@@ -1299,7 +1321,7 @@ void Supervision::enforceReplication() {
             }
           }
           size_t actualReplicationFactor
-            = 1 + Job::countGoodServersInList(_snapshot, onlyFollowers.slice());
+            = 1 + Job::countGoodOrBadServersInList(_snapshot, onlyFollowers.slice());
             // leader plus GOOD followers
           size_t apparentReplicationFactor = shard.slice().length();
 
@@ -1317,7 +1339,7 @@ void Supervision::enforceReplication() {
                    tmp_type.first == "moveShard") &&
                   tmp_shard.first == shard_.first) {
                 found = true;
-                LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+                LOG_TOPIC("441b6", DEBUG, Logger::SUPERVISION)
                     << "already found "
                        "addFollower or removeFollower job in ToDo, not "
                        "scheduling "
@@ -1335,11 +1357,17 @@ void Supervision::enforceReplication() {
                 AddFollower(_snapshot, _agent, std::to_string(_jobId++),
                             "supervision", db_.first, col_.first, shard_.first)
                     .create();
+                if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
+                  return;
+                }
               } else if (apparentReplicationFactor > replicationFactor &&
                          actualReplicationFactor >= replicationFactor) {
                 RemoveFollower(_snapshot, _agent, std::to_string(_jobId++),
                                "supervision", db_.first, col_.first, shard_.first)
                     .create();
+                if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
+                  return;
+                }
               }
             }
           }
@@ -1420,7 +1448,7 @@ void Supervision::shrinkCluster() {
   if (_snapshot.hasAsUInt(NDBServers).second) {
     targetNumDBServers = _snapshot.hasAsUInt(NDBServers).first;
   } else {
-    LOG_TOPIC(TRACE, Logger::SUPERVISION)
+    LOG_TOPIC("7aa3b", TRACE, Logger::SUPERVISION)
         << "Targeted number of DB servers not set yet";
     return;
   }
@@ -1429,7 +1457,7 @@ void Supervision::shrinkCluster() {
   if (targetNumDBServers < availServers.size()) {
     // Minimum 1 DB server must remain
     if (availServers.size() == 1) {
-      LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      LOG_TOPIC("4ced8", DEBUG, Logger::SUPERVISION)
           << "Only one db server left for operation";
       return;
     }
@@ -1456,11 +1484,8 @@ void Supervision::shrinkCluster() {
           if (replFact > maxReplFact) {
             maxReplFact = replFact;
           }
-        } else {
-          LOG_TOPIC(WARN, Logger::SUPERVISION)
-              << "Cannot retrieve replication factor for collection " << collptr.first;
-          return;
         }
+        // Note that this could be a satellite collection, in any case, ignore:
       }
     }
 
@@ -1537,7 +1562,7 @@ void Supervision::getUniqueIds() {
               .getUInt();
       _jobId = _jobIdMax - n;
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::SUPERVISION)
+      LOG_TOPIC("4da4b", ERR, Logger::SUPERVISION)
           << "Failed to acquire job IDs from agency: " << e.what() << __FILE__
           << " " << __LINE__;
     }

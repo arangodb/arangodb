@@ -102,7 +102,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang, void* icuDataPoint
   UErrorCode status = U_ZERO_ERROR;
   udata_setCommonData(reinterpret_cast<void*>(icuDataPointer), &status);
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("2d56a", ERR, arangodb::Logger::FIXME)
         << "error while udata_setCommonData(...): " << u_errorName(status);
     return false;
   }
@@ -113,7 +113,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang, void* icuDataPoint
     const icu::Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("b251d", ERR, arangodb::Logger::FIXME)
           << "error in Collator::getLocale(...): " << u_errorName(status);
       return false;
     }
@@ -132,7 +132,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang, void* icuDataPoint
   }
 
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("d0e00", ERR, arangodb::Logger::FIXME)
         << "error in Collator::createInstance('" << lang
         << "'): " << u_errorName(status);
     if (coll) {
@@ -149,7 +149,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang, void* icuDataPoint
                      status);  // UCOL_IDENTICAL, UCOL_PRIMARY, UCOL_SECONDARY, UCOL_TERTIARY
 
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("f0757", ERR, arangodb::Logger::FIXME)
         << "error in Collator::setAttribute(...): " << u_errorName(status);
     delete coll;
     return false;
@@ -170,7 +170,7 @@ std::string Utf8Helper::getCollatorLanguage() {
     const icu::Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("1d8d0", ERR, arangodb::Logger::FIXME)
           << "error in Collator::getLocale(...): " << u_errorName(status);
       return "";
     }
@@ -186,7 +186,7 @@ std::string Utf8Helper::getCollatorCountry() {
     const icu::Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("a596f", ERR, arangodb::Logger::FIXME)
           << "error in Collator::getLocale(...): " << u_errorName(status);
       return "";
     }
@@ -235,7 +235,7 @@ char* Utf8Helper::tolower(char const* src, int32_t srcLength, int32_t& dstLength
   icu::LocalUCaseMapPointer csm(ucasemap_open(locale.c_str(), options, &status));
 
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("12bc5", ERR, arangodb::Logger::FIXME)
         << "error in ucasemap_open(...): " << u_errorName(status);
   } else {
     utf8_dest = (char*)TRI_Allocate((srcLength + 1) * sizeof(char));
@@ -259,7 +259,7 @@ char* Utf8Helper::tolower(char const* src, int32_t srcLength, int32_t& dstLength
     }
 
     if (U_FAILURE(status)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("d7295", ERR, arangodb::Logger::FIXME)
           << "error in ucasemap_utf8ToLower(...): " << u_errorName(status);
       TRI_Free(utf8_dest);
     } else {
@@ -314,7 +314,7 @@ char* Utf8Helper::toupper(char const* src, int32_t srcLength, int32_t& dstLength
   LocalUCaseMapPointer csm(ucasemap_open(locale.c_str(), options, &status));
 
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("10333", ERR, arangodb::Logger::FIXME)
         << "error in ucasemap_open(...): " << u_errorName(status);
   } else {
     utf8_dest = (char*)TRI_Allocate((srcLength + 1) * sizeof(char));
@@ -338,7 +338,7 @@ char* Utf8Helper::toupper(char const* src, int32_t srcLength, int32_t& dstLength
     }
 
     if (U_FAILURE(status)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("cafe4", ERR, arangodb::Logger::FIXME)
           << "error in ucasemap_utf8ToUpper(...): " << u_errorName(status);
       TRI_Free(utf8_dest);
     } else {
@@ -407,7 +407,7 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
 
   if (U_FAILURE(status)) {
     TRI_Free(textUtf16);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("0e8cb", ERR, arangodb::Logger::FIXME)
         << "error in Collator::getLocale(...): " << u_errorName(status);
     return false;
   }

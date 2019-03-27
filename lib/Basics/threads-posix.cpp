@@ -24,6 +24,7 @@
 #include "threads.h"
 
 #ifdef TRI_HAVE_POSIX_THREADS
+#include <time.h>
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
@@ -95,7 +96,7 @@ bool TRI_StartThread(TRI_thread_t* thread, char const* name,
   try {
     d.reset(new thread_data_t(starter, data, name));
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("a89bc", ERR, arangodb::Logger::FIXME)
         << "could not start thread: out of memory";
     return false;
   }
@@ -107,13 +108,13 @@ bool TRI_StartThread(TRI_thread_t* thread, char const* name,
 
   auto err = pthread_attr_init(&stackSizeAttribute);
   if (err) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("a51ed", ERR, arangodb::Logger::FIXME)
         << "could not initialize stack size attribute.";
     return false;
   }
   err = pthread_attr_getstacksize(&stackSizeAttribute, &stackSize);
   if (err) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("0b962", ERR, arangodb::Logger::FIXME)
         << "could not acquire stack size from pthread.";
     return false;
   }
@@ -121,7 +122,7 @@ bool TRI_StartThread(TRI_thread_t* thread, char const* name,
   if (stackSize < 8388608) {  // 8MB
     err = pthread_attr_setstacksize(&stackSizeAttribute, 8388608);
     if (err) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("94bca", ERR, arangodb::Logger::FIXME)
           << "could not assign new stack size in pthread.";
       return false;
     }
@@ -132,7 +133,7 @@ bool TRI_StartThread(TRI_thread_t* thread, char const* name,
   if (rc != 0) {
     errno = rc;
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("f91c0", ERR, arangodb::Logger::FIXME)
         << "could not start thread: " << strerror(errno);
 
     return false;
@@ -153,10 +154,41 @@ int TRI_JoinThread(TRI_thread_t* thread) {
   int res = pthread_join(*thread, nullptr);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(WARN, arangodb::Logger::THREADS) << "cannot join thread: " << strerror(res);
+    LOG_TOPIC("d5426", WARN, arangodb::Logger::THREADS) << "cannot join thread: " << strerror(res);
   }
   return res;
 }
+
+#ifndef __APPLE__
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief waits for a thread to finish within the specified timeout (in ms).
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout) {
+  if (timeout == INFINITE) {
+    return TRI_JoinThread(thread);
+  }
+  
+  TRI_ASSERT(!TRI_IsSelfThread(thread));
+  
+  timespec ts;
+  if (!timespec_get(&ts, TIME_UTC)) {
+    LOG_TOPIC("80661", FATAL, arangodb::Logger::FIXME) << "could not initialize timespec with current time";
+    FATAL_ERROR_ABORT();
+  }
+  ts.tv_sec += timeout / 1000;
+  ts.tv_nsec = (timeout % 1000) * 1'000'000;
+
+  int res = pthread_timedjoin_np(*thread, nullptr, &ts);
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC("1f02d", WARN, arangodb::Logger::THREADS) << "cannot join thread: " << strerror(res);
+    return TRI_ERROR_FAILED;
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief detaches a thread
@@ -166,7 +198,7 @@ int TRI_DetachThread(TRI_thread_t* thread) {
   int res = pthread_detach(*thread);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(WARN, arangodb::Logger::THREADS)
+    LOG_TOPIC("e880a", WARN, arangodb::Logger::THREADS)
         << "cannot detach thread: " << strerror(res);
   }
   return res;

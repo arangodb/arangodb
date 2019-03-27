@@ -131,6 +131,18 @@ Only meaningful on Linux. If set, use `O_DIRECT` for writing files. Default: fal
 
 If set, issue an `fsync` call when writing to disk (set to false to issue
 `fdatasync` only. Default: false.
+
+`--rocksdb.allow-fallocate`
+  
+Allow RocksDB to use the fallocate call. If false, fallocate calls are bypassed
+and no preallocation is done. Preallocation is turned on by default, but can be
+turned off for operating system versions that are known to have issues with it.
+This option only has an effect on operating systems that support fallocate.
+
+`--rocksdb.limit-open-files-at-startup`
+                     
+If set to true, this will limit the amount of .sst files RocksDB will inspect at 
+startup, which can reduce the number of IO operations performed at start.
   
 `--rocksdb.block-align-data-blocks`
 
@@ -183,7 +195,8 @@ Approximate size of user data (in bytes) packed per block for uncompressed data.
 
 `--rocksdb.recycle-log-file-num` (Hidden)
 
-Number of log files to keep around for recycling. Default: 0.
+If true, keeps a pool of log files around for recycling them. The default
+value is false.
 
 ### Miscellaneous
 
@@ -223,6 +236,39 @@ Timeout after which deletion of unused WAL files kicks in after server start
 By decreasing this option's value, the server will start the removal of obsolete
 WAL files earlier after server start. This is useful in testing environments that
 are space-restricted and do not require keeping much WAL file data at all.
+
+`--rocksdb.wal-archive-size-limit`
+
+Maximum total size (in bytes) of archived WAL files to keep on a leader.
+A value of `0` will not restrict the size of the archive, so the leader will
+removed archived WAL files when there are no replication clients needing them.
+Any non-zero value will restrict the size of the WAL files archive to about the 
+specified value and trigger WAL archive file deletion once the threshold is reached.
+Please note that the value is only a threshold, so the archive may get bigger than 
+the configured value until the background thread actually deletes files from
+the archive. Also note that deletion from the archive will only kick in after
+`--rocksdb.wal-file-timeout-initial` seconds have elapsed after server start.
+
+The default value is `0` (i.e. unlimited).
+
+When setting the value to a size bigger than 0, the RocksDB storage engine
+will force a removal of archived WAL files if the total size of the archive
+exceeds the configured size. The option can be used to get rid of archived
+WAL files in a disk size-constrained environment.
+
+Note that archived WAL files are normally deleted automatically after a 
+short while when there is no follower attached that may read from the archive.
+However, in case when there are followers attached that may read from the
+archive, WAL files normally remain in the archive until their contents have 
+been streamed to the followers. In case there are slow followers that cannot
+catch up this will cause a growth of the WAL files archive over time. 
+
+The option `--rocksdb.wal-archive-size-limit` can now be used to force a 
+deletion of WAL files from the archive even if there are followers attached
+that may want to read the archive. In case the option is set and a leader
+deletes files from the archive that followers want to read, this will abort
+the replication on the followers. Followers can however restart the replication
+doing a resync.
 
 `--rocksdb.max-transaction-size`
 

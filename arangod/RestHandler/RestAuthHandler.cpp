@@ -86,7 +86,7 @@ RestStatus RestAuthHandler::execute() {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     std::string msg = "This server does not support users";
-    LOG_TOPIC(ERR, Logger::AUTHENTICATION) << msg;
+    LOG_TOPIC("2e7d4", ERR, Logger::AUTHENTICATION) << msg;
     generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_HTTP_UNAUTHORIZED, msg);
   } else if (um->checkPassword(_username, password)) {
     VPackBuilder resultBuilder;

@@ -43,14 +43,6 @@ class WalAccess;
 
 } // arangodb
 
-class ContextDataMock: public arangodb::transaction::ContextData {
- public:
-  std::set<TRI_voc_cid_t> pinned;
-
-  void pinData(arangodb::LogicalCollection* collection) override;
-  bool isPinned(TRI_voc_cid_t cid) const override;
-};
-
 class PhysicalCollectionMock: public arangodb::PhysicalCollection {
  public:
   static std::function<void()> before;
@@ -115,6 +107,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
     arangodb::transaction::Methods& trx,
     arangodb::OperationOptions& options
   ) override;
+  virtual arangodb::Result compact() override;
   virtual arangodb::Result update(
       arangodb::transaction::Methods* trx,
       arangodb::velocypack::Slice const newSlice,
@@ -183,8 +176,8 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual arangodb::Result createTickRanges(VPackBuilder&) override;
   virtual std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(arangodb::TransactionState& state, TRI_voc_cid_t cid, arangodb::AccessMode::Type, int nestingLevel) override;
   virtual std::unique_ptr<arangodb::transaction::ContextData> createTransactionContextData() override;
-  virtual std::unique_ptr<arangodb::TransactionManager> createTransactionManager() override;
-  virtual std::unique_ptr<arangodb::TransactionState> createTransactionState(TRI_vocbase_t& vocbase, arangodb::transaction::Options const& options) override;
+  virtual std::unique_ptr<arangodb::transaction::Manager> createTransactionManager() override;
+  virtual std::unique_ptr<arangodb::TransactionState> createTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, arangodb::transaction::Options const& options) override;
   virtual arangodb::Result createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id, arangodb::LogicalView const& view) override;
   virtual void getViewProperties(TRI_vocbase_t& vocbase, arangodb::LogicalView const& view, VPackBuilder& builder) override;
   virtual TRI_voc_tick_t currentTick() const override;

@@ -29,6 +29,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -76,7 +78,7 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
   TRI_ASSERT(desc.has(FOLLOWERS_TO_DROP));
 
   if (!error.str().empty()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "UpdateCollection: " << error.str();
+    LOG_TOPIC("a6e4c", ERR, Logger::MAINTENANCE) << "UpdateCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -88,6 +90,11 @@ void handleLeadership(LogicalCollection& collection, std::string const& localLea
 
   if (plannedLeader.empty()) {   // Planned to lead
     if (!localLeader.empty()) {  // We were not leader, assume leadership
+      auto* mgr = transaction::ManagerFeature::manager();
+      if (mgr) { // abort ongoing follower transactions
+        mgr->abortAllManagedTrx(collection.id(), false);
+      }
+      
       followers->setTheLeader(std::string());
       followers->clear();
     } else {
@@ -107,6 +114,10 @@ void handleLeadership(LogicalCollection& collection, std::string const& localLea
     }
   } else {  // Planned to follow
     if (localLeader.empty()) {
+      auto* mgr = transaction::ManagerFeature::manager();
+      if (mgr) { // abort ongoing follower transactions
+        mgr->abortAllManagedTrx(collection.id(), true);
+      }
       // Note that the following does not delete the follower list
       // and that this is crucial, because in the planned leader
       // resign case, updateCurrentForCollections will report the
@@ -137,12 +148,11 @@ bool UpdateCollection::first() {
 
   try {
     DatabaseGuard guard(database);
-    auto vocbase = &guard.database();
-
+    auto& vocbase = guard.database();
     Result found = methods::Collections::lookup(
         vocbase, shard, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
           TRI_ASSERT(coll);
-          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          LOG_TOPIC("60543", DEBUG, Logger::MAINTENANCE)
               << "Updating local collection " + shard;
 
           // We adjust local leadership, note that the planned
@@ -153,7 +163,7 @@ bool UpdateCollection::first() {
           _result = Collections::updateProperties(*coll, props, false);  // always a full-update
 
           if (!_result.ok()) {
-            LOG_TOPIC(ERR, Logger::MAINTENANCE)
+            LOG_TOPIC("c3733", ERR, Logger::MAINTENANCE)
                 << "failed to update properties"
                    " of collection "
                 << shard << ": " << _result.errorMessage();
@@ -163,14 +173,14 @@ bool UpdateCollection::first() {
     if (found.fail()) {
       std::stringstream error;
       error << "failed to lookup local collection " << shard << "in database " + database;
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str();
+      LOG_TOPIC("620fb", ERR, Logger::MAINTENANCE) << error.str();
       _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
     }
   } catch (std::exception const& e) {
     std::stringstream error;
 
     error << "action " << _description << " failed with exception " << e.what();
-    LOG_TOPIC(WARN, Logger::MAINTENANCE) << "UpdateCollection: " << error.str();
+    LOG_TOPIC("79442", WARN, Logger::MAINTENANCE) << "UpdateCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
   }
 

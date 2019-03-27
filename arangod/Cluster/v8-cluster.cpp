@@ -28,6 +28,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StringBuffer.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -305,10 +306,10 @@ static void JS_APIAgency(std::string const& envelope,
     result.setVPack(VPackParser::fromJson(result.bodyRef()));
     result._body.clear();
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Error transforming result: " << e.what();
+    LOG_TOPIC("57115", ERR, Logger::AGENCYCOMM) << "Error transforming result: " << e.what();
     result.clear();
   } catch (...) {
-    LOG_TOPIC(ERR, Logger::AGENCYCOMM)
+    LOG_TOPIC("ec86e", ERR, Logger::AGENCYCOMM)
         << "Error transforming result: out of memory";
     result.clear();
   }
@@ -436,10 +437,10 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     result.setVPack(VPackParser::fromJson(result.bodyRef()));
     result._body.clear();
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Error transforming result: " << e.what();
+    LOG_TOPIC("d8594", ERR, Logger::AGENCYCOMM) << "Error transforming result: " << e.what();
     result.clear();
   } catch (...) {
-    LOG_TOPIC(ERR, Logger::AGENCYCOMM)
+    LOG_TOPIC("0ba23", ERR, Logger::AGENCYCOMM)
         << "Error transforming result: out of memory";
     result.clear();
   }
@@ -1581,7 +1582,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "couldn't queue async request");
   }
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+  LOG_TOPIC("cea85", DEBUG, Logger::CLUSTER)
       << "JS_AsyncRequest: request has been submitted";
 
   Return_PrepareClusterCommResultForJS(args, res);
@@ -1643,7 +1644,7 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "couldn't do sync request");
   }
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "JS_SyncRequest: request has been done";
+  LOG_TOPIC("0f902", DEBUG, Logger::CLUSTER) << "JS_SyncRequest: request has been done";
 
   Return_PrepareClusterCommResultForJS(args, *res);
   TRI_V8_TRY_CATCH_END
@@ -1671,7 +1672,7 @@ static void JS_Enquire(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   OperationID operationID = TRI_ObjectToUInt64(isolate, args[0], true);
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+  LOG_TOPIC("77dbd", DEBUG, Logger::CLUSTER)
       << "JS_Enquire: calling ClusterComm::enquire()";
 
   ClusterCommResult const res = cc->enquire(operationID);
@@ -1736,7 +1737,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "JS_Wait: calling ClusterComm::wait()";
+  LOG_TOPIC("04f61", DEBUG, Logger::CLUSTER) << "JS_Wait: calling ClusterComm::wait()";
 
   ClusterCommResult const res =
       cc->wait(mycoordTransactionID, myoperationID, myshardID, mytimeout);
@@ -1791,7 +1792,7 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "JS_Drop: calling ClusterComm::drop()";
+  LOG_TOPIC("f2376", DEBUG, Logger::CLUSTER) << "JS_Drop: calling ClusterComm::drop()";
 
   cc->drop(mycoordTransactionID, myoperationID, myshardID);
 

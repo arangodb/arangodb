@@ -66,11 +66,11 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _tableBlockSize(
           std::max(rocksDBTableOptionsDefaults.block_size,
                    static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 * 1024))),
-      _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _compactionReadaheadSize(2 * 1024 * 1024),  // rocksDBDefaults.compaction_readahead_size
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(rocksDBDefaults.level0_slowdown_writes_trigger),
       _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
+      _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _enforceBlockCacheSizeLimit(false),
       _blockAlignDataBlocks(rocksDBTableOptionsDefaults.block_align),
       _enablePipelinedWrite(rocksDBDefaults.enable_pipelined_write),
@@ -81,7 +81,9 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _skipCorrupted(false),
       _dynamicLevelBytes(true),
       _enableStatistics(false),
-      _useFileLogging(false) {
+      _useFileLogging(false),
+      _limitOpenFilesAtStartup(false),
+      _allowFAllocate(true) {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(
       std::max((size_t)2, std::min(TRI_numberProcessors(), (size_t)8)));
@@ -153,13 +155,14 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new UInt64Parameter(&_maxTotalWalSize));
 
   options->addOption(
-      "--rocksdb.delayed_write_rate",
+      "--rocksdb.delayed-write-rate",
       "limited write rate to DB (in bytes per second) if we are writing to the "
       "last mem-table allowed and we allow more than 3 mem-tables, or if we "
       "have surpassed a certain number of level-0 files and need to slowdown "
       "writes",
       new UInt64Parameter(&_delayedWriteRate),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+  options->addOldOption("rocksdb.delayed_write_rate", "rocksdb.delayed-write-rate");
 
   options->addOption("--rocksdb.min-write-buffer-number-to-merge",
                      "minimum number of write buffers that will be merged "
@@ -285,8 +288,8 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       new UInt64Parameter(&_tableBlockSize));
 
   options->addOption("--rocksdb.recycle-log-file-num",
-                     "number of log files to keep around for recycling",
-                     new UInt64Parameter(&_recycleLogFileNum),
+                     "if true, keep a pool of log files around for recycling",
+                     new BooleanParameter(&_recycleLogFileNum),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
@@ -306,43 +309,55 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "skip corrupted records in WAL recovery",
                      new BooleanParameter(&_skipCorrupted),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+  
+  options->addOption("--rocksdb.limit-open-files-at-startup",
+                     "limit the amount of .sst files RocksDB will inspect at startup, in order to startup reduce IO",
+                     new BooleanParameter(&_limitOpenFilesAtStartup),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30405).setIntroducedIn(30500);
+  
+  options->addOption("--rocksdb.allow-fallocate",
+                     "if true, allow RocksDB to use fallocate calls. if false, fallocate calls are bypassed",
+                     new BooleanParameter(&_allowFAllocate),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30405).setIntroducedIn(30500);
 }
 
 void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_writeBufferSize > 0 && _writeBufferSize < 1024 * 1024) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("4ce44", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.write-buffer-size'";
     FATAL_ERROR_EXIT();
   }
   if (_totalWriteBufferSize > 0 && _totalWriteBufferSize < 64 * 1024 * 1024) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("4ab88", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.total-write-buffer-size'";
     FATAL_ERROR_EXIT();
   }
   if (_maxBytesForLevelMultiplier <= 0.0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("f6f8a", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.max-bytes-for-level-multiplier'";
     FATAL_ERROR_EXIT();
   }
   if (_numLevels < 1 || _numLevels > 20) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("70938", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.num-levels'";
     FATAL_ERROR_EXIT();
   }
 
   if (_maxBackgroundJobs != -1 && (_maxBackgroundJobs < 1 || _maxBackgroundJobs > 128)) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("cfc5a", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.max-background-jobs'";
     FATAL_ERROR_EXIT();
   }
 
   if (_numThreadsHigh > 64) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("d3105", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.num-threads-priority-high'";
     FATAL_ERROR_EXIT();
   }
   if (_numThreadsLow > 256) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("30c65", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.num-threads-priority-low'";
     FATAL_ERROR_EXIT();
   }
@@ -351,7 +366,7 @@ void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
   }
   if (_blockCacheShardBits >= 20 || _blockCacheShardBits < -1) {
     // -1 is RocksDB default value, but anything less is invalid
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("327a3", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.block-cache-shard-bits'";
     FATAL_ERROR_EXIT();
   }
@@ -368,7 +383,7 @@ void RocksDBOptionFeature::start() {
     _numThreadsLow = clamped;
   }
 
-  LOG_TOPIC(TRACE, Logger::ROCKSDB)
+  LOG_TOPIC("f66e4", TRACE, Logger::ROCKSDB)
       << "using RocksDB options:"
       << " wal_dir: '" << _walDirectory << "'"
       << ", write_buffer_size: " << _writeBufferSize
@@ -387,14 +402,16 @@ void RocksDBOptionFeature::start() {
       << ", block_cache_shard_bits: " << _blockCacheShardBits
       << ", block_cache_strict_capacity_limit: " << _enforceBlockCacheSizeLimit
       << ", table_block_size: " << _tableBlockSize
-      << ", recycle_log_file_num: " << _recycleLogFileNum
+      << ", recycle_log_file_num: " << std::boolalpha << _recycleLogFileNum
       << ", compaction_read_ahead_size: " << _compactionReadaheadSize
       << ", level0_compaction_trigger: " << _level0CompactionTrigger
       << ", level0_slowdown_trigger: " << _level0SlowdownTrigger
       << ", enable_pipelined_write: " << _enablePipelinedWrite
-      << ", optimize_filters_for_hits: " << _optimizeFiltersForHits
-      << ", use_direct_reads: " << _useDirectReads
-      << ", use_direct_io_for_flush_and_compaction: " << _useDirectIoForFlushAndCompaction
-      << ", use_fsync: " << _useFSync
+      << ", optimize_filters_for_hits: " << std::boolalpha << _optimizeFiltersForHits
+      << ", use_direct_reads: " << std::boolalpha << _useDirectReads
+      << ", use_direct_io_for_flush_and_compaction: " << std::boolalpha << _useDirectIoForFlushAndCompaction
+      << ", use_fsync: " << std::boolalpha << _useFSync
+      << ", allow_fallocate: " << std::boolalpha << _allowFAllocate
+      << ", max_open_files limit: " << std::boolalpha << _limitOpenFilesAtStartup
       << ", dynamic_level_bytes: " << std::boolalpha << _dynamicLevelBytes;
 }

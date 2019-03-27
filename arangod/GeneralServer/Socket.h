@@ -62,7 +62,7 @@ class Socket {
     if (mustCloseSend) {
       this->shutdownSend(ec);
       if (ec && ec != asio_ns::error::not_connected) {
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        LOG_TOPIC("6c54f", DEBUG, Logger::COMMUNICATION)
             << "shutdown send stream failed with: " << ec.message();
       }
     }
@@ -70,7 +70,7 @@ class Socket {
     if (mustCloseReceive) {
       this->shutdownReceive(ec);
       if (ec && ec != asio_ns::error::not_connected) {
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        LOG_TOPIC("215b7", DEBUG, Logger::COMMUNICATION)
             << "shutdown receive stream failed with: " << ec.message();
       }
     }

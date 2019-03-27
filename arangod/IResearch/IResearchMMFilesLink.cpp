@@ -134,24 +134,27 @@ IResearchMMFilesLink::IResearchMMFilesLink(TRI_idx_iid_t iid,
   return factory;
 }
 
-void IResearchMMFilesLink::toVelocyPack(arangodb::velocypack::Builder& builder,
-                                        std::underlying_type<arangodb::Index::Serialize>::type flags) const {
+void IResearchMMFilesLink::toVelocyPack( // generate definition
+    arangodb::velocypack::Builder& builder, // destination buffer
+    std::underlying_type<arangodb::Index::Serialize>::type flags // definition flags
+) const {
   if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(
-        arangodb::Result(TRI_ERROR_BAD_PARAMETER,
-                         std::string("failed to generate link definition for "
-                                     "arangosearch view MMFiles link '") +
-                             std::to_string(arangodb::Index::id()) + "'"));
+    THROW_ARANGO_EXCEPTION(arangodb::Result( // result
+      TRI_ERROR_BAD_PARAMETER, // code
+      std::string("failed to generate link definition for arangosearch view MMFiles link '") + std::to_string(arangodb::Index::id()) + "'"
+    ));
   }
+
+  auto forPersistence = // definition for persistence
+    arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Internals);
 
   builder.openObject();
 
-  if (!json(builder)) {
-    THROW_ARANGO_EXCEPTION(
-        arangodb::Result(TRI_ERROR_INTERNAL,
-                         std::string("failed to generate link definition for "
-                                     "arangosearch view MMFiles link '") +
-                             std::to_string(arangodb::Index::id()) + "'"));
+  if (!properties(builder, forPersistence).ok()) {
+    THROW_ARANGO_EXCEPTION(arangodb::Result( // result
+      TRI_ERROR_INTERNAL, // code
+      std::string("failed to generate link definition for arangosearch view MMFiles link '") + std::to_string(arangodb::Index::id()) + "'"
+    ));
   }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {

@@ -49,7 +49,7 @@
 namespace arangodb {
 
   // used by catch tests
-  #ifdef USE_CATCH_TESTS
+  #ifdef ARANGODB_USE_CATCH_TESTS
     /*static*/ FlushFeature::DefaultFlushSubscription FlushFeature::_defaultFlushSubscription;
   #endif
 
@@ -279,7 +279,7 @@ class MMFilesFlushSubscription final
 
   ~MMFilesFlushSubscription() {
     if (!arangodb::MMFilesLogfileManager::instance(true)) { // true to avoid assertion failure
-      LOG_TOPIC(ERR, arangodb::Logger::FLUSH)
+      LOG_TOPIC("f7bea", ERR, arangodb::Logger::FLUSH)
         << "failed to remove MMFiles Logfile barrier from subscription due to missing LogFileManager";
 
       return; // ignore (probably already deallocated)
@@ -583,7 +583,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
   auto* engine = EngineSelectorFeature::ENGINE;
 
   if (!engine) {
-    LOG_TOPIC(ERR, Logger::FLUSH)
+    LOG_TOPIC("683b1", ERR, Logger::FLUSH)
       << "failed to find a storage engine while registering 'Flush' marker subscription for type '" << type << "'";
 
     return nullptr;
@@ -595,7 +595,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     auto* logFileManager = MMFilesLogfileManager::instance(true); // true to avoid assertion failure
 
     if (!logFileManager) {
-      LOG_TOPIC(ERR, Logger::FLUSH)
+      LOG_TOPIC("038b3", ERR, Logger::FLUSH)
         << "failed to find an MMFiles log file manager instance while registering 'Flush' marker subscription for type '" << type << "'";
 
       return nullptr;
@@ -607,7 +607,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
     if (_stopped) {
-      LOG_TOPIC(ERR, Logger::FLUSH)
+      LOG_TOPIC("798c4", ERR, Logger::FLUSH)
         << "FlushFeature not running";
 
       return nullptr;
@@ -624,7 +624,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     auto* db = rocksdbEngine->db();
 
     if (!db) {
-      LOG_TOPIC(ERR, Logger::FLUSH)
+      LOG_TOPIC("0f0f6", ERR, Logger::FLUSH)
        << "failed to find a RocksDB engine db while registering 'Flush' marker subscription for type '" << type << "'";
 
       return nullptr;
@@ -633,7 +633,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     auto* rootDb = db->GetRootDB();
 
     if (!rootDb) {
-      LOG_TOPIC(ERR, Logger::FLUSH)
+      LOG_TOPIC("26c23", ERR, Logger::FLUSH)
         << "failed to find a RocksDB engine root db while registering 'Flush' marker subscription for type '" << type << "'";
 
       return nullptr;
@@ -645,7 +645,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
     if (_stopped) {
-      LOG_TOPIC(ERR, Logger::FLUSH)
+      LOG_TOPIC("37bb5", ERR, Logger::FLUSH)
         << "FlushFeature not running";
 
       return nullptr;
@@ -656,7 +656,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     return subscription;
   }
 
-  #ifdef USE_CATCH_TESTS
+  #ifdef ARANGODB_USE_CATCH_TESTS
     if (_defaultFlushSubscription) {
       struct DelegatingFlushSubscription: public FlushSubscriptionBase {
         DefaultFlushSubscription _delegate;
@@ -689,7 +689,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     }
   #endif
 
-  LOG_TOPIC(ERR, Logger::FLUSH)
+  LOG_TOPIC("53c4e", ERR, Logger::FLUSH)
     << "failed to identify storage engine while registering 'Flush' marker subscription for type '" << type << "'";
 
   return nullptr;
@@ -762,10 +762,10 @@ void FlushFeature::start() {
   dbFeature->registerPostRecoveryCallback([this]() -> Result {
     READ_LOCKER(lock, _threadLock, this);
     if (!this->_flushThread->start()) {
-      LOG_TOPIC(FATAL, Logger::FLUSH) << "unable to start FlushThread";
+      LOG_TOPIC("bdc3c", FATAL, Logger::FLUSH) << "unable to start FlushThread";
       FATAL_ERROR_ABORT();
     } else {
-      LOG_TOPIC(DEBUG, Logger::FLUSH) << "started FlushThread";
+      LOG_TOPIC("ed9cd", DEBUG, Logger::FLUSH) << "started FlushThread";
     }
 
     this->_isRunning.store(true);
@@ -783,7 +783,7 @@ void FlushFeature::beginShutdown() {
 }
 
 void FlushFeature::stop() {
-  LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "stopping FlushThread";
+  LOG_TOPIC("2b0a6", TRACE, arangodb::Logger::FLUSH) << "stopping FlushThread";
   // wait until thread is fully finished
 
   FlushThread* thread = nullptr;

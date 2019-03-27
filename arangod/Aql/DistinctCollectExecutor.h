@@ -106,13 +106,15 @@ class DistinctCollectExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
+  inline size_t numberOfRowsInFlight() const { return 0; }
+
  private:
   Infos const& infos() const noexcept { return _infos; };
 
  private:
   Infos const& _infos;
   Fetcher& _fetcher;
-  std::unique_ptr<std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>> _seen;
+  std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual> _seen;
 };
 
 }  // namespace aql

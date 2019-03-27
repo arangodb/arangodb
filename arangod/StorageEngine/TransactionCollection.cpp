@@ -42,7 +42,7 @@ static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
 bool TransactionCollection::isLocked(AccessMode::Type accessType, int nestingLevel) const {
   if (accessType > _accessType) {
     // wrong lock type
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("39ef2", WARN, arangodb::Logger::ENGINES)
         << "logic error. checking wrong lock type";
     return false;
   }
@@ -53,10 +53,6 @@ bool TransactionCollection::isLocked(AccessMode::Type accessType, int nestingLev
 bool TransactionCollection::isLocked() const {
   if (_collection == nullptr) {
     return false;
-  }
-  std::string const& collName{_collection->name()};
-  if (_transaction->isLockedShard(collName)) {
-    return true;
   }
   return _lockType > AccessMode::Type::NONE;
 }

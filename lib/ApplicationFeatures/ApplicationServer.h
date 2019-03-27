@@ -230,6 +230,9 @@ class ApplicationServer {
 
   // return VPack options
   VPackBuilder options(std::unordered_set<std::string> const& excludes) const;
+  
+  // return the program options object
+  std::shared_ptr<options::ProgramOptions> options() const { return _options; }
 
   // return the server state
   ServerState state() const { return _state; }

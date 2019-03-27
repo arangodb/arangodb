@@ -22,17 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Context.h"
+
 #include "Basics/StringBuffer.h"
-#include "RestServer/TransactionManagerFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/TransactionManager.h"
 #include "Transaction/ContextData.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -70,7 +71,7 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
       _stringBuffer(),
       _options(arangodb::velocypack::Options::Defaults),
       _dumpOptions(arangodb::velocypack::Options::Defaults),
-      _transaction{0, false, false},
+      _transaction{0, false},
       _ownsResolver(false) {
   /// dump options contain have the escapeUnicode attribute set to true
   /// this allows dumping of string values as plain 7-bit ASCII values.
@@ -79,14 +80,16 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
   /// which speculate on ASCII strings first and only fall back to slower
   /// multibyte strings on first actual occurrence of a multibyte character.
   _dumpOptions.escapeUnicode = true;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  _contextData = engine->createTransactionContextData();
 }
 
 /// @brief destroy the context
 transaction::Context::~Context() {
   // unregister the transaction from the logfile manager
-  if (_transaction.id > 0 && _transaction.wasRegistered) {
-    TransactionManagerFeature::manager()->unregisterTransaction(_transaction.id,
-                                                                _transaction.hasFailedOperations);
+  if (_transaction.id > 0) {
+    transaction::ManagerFeature::manager()->unregisterTransaction(_transaction.id,
+                                                                  _transaction.hasFailedOperations);
   }
 
   // free all VPackBuilders we handed out
@@ -109,12 +112,17 @@ VPackCustomTypeHandler* transaction::Context::createCustomTypeHandler(
 
 /// @brief pin data for the collection
 void transaction::Context::pinData(LogicalCollection* collection) {
-  contextData()->pinData(collection);
+  if (_contextData) {
+    _contextData->pinData(collection);
+  }
 }
 
 /// @brief whether or not the data for the collection is pinned
 bool transaction::Context::isPinned(TRI_voc_cid_t cid) {
-  return contextData()->isPinned(cid);
+  if (_contextData) {
+    return _contextData->isPinned(cid);
+  }
+  return true;  // storage engine does not need pinning
 }
 
 /// @brief temporarily lease a StringBuffer object
@@ -131,6 +139,21 @@ basics::StringBuffer* transaction::Context::leaseStringBuffer(size_t initialSize
 /// @brief return a temporary StringBuffer object
 void transaction::Context::returnStringBuffer(basics::StringBuffer* stringBuffer) {
   _stringBuffer.reset(stringBuffer);
+}
+
+/// @brief temporarily lease a std::string
+std::string* transaction::Context::leaseString() {
+  if (_stdString == nullptr) {
+    _stdString.reset(new std::string());
+  } else {
+    _stdString->clear();
+  }
+  return _stdString.release();
+}
+
+/// @brief return a temporary std::string object
+void transaction::Context::returnString(std::string* str) {
+  _stdString.reset(str);
 }
 
 /// @brief temporarily lease a Builder object
@@ -196,22 +219,26 @@ CollectionNameResolver const* transaction::Context::createResolver() {
 
 /// @brief unregister the transaction
 /// this will save the transaction's id and status locally
-void transaction::Context::storeTransactionResult(TRI_voc_tid_t id,
-                                                  bool hasFailedOperations,
+void transaction::Context::storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations,
                                                   bool wasRegistered) noexcept {
   TRI_ASSERT(_transaction.id == 0);
 
-  _transaction.id = id;
-  _transaction.hasFailedOperations = hasFailedOperations;
-  _transaction.wasRegistered = wasRegistered;
+  if (wasRegistered) {
+    _transaction.id = id;
+    _transaction.hasFailedOperations = hasFailedOperations;
+  }
 }
 
-transaction::ContextData* transaction::Context::contextData() {
-  if (_contextData == nullptr) {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+TRI_voc_tid_t transaction::Context::generateId() const {
+  return Context::makeTransactionId();
+}
 
-    _contextData = engine->createTransactionContextData();
+/*static*/ TRI_voc_tid_t transaction::Context::makeTransactionId() {
+  auto role = ServerState::instance()->getRole();
+  if (ServerState::isCoordinator(role)) {
+    return TRI_NewServerSpecificTickMod4();
+  } else if (ServerState::isDBServer(role)) {
+    return TRI_NewServerSpecificTickMod4() + 3; // legacy
   }
-
-  return _contextData.get();
+  return TRI_NewTickServer(); // single-server
 }

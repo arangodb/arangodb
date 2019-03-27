@@ -48,6 +48,8 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   std::vector<std::string> _levels;
   std::string _prefix;
   std::string _file;
+  std::string _fileMode;
+  std::string _fileGroup;
   bool _useLocalTime = false;
   bool _useColor = true;
   bool _useEscaped = true;
@@ -60,6 +62,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _foregroundTty = false;
   bool _forceDirect = false;
   bool _useMicrotime = false;
+  bool _showIds = true;
   bool _showRole = false;
   bool _logRequestParameters = true;
   bool _supervisor = false;

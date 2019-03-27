@@ -71,11 +71,11 @@ int main(int argc, char* argv[]) {
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("f8d39", ERR, arangodb::Logger::FIXME)
           << "arangovpack terminated because of an unhandled exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("785f7", ERR, arangodb::Logger::FIXME)
           << "arangovpack terminated because of an unhandled exception of "
              "unknown type";
       ret = EXIT_FAILURE;

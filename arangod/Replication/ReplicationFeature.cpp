@@ -77,7 +77,7 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
 void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
   if (_enableActiveFailover && feature->agencyEndpoints().empty()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("68fcb", FATAL, arangodb::Logger::REPLICATION)
         << "automatic failover needs to be started with agency endpoint "
            "configured";
     FATAL_ERROR_EXIT();
@@ -103,7 +103,7 @@ void ReplicationFeature::start() {
     // :snake:
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+  LOG_TOPIC("1214b", DEBUG, Logger::REPLICATION)
       << "checking global applier startup. autoStart: "
       << _globalReplicationApplier->autoStart()
       << ", hasState: " << _globalReplicationApplier->hasState();
@@ -136,7 +136,7 @@ void ReplicationFeature::stop() {
 
 void ReplicationFeature::unprepare() {
   if (_globalReplicationApplier != nullptr) {
-    _globalReplicationApplier->stop();
+    _globalReplicationApplier->stopAndJoin();
   }
   _globalReplicationApplier.reset();
 }
@@ -148,18 +148,18 @@ void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
 
   if (vocbase->replicationApplier()->autoStart()) {
     if (!_replicationApplierAutoStart) {
-      LOG_TOPIC(INFO, arangodb::Logger::REPLICATION)
+      LOG_TOPIC("c5378", INFO, arangodb::Logger::REPLICATION)
           << "replication applier explicitly deactivated for database '"
           << vocbase->name() << "'";
     } else {
       try {
         vocbase->replicationApplier()->startTailing(0, false, 0);
       } catch (std::exception const& ex) {
-        LOG_TOPIC(WARN, arangodb::Logger::REPLICATION)
+        LOG_TOPIC("2038f", WARN, arangodb::Logger::REPLICATION)
             << "unable to start replication applier for database '"
             << vocbase->name() << "': " << ex.what();
       } catch (...) {
-        LOG_TOPIC(WARN, arangodb::Logger::REPLICATION)
+        LOG_TOPIC("76ad6", WARN, arangodb::Logger::REPLICATION)
             << "unable to start replication applier for database '"
             << vocbase->name() << "'";
       }

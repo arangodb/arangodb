@@ -217,7 +217,7 @@ ArangoDatabase.prototype._truncate = function (name) {
 // / @brief was docuBlock IndexVerify
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
+ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([a-zA-Z0-9\-_]+)$/;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock IndexHandle
@@ -239,6 +239,7 @@ ArangoDatabase.prototype._index = function (id) {
   }
 
   var col = this._collection(pa[1]);
+  var name = pa[2];
 
   if (col === null) {
     err = new ArangoError();
@@ -253,7 +254,7 @@ ArangoDatabase.prototype._index = function (id) {
   for (i = 0;  i < indexes.length;  ++i) {
     var index = indexes[i];
 
-    if (index.id === id) {
+    if (index.id === id || index.name === name) {
       return index;
     }
   }

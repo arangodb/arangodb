@@ -128,10 +128,12 @@ function Run (testsuite) {
   scope.tearDown = tearDown;
   scope.setUpAll = setUpAll;
   scope.tearDownAll = tearDownAll;
+  let nonMatchedTests = [];
 
   for (var key in definition) {
     if ((testFilter !== "undefined" && testFilter !== undefined && testFilter !== null) && (key !== testFilter)) {
       // print(`test "${key}" doesn't match "${testFilter}", skipping`);
+      nonMatchedTests.push(key);
       continue;
     }
     if (key.indexOf('test') === 0) {
@@ -143,7 +145,7 @@ function Run (testsuite) {
     }
   }
   if (tests.length === 0) {
-    let err  = `There is no test in testsuite "${suite.suiteName}" or your filter "${testFilter}" didn't match on anything`;
+    let err  = `There is no test in testsuite "${suite.suiteName}" or your filter "${testFilter}" didn't match on anything. We have: [${nonMatchedTests}]`;
     print(`${internal.COLORS.COLOR_RED}${err}${internal.COLORS.COLOR_RESET}`);
     let res = {
       suiteName: suite.suiteName,

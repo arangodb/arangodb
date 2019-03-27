@@ -60,7 +60,7 @@ class SingleRowFetcher {
  public:
   /**
    * @brief Fetch one new AqlItemRow from upstream.
-   *        **Guarantee**: the pointer returned is valid only
+   *        **Guarantee**: the row returned is valid only
    *        until the next call to fetchRow.
    *
    * @param atMost may be passed if a block knows the maximum it might want to
@@ -221,7 +221,6 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
 
     _rowIndex++;
   }
-
   return {rowState, _currentRow};
 }
 

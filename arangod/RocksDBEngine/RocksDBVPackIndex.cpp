@@ -72,204 +72,282 @@ using namespace arangodb;
 // lists: lexicographically and within each slot according to these rules.
 // ...........................................................................
 
-RocksDBVPackUniqueIndexIterator::RocksDBVPackUniqueIndexIterator(
-    LogicalCollection* collection, transaction::Methods* trx,
-    arangodb::RocksDBVPackIndex const* index, VPackSlice const& indexValues)
-    : IndexIterator(collection, trx),
-      _index(index),
-      _cmp(index->comparator()),
-      _key(trx),
-      _done(false) {
-  TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
-  _key->constructUniqueVPackIndexValue(index->objectId(), indexValues);
-}
+/// @brief Iterator structure for RocksDB unique index.
+/// This iterator can be used only for equality lookups that use all
+/// index attributes. It uses a point lookup and no seeks
 
-/// @brief Reset the cursor
-void RocksDBVPackUniqueIndexIterator::reset() {
-  TRI_ASSERT(_trx->state()->isRunning());
+namespace arangodb {
 
-  _done = false;
-}
-    
-bool RocksDBVPackUniqueIndexIterator::hasCovering() const {
-  return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX; 
-}
+class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
+ private:
+  friend class RocksDBVPackIndex;
 
-bool RocksDBVPackUniqueIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
-  TRI_ASSERT(_trx->state()->isRunning());
-
-  if (limit == 0 || _done) {
-    // already looked up something
-    return false;
+ public:
+  RocksDBVPackUniqueIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                                  arangodb::RocksDBVPackIndex const* index,
+                                  VPackSlice const& indexValues)
+      : IndexIterator(collection, trx),
+        _index(index),
+        _cmp(index->comparator()),
+        _key(trx),
+        _done(false) {
+    TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
+    _key->constructUniqueVPackIndexValue(index->objectId(), indexValues);
   }
 
-  _done = true;
-
-  rocksdb::PinnableSlice val;
-  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
-  rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &val);
-
-  if (s.ok()) {
-    cb(RocksDBValue::documentId(val));
+ public:
+  char const* typeName() const override {
+    return "rocksdb-unique-index-iterator";
   }
 
-  // there is at most one element, so we are done now
-  return false;
-}
+  /// @brief Get the next limit many element in the index
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+    TRI_ASSERT(_trx->state()->isRunning());
 
-bool RocksDBVPackUniqueIndexIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
-  TRI_ASSERT(_trx->state()->isRunning());
-
-  if (limit == 0 || _done) {
-    // already looked up something
-    return false;
-  }
-
-  _done = true;
-
-  rocksdb::PinnableSlice val;
-  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
-  rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &val);
-
-  if (s.ok()) {
-    cb(LocalDocumentId(RocksDBValue::documentId(val)),
-       RocksDBKey::indexedVPack(_key.ref()));
-  }
-
-  // there is at most one element, so we are done now
-  return false;
-}
-
-RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(LogicalCollection* collection,
-                                                     transaction::Methods* trx,
-                                                     arangodb::RocksDBVPackIndex const* index,
-                                                     bool reverse, RocksDBKeyBounds&& bounds)
-    : IndexIterator(collection, trx),
-      _index(index),
-      _cmp(index->comparator()),
-      _fullEnumerationObjectId(0),
-      _reverse(reverse),
-      _bounds(std::move(bounds)) {
-  TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
-
-  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-  rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-  // we need to have a pointer to a slice for the upper bound
-  // so we need to assign the slice to an instance variable here
-  if (reverse) {
-    _rangeBound = _bounds.start();
-    options.iterate_lower_bound = &_rangeBound;
-    VPackSlice s = VPackSlice(_rangeBound.data() + sizeof(uint64_t));
-    if (s.isArray() && s.length() == 1 && s.at(0).isMinKey()) {
-      // lower bound is the min key. that means we can get away with a
-      // cheap outOfBounds comparator
-      _fullEnumerationObjectId = _index->objectId();
-    }
-  } else {
-    _rangeBound = _bounds.end();
-    options.iterate_upper_bound = &_rangeBound;
-    VPackSlice s = VPackSlice(_rangeBound.data() + sizeof(uint64_t));
-    if (s.isArray() && s.length() == 1 && s.at(0).isMaxKey()) {
-      // upper bound is the max key. that means we can get away with a
-      // cheap outOfBounds comparator
-      _fullEnumerationObjectId = _index->objectId();
-    }
-  }
-
-  TRI_ASSERT(options.prefix_same_as_start);
-  _iterator = mthds->NewIterator(options, index->columnFamily());
-  if (reverse) {
-    _iterator->SeekForPrev(_bounds.end());
-  } else {
-    _iterator->Seek(_bounds.start());
-  }
-}
-
-/// @brief Reset the cursor
-void RocksDBVPackIndexIterator::reset() {
-  TRI_ASSERT(_trx->state()->isRunning());
-
-  if (_reverse) {
-    _iterator->SeekForPrev(_bounds.end());
-  } else {
-    _iterator->Seek(_bounds.start());
-  }
-}
-
-bool RocksDBVPackIndexIterator::hasCovering() const {
-  return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX; 
-}
-
-bool RocksDBVPackIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
-  TRI_ASSERT(_trx->state()->isRunning());
-
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
-    // No limit no data, or we are actually done. The last call should have
-    // returned false
-    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
-    return false;
-  }
-
-  while (limit > 0) {
-    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
-
-    cb(_index->_unique ? RocksDBValue::documentId(_iterator->value())
-                       : RocksDBKey::indexDocumentId(_bounds.type(), _iterator->key()));
-
-    --limit;
-    if (!advance()) {
+    if (limit == 0 || _done) {
+      // already looked up something
       return false;
     }
-  }
 
-  return true;
-}
+    _done = true;
 
-bool RocksDBVPackIndexIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
-  TRI_ASSERT(_trx->state()->isRunning());
+    rocksdb::PinnableSlice val;
+    RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
+    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &val);
 
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
-    // No limit no data, or we are actually done. The last call should have
-    // returned false
-    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    if (s.ok()) {
+      cb(RocksDBValue::documentId(val));
+    }
+
+    // there is at most one element, so we are done now
     return false;
   }
 
-  while (limit > 0) {
-    rocksdb::Slice const& key = _iterator->key();
-    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(key));
+  bool nextCovering(DocumentCallback const& cb, size_t limit) override {
+    TRI_ASSERT(_trx->state()->isRunning());
 
-    LocalDocumentId const documentId(
-        _index->_unique ? RocksDBValue::documentId(_iterator->value())
-                        : RocksDBKey::indexDocumentId(_bounds.type(), key));
-    cb(documentId, RocksDBKey::indexedVPack(key));
-
-    --limit;
-    if (!advance()) {
+    if (limit == 0 || _done) {
+      // already looked up something
       return false;
+    }
+
+    _done = true;
+
+    rocksdb::PinnableSlice val;
+    RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
+    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &val);
+
+    if (s.ok()) {
+      cb(LocalDocumentId(RocksDBValue::documentId(val)),
+        RocksDBKey::indexedVPack(_key.ref()));
+    }
+
+    // there is at most one element, so we are done now
+    return false;
+  }
+
+  /// @brief Reset the cursor
+  void reset() override {
+    TRI_ASSERT(_trx->state()->isRunning());
+
+    _done = false;
+  }
+
+  /// @brief we provide a method to provide the index attribute values
+  /// while scanning the index
+  bool hasCovering() const override {
+    return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX; 
+  }
+
+ private:
+  arangodb::RocksDBVPackIndex const* _index;
+  rocksdb::Comparator const* _cmp;
+  RocksDBKeyLeaser _key;
+  bool _done;
+};
+
+/// @brief Iterator structure for RocksDB. We require a start and stop node
+class RocksDBVPackIndexIterator final : public IndexIterator {
+ private:
+  friend class RocksDBVPackIndex;
+
+ public:
+  RocksDBVPackIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                            arangodb::RocksDBVPackIndex const* index,
+                            bool reverse, RocksDBKeyBounds&& bounds)
+      : IndexIterator(collection, trx),
+        _index(index),
+        _cmp(index->comparator()),
+        _fullEnumerationObjectId(0),
+        _reverse(reverse),
+        _bounds(std::move(bounds)) {
+    TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
+
+    RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
+    rocksdb::ReadOptions options = mthds->iteratorReadOptions();
+    // we need to have a pointer to a slice for the upper bound
+    // so we need to assign the slice to an instance variable here
+    if (reverse) {
+      _rangeBound = _bounds.start();
+      options.iterate_lower_bound = &_rangeBound;
+      VPackSlice s = VPackSlice(_rangeBound.data() + sizeof(uint64_t));
+      if (s.isArray() && s.length() == 1 && s.at(0).isMinKey()) {
+        // lower bound is the min key. that means we can get away with a
+        // cheap outOfBounds comparator
+        _fullEnumerationObjectId = _index->objectId();
+      }
+    } else {
+      _rangeBound = _bounds.end();
+      options.iterate_upper_bound = &_rangeBound;
+      VPackSlice s = VPackSlice(_rangeBound.data() + sizeof(uint64_t));
+      if (s.isArray() && s.length() == 1 && s.at(0).isMaxKey()) {
+        // upper bound is the max key. that means we can get away with a
+        // cheap outOfBounds comparator
+        _fullEnumerationObjectId = _index->objectId();
+      }
+    }
+
+    TRI_ASSERT(options.prefix_same_as_start);
+    _iterator = mthds->NewIterator(options, index->columnFamily());
+    if (reverse) {
+      _iterator->SeekForPrev(_bounds.end());
+    } else {
+      _iterator->Seek(_bounds.start());
     }
   }
 
-  return true;
-}
+ public:
+  char const* typeName() const override { return "rocksdb-index-iterator"; }
 
-void RocksDBVPackIndexIterator::skip(uint64_t count, uint64_t& skipped) {
-  TRI_ASSERT(_trx->state()->isRunning());
+  /// @brief Get the next limit many elements in the index
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+    TRI_ASSERT(_trx->state()->isRunning());
 
-  if (!_iterator->Valid() || outOfRange()) {
-    return;
+    if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+      // No limit no data, or we are actually done. The last call should have
+      // returned false
+      TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+      return false;
+    }
+
+    while (limit > 0) {
+      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
+
+      cb(_index->_unique ? RocksDBValue::documentId(_iterator->value())
+                        : RocksDBKey::indexDocumentId(_bounds.type(), _iterator->key()));
+
+      --limit;
+      if (!advance()) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
-  while (count > 0) {
-    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
+  bool nextCovering(DocumentCallback const& cb, size_t limit) override {
+    TRI_ASSERT(_trx->state()->isRunning());
 
-    --count;
-    ++skipped;
-    if (!advance()) {
+    if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+      // No limit no data, or we are actually done. The last call should have
+      // returned false
+      TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+      return false;
+    }
+
+    while (limit > 0) {
+      rocksdb::Slice const& key = _iterator->key();
+      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(key));
+
+      LocalDocumentId const documentId(
+          _index->_unique ? RocksDBValue::documentId(_iterator->value())
+                          : RocksDBKey::indexDocumentId(_bounds.type(), key));
+      cb(documentId, RocksDBKey::indexedVPack(key));
+
+      --limit;
+      if (!advance()) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  void skip(uint64_t count, uint64_t& skipped) override {
+    TRI_ASSERT(_trx->state()->isRunning());
+
+    if (!_iterator->Valid() || outOfRange()) {
       return;
     }
+
+    while (count > 0) {
+      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
+
+      --count;
+      ++skipped;
+      if (!advance()) {
+        return;
+      }
+    }
   }
-}
+
+  /// @brief Reset the cursor
+  void reset() override {
+    TRI_ASSERT(_trx->state()->isRunning());
+
+    if (_reverse) {
+      _iterator->SeekForPrev(_bounds.end());
+    } else {
+      _iterator->Seek(_bounds.start());
+    }
+  }
+
+  /// @brief we provide a method to provide the index attribute values
+  /// while scanning the index
+  bool hasCovering() const override {
+    return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX; 
+  }
+
+ private:
+  inline bool outOfRange() const {
+    if (_fullEnumerationObjectId) {
+      // we are enumerating the entire index
+      // so we can use a cheap comparator that only checks the objectId
+      return (arangodb::rocksutils::uint64FromPersistent(_iterator->key().data()) != _fullEnumerationObjectId);
+    }
+
+    // we are enumerating a subset of the index
+    // so we really need to run the full-featured (read: expensive)
+    // comparator
+
+    if (_reverse) {
+      return (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
+    } else {
+      return (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
+    }
+  }
+
+  inline bool advance() {
+    if (_reverse) {
+      _iterator->Prev();
+    } else {
+      _iterator->Next();
+    }
+
+    return _iterator->Valid() && !outOfRange();
+  }
+
+  arangodb::RocksDBVPackIndex const* _index;
+  rocksdb::Comparator const* _cmp;
+  std::unique_ptr<rocksdb::Iterator> _iterator;
+  uint64_t _fullEnumerationObjectId;
+  bool const _reverse;
+  RocksDBKeyBounds _bounds;
+  // used for iterate_upper_bound iterate_lower_bound
+  rocksdb::Slice _rangeBound;
+};
+
+} // namespace
 
 uint64_t RocksDBVPackIndex::HashForKey(const rocksdb::Slice& key) {
   // NOTE: This function needs to use the same hashing on the
@@ -334,7 +412,7 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased, LocalDocumentId const& 
                                    VPackSlice const& doc, SmallVector<RocksDBKey>& elements,
                                    SmallVector<uint64_t>& hashes) {
   if (doc.isNone()) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("51c6c", ERR, arangodb::Logger::ENGINES)
         << "encountered invalid marker with slice of type None";
     return TRI_ERROR_INTERNAL;
   }
@@ -601,7 +679,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     }
   }
 
-  IndexingDisabler guard(mthds, !_unique && trx.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+  IndexingDisabler guard(mthds, !_unique && trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
 
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
@@ -753,7 +831,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
     }
   }
 
-  IndexingDisabler guard(mthds, !_unique && trx.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+  IndexingDisabler guard(mthds, !_unique && trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
 
   size_t const count = elements.size();
 
@@ -927,7 +1005,7 @@ arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
 }
 
 IndexIterator* RocksDBVPackIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*, arangodb::aql::AstNode const* node,
+    transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
@@ -956,7 +1034,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     size_t unused = 0;
 
     SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
-                                                   unused, nonNullAttributes, true);
+                                                 unused, nonNullAttributes, true);
 
     // found contains all attributes that are relevant for this node.
     // It might be less than fields().
@@ -1111,9 +1189,9 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
   }
 
   if (needNormalize) {
-    VPackBuilder expandedSearchValues;
-    expandInSearchValues(searchValues.slice(), expandedSearchValues);
-    VPackSlice expandedSlice = expandedSearchValues.slice();
+    transaction::BuilderLeaser expandedSearchValues(trx);
+    expandInSearchValues(searchValues.slice(), *(expandedSearchValues.get()));
+    VPackSlice expandedSlice = expandedSearchValues->slice();
     std::vector<IndexIterator*> iterators;
 
     try {

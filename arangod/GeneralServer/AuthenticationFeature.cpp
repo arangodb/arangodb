@@ -126,7 +126,7 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
           basics::StringUtils::trim(basics::FileUtils::slurp(_jwtSecretKeyfileProgramOption),
                                     " \t\n\r");
     } catch (std::exception const& ex) {
-      LOG_TOPIC(FATAL, Logger::STARTUP)
+      LOG_TOPIC("d3617", FATAL, Logger::STARTUP)
           << "unable to read content of jwt-secret file '"
           << _jwtSecretKeyfileProgramOption << "': " << ex.what()
           << ". please make sure the file/directory is readable for the "
@@ -135,11 +135,8 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     }
 
   } else if (!_jwtSecretProgramOption.empty()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-        << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
-           "instead.";
     if (_jwtSecretProgramOption.length() > _maxSecretLength) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("9abfc", FATAL, arangodb::Logger::STARTUP)
           << "Given JWT secret too long. Max length is " << _maxSecretLength;
       FATAL_ERROR_EXIT();
     }
@@ -164,7 +161,7 @@ void AuthenticationFeature::prepare() {
     _userManager.reset(new auth::UserManager());
 #endif
   } else {
-    LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Not creating user manager";
+    LOG_TOPIC("713c0", DEBUG, Logger::AUTHENTICATION) << "Not creating user manager";
   }
 
   TRI_ASSERT(_authCache == nullptr);
@@ -172,7 +169,7 @@ void AuthenticationFeature::prepare() {
 
   std::string jwtSecret = _jwtSecretProgramOption;
   if (jwtSecret.empty()) {
-    LOG_TOPIC(INFO, Logger::AUTHENTICATION)
+    LOG_TOPIC("43396", INFO, Logger::AUTHENTICATION)
         << "Jwt secret not specified, generating...";
     uint16_t m = 254;
     for (size_t i = 0; i < _maxSecretLength; i++) {
@@ -186,6 +183,14 @@ void AuthenticationFeature::prepare() {
 
 void AuthenticationFeature::start() {
   TRI_ASSERT(isEnabled());
+
+  // If this is empty here, --server.jwt-secret was used
+  if (!_jwtSecretProgramOption.empty() &&
+      _jwtSecretKeyfileProgramOption.empty()) {
+    LOG_TOPIC("1aaae", WARN, arangodb::Logger::AUTHENTICATION)
+        << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
+           "instead.";
+  }
 
   std::ostringstream out;
 
@@ -207,7 +212,7 @@ void AuthenticationFeature::start() {
       << (_authenticationUnixSockets ? "on" : "off");
 #endif
 
-  LOG_TOPIC(INFO, arangodb::Logger::AUTHENTICATION) << out.str();
+  LOG_TOPIC("3844e", INFO, arangodb::Logger::AUTHENTICATION) << out.str();
 }
 
 void AuthenticationFeature::unprepare() { INSTANCE = nullptr; }

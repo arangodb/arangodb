@@ -87,10 +87,10 @@ class PhysicalCollection {
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
-  virtual std::unordered_map<std::string, double> clusterIndexEstimates(bool allowUpdate) const;
+  virtual IndexEstMap clusterIndexEstimates(bool allowUpdate, TRI_voc_tick_t tid) const;
 
   /// @brief sets the current index selectivity estimates
-  virtual void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
+  virtual void setClusterIndexEstimates(IndexEstMap&& estimates);
 
   /// @brief flushes the current index selectivity estimates
   virtual void flushClusterIndexEstimates();
@@ -107,6 +107,11 @@ class PhysicalCollection {
 
   /// @brief Find index by iid
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
+
+  /// @brief Find index by name
+  std::shared_ptr<Index> lookupIndex(std::string const&) const;
+
+  /// @brief get list of all indices
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
   void getIndexesVPack(velocypack::Builder&, unsigned flags,
@@ -132,6 +137,9 @@ class PhysicalCollection {
   ///////////////////////////////////
 
   virtual Result truncate(transaction::Methods& trx, OperationOptions& options) = 0;
+  
+  /// @brief compact-data operation
+  virtual Result compact() = 0;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop

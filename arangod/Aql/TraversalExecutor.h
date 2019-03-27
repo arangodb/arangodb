@@ -67,6 +67,10 @@ class TraversalExecutorInfos : public ExecutorInfos {
 
   traverser::Traverser& traverser();
 
+  bool usesOutputRegister(OutputName type) const;
+
+  RegisterId getOutputRegister(OutputName type) const;
+
   bool useVertexOutput() const;
 
   RegisterId vertexRegister() const;
@@ -86,6 +90,9 @@ class TraversalExecutorInfos : public ExecutorInfos {
   RegisterId getInputRegister() const;
 
   std::vector<std::pair<Variable const*, RegisterId>> const& filterConditionVariables() const;
+
+ private:
+  RegisterId findRegisterChecked(OutputName type) const;
 
  private:
   std::unique_ptr<traverser::Traverser> _traverser;
@@ -128,6 +135,8 @@ class TraversalExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+
+  inline size_t numberOfRowsInFlight() const { return 0; }
 
  private:
   /**

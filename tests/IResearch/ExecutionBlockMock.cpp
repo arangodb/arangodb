@@ -31,7 +31,7 @@
 // -----------------------------------------------------------------------------
 
 ExecutionNodeMock::ExecutionNodeMock(size_t id /*= 0*/)
-  : ExecutionNode(nullptr, id) {
+    : ExecutionNode(nullptr, id) {
   setVarUsageValid();
   planRegisters();
 }
@@ -39,27 +39,23 @@ ExecutionNodeMock::ExecutionNodeMock(size_t id /*= 0*/)
 arangodb::aql::ExecutionNode::NodeType ExecutionNodeMock::getType() const {
   return arangodb::aql::ExecutionNode::NodeType::SINGLETON;
 }
-  
+
 std::unique_ptr<arangodb::aql::ExecutionBlock> ExecutionNodeMock::createBlock(
     arangodb::aql::ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, arangodb::aql::ExecutionBlock*> const& cache
-) const {
+    std::unordered_map<ExecutionNode*, arangodb::aql::ExecutionBlock*> const& cache) const {
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create a block of ExecutionNodeMock");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "cannot create a block of ExecutionNodeMock");
 }
 
-arangodb::aql::ExecutionNode* ExecutionNodeMock::clone(
-    arangodb::aql::ExecutionPlan* plan,
-    bool withDependencies,
-    bool withProperties
-) const {
+arangodb::aql::ExecutionNode* ExecutionNodeMock::clone(arangodb::aql::ExecutionPlan* plan,
+                                                       bool withDependencies,
+                                                       bool withProperties) const {
   return new ExecutionNodeMock(id());
 }
 
-void ExecutionNodeMock::toVelocyPackHelper(
-    arangodb::velocypack::Builder& nodes,
-    unsigned flags
-) const {
+void ExecutionNodeMock::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
+                                           unsigned flags) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);  // call base class method
   nodes.close();
 }
@@ -68,19 +64,14 @@ void ExecutionNodeMock::toVelocyPackHelper(
 // --SECTION--                                                ExecutionBlockMock
 // -----------------------------------------------------------------------------
 
-ExecutionBlockMock::ExecutionBlockMock(
-    arangodb::aql::AqlItemBlock const& data,
-    arangodb::aql::ExecutionEngine& engine,
-    arangodb::aql::ExecutionNode const& node
-) : arangodb::aql::ExecutionBlock(&engine, &node),
-    _data(&data),
-    _inflight(0) {
-}
+ExecutionBlockMock::ExecutionBlockMock(arangodb::aql::AqlItemBlock const& data,
+                                       arangodb::aql::ExecutionEngine& engine,
+                                       arangodb::aql::ExecutionNode const& node)
+    : arangodb::aql::ExecutionBlock(&engine, &node), _data(&data), _inflight(0) {}
 
-std::pair<arangodb::aql::ExecutionState, arangodb::Result>
-ExecutionBlockMock::initializeCursor(arangodb::aql::AqlItemBlock* items,
-                                     size_t pos) {
-  const auto res = ExecutionBlock::initializeCursor(items, pos);
+std::pair<arangodb::aql::ExecutionState, arangodb::Result> ExecutionBlockMock::initializeCursor(
+    arangodb::aql::InputAqlItemRow const& input) {
+  const auto res = ExecutionBlock::initializeCursor(input);
 
   if (res.first == arangodb::aql::ExecutionState::WAITING || !res.second.ok()) {
     // If we need to wait or get an error we return as is.
@@ -94,8 +85,7 @@ ExecutionBlockMock::initializeCursor(arangodb::aql::AqlItemBlock* items,
   return res;
 }
 
-std::pair<arangodb::aql::ExecutionState,
-          std::unique_ptr<arangodb::aql::AqlItemBlock>>
+std::pair<arangodb::aql::ExecutionState, std::unique_ptr<arangodb::aql::AqlItemBlock>>
 ExecutionBlockMock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
 
@@ -155,7 +145,7 @@ ExecutionBlockMock::getSome(size_t atMost) {
   // only copy 1st row of registers inherited from previous frame(s)
   inheritRegisters(cur, res.get(), _pos);
 
-  throwIfKilled(); // check if we were aborted
+  throwIfKilled();  // check if we were aborted
 
   TRI_IF_FAILURE("ExecutionBlockMock::moreDocuments") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

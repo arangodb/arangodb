@@ -26,7 +26,9 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Methods/Indexes.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -44,6 +46,10 @@ RestStatus RestIndexHandler::execute() {
   // extract the request type
   rest::RequestType const type = _request->requestType();
   if (type == rest::RequestType::GET) {
+    if (_request->suffixes().size() == 1 &&
+        _request->suffixes()[0] == "selectivity") {
+      return getSelectivityEstimates();
+    }
     return getIndexes();
   } else if (type == rest::RequestType::POST) {
     return createIndex();
@@ -147,6 +153,51 @@ RestStatus RestIndexHandler::getIndexes() {
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
   }
+  return RestStatus::DONE;
+}
+
+RestStatus RestIndexHandler::getSelectivityEstimates() {
+  // .............................................................................
+  // /_api/index/selectivity?collection=<collection-name>
+  // .............................................................................
+  
+  bool found = false;
+  std::string cName = _request->value("collection", found);
+  if (cName.empty()) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return RestStatus::DONE;
+  }
+
+  // transaction protects acces onto selectivity estimates
+  auto trx = createTransaction(cName, AccessMode::Type::READ);
+
+  Result res = trx->begin();
+  if (res.fail()) {
+    generateError(res);
+    return RestStatus::DONE;
+  }
+  
+  LogicalCollection* coll = trx->documentCollection();
+  auto idxs = coll->getIndexes();
+  
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
+  builder.openObject();
+  builder.add(StaticStrings::Error, VPackValue(false));
+  builder.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+  builder.add("indexes", VPackValue(VPackValueType::Object));
+  for (std::shared_ptr<Index> idx : idxs) {
+    std::string name = coll->name();
+    name.push_back(TRI_INDEX_HANDLE_SEPARATOR_CHR);
+    name.append(std::to_string(idx->id()));
+    if (idx->hasSelectivityEstimate() || idx->unique()) {
+      builder.add(name, VPackValue(idx->selectivityEstimate()));
+    }
+  }
+  builder.close();
+  builder.close();
+  
+  generateResult(rest::ResponseCode::OK, std::move(buffer));
   return RestStatus::DONE;
 }
 

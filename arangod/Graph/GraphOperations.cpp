@@ -39,6 +39,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -50,7 +51,7 @@ using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;
 
 std::shared_ptr<transaction::Context> GraphOperations::ctx() const {
-  return transaction::SmartContext::Create(_vocbase);
+  return transaction::StandaloneContext::Create(_vocbase);
 };
 
 void GraphOperations::checkForUsedEdgeCollections(const Graph& graph,
@@ -155,9 +156,11 @@ OperationResult GraphOperations::eraseEdgeDefinition(bool waitForSync, std::stri
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
-          &_vocbase, collection, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+        _vocbase,// vocbase to search
+        collection, // collection to find
+        [&](std::shared_ptr<LogicalCollection> const& coll)->void { // callback if found
             TRI_ASSERT(coll);
-            resIn = methods::Collections::drop(&_vocbase, coll.get(), false, -1.0);
+            resIn = methods::Collections::drop(*coll, false, -1.0);
           });
 
       if (found.fail()) {
@@ -404,9 +407,11 @@ OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync, std::st
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
-          &_vocbase, collection, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+        _vocbase, // vocbase to search
+        collection, // collection to find
+        [&](std::shared_ptr<LogicalCollection> const& coll)->void { // callback if found
             TRI_ASSERT(coll);
-            resIn = methods::Collections::drop(&_vocbase, coll.get(), false, -1.0);
+            resIn = methods::Collections::drop(*coll, false, -1.0);
           });
 
       if (found.fail()) {
@@ -785,11 +790,11 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
     trxCollections.emplace_back(it);  // add to trx collections
     edgeCollections.emplace(it);  // but also to edgeCollections for later iteration
   }
-
+  
+  auto ctx = std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
-  auto context = ctx();
-  UserTransaction trx{context, {}, trxCollections, {}, trxOptions};
+  UserTransaction trx{ctx, {}, trxCollections, {}, trxOptions};
 
   res = trx.begin();
 
@@ -818,7 +823,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
 
       arangodb::aql::Query query(false, _vocbase, queryString, bindVars,
                                  nullptr, arangodb::aql::PART_DEPENDENT);
-      query.setTransactionContext(context);
+      query.setTransactionContext(ctx); // hack to share  the same transaction
 
       auto queryResult = query.executeSync(QueryRegistryFeature::registry());
       if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -865,7 +870,7 @@ bool GraphOperations::hasPermissionsFor(std::string const& collection, auth::Lev
 
   ExecContext const* execContext = ExecContext::CURRENT;
   if (execContext == nullptr) {
-    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
+    LOG_TOPIC("08e1f", DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
     return true;
   }
 
@@ -873,7 +878,7 @@ bool GraphOperations::hasPermissionsFor(std::string const& collection, auth::Lev
     return true;
   }
 
-  LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "Not allowed.";
+  LOG_TOPIC("ef8d1", DEBUG, Logger::GRAPHS) << logprefix << "Not allowed.";
   return false;
 }
 
@@ -888,7 +893,7 @@ Result GraphOperations::checkEdgeDefinitionPermissions(EdgeDefinition const& edg
 
   ExecContext const* execContext = ExecContext::CURRENT;
   if (execContext == nullptr) {
-    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
+    LOG_TOPIC("18e8e", DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -903,12 +908,12 @@ Result GraphOperations::checkEdgeDefinitionPermissions(EdgeDefinition const& edg
     // We need RO on all collections. And, in case any collection does not
     // exist, we need RW on the database.
     if (!execContext->canUseCollection(col, auth::Level::RO)) {
-      LOG_TOPIC(DEBUG, Logger::GRAPHS)
+      LOG_TOPIC("e8a53", DEBUG, Logger::GRAPHS)
           << logprefix << "No read access to " << databaseName << "." << col;
       return TRI_ERROR_FORBIDDEN;
     }
     if (!collectionExists(col) && !canUseDatabaseRW) {
-      LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "Creation of " << databaseName
+      LOG_TOPIC("2bcf2", DEBUG, Logger::GRAPHS) << logprefix << "Creation of " << databaseName
                                        << "." << col << " is not allowed.";
       return TRI_ERROR_FORBIDDEN;
     }

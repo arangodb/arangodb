@@ -296,7 +296,7 @@ void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice c
 
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
   if (!sExecutionNum.isInteger()) {
-    LOG_TOPIC(ERR, Logger::PREGEL) << "Invalid execution number";
+    LOG_TOPIC("8410a", ERR, Logger::PREGEL) << "Invalid execution number";
   }
   uint64_t exeNum = sExecutionNum.getUInt();
   std::shared_ptr<Conductor> co = Instance->conductor(exeNum);
@@ -354,7 +354,7 @@ void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice c
     return;
   } else if (!w) {
     // any other call should have a working worker instance
-    LOG_TOPIC(WARN, Logger::PREGEL)
+    LOG_TOPIC("41788", WARN, Logger::PREGEL)
         << "Handling " << path << "worker " << exeNum << " does not exist";
     THROW_ARANGO_EXCEPTION_FORMAT(
         TRI_ERROR_INTERNAL,

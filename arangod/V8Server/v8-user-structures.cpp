@@ -742,7 +742,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
     int hash = o->GetIdentityHash();
 
     if (seenHashes.find(hash) != seenHashes.end()) {
-      // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found hash " << hash;
+      // LOG_TOPIC("a6d3e", TRACE, arangodb::Logger::FIXME) << "found hash " << hash;
 
       for (auto it : seenObjects) {
         if (parameter->StrictEquals(it)) {

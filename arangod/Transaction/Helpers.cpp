@@ -24,6 +24,7 @@
 #include "Helpers.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
 #include "Transaction/Context.h"
@@ -424,6 +425,8 @@ std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const*
   return resolved;
 }
 
+// ============== StringBufferLeaser ==============
+
 /// @brief constructor, leases a StringBuffer
 transaction::StringBufferLeaser::StringBufferLeaser(transaction::Methods* trx)
     : _transactionContext(trx->transactionContextPtr()),
@@ -438,6 +441,25 @@ transaction::StringBufferLeaser::StringBufferLeaser(transaction::Context* transa
 transaction::StringBufferLeaser::~StringBufferLeaser() {
   _transactionContext->returnStringBuffer(_stringBuffer);
 }
+
+// ============== StringLeaser ==============
+
+/// @brief constructor, leases a std::string
+transaction::StringLeaser::StringLeaser(transaction::Methods* trx)
+    : _transactionContext(trx->transactionContextPtr()),
+      _string(_transactionContext->leaseString()) {}
+
+/// @brief constructor, leases a StringBuffer
+transaction::StringLeaser::StringLeaser(transaction::Context* transactionContext)
+    : _transactionContext(transactionContext),
+      _string(_transactionContext->leaseString()) {}
+
+/// @brief destructor
+transaction::StringLeaser::~StringLeaser() {
+  _transactionContext->returnString(_string);
+}
+
+// ============== BuilderLeaser ==============
 
 /// @brief constructor, leases a builder
 transaction::BuilderLeaser::BuilderLeaser(transaction::Methods* trx)

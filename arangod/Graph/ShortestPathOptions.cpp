@@ -179,20 +179,18 @@ double ShortestPathOptions::weightEdge(VPackSlice edge) {
       edge, weightAttribute.c_str(), defaultWeight);
 }
 
-EdgeCursor* ShortestPathOptions::nextCursor(ManagedDocumentResult* mmdr, arangodb::velocypack::StringRef vid) {
+EdgeCursor* ShortestPathOptions::nextCursor(arangodb::velocypack::StringRef vid) {
   if (_isCoordinator) {
     return nextCursorCoordinator(vid);
   }
-  TRI_ASSERT(mmdr != nullptr);
-  return nextCursorLocal(mmdr, vid, _baseLookupInfos);
+  return nextCursorLocal(vid, _baseLookupInfos);
 }
 
-EdgeCursor* ShortestPathOptions::nextReverseCursor(ManagedDocumentResult* mmdr, arangodb::velocypack::StringRef vid) {
+EdgeCursor* ShortestPathOptions::nextReverseCursor(arangodb::velocypack::StringRef vid) {
   if (_isCoordinator) {
     return nextReverseCursorCoordinator(vid);
   }
-  TRI_ASSERT(mmdr != nullptr);
-  return nextCursorLocal(mmdr, vid, _reverseLookupInfos);
+  return nextCursorLocal(vid, _reverseLookupInfos);
 }
 
 EdgeCursor* ShortestPathOptions::nextCursorCoordinator(arangodb::velocypack::StringRef vid) {

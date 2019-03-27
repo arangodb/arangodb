@@ -89,7 +89,6 @@
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TransactionManagerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -101,6 +100,7 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
+#include "Transaction/ManagerFeature.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -213,7 +213,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new StorageEngineFeature(server));
     server.addFeature(new SystemDatabaseFeature(server));
     server.addFeature(new TempFeature(server, name));
-    server.addFeature(new TransactionManagerFeature(server));
+    server.addFeature(new transaction::ManagerFeature(server));
     server.addFeature(new TraverserEngineRegistryFeature(server));
     server.addFeature(new TtlFeature(server));
     server.addFeature(new UpgradeFeature(server, &ret, nonServerFeatures));
@@ -257,11 +257,11 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("5d508", ERR, arangodb::Logger::FIXME)
           << "arangod terminated because of an exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("3c63a", ERR, arangodb::Logger::FIXME)
           << "arangod terminated because of an exception of "
              "unknown type";
       ret = EXIT_FAILURE;
@@ -269,10 +269,10 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     Logger::flush();
     return context.exit(ret);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("8afa8", ERR, arangodb::Logger::FIXME)
         << "arangod terminated because of an exception: " << ex.what();
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("c444c", ERR, arangodb::Logger::FIXME)
         << "arangod terminated because of an exception of "
            "unknown type";
   }

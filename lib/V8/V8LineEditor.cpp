@@ -391,7 +391,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate, v8::Handle<v8::Context> context
   int res = SetConsoleCtrlHandler((PHANDLER_ROUTINE)SignalHandler, true);
 
   if (res == 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("f87ea", ERR, arangodb::Logger::FIXME)
         << "unable to install signal handler";
   }
 
@@ -404,7 +404,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate, v8::Handle<v8::Context> context
   int res = sigaction(SIGINT, &sa, nullptr);
 
   if (res != 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("d7234", ERR, arangodb::Logger::FIXME)
         << "unable to install signal handler";
   }
 #endif

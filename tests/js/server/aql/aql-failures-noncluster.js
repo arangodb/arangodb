@@ -170,13 +170,13 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testHashedAggregateBlock : function () {
-      internal.debugSetFailAt("HashedCollectBlock::getOrSkipSome");
+      internal.debugSetFailAt("HashedCollectExecutor::produceRow");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value RETURN key");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 RETURN key");
       assertFailingQuery("FOR i IN 1..10000 COLLECT key = i RETURN key");
       
       internal.debugClearFailAt();
-      internal.debugSetFailAt("HashedCollectBlock::getOrSkipSomeOuter");
+      internal.debugSetFailAt("HashedCollectExecutor::produceRow");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value RETURN key");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 RETURN key");
       assertFailingQuery("FOR i IN 1..10000 COLLECT key = i RETURN key");

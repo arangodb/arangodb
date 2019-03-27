@@ -40,7 +40,7 @@ void ClusterSelectivityEstimates::flush() {
   _expireStamp = 0.0;
 }
 
-std::unordered_map<std::string, double> ClusterSelectivityEstimates::get(bool allowUpdate) const {
+IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdate, TRI_voc_tid_t tid) const {
   double now;
 
   {
@@ -74,7 +74,7 @@ std::unordered_map<std::string, double> ClusterSelectivityEstimates::get(bool al
     }
 
     int res = selectivityEstimatesOnCoordinator(_collection.vocbase().name(),
-                                                _collection.name(), estimates);
+                                                _collection.name(), estimates, tid);
 
     if (res == TRI_ERROR_NO_ERROR) {
       _estimates = estimates;

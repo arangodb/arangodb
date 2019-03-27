@@ -93,7 +93,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       auto triple = ctx->bindCollectionIncremental(_vocbase, patchCount);
       Result res = std::get<0>(triple);
       if (res.fail()) {
-        LOG_TOPIC(WARN, Logger::REPLICATION)
+        LOG_TOPIC("3d5d4", WARN, Logger::REPLICATION)
             << "Error during first phase of"
             << " collection count patching: " << res.errorMessage();
       }
@@ -134,7 +134,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     bool found;
     std::string const& value = _request->value("serverId", found);
     if (!found) {
-      LOG_TOPIC(DEBUG, Logger::REPLICATION)
+      LOG_TOPIC("61e69", DEBUG, Logger::REPLICATION)
           << "no serverId parameter found in request to " << _request->fullUrl();
     }
 
@@ -264,6 +264,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
                   result.errorNumber(), result.errorMessage());
     return;
   }
+  
+  TRI_ASSERT(latest >= result.maxTick());
 
   bool const checkMore = (result.maxTick() > 0 && result.maxTick() < latest);
 
@@ -314,7 +316,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       for (auto marker : arangodb::velocypack::ArrayIterator(data)) {
         dumper.dump(marker);
         httpResponse->body().appendChar('\n');
-        // LOG_TOPIC(INFO, Logger::REPLICATION) <<
+        // LOG_TOPIC("2c0b2", INFO, Logger::REPLICATION) <<
         // marker.toJson(trxContext->getVPackOptions());
       }
     }
@@ -640,7 +642,7 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
 }
 
 void RocksDBRestReplicationHandler::handleCommandDump() {
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION) << "enter handleCommandDump";
+  LOG_TOPIC("213e2", TRACE, arangodb::Logger::REPLICATION) << "enter handleCommandDump";
 
   bool found = false;
   uint64_t contextId = 0;
@@ -678,7 +680,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   }
 
   // print request
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+  LOG_TOPIC("2b20f", TRACE, arangodb::Logger::REPLICATION)
       << "requested collection dump for collection '" << collection
       << "' using contextId '" << ctx->id() << "'";
 
