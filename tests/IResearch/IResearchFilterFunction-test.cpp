@@ -2309,17 +2309,17 @@ SECTION("IN_RANGE") {
     assertFilterSuccess("FOR d IN myView FILTER boost(in_range(d.name, 'a', 'z', true, true), 1.5) RETURN d", expected);
   }
 
-  // ANALYZER(BOOST(d.name > 'a' && d.name <= 'z', 1.5), "test_analyzer")
+  // ANALYZER(BOOST(d.name > 'a' && d.name <= 'z', 1.5), "testVocbase::test_analyzer")
   {
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
     range.boost(1.5);
-    range.field(mangleString("name", "test_analyzer"))
+    range.field(mangleString("name", "testVocbase::test_analyzer"))
          .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("a")
          .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("z");
 
-    assertFilterSuccess("FOR d IN myView FILTER analyzer(boost(in_range(d['name'], 'a', 'z', false, true), 1.5), 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN myView FILTER analyzer(boost(in_range(d.name, 'a', 'z', false, true), 1.5), 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN myView FILTER analyzer(boost(in_range(d['name'], 'a', 'z', false, true), 1.5), 'testVocbase::test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN myView FILTER analyzer(boost(in_range(d.name, 'a', 'z', false, true), 1.5), 'testVocbase::test_analyzer') RETURN d", expected);
   }
 
   // dynamic complex attribute field

@@ -30,6 +30,8 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Cluster/ClusterFeature.h"
+#include "V8Server/V8DealerFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -95,6 +97,7 @@ struct IResearchQueryInRangeSetup {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
+    features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ViewTypesFeature(server), true);
     features.emplace_back(new arangodb::AuthenticationFeature(server), true);
     features.emplace_back(new arangodb::DatabasePathFeature(server), false);
@@ -115,6 +118,11 @@ struct IResearchQueryInRangeSetup {
       features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
+    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
+    arangodb::application_features::ApplicationServer::server->addFeature(
+      new arangodb::ClusterFeature(server)
+    );
+
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
     }
@@ -129,12 +137,31 @@ struct IResearchQueryInRangeSetup {
       }
     }
 
+     TRI_vocbase_t* vocbase;
+
+    auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature
+    >("Database");
+    dbFeature->createDatabase(1, "testVocbase", vocbase); // required for IResearchAnalyzerFeature::emplace(...)
+
     auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
       arangodb::iresearch::IResearchAnalyzerFeature
     >();
 
-    analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
-    analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    analyzers->emplace(
+      result,
+      "testVocbase::test_csv_analyzer",
+      "TestDelimAnalyzer",
+      ","
+    ); // cache analyzer
+
+    analyzers->emplace(
+      result,
+      "testVocbase::test_analyzer",
+      "TestAnalyzer",
+      "abc"
+    ); // cache analyzer
 
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
@@ -146,7 +173,6 @@ struct IResearchQueryInRangeSetup {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f : features) {
@@ -160,6 +186,7 @@ struct IResearchQueryInRangeSetup {
     }
 
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 }; // IResearchQueryInRangeSetup
 
@@ -262,6 +289,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
         "\"testCollection1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true, \"storeValues\":\"id\" }"
       "}}"
     );
+
     CHECK((impl->properties(updateJson->slice(), true).ok()));
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
