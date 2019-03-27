@@ -374,6 +374,14 @@
         collections: ordered,
         visible: this.visibleCollection
       }));
+
+      // if we have only one collection to show, automatically open the entry
+      if ($('.sectionShard').length === 1) {
+        $('.sectionHeader').first().click();
+      }
+
+      // change the min height of innerContent - only for this view (temporary)
+      $('.innerContent').css('min-height', '0px');
     },
 
     updateServerTime: function () {
