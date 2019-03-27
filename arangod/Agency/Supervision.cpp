@@ -1307,7 +1307,7 @@ void Supervision::enforceReplication() {
   // there is no overload on the Agency job system. Therefore, if this
   // number is at least maxNrAddRemoveJobsInTodo, we skip the rest of
   // the function:
-  int const maxNrAddRemoveJobsInTodo = 500;
+  int const maxNrAddRemoveJobsInTodo = 50;
 
   auto todos = _snapshot.hasAsChildren(toDoPrefix).first;
   int nrAddRemoveJobsInTodo = 0;
@@ -1322,6 +1322,7 @@ void Supervision::enforceReplication() {
   }
 
   auto const& plannedDBs = _snapshot.hasAsChildren(planColPrefix).first;
+  auto const& currentDBs = _snapshot.hasAsNode(curColPrefix).first;
 
   for (const auto& db_ : plannedDBs) {  // Planned databases
     auto const& db = *(db_.second);
@@ -1368,6 +1369,17 @@ void Supervision::enforceReplication() {
 
           if (actualReplicationFactor != replicationFactor ||
               apparentReplicationFactor != replicationFactor) {
+            // First check the case that not all are in sync:
+            std::string curPath = db_.first + "/" + col_.first + "/"
+              + shard_.first + "/servers";
+            auto const& currentServers = currentDBs.hasAsArray(curPath);
+            size_t inSyncReplicationFactor = actualReplicationFactor;
+            if (currentServers.second) {
+              if (currentServers.first.length() < actualReplicationFactor) {
+                inSyncReplicationFactor = currentServers.first.length();
+              }
+            }
+
             // Check that there is not yet an addFollower or removeFollower
             // or moveShard job in ToDo for this shard:
             auto const& todo = _snapshot.hasAsChildren(toDoPrefix).first;
@@ -1402,7 +1414,7 @@ void Supervision::enforceReplication() {
                   return;
                 }
               } else if (apparentReplicationFactor > replicationFactor &&
-                         actualReplicationFactor >= replicationFactor) {
+                         inSyncReplicationFactor >= replicationFactor) {
                 RemoveFollower(_snapshot, _agent, std::to_string(_jobId++),
                                "supervision", db_.first, col_.first, shard_.first)
                     .create();
