@@ -96,7 +96,8 @@ template <typename Modifier>
 bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOperation(
     InputAqlItemRow& input, OutputAqlItemRow& output, Stats& stats) {
   _info._options.silent = false;
-  _info._options.returnOld = _info._options.returnOld || _info._outputRegisterId;
+  _info._options.returnOld = _info._options.returnOld ||
+                             _info._outputRegisterId != ExecutionNode::MaxRegisterId;
 
   const bool isIndex = std::is_same<Modifier, IndexTag>::value;
   const bool isInsert = std::is_same<Modifier, Insert>::value;
