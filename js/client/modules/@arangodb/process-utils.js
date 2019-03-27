@@ -826,6 +826,24 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = f
 // //////////////////////////////////////////////////////////////////////////////
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief dump the state of the agency to disk. if we still can get one.
+// //////////////////////////////////////////////////////////////////////////////
+function dumpAgency(instanceInfo, options) {
+  instanceInfo.arangods.forEach((arangod) => {
+    if (arangod.role === "agent") {
+      if (arangod.hasOwnProperty('exitStatus')) {
+        print(Date() + " this agent is already dead: " + arangod);
+      } else {
+        let agencyConfig = arangod.GET('_api/agency/config');
+        let agencyState = arangod.GET('_api/agency/state');
+        fs.write(fs.join(options.testOutputDirectory, "agencyConfig_" + arangod.pid + ".json"), agencyConfig);
+        fs.write(fs.join(options.testOutputDirectory, "agencyState_" + arangod.pid + ".json"), agencyState);
+      }
+    }
+  });
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief the bad has happened, tell it the user and try to gather more
 // /        information about the incident. (arangod wrapper for the crash-utils)
 // //////////////////////////////////////////////////////////////////////////////
@@ -878,6 +896,7 @@ function checkInstanceAlive (instanceInfo, options) {
     if (instanceInfo.endpoint !== d.endpoint) {
       print(Date() + ' failover has happened, leader is no more! Marking Crashy!');
       serverCrashedLocal = true;
+      dumpAgency(instanceInfo, options);
       return false;
     }
   }
@@ -886,6 +905,7 @@ function checkInstanceAlive (instanceInfo, options) {
     return previous && checkArangoAlive(arangod, options);
   }, true);
   if (!rc) {
+    dumpAgency(instanceInfo, options);
     print(Date() + ' If cluster - will now start killing the rest.');
     instanceInfo.arangods.forEach((arangod) => {
       abortSurviviours(arangod, options);
@@ -1142,6 +1162,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
           localTimeout = localTimeout + 60;
         }
         if ((internal.time() - shutdownTime) > localTimeout) {
+          dumpAgency(instanceInfo, options);
           print(Date() + ' forcefully terminating ' + yaml.safeDump(arangod) +
                 ' after ' + timeout + 's grace period; marking crashy.');
           serverCrashedLocal = true;
