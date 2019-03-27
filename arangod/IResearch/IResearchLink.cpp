@@ -659,7 +659,7 @@ arangodb::Result IResearchLink::drop() {
     _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
   }
 
-  _flushCallback = IResearchFeature::WalFlushCallback(); // reset together with '_asyncSelf'
+  _flushCallback = {}; // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   try {
@@ -931,7 +931,7 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback) 
     _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
   }
 
-  _flushCallback = IResearchFeature::WalFlushCallback(); // reset together with '_asyncSelf'
+  _flushCallback = {}; // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   auto* dbPathFeature = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
@@ -1738,7 +1738,7 @@ arangodb::Result IResearchLink::unload() {
     _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
   }
 
-  _flushCallback = IResearchFeature::WalFlushCallback(); // reset together with '_asyncSelf'
+  _flushCallback = {}; // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   try {

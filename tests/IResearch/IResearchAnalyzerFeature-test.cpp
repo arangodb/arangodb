@@ -1344,6 +1344,8 @@ SECTION("test_persistence") {
     server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(server)); // required for SimpleHttpClient::doRequest()
     server.addFeature(feature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for running upgrade task
 
+    TRI_DEFER(dbFeature->unprepare()); // prevent leaking the vocbases
+
     // create system vocbase (before feature start)
     {
       auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
@@ -1430,6 +1432,8 @@ SECTION("test_persistence") {
     server.addFeature(new arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase(...)
     server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(server)); // required for SimpleHttpClient::doRequest()
     server.addFeature(feature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for running upgrade task
+
+    TRI_DEFER(dbFeature->unprepare()); // prevent leaking the vocbases
 
     // create system vocbase (before feature start)
     {
@@ -1537,6 +1541,8 @@ SECTION("test_remove") {
     server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(server)); // required for SimpleHttpClient::doRequest()
     server.addFeature(feature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for running upgrade task
 
+    TRI_DEFER(dbFeature->unprepare()); // prevent leaking the vocbases
+
     // create system vocbase (before feature start)
     {
       auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
@@ -1633,6 +1639,8 @@ SECTION("test_remove") {
     server.addFeature(new arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase(...)
     server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(server)); // required for SimpleHttpClient::doRequest()
     server.addFeature(feature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for running upgrade task
+
+    TRI_DEFER(dbFeature->unprepare()); // prevent leaking the vocbases
 
     // create system vocbase (before feature start)
     {
@@ -3530,6 +3538,8 @@ SECTION("test_visit") {
   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server)); // required for IResearchAnalyzerFeature::emplace(...)
   server.addFeature(new arangodb::SystemDatabaseFeature(server, &system)); // required for IResearchAnalyzerFeature::start()
   server.addFeature(new arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase(...)
+
+  TRI_DEFER(dbFeature->unprepare()); // prevent leaking the vocbases
 
   feature.start();
 

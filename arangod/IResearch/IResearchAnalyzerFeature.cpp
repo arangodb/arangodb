@@ -676,13 +676,15 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
     arangodb::SystemDatabaseFeature // featue type
   >();
   auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+  std::string buffer;  // must stay valid while split may be used
   std::pair<irs::string_ref, irs::string_ref> split;
 
   if (sysVocbase) {
+    buffer = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
+      analyzer, defaultVocbase, *sysVocbase // args
+    );
     split = splitAnalyzerName( // split analyzer name
-      arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-        analyzer, defaultVocbase, *sysVocbase // args
-      )
+      buffer
     );
   } else {
     split = splitAnalyzerName(analyzer);
