@@ -54,6 +54,9 @@ class Action {
   Action() = delete;
   Action& operator=(Action const&) = delete;
 
+  /// @brief for sorting in a priority queue:
+  bool operator<(Action const& other) const;
+
   /**
    * @brief construct with concrete action base
    * @param feature  Maintenance feature
@@ -178,6 +181,16 @@ class Action {
   /// @brief When object finished executing
   std::chrono::system_clock::time_point getDoneTime() const {
     return _action->getDoneTime();
+  }
+
+  /// @brief fastTrack
+  bool fastTrack() const {
+    return _action->fastTrack();
+  }
+
+  /// @brief priority
+  int priority() const {
+    return _action->priority();
   }
 
  private:

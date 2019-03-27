@@ -299,7 +299,9 @@ void MaintenanceFeature::registerAction(std::shared_ptr<Action> action, bool exe
   // mark as executing so no other workers accidentally grab it
   if (executeNow) {
     action->setState(maintenance::EXECUTING);
-  }  // if
+  } else if (action->getState() == maintenance::READY) {
+    _prioQueue.push(action);
+  }
 
   // WARNING: holding write lock to _actionRegistry and about to
   //   lock condition variable
@@ -308,7 +310,13 @@ void MaintenanceFeature::registerAction(std::shared_ptr<Action> action, bool exe
 
     if (!executeNow) {
       CONDITION_LOCKER(cLock, _actionRegistryCond);
-      _actionRegistryCond.signal();
+      _actionRegistryCond.broadcast();
+      // Note that we do a broadcast here for the following reason: if we did
+      // signal here, we cannot control which of the sleepers is woken up.
+      // If the new action is not fast track, then we could wake up the
+      // fast track worker, which would leave the action as it is. This would
+      // cause a delay of up to 0.1 seconds. With the broadcast, the worst
+      // case is that we wake up sleeping workers unnecessarily.
     }  // if
   }    // lock
 }
@@ -399,16 +407,34 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
   std::shared_ptr<Action> ret_ptr;
 
   while (!_isShuttingDown && !ret_ptr) {
-    // scan for ready action (and purge any that are done waiting)
+    // use priority queue for ready action (and purge any that are done waiting)
     {
       WRITE_LOCKER(wLock, _actionRegistryLock);
 
-      for (auto loop = _actionRegistry.begin(); _actionRegistry.end() != loop && !ret_ptr;) {
-        auto state = (*loop)->getState();
-        if (state == maintenance::READY && (*loop)->matches(labels)) {
-          ret_ptr = *loop;
-          ret_ptr->setState(maintenance::EXECUTING);
-        } else if ((*loop)->done()) {
+      while (!_prioQueue.empty()) {
+        // If _prioQueue is empty, we have no ready job and simply loop in the
+        // outer loop.
+        auto const& top = _prioQueue.top();
+        if (top->state() != maintenance::READY) {  // in case it is deleted
+          _prioQueue.pop();
+          continue;
+        }
+        if (top->matches(labels)) {
+          ret_ptr = top;
+          _prioQueue.pop();
+          return ret_ptr;
+        }
+        // We are not interested, this can only mean that we are fast track
+        // and the top action is not. Therefore, the whole queue does not
+        // contain any fast track, so we can idle.
+        break;
+      }
+ 
+      // When we get here, there is currently nothing to do, so we might
+      // as well clean up those jobs in the _actionRegistry, which are
+      // in state DONE:
+      for (auto loop = _actionRegistry.begin(); _actionRegistry.end() != loop;) {
+        if ((*loop)->done()) {
           loop = _actionRegistry.erase(loop);
         } else {
           ++loop;
@@ -416,7 +442,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
       }    // for
     }      // WRITE
 
-    // no pointer ... wait 5 second
+    // no pointer ... wait 0.1 seconds unless woken up
     if (!_isShuttingDown && !ret_ptr) {
       CONDITION_LOCKER(cLock, _actionRegistryCond);
       _actionRegistryCond.wait(100000);
