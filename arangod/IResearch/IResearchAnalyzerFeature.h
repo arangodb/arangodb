@@ -104,8 +104,7 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   ///         in defaultVocbase) is granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
   static bool canUse( // check permissions
-    irs::string_ref const& analyzer, // analyzer name
-    TRI_vocbase_t const& defaultVocbase, // fallback vocbase if not part of name
+    irs::string_ref const& name, // analyzer name (already normalized)
     arangodb::auth::Level const& level // access level
   );
 

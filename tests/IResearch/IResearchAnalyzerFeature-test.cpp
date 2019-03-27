@@ -632,10 +632,11 @@ SECTION("test_ensure") {
   }
 
   {
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
 
     feature.start();
-    feature.emplace("test_analyzer", "TestAnalyzer", "abc");
+    feature.emplace(result, "test_analyzer", "TestAnalyzer", "abc");
 
     // ensure valid (started)
     {

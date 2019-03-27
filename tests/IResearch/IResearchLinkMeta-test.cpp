@@ -486,7 +486,7 @@ SECTION("test_writeDefaults") {
       && tmpSlice.at(0).isObject()
       && tmpSlice.at(0).get("name").isString() && std::string("identity") == tmpSlice.at(0).get("name").copyString()
       && tmpSlice.at(0).get("type").isString() && std::string("identity") == tmpSlice.at(0).get("type").copyString()
-      && tmpSlice.at(0).get("properties").isString() && std::string("") == tmpSlice.at(0).get("properties").copyString()
+      && tmpSlice.at(0).get("properties").isNull()
       && tmpSlice.at(0).get("features").isArray() && 2 == tmpSlice.at(0).get("features").length() // frequency+norm
     ));
   }
@@ -552,7 +552,7 @@ SECTION("test_writeDefaults") {
       && tmpSlice.at(0).isObject()
       && tmpSlice.at(0).get("name").isString() && std::string("identity") == tmpSlice.at(0).get("name").copyString()
       && tmpSlice.at(0).get("type").isString() && std::string("identity") == tmpSlice.at(0).get("type").copyString()
-      && tmpSlice.at(0).get("properties").isString() && std::string("") == tmpSlice.at(0).get("properties").copyString()
+      && tmpSlice.at(0).get("properties").isNull()
       && tmpSlice.at(0).get("features").isArray() && 2 == tmpSlice.at(0).get("features").length() // frequency+norm
     ));
   }
@@ -759,7 +759,7 @@ SECTION("test_writeCustomizedValues") {
             && tmpSlice.at(0).isObject()
             && tmpSlice.at(0).get("name").isString() && std::string("identity") == tmpSlice.at(0).get("name").copyString()
             && tmpSlice.at(0).get("type").isString() && std::string("identity") == tmpSlice.at(0).get("type").copyString()
-            && tmpSlice.at(0).get("properties").isString() && std::string("") == tmpSlice.at(0).get("properties").copyString()
+            && tmpSlice.at(0).get("properties").isNull()
             && tmpSlice.at(0).get("features").isArray() && 2 == tmpSlice.at(0).get("features").length() // frequency+norm
           ));
         } else if ("all" == fieldOverride.copyString()) {
@@ -817,9 +817,9 @@ SECTION("test_writeCustomizedValues") {
         true == value.isObject()
         && value.hasKey("name") && value.get("name").isString()
         && value.hasKey("type") && value.get("type").isString()
-        && value.hasKey("properties") && value.get("properties").isString()
+        && value.hasKey("properties") && (value.get("properties").isString() || value.get("properties").isNull())
         && value.hasKey("features") && value.get("features").isArray() && (1 == value.get("features").length() || 2 == value.get("features").length()) // empty/identity 1/2
-        && 1 == expectedAnalyzers.erase(std::make_pair(value.get("name").copyString(), value.get("properties").copyString()))
+        && 1 == expectedAnalyzers.erase(std::make_pair(value.get("name").copyString(), value.get("properties").isNull() ? "" : value.get("properties").copyString()))
      ));
     }
 
@@ -988,7 +988,7 @@ SECTION("test_writeCustomizedValues") {
             && tmpSlice.at(0).isObject()
             && tmpSlice.at(0).get("name").isString() && std::string("identity") == tmpSlice.at(0).get("name").copyString()
             && tmpSlice.at(0).get("type").isString() && std::string("identity") == tmpSlice.at(0).get("type").copyString()
-            && tmpSlice.at(0).get("properties").isString() && std::string("") == tmpSlice.at(0).get("properties").copyString()
+            && tmpSlice.at(0).get("properties").isNull()
             && tmpSlice.at(0).get("features").isArray() && 2 == tmpSlice.at(0).get("features").length()  // frequency+norm
           ));
         } else if ("all" == fieldOverride.copyString()) {
@@ -1046,9 +1046,9 @@ SECTION("test_writeCustomizedValues") {
         true == value.isObject()
         && value.hasKey("name") && value.get("name").isString()
         && value.hasKey("type") && value.get("type").isString()
-        && value.hasKey("properties") && value.get("properties").isString()
+        && value.hasKey("properties") && (value.get("properties").isString() || value.get("properties").isNull())
         && value.hasKey("features") && value.get("features").isArray() && (1 == value.get("features").length() || 2 == value.get("features").length()) // empty/identity 1/2
-        && 1 == expectedAnalyzers.erase(std::make_pair(value.get("name").copyString(), value.get("properties").copyString()))
+        && 1 == expectedAnalyzers.erase(std::make_pair(value.get("name").copyString(), value.get("properties").isNull() ? "" : value.get("properties").copyString()))
      ));
     }
 

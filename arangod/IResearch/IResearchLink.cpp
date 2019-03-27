@@ -659,7 +659,7 @@ arangodb::Result IResearchLink::drop() {
     _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
   }
 
-  _flushCallback = IResearchFeature::WalFlushCallback(); // reset together with '_asyncSelf'
+  _flushCallback = {}; // reset together with '_asyncSelf', it's an std::function so don't use a constructor or ASAN complains
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   try {
@@ -931,7 +931,7 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback) 
     _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
   }
 
-  _flushCallback = IResearchFeature::WalFlushCallback(); // reset together with '_asyncSelf'
+  _flushCallback = {}; // reset together with '_asyncSelf', it's an std::function so don't use a constructor or ASAN complains
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   auto* dbPathFeature = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
@@ -1738,7 +1738,7 @@ arangodb::Result IResearchLink::unload() {
     _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
   }
 
-  _flushCallback = IResearchFeature::WalFlushCallback(); // reset together with '_asyncSelf'
+  _flushCallback = {}; // reset together with '_asyncSelf', it's an std::function so don't use a constructor or ASAN complains
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   try {
@@ -1747,7 +1747,7 @@ arangodb::Result IResearchLink::unload() {
       _dataStore._writer.reset();
       _dataStore._directory.reset();
     }
-  } catch (arangodb::basics::Exception& e) {
+  } catch (arangodb::basics::Exception const& e) {
     return arangodb::Result( // result
       e.code(), // code
       std::string("caught exception while unloading arangosearch link '") + std::to_string(id()) + "': " + e.what()

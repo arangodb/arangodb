@@ -232,7 +232,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   while (analyzer->next()) {
     auto value = irs::ref_cast<char>(values->value());
 
-    builder.add(arangodb::iresearch::toValuePair(value));
+    arangodb::iresearch::addStringRef(builder, value);
   }
 
   builder.close();
@@ -714,8 +714,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
 }
 
 /*static*/ bool IResearchAnalyzerFeature::canUse( // check permissions
-  irs::string_ref const& analyzer, // analyzer name
-  TRI_vocbase_t const& defaultVocbase, // fallback vocbase if not part of name
+  irs::string_ref const& name, // analyzer name (already normalized)
   arangodb::auth::Level const& level // access level
 ) {
   auto* ctx = arangodb::ExecContext::CURRENT;
@@ -726,25 +725,11 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
 
   auto& staticAnalyzers = getStaticAnalyzers();
 
-  if (staticAnalyzers.find(irs::make_hashed_ref(analyzer, std::hash<irs::string_ref>())) != staticAnalyzers.end()) {
+  if (staticAnalyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>())) != staticAnalyzers.end()) {
     return true; // special case for singleton static analyzers (always allowed)
   }
 
-  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::SystemDatabaseFeature // featue type
-  >();
-  auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
-  std::pair<irs::string_ref, irs::string_ref> split;
-
-  if (sysVocbase) {
-    split = splitAnalyzerName( // split analyzer name
-      arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-        analyzer, defaultVocbase, *sysVocbase // args
-      )
-    );
-  } else {
-    split = splitAnalyzerName(analyzer);
-  }
+  auto split = splitAnalyzerName(name);
 
   return !split.first.null() // have a vocbase
     && ctx->canUseDatabase(split.first, level) // can use vocbase
@@ -2061,7 +2046,7 @@ arangodb::Result IResearchAnalyzerFeature::remove( // remove analyzer
     arangodb::OperationOptions options;
 
     builder.openObject();
-    builder.add(arangodb::StaticStrings::KeyString, toValuePair(pool->_key));
+      addStringRef(builder, arangodb::StaticStrings::KeyString, pool->_key);
     builder.close();
 
     auto result = // remove
@@ -2237,17 +2222,9 @@ arangodb::Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
     arangodb::OperationOptions options;
 
     builder.openObject();
-    builder.add("name", toValuePair(split.second));
-    builder.add("type", toValuePair(pool.type()));
-
-    if (pool.properties().null()) {
-      builder.add( // add value
-        "properties", // name
-        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null) // value
-      );
-    } else {
-      builder.add("properties", toValuePair(pool.properties()));
-    }
+    addStringRef(builder, "name", split.second);
+    addStringRef(builder, "type", pool.type());
+    addStringRef(builder, "properties", pool.properties());
 
     // only add features if there are present
     if (!pool.features().empty()) {
@@ -2266,13 +2243,7 @@ arangodb::Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
           );
         }
 
-        if (feature->name().null()) {
-          builder.add( // add value
-            arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null) // value
-          );
-        } else {
-          builder.add(toValuePair(feature->name()));
-        }
+        addStringRef(builder, feature->name());
       }
 
       builder.close();
