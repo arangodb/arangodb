@@ -49,8 +49,8 @@ void ClusterFeature::abortOnTimeout() {
   if(clusterFeature->getAbortOnTimeout()) {
     TRI_ASSERT(false);
   }
-}
 #endif
+}
 
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Cluster"),

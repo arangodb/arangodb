@@ -466,7 +466,7 @@ arangodb::Result SynchronizeShard::getReadLock(std::string const& endpoint,
     LOG_TOPIC("7fcc9", ERR, Logger::MAINTENANCE)
         << "startReadLockOnLeader: exception in cancel: " << e.what();
   }
-  LOG_TOPIC(ERR, Logger::MAINTENANCE)
+  LOG_TOPIC("snatu", ERR, Logger::MAINTENANCE)
     << "Giving up getReadLock";
   TRI_LogBacktrace();
   // ClusterFeature::abortOnTimeout();
