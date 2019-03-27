@@ -43,6 +43,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/V8Context.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -826,7 +827,7 @@ void V8DealerFeature::startGarbageCollection() {
 }
 
 void V8DealerFeature::prepareLockedContext(TRI_vocbase_t* vocbase, V8Context* context,
-                                           bool allowUseDatabase) {
+                                           JavaScriptSecurityContext const& securityContext) {
   TRI_ASSERT(vocbase != nullptr);
 
   // when we get here, we should have a context and an isolate
@@ -848,7 +849,7 @@ void V8DealerFeature::prepareLockedContext(TRI_vocbase_t* vocbase, V8Context* co
       // initialize the context data
       v8g->_query = nullptr;
       v8g->_vocbase = vocbase;
-      v8g->_allowUseDatabase = allowUseDatabase;
+      v8g->_securityContext = securityContext;
 
       try {
         LOG_TOPIC("94226", TRACE, arangodb::Logger::V8)
@@ -863,7 +864,7 @@ void V8DealerFeature::prepareLockedContext(TRI_vocbase_t* vocbase, V8Context* co
 
 /// @brief enter a V8 context
 /// currently returns a nullptr if no context can be acquired in time
-V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, bool allowUseDatabase) {
+V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecurityContext const& securityContext) {
   TRI_ASSERT(vocbase != nullptr);
 
   if (_stopping) {
@@ -986,7 +987,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, bool allowUseDa
   context->lockAndEnter();
   context->assertLocked();
 
-  prepareLockedContext(vocbase, context, allowUseDatabase);
+  prepareLockedContext(vocbase, context, securityContext);
   return context;
 }
 
@@ -1068,7 +1069,7 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
     // reset the context data; gc should be able to run without it
     v8g->_query = nullptr;
     v8g->_vocbase = nullptr;
-    v8g->_allowUseDatabase = false;
+    v8g->_securityContext.reset();
 
     // now really exit
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
@@ -1172,9 +1173,11 @@ void V8DealerFeature::applyContextUpdate(V8Context* context) {
       // oops
       continue;
     }
+    
+    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createInternalContext();
 
     context->lockAndEnter();
-    prepareLockedContext(vocbase, context, true);
+    prepareLockedContext(vocbase, context, securityContext);
     TRI_DEFER(exitContextInternal(context));
 
     {
@@ -1479,9 +1482,11 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
   if (!vocbase->use()) {
     return false;
   }
+    
+  JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createInternalContext();
 
   context->lockAndEnter();
-  prepareLockedContext(vocbase, context, true);
+  prepareLockedContext(vocbase, context, securityContext);
   TRI_DEFER(exitContextInternal(context));
 
   try {
@@ -1577,26 +1582,29 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   delete context;
 }
 
-V8ContextDealerGuard::V8ContextDealerGuard(Result& res, v8::Isolate*& isolate,
-                                           TRI_vocbase_t* vocbase, bool allowModification)
-    : _isolate(isolate), _context(nullptr), _active(isolate ? false : true) {
+V8ContextGuard::V8ContextGuard(Result& res, v8::Isolate*& isolate,
+                               TRI_vocbase_t* vocbase, 
+                               JavaScriptSecurityContext const& securityContext)
+    : _isolate(isolate), 
+      _context(nullptr), 
+      _active(isolate ? false : true) {
   if (_active) {
     if (!vocbase) {
       res.reset(TRI_ERROR_INTERNAL,
-                "V8ContextDealerGuard - no vocbase provided");
+                "V8ContextGuard - no vocbase provided");
       return;
     }
-    _context = V8DealerFeature::DEALER->enterContext(vocbase, allowModification);
+    _context = V8DealerFeature::DEALER->enterContext(vocbase, securityContext);
     if (!_context) {
       res.reset(TRI_ERROR_INTERNAL,
-                "V8ContextDealerGuard - could not acquire context");
+                "V8ContextGuard - could not acquire context");
       return;
     }
     isolate = _context->_isolate;
   }
 }
 
-V8ContextDealerGuard::~V8ContextDealerGuard() {
+V8ContextGuard::~V8ContextGuard() {
   if (_active && _context) {
     try {
       V8DealerFeature::DEALER->exitContext(_context);

@@ -25,8 +25,8 @@
 #define ARANGODB_V8_V8__GLOBALS_H 1
 
 #include "Basics/Common.h"
-
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "V8/JavaScriptSecurityContext.h"
 
 struct TRI_vocbase_t;
 
@@ -742,8 +742,8 @@ struct TRI_v8_global_t {
   /// @brief cancel has been caught
   bool _canceled;
 
-  /// @brief whether or not useDatabase() is allowed
-  bool _allowUseDatabase;
+  /// @brief the current security context
+  arangodb::JavaScriptSecurityContext _securityContext;
 };
 
 /// @brief creates a global context

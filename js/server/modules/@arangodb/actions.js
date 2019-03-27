@@ -1309,21 +1309,22 @@ function defineHttp (options) {
     return;
   }
 
-  var parameter = {
+  let parameters = {
     prefix: true,
     allowUseDatabase: false
   };
 
   if (options.hasOwnProperty('prefix')) {
-    parameter.prefix = options.prefix;
+    parameters.prefix = options.prefix;
   }
 
+  // currently only used by api-cluster.js
   if (options.hasOwnProperty('allowUseDatabase')) {
-    parameter.allowUseDatabase = options.allowUseDatabase;
+    parameters.allowUseDatabase = options.allowUseDatabase;
   }
 
   try {
-    internal.defineAction(url, callback, parameter);
+    internal.defineAction(url, callback, parameters);
   } catch (e) {
     console.errorLines("action '%s' encountered error:\n%s", url, e.stack || String(e));
   }

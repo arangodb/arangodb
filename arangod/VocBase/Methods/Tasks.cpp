@@ -41,6 +41,7 @@
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -372,7 +373,8 @@ void Task::toVelocyPack(VPackBuilder& builder) const {
 }
 
 void Task::work(ExecContext const* exec) {
-  auto context = V8DealerFeature::DEALER->enterContext(&(_dbGuard->database()), _allowUseDatabase);
+  JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createTaskContext(_allowUseDatabase);
+  auto context = V8DealerFeature::DEALER->enterContext(&(_dbGuard->database()), securityContext);
 
   // note: the context might be 0 in case of shut-down
   if (context == nullptr) {

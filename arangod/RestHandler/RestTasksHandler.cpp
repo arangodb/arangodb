@@ -27,8 +27,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
@@ -140,12 +139,6 @@ void RestTasksHandler::registerTask(bool byId) {
     }
   }
 
-  if (SchedulerFeature::SCHEDULER == nullptr) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "no scheduler found");
-    return;
-  }
-
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     if (exec->databaseAuthLevel() != auth::Level::RW) {
@@ -209,8 +202,10 @@ void RestTasksHandler::registerTask(bool byId) {
   {
     Result res;
     v8::Isolate* isolate = nullptr;
+    
     try {
-      V8ContextDealerGuard dealerGuard(res, isolate, &_vocbase, true);
+      JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestrictedContext();
+      V8ContextGuard dealerGuard(res, isolate, &_vocbase, securityContext);
       if (res.fail()) {
         generateError(res);
         return;

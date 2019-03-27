@@ -29,6 +29,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-actions.h"
@@ -75,7 +76,8 @@ RestStatus RestAdminExecuteHandler::execute() {
     
     // get a V8 context
     bool const allowUseDatabase = ActionFeature::ACTION->allowUseDatabase();
-    V8Context* context = V8DealerFeature::DEALER->enterContext(&_vocbase,  allowUseDatabase);
+    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
+    V8Context* context = V8DealerFeature::DEALER->enterContext(&_vocbase,  securityContext);
 
     // note: the context might be nullptr in case of shut-down
     if (context == nullptr) {

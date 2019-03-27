@@ -45,6 +45,7 @@
 #include "Utils/ExecContext.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
@@ -500,7 +501,8 @@ static int RenameGraphCollections(TRI_vocbase_t* vocbase, std::string const& old
   buffer.appendJsonEncoded(newName.c_str(), newName.size());
   buffer.appendText(");");
 
-  V8Context* context = dealer->enterContext(vocbase, false);
+  JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createInternalContext();
+  V8Context* context = dealer->enterContext(vocbase, securityContext);
   if (context == nullptr) {
     LOG_TOPIC("8f0aa", WARN, Logger::FIXME) << "RenameGraphCollections: no V8 context";
     return TRI_ERROR_OUT_OF_MEMORY;

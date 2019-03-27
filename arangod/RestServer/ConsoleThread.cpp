@@ -31,6 +31,7 @@
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Rest/Version.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -66,7 +67,8 @@ void ConsoleThread::run() {
   }
 
   // enter V8 context
-  _context = V8DealerFeature::DEALER->enterContext(_vocbase, true);
+  JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createAdminScriptContext();
+  _context = V8DealerFeature::DEALER->enterContext(_vocbase, securityContext);
 
   if (_context == nullptr) {
     LOG_TOPIC("921b8", FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";

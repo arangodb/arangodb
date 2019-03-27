@@ -158,8 +158,11 @@ void V8Context::handleGlobalContextMethods() {
         << "executing global context method '" << func << "' for context " << _id;
 
     TRI_GET_GLOBALS2(_isolate);
-    bool allowUseDatabase = v8g->_allowUseDatabase;
-    v8g->_allowUseDatabase = true;
+
+    // save old security context settings
+    JavaScriptSecurityContext old(v8g->_securityContext);
+
+    v8g->_securityContext = JavaScriptSecurityContext::createInternalContext();
 
     try {
       v8::TryCatch tryCatch(_isolate);
@@ -180,7 +183,8 @@ void V8Context::handleGlobalContextMethods() {
           << "caught exception during global context method '" << func << "'";
     }
 
-    v8g->_allowUseDatabase = allowUseDatabase;
+    // restore old security settings
+    v8g->_securityContext = old;
   }
 }
 

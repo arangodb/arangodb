@@ -23,6 +23,7 @@
 
 #include "RestTransactionHandler.h"
 
+#include "Actions/ActionFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -33,6 +34,7 @@
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Status.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Transactions.h"
@@ -239,7 +241,9 @@ void RestTransactionHandler::executeJSTransaction() {
 
   std::string portType = _request->connectionInfo().portType();
 
-  _v8Context = V8DealerFeature::DEALER->enterContext(&_vocbase, true /*allow use database*/);
+  bool allowUseDatabase = ActionFeature::ACTION->allowUseDatabase();
+  JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
+  _v8Context = V8DealerFeature::DEALER->enterContext(&_vocbase, securityContext);
 
   if (!_v8Context) {
     generateError(Result(TRI_ERROR_INTERNAL, "could not acquire v8 context"));

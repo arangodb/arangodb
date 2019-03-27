@@ -27,6 +27,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -68,7 +69,9 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
   auto* sysDbFeature =
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
   auto database = sysDbFeature->use();
-  V8Context* context = V8DealerFeature::DEALER->enterContext(database.get(), true);
+
+  JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createAdminScriptContext();
+  V8Context* context = V8DealerFeature::DEALER->enterContext(database.get(), securityContext);
 
   if (context == nullptr) {
     LOG_TOPIC("d01d3", FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";

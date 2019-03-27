@@ -1,0 +1,84 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef ARANGODB_V8_JAVASCRIPT_SECURITY_CONTEXT_H
+#define ARANGODB_V8_JAVASCRIPT_SECURITY_CONTEXT_H 1
+
+#include "Basics/Common.h"
+
+namespace arangodb {
+
+class JavaScriptSecurityContext {
+ public:
+  enum class Type {
+    Restricted,
+    Internal,
+    AdminScript,
+    Query,
+    Task,
+    RestAction
+  };
+
+  explicit JavaScriptSecurityContext(Type type)
+      : _type(type) {}
+  
+  ~JavaScriptSecurityContext() = default;
+
+  /// @brief resets context to most restrictive settings
+  void reset();
+
+  /// @brief whether or not db._useDatabase(...) is allowed
+  bool allowUseDatabase() const { return _allowUseDatabase; }
+  
+  /// @brief whether or not actions.defineAction(...) is allowed
+  bool canDefineHttpAction() const;
+  
+  /// @brief create a security context that is most restricted
+  static JavaScriptSecurityContext createRestrictedContext();
+
+  /// @brief create a security context for arangodb-internal
+  /// operations, with non-restrictive settings
+  static JavaScriptSecurityContext createInternalContext();
+  
+  /// @brief create a security context for admin script operations,
+  /// invoked by `--javascript.execute` or when running in --console mode
+  static JavaScriptSecurityContext createAdminScriptContext();
+  
+  /// @brief create a security context for AQL queries,
+  /// with restrictive settings
+  static JavaScriptSecurityContext createQueryContext();
+  
+  /// @brief create a security context for tasks actions
+  static JavaScriptSecurityContext createTaskContext(bool allowUseDatabase);
+
+  /// @brief create a security context for REST actions
+  static JavaScriptSecurityContext createRestActionContext(bool allowUseDatabase);
+
+ private:
+  Type _type;
+  bool _allowUseDatabase = false;
+};
+
+}  // namespace arangodb
+
+#endif

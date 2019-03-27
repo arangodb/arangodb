@@ -1572,7 +1572,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
 
-  if (!v8g->_allowUseDatabase) {
+  if (!v8g->_securityContext.allowUseDatabase()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 

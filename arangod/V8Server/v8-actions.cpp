@@ -39,6 +39,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Utils/ExecContext.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -113,7 +114,8 @@ class v8_action_t final : public TRI_action_t {
     }
 
     // get a V8 context
-    V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, allowUseDatabaseInRestActions);
+    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestActionContext(allowUseDatabaseInRestActions);
+    V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, securityContext);
 
     // note: the context might be nullptr in case of shut-down
     if (context == nullptr) {
@@ -1007,6 +1009,10 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "defineAction(<name>, <callback>, <parameter>)");
+  }
+
+  if (!v8g->_securityContext.canDefineHttpAction()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "operation only allowed for internal scripts");
   }
 
   // extract the action name

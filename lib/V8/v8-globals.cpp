@@ -126,7 +126,7 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
       _vocbase(nullptr),
       _activeExternals(0),
       _canceled(false),
-      _allowUseDatabase(true) {
+      _securityContext(arangodb::JavaScriptSecurityContext::createRestrictedContext()) {
   v8::HandleScope scope(isolate);
 
   BufferConstant.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "Buffer"));

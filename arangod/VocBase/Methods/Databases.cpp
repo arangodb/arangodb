@@ -33,6 +33,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Utils/ExecContext.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
@@ -358,7 +359,8 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
   int res;
   V8DealerFeature* dealer = V8DealerFeature::DEALER;
   if (dealer != nullptr && dealer->isEnabled()) {
-    V8Context* v8ctx = V8DealerFeature::DEALER->enterContext(systemVocbase, true);
+    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createInternalContext();
+    V8Context* v8ctx = V8DealerFeature::DEALER->enterContext(systemVocbase, securityContext);
     if (v8ctx == nullptr) {
       return Result(TRI_ERROR_INTERNAL, "Could not get v8 context");
     }
@@ -383,13 +385,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
       // run the garbage collection in case the database held some objects which
       // can now be freed
       TRI_RunGarbageCollectionV8(isolate, 0.25);
-      TRI_ExecuteJavaScriptString(
-          isolate, isolate->GetCurrentContext(),
-          TRI_V8_ASCII_STRING(
-              isolate,
-              "require('internal').executeGlobalContextFunction('"
-              "reloadRouting')"),
-          TRI_V8_ASCII_STRING(isolate, "reload routing"), false);
+      V8DealerFeature::DEALER->addGlobalContextMethod("reloadRouting");
     }
   } else {
     if (ServerState::instance()->isCoordinator()) {
