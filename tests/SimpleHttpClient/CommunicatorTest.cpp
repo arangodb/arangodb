@@ -30,7 +30,6 @@
 #include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/Communicator.h"
 #include "SimpleHttpClient/Callbacks.h"
-#include "SimpleHttpClient/Destination.h"
 
 #include <thread>
 #include <chrono>
@@ -55,8 +54,13 @@ TEST_CASE("requests are properly aborted", "[communicator]" ) {
   auto request = std::unique_ptr<HttpRequest>(HttpRequest::createHttpRequest(rest::ContentType::TEXT, "", 0, {}));
   request->setRequestType(RequestType::GET);
   communicator::Options opt;
-  auto destination = Destination("http://www.example.com");
-  communicator.addRequest(std::move(destination), std::move(request), callbacks, opt);
+  auto destination = std::string("http://www.example.com");
+  auto newRequest = std::make_unique<communicator::NewRequest>(
+    std::move(destination), 
+    std::move(request), 
+    callbacks, opt);
+
+  communicator.addRequest(std::move(newRequest));
   communicator.work_once();
   communicator.abortRequests();
   while (communicator.work_once() > 0) {
@@ -82,8 +86,13 @@ TEST_CASE("requests will call the progress callback", "[communicator]") {
     curlRc = rc;
   });
 
-  auto destination = Destination("http://www.example.com");
-  communicator.addRequest(std::move(destination), std::move(request), callbacks, opt);
+  auto destination = std::string("http://www.example.com");
+  auto newRequest = std::make_unique<communicator::NewRequest>(
+    std::move(destination), 
+    std::move(request), 
+    callbacks, opt);
+
+  communicator.addRequest(std::move(newRequest));
   communicator.work_once();
   communicator.abortRequests();
   while (communicator.work_once() > 0) {

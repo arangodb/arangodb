@@ -204,7 +204,7 @@ bool RestBatchHandler::executeNextHandler() {
   std::shared_ptr<RestHandler> handler;
 
   {
-    std::unique_ptr<HttpResponse> response(new HttpResponse(rest::ResponseCode::SERVER_ERROR));
+    std::unique_ptr<HttpResponse> response(new HttpResponse(rest::ResponseCode::SERVER_ERROR, new StringBuffer(false)));
 
     handler.reset(
         GeneralServerFeature::HANDLER_FACTORY->createHandler(std::move(request),

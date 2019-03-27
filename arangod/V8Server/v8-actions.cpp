@@ -105,7 +105,7 @@ class v8_action_t final : public TRI_action_t {
                               void** data) override {
     TRI_action_result_t result;
 
-    // allow use datase execution in rest calls
+    // allow use database execution in rest calls
     bool allowUseDatabaseInRestActions = ActionFeature::ACTION->allowUseDatabase();
 
     if (_allowUseDatabase) {
@@ -307,9 +307,10 @@ static void AddCookie(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 /// @brief convert a C++ HttpRequest to a V8 request object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
-                                             TRI_v8_global_t const* v8g,
-                                             GeneralRequest* request) {
+v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
+                                          TRI_v8_global_t const* v8g,
+                                          arangodb::GeneralRequest* request,
+                                          TRI_action_t const* action) {
   // setup the request
   v8::Handle<v8::Object> req = v8::Object::New(isolate);
 
@@ -505,11 +506,11 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       req->Set(RequestTypeKey, HeadConstant);
       break;
     }
-    case rest::RequestType::GET: {
-      default:
-        TRI_GET_GLOBAL_STRING(GetConstant);
-        req->Set(RequestTypeKey, GetConstant);
-        break;
+    case rest::RequestType::GET: 
+    default: {
+      TRI_GET_GLOBAL_STRING(GetConstant);
+      req->Set(RequestTypeKey, GetConstant);
+      break;
     }
   }
 
@@ -561,6 +562,37 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
     TRI_GET_GLOBAL_STRING(CookiesKey);
     req->Set(CookiesKey, cookiesObject);
   }
+  
+  // copy suffix, which comes from the action:
+  std::vector<std::string> const& suffixes = request->decodedSuffixes();
+  std::vector<std::string> const& rawSuffixes = request->suffixes();
+
+  uint32_t index = 0;
+  char const* sep = "";
+
+  size_t const n = suffixes.size();
+  v8::Handle<v8::Array> suffixArray =
+      v8::Array::New(isolate, static_cast<int>(n - action->_urlParts));
+  v8::Handle<v8::Array> rawSuffixArray =
+      v8::Array::New(isolate, static_cast<int>(n - action->_urlParts));
+
+  for (size_t s = action->_urlParts; s < n; ++s) {
+    suffixArray->Set(index, TRI_V8_STD_STRING(isolate, suffixes[s]));
+    rawSuffixArray->Set(index, TRI_V8_STD_STRING(isolate, rawSuffixes[s]));
+    ++index;
+
+    path += sep + suffixes[s];
+    sep = "/";
+  }
+
+  TRI_GET_GLOBAL_STRING(SuffixKey);
+  req->Set(SuffixKey, suffixArray);
+  TRI_GET_GLOBAL_STRING(RawSuffixKey);
+  req->Set(RawSuffixKey, rawSuffixArray);
+
+  // copy full path
+  TRI_GET_GLOBAL_STRING(PathKey);
+  req->Set(PathKey, TRI_V8_STD_STRING(isolate, path));
 
   return req;
 }
@@ -791,7 +823,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
         httpResponse->body().appendText(content, length);
         TRI_FreeString(content);
-      } break;
+      } 
+      break;
 
       case Endpoint::TransportType::VST: {
         VPackBuffer<uint8_t> buffer;
@@ -800,9 +833,10 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         TRI_FreeString(content);
 
         // create vpack from file
-        response->setContentType(rest::ContentType::VPACK);
+        response->setContentType(rest::ContentType::TEXT);
         response->setPayload(std::move(buffer), true);
-      } break;
+      } 
+      break;
 
       default:
         TRI_FreeString(content);
@@ -885,39 +919,7 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
 
   TRI_GET_GLOBALS();
 
-  v8::Handle<v8::Object> req = RequestCppToV8(isolate, v8g, request);
-
-  // copy suffix, which comes from the action:
-  std::string path = request->prefix();
-  std::vector<std::string> const& suffixes = request->decodedSuffixes();
-  std::vector<std::string> const& rawSuffixes = request->suffixes();
-
-  uint32_t index = 0;
-  char const* sep = "";
-
-  size_t const n = suffixes.size();
-  v8::Handle<v8::Array> suffixArray =
-      v8::Array::New(isolate, static_cast<int>(n - action->_urlParts));
-  v8::Handle<v8::Array> rawSuffixArray =
-      v8::Array::New(isolate, static_cast<int>(n - action->_urlParts));
-
-  for (size_t s = action->_urlParts; s < n; ++s) {
-    suffixArray->Set(index, TRI_V8_STD_STRING(isolate, suffixes[s]));
-    rawSuffixArray->Set(index, TRI_V8_STD_STRING(isolate, rawSuffixes[s]));
-    ++index;
-
-    path += sep + suffixes[s];
-    sep = "/";
-  }
-
-  TRI_GET_GLOBAL_STRING(SuffixKey);
-  req->Set(SuffixKey, suffixArray);
-  TRI_GET_GLOBAL_STRING(RawSuffixKey);
-  req->Set(RawSuffixKey, rawSuffixArray);
-
-  // copy full path
-  TRI_GET_GLOBAL_STRING(PathKey);
-  req->Set(PathKey, TRI_V8_STD_STRING(isolate, path));
+  v8::Handle<v8::Object> req = TRI_RequestCppToV8(isolate, v8g, request, action);
 
   // create the response object
   v8::Handle<v8::Object> res = v8::Object::New(isolate);
