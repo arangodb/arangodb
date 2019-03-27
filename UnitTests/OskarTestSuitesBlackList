@@ -4,3 +4,4 @@ shell_client_aql
 version
 upgrade_data_3.4.*
 dump_multiple
+permissions
