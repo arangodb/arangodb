@@ -103,9 +103,6 @@ class CollectNode : public ExecutionNode {
   }
 
   /// @brief getOptions
-  CollectOptions const& getOptions() const { return _options; }
-
-  /// @brief getOptions
   CollectOptions& getOptions() { return _options; }
 
   /// @brief export to VelocyPack

@@ -151,7 +151,7 @@ ShortestPathExecutor::ShortestPathExecutor(Fetcher& fetcher, Infos& infos)
 ShortestPathExecutor::~ShortestPathExecutor() = default;
 
 // Shutdown query
-std::pair<ExecutionState, Result> ShortestPathExecutor::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> ShortestPathExecutor::shutdown() {
   _finder.destroyEngines();
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }

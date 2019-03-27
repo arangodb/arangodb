@@ -67,10 +67,6 @@ class DocumentProducingNode {
     return _coveringIndexAttributePositions;
   }
 
-  void resetCoveringIndexAttributePositions() const {
-    _coveringIndexAttributePositions.clear();
-  }
-
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
  protected:

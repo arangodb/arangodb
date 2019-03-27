@@ -89,7 +89,6 @@ class ConstrainedSortExecutor {
   Infos& _infos;
   Fetcher& _fetcher;
   ExecutionState _state;
-  std::vector<size_t> _sortedIndexes;
   size_t _returnNext;
   std::vector<uint32_t> _rows;
   size_t _rowsPushed;

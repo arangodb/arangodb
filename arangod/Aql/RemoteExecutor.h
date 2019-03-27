@@ -60,7 +60,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  std::pair<ExecutionState, Result> shutdown(int errorCode) override;
+  std::pair<ExecutionState, Result> shutdown() override;
 
   /// @brief handleAsyncResult
   bool handleAsyncResult(ClusterCommResult* result) override;

@@ -76,7 +76,7 @@ class ExecutionEngine {
 
   /// @brief shutdown, will be called exactly once for the whole query, may
   /// return waiting
-  std::pair<ExecutionState, Result> shutdown(int errorCode);
+  std::pair<ExecutionState, Result> shutdown();
 
   /// @brief getSome
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost);

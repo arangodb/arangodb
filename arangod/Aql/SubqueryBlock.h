@@ -43,7 +43,7 @@ class SubqueryBlock final : public ExecutionBlock {
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
 
   /// @brief shutdown, tell dependency and the subquery
-  std::pair<ExecutionState, Result> shutdown(int errorCode) override final;
+  std::pair<ExecutionState, Result> shutdown() override final;
 
   /// @brief getter for the pointer to the subquery
   ExecutionBlock* getSubquery() { return _subquery; }

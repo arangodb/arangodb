@@ -90,7 +90,7 @@ class ExecutionBlock {
   virtual std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos);
 
   /// @brief shutdown, will be called exactly once for the whole query
-  virtual std::pair<ExecutionState, Result> shutdown(int);
+  virtual std::pair<ExecutionState, Result> shutdown();
 
   /// @brief getSome, gets some more items, semantic is as follows: not
   /// more than atMost items may be delivered. The method tries to

@@ -349,7 +349,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
   // For every call we simply forward via HTTP
   VPackBuilder bodyBuilder;
   bodyBuilder.openObject();
-  bodyBuilder.add("code", VPackValue(errorCode));
+  bodyBuilder.add("code", VPackValue(TRI_ERROR_NO_ERROR));
   bodyBuilder.close();
 
   auto bodyString = std::make_shared<std::string const>(bodyBuilder.slice().toJson());

@@ -74,7 +74,6 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
   std::vector<std::string> getAggregateTypes() const { return _aggregateTypes; }
   bool getCount() const noexcept { return _count; }
   transaction::Methods* getTransaction() const { return _trxPtr; }
-  RegisterId getInputRegister() const noexcept { return _inputRegister; }
   RegisterId getCollectRegister() const noexcept { return _collectRegister; }
 
  private:

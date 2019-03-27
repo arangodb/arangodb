@@ -163,7 +163,7 @@ TraversalExecutor::~TraversalExecutor() {
 };
 
 // Shutdown query
-std::pair<ExecutionState, Result> TraversalExecutor::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> TraversalExecutor::shutdown() {
   _traverser.destroyEngines();
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }

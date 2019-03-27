@@ -164,7 +164,7 @@ class ShortestPathExecutor {
    *
    * @return ExecutionState and no error.
    */
-  std::pair<ExecutionState, Result> shutdown(int errorCode);
+  std::pair<ExecutionState, Result> shutdown();
   /**
    * @brief produce the next Row of Aql Values.
    *
