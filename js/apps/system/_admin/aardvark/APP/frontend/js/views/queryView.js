@@ -1569,8 +1569,8 @@
           false,
           [
             {
-              rule: Joi.string().required(),
-              msg: 'No query name given.'
+              rule: Joi.string().regex(/^(\s*[a-zA-Z0-9\-._]+\s*)+$/).required(),
+              msg: 'A query name is required. Characters, numbers and ".", "_", "-" symbols are allowed.'
             }
           ]
         )
