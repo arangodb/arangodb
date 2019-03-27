@@ -43,6 +43,15 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+void ClusterFeature::abortOnTimeout() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto clusterFeature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  if(clusterFeature->getAbortOnTimeout()) {
+    TRI_ASSERT(false);
+  }
+#endif
+}
+
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Cluster"),
       _unregisterOnShutdown(false),
@@ -51,7 +60,11 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
       _heartbeatThread(nullptr),
       _heartbeatInterval(0),
       _agencyCallbackRegistry(nullptr),
-      _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED) {
+      _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED)
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    ,_abortOnTimeout(true)
+#endif
+{
   setOptional(true);
   startsAfter("DatabasePhase");
   startsAfter("CommunicationPhase");
@@ -141,6 +154,14 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "be created before giving up",
       new DoubleParameter(&_indexCreationTimeout),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  options->addOption(
+      "--cluster.abort-on-timeout",
+      "aborts this instance if a communication timeout occurs",
+      new BooleanParameter(&_abortOnTimeout),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+#endif      
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

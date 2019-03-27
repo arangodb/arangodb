@@ -33,6 +33,7 @@
 #include "Basics/hashes.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/ClusterFeature.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/HttpResponse.h"
@@ -1462,12 +1463,14 @@ Result ClusterInfo::createDatabaseCoordinator(  // create database
       }
 
       if (TRI_microtime() > endTime) {
+        ClusterFeature::abortOnTimeout();
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
 
       agencyCallback->executeByCallbackOrTimeout(getReloadServerListTimeout() / interval);
 
       if (!application_features::ApplicationServer::isRetryOK()) {
+	ClusterFeature::abortOnTimeout();
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -1565,12 +1568,14 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
           LOG_TOPIC("e7e30", ERR, Logger::CLUSTER) << "Could not get agency dump!";
         }
 
+        ClusterFeature::abortOnTimeout();
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
 
       if (!application_features::ApplicationServer::isRetryOK()) {
+        ClusterFeature::abortOnTimeout();
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -1921,6 +1926,7 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
         ac.sendTransactionWithFailover(transaction);
 
         events::CreateCollection(name, TRI_ERROR_CLUSTER_TIMEOUT);
+        ClusterFeature::abortOnTimeout();
 
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
@@ -1937,6 +1943,7 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
       }
 
       if (!application_features::ApplicationServer::isRetryOK()) {
+        ClusterFeature::abortOnTimeout();
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -2099,6 +2106,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
         }
 
         events::DropCollection(collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
+        ClusterFeature::abortOnTimeout();
 
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
@@ -2106,6 +2114,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       agencyCallback->executeByCallbackOrTimeout(interval);
 
       if (!application_features::ApplicationServer::isRetryOK()) {
+        ClusterFeature::abortOnTimeout();
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -2826,6 +2835,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
             loadPlan();
 
             if (tmpRes < 0) {                 // timeout
+              ClusterFeature::abortOnTimeout();
               return Result(                  // result
                   TRI_ERROR_CLUSTER_TIMEOUT,  // code
                   "Index could not be created within timeout, giving up and "
@@ -2846,6 +2856,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
                 << ". Database: " << databaseName << ", Collection " << collectionID;
 
             if (tmpRes < 0) {                 // timeout
+              ClusterFeature::abortOnTimeout();
               return Result(                  // result
                   TRI_ERROR_CLUSTER_TIMEOUT,  // code
                   "Timed out while trying to roll back index creation failure");
@@ -3052,6 +3063,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
       if (TRI_microtime() > endTime) {
         events::DropIndex(collectionID, idString, TRI_ERROR_CLUSTER_TIMEOUT);
+        ClusterFeature::abortOnTimeout();
 
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
@@ -3059,6 +3071,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
       agencyCallback->executeByCallbackOrTimeout(interval);
 
       if (!application_features::ApplicationServer::isRetryOK()) {
+        ClusterFeature::abortOnTimeout();
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }

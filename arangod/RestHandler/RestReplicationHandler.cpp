@@ -628,6 +628,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   }
 
   if (res->status == CL_COMM_TIMEOUT) {
+    ClusterFeature::abortOnTimeout();
     // No reply, we give up:
     generateError(rest::ResponseCode::BAD, TRI_ERROR_CLUSTER_TIMEOUT,
                   "timeout within cluster");

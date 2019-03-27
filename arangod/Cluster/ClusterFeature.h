@@ -97,6 +97,13 @@ class ClusterFeature : public application_features::ApplicationFeature {
   uint64_t _heartbeatInterval;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _abortOnTimeout;
+public:
+  bool getAbortOnTimeout() const { return _abortOnTimeout;}
+#endif
+public:
+  static void abortOnTimeout();
 };
 
 }  // namespace arangodb

@@ -403,9 +403,9 @@ void DatabaseFeature::stop() {
 
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
-
+  static auto self = this;
   for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
+    static TRI_vocbase_t* vocbase = p.second;
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
     if (vocbase->type() != TRI_VOCBASE_TYPE_NORMAL) {
@@ -416,6 +416,7 @@ void DatabaseFeature::stop() {
         [](LogicalCollection* collection) {
           // no one else must modify the collection's status while we are in
           // here
+          static auto theCollection = collection;
           collection->executeWhileStatusWriteLocked(
               [collection]() { collection->close(); });
         },
