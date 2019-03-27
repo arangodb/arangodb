@@ -1,8 +1,8 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue */
+/* global getOptions, assertTrue, assertFalse, assertEqual, assertUndefined */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief teardown for dump/reload tests
+/// @brief tests for security settings
 ///
 /// @file
 ///
@@ -33,13 +33,32 @@ if (getOptions === true) {
     'javascript.environment-variables-filter': 'PATH'
   };
 }
+
 var jsunity = require('jsunity');
 var env = require('process').env;
+
 function testSuite() {
   return {
     setUp: function() {},
     tearDown: function() {},
-    testEnvironment : function() {
+    
+    testAvailable : function() {
+      assertFalse(env.hasOwnProperty('MIAU-DERFUCHS'));
+      assertUndefined(env['MIAU-DERFUCHS']);
+
+      env['MIAU-DERFUCHS'] = 'DERFUCHS';
+      assertTrue(env.hasOwnProperty('MIAU-DERFUCHS'));
+      assertEqual('DERFUCHS', env['MIAU-DERFUCHS']);
+
+      env['MIAU-DERFUCHS'] = 'KATZ!';
+      assertTrue(env.hasOwnProperty('MIAU-DERFUCHS'));
+      assertEqual('KATZ!', env['MIAU-DERFUCHS']);
+
+      delete env['MIAU-DERFUCHS'];
+      assertFalse(env.hasOwnProperty('MIAU-DERFUCHS'));
+    },
+
+    testMasked : function() {
       // the PATH was hidden by the parameter
       assertUndefined(env['PATH']);
       assertFalse(env.hasOwnProperty('PATH'));

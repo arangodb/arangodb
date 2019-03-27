@@ -1,8 +1,8 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue */
+/* global getOptions, assertTrue, assertFalse, assertNotMatch, assertUndefined */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief teardown for dump/reload tests
+/// @brief tests for security settings
 ///
 /// @file
 ///
@@ -30,16 +30,33 @@
 
 if (getOptions === true) {
   return {
-    'javascript.startup-options-filter': '.*point.*|log'
+    'javascript.startup-options-filter': 'point|log'
   };
 }
+
 var jsunity = require('jsunity');
 var env = require('process').env;
 function testSuite() {
   return {
     setUp: function() {},
     tearDown: function() {},
-    testOptions : function() {
+    
+    testKeyPattern : function() {
+      const regex = new RegExp('.*point.*|log');
+
+      let opts = require('internal').options();
+      Object.keys(opts).forEach(function(key) {
+        assertNotMatch(regex, key);
+      });
+    },
+    
+    testIncluded : function() {
+      let opts = require('internal').options();
+      assertTrue(opts.hasOwnProperty('temp.path'));
+      assertTrue(typeof opts['temp.path'] === 'string');
+    },
+
+    testDedicatedOptions : function() {
       let opts = require('internal').options();
 
       assertUndefined(opts['javascript.endpoints-filter']);
@@ -59,8 +76,6 @@ function testSuite() {
 
       assertTrue(opts.hasOwnProperty('console.pager-command'));
       assertTrue(opts['console.pager-command'].length > 0);
-      
-      
     }
   };
 }
