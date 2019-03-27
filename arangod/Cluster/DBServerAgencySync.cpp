@@ -198,7 +198,23 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne done";
 
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo";
+    // Give some asynchronous jobs created in phaseOne a chance to complete
+    // before we collect data for phaseTwo:
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+      << "DBServerAgencySync::hesitating between phases 1 and 2 for 0.1s...";
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    auto current = clusterInfo->getCurrent();
+    if (current == nullptr) {
+      // TODO increase log level, except during shutdown?
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          << "DBServerAgencySync::execute no current";
+      result.errorMessage = "DBServerAgencySync::execute no current";
+      return result;
+    }
+    LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+        << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
+
     local.clear();
     glc = getLocalCollections(local);
     // We intentionally refetch local collections here, such that phase 2
@@ -211,16 +227,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       return result;
     }
 
-    auto current = clusterInfo->getCurrent();
-    if (current == nullptr) {
-      // TODO increase log level, except during shutdown?
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-          << "DBServerAgencySync::execute no current";
-      result.errorMessage = "DBServerAgencySync::execute no current";
-      return result;
-    }
-    LOG_TOPIC(TRACE, Logger::MAINTENANCE)
-        << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo";
 
     tmp = arangodb::maintenance::phaseTwo(plan->slice(), current->slice(),
                                           local.slice(), serverId, *mfeature, rb);
