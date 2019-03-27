@@ -601,9 +601,11 @@ function runThere (options, instanceInfo, file) {
     if (!reply.error && reply.code === 200) {
       return JSON.parse(reply.body);
     } else {
+      print(reply);
       if ((reply.code === 500) &&
           reply.hasOwnProperty('message') &&
           (reply.message === 'Request timeout reached')) {
+        print(RED + Date() + " request timeout reached, aborting test execution" + RESET);
         return {
           status: false,
           message: reply.message,
