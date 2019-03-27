@@ -72,6 +72,14 @@ function ArangoTransaction (database, data) {
       col => col.isArangoCollection ? col.name() : col
     );
   }
+  if (data.collections.exclusive) {
+    if (!Array.isArray(data.collections.exclusive)) {
+      data.collections.exclusive = [data.collections.exclusive];
+    }
+    data.collections.exclusive = data.collections.exclusive.map(
+      col => col.isArangoCollection ? col.name() : col
+    );
+  }
 
   if (data.action) {
     throw new ArangoError({
