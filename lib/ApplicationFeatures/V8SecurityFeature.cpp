@@ -106,6 +106,12 @@ bool V8SecurityFeature::shouldExposeEnvironmentVariable(v8::Isolate* isolate, st
 }
 
 bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate, std::string const& name) const {
+  TRI_GET_GLOBALS();
+  if (v8g != nullptr && v8g->_securityContext.isInternal()) {
+    // internal security contexts are allowed to connect to any endpoint
+    // this includes connecting to self or to other instances in a cluster
+    return true;
+  }
   return _endpointsFilter.empty() || !std::regex_search(name, _endpointsFilterRegex);
 }
 

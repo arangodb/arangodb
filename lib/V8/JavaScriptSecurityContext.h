@@ -47,10 +47,15 @@ class JavaScriptSecurityContext {
   /// @brief resets context to most restrictive settings
   void reset();
 
+  /// @brief whether or not the context is an internal context
+  bool isInternal() const { return _type == Type::Internal; }
+
   /// @brief whether or not db._useDatabase(...) is allowed
   bool allowUseDatabase() const { return _allowUseDatabase; }
   
-  /// @brief whether or not actions.defineAction(...) is allowed
+  /// @brief whether or not actions.defineAction(...) is allowed, which will
+  /// add REST endpoints
+  /// currently only internal operations are allowed to do this
   bool canDefineHttpAction() const;
   
   /// @brief create a security context that is most restricted
