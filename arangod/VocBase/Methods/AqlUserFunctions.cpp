@@ -236,7 +236,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
     bool throwV8Exception = (isolate != nullptr);
    
     JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestrictedContext();
-    V8ContextGuard contextGuard(res, isolate, &vocbase, securityContext);
+    V8ConditionalContextGuard contextGuard(res, isolate, &vocbase, securityContext);
 
     if (res.fail()) {
       return res;

@@ -360,12 +360,8 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
   V8DealerFeature* dealer = V8DealerFeature::DEALER;
   if (dealer != nullptr && dealer->isEnabled()) {
     JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createInternalContext();
-    V8Context* v8ctx = V8DealerFeature::DEALER->enterContext(systemVocbase, securityContext);
-    if (v8ctx == nullptr) {
-      return Result(TRI_ERROR_INTERNAL, "Could not get v8 context");
-    }
-    TRI_DEFER(V8DealerFeature::DEALER->exitContext(v8ctx));
-    v8::Isolate* isolate = v8ctx->_isolate;
+    V8ContextGuard guard(systemVocbase, securityContext);
+    v8::Isolate* isolate = guard.isolate();
     v8::HandleScope scope(isolate);
 
     // clear collections in cache object

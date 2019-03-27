@@ -30,6 +30,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class V8ContextGuard;
 class V8LineEditor;
 }
 
@@ -59,11 +60,10 @@ class ConsoleThread final : public Thread {
   void userAbort() { _userAborted.store(true); }
 
  private:
-  void inner();
+  void inner(V8ContextGuard const&);
 
  private:
   application_features::ApplicationServer* _applicationServer;
-  V8Context* _context;
   TRI_vocbase_t* _vocbase;
   std::atomic<bool> _userAborted;
 };

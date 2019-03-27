@@ -71,21 +71,13 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
   auto database = sysDbFeature->use();
 
   JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createAdminScriptContext();
-  V8Context* context = V8DealerFeature::DEALER->enterContext(database.get(), securityContext);
+  V8ContextGuard guard(database.get(), securityContext);
 
-  if (context == nullptr) {
-    LOG_TOPIC("d01d3", FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";
-    FATAL_ERROR_EXIT();
-  }
-
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
-
-  auto isolate = context->_isolate;
-
+  auto isolate = guard.isolate();
   {
     v8::HandleScope globalScope(isolate);
 
-    auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
+    auto localContext = v8::Local<v8::Context>::New(isolate, guard.context()->_context);
     localContext->Enter();
     {
       v8::Context::Scope contextScope(localContext);

@@ -199,42 +199,35 @@ void RestTasksHandler::registerTask(bool byId) {
     return;
   }
 
-  {
-    Result res;
-    v8::Isolate* isolate = nullptr;
-    
-    try {
-      JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestrictedContext();
-      V8ContextGuard dealerGuard(res, isolate, &_vocbase, securityContext);
-      if (res.fail()) {
-        generateError(res);
-        return;
-      }
-      v8::HandleScope scope(isolate);
-      v8::Handle<v8::Object> bv8 = TRI_VPackToV8(isolate, body).As<v8::Object>();
+  try {
+    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestrictedContext();
+    V8ContextGuard guard(&_vocbase, securityContext);
+   
+    v8::Isolate* isolate = guard.isolate(); 
+    v8::HandleScope scope(isolate);
+    v8::Handle<v8::Object> bv8 = TRI_VPackToV8(isolate, body).As<v8::Object>();
 
-      if (bv8->Get(TRI_V8_ASCII_STRING(isolate, "command"))->IsFunction()) {
-        // need to add ( and ) around function because call will otherwise break
-        command = "(" + cmdSlice.copyString() + ")(params)";
-      } else {
-        command = cmdSlice.copyString();
-      }
+    if (bv8->Get(TRI_V8_ASCII_STRING(isolate, "command"))->IsFunction()) {
+      // need to add ( and ) around function because call will otherwise break
+      command = "(" + cmdSlice.copyString() + ")(params)";
+    } else {
+      command = cmdSlice.copyString();
+    }
 
-      if (!Task::tryCompile(isolate, command)) {
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                      "cannot compile command");
-        return;
-      }
-    } catch (arangodb::basics::Exception const& ex) {
-      generateError(Result{ex.code(), ex.what()});
-      return;
-    } catch (std::exception const& ex) {
-      generateError(Result{TRI_ERROR_INTERNAL, ex.what()});
-      return;
-    } catch (...) {
-      generateError(TRI_ERROR_INTERNAL);
+    if (!Task::tryCompile(isolate, command)) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    "cannot compile command");
       return;
     }
+  } catch (arangodb::basics::Exception const& ex) {
+    generateError(Result{ex.code(), ex.what()});
+    return;
+  } catch (std::exception const& ex) {
+    generateError(Result{TRI_ERROR_INTERNAL, ex.what()});
+    return;
+  } catch (...) {
+    generateError(TRI_ERROR_INTERNAL);
+    return;
   }
 
   // extract the parameters

@@ -502,14 +502,9 @@ static int RenameGraphCollections(TRI_vocbase_t* vocbase, std::string const& old
   buffer.appendText(");");
 
   JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createInternalContext();
-  V8Context* context = dealer->enterContext(vocbase, securityContext);
-  if (context == nullptr) {
-    LOG_TOPIC("8f0aa", WARN, Logger::FIXME) << "RenameGraphCollections: no V8 context";
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  TRI_DEFER(dealer->exitContext(context));
+  V8ContextGuard guard(vocbase, securityContext);
 
-  auto isolate = context->_isolate;
+  auto isolate = guard.isolate();
   v8::HandleScope scope(isolate);
   TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
                               TRI_V8_ASCII_PAIR_STRING(isolate, buffer.c_str(),

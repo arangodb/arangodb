@@ -77,18 +77,10 @@ RestStatus RestAdminExecuteHandler::execute() {
     // get a V8 context
     bool const allowUseDatabase = ActionFeature::ACTION->allowUseDatabase();
     JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
-    V8Context* context = V8DealerFeature::DEALER->enterContext(&_vocbase,  securityContext);
-
-    // note: the context might be nullptr in case of shut-down
-    if (context == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT,
-                                    "unable to acquire V8 context in time");
-    }
-    
-    TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
+    V8ContextGuard guard(&_vocbase, securityContext);
     
     { 
-      v8::Isolate* isolate = context->_isolate; 
+      v8::Isolate* isolate = guard.isolate();
       v8::HandleScope scope(isolate);
 
       v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();

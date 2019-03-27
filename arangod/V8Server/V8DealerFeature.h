@@ -158,14 +158,31 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   std::vector<std::pair<std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>, TRI_vocbase_t*>> _contextUpdates;
 };
 
-// enters and exits a context and provides an isolate
-// in case the passed in isolate is a nullptr
+/// @brief enters and exits a context and provides an isolate
+/// throws an exception when no context can be provided
 class V8ContextGuard {
  public:
-  explicit V8ContextGuard(Result&, v8::Isolate*&, TRI_vocbase_t*, JavaScriptSecurityContext const&);
+  explicit V8ContextGuard(TRI_vocbase_t*, JavaScriptSecurityContext const&);
   V8ContextGuard(V8ContextGuard const&) = delete;
   V8ContextGuard& operator=(V8ContextGuard const&) = delete;
   ~V8ContextGuard();
+
+  v8::Isolate* isolate() const { return _isolate; }
+  V8Context* context() const { return _context; }
+
+ private:
+  v8::Isolate* _isolate;
+  V8Context* _context;
+};
+
+// enters and exits a context and provides an isolate
+// in case the passed in isolate is a nullptr
+class V8ConditionalContextGuard {
+ public:
+  explicit V8ConditionalContextGuard(Result&, v8::Isolate*&, TRI_vocbase_t*, JavaScriptSecurityContext const&);
+  V8ConditionalContextGuard(V8ConditionalContextGuard const&) = delete;
+  V8ConditionalContextGuard& operator=(V8ConditionalContextGuard const&) = delete;
+  ~V8ConditionalContextGuard();
 
  private:
   v8::Isolate*& _isolate;

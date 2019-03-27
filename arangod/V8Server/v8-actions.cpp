@@ -107,30 +107,18 @@ class v8_action_t final : public TRI_action_t {
                               void** data) override {
     TRI_action_result_t result;
 
-    // allow use database execution in rest calls
-    bool allowUseDatabaseInRestActions = ActionFeature::ACTION->allowUseDatabase();
-
-    if (_allowUseDatabase) {
-      allowUseDatabaseInRestActions = true;
-    }
+    // allow use database execution in rest calls?
+    bool allowUseDatabase = _allowUseDatabase || ActionFeature::ACTION->allowUseDatabase();
 
     // get a V8 context
-    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestActionContext(allowUseDatabaseInRestActions);
-    V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, securityContext);
-
-    // note: the context might be nullptr in case of shut-down
-    if (context == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT,
-                                     "unable to acquire V8 context in time");
-    }
-
-    TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
+    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
+    V8ContextGuard guard(vocbase, securityContext);
 
     // locate the callback
     READ_LOCKER(readLocker, _callbacksLock);
 
     {
-      auto it = _callbacks.find(context->_isolate);
+      auto it = _callbacks.find(guard.isolate());
 
       if (it == _callbacks.end()) {
         LOG_TOPIC("94556", WARN, arangodb::Logger::FIXME)
@@ -151,17 +139,17 @@ class v8_action_t final : public TRI_action_t {
           return result;
         }
 
-        *data = (void*)context->_isolate;
+        *data = (void*)guard.isolate();
       }
-      v8::HandleScope scope(context->_isolate);
-      auto localFunction = v8::Local<v8::Function>::New(context->_isolate, it->second);
+      v8::HandleScope scope(guard.isolate());
+      auto localFunction = v8::Local<v8::Function>::New(guard.isolate(), it->second);
 
       // we can release the lock here already as no other threads will
       // work in our isolate at this time
       readLocker.unlock();
 
       try {
-        result = ExecuteActionVocbase(vocbase, context->_isolate, this,
+        result = ExecuteActionVocbase(vocbase, guard.isolate(), this,
                                       localFunction, request, response);
       } catch (...) {
         result.isValid = false;

@@ -374,18 +374,11 @@ void Task::toVelocyPack(VPackBuilder& builder) const {
 
 void Task::work(ExecContext const* exec) {
   JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createTaskContext(_allowUseDatabase);
-  auto context = V8DealerFeature::DEALER->enterContext(&(_dbGuard->database()), securityContext);
-
-  // note: the context might be 0 in case of shut-down
-  if (context == nullptr) {
-    return;
-  }
-
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
+  V8ContextGuard guard(&(_dbGuard->database()), securityContext);
 
   // now execute the function within this context
   {
-    auto isolate = context->_isolate;
+    auto isolate = guard.isolate();
     v8::HandleScope scope(isolate);
 
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
