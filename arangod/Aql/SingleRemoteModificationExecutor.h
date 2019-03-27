@@ -30,31 +30,34 @@ namespace aql {
 
 struct SingleRemoteModificationInfos : ModificationExecutorInfos {
   SingleRemoteModificationInfos(
-      boost::optional<RegisterId> input1RegisterId, boost::optional<RegisterId> input2RegisterId,
-      boost::optional<RegisterId> input3RegisterId, boost::optional<RegisterId> outputNewRegisterId,
-      boost::optional<RegisterId> outputOldRegisterId,
-      boost::optional<RegisterId> outputRegisterId, RegisterId nrInputRegisters,
-      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, transaction::Methods* trx,
+      RegisterId inputRegister, RegisterId outputNewRegisterId,
+      RegisterId outputOldRegisterId, RegisterId outputRegisterId,
+      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+      std::unordered_set<RegisterId> const& registersToClear,
+      std::unordered_set<RegisterId>&& registersToKeep, transaction::Methods* trx,
       OperationOptions options, aql::Collection const* aqlCollection,
-      ProducesResults producesResults, ConsultAqlWriteFilter consultAqlWriteFilter,
-      IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
+      ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
       IgnoreDocumentNotFound ignoreDocumentNotFound,  // end of base class params
       std::string key, bool hasParent, bool replaceIndex)
-      : ModificationExecutorInfos(
-            std::move(input1RegisterId), std::move(input2RegisterId),
-            std::move(input3RegisterId), std::move(outputNewRegisterId),
-            std::move(outputOldRegisterId), std::move(outputRegisterId),
-            nrInputRegisters, std::move(nrOutputRegisters),
-            std::move(registersToClear), std::move(registersToKeep), trx,
-            std::move(options), aqlCollection, producesResults, consultAqlWriteFilter,
-            ignoreErrors, doCount, isReplace, ignoreDocumentNotFound),
+      : ModificationExecutorInfos(inputRegister, ExecutionNode::MaxRegisterId,
+                                  ExecutionNode::MaxRegisterId, outputNewRegisterId,
+                                  outputOldRegisterId, outputRegisterId,
+                                  nrInputRegisters, nrOutputRegisters,
+                                  registersToClear, std::move(registersToKeep),
+                                  trx, std::move(options), aqlCollection,
+                                  ProducesResults(false), consultAqlWriteFilter,
+                                  ignoreErrors, DoCount(true), IsReplace(false),
+                                  ignoreDocumentNotFound),
         _key(std::move(key)),
         _hasParent(hasParent),
         _replaceIndex(replaceIndex) {}
+
   std::string _key;
+
   bool _hasParent;  // node->hasParent();
+
   bool _replaceIndex;
+
   constexpr static double const defaultTimeOut = 3600.0;
 };
 
