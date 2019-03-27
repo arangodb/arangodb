@@ -64,12 +64,10 @@
 #include "Transaction/V8Context.h"
 #include "Utils/ExecContext.h"
 #include "V8/JSLoader.h"
-#include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-helper.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-general-graph.h"
@@ -186,60 +184,6 @@ static void JS_EnableNativeBacktraces(v8::FunctionCallbackInfo<v8::Value> const&
   }
 
   arangodb::basics::Exception::SetVerbose(TRI_ObjectToBoolean(isolate, args[0]));
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-extern V8LineEditor* theConsole;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts a debugging console
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_Debug(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-
-  v8::Local<v8::String> name(TRI_V8_ASCII_STRING(isolate, "debug loop"));
-  v8::Local<v8::String> debug(TRI_V8_ASCII_STRING(isolate, "debug"));
-
-  v8::Local<v8::Object> callerScope;
-  if (args.Length() >= 1) {
-    TRI_AddGlobalVariableVocbase(isolate, debug, args[0]);
-  }
-
-  MUTEX_LOCKER(mutexLocker, ConsoleThread::serverConsoleMutex);
-  V8LineEditor* console = ConsoleThread::serverConsole;
-
-  if (console != nullptr) {
-    while (true) {
-      ShellBase::EofType eof;
-      std::string input = console->prompt("debug> ", "debug>", eof);
-
-      if (eof == ShellBase::EOF_FORCE_ABORT) {
-        break;
-      }
-
-      if (input.empty()) {
-        continue;
-      }
-
-      console->addHistory(input);
-
-      {
-        v8::HandleScope scope(isolate);
-        v8::TryCatch tryCatch(isolate);
-        ;
-
-        TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
-                                    TRI_V8_STD_STRING(isolate, input), name, true);
-
-        if (tryCatch.HasCaught()) {
-          std::cout << TRI_StringifyV8Exception(isolate, &tryCatch);
-        }
-      }
-    }
-  }
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -1992,9 +1936,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "ENABLE_NATIVE_BACKTRACES"),
                                JS_EnableNativeBacktraces, true);
-
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "Debug"),
-                               JS_Debug, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
