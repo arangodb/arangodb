@@ -205,6 +205,8 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"MD5", ".", flags, &Functions::Md5});
   add({"SHA1", ".", flags, &Functions::Sha1});
   add({"SHA512", ".", flags, &Functions::Sha512});
+  add({"CRC32", ".", flags, &Functions::Crc32});
+  add({"FNV64", ".", flags, &Functions::Fnv64});
   add({"HASH", ".", flags, &Functions::Hash});
   add({"TO_BASE64", ".", flags, &Functions::ToBase64});
   add({"TO_HEX", ".", flags, &Functions::ToHex});
