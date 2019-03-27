@@ -887,7 +887,7 @@ function checkInstanceAlive (instanceInfo, options) {
   }, true);
   if (!rc) {
     print(Date() + ' If cluster - will now start killing the rest.');
-    instanceInfo.arangods.foreach((arangod) => {
+    instanceInfo.arangods.forEach((arangod) => {
       abortSurviviours(arangod, options);
     });
   }
