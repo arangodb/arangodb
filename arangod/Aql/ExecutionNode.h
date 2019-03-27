@@ -915,7 +915,6 @@ class CalculationNode : public ExecutionNode {
 class SubqueryNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class SubqueryBlock;
 
  public:
   SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);

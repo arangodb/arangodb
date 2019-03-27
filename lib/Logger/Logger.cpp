@@ -55,6 +55,7 @@ Mutex Logger::_initializeMutex;
 std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 
+bool Logger::_showIds(false);
 bool Logger::_showLineNumber(false);
 bool Logger::_shortenFilenames(true);
 bool Logger::_showThreadIdentifier(false);
@@ -79,6 +80,10 @@ std::vector<std::pair<std::string, LogLevel>> Logger::logLevelTopics() {
   return LogTopic::logLevelTopics();
 }
 
+void Logger::setShowIds(bool show) {
+  _showIds = show;
+}
+
 void Logger::setLogLevel(LogLevel level) {
   _level.store(level, std::memory_order_relaxed);
 }
@@ -89,7 +94,7 @@ void Logger::setLogLevel(std::string const& levelName) {
 
   if (v.empty() || v.size() > 2) {
     Logger::setLogLevel(LogLevel::INFO);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("b83c6", ERR, arangodb::Logger::FIXME)
         << "strange log level '" << levelName << "', using log level 'info'";
     return;
   }
@@ -122,10 +127,10 @@ void Logger::setLogLevel(std::string const& levelName) {
   } else {
     if (isGeneral) {
       Logger::setLogLevel(LogLevel::INFO);
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("d880b", ERR, arangodb::Logger::FIXME)
           << "strange log level '" << levelName << "', using log level 'info'";
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange log level '" << levelName << "'";
+      LOG_TOPIC("05367", ERR, arangodb::Logger::FIXME) << "strange log level '" << levelName << "'";
     }
 
     return;

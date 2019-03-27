@@ -533,7 +533,7 @@ int Manager::rebalance(bool onlyCalculate) {
         std::ceil(weight * static_cast<double>(_globalHighwaterMark)));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (newDeserved < Manager::minCacheAllocation) {
-      LOG_TOPIC(DEBUG, Logger::CACHE)
+      LOG_TOPIC("eabec", DEBUG, Logger::CACHE)
           << "Deserved limit of " << newDeserved << " from weight " << weight
           << " and highwater " << _globalHighwaterMark
           << ". Should be at least " << Manager::minCacheAllocation;
@@ -545,7 +545,7 @@ int Manager::rebalance(bool onlyCalculate) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     uint64_t fixed = metadata->fixedSize + metadata->tableSize + Manager::cacheRecordOverhead;
     if (newDeserved < fixed) {
-      LOG_TOPIC(DEBUG, Logger::CACHE)
+      LOG_TOPIC("e63e4", DEBUG, Logger::CACHE)
           << "Setting deserved cache size " << newDeserved
           << " below usage: " << fixed << " ; Using weight  " << weight;
     }
@@ -741,10 +741,10 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC(DEBUG, Logger::CACHE) << "uniformMarginalWeight " << uniformMarginalWeight;
-  LOG_TOPIC(DEBUG, Logger::CACHE) << "baseWeight " << baseWeight;
+  LOG_TOPIC("7eac8", DEBUG, Logger::CACHE) << "uniformMarginalWeight " << uniformMarginalWeight;
+  LOG_TOPIC("108e6", DEBUG, Logger::CACHE) << "baseWeight " << baseWeight;
   if (1.0 < (baseWeight * static_cast<double>(_caches.size()))) {
-    LOG_TOPIC(FATAL, Logger::CACHE)
+    LOG_TOPIC("b2f55", FATAL, Logger::CACHE)
         << "weight: " << baseWeight << ", count: " << _caches.size();
     TRI_ASSERT(1.0 >= (baseWeight * static_cast<double>(_caches.size())));
   }

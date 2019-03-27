@@ -78,7 +78,7 @@ void toVelocyPack(velocypack::Builder& builder,
 
 std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan, velocypack::Slice const& slice) {
   if (!slice.isArray()) {
-    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("b50b2", ERR, arangodb::iresearch::TOPIC)
         << "invalid json format detected while building IResearchViewNode "
            "sorting from velocy pack, array expected";
     return {};
@@ -96,7 +96,7 @@ std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan, velocypack::Slice c
     auto const varIdSlice = sortSlice.get("id");
 
     if (!varIdSlice.isNumber()) {
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("c3790", ERR, arangodb::iresearch::TOPIC)
           << "malformed variable identifier at line '" << i << "', number expected";
       return {};
     }
@@ -105,7 +105,7 @@ std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan, velocypack::Slice c
     auto const* var = vars->getVariable(varId);
 
     if (!var) {
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("4eeb9", ERR, arangodb::iresearch::TOPIC)
           << "unable to find variable '" << varId << "' at line '" << i
           << "' while building IResearchViewNode sorting from velocy pack";
       return {};
@@ -730,7 +730,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
       auto const* shard = collections->get(shardId);
 
       if (!shard) {
-        LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("6fba2", ERR, arangodb::iresearch::TOPIC)
             << "unable to lookup shard '" << shardId << "' for the view '"
             << _view->name() << "'";
         continue;
@@ -739,7 +739,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
       _shards.push_back(shard->name());
     }
   } else {
-    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("a48f3", ERR, arangodb::iresearch::TOPIC)
         << "invalid 'IResearchViewNode' json format: unable to find 'shards' "
            "array";
   }
@@ -859,7 +859,7 @@ std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::co
     if (collection) {
       viewCollections.push_back(*collection);
     } else {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("ee270", WARN, arangodb::iresearch::TOPIC)
           << "collection with id '" << id << "' is not registered with the query";
     }
 
@@ -981,7 +981,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   auto* trx = engine.getQuery()->trx();
 
   if (!trx) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("7c905", WARN, arangodb::iresearch::TOPIC)
         << "failed to get transaction while creating IResearchView "
            "ExecutionBlock";
 
@@ -994,7 +994,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   std::shared_ptr<IResearchView::Snapshot const> reader;
 
-  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+  LOG_TOPIC("82af6", TRACE, arangodb::iresearch::TOPIC)
       << "Start getting snapshot for view '" << view.name() << "'";
 
   // we manage snapshot differently in single-server/db server,
@@ -1006,7 +1006,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   }
 
   if (!reader) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("9bb93", WARN, arangodb::iresearch::TOPIC)
         << "failed to get snapshot while creating arangosearch view "
            "ExecutionBlock for view '"
         << view.name() << "'";
@@ -1033,7 +1033,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                                                              std::move(infos));
   }
 
-  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+  LOG_TOPIC("33853", TRACE, arangodb::iresearch::TOPIC)
       << "Finish getting snapshot for view '" << view.name() << "'";
 
   bool const ordered = !_scorers.empty();

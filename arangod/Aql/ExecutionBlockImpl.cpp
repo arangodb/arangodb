@@ -55,6 +55,7 @@
 #include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SortedCollectExecutor.h"
 #include "Aql/SortingGatherExecutor.h"
+#include "Aql/SubqueryExecutor.h"
 #include "Aql/TraversalExecutor.h"
 
 #include <type_traits>
@@ -221,8 +222,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::traceSkipSomeEnd
 }
 
 template <class Executor>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
   // destroy and re-create the BlockFetcher
   _blockFetcher.~BlockFetcher();
   new (&_blockFetcher)
@@ -244,7 +244,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   //   }
   // }
 
-  return ExecutionBlock::initializeCursor(items, pos);
+  return ExecutionBlock::initializeCursor(input);
 }
 
 template <class Executor>
@@ -260,7 +260,7 @@ namespace aql {
 // TODO -- remove this specialization when cpp 17 becomes available
 template <>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+    InputAqlItemRow const& input) {
   // destroy and re-create the BlockFetcher
   _blockFetcher.~BlockFetcher();
   new (&_blockFetcher)
@@ -271,14 +271,10 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   _rowFetcher.~Fetcher();
   new (&_rowFetcher) Fetcher(_blockFetcher);
 
-  std::unique_ptr<AqlItemBlock> block;
-  if (items != nullptr) {
-    block = std::unique_ptr<AqlItemBlock>(
-        items->slice(pos, *(infos().registersToKeep()), infos().numberOfOutputRegisters()));
-  } else {
-    block = std::unique_ptr<AqlItemBlock>(
-        _engine->itemBlockManager().requestBlock(1, infos().numberOfOutputRegisters()));
-  }
+  std::unique_ptr<AqlItemBlock> block =
+      input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
+                         infos().numberOfOutputRegisters());
+
   auto shell = std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
                                                    std::move(block));
   _rowFetcher.injectBlock(shell);
@@ -287,7 +283,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   _executor.~IdExecutor<ConstFetcher>();
   new (&_executor) IdExecutor<ConstFetcher>(_rowFetcher, _infos);
 
-  return ExecutionBlock::initializeCursor(items, pos);
+  return ExecutionBlock::initializeCursor(input);
 }
 
 template <>
@@ -312,6 +308,27 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<ShortestPathExecutor>::shut
     return {state, result};
   }
   return this->executor().shutdown(errorCode);
+}
+
+template <>
+std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor>::shutdown(int errorCode) {
+  ExecutionState state;
+  Result subqueryResult;
+  // shutdown is repeatable
+  std::tie(state, subqueryResult) = this->executor().shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {ExecutionState::WAITING, subqueryResult};
+  }
+  Result result;
+
+  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {state, result};
+  }
+  if (result.fail()) {
+    return {state, result};
+  }
+  return {state, subqueryResult};
 }
 
 }  // namespace aql
@@ -425,5 +442,6 @@ template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;

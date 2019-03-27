@@ -134,7 +134,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     // rocksdb does not count LogData towards sequence-number
     RocksDBLogType type = RocksDBLogValue::type(blob);
         
-    // LOG_TOPIC(WARN, Logger::REPLICATION) << "[LOG] " << _currentSequence << " " << rocksDBLogTypeName(type);
+    // LOG_TOPIC("65ea8", WARN, Logger::REPLICATION) << "[LOG] " << _currentSequence << " " << rocksDBLogTypeName(type);
     switch (type) {
       case RocksDBLogType::DatabaseCreate:
         resetTransientState();  // finish ongoing trx
@@ -162,7 +162,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         if (shouldHandleCollection(RocksDBLogValue::databaseId(blob),
                                    RocksDBLogValue::collectionId(blob))) {
           _state = COLLECTION_RENAME;  // collection name is not needed
-          // LOG_TOPIC(DEBUG, Logger::REPLICATION) << "renaming "
+          // LOG_TOPIC("3c411", DEBUG, Logger::REPLICATION) << "renaming "
           // << RocksDBLogValue::oldCollectionName(blob).toString();
         }
         break;
@@ -409,7 +409,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         break;  // ignore deprecated / unused markers
 
       default:
-        LOG_TOPIC(WARN, Logger::REPLICATION)
+        LOG_TOPIC("0d0d1", WARN, Logger::REPLICATION)
             << "Unhandled wal log entry " << rocksDBLogTypeName(type);
         break;
     }
@@ -421,7 +421,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     _checkTick = true;
 #endif
     incTick();
-    // LOG_TOPIC(WARN, Logger::ENGINES) << "[PUT] cf: " << column_family_id << ", key:" << key.ToString() << "  value: " << value.ToString();
+    // LOG_TOPIC("31697", WARN, Logger::ENGINES) << "[PUT] cf: " << column_family_id << ", key:" << key.ToString() << "  value: " << value.ToString();
 
     if (column_family_id == _definitionsCF) {
       // LogData should have triggered a commit on ongoing transactions
@@ -574,7 +574,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     _checkTick = true;
 #endif
     incTick();
-    // LOG_TOPIC(WARN, Logger::ENGINES) << "[DELETE] cf: " << cfId << ", key:" << key.ToString();
+    // LOG_TOPIC("5060c", WARN, Logger::ENGINES) << "[DELETE] cf: " << cfId << ", key:" << key.ToString();
 
     if (cfId != _primaryCF) {
       return;  // ignore all document operations
@@ -643,7 +643,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     _checkTick = true;
 #endif
     incTick();
-    // LOG_TOPIC(WARN, Logger::ENGINES) << "[DELETE-RANGE] cf: " << column_family_id;
+    // LOG_TOPIC("d1dfa", WARN, Logger::ENGINES) << "[DELETE-RANGE] cf: " << column_family_id;
     // drop and truncate may use this, but we do not print anything
     return rocksdb::Status();  // make WAL iterator happy
   }
@@ -660,7 +660,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
   }
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
-    // LOG_TOPIC(TRACE, Logger::ENGINES) << "starting new batch with sequence: " << startSequence;
+    // LOG_TOPIC("24e69", TRACE, Logger::ENGINES) << "starting new batch with sequence: " << startSequence;
     TRI_ASSERT(!_stopOnNext);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (_checkTick) {
@@ -812,7 +812,7 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   // we need to check if the builder is bigger than the chunksize,
   // only after we printed a full WriteBatch. Otherwise a client might
   // never read the full writebatch
-  LOG_TOPIC(DEBUG, Logger::ENGINES)
+  LOG_TOPIC("caefa", DEBUG, Logger::ENGINES)
       << "WAL tailing call. Scan since: " << since << ", tick start: " << filter.tickStart
       << ", tick end: " << filter.tickEnd << ", chunk size: " << chunkSize;
   while (iterator->Valid() && lastScannedTick <= filter.tickEnd) {
@@ -826,11 +826,11 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
       break;  // cancel out
     }
 
-    // LOG_TOPIC(TRACE, Logger::REPLICATION) << "found batch-seq: " << batch.sequence;
+    // LOG_TOPIC("1eccb", TRACE, Logger::REPLICATION) << "found batch-seq: " << batch.sequence;
     lastScannedTick = batch.sequence;  // start of the batch
 
     if (batch.sequence < since) {
-      // LOG_TOPIC(TRACE, Logger::REPLICATION) << "skipping batch from " << batch.sequence << " to " << (batch.sequence + batch.writeBatchPtr->Count());
+      // LOG_TOPIC("a5e56", TRACE, Logger::REPLICATION) << "skipping batch from " << batch.sequence << " to " << (batch.sequence + batch.writeBatchPtr->Count());
       iterator->Next();  // skip
       continue;
     }
@@ -845,7 +845,7 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
     }
 #endif
     if (!s.ok()) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "error during WAL scan: " << s.ToString();
+      LOG_TOPIC("57d54", ERR, Logger::REPLICATION) << "error during WAL scan: " << s.ToString();
       break;  // s is considered in the end
     }
 
@@ -871,7 +871,7 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   if (!s.ok()) {
     result.reset(convertStatus(s, rocksutils::StatusHint::wal));
   }
-  // LOG_TOPIC(WARN, Logger::REPLICATION) << "2. firstTick: " << firstTick << "
+  // LOG_TOPIC("f7ab7", WARN, Logger::REPLICATION) << "2. firstTick: " << firstTick << "
   // lastWrittenTick: " << lastWrittenTick
   // << " latestTick: " << latestTick;
   return result;

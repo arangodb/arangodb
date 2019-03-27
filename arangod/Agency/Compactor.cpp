@@ -39,7 +39,7 @@ Compactor::~Compactor() {
 
 // @brief Run
 void Compactor::run() {
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting compactor personality";
+  LOG_TOPIC("8fd95", DEBUG, Logger::AGENCY) << "Starting compactor personality";
 
   while (true) {
     bool falseAlarm = true;
@@ -63,7 +63,7 @@ void Compactor::run() {
         _agent->compact();  // Note that this checks nextCompactionAfter again!
       }
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY)
+      LOG_TOPIC("f9493", ERR, Logger::AGENCY)
           << "Exception during compaction, details: " << e.what();
     }
   }
@@ -78,7 +78,7 @@ void Compactor::wakeUp() {
 
 // @brief Begin shutdown
 void Compactor::beginShutdown() {
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Shutting down compactor personality";
+  LOG_TOPIC("4bad9", DEBUG, Logger::AGENCY) << "Shutting down compactor personality";
 
   Thread::beginShutdown();
 

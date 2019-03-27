@@ -50,7 +50,7 @@
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
-#include "Aql/SubqueryBlock.h"
+#include "Aql/SubqueryExecutor.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Cluster/ServerState.h"
@@ -1801,8 +1801,28 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
   auto const it = cache.find(getSubquery());
   TRI_ASSERT(it != cache.end());
+  auto subquery = it->second;
+  TRI_ASSERT(subquery != nullptr);
 
-  return std::make_unique<SubqueryBlock>(&engine, this, it->second);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+
+  auto outVar = getRegisterPlan()->varInfo.find(_outVariable->id);
+  TRI_ASSERT(outVar != getRegisterPlan()->varInfo.end());
+  RegisterId outReg = outVar->second.registerId;
+  outputRegisters->emplace(outReg);
+
+  // The const_cast has been taken from previous implementation.
+  SubqueryExecutorInfos infos(inputRegisters, outputRegisters,
+                              getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                              getRegisterPlan()->nrRegs[getDepth()],
+                              getRegsToClear(), calcRegsToKeep(), *subquery,
+                              outReg, const_cast<SubqueryNode*>(this)->isConst());
+  return std::make_unique<ExecutionBlockImpl<SubqueryExecutor>>(&engine, this,
+                                                                std::move(infos));
 }
 
 ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,

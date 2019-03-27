@@ -139,7 +139,7 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_maxQueryPlans == 0) {
-    LOG_TOPIC(FATAL, Logger::AQL)
+    LOG_TOPIC("4006f", FATAL, Logger::AQL)
         << "invalid value for `--query.optimizer-max-plans`. expecting at "
            "least 1";
     FATAL_ERROR_EXIT();

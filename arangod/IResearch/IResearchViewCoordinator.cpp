@@ -97,25 +97,25 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
       res = IResearchLinkHelper::updateLinks(collections, *impl, links);
 
       if (!res.ok()) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("39d88", WARN, arangodb::iresearch::TOPIC)
             << "failed to create links while creating arangosearch view '"
             << impl->name() << "': " << res.errorNumber() << " " << res.errorMessage();
       }
     } catch (arangodb::basics::Exception const& e) {
       IR_LOG_EXCEPTION();
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("09bb9", WARN, arangodb::iresearch::TOPIC)
           << "caught exception while creating links while creating "
              "arangosearch view '"
           << impl->name() << "': " << e.code() << " " << e.what();
     } catch (std::exception const& e) {
       IR_LOG_EXCEPTION();
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("6b99b", WARN, arangodb::iresearch::TOPIC)
           << "caught exception while creating links while creating "
              "arangosearch view '"
           << impl->name() << "': " << e.what();
     } catch (...) {
       IR_LOG_EXCEPTION();
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("61ae6", WARN, arangodb::iresearch::TOPIC)
           << "caught exception while creating links while creating "
              "arangosearch view '"
           << impl->name() << "'";
@@ -235,7 +235,7 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
 
 bool IResearchViewCoordinator::emplace(TRI_voc_cid_t cid, std::string const& key,
                                        arangodb::velocypack::Slice const& value) {
-  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+  LOG_TOPIC("d0b40", TRACE, arangodb::iresearch::TOPIC)
       << "beginning IResearchViewCoordinator::emplace";
   static const std::function<bool(irs::string_ref const& key)> acceptor =
       [](irs::string_ref const& key) -> bool {
@@ -250,7 +250,7 @@ bool IResearchViewCoordinator::emplace(TRI_voc_cid_t cid, std::string const& key
   // strip internal keys (added in createLink(...)) from externally visible link
   // definition
   if (!mergeSliceSkipKeys(builder, value, acceptor)) {
-    LOG_TOPIC(WARN, iresearch::TOPIC)
+    LOG_TOPIC("fe9f7", WARN, iresearch::TOPIC)
         << "failed to generate externally visible link definition while "
            "emplacing "
         << "link definition into arangosearch view '" << name()
@@ -415,7 +415,7 @@ arangodb::Result IResearchViewCoordinator::properties(velocypack::Slice const& s
       collections, *this, links, currentCids // args
     );
   } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(WARN, iresearch::TOPIC)
+    LOG_TOPIC("714b3", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
@@ -425,7 +425,7 @@ arangodb::Result IResearchViewCoordinator::properties(velocypack::Slice const& s
         std::string("error updating properties for arangosearch view '") +
             name() + "'");
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, iresearch::TOPIC)
+    LOG_TOPIC("86a5c", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "': " << e.what();
     IR_LOG_EXCEPTION();
@@ -435,7 +435,7 @@ arangodb::Result IResearchViewCoordinator::properties(velocypack::Slice const& s
         std::string("error updating properties for arangosearch view '") +
             name() + "'");
   } catch (...) {
-    LOG_TOPIC(WARN, iresearch::TOPIC)
+    LOG_TOPIC("17b66", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "'";
     IR_LOG_EXCEPTION();

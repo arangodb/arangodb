@@ -11,11 +11,26 @@ Setting up git for automatically merging certain automatically generated files i
 
     git config --global merge.ours.driver true
 
-    
+Building
+========
+
+Unique Log Ids
+--------------
+
+We have unique log ids in order to allow for easy locating of code producing
+errors.
+
+    LOG_TOPIC("2dead", ....)
+
+To ensure that the ids are unique we run the script `./utils/checkLogIds.py`
+during CI runs. The script will fail with a non-zero status if id collisions
+are found. You can use `openssl rand -hex 3 | sed 's/.//;s/\(.*\)/"\1"/'` or
+anything that suits you to generate a **5 hex digit log** id.
+
 CMake
 =====
 
-Essentially, you can compile ArangoDB from source by issueing the
+Essentially, you can compile ArangoDB from source by issuing the
 following commands from a clone of the source repository:
 
     mkdir build

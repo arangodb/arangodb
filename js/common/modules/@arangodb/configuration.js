@@ -23,17 +23,11 @@
 // / @author Dr. Frank Celler, Lucas Dohmen
 // //////////////////////////////////////////////////////////////////////////////
 
-var db = require('@arangodb').db;
-var internal = require('internal');
-var shallowCopy = require('@arangodb/util').shallowCopy;
+let db = require('@arangodb').db;
+let internal = require('internal');
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief the frontend collection
-// //////////////////////////////////////////////////////////////////////////////
-
-function getFrontendCollection () {
-  return db._collection('_frontend');
-}
+const cn = '_frontend';  
+const key = 'notifications';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief the notifications configuration
@@ -46,36 +40,28 @@ exports.notifications = {};
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.notifications.versions = function () {
-  var n = 'notifications';
-  var v = 'versions';
-  var d;
-  let frontend = getFrontendCollection();
-  if (!frontend) {
-    // collection not (yet) available
-    return { versions: {} };
-  }
+  let doc = {};
 
-  try {
-    d = frontend.document(n);
-  } catch (err) {
+  let frontend = internal.db._collection(cn);
+  if (frontend) {
     try {
-      d = frontend.save({ _key: n });
-    } catch (err2) {
-      d = {};
+      doc = frontend.document(key);
+    } catch (err) {
+      try {
+        doc = frontend.insert({ _key: key });
+      } catch (err) {}
     }
   }
 
-  d = shallowCopy(d);
-
-  if (!d.hasOwnProperty(v)) {
-    d.versions = {};
+  if (!doc.hasOwnProperty('versions')) {
+    doc.versions = {};
+  }
+  if (internal.hasOwnProperty('frontendVersionCheck') && 
+      !internal.frontendVersionCheck) {
+    doc.enableVersionNotification = false;
   }
 
-  if (!internal.frontendVersionCheck) {
-    d.enableVersionNotification = false;
-  }
-
-  return d;
+  return doc;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -83,19 +69,18 @@ exports.notifications.versions = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.notifications.setVersions = function (data) {
-  const n = 'notifications';
-
-  let frontend = getFrontendCollection();
+  let frontend = internal.db._collection(cn);
   if (!frontend) {
     // collection not (yet) available
     return;
   }
-
+  
   try {
-    frontend.document(n);
+    // assume document is there already
+    frontend.update(key, data);
   } catch (err) {
-    frontend.save({ _key: n });
+    // probably not, so try to insert it
+    data._key = key;
+    frontend.insert(data);
   }
-
-  frontend.update(n, data);
 };

@@ -51,7 +51,7 @@ struct LRMasterContext : MasterContext {
     TRI_ASSERT(!_stopNext || *diff == 0);
     if (_stopNext) {
       // return false;
-      LOG_TOPIC(INFO, Logger::PREGEL) << "should stop " << globalSuperstep();
+      LOG_TOPIC("cc466", INFO, Logger::PREGEL) << "should stop " << globalSuperstep();
     } else if (globalSuperstep() > 0 && *diff < EPS) {
       aggregate<bool>(kLastIteration, true);
       _stopNext = true;

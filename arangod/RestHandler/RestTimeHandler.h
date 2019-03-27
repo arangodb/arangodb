@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,32 +18,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
-/// @author Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_DESTINATION_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_DESTINATION_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_TIME_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_TIME_HANDLER_H 1
 
-#include "Basics/Common.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-class Endpoint;
-
-namespace communicator {
-class Destination {
+class RestTimeHandler : public arangodb::RestBaseHandler {
  public:
-  explicit Destination(std::string const& url) : _url(url) {}
-  Destination(Destination const&) = default;
-  Destination(Destination&&) = default;
+  RestTimeHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  std::string const& url() const { return _url; }
-
- private:
-  std::string _url;
+  char const* name() const override final { return "RestTimeHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
+  RestStatus execute() override;
 };
-}  // namespace communicator
 }  // namespace arangodb
 
 #endif

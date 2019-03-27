@@ -493,7 +493,14 @@ void assertExpressionFilter(
 
   // supportsFilterCondition
   {
-    arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
+    );
+    arangodb::iresearch::QueryContext const ctx{ &trx, nullptr, nullptr, nullptr, ref };
     CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
   }
 
@@ -619,7 +626,15 @@ void assertFilter(
 
   // optimization time
   {
-    arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+    arangodb::transaction ::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
+    );
+
+    arangodb::iresearch::QueryContext const ctx{ &trx, nullptr, nullptr, nullptr, ref };
     CHECK((parseOk == arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
   }
 
