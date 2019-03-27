@@ -50,21 +50,17 @@ class BackupFeature : public application_features::ApplicationFeature {
 
   /**
    * @brief Construct a list of the valid operations, using the given separator
-   *
+   * @return A strifigied list of valid operations
+   */
   static std::string operationList(std::string const& separator);
-  
+
  public:
   struct Options {
-    std::string credentials;
-    std::string endpoint;
     bool force = false;
-    bool includeSearch = true;
+    std::string identifier = "";
     std::string label = "";
     double maxWaitTime = 60.0;
-    std::string name = "";
     std::string operation = "list";
-    std::string timestamp = "";
-    std::string uuid = "";
   };
 
  private:
