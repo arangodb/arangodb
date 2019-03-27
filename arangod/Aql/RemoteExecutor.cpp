@@ -272,7 +272,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
 }
 
 /// @brief shutdown, will be called exactly once for the whole query
-std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown() {
   if (!_hasTriggeredShutdown) {
     // Make sure to cover against the race that the request
     // in flight is not overtaking in the drop phase here.
