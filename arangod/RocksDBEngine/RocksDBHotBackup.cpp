@@ -34,6 +34,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/TransactionManagerFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -520,6 +521,7 @@ void RocksDBHotBackupCreate::executeCreate() {
       gotLock = (_isSingle ? holdRocksDBTransactions() : 0 != lockingSerialNumber);
 
       if (gotLock || _forceBackup) {
+        Result res = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->settingsManager()->sync(true);
         EngineSelectorFeature::ENGINE->flushWal(true, true);
         stat = ptr->CreateCheckpoint(dirPathTemp);
         _success = stat.ok();
