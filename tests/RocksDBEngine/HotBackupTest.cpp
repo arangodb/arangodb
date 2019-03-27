@@ -114,7 +114,7 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
     VPackBuilder opBuilder;
     { VPackObjectBuilder a(&opBuilder);
       opBuilder.add("timeout", VPackValue(12345));
-      opBuilder.add("timestamp", VPackValue("2017-08-01T09:00:00Z"));
+      opBuilder.add("directory", VPackValue("2017-08-01T09:00:00Z"));
       opBuilder.add("userString", VPackValue("first day"));
     }
 
@@ -123,7 +123,7 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
     CHECK(testee.valid());
     CHECK(false == testee.isCreate());
     CHECK(12345 == testee.getTimeout());
-    CHECK(testee.getTimestamp() == "2017-08-01T09:00:00Z");
+    CHECK(testee.getDirectory() == "2017-08-01T09:00:00Z");
     CHECK(testee.getUserString() == "first day");
   }
 

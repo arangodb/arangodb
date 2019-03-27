@@ -63,6 +63,18 @@ public:
 };// class RocksDBHotBackupList
 
 
+class RocksDBHotBackupLockCoord : public RocksDBHotBackup {
+public:
+
+  RocksDBHotBackupLockCoord() = delete;
+  RocksDBHotBackupLockCoord(const VPackSlice body)
+    : RocksDBHotBackup(body) {};
+
+  void execute() override {};
+
+};// class RocksDBHotBackupLock
+
+
 class RocksDBHotBackupPolicyCoord : public RocksDBHotBackup {
 public:
 

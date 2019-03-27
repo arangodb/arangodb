@@ -85,6 +85,7 @@ protected:
   int _respError;
   std::string _errorMessage;
   VPackBuilder _result;
+  bool _isSingle;       // is single db server (not cluster)
 
   unsigned _timeoutSeconds; // used to stop transaction, used again to stop rocksdb
 
@@ -127,18 +128,19 @@ public:
   bool isCreate() const {return _isCreate;}
   const std::string & getTimestamp() const {return _timestamp;}
   const std::string & getUserString() const {return _userString;}
-
+  const std::string & getDirectory() const {return _directory;}
 protected:
   // @brief Execute the create operation
   void executeCreate();
 
   // @brief Execute the delete operation
-  void executeDelete() {};
+  void executeDelete();
 
   bool _isCreate;
   bool _forceBackup;
-  std::string _timestamp;
+  std::string _timestamp;   // required for Create from Coordinator
   std::string _userString;
+  std::string _directory;   // required for Delete
 
 };// class RocksDBHotBackupCreate
 
@@ -194,6 +196,27 @@ public:
   void execute() override;
 
 };// class RocksDBHotBackupList
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief POST:  Set lock on rocksdb transactions
+///       DELETE:  Remove lock on rocksdb transactions
+////////////////////////////////////////////////////////////////////////////////
+class RocksDBHotBackupLock : public RocksDBHotBackup {
+public:
+
+  RocksDBHotBackupLock() = delete;
+  RocksDBHotBackupLock(const VPackSlice body);
+  ~RocksDBHotBackupLock();
+
+  void parseParameters(rest::RequestType const) override;
+  void execute() override;
+
+protected:
+  bool _isLock;
+  unsigned _unlockTimeoutSeconds;
+
+};// class RocksDBHotBackupLock
 
 
 class RocksDBHotBackupPolicy : public RocksDBHotBackup {
