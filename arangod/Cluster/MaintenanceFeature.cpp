@@ -415,7 +415,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
         // If _prioQueue is empty, we have no ready job and simply loop in the
         // outer loop.
         auto const& top = _prioQueue.top();
-        if (top->state() != maintenance::READY) {  // in case it is deleted
+        if (top->getState() != maintenance::READY) {  // in case it is deleted
           _prioQueue.pop();
           continue;
         }

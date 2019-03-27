@@ -246,7 +246,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                 {SERVER_ID, serverId},
                 {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()},
                 {FOLLOWERS_TO_DROP, followersToDropString}},
-            properties));
+            2, properties));
       } else {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
             << "Previous failure exists for local shard " << dbname << "/" << shname
@@ -274,7 +274,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                                   index.get(StaticStrings::IndexType).copyString()},
                                  {FIELDS, index.get(FIELDS).toJson()},
                                  {ID, index.get(ID).copyString()}},
-                                std::make_shared<VPackBuilder>(index)));
+                                2, std::make_shared<VPackBuilder>(index)));
         }
       }
     }
@@ -288,7 +288,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                              {DATABASE, dbname},
                              {SERVER_ID, serverId},
                              {THE_LEADER, shouldBeLeading ? std::string() : leaderId}},
-                            props));
+                            shouldBeLeading ? 2 : 1, props));
     } else {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "Previous failure exists for creating local shard " << dbname << "/"
@@ -311,7 +311,8 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
   bool localLeader = cprops.get(THE_LEADER).copyString().empty();
   if (plannedLeader == UNDERSCORE + serverId && localLeader) {
     actions.emplace_back(ActionDescription(
-        {{NAME, "ResignShardLeadership"}, {DATABASE, dbname}, {SHARD, colname}}));
+        {{NAME, "ResignShardLeadership"}, {DATABASE, dbname}, {SHARD, colname}},
+        3));
   } else {
     bool drop = false;
     // check if shard is in plan, if not drop it
@@ -326,7 +327,8 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
 
     if (drop) {
       actions.emplace_back(ActionDescription(
-          {{NAME, DROP_COLLECTION}, {DATABASE, dbname}, {COLLECTION, colname}}));
+          {{NAME, DROP_COLLECTION}, {DATABASE, dbname}, {COLLECTION, colname}},
+          2));
     } else {
       // The shard exists in both Plan and Local
       commonShrds.erase(it);  // it not a common shard?
@@ -345,7 +347,7 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
                 indis.erase(id);
               } else {
                 actions.emplace_back(ActionDescription(
-                    {{NAME, "DropIndex"}, {DATABASE, dbname}, {COLLECTION, colname}, {"index", id}}));
+                    {{NAME, "DropIndex"}, {DATABASE, dbname}, {COLLECTION, colname}, {"index", id}}, 2));
               }
             }
           }
@@ -394,7 +396,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       if (errors.databases.find(dbname) == errors.databases.end()) {
         actions.emplace_back(
             ActionDescription({{std::string(NAME), std::string(CREATE_DATABASE)},
-                               {std::string(DATABASE), std::string(dbname)}}));
+                               {std::string(DATABASE), std::string(dbname)}}, 2));
       } else {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
             << "Previous failure exists for creating database " << dbname << "skipping";
@@ -408,7 +410,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     if (!plan.hasKey(std::vector<std::string>{DATABASES, dbname})) {
       actions.emplace_back(
           ActionDescription({{std::string(NAME), std::string(DROP_DATABASE)},
-                             {std::string(DATABASE), std::string(dbname)}}));
+                             {std::string(DATABASE), std::string(dbname)}}, 2));
     }
   }
 
@@ -1091,7 +1093,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
                  {COLLECTION, colname},
                  {SHARD, shname},
                  {THE_LEADER, leader},
-                 {SHARD_VERSION, std::to_string(feature.shardVersion(shname))}}));
+                 {SHARD_VERSION, std::to_string(feature.shardVersion(shname))}}, 1));
           }
         }
       }

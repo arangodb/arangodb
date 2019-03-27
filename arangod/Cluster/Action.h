@@ -76,9 +76,6 @@ class Action {
   /// @brief run for some time and tell, if need more time or done
   bool first();
 
-  /// @brief run for some time and tell, if need more time or done
-  ActionState state() const;
-
   /// @brief is object in a usable condition
   bool ok() const { return (nullptr != _action.get() && _action->ok()); };
 

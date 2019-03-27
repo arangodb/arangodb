@@ -31,8 +31,8 @@ using namespace arangodb::maintenance;
 
 /// @brief ctor
 ActionDescription::ActionDescription(std::map<std::string, std::string> const& d,
-                                     std::shared_ptr<VPackBuilder> const p,
-                                     int priority)
+                                     int priority,
+                                     std::shared_ptr<VPackBuilder> const p)
     : _description(d), _properties(p), _priority(priority) {
   TRI_ASSERT(d.find(NAME) != d.end());
   TRI_ASSERT(p == nullptr || p->isEmpty() || p->slice().isObject());
