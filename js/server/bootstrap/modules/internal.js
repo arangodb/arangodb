@@ -238,10 +238,28 @@
 
   if (global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION) {
     exports.executeGlobalContextFunction = global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
-  }else {
+  } else {
     exports.executeGlobalContextFunction = function () {
       // nothing to do. we're probably in --no-server mode
     };
+  }
+  
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief getCurrentRequest
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_GET_CURRENT_REQUEST) {
+    exports.getCurrentRequest = global.SYS_GET_CURRENT_REQUEST;
+    delete global.SYS_GET_CURRENT_REQUEST;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief getCurrentResponse
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_GET_CURRENT_RESPONSE) {
+    exports.getCurrentResponse = global.SYS_GET_CURRENT_RESPONSE;
+    delete global.SYS_GET_CURRENT_RESPONSE;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
