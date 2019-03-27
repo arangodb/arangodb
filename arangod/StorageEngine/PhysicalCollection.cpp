@@ -159,7 +159,7 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(TRI_idx_iid_t idxId) cons
 }
 
 std::shared_ptr<Index> PhysicalCollection::lookupIndex(std::string const& idxName) const {
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   for (auto const& idx : _indexes) {
     if (idx->name() == idxName) {
       return idx;

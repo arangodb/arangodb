@@ -319,7 +319,7 @@ void QueryRegistry::destroyAll() {
 
   size_t count = 0;
   {    
-    READ_LOCKER(readlock, _lock);
+    READ_LOCKER(readlock, _lock, this);
     for (auto& p : _queries) {
       count += p.second.size();
     }
@@ -331,7 +331,7 @@ void QueryRegistry::destroyAll() {
 }
 
 void QueryRegistry::disallowInserts() {
-  WRITE_LOCKER(writelock, _lock);
+  WRITE_LOCKER(writelock, _lock, this);
   _disallowInserts = true;
   // from here on, there shouldn't be any more inserts into the registry
 }

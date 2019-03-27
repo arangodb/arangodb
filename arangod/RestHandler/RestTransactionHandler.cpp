@@ -280,7 +280,7 @@ void RestTransactionHandler::executeJSTransaction() {
 }
 
 void RestTransactionHandler::returnContext() {
-  WRITE_LOCKER(writeLock, _lock);
+  WRITE_LOCKER(writeLock, _lock, this);
   V8DealerFeature::DEALER->exitContext(_v8Context);
   _v8Context = nullptr;
 }

@@ -1704,7 +1704,7 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
           }
           if (plannedServers.empty()) {
             READ_LOCKER(readLocker, _planProt.lock, this);
-            LOG_TOPIC(DEBUG, Logger::CLUSTER)
+            LOG_TOPIC("a0a76", DEBUG, Logger::CLUSTER)
                 << "This should never have happened, Plan empty. Dumping "
                    "_shards in Plan:";
             for (auto const& p : _shards) {

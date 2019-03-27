@@ -463,7 +463,7 @@ void ReplicationApplier::reconfigure(ReplicationApplierConfiguration const& conf
 
 /// @brief load the applier state from persistent storage
 bool ReplicationApplier::loadState() {
-  WRITE_LOCKER_EVENTUAL(readLocker, _statusLock);
+  WRITE_LOCKER_EVENTUAL(readLocker, _statusLock, this);
   return loadStateNoLock();
 }
 

@@ -1392,7 +1392,7 @@ retry:
           _useTick = true;
         
           {
-            WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+            WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, this);
             _applier->_state.setStartTime();
           }
           _applier->markThreadTailing();
@@ -1407,7 +1407,7 @@ retry:
                   "caught unknown exception during initial replication");
       }
         
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, this);
       _applier->_state._phase = ReplicationApplierState::ActivityPhase::INACTIVE;
     }
       

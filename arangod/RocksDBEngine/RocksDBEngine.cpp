@@ -1666,7 +1666,7 @@ std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const& RocksDBEngine::recove
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
   rocksdb::VectorLogPtr files;
 
-  WRITE_LOCKER(lock, _walFileLock);
+  WRITE_LOCKER(lock, _walFileLock, this);
   TRI_voc_tick_t minTickToKeep = std::min(_releasedTick, minTickExternal);
 
   // Retrieve the sorted list of all wal files with earliest file first
@@ -1776,7 +1776,7 @@ void RocksDBEngine::pruneWalFiles() {
   // to remove
   RocksDBFilePurgeEnabler purgeEnabler(rocksutils::globalRocksEngine()->startPurging());
 
-  WRITE_LOCKER(lock, _walFileLock);
+  WRITE_LOCKER(lock, _walFileLock, this);
   
   // go through the map of WAL files that we have already and check if they are
   // "expired"

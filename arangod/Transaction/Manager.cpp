@@ -54,10 +54,10 @@ namespace {
 // register a list of failed transactions
 void Manager::registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
   TRI_ASSERT(_keepTransactionData);
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
   for (auto const& it : failedTransactions) {
     const size_t bucket = getBucket(it);
-    WRITE_LOCKER(locker, _transactions[bucket]._lock);
+    WRITE_LOCKER(locker, _transactions[bucket]._lock, this);
     _transactions[bucket]._failedTransactions.emplace(it);
   }
 }
@@ -65,9 +65,9 @@ void Manager::registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const
 // unregister a list of failed transactions
 void Manager::unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
   TRI_ASSERT(_keepTransactionData);
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    WRITE_LOCKER(locker, _transactions[bucket]._lock);
+    WRITE_LOCKER(locker, _transactions[bucket]._lock, this);
     std::for_each(failedTransactions.begin(), failedTransactions.end(), [&](TRI_voc_tid_t id) {
       _transactions[bucket]._failedTransactions.erase(id);
     });
@@ -81,8 +81,8 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
   if (_keepTransactionData) {
     TRI_ASSERT(data != nullptr);
     const size_t bucket = getBucket(transactionId);
-    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+    READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock, this);
     
     try {
       // insert into currently running list of transactions
@@ -101,9 +101,9 @@ void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFail
 
   if (_keepTransactionData) {
     const size_t bucket = getBucket(transactionId);
-    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+    READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
 
-    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock, this);
 
     _transactions[bucket]._activeTransactions.erase(transactionId);
     if (markAsFailed) {
@@ -117,10 +117,10 @@ std::unordered_set<TRI_voc_tid_t> Manager::getFailedTransactions() const {
   std::unordered_set<TRI_voc_tid_t> failedTransactions;
 
   {
-    WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
+    WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
 
     for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-      READ_LOCKER(locker, _transactions[bucket]._lock);
+      READ_LOCKER(locker, _transactions[bucket]._lock, this);
 
       for (auto const& it : _transactions[bucket]._failedTransactions) {
         failedTransactions.emplace(it);
@@ -136,11 +136,11 @@ void Manager::iterateActiveTransactions(
   if (!_keepTransactionData) {
     return;
   }
-  WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
 
   // iterate over all active transactions
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    READ_LOCKER(locker, _transactions[bucket]._lock);
+    READ_LOCKER(locker, _transactions[bucket]._lock, this);
 
     for (auto const& it : _transactions[bucket]._activeTransactions) {
       TRI_ASSERT(it.second != nullptr);
@@ -181,9 +181,9 @@ bool Manager::garbageCollect(bool abortAll) {
   
   std::vector<TRI_voc_tid_t> gcBuffer;
 
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    WRITE_LOCKER(locker, _transactions[bucket]._lock);
+    WRITE_LOCKER(locker, _transactions[bucket]._lock, this);
 
     double now = TRI_microtime();
     auto it = _transactions[bucket]._managed.begin();
@@ -193,7 +193,7 @@ bool Manager::garbageCollect(bool abortAll) {
       
       if (mtrx.type == MetaType::Managed) {
         TRI_ASSERT(mtrx.state != nullptr);
-        TRY_READ_LOCKER(tryGuard, mtrx.rwlock); // needs lock to access state
+        TRY_READ_LOCKER(tryGuard, mtrx.rwlock, this); // needs lock to access state
         if (!tryGuard.isLocked() || mtrx.state->isEmbeddedTransaction()) {
           // either someone has the TRX exclusively or shared
           if (abortAll) {
@@ -239,8 +239,8 @@ bool Manager::garbageCollect(bool abortAll) {
 void Manager::registerAQLTrx(TransactionState* state) {
   TRI_ASSERT(state != nullptr);
   const size_t bucket = getBucket(state->id());
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
+  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock, this);
   
   auto& buck = _transactions[bucket];
   auto it = buck._managed.find(state->id());
@@ -257,8 +257,8 @@ void Manager::registerAQLTrx(TransactionState* state) {
   
 void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
   const size_t bucket = getBucket(tid);
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
+  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock, this);
   
   auto& buck = _transactions[bucket];
   auto it = buck._managed.find(tid);
@@ -283,8 +283,8 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
   const size_t bucket = getBucket(tid);
   
   { // quick check whether ID exists
-    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+    READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock, this);
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
@@ -373,8 +373,8 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
   }
   
   { // add transaction to bucket
-    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+    READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock, this);
     auto it = _transactions[bucket]._managed.find(tid);
     if (it != _transactions[bucket]._managed.end()) {
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL, "transaction ID already used");
@@ -397,8 +397,8 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
   int i = 0;
   TransactionState* state = nullptr;
   do {
-    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+    READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock, this);
     
     auto it = _transactions[bucket]._managed.find(tid);
     if (it == _transactions[bucket]._managed.end()) {
@@ -453,8 +453,8 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
   
 void Manager::returnManagedTrx(TRI_voc_tid_t tid, AccessMode::Type mode) noexcept {
   const size_t bucket = getBucket(tid);
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
+  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock, this);
 
   auto it = _transactions[bucket]._managed.find(tid);
   if (it == _transactions[bucket]._managed.end()) {
@@ -488,8 +488,8 @@ void Manager::returnManagedTrx(TRI_voc_tid_t tid, AccessMode::Type mode) noexcep
 /// @brief get the transasction state
 transaction::Status Manager::getManagedTrxStatus(TRI_voc_tid_t tid) const {
   size_t bucket = getBucket(tid);
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-  READ_LOCKER(writeLocker, _transactions[bucket]._lock);
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
+  READ_LOCKER(writeLocker, _transactions[bucket]._lock, this);
   
   auto it = _transactions[bucket]._managed.find(tid);
   if (it == _transactions[bucket]._managed.end()) {
@@ -501,7 +501,7 @@ transaction::Status Manager::getManagedTrxStatus(TRI_voc_tid_t tid) const {
   if (mtrx.type == MetaType::Tombstone) {
     return mtrx.finalStatus;
   } else if (mtrx.expires > TRI_microtime() && mtrx.state != nullptr) {
-    TRY_READ_LOCKER(tryGuard, mtrx.rwlock);
+    TRY_READ_LOCKER(tryGuard, mtrx.rwlock, this);
     if (!tryGuard.isLocked()) {
       return transaction::Status::UNDEFINED;
     }
@@ -531,8 +531,8 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
   
   TransactionState* state = nullptr;
   {
-    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+    READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock, this);
     
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
@@ -541,7 +541,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
     }
     
     ManagedTrx& mtrx = it->second;
-    TRY_WRITE_LOCKER(tryGuard, mtrx.rwlock);
+    TRY_WRITE_LOCKER(tryGuard, mtrx.rwlock, this);
     if (!tryGuard.isLocked()) {
       return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
                        "transaction is in use");
@@ -582,8 +582,8 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
   }
   
   auto abortTombstone = [&] {
-    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+    READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock, this);
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
@@ -626,9 +626,9 @@ void Manager::abortAllManagedTrx(TRI_voc_cid_t cid, bool leader) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
   std::vector<TRI_voc_tid_t> toAbort;
   
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    READ_LOCKER(locker, _transactions[bucket]._lock);
+    READ_LOCKER(locker, _transactions[bucket]._lock, this);
     
     auto it = _transactions[bucket]._managed.begin();
     while (it != _transactions[bucket]._managed.end()) {
@@ -640,7 +640,7 @@ void Manager::abortAllManagedTrx(TRI_voc_cid_t cid, bool leader) {
           ((leader && isLeaderTransactionId(it->first)) ||
            (!leader && isFollowerTransactionId(it->first)) )) {
         TRI_ASSERT(mtrx.state != nullptr);
-        TRY_READ_LOCKER(tryGuard, mtrx.rwlock); // needs lock to access state
+        TRY_READ_LOCKER(tryGuard, mtrx.rwlock, this); // needs lock to access state
         if (tryGuard.isLocked()) {
           TransactionCollection* tcoll = mtrx.state->collection(cid, AccessMode::Type::NONE);
           if (tcoll != nullptr) {
@@ -665,10 +665,10 @@ void Manager::abortAllManagedTrx(TRI_voc_cid_t cid, bool leader) {
 Manager::TrxCounts Manager::getManagedTrxCount() const {
   TrxCounts counts;
   
-  WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
   // iterate over all active transactions
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    READ_LOCKER(locker, _transactions[bucket]._lock);
+    READ_LOCKER(locker, _transactions[bucket]._lock, this);
     for (auto const& pair : _transactions[bucket]._managed) {
       if (pair.second.type != MetaType::Managed) {
         counts.numManaged++;

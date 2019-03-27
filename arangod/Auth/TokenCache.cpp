@@ -66,7 +66,7 @@ auth::TokenCache::~TokenCache() {
 
 void auth::TokenCache::setJwtSecret(std::string const& jwtSecret) {
   WRITE_LOCKER(writeLocker, _jwtLock, this);
-  LOG_TOPIC("71a76", Logger::AUTHENTICATION)
+  LOG_TOPIC("71a76", DEBUG, Logger::AUTHENTICATION)
       << "Setting jwt secret " << Logger::BINARY(jwtSecret.data(), jwtSecret.size());
   _jwtSecret = jwtSecret;
   _jwtCache.clear();
