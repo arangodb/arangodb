@@ -188,7 +188,7 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
   RegisterId inputRegister = variableToRegisterId(_inVariable);
 
   RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
-  RegisterId outputOld = variableToRegisterOptionalId(_outVariableNew);
+  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
