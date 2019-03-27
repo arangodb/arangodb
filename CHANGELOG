@@ -1,6 +1,21 @@
 devel
 -----
 
+* removed support for undocumented HTTP header `x-arango-v8-context`, which
+  allowed controlling in which particular V8 context number a JavaScript-based
+  action was executed. This header was only used internally for testing.
+
+* added option `--javascript.endpoints-filter` for disallowing the connection
+  to certain endpoints via the `requests` module.
+
+  If specified, this option must be valid ECMAScript regular expression. Any
+  endpoint that matches this regular expression cannot be contacted via the
+  `requests` module. Endpoint values are passed into the filter in a normalized
+  format starting with either of the prefixes `tcp://`, `ssl://`, `unix://`
+  or `srv://`. 
+  Note that for HTTP/SSL-based endpoints the port number will be included too,
+  and that the endpoint can be specified as an IP address or host name.
+
 * added option `--javascript.startup-options-filter` for filtering certain
   startup options out before passing their values to JavaScript actions.
 
