@@ -39,6 +39,11 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
+  
+  /// @brief tests if in the current security context it is allowed to define
+  /// additional HTTP REST actions
+  /// must only be called in arangod!
+  bool canDefineHttpAction(v8::Isolate* isolate) const;
 
   /// @brief tests if the value of the startup option should be exposed to end
   /// users via JavaScript actions. will use _startupOptionsFilter*

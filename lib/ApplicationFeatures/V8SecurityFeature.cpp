@@ -27,6 +27,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "V8/v8-globals.h"
 
 #include <v8.h>
 
@@ -88,6 +89,12 @@ void V8SecurityFeature::start() {
   _startupOptionsFilterRegex = std::regex(_startupOptionsFilter, std::regex::nosubs | std::regex::ECMAScript);
   _environmentVariablesFilterRegex = std::regex(_environmentVariablesFilter, std::regex::nosubs | std::regex::ECMAScript);
   _endpointsFilterRegex = std::regex(_endpointsFilter, std::regex::nosubs | std::regex::ECMAScript);
+}
+  
+bool V8SecurityFeature::canDefineHttpAction(v8::Isolate* isolate) const {
+  TRI_GET_GLOBALS();
+  // v8g may be a nullptr when we are in arangosh
+  return v8g != nullptr && v8g->_securityContext.canDefineHttpAction();
 }
 
 bool V8SecurityFeature::shouldExposeStartupOption(v8::Isolate* isolate, std::string const& name) const {

@@ -24,6 +24,7 @@
 #include "v8-actions.h"
 #include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
@@ -1010,8 +1011,13 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "defineAction(<name>, <callback>, <parameter>)");
   }
+  
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
 
-  if (!v8g->_securityContext.canDefineHttpAction()) {
+  if (!v8security->canDefineHttpAction(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "operation only allowed for internal scripts");
   }
 
