@@ -81,7 +81,9 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _skipCorrupted(false),
       _dynamicLevelBytes(true),
       _enableStatistics(false),
-      _useFileLogging(false) {
+      _useFileLogging(false),
+      _limitOpenFilesAtStartup(false),
+      _allowFAllocate(true) {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(
       std::max((size_t)2, std::min(TRI_numberProcessors(), (size_t)8)));
@@ -306,6 +308,18 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "skip corrupted records in WAL recovery",
                      new BooleanParameter(&_skipCorrupted),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+  
+  options->addOption("--rocksdb.limit-open-files-at-startup",
+                     "limit the amount of .sst files RocksDB will inspect at startup, in order to startup reduce IO",
+                     new BooleanParameter(&_limitOpenFilesAtStartup),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30405).setIntroducedIn(30500);
+  
+  options->addOption("--rocksdb.allow-fallocate",
+                     "if true, allow RocksDB to use fallocate calls. if false, fallocate calls are bypassed",
+                     new BooleanParameter(&_allowFAllocate),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30405).setIntroducedIn(30500);
 }
 
 void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -392,9 +406,11 @@ void RocksDBOptionFeature::start() {
       << ", level0_compaction_trigger: " << _level0CompactionTrigger
       << ", level0_slowdown_trigger: " << _level0SlowdownTrigger
       << ", enable_pipelined_write: " << _enablePipelinedWrite
-      << ", optimize_filters_for_hits: " << _optimizeFiltersForHits
-      << ", use_direct_reads: " << _useDirectReads
-      << ", use_direct_io_for_flush_and_compaction: " << _useDirectIoForFlushAndCompaction
-      << ", use_fsync: " << _useFSync
+      << ", optimize_filters_for_hits: " << std::boolalpha << _optimizeFiltersForHits
+      << ", use_direct_reads: " << std::boolalpha << _useDirectReads
+      << ", use_direct_io_for_flush_and_compaction: " << std::boolalpha << _useDirectIoForFlushAndCompaction
+      << ", use_fsync: " << std::boolalpha << _useFSync
+      << ", allow_fallocate: " << std::boolalpha << _allowFAllocate
+      << ", max_open_files limit: " << std::boolalpha << _limitOpenFilesAtStartup
       << ", dynamic_level_bytes: " << std::boolalpha << _dynamicLevelBytes;
 }

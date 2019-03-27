@@ -45,6 +45,7 @@
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RocksDBEngine/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
@@ -404,6 +405,7 @@ void RocksDBEngine::start() {
   transactionOptions.num_stripes = TRI_numberProcessors();
   transactionOptions.transaction_lock_timeout = opts->_transactionLockTimeout;
 
+  _options.allow_fallocate = opts->_allowFAllocate;
   _options.enable_pipelined_write = opts->_enablePipelinedWrite;
   _options.write_buffer_size = static_cast<size_t>(opts->_writeBufferSize);
   _options.max_write_buffer_number = static_cast<int>(opts->_maxWriteBufferNumber);
@@ -529,7 +531,14 @@ void RocksDBEngine::start() {
 
   _options.create_if_missing = true;
   _options.create_missing_column_families = true;
-  _options.max_open_files = -1;
+
+  if (opts->_limitOpenFilesAtStartup) {
+    _options.max_open_files = 16;
+    _options.skip_stats_update_on_db_open = true;
+    _options.avoid_flush_during_recovery = true;
+  } else {
+    _options.max_open_files = -1;
+  }
 
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
   // manager. Should be several times bigger counter_sync_seconds
@@ -550,6 +559,8 @@ void RocksDBEngine::start() {
     _shaListener.reset(new RocksDBEventListener);
     _options.listeners.push_back(_shaListener);
   } // if
+
+  _options.listeners.push_back(std::make_shared<RocksDBBackgroundErrorListener>());
 
   if (opts->_totalWriteBufferSize > 0) {
     _options.db_write_buffer_size = opts->_totalWriteBufferSize;
@@ -713,6 +724,10 @@ void RocksDBEngine::start() {
   // only enable logger after RocksDB start
   if (logger != nullptr) {
     logger->enable();
+  }
+  
+  if (opts->_limitOpenFilesAtStartup) {
+    _db->SetDBOptions({{"max_open_files", "-1"}});
   }
 
   if (_syncInterval > 0) {
@@ -1778,7 +1793,15 @@ void RocksDBEngine::pruneWalFiles() {
     if (deleteFile) {
       LOG_TOPIC(DEBUG, Logger::ENGINES)
           << "deleting RocksDB WAL file '" << (*it).first << "'";
-      auto s = _db->DeleteFile((*it).first);
+      rocksdb::Status s;
+      if (basics::FileUtils::exists(basics::FileUtils::buildFilename(_options.wal_dir, (*it).first))) {
+        // only attempt file deletion if the file actually exists.
+        // otherwise RocksDB may complain about non-existing files and log a big error message
+        s = _db->DeleteFile((*it).first);
+      } else {
+        LOG_TOPIC(DEBUG, Logger::ROCKSDB)
+            << "to-be-deleted RocksDB WAL file '" << (*it).first << "' does not exist. skipping deletion";
+      }
       // apparently there is a case where a file was already deleted
       // but is still in _prunableWalFiles. In this case we get an invalid
       // argument response.

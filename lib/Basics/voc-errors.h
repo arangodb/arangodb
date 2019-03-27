@@ -1693,11 +1693,36 @@ constexpr int TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           
 /// graph attribute of the graph.
 constexpr int TRI_ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH                          = 4005;
 
+<<<<<<< HEAD
 /// 4006: ERROR_REMOTE_REPOSITORY_CONFIG_BAD
 /// "remote hotback repository configuration error"
 /// The configuration given for upload or download operation to/from remote
 /// hotback repositories is wrong.
 constexpr int TRI_ERROR_REMOTE_REPOSITORY_CONFIG_BAD                            = 4006;
+=======
+/// 4006: ERROR_INVALID_SMART_JOIN_ATTRIBUTE
+/// "invalid smart join attribute declaration"
+/// Will be raised when the smartJoinAttribute declaration is invalid.
+constexpr int TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE                            = 4006;
+
+/// 4007: ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE
+/// "shard key value must be prefixed with the value of the smart join attribute"
+/// when using smartJoinAttribute for a collection, the shard key value must be
+/// prefixed with the value of the smart join attribute.
+constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE          = 4007;
+
+/// 4008: ERROR_NO_SMART_JOIN_ATTRIBUTE
+/// "smart join attribute not given or invalid"
+/// The given document does not have the required smart join attribute set or
+/// it has an invalid value.
+constexpr int TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE                                 = 4008;
+
+/// 4009: ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE
+/// "must not change the value of the smartJoinAttribute"
+/// Will be raised if there is an attempt to update the value of the
+/// smartJoinAttribute.
+constexpr int TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE            = 4009;
+>>>>>>> e9b8e9f766744a5f884ecf3720be3cba4fad8b19
 
 /// 5000: ERROR_CLUSTER_REPAIRS_FAILED
 /// "error during cluster repairs"

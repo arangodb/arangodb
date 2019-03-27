@@ -420,6 +420,13 @@ static int distributeBabyOnShards(
     shardID = shards->at(0);
     userSpecifiedKey = true;
   } else {
+
+    int r = transaction::Methods::validateSmartJoinAttribute(*(collinfo.get()), value);
+
+    if (r != TRI_ERROR_NO_ERROR) {
+      return r;
+    }
+
     // Sort out the _key attribute:
     // The user is allowed to specify _key, provided that _key is the one
     // and only sharding attribute, because in this case we can delegate
@@ -714,8 +721,38 @@ bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& old
       return true;
     }
   }
-
+  
   return false;
+}
+
+bool smartJoinAttributeChanged(LogicalCollection const& collection, 
+                               VPackSlice const& oldValue,
+                               VPackSlice const& newValue, bool isPatch) {
+  if (!collection.hasSmartJoinAttribute()) {
+    return false;
+  }
+  if (!oldValue.isObject() || !newValue.isObject()) {
+    // expecting two objects. everything else is an error
+    return true;
+  }
+
+  std::string const& s = collection.smartJoinAttribute();
+    
+  VPackSlice n = newValue.get(s);
+  if (!n.isString()) {
+    if (isPatch && n.isNone()) {
+      // attribute not set in patch document. this means no update
+      return false;
+    }
+
+    // no string value... invalid!
+    return true;
+  }
+
+  VPackSlice o = oldValue.get(s);
+  TRI_ASSERT(o.isString());
+    
+  return (arangodb::basics::VelocyPackHelper::compare(n, o, false) != 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2721,10 +2758,122 @@ int fetchEdgesFromEngines(std::string const& dbname,
 
 arangodb::Result loadLocalBackup(std::string const& backupId) {
 
+  // Look in data directory for hotbackup
+  auto const& hotBackupPath = FileUtils::buildFilename(
+    application_features::ApplicationServer::getFeature<DatabasePathFeature>(
+      "DatabasePath") + "hotbackup");
+
   // Find local backup with Id
   return arangodb::Result();
 
   
+  
+}
+
+
+arangodb::Result saveLocalBackup(
+  std::string const& backupId, VPackSlice const agencyDump) { 
+
+  auto const& hotBackupPath = FileUtils::buildFilename(
+    application_features::ApplicationServer::getFeature<DatabasePathFeature>(
+      "DatabasePath") + "hotbackup");
+
+  if (!FileUtils::isDirectory(hotBackupPath)) {
+    int errorNumber = 0;
+    if (!FileUtils::createDirectory(hotBackupPath, &errorNumber)) {
+      if (errorNumber == ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS) {
+        // Weird someone has created it in the meantime. Move on?
+      } else {
+        return arangodb::Result(
+          errorNumber, "Failed to create local hot backup directory");
+      }
+    }
+  }
+
+  // Agency dump to string
+  std::string dumpStr;
+  try {
+    dumpStr = agencyDump.toJson();
+  } catch (std::exception const& e) {
+    return arangodb::Result(
+      TRI_ERROR_CANNOT_WRITE_FILE,
+      std::string("Failed to create string representation of agency dump: ") +
+      e.what());
+  }
+
+  // Save above string to disk
+  try {
+    FileUtils::spit (hotBackupPath + "/" + backupId, dumpStr);
+  } catch (std::exception const& e) {
+    return arangodb::Result(
+      TRI_ERROR_CANNOT_WRITE_FILE,
+      std::string("Failed to write agency dump to disk: ") + e.what());
+  }
+
+  return arangodb::Result;
+  
+}
+
+
+arangodb::Result hotBackupList(std::vector<std::string>& hotBackups) {
+
+  hotBackups.clear();
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder b(&builder);
+    builder.add("operation", VPackValue("list"));
+  }
+  auto body = std::make_shared<std::string>(builder.toJson());
+
+  for (auto const& engine : *engines) {
+    requests.emplace_back("server:" + , RequestType::PUT,
+                          url + StringUtils::itoa(engine.second), body);
+  }
+
+  auto const& hotBackupPath = FileUtils::buildFilename(
+    application_features::ApplicationServer::getFeature<DatabasePathFeature>(
+      "DatabasePath") + "hotbackup");
+
+  if (!isDirectory(hotBackupPath)) {
+    return arangodb::Result(ERROR_FILE_NOT_FOUND, "No hot backups found.");
+  }     
+
+  hotBackups = listFiles(std::string const& directory);
+
+  return arangodb::Result;
+  
+}
+
+
+arangodb::Result pauseMaintenanceFeature(std::vector<ServerID> const& dbServers) {
+
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return arangodb::Result(TRI_ERROR_SHUTTING_DOWN, "Shutting down");
+  }
+
+  std::vector<ClusterCommRequest> requests;
+  auto body = std::make_shared<std::string>(builder.toJson());
+  for (auto const& dbserver : dbServers) {
+    requests.emplace_back("server:" + engine.first, RequestType::POST,
+                          url + StringUtils::itoa(engine.second), body);
+  }
+
+  // Perform the requests
+  size_t done = 0;
+  cc->performRequests(
+    requests, CL_DEFAULT_TIMEOUT, done, Logger::COMMUNICATION, false);
+  
+  result.clear();
+
+  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Inquiring about backup " << backupId;
+  VPackBuilder plan;
+  
+  // Now listen to the results:
+  for (auto const& req : requests) {
+  }
   
 }
   
@@ -2736,11 +2885,89 @@ arangodb::Result hotRestoreCoordinator(std::string const& backupId) {
   //    - fail if not matching
   // 3. Check if they have according backup with backupId
   //    - fail if not
-  // 4. a. Initiate DB server restores
-  //    b. Replay agency
+  // 4. Stop maintenance feature on all db servers
+  // 5. a. Replay agency
+  //    b. Initiate DB server restores
 
-  auto loadBackup = loadLocalBackup();
+  auto loadBackup = loadLocalBackup(backupId);
+  if (!loadBackup.ok()) {
+    arangodb::Result(TRI_ERROR_FILE_NOT_FOUND, std::string("No backup with ID ") + backupId);
+  }
 
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return arangodb::Result(TRI_ERROR_SHUTTING_DOWN, "Shutting down");
+  }
+  std::vector<ServerID> dbServers = ci->getCurrentDBServers();
+  std::string const url = "/_admin/hotbackup/find";
+  std::vector<ClusterCommRequest> requests;
+  auto body = std::make_shared<std::string>(builder.toJson());
+  for (auto const& dbserver : dbServers) {
+    requests.emplace_back("server:" + engine.first, RequestType::POST,
+                          url + StringUtils::itoa(engine.second), body);
+  }
+
+  // Perform the requests
+  size_t nrDone = 0;
+  cc->performRequests(
+    requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
+  
+  result.clear();
+
+  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Inquiring about backup " << backupId;
+  VPackBuilder plan;
+  
+  // Now listen to the results:
+  for (auto const& req : requests) {
+    bool allCached = true;
+    auto res = req.result;
+    int commError = handleGeneralCommErrors(&res);
+    if (commError != TRI_ERROR_NO_ERROR) {
+      // oh-oh cluster is in a bad state
+      return arangodb::Result(
+        commError, std::string("Communication error list backups on ") + req.destination);
+    }
+    TRI_ASSERT(res.answer != nullptr);
+    auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
+    VPackSlice resSlice = resBody->slice();
+    if (!resSlice.isObject()) {
+      // Response has invalid format
+      return aragodb::Result(
+        TRI_ERROR_HTTP_CORRUPTED_JSON,
+        std::string("result to list request to ") + req.destination + "not an object");
+    }
+
+    if (!resSlice.hasKey("result") ||
+        !resSlice.get("result").isBoolean() || !resSlice.get("result").getBoolean()) {
+      LOG_TOPIC(ERR, Logger::HOTBACKUP)
+        << "DB server " << res.destination << "is missing backup " << backupId;
+      return aragodb::Result(
+        TRI_ERROR_FILE_NOT_FOUND,
+        std::srting("no backup with id ") + backupId + " on server " + req.destination);
+    }
+
+    if (resSlice.hasKey("agency-dump")) {
+      LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
+        << "Received agency dump for " << backupId << " from " << res.destination;
+      LOG_TOPIC(TRACE, Logger::HOTBACKUP) << resSlice.get("agency-dump");
+      plan.add(resSlice.get("agency-dump").get("Plan"));
+    }
+
+  }
+
+  LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
+    << "Have located backup. Replaying plan snapshot. Requesting restore " << backupId;
+
+  
+  snapShotPlan();
+  replayAgency(plan);
+
+  // OK Good. We have spotted the hot backup everywhere. Let's do some restoring
+
+  
+
+  
   return arangodb::Result();
   
 }
@@ -2888,6 +3115,15 @@ arangodb::Result hotBackupCoordinator(
     // Busy loop? Think!
     
     lockWait = (lockWait < 5.0) ? 1.1 * lockWait : 5.0;
+  }
+
+  auto result = saveLocalBackup(agency->toJson());
+  if (!result.ok()) {
+
+    // 1. Unlock hot backup in agency
+    // 2. Unlock all db servers
+    // 3. Report errors
+    
   }
 
   std::string const backupUrl = std::string("/_admin/hotbackup/create");
