@@ -88,7 +88,6 @@ extern const char* ARGV0; // defined in main.cpp
 struct IResearchQueryTokensSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
   IResearchQueryTokensSetup(): engine(server), server(nullptr, nullptr) {
@@ -112,8 +111,7 @@ struct IResearchQueryTokensSetup {
     features.emplace_back(new arangodb::ShardingFeature(server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::AqlFeature(server), true);
@@ -139,32 +137,33 @@ struct IResearchQueryTokensSetup {
       f.first->prepare();
     }
 
+    auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature
+    >("Database");
+    dbFeature->loadDatabases(databases->slice());
+
     for (auto& f : features) {
       if (f.second) {
         f.first->start();
       }
     }
 
-    auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
-      arangodb::DatabaseFeature
-    >("Database");
-    TRI_vocbase_t* vocbase;
-    dbFeature->createDatabase(1, "testVocbase", vocbase); // required for IResearchAnalyzerFeature::emplace(...)
-
     auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
       arangodb::iresearch::IResearchAnalyzerFeature
     >();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    TRI_vocbase_t* vocbase;
 
-    analyzers->emplace(result, "test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
-    analyzers->emplace(result, "test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+    dbFeature->createDatabase(1, "testVocbase", vocbase); // required for IResearchAnalyzerFeature::emplace(...)
+    analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
+    analyzers->emplace(result, "testVocbase::test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
 
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
   ~IResearchQueryTokensSetup() {
-    system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
