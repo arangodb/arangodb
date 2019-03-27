@@ -24,6 +24,7 @@
 #include "Helpers.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
 #include "Transaction/Context.h"

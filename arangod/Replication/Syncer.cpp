@@ -487,7 +487,7 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
       _state.vocbases.emplace(std::piecewise_construct, std::forward_as_tuple(name),
                               std::forward_as_tuple(*vocbase));
     } else {
-      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "could not find database '" << name << "'";
+      LOG_TOPIC("9bb38", DEBUG, Logger::REPLICATION) << "could not find database '" << name << "'";
     }
 
     return vocbase;
@@ -512,7 +512,7 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
   }
 
   if (cid == 0) {
-    LOG_TOPIC(ERR, Logger::REPLICATION)
+    LOG_TOPIC("fbf1a", ERR, Logger::REPLICATION)
         << "Invalid replication response: Was unable to resolve"
         << " collection from marker: " << slice.toJson();
     return nullptr;
@@ -548,7 +548,7 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx, LogicalColle
         return res;
       }
 
-      LOG_TOPIC(DEBUG, Logger::REPLICATION)
+      LOG_TOPIC("569c6", DEBUG, Logger::REPLICATION)
           << "got lock timeout while waiting for lock on collection '"
           << coll->name() << "', retrying...";
       std::this_thread::sleep_for(std::chrono::microseconds(50000));
@@ -595,7 +595,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   bool forceRemoveCid = false;
   if (col != nullptr && _state.master.simulate32Client()) {
     forceRemoveCid = true;
-    LOG_TOPIC(INFO, Logger::REPLICATION)
+    LOG_TOPIC("01f9f", INFO, Logger::REPLICATION)
         << "would have got a wrong collection!";
     // go on now and truncate or drop/re-create the collection
   }

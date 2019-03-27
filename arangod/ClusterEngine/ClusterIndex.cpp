@@ -60,7 +60,7 @@ ClusterIndex::ClusterIndex(TRI_idx_iid_t id, LogicalCollection& collection,
   TRI_ASSERT(_info.slice().isObject());
   TRI_ASSERT(_info.isClosed());
 
-  // The Edge Index on RocksDB can serve _from and _to when beeing asked.
+  // The Edge Index on RocksDB can serve _from and _to when being asked.
   if (_engineType == ClusterEngineType::RocksDBEngine && _indexType == TRI_IDX_TYPE_EDGE_INDEX) {
     std::string attr = "";
     TRI_AttributeNamesToString(_fields[0], attr);

@@ -74,7 +74,7 @@ bool TRI_StartThread(TRI_thread_t* thread, char const* name,
   try {
     d.reset(new thread_data_t(starter, data, name));
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::THREADS)
+    LOG_TOPIC("00944", ERR, arangodb::Logger::THREADS)
         << "could not start thread: out of memory";
     return false;
   }
@@ -88,7 +88,7 @@ bool TRI_StartThread(TRI_thread_t* thread, char const* name,
                          nullptr);       // returns the thread identifier
 
   if (*thread == 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::THREADS)
+    LOG_TOPIC("11a8a", ERR, arangodb::Logger::THREADS)
         << "could not start thread: " << strerror(errno) << " ";
     return false;
   }
@@ -119,14 +119,14 @@ int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout) {
     }
 
     case WAIT_TIMEOUT: {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("02438", ERR, arangodb::Logger::FIXME)
           << "could not join thread --> WAIT_TIMEOUT";
       return TRI_ERROR_FAILED;
     }
 
     case WAIT_FAILED: {
       result = GetLastError();
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("953dd", ERR, arangodb::Logger::FIXME)
           << "could not join thread --> WAIT_FAILED - reason -->" << result;
       return TRI_ERROR_FAILED;
     }
@@ -150,7 +150,7 @@ int TRI_DetachThread(TRI_thread_t* thread) {
 
   if (res == 0) {
     DWORD result = GetLastError();
-    LOG_TOPIC(ERR, arangodb::Logger::THREADS) << "cannot detach thread: " << result;
+    LOG_TOPIC("333c2", ERR, arangodb::Logger::THREADS) << "cannot detach thread: " << result;
     return TRI_ERROR_INTERNAL;
   }
 

@@ -33,7 +33,6 @@
 #include <time.h>
 
 #include "Basics/Exceptions.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
@@ -436,7 +435,7 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
   delete[] buffer;
 
   if (corrupted) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("4c231", WARN, arangodb::Logger::FIXME)
         << "escaped corrupted unicode string";
   }
 

@@ -345,7 +345,8 @@ struct V8Cursor final {
     // specify ID 0 so it uses the external V8 context
     auto cc = cursors->createQueryStream(queryString, std::move(bindVars),
                                          std::move(options), batchSize, ttl,
-                                         contextOwnedByExterior);
+                                         contextOwnedByExterior,
+                                         /*trxCtx*/ nullptr);
     TRI_DEFER(cc->release());
     // args.Holder() is supposedly better than args.This()
     auto self = std::make_unique<V8Cursor>(isolate, args.Holder(), *vocbase, cc->id());
