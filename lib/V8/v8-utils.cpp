@@ -306,7 +306,7 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("options()");
   }
-  
+
   V8SecurityFeature* v8security =
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
@@ -2866,6 +2866,16 @@ static void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
+  }
+
+  V8SecurityFeature* v8security =
+     application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+         "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToAccessPath(isolate, *name)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                  "not allowed to modify files in this path");
   }
 
   int res = TRI_UnlinkFile(*name);

@@ -39,11 +39,11 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
-  
+
   /// @brief tests if the value of the startup option should be exposed to end
   /// users via JavaScript actions. will use _startupOptionsFilter*
   bool shouldExposeStartupOption(v8::Isolate* isolate, std::string const& name) const;
-  
+
   /// @brief tests if the value of the environment variable should be exposed to end
   /// users via JavaScript actions. will use _environmentVariablesFilter*
   bool shouldExposeEnvironmentVariable(v8::Isolate* isolate, std::string const& name) const;
@@ -57,6 +57,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   /// @brief tests if the path (or path component) shall be accessible for the
   /// calling JavaScript code
   bool isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path) const;
+  bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path) const;
 
  private:
   /// @brief regular expression string for startup options filtering
@@ -66,13 +67,22 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   /// @brief regular expression string for forbidden IP address/host names
   /// to connect to via JS_Download/internal.download
   std::string _endpointsFilter;
- 
+
   /// @brief regular expression string for environment variables filtering
   std::string _environmentVariablesFilter;
   /// @brief regular expression generated from _environmentVariablesFilter
   std::regex _environmentVariablesFilterRegex;
   /// @brief regular expression generated from _endpointsFilter
   std::regex _endpointsFilterRegex;
+
+  /// @brief
+  std::string _filesWhiteList;
+  /// @brief
+  std::string _filesBlackList;
+  /// @brief regular expression for pathWhiteList
+  std::regex _filesWhiteListRegex;
+  /// @brief regular expression for pathBlackList
+  std::regex _filesBlackListRegex;
 };
 
 }  // namespace arangodb

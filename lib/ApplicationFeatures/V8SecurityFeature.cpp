@@ -42,11 +42,11 @@ V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& se
 
 void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("javascript", "Configure the Javascript engine");
-  
+
   options->addOption("--javascript.startup-options-filter",
                      "startup options whose names match this regular expression will not be exposed to JavaScript actions",
                      new StringParameter(&_startupOptionsFilter));
-  
+
   options->addOption("--javascript.environment-variables-filter",
                      "environment variables whose names match this regular expression will not be exposed to JavaScript actions",
                      new StringParameter(&_environmentVariablesFilter));
@@ -93,7 +93,7 @@ void V8SecurityFeature::start() {
 bool V8SecurityFeature::shouldExposeStartupOption(v8::Isolate* isolate, std::string const& name) const {
   return _startupOptionsFilter.empty() || !std::regex_search(name, _startupOptionsFilterRegex);
 }
-  
+
 bool V8SecurityFeature::shouldExposeEnvironmentVariable(v8::Isolate* isolate, std::string const& name) const {
   return _environmentVariablesFilter.empty() || !std::regex_search(name, _environmentVariablesFilterRegex);
 }
@@ -101,8 +101,27 @@ bool V8SecurityFeature::shouldExposeEnvironmentVariable(v8::Isolate* isolate, st
 bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate, std::string const& name) const {
   return _endpointsFilter.empty() || !std::regex_search(name, _endpointsFilterRegex);
 }
-  
+
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path) const {
+  return isAllowedToAccessPath(isolate, path.c_str());
+}
+
+bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* path) const {
   // TODO: needs implementation
-  return true;
+  // Work In Progress Obi
+  if (_filesWhiteList.empty() && _filesBlackList.empty()) {
+    return true;
+  }
+
+  if(_filesBlackList.empty()){
+    //must be white listed
+    return std::regex_search(path, _filesWhiteListRegex);
+  }
+
+  if(_filesWhiteList.empty()){
+    //must be white listed
+    return !std::regex_search(path, _filesBlackListRegex);
+  }
+
+  return std::regex_search(path, _filesWhiteListRegex) && ! std::regex_search(path, _filesBlackListRegex);
 }
