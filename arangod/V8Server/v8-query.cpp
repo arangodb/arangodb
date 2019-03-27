@@ -27,6 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/V8Context.h"
@@ -58,9 +59,10 @@ using namespace arangodb::basics;
 aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection const* col,
                             std::string const& aql, std::shared_ptr<VPackBuilder> bindVars) {
   TRI_ASSERT(col != nullptr);
+  
+  auto queryRegistry = QueryRegistryFeature::registry();
+  TRI_ASSERT(queryRegistry != nullptr);
 
-  TRI_GET_GLOBALS();
-  // If we execute an AQL query from V8 we need to unset the nolock headers
   arangodb::aql::Query query(true, col->vocbase(), arangodb::aql::QueryString(aql),
                              bindVars, nullptr, arangodb::aql::PART_MAIN);
 
@@ -70,7 +72,7 @@ aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection co
   aql::QueryResultV8 queryResult;
   while (true) {
     auto state =
-        query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry),
+        query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(queryRegistry),
                         queryResult);
     if (state != aql::ExecutionState::WAITING) {
       break;

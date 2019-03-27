@@ -57,7 +57,7 @@
 #include "Rest/Version.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -663,11 +663,13 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
+  
+  auto queryRegistry = QueryRegistryFeature::registry();
+  TRI_ASSERT(queryRegistry != nullptr);
 
-  TRI_GET_GLOBALS();
   arangodb::aql::Query query(true, vocbase, queryBuilder, options, arangodb::aql::PART_MAIN);
   aql::QueryResult queryResult =
-      query.executeSync(static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
+      query.executeSync(static_cast<arangodb::aql::QueryRegistry*>(queryRegistry));
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.code, queryResult.details);
@@ -757,9 +759,11 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
+  
+  auto queryRegistry = QueryRegistryFeature::registry();
+  TRI_ASSERT(queryRegistry != nullptr);
 
   // bind parameters will be freed by the query later
-  TRI_GET_GLOBALS();
   arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
                              bindVars, options, arangodb::aql::PART_MAIN);
 
@@ -769,7 +773,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   aql::QueryResultV8 queryResult;
   while (true) {
     auto state =
-        query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry),
+        query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(queryRegistry),
                         queryResult);
     if (state != aql::ExecutionState::WAITING) {
       break;
@@ -1034,23 +1038,6 @@ static void JS_QueriesKillAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_V8_THROW_EXCEPTION(res);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a query is killed
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_QueryIsKilledAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  TRI_GET_GLOBALS();
-  if (v8g->_query != nullptr && static_cast<arangodb::aql::Query*>(v8g->_query)->killed()) {
-    TRI_V8_RETURN_TRUE();
-  }
-
-  TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1865,10 +1852,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   v8g->_transactionContext = new transaction::V8Context(vocbase, true);
   static_cast<transaction::V8Context*>(v8g->_transactionContext)->makeGlobal();
 
-  // register the query registry
-  TRI_ASSERT(queryRegistry != nullptr);
-  v8g->_queryRegistry = queryRegistry;
-
   // register the database
   v8g->_vocbase = &vocbase;
 
@@ -1965,10 +1948,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "AQL_QUERIES_KILL"),
                                JS_QueriesKillAql, true);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "AQL_QUERY_IS_KILLED"),
-                               JS_QueryIsKilledAql, true);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_CACHE_PROPERTIES"),
       JS_QueryCachePropertiesAql, true);

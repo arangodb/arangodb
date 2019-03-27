@@ -121,8 +121,6 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
       _currentRequest(),
       _currentResponse(),
       _transactionContext(nullptr),
-      _queryRegistry(nullptr),
-      _query(nullptr),
       _vocbase(nullptr),
       _activeExternals(0),
       _canceled(false),
