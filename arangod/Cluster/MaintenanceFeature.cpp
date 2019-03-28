@@ -152,7 +152,7 @@ void MaintenanceFeature::stop() {
 
     // loop on each worker, retesting at 10ms just in case
     while (itWorker->isRunning()) {
-      _workerCompletion.wait(10000);
+      _workerCompletion.wait(std::chrono::microseconds(10000));
     }  // if
   }    // for
 
@@ -445,7 +445,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
     // no pointer ... wait 0.1 seconds unless woken up
     if (!_isShuttingDown && !ret_ptr) {
       CONDITION_LOCKER(cLock, _actionRegistryCond);
-      _actionRegistryCond.wait(100000);
+      _actionRegistryCond.wait(std::chrono::milliseconds(100));
     }  // if
 
   }  // while
