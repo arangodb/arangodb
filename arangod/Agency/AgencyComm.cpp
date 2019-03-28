@@ -1345,6 +1345,17 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
     } else if (waitInterval.count() < 5.0) {
       waitInterval *= 1.0749292929292;
     }
+
+    // Check again for shutdown, since some time has passed:
+    if (!application_features::ApplicationServer::isRetryOK()) {
+      LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+          << "Unsuccessful AgencyComm: Timeout because of shutdown "
+          << "errorCode: " << result.errorCode()
+          << " errorMessage: " << result.errorMessage()
+          << " errorDetails: " << result.errorDetails();
+      return true;
+    }
+
     return false;
   };
 
