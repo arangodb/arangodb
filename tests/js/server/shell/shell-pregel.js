@@ -46,6 +46,9 @@ function testAlgo(a, p) {
   do {
     internal.wait(0.2);
     var stats = pregel.status(pid);
+    if (i === 300) {
+      require('internal').print("Current pregel status: " + JSON.stringify(stats));
+    }
     if (stats.state !== "running") {
       assertEqual(stats.vertexCount, 11, stats);
       assertEqual(stats.edgeCount, 17, stats);
@@ -164,6 +167,9 @@ function basicTestSuite () {
       do {
         internal.wait(0.2);
         var stats = pregel.status(pid);
+        if (i === 300) {
+          require('internal').print("Current pregel status: " + JSON.stringify(stats));
+        }
         if (stats.state !== "running") {
           assertEqual(stats.vertexCount, 11, stats);
           assertEqual(stats.edgeCount, 17, stats);
@@ -224,6 +230,9 @@ function exampleTestSuite () {
       do {
         internal.wait(0.2);
         var stats = db._pregelStatus(key);
+        if (i === 300) {
+          require('internal').print("Current pregel status: " + JSON.stringify(stats));
+        }
         if (stats.state !== "running") {
           assertEqual(stats.vertexCount, 4, stats);
           assertEqual(stats.edgeCount, 4, stats);
