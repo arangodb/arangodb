@@ -240,9 +240,12 @@ class DumpRestoreHelper {
 
   createHotBackup() {
     this.print("creating backup");
-    let rc = hb.create("testHotBackup");
+    let options = {
+      "label": "testHotBackup"
+    }
+    this.results.createHotBackup = pu.run.arangoBackup(options, this.instanceInfo, "create", this.instanceInfo.rootDir, true);
     this.print("done creating backup");
-    return rc;
+    return this.results.createHotBackup.status;
   }
 
   restoreHotBackup() {
@@ -261,7 +264,10 @@ class DumpRestoreHelper {
       return false;
     }
     this.print("restoring backup");
-    let rc = hb.restore(backupName);
+    let options = {
+      "identifier": name
+    }
+    this.results.restoreHotBackup = pu.run.arangoBackup(options, this.instanceInfo, "restore", this.instanceInfo.rootDir, true);
     this.print("done restoring backup; waiting for server to come back up");
 
     
@@ -295,7 +301,7 @@ class DumpRestoreHelper {
         try {
           arango.reconnect(this.instanceInfo.endpoint, '_system', 'root', '');
           this.print("reconnected");
-          return true;
+          return this.results.restoreHotBackup.status;
         }
         catch(x) {
           sleep(1.0);
