@@ -210,7 +210,6 @@ SECTION("cleanout server should fail if the server does not exist") {
     checkFailed(JOB_STATUS::TODO, q);
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
 
   Node agency = createAgency(createTestStructure);
@@ -224,7 +223,6 @@ SECTION("cleanout server should fail if the server does not exist") {
   );
   cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
-  Verify(Method(mockAgent, waitFor));
 }
 
 SECTION("cleanout server should wait if the server is currently blocked") {
@@ -347,7 +345,6 @@ SECTION("cleanout server should fail if the server is already cleaned") {
     checkFailed(JOB_STATUS::TODO, q);
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
 
   Node agency = createAgency(createTestStructure);
@@ -361,7 +358,6 @@ SECTION("cleanout server should fail if the server is already cleaned") {
   );
   cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
-  Verify(Method(mockAgent, waitFor));
 }
 
 SECTION("cleanout server should fail if the server is failed") {
@@ -394,7 +390,6 @@ SECTION("cleanout server should fail if the server is failed") {
     checkFailed(JOB_STATUS::TODO, q);
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
 
   Node agency = createAgency(createTestStructure);
@@ -408,7 +403,6 @@ SECTION("cleanout server should fail if the server is failed") {
   );
   cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
-  Verify(Method(mockAgent, waitFor));
 }
 
 SECTION("cleanout server should fail if the replicationFactor is too big for any shard after counting in failedservers") {
@@ -443,7 +437,6 @@ SECTION("cleanout server should fail if the replicationFactor is too big for any
     checkFailed(JOB_STATUS::TODO, q);
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
 
   Node agency = createAgency(createTestStructure);
@@ -457,7 +450,6 @@ SECTION("cleanout server should fail if the replicationFactor is too big for any
   );
   cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
-  Verify(Method(mockAgent, waitFor));
 }
 
 SECTION("cleanout server should fail if the replicationFactor is too big for any shard after counting in cleanedoutservers") {
@@ -493,7 +485,6 @@ SECTION("cleanout server should fail if the replicationFactor is too big for any
     checkFailed(JOB_STATUS::TODO, q);
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
 
   Node agency = createAgency(createTestStructure);
@@ -507,7 +498,6 @@ SECTION("cleanout server should fail if the replicationFactor is too big for any
   );
   cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
-  Verify(Method(mockAgent, waitFor));
 }
 
 SECTION("cleanout server should fail if the replicationFactor is too big for any shard after counting in tobecleanedoutservers") {
@@ -543,7 +533,6 @@ SECTION("cleanout server should fail if the replicationFactor is too big for any
     checkFailed(JOB_STATUS::TODO, q);
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
 
   Node agency = createAgency(createTestStructure);
@@ -557,7 +546,6 @@ SECTION("cleanout server should fail if the replicationFactor is too big for any
   );
   cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
-  Verify(Method(mockAgent, waitFor));
 }
 
 SECTION("a cleanout server job should move into pending when everything is ok") {
@@ -612,7 +600,6 @@ SECTION("a cleanout server job should move into pending when everything is ok") 
     REQUIRE(preconditions.get("/arango/Target/FailedServers").get("old").toJson() == "{}");
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
 
   Node agency = createAgency(createTestStructure);
@@ -626,7 +613,6 @@ SECTION("a cleanout server job should move into pending when everything is ok") 
   );
   cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
-  Verify(Method(mockAgent, waitFor));
 }
 
 SECTION("a cleanout server job should abort after a long timeout") {
@@ -692,7 +678,6 @@ SECTION("a cleanout server job should abort after a long timeout") {
     }
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
 
   Node agency = createAgency(createTestStructure);
@@ -706,7 +691,6 @@ SECTION("a cleanout server job should abort after a long timeout") {
   );
   cleanOutServer.run(aborts);
   Verify(Method(mockAgent, write));
-  Verify(Method(mockAgent, waitFor));
 }
 
 SECTION("when there are still subjobs to be done it should wait") {
@@ -793,7 +777,6 @@ SECTION("once all subjobs were successful then the job should be finished") {
     CHECK(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
   Node agency = createAgency(createTestStructure);
   INFO("AGENCY: " << agency.toJson());
@@ -838,7 +821,6 @@ SECTION("if there was a failed subjob then the job should also fail") {
     checkFailed(JOB_STATUS::PENDING, q);
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
   Node agency = createAgency(createTestStructure);
   INFO("AGENCY: " << agency.toJson());
@@ -904,7 +886,6 @@ SECTION("when the cleanout server job is aborted all subjobs should be aborted t
     }
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
   Node agency = createAgency(createTestStructure);
   INFO("AGENCY: " << agency.toJson());
