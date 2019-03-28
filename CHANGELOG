@@ -1,6 +1,19 @@
 devel
 -----
 
+* show startup warning in case kernel setting `vm.overcommit_memory` is set  
+  to a value of 2 and the jemalloc memory allocator is in use. This combination
+  does not play well together.
+
+* added AQL functions CRC32 and FNV64 for hashing data
+
+* renamed attribute key `openssl-version` in server/client tool version
+  details output to `openssl-version-compile-time`.
+
+  This change affects the output produced when starting one of the ArangoDB
+  executables with the `--version` command. It also changes the attribute
+  name in the detailed response of the `/_api/version` REST API.
+
 * internal issue #2276: fixed the sorting of the databases in the database 
   selection dropdown in the web ui. The sort order differed based on whether
   authentication was enabled or disabled.

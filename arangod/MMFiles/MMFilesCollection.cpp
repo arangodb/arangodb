@@ -3363,8 +3363,13 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
                                  VPackSlice const newSlice, ManagedDocumentResult& result,
                                  OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                                  bool lock, TRI_voc_rid_t& prevRev,
-                                 ManagedDocumentResult& previous, VPackSlice const key,
+                                 ManagedDocumentResult& previous,
                                  std::function<Result(void)> callbackDuringLock) {
+  VPackSlice key = newSlice.get(StaticStrings::KeyString);
+  if (key.isNone()) {
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
