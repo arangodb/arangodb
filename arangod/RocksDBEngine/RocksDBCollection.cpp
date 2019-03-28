@@ -367,6 +367,14 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
       if (other->id() == idx->id() || other->name() == idx->name()) {
         // definition shares an identifier with an existing index with a
         // different definition
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        VPackBuilder builder;
+        other->toVelocyPack(builder, static_cast<std::underlying_type<Index::Serialize>::type>(
+                                         Index::Serialize::Basics));
+        LOG_TOPIC("29d1c", WARN, Logger::ENGINES)
+            << "attempted to create index '" << info.toJson()
+            << "' but found conflicting index '" << builder.slice().toJson() << "'";
+#endif
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
                                        "duplicate value for `" + 
                                            arangodb::StaticStrings::IndexId +
