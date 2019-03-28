@@ -1133,6 +1133,16 @@ void Supervision::workJobs() {
   auto it = todos.begin();
   static std::string const FAILED = "failed";
 
+  // In the case that there are a lot of jobs in ToDo or in Pending we cannot
+  // afford to run through all of them before we do another Supervision round.
+  // This is because only in a new round we discover things like a server
+  // being good again. Currently, we manage to work through approx. 200 jobs
+  // per second. Therefore, we have - for now - chosen to limit the number of
+  // jobs actually worked on to 1000 in ToDo and 1000 in Pending. However,
+  // since some jobs are just waiting, we cannot work on the same 1000
+  // jobs in each round. This is where the randomization comes in. We work 
+  // on up to 1000 *random* jobs. This will eventually cover everything with
+  // very high probability.
   size_t const maximalJobsPerRound = 1000;
   bool selectRandom = todos.size() > maximalJobsPerRound;
 
