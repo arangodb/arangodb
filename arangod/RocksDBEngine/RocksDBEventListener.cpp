@@ -31,19 +31,22 @@
 
 namespace arangodb {
 
+// must call Thread::shutdown() in order to properly shutdown
+RocksDBEventListenerThread::~RocksDBEventListenerThread() { shutdown(); }
+
 void RocksDBEventListenerThread::run() {
 
-  while(!isStopping()) {
+  while (!isStopping()) {
     try {
       {
         MUTEX_LOCKER(mutexLock, _pendingMutex);
 
-        while(0 != _pendingQueue.size() ) {
+        while (!_pendingQueue.empty()) {
           actionNeeded_t next(_pendingQueue.front());
           _pendingQueue.pop();
 
           mutexLock.unlock();
-          switch(next._action) {
+          switch (next._action) {
             case actionNeeded_t::CALC_SHA:
               shaCalcFile(next._path);
               break;
@@ -72,7 +75,10 @@ void RocksDBEventListenerThread::run() {
           condLock.wait(std::chrono::minutes(5));
         } // if
       }
-    } catch(...) {
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "RocksDBEventListenerThread::run caught exception: " << ex.what();
+    } catch (...) {
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
         << "RocksDBEventListenerThread::run caught an exception";
     } // catch
@@ -81,7 +87,7 @@ void RocksDBEventListenerThread::run() {
 } // RocksDBEventListenerThread::run()
 
 
-void RocksDBEventListenerThread::queueShaCalcFile(std::string const & pathName) {
+void RocksDBEventListenerThread::queueShaCalcFile(std::string const& pathName) {
 
   {
     MUTEX_LOCKER(lock, _pendingMutex);
@@ -101,11 +107,8 @@ void RocksDBEventListenerThread::queueDeleteFile(std::string const & pathName) {
     MUTEX_LOCKER(lock, _pendingMutex);
     _pendingQueue.emplace(actionNeeded_t{actionNeeded_t::DELETE, pathName});
   }
-  {
-    CONDITION_LOCKER(lock, _loopingCondvar);
-    lock.signal();
-  }
 
+  signalLoop();
 } // RocksDBEventListenerThread::queueDeleteFile
 
 void RocksDBEventListenerThread::signalLoop() {
@@ -118,11 +121,11 @@ void RocksDBEventListenerThread::signalLoop() {
 } // RocksDBEventListenerThread::signalLoop
 
 
-bool RocksDBEventListenerThread::shaCalcFile(std::string const & filename) {
-  TRI_SHA256Functor sha;
-  bool good={false};
+bool RocksDBEventListenerThread::shaCalcFile(std::string const& filename) {
+  bool good = false;
 
-  if (4<filename.size() && 0 == filename.substr(filename.size() - 4).compare(".sst")) {
+  if (4 < filename.size() && 0 == filename.substr(filename.size() - 4).compare(".sst")) {
+    TRI_SHA256Functor sha;
     good = TRI_ProcessFile(filename.c_str(), std::ref(sha));
 
     if (good) {
@@ -138,7 +141,6 @@ bool RocksDBEventListenerThread::shaCalcFile(std::string const & filename) {
           << " for " << newfile.c_str();
       } // if
     } else {
-      good = false;
       LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
         << "shaCalcFile:  TRI_ProcessFile failed for " << filename.c_str();
     } // else
@@ -149,9 +151,8 @@ bool RocksDBEventListenerThread::shaCalcFile(std::string const & filename) {
 } // RocksDBEventListenerThread::shaCalcFile
 
 
-bool RocksDBEventListenerThread::deleteFile(std::string const & filename) {
-  bool good = {false};
-  bool found = {false};
+bool RocksDBEventListenerThread::deleteFile(std::string const& filename) {
+  bool good = false;
 
   // need filename without ".sst" for matching to ".sha." file
   std::string basename = TRI_Basename(filename.c_str());
@@ -160,32 +161,30 @@ bool RocksDBEventListenerThread::deleteFile(std::string const & filename) {
     basename = basename.substr(0, basename.size() - 4);
   } else {
     // abort looking
-    found = true;
+    return false;
   } // else
 
-  if (!found) {
-    std::string dirname = TRI_Dirname(filename.c_str());
-    std::vector<std::string> filelist = TRI_FilesDirectory(dirname.c_str());
+  std::string dirname = TRI_Dirname(filename.c_str());
+  std::vector<std::string> filelist = TRI_FilesDirectory(dirname.c_str());
 
-    // future thought: are there faster ways to find matching .sha. file?
-    for (auto iter = filelist.begin(); !found && filelist.end() != iter; ++iter) {
-      // sha265 is 64 characters long.  ".sha." is added 5.  So 69 characters is minimum length
-      if (69 < iter->size() && 0 == iter->substr(0, basename.size()).compare(basename)
-          && 0 == iter->substr(basename.size(), 5).compare(".sha.")) {
-        found = true;
-        std::string deletefile = dirname;
-        deletefile += TRI_DIR_SEPARATOR_CHAR;
-        deletefile += *iter;
-        int ret_val = TRI_UnlinkFile(deletefile.c_str());
-        good = (TRI_ERROR_NO_ERROR == ret_val);
-        if (!good) {
-          LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
-            << "deleteCalcFile:  TRI_UnlinkFile failed with " << ret_val
-            << " for " << deletefile.c_str();
-        } // if
+  // future thought: are there faster ways to find matching .sha. file?
+  for (auto iter = filelist.begin(); filelist.end() != iter; ++iter) {
+    // sha256 is 64 characters long.  ".sha." is added 5.  So 69 characters is minimum length
+    if (69 < iter->size() && 0 == iter->substr(0, basename.size()).compare(basename)
+        && 0 == iter->substr(basename.size(), 5).compare(".sha.")) {
+      std::string deletefile = dirname;
+      deletefile += TRI_DIR_SEPARATOR_CHAR;
+      deletefile += *iter;
+      int ret_val = TRI_UnlinkFile(deletefile.c_str());
+      good = (TRI_ERROR_NO_ERROR == ret_val);
+      if (!good) {
+        LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+          << "deleteCalcFile:  TRI_UnlinkFile failed with " << ret_val
+          << " for " << deletefile.c_str();
       } // if
-    } // for
-  } // if
+      break;
+    } // if
+  } // for
 
   return good;
 
@@ -198,11 +197,10 @@ bool RocksDBEventListenerThread::deleteFile(std::string const & filename) {
 //
 std::string RocksDBEventListenerThread::getRocksDBPath() {
   // get base path from DatabaseServerFeature
-  std::string rockspath;
   auto databasePathFeature =
       application_features::ApplicationServer::getFeature<DatabasePathFeature>(
           "DatabasePath");
-  rockspath = databasePathFeature->directory();
+  std::string rockspath = databasePathFeature->directory();
   rockspath += TRI_DIR_SEPARATOR_CHAR;
   rockspath += "engine-rocksdb";
 
@@ -213,7 +211,7 @@ std::string RocksDBEventListenerThread::getRocksDBPath() {
 ///
 /// @brief Double check the active directory to see that all .sst files
 ///        have a matching .sha. (and delete any none matched .sha. files)
-void RocksDBEventListenerThread::checkMissingShaFiles(std::string const & pathname) {
+void RocksDBEventListenerThread::checkMissingShaFiles(std::string const& pathname) {
   std::string temppath, tempname;
   std::vector<std::string> filelist = TRI_FilesDirectory(pathname.c_str());
 
@@ -225,7 +223,7 @@ void RocksDBEventListenerThread::checkMissingShaFiles(std::string const & pathna
     shaIdx = iter->find(".sha.");
     if (std::string::npos != shaIdx) {
       // two cases: 1. its .sst follows so skip both, 2. no matching .sst, so delete
-      bool match = {false};
+      bool match = false;
       auto next = iter + 1;
       if (filelist.end() != next) {
         tempname = iter->substr(0, shaIdx);
@@ -269,6 +267,9 @@ RocksDBEventListener::RocksDBEventListener()
 //
 RocksDBEventListener::~RocksDBEventListener() {
 
+  // TODO: this shutdown code should be called unconditionally,
+  // and the thread's beginShutdown() method should also be
+  // called on beginShutdown() of the ApplicationServer
   if (!_shaThread.isStopping()) {
     _shaThread.beginShutdown();
     _shaThread.signalLoop();

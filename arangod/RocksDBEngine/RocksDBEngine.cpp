@@ -190,6 +190,8 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 #endif
       _useThrottle(true),
 #ifdef USE_ENTERPRISE
+      // TODO: shall we turn this on by default for all enterprise installations,
+      // or should it explicitly activated by end users
       _createShaFiles(true),
 #else
       _createShaFiles(false),
@@ -301,7 +303,9 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
 
   options->addOption("--rocksdb.throttle", "enable write-throttling",
                      new BooleanParameter(&_useThrottle));
-
+  
+  // TODO: move this to enterprise code and add the enterprise-only flag to it, e.g.
+  // arangodb::options::makeFlags(arangodb::options::Flags::Enterprise)
   options->addOption("--rocksdb.create-sha-files", "enable generation of sha256 files for each .sst file",
                      new BooleanParameter(&_createShaFiles));
 
@@ -752,6 +756,11 @@ void RocksDBEngine::beginShutdown() {
   if (_replicationManager != nullptr) {
     _replicationManager->beginShutdown();
   }
+
+  // TODO: signal the event listener that we are going to shut down soon
+  // if (_shaListener != nullptr) {
+  //   _shaListener->beginShutdown();
+  // }
 }
 
 void RocksDBEngine::stop() {

@@ -954,10 +954,9 @@ char* TRI_SlurpFile(char const* filename, size_t* length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ProcessFile(char const* filename,
-                     std::function<bool(const char * block, size_t size)> reader ) {
+                     std::function<bool(char const* block, size_t size)> const& reader) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
   int fd = TRI_TRACKED_OPEN_FILE(filename, O_RDONLY | TRI_O_CLOEXEC);
-  bool good(true);
 
   if (fd == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -967,6 +966,7 @@ bool TRI_ProcessFile(char const* filename,
   TRI_string_buffer_t result;
   TRI_InitStringBuffer(&result, false);
 
+  bool good = true;
   while (good) {
     int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
 
@@ -993,7 +993,7 @@ bool TRI_ProcessFile(char const* filename,
       return false;
     }
 
-    good=reader(result._buffer, n);
+    good = reader(result._buffer, n);
   }
 
   TRI_DestroyStringBuffer(&result);
@@ -1846,7 +1846,7 @@ bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_CreateHardlink(std::string const& existingFile, std::string const& newFile,
-                     std::string& error) {
+                        std::string& error) {
 #ifndef _WIN32
   int rc = link(existingFile.c_str(), newFile.c_str());
 
@@ -1858,7 +1858,6 @@ bool TRI_CreateHardlink(std::string const& existingFile, std::string const& newF
 #else
   error = "Windows TRI_CreateHardlink not written, yet.";
   return false;
-
 #endif
 }
 
