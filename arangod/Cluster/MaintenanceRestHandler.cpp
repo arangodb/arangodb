@@ -85,7 +85,7 @@ RestStatus MaintenanceRestHandler::postAction() {
       std::string("failed parsing ") + _request->body() + ": " + e.what());
     return RestStatus::DONE;
   }
-
+  
   if (body.isObject()) {
     if (body.hasKey("execute") && body.get("execute").isString()) {
       // {"execute": "pause", "duration": 60} / {"execute": "proceed"}
@@ -100,19 +100,24 @@ RestStatus MaintenanceRestHandler::postAction() {
                           + dur.count() + " seconds");
             return RestStatus::DONE;
           }
+          // Pause maintenance
           ApplicationServer::getFeature<MaintenanceFeature>("Maintenance")->pause(dur);
         }
+      } else if (ex == "proceed") {
+        ApplicationServer::getFeature<MaintenanceFeature>("Maintenance")->proceed();
       } else {
-        
+        generateError(
+          rest::ResponseCode::BAD, std::string("invalid command ") + _request->body());
+        return RestStatus::DONE;        
       }
     } else {
       generateError(
-        rest::ResponseCode::BAD, std::string("invalid command ") + _request->body());
+        rest::ResponseCode::BAD, std::string("invalid object ") + _request->body());
       return RestStatus::DONE;
     }
   } else {
     generateError(
-      rest::ResponseCode::BAD, std::string("invalid command ") + _request->body());
+      rest::ResponseCode::BAD, std::string("invalid json ") + _request->body());
     return RestStatus::DONE;
   }
   
