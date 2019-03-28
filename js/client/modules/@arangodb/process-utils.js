@@ -836,11 +836,16 @@ function dumpAgency(instanceInfo, options) {
       } else {
         print(Date() + " Attempting to dump Agent: " + arangod);
         let agencyConfig = arangod.GET('_api/agency/config');
-        let agencyState = arangod.GET('_api/agency/state');
         print(JSON.stringify(agencyConfig));
-        print(JSON.stringify(agencyState));
         fs.write(fs.join(options.testOutputDirectory, "agencyConfig_" + arangod.pid + ".json"), agencyConfig);
+
+        let agencyState = arangod.GET('_api/agency/state');
+        print(JSON.stringify(agencyState));
         fs.write(fs.join(options.testOutputDirectory, "agencyState_" + arangod.pid + ".json"), agencyState);
+
+        let agencyPlan = arangod.GET('_api/agency/read');
+        print(JSON.stringify(agencyPlan));
+        fs.write(fs.join(options.testOutputDirectory, "agencyPlan_" + arangod.pid + ".json"), agencyPlan);
       }
     }
   });
