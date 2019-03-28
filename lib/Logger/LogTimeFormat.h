@@ -26,6 +26,8 @@
 
 #include "Basics/Common.h"
 
+#include <iosfwd>
+
 namespace arangodb {
 namespace LogTimeFormats {
 
@@ -38,10 +40,7 @@ enum class TimeFormat {
   UnixTimestampMicros,
   UTCDateString,
   UTCDateStringMillis,
-  UTCDateStringMicros,
   LocalDateString,
-  LocalDateStringMillis,
-  LocalDateStringMicros,
 };
 
 /// @brief whether or not the specified format is a local one
@@ -58,7 +57,7 @@ TimeFormat formatFromName(std::string const& name);
 
 /// @brief writes the current time into the given buffer,
 /// in the specified format
-void writeTime(char* buffer, size_t bufferSize, TimeFormat format);
+void writeTime(std::ostream& out, TimeFormat format);
 
 }  // namespace LogTimeFormats
 }  // namespace arangodb

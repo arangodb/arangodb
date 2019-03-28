@@ -306,11 +306,9 @@ void Logger::log(char const* function, char const* file, int line,
     return;
   }
 
-  char buf[64];
-  LogTimeFormats::writeTime(&buf[0], sizeof(buf), _timeFormat);
-  
   std::stringstream out;
-  out << buf;
+  LogTimeFormats::writeTime(out, _timeFormat);
+  out << ' ';
 
   // output prefix
   if (!_outputPrefix.empty()) {

@@ -122,6 +122,7 @@ The possible values for this option are:
 - uptime-millis: seconds since server start, with millisecond precision
 - uptime-micros: seconds since server start, with microsecond precision
 - utc-datestring: UTC-based date and time in format YYYY-MM-DDTHH:MM:SSZ 
+- utc-datestring-millis: UTC-based date and time in format YYYY-MM-DDTHH:MM:SS.FFFZ 
 - local-datestring: local date and time in format YYYY-MM-DDTHH:MM:SS
 
 ### Escaping
