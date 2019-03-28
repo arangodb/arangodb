@@ -113,7 +113,7 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       LOG_TRX("b72bb", TRACE, _transaction, nestingLevel) << "using collection " << _cid;
       TRI_set_errno(TRI_ERROR_NO_ERROR);  // clear error state so can get valid
                                           // error below
-      _collection = _transaction->vocbase().useCollection(_cid, status);
+      _collection = _transaction->vocbase().useCollection(_cid, status, __FILE__, __LINE__);
 
       if (!_collection) {
         // must return an error

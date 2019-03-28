@@ -173,7 +173,7 @@ Result RocksDBSettingsManager::sync(bool force) {
 
     // intentionally do not `useCollection`, tends to break CI tests
     TRI_vocbase_col_status_e status;
-    std::shared_ptr<LogicalCollection> coll = vocbase->useCollection(cid, status);
+    std::shared_ptr<LogicalCollection> coll = vocbase->useCollection(cid, status, __FILE__, __LINE__);
     if (!coll) {
       continue;
     }

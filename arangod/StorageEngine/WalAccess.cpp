@@ -94,7 +94,7 @@ LogicalCollection* WalAccessContext::loadCollection(TRI_voc_tick_t dbid, TRI_voc
       return it->second.collection();
     }
     try {
-      auto created = _collectionCache.emplace(cid, CollectionGuard(vocbase, cid));
+      auto created = _collectionCache.emplace(cid, CollectionGuard(vocbase, cid, __FILE__, __LINE__));
       if (created.second) {
         return created.first->second.collection();
       }

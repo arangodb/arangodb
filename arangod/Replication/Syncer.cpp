@@ -777,7 +777,7 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
     }
 
     try {
-      CollectionGuard guard(vocbase, col);
+      CollectionGuard guard(vocbase, col, __FILE__, __LINE__);
       bool result = guard.collection()->dropIndex(iid);
 
       if (!result) {

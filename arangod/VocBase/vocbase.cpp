@@ -562,7 +562,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // someone else loaded the collection, release the WRITE lock and try again
   if (collection->status() == TRI_VOC_COL_STATUS_LOADED) {
     locker.unlock();
-    return loadCollection(collection, status, file, line, false);
+    return loadCollection(collection, status, __FILE__, __LINE__, false);
   }
 
   // someone is trying to unload the collection, cancel this,
@@ -582,7 +582,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
     locker.unlock();
 
-    return loadCollection(collection, status, file, line, false);
+    return loadCollection(collection, status, __FILE__, __LINE__, false);
   }
 
   // deleted, give up
@@ -622,7 +622,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
       std::this_thread::sleep_for(std::chrono::microseconds(collectionStatusPollInterval()));
     }
 
-    return loadCollection(collection, status, file, line, false);
+    return loadCollection(collection, status, __FILE__, __LINE__, false);
   }
 
   // unloaded, load collection
@@ -675,7 +675,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     // release the WRITE lock and try again
     locker.unlock();
 
-    return loadCollection(collection, status, file, line, false);
+    return loadCollection(collection, status, __FILE__, __LINE__, false);
   }
 
   std::string const colName(collection->name());
@@ -1514,19 +1514,19 @@ arangodb::Result TRI_vocbase_t::renameCollection(TRI_voc_cid_t cid,
 
 /// @brief locks a collection for usage, loading or manifesting it
 int TRI_vocbase_t::useCollection(arangodb::LogicalCollection* collection,
-                                 TRI_vocbase_col_status_e& status) {
-  return loadCollection(collection, status);
+                                 TRI_vocbase_col_status_e& status, const char* file, std::size_t line) {
+  return loadCollection(collection, status, file, line);
 }
 
 /// @brief locks a (document) collection for usage by id
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollection(
-    TRI_voc_cid_t cid, TRI_vocbase_col_status_e& status) {
-  return useCollectionInternal(lookupCollection(cid), status);
+    TRI_voc_cid_t cid, TRI_vocbase_col_status_e& status, const char* file, std::size_t line) {
+  return useCollectionInternal(lookupCollection(cid), status, file, line);
 }
 
 /// @brief locks a collection for usage by name
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollection(
-    std::string const& name, TRI_vocbase_col_status_e& status) {
+    std::string const& name, TRI_vocbase_col_status_e& status, const char* file, std::size_t line) {
   // check that we have an existing name
   std::shared_ptr<arangodb::LogicalCollection> collection;
   {
@@ -1540,24 +1540,24 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollection(
     }
   }
 
-  return useCollectionInternal(std::move(collection), status);
+  return useCollectionInternal(std::move(collection), status, file, line);
 }
 
 /// @brief locks a collection for usage by name
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollectionByUuid(
-    std::string const& uuid, TRI_vocbase_col_status_e& status) {
-  return useCollectionInternal(lookupCollectionByUuid(uuid), status);
+    std::string const& uuid, TRI_vocbase_col_status_e& status, const char* file, std::size_t line) {
+  return useCollectionInternal(lookupCollectionByUuid(uuid), status, file, line);
 }
 
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollectionInternal(
-    std::shared_ptr<arangodb::LogicalCollection> coll, TRI_vocbase_col_status_e& status) {
+    std::shared_ptr<arangodb::LogicalCollection> coll, TRI_vocbase_col_status_e& status, const char* file, std::size_t line) {
   if (!coll) {
     TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return nullptr;
   }
 
   // try to load the collection
-  int res = loadCollection(coll.get(), status);
+  int res = loadCollection(coll.get(), status, file , line);
   if (res == TRI_ERROR_NO_ERROR) {
     return coll;
   }

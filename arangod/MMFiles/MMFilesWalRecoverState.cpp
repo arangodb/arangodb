@@ -208,7 +208,7 @@ arangodb::LogicalCollection* MMFilesWalRecoverState::useCollection(TRI_vocbase_t
   TRI_set_errno(TRI_ERROR_NO_ERROR);
   TRI_vocbase_col_status_e status;  // ignored here
   std::shared_ptr<arangodb::LogicalCollection> collection =
-      vocbase->useCollection(collectionId, status);
+      vocbase->useCollection(collectionId, status, __FILE__, __LINE__);
 
   if (collection == nullptr) {
     res = TRI_errno();

@@ -47,26 +47,26 @@ class CollectionGuard {
   }
 
   /// @brief create the guard, using a collection id
-  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, bool restoreOriginalStatus = false)
+  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, const char* file, std::size_t line, bool restoreOriginalStatus = false)
       : _vocbase(vocbase),
         _collection(nullptr),
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
         _restoreOriginalStatus(restoreOriginalStatus) {
-    _collection = _vocbase->useCollection(cid, _originalStatus);
+    _collection = _vocbase->useCollection(cid, _originalStatus, file, line);
 
     if (_collection == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }
 
-  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, std::string const& name)
+  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, std::string const& name, const char* file, std::size_t line)
       : _vocbase(vocbase),
         _collection(nullptr),
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
         _restoreOriginalStatus(false) {
-    _collection = _vocbase->useCollection(id, _originalStatus);
+    _collection = _vocbase->useCollection(id, _originalStatus, file, line);
     if (!_collection && !name.empty()) {
-      _collection = _vocbase->useCollection(name, _originalStatus);
+      _collection = _vocbase->useCollection(name, _originalStatus, file, line);
     }
     if (_collection == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -74,7 +74,7 @@ class CollectionGuard {
   }
 
   /// @brief create the guard, using a collection name
-  CollectionGuard(TRI_vocbase_t* vocbase, std::string const& name,
+  CollectionGuard(TRI_vocbase_t* vocbase, std::string const& name, const char* file, std::size_t line,
                   bool restoreOriginalStatus = false)
       : _vocbase(vocbase),
         _collection(nullptr),
@@ -83,9 +83,9 @@ class CollectionGuard {
     if (!name.empty() && name[0] >= '0' && name[0] <= '9') {
       TRI_voc_cid_t id =
           NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
-      _collection = _vocbase->useCollection(id, _originalStatus);
+      _collection = _vocbase->useCollection(id, _originalStatus, file, line);
     } else {
-      _collection = _vocbase->useCollection(name, _originalStatus);
+      _collection = _vocbase->useCollection(name, _originalStatus, file, line);
     }
 
     if (_collection == nullptr) {
@@ -93,12 +93,12 @@ class CollectionGuard {
     }
   }
 
-  CollectionGuard(TRI_vocbase_t* vocbase, std::shared_ptr<LogicalCollection> const& collection)
+  CollectionGuard(TRI_vocbase_t* vocbase, std::shared_ptr<LogicalCollection> const& collection, const char* file, std::size_t line)
       : _vocbase(vocbase),
         _collection(collection),
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
         _restoreOriginalStatus(false) {
-    int res = _vocbase->useCollection(collection.get(), _originalStatus);
+    int res = _vocbase->useCollection(collection.get(), _originalStatus, file, line);
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }

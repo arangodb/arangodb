@@ -315,7 +315,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   // Step 0. Lock all the things
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
   TRI_vocbase_col_status_e status;
-  Result res = vocbase.useCollection(&_logicalCollection, status);
+  Result res = vocbase.useCollection(&_logicalCollection, status, __FILE__, __LINE__);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -827,7 +827,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
-  
+
   bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   transaction::BuilderLeaser builder(trx);
@@ -868,7 +868,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       }
     }
   }
-  
+
   LocalDocumentId const documentId = LocalDocumentId::create();
 
   RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_INSERT);
@@ -1640,7 +1640,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
   });
 
   TRI_vocbase_col_status_e status;
-  int res = vocbase.useCollection(&_logicalCollection, status);
+  int res = vocbase.useCollection(&_logicalCollection, status, __FILE__, __LINE__);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }

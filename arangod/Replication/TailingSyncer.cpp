@@ -396,7 +396,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   }
 
   bool const isSystem = coll->system();
-  bool const isUsers = coll->name() == TRI_COL_NAME_USERS; 
+  bool const isUsers = coll->name() == TRI_COL_NAME_USERS;
 
   // extract "data"
   VPackSlice const data = slice.get(::dataRef);
@@ -483,7 +483,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   // this variable will store the key of a conflicting document we will have to remove first
   // it is initially empty, and may be populated by a failing operation
   std::string conflictDocumentKey;
-    
+
   // normally we will go into this while loop just once. only in the very exceptional case
   // that there is a unique constraint violation in one of the secondary indexes we will
   // get into the while loop a second time
@@ -508,7 +508,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     // carry out an insert or a replace.
     // so we will be carrying out either a read-then-insert or a read-then-replace
     // operation, which is a single write operation. and for MMFiles this is also
-    // safe as we have the exclusive lock on the underlying collection anyway 
+    // safe as we have the exclusive lock on the underlying collection anyway
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
     Result res = trx.begin();
@@ -572,12 +572,12 @@ Result TailingSyncer::removeSingleDocument(LogicalCollection* coll, std::string 
             
   VPackBuilder tmp;
   tmp.add(VPackValue(key));
-  
+
   OperationResult opRes = trx.remove(coll->name(), tmp.slice(), options);
   if (opRes.fail()) {
     return opRes.result;
   }
-  
+
   return trx.commit();
 }
 
@@ -799,7 +799,7 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  arangodb::CollectionGuard guard(vocbase, col);
+  arangodb::CollectionGuard guard(vocbase, col, __FILE__, __LINE__);
 
   return guard.collection()->properties(data, false);  // always a full-update
 }
@@ -1410,7 +1410,7 @@ retry:
       WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, this);
       _applier->_state._phase = ReplicationApplierState::ActivityPhase::INACTIVE;
     }
-      
+
     abortOngoingTransactions();
 
     _applier->stop(res);
@@ -1771,7 +1771,7 @@ void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> shar
         "&serverId=" + _state.localServerIdString +
         "&includeSystem=" + (_state.applier._includeSystem ? "true" : "false") +
         "&includeFoxxQueues=" + (_state.applier._includeFoxxQueues ? "true" : "false");
-    
+
     // send request
     setProgress(std::string("fetching master log from tick ") + StringUtils::itoa(fetchTick) +
                 ", last scanned tick " + StringUtils::itoa(lastScannedTick) +
@@ -1883,7 +1883,7 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
                       StaticStrings::ReplicationHeaderLastIncluded +
                       " is missing in logger-follow response");
   }
-    
+
   TRI_voc_tick_t lastIncludedTick =
       getUIntHeader(response, StaticStrings::ReplicationHeaderLastIncluded);
   TRI_voc_tick_t const tick = getUIntHeader(response, StaticStrings::ReplicationHeaderLastTick);

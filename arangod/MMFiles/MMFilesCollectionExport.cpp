@@ -49,7 +49,7 @@ MMFilesCollectionExport::MMFilesCollectionExport(TRI_vocbase_t& vocbase,
       _restrictions(restrictions) {
   // prevent the collection from being unloaded while the export is ongoing
   // this may throw
-  _guard.reset(new arangodb::CollectionGuard(&vocbase, _name.c_str(), false));
+  _guard.reset(new arangodb::CollectionGuard(&vocbase, _name.c_str(), __FILE__, __LINE__, false));
 
   _collection = _guard->collection();
   TRI_ASSERT(_collection != nullptr);

@@ -802,7 +802,7 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   TRI_vocbase_col_status_e ignore;
-  int res = vocbase.useCollection(logical.get(), ignore);
+  int res = vocbase.useCollection(logical.get(), ignore, __FILE__, __LINE__);
   if (res != TRI_ERROR_NO_ERROR) {  // collection was deleted
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }

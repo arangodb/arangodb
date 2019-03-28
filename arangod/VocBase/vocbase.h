@@ -330,28 +330,28 @@ struct TRI_vocbase_t {
   /// @brief locks a collection for usage, loading or manifesting it
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself.
-  int useCollection(arangodb::LogicalCollection* collection, TRI_vocbase_col_status_e&);
+  int useCollection(arangodb::LogicalCollection* collection, TRI_vocbase_col_status_e&, const char*, std::size_t);
 
   /// @brief locks a collection for usage by id
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
   /// when you are done with the collection.
   std::shared_ptr<arangodb::LogicalCollection> useCollection(TRI_voc_cid_t cid,
-                                                             TRI_vocbase_col_status_e&);
+                                                             TRI_vocbase_col_status_e&, const char*, std::size_t);
 
   /// @brief locks a collection for usage by name
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
   /// when you are done with the collection.
   std::shared_ptr<arangodb::LogicalCollection> useCollection(std::string const& name,
-                                                             TRI_vocbase_col_status_e&);
+                                                             TRI_vocbase_col_status_e&, const char*, std::size_t);
 
   /// @brief locks a collection for usage by uuid
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
   /// when you are done with the collection.
   std::shared_ptr<arangodb::LogicalCollection> useCollectionByUuid(std::string const& uuid,
-                                                                   TRI_vocbase_col_status_e&);
+                                                                   TRI_vocbase_col_status_e&, const char*, std::size_t);
 
   /// @brief releases a collection from usage
   void releaseCollection(arangodb::LogicalCollection* collection);
@@ -368,10 +368,10 @@ struct TRI_vocbase_t {
   void checkCollectionInvariants() const;
 
   std::shared_ptr<arangodb::LogicalCollection> useCollectionInternal(
-      std::shared_ptr<arangodb::LogicalCollection>, TRI_vocbase_col_status_e& status);
+      std::shared_ptr<arangodb::LogicalCollection>, TRI_vocbase_col_status_e& status, char const*, std::size_t);
 
   int loadCollection(arangodb::LogicalCollection* collection,
-                     TRI_vocbase_col_status_e& status, const char* = __FILE__, std::size_t =__LINE__ , bool setStatus = true);
+                     TRI_vocbase_col_status_e& status, const char*, std::size_t , bool setStatus = true);
 
   /// @brief adds a new collection
   /// caller must hold _dataSourceLock in write mode or set doLock

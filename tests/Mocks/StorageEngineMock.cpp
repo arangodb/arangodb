@@ -1419,7 +1419,7 @@ int TransactionCollectionMock::use(int nestingLevel) {
       TRI_ASSERT(ci);
       _collection = ci->getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
     } else {
-      _collection = _transaction->vocbase().useCollection(_cid, status);
+      _collection = _transaction->vocbase().useCollection(_cid, status, __FILE__, __LINE__);
     }
   }
 

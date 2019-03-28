@@ -582,7 +582,7 @@ void MMFilesCollectorThread::clearQueuedOperations() {
           {
             arangodb::DatabaseGuard dbGuard(cache->databaseId);
             arangodb::CollectionGuard collectionGuard(&(dbGuard.database()),
-                                                      cache->collectionId, true);
+                                                      cache->collectionId, __FILE__, __LINE__, true);
             arangodb::LogicalCollection* collection = collectionGuard.collection();
 
             TRI_ASSERT(collection != nullptr);
@@ -724,7 +724,7 @@ void MMFilesCollectorThread::processCollectionMarker(
 int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* cache) {
   arangodb::DatabaseGuard dbGuard(cache->databaseId);
   auto& vocbase = dbGuard.database();
-  arangodb::CollectionGuard collectionGuard(&vocbase, cache->collectionId, true);
+  arangodb::CollectionGuard collectionGuard(&vocbase, cache->collectionId, __FILE__, __LINE__, true);
   arangodb::LogicalCollection* collection = collectionGuard.collection();
 
   TRI_ASSERT(collection != nullptr);
@@ -978,7 +978,7 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
 
   // prepare database and collection
   arangodb::DatabaseGuard dbGuard(databaseId);
-  arangodb::CollectionGuard collectionGuard(&(dbGuard.database()), collectionId, true);
+  arangodb::CollectionGuard collectionGuard(&(dbGuard.database()), collectionId, __FILE__, __LINE__, true);
   arangodb::LogicalCollection* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
 
