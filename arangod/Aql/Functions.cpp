@@ -6856,11 +6856,8 @@ AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
   time_t timeSeconds = timeMilli / 1000;
   uint64_t millis = timeMilli % 1000;
   struct tm date;
-#ifdef _WIN32
-  gmtime_s(&date, &timeSeconds);
-#else
-  gmtime_r(&timeSeconds, &date);
-#endif
+  TRI_gmtime(timeSeconds, &date);
+  
   char buffer[32];
   strftime(buffer, 32, "%Y-%m-%dT%H:%M:%S.000Z", &date);
   // fill millisecond part not covered by strftime
