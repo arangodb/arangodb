@@ -56,7 +56,6 @@ namespace aql {
 SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
   ResourceMonitor monitor;
   ExecutionState state;
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
 /*
  * A hopefully temporary hack. Use TEMPLATE_TEST_CASE instead when it's
@@ -82,6 +81,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
     GIVEN(std::string{"there are no blocks upstream, passBlocksThrough="} + std::string{passBlocksThrough}) {
       VPackBuilder input;
       BlockFetcherMock<passBlocksThrough> blockFetcherMock{monitor, 0};
+      InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
       WHEN("the producer does not wait") {
     blockFetcherMock.shouldReturn(ExecutionState::DONE, nullptr);
@@ -132,6 +132,7 @@ GIVEN(std::string{
       std::string{passBlocksThrough}) {
   VPackBuilder input;
   BlockFetcherMock<passBlocksThrough> blockFetcherMock{monitor, 1};
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
   std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
 
@@ -251,6 +252,7 @@ GIVEN(std::string{
 GIVEN(std::string{"there are multiple blocks upstream, passBlocksThrough="} +
       std::string{passBlocksThrough}) {
   BlockFetcherMock<passBlocksThrough> blockFetcherMock{monitor, 1};
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
   // three 1-column matrices with 3, 2 and 1 rows, respectively
   std::unique_ptr<AqlItemBlock> block1 = buildBlock<1>(&monitor, {{{1}}, {{2}}, {{3}}}),
