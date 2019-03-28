@@ -2344,6 +2344,21 @@ static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string source = TRI_ObjectToString(isolate, args[0]);
   std::string destination = TRI_ObjectToString(isolate, args[1]);
 
+  V8SecurityFeature* v8security =
+     application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+         "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToAccessPath(isolate, source, true)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                  "not allowed to read files in this path");
+  }
+
+  if (!v8security->isAllowedToAccessPath(isolate, source, false)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                  "not allowed to modify files in this path");
+  }
+
   bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
 
   if (!TRI_IsRegularFile(source.c_str())) {
@@ -2712,11 +2727,21 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string name(*str, str.length());
 #endif
 
-  std::ofstream file;
-
   if (name.empty()) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a non-empty string");
   }
+
+  V8SecurityFeature* v8security =
+     application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+         "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToAccessPath(isolate, name, false)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                  "not allowed to modify files in this path");
+  }
+
+  std::ofstream file;
 
   if (args[1]->IsObject() && V8Buffer::hasInstance(isolate, args[1])) {
     // content is a buffer
@@ -2775,6 +2800,16 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #endif
   if (name.length() == 0) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
+  }
+
+  V8SecurityFeature* v8security =
+     application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+         "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToAccessPath(isolate, name, false)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                  "not allowed to modify files in this path");
   }
 
   bool flush = false;
@@ -2873,7 +2908,7 @@ static void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
          "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToAccessPath(isolate, *name)) {
+  if (!v8security->isAllowedToAccessPath(isolate, *name, false)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                   "not allowed to modify files in this path");
   }

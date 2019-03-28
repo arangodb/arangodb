@@ -273,6 +273,64 @@ bool TRI_IsSymbolicLink(char const* path) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief resolves a symbolic link
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _WIN32
+
+std::string TRI_ResolveSymbolicLink(char const* path, bool recursive) {
+  if (path) {
+    return std::string(path);
+  } else {
+    return "";
+  }
+}
+
+#else
+namespace {
+static bool IsSymbolicLink(char const* path, struct stat* stbuf) {
+  int res;
+
+  res = lstat(path, stbuf);
+
+  return (res == 0) && ((stbuf->st_mode & S_IFMT) == S_IFLNK);
+}
+static void deleteBuf(char *p) { std::free(p); };
+}
+
+std::string TRI_ResolveSymbolicLink(std::string path, bool& hadError, bool recursive) {
+  struct stat sb;
+  while (IsSymbolicLink(path.data(), &sb)) {
+    // if file is a symlink this contains the targets file name length
+    // instead of the file size
+    ssize_t bufsize = sb.st_size + 1;
+
+    // resolve symlinks
+    auto buf = std::unique_ptr<char ,decltype(deleteBuf)>((char*)std::malloc(bufsize), deleteBuf );
+    auto written = ::readlink(path.c_str(), buf.get(), bufsize);
+
+    if(written) {
+      path = std::string(buf.get(), bufsize);
+    } else {
+      //error occured while resolving
+      hadError = true;
+      break;
+    }
+    if(!recursive){
+      break;
+    }
+  }
+  return path;
+}
+
+std::string TRI_ResolveSymbolicLink(std::string path, bool recursive) {
+  bool ignore;
+  return TRI_ResolveSymbolicLink(std::move(path), ignore, recursive);
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if file or directory exists
 ////////////////////////////////////////////////////////////////////////////////
 

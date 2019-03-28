@@ -41,7 +41,7 @@ class JavaScriptSecurityContext {
 
   explicit JavaScriptSecurityContext(Type type)
       : _type(type) {}
-  
+
   ~JavaScriptSecurityContext() = default;
 
   /// @brief resets context to most restrictive settings
@@ -52,27 +52,33 @@ class JavaScriptSecurityContext {
 
   /// @brief whether or not db._useDatabase(...) is allowed
   bool allowUseDatabase() const { return _allowUseDatabase; }
-  
+
+  /// @brief whether fs read is allowed
+  bool canReadFs() const;
+
+  /// @brief whether fs read is allowed
+  bool canWriteFs() const;
+
   /// @brief whether or not actions.defineAction(...) is allowed, which will
   /// add REST endpoints
   /// currently only internal operations are allowed to do this
   bool canDefineHttpAction() const;
-  
+
   /// @brief create a security context that is most restricted
   static JavaScriptSecurityContext createRestrictedContext();
 
   /// @brief create a security context for arangodb-internal
   /// operations, with non-restrictive settings
   static JavaScriptSecurityContext createInternalContext();
-  
+
   /// @brief create a security context for admin script operations,
   /// invoked by `--javascript.execute` or when running in --console mode
   static JavaScriptSecurityContext createAdminScriptContext();
-  
+
   /// @brief create a security context for AQL queries,
   /// with restrictive settings
   static JavaScriptSecurityContext createQueryContext();
-  
+
   /// @brief create a security context for tasks actions
   static JavaScriptSecurityContext createTaskContext(bool allowUseDatabase);
 

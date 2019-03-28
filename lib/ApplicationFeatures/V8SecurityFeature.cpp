@@ -24,12 +24,14 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "V8/v8-globals.h"
 
 #include <v8.h>
+
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -45,16 +47,31 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
   options->addSection("javascript", "Configure the Javascript engine");
 
   options->addOption("--javascript.startup-options-filter",
-                     "startup options whose names match this regular expression will not be exposed to JavaScript actions",
+                     "startup options whose names match this regular "
+                     "expression will not be exposed to JavaScript actions",
                      new StringParameter(&_startupOptionsFilter));
 
   options->addOption("--javascript.environment-variables-filter",
-                     "environment variables whose names match this regular expression will not be exposed to JavaScript actions",
+                     "environment variables whose names match this regular "
+                     "expression will not be exposed to JavaScript actions",
                      new StringParameter(&_environmentVariablesFilter));
 
-  options->addOption("--javascript.endpoints-filter",
-                     "endpoints that match this regular expression cannot be connected to via internal.download() in JavaScript actions",
-                     new StringParameter(&_endpointsFilter));
+  options->addOption(
+      "--javascript.endpoints-filter",
+      "endpoints that match this regular expression cannot be connected to via "
+      "internal.download() in JavaScript actions",
+      new StringParameter(&_endpointsFilter));
+
+  //TODO - update descriptions once mechanics decided
+  options->addOption(
+      "--javascript.files-white-list",
+      "Files in this re will be accessible - FIXME",
+      new StringParameter(&_filesWhiteList));
+
+  options->addOption(
+      "--javascript.endpoints-files-black",
+      "Files in this re will not be accessible - FIXME",
+      new StringParameter(&_filesBlackList));
 }
 
 void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -63,7 +80,9 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
     std::regex(_startupOptionsFilter, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
     LOG_TOPIC("6e560", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript.startup-options-filter' is not valid a regular expression: " << ex.what();
+        << "value for '--javascript.startup-options-filter' is not valid a "
+           "regular expression: "
+        << ex.what();
     FATAL_ERROR_EXIT();
   }
 
@@ -71,7 +90,9 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
     std::regex(_environmentVariablesFilter, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
     LOG_TOPIC("ef35e", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript.environment-variables-filter' is not a valid regular expression: " << ex.what();
+        << "value for '--javascript.environment-variables-filter' is not a "
+           "valid regular expression: "
+        << ex.what();
     FATAL_ERROR_EXIT();
   }
 
@@ -79,33 +100,67 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
     std::regex(_endpointsFilter, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
     LOG_TOPIC("ab7d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript.endpoints-filter' is not a valid regular expression: " << ex.what();
+        << "value for '--javascript.endpoints-filter' is not a valid regular "
+           "expression: "
+        << ex.what();
+    FATAL_ERROR_EXIT();
+  }
+
+  try {
+    std::regex(_filesWhiteList, std::regex::nosubs | std::regex::ECMAScript);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("ab9d5", FATAL, arangodb::Logger::FIXME)
+        << "value for '--javascript.files-white-list' is not a valid regular "
+           "expression: "
+        << ex.what();
+    FATAL_ERROR_EXIT();
+  }
+
+  try {
+    std::regex(_filesBlackList, std::regex::nosubs | std::regex::ECMAScript);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("ab8d5", FATAL, arangodb::Logger::FIXME)
+        << "value for '--javascript.files-black-list' is not a valid regular "
+           "expression: "
+        << ex.what();
     FATAL_ERROR_EXIT();
   }
 }
 
 void V8SecurityFeature::start() {
   // initialize regexes for filtering options. the regexes must have been validated before
-  _startupOptionsFilterRegex = std::regex(_startupOptionsFilter, std::regex::nosubs | std::regex::ECMAScript);
-  _environmentVariablesFilterRegex = std::regex(_environmentVariablesFilter, std::regex::nosubs | std::regex::ECMAScript);
-  _endpointsFilterRegex = std::regex(_endpointsFilter, std::regex::nosubs | std::regex::ECMAScript);
+  _startupOptionsFilterRegex =
+      std::regex(_startupOptionsFilter, std::regex::nosubs | std::regex::ECMAScript);
+  _environmentVariablesFilterRegex =
+      std::regex(_environmentVariablesFilter, std::regex::nosubs | std::regex::ECMAScript);
+  _endpointsFilterRegex =
+      std::regex(_endpointsFilter, std::regex::nosubs | std::regex::ECMAScript);
+  _filesWhiteListRegex =
+      std::regex(_filesWhiteList, std::regex::nosubs | std::regex::ECMAScript);
+  _filesBlackListRegex =
+      std::regex(_filesBlackList, std::regex::nosubs | std::regex::ECMAScript);
 }
-  
+
 bool V8SecurityFeature::canDefineHttpAction(v8::Isolate* isolate) const {
   TRI_GET_GLOBALS();
   // v8g may be a nullptr when we are in arangosh
   return v8g != nullptr && v8g->_securityContext.canDefineHttpAction();
 }
 
-bool V8SecurityFeature::shouldExposeStartupOption(v8::Isolate* isolate, std::string const& name) const {
-  return _startupOptionsFilter.empty() || !std::regex_search(name, _startupOptionsFilterRegex);
+bool V8SecurityFeature::shouldExposeStartupOption(v8::Isolate* isolate,
+                                                  std::string const& name) const {
+  return _startupOptionsFilter.empty() ||
+         !std::regex_search(name, _startupOptionsFilterRegex);
 }
 
-bool V8SecurityFeature::shouldExposeEnvironmentVariable(v8::Isolate* isolate, std::string const& name) const {
-  return _environmentVariablesFilter.empty() || !std::regex_search(name, _environmentVariablesFilterRegex);
+bool V8SecurityFeature::shouldExposeEnvironmentVariable(v8::Isolate* isolate,
+                                                        std::string const& name) const {
+  return _environmentVariablesFilter.empty() ||
+         !std::regex_search(name, _environmentVariablesFilterRegex);
 }
 
-bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate, std::string const& name) const {
+bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
+                                                     std::string const& name) const {
   TRI_GET_GLOBALS();
   if (v8g != nullptr && v8g->_securityContext.isInternal()) {
     // internal security contexts are allowed to connect to any endpoint
@@ -115,26 +170,41 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate, std::
   return _endpointsFilter.empty() || !std::regex_search(name, _endpointsFilterRegex);
 }
 
-bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path) const {
-  return isAllowedToAccessPath(isolate, path.c_str());
+bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
+                                              char const* path, bool read) const {
+  // expects 0 terminated utf-8 string
+  TRI_ASSERT(path != nullptr);
+  return isAllowedToAccessPath(isolate, std::string(path), read);
 }
 
-bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* path) const {
-  // TODO: needs implementation
-  // Work In Progress Obi
+bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
+                                              std::string path, bool read) const {
+
+  // check security context first
+  TRI_GET_GLOBALS();
+  auto& sec = v8g->_securityContext;
+  if ((read && !sec.canReadFs()) || (!read && !sec.canWriteFs())) {
+    return false;
+  }
+
+
+  path = TRI_ResolveSymbolicLink(std::move(path));
+
+
   if (_filesWhiteList.empty() && _filesBlackList.empty()) {
     return true;
   }
 
-  if(_filesBlackList.empty()){
-    //must be white listed
+  if (_filesBlackList.empty()) {
+    // must be white listed
     return std::regex_search(path, _filesWhiteListRegex);
   }
 
-  if(_filesWhiteList.empty()){
-    //must be white listed
+  if (_filesWhiteList.empty()) {
+    // must be white listed
     return !std::regex_search(path, _filesBlackListRegex);
   }
 
-  return std::regex_search(path, _filesWhiteListRegex) && ! std::regex_search(path, _filesBlackListRegex);
+  return std::regex_search(path, _filesWhiteListRegex) &&
+         !std::regex_search(path, _filesBlackListRegex);
 }

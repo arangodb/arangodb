@@ -28,9 +28,19 @@ using namespace arangodb;
 void JavaScriptSecurityContext::reset() {
   _allowUseDatabase = false;
 }
-  
+
 bool JavaScriptSecurityContext::canDefineHttpAction() const {
-  return _type == Type::Internal; 
+  return _type == Type::Internal;
+}
+
+bool JavaScriptSecurityContext::canReadFs() const {
+  //FIXME
+  return true;
+}
+
+bool JavaScriptSecurityContext::canWriteFs() const {
+  //FIXME
+  return true;
 }
 
 /*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createRestrictedContext() {
@@ -38,7 +48,7 @@ bool JavaScriptSecurityContext::canDefineHttpAction() const {
   context._allowUseDatabase = false;
   return context;
 }
-  
+
 /*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createInternalContext() {
   JavaScriptSecurityContext context(Type::Internal);
   context._allowUseDatabase = true;

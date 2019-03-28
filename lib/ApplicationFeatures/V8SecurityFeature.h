@@ -39,7 +39,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
-  
+
   /// @brief tests if in the current security context it is allowed to define
   /// additional HTTP REST actions
   /// must only be called in arangod!
@@ -61,8 +61,8 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
 
   /// @brief tests if the path (or path component) shall be accessible for the
   /// calling JavaScript code
-  bool isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path) const;
-  bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path) const;
+  bool isAllowedToAccessPath(v8::Isolate* isolate, std::string path, bool read) const;
+  bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, bool read) const;
 
  private:
   /// @brief regular expression string for startup options filtering
