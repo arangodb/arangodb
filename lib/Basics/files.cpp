@@ -306,7 +306,7 @@ std::string TRI_ResolveSymbolicLink(std::string path, bool& hadError, bool recur
     ssize_t bufsize = sb.st_size + 1;
 
     // resolve symlinks
-    auto buf = std::unique_ptr<char ,decltype(deleteBuf)>((char*)std::malloc(bufsize), deleteBuf );
+    auto buf = std::unique_ptr<char ,void(*)(char*)>((char*)std::malloc(bufsize), &deleteBuf );
     auto written = ::readlink(path.c_str(), buf.get(), bufsize);
 
     if(written) {
