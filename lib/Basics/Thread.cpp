@@ -293,9 +293,9 @@ bool Thread::start(ConditionVariable* finishedCondition) {
 
     // must cleanup to prevent memleaks
     cleanupMe();
+  } else {
+    _threadStructInitialized = true;
   }
-
-  _threadStructInitialized = true;
 
   return ok;
 }
