@@ -110,15 +110,19 @@ thread that triggered the log message. This is non-optimal for performance but
 can aid debugging. If set to `false`, log messages are handed off to an extra
 logging thread, which asynchronously writes the log messages.
 
-### Local time
+### Time format
 
-Log dates and times in local time zone: `--log.use-local-time`
+The option `--log.time-format` controls the time format used in log output.
+The possible values for this option are:
 
-If specified, all dates and times in log messages will use the server's
-local time-zone. If not specified, all dates and times in log messages
-will be printed in UTC / Zulu time. The date and time format used in logs
-is always `YYYY-MM-DD HH:MM:SS`, regardless of this setting. If UTC time
-is used, a `Z` will be appended to indicate Zulu time.
+- timestamp: unix timestamps, in seconds
+- timestamp-millis: unix timestamps, in seconds, with millisecond precision
+- timestamp-micros: unix timestamps, in seconds, with microsecond precision
+- uptime: seconds since server start
+- uptime-millis: seconds since server start, with millisecond precision
+- uptime-micros: seconds since server start, with microsecond precision
+- utc-datestring: UTC-based date and time in format YYYY-MM-DDTHH:MM:SSZ 
+- local-datestring: local date and time in format YYYY-MM-DDTHH:MM:SS
 
 ### Escaping
 

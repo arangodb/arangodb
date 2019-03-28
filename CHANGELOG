@@ -1,6 +1,22 @@
 devel
 -----
 
+* added logging option `--log.time-format` to configure the time format used
+  in log output. The possible values for this option are:
+
+  - timestamp: unix timestamps, in seconds
+  - timestamp-millis: unix timestamps, in seconds, with millisecond precision
+  - timestamp-micros: unix timestamps, in seconds, with microsecond precision
+  - uptime: seconds since server start
+  - uptime-millis: seconds since server start, with millisecond precision
+  - uptime-micros: seconds since server start, with microsecond precision
+  - utc-datestring: UTC-based date and time in format YYYY-MM-DDTHH:MM:SSZ 
+  - local-datestring: local date and time in format YYYY-MM-DDTHH:MM:SS
+
+  This change deprecates the existing options `--log.use-microtime` and 
+  `--log.use-localtime`, because the functionality provided by these options
+  is covered by `--log.time-format` too.
+
 * renamed attribute key `openssl-version` in server/client tool version
   details output to `openssl-version-compile-time`.
 
