@@ -1,6 +1,9 @@
 devel
 -----
 
+* added AQL function DECODE_REV for decomposing `_rev` values into their
+  individual parts
+
 * renamed attribute key `openssl-version` in server/client tool version
   details output to `openssl-version-compile-time`.
 
