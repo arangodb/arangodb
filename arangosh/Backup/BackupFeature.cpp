@@ -165,12 +165,80 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
 arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
                                 arangodb::BackupFeature::Options const& options) {
   arangodb::Result result;
+
+  std::string const url = "/_admin/hotbackup/restore";
+  VPackBuilder bodyBuilder;
+  {
+    VPackObjectBuilder guard(&bodyBuilder);
+    bodyBuilder.add("directory", VPackValue(options.identifier));
+    bodyBuilder.add("saveCurrent", VPackValue(options.saveCurrent));
+  }
+  std::string const body = bodyBuilder.slice().toJson();
+  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
+      client.request(arangodb::rest::RequestType::POST, url, body.c_str(), body.size()));
+  auto check = ::checkHttpResponse(client, response);
+  if (check.fail()) {
+    return check;
+  }
+
+  // extract vpack body from response
+  std::shared_ptr<VPackBuilder> parsedBody;
+  try {
+    parsedBody = response->getBodyVelocyPack();
+  } catch (...) {
+    result.reset(::ErrorMalformedJsonResponse);
+    return result;
+  }
+
+  if (options.saveCurrent) {
+    VPackSlice const resBody = parsedBody->slice();
+    VPackSlice const resultObject = resBody.get("result");
+    TRI_ASSERT(resultObject.isObject());
+    VPackSlice const previous = resultObject.get("previous");
+    TRI_ASSERT(previous.isString());
+
+    LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
+        << "current state was saved as backup with identifier '"
+        << previous.copyString() << "'";
+  }
+
+  LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
+      << "Successfully restored '" << options.identifier << "'";
+
   return result;
 }
 
 arangodb::Result executeDelete(arangodb::httpclient::SimpleHttpClient& client,
                                arangodb::BackupFeature::Options const& options) {
   arangodb::Result result;
+
+  std::string const url = "/_admin/hotbackup/create";
+  VPackBuilder bodyBuilder;
+  {
+    VPackObjectBuilder guard(&bodyBuilder);
+    bodyBuilder.add("directory", VPackValue(options.identifier));
+  }
+  std::string const body = bodyBuilder.slice().toJson();
+  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
+      client.request(arangodb::rest::RequestType::DELETE_REQ, url, body.c_str(),
+                     body.size()));
+  auto check = ::checkHttpResponse(client, response);
+  if (check.fail()) {
+    return check;
+  }
+
+  // extract vpack body from response
+  std::shared_ptr<VPackBuilder> parsedBody;
+  try {
+    parsedBody = response->getBodyVelocyPack();
+  } catch (...) {
+    result.reset(::ErrorMalformedJsonResponse);
+    return result;
+  }
+
+  LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
+      << "Successfully deleted '" << options.identifier << "'";
+
   return result;
 }
 
@@ -238,6 +306,11 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "maximum time to wait (in seconds) to aquire a lock on "
                      "all necessary resources",
                      new DoubleParameter(&_options.maxWaitTime));
+
+  options->addOption("--save-current",
+                     "whether to save the current state as a backup before "
+                     "restoring to another state",
+                     new BooleanParameter(&_options.saveCurrent));
 
   /*
     options->addSection(

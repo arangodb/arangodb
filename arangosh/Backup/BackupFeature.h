@@ -61,6 +61,7 @@ class BackupFeature : public application_features::ApplicationFeature {
     std::string label = "";
     double maxWaitTime = 60.0;
     std::string operation = "list";
+    bool saveCurrent = false;
   };
 
  private:
