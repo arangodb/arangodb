@@ -22,16 +22,17 @@
 
 #include "ApplicationFeatures/V8SecurityFeature.h"
 
+#include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
+#include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "V8/v8-globals.h"
 
 #include <v8.h>
-
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -62,16 +63,14 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
       "internal.download() in JavaScript actions",
       new StringParameter(&_endpointsFilter));
 
-  //TODO - update descriptions once mechanics decided
-  options->addOption(
-      "--javascript.files-white-list",
-      "Files in this re will be accessible - FIXME",
-      new StringParameter(&_filesWhiteList));
+  // TODO - update descriptions once mechanics decided
+  options->addOption("--javascript.files-white-list",
+                     "Files in this re will be accessible - FIXME",
+                     new StringParameter(&_filesWhiteList));
 
-  options->addOption(
-      "--javascript.endpoints-files-black",
-      "Files in this re will not be accessible - FIXME",
-      new StringParameter(&_filesBlackList));
+  options->addOption("--javascript.endpoints-files-black",
+                     "Files in this re will not be accessible - FIXME",
+                     new StringParameter(&_filesBlackList));
 }
 
 void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -179,7 +178,6 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
                                               std::string path, bool read) const {
-
   // check security context first
   TRI_GET_GLOBALS();
   auto& sec = v8g->_securityContext;
@@ -187,9 +185,18 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
     return false;
   }
 
-
+  // remove link
   path = TRI_ResolveSymbolicLink(std::move(path));
 
+  // make absolute
+  std::string cwd = FileUtils::currentDirectory().result();
+  {
+    auto absPath = std::unique_ptr<char, void (*)(char*)>(
+        TRI_GetAbsolutePath(path.c_str(), cwd.c_str()), &TRI_FreeString);
+    if (absPath) {
+      path = std::string(absPath.get());
+    }
+  }
 
   if (_filesWhiteList.empty() && _filesBlackList.empty()) {
     return true;
