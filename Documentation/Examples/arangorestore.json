@@ -1,4 +1,20 @@
 {
+  "all-databases" : {
+    "category" : "option",
+    "default" : false,
+    "deprecatedIn" : null,
+    "description" : "restore data to all databases",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "",
+    "type" : "boolean"
+  },
   "batch-size" : {
     "category" : "option",
     "default" : 8388608,
@@ -419,6 +435,22 @@
     "enterpriseOnly" : false,
     "hidden" : true,
     "introducedIn" : null,
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.ids" : {
+    "category" : "option",
+    "default" : true,
+    "deprecatedIn" : null,
+    "description" : "log unique message ids",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
     "obsolete" : false,
     "requiresValue" : false,
     "section" : "log",
