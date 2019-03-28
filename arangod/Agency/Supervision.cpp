@@ -1163,11 +1163,14 @@ void Supervision::cleanupFinishedAndFailedJobs() {
     VPackBuilder trx;  // We build a transaction here
     { // Pair for operation, no precondition here
       VPackArrayBuilder guard1(&trx);
-      for (auto it = v.begin(); toBeDeleted-- > 0 && it != v.end(); ++it) {
-        trx.add(VPackValue(prefix + it->first));
-        {
-          VPackObjectBuilder guard2(&trx);
-          trx.add("op", VPackValue("delete"));
+      {
+        VPackObjectBuilder guard2(&trx);
+        for (auto it = v.begin(); toBeDeleted-- > 0 && it != v.end(); ++it) {
+          trx.add(VPackValue(prefix + it->first));
+          {
+            VPackObjectBuilder guard2(&trx);
+            trx.add("op", VPackValue("delete"));
+          }
         }
       }
     }
