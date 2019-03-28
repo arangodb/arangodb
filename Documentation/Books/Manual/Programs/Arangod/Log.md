@@ -115,14 +115,16 @@ logging thread, which asynchronously writes the log messages.
 The option `--log.time-format` controls the time format used in log output.
 The possible values for this option are:
 
-- timestamp: unix timestamps, in seconds
-- timestamp-millis: unix timestamps, in seconds, with millisecond precision
-- timestamp-micros: unix timestamps, in seconds, with microsecond precision
-- uptime: seconds since server start
-- uptime-millis: seconds since server start, with millisecond precision
-- uptime-micros: seconds since server start, with microsecond precision
-- utc-datestring: UTC-based date and time in format YYYY-MM-DDTHH:MM:SSZ 
-- local-datestring: local date and time in format YYYY-MM-DDTHH:MM:SS
+Format             | Example              | Description
+:------------------|:-------------------- |:-----------
+`timestamp`        | 1553766923000        | unix timestamps, in seconds
+`timestamp-millis` | 1553766923000.123    | unix timestamps, in seconds, with millisecond precision
+`timestamp-micros` | 1553766923000.123456 | unix timestamps, in seconds, with microsecond precision
+`uptime`           | 987654               | seconds since server start
+`uptime-millis`    | 987654.123           | seconds since server start, with millisecond precision
+`uptime-micros`    | 987654.123456        | seconds since server start, with microsecond precision
+`utc-datestring`   | 2019-03-28T09:55:23Z | UTC-based date and time in format YYYY-MM-DDTHH:MM:SSZ 
+`local-datestring` | 2019-03-28T10:55:23  | local date and time in format YYYY-MM-DDTHH:MM:SS
 
 ### Escaping
 
