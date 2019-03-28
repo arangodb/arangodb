@@ -188,7 +188,7 @@ bool Insert::doModifications(ModificationExecutorInfos& info, ModificationStats&
   reset();
   _tmpBuilder.openArray();
 
-  const RegisterId& inReg = info._input1RegisterId.value();
+  const RegisterId& inReg = info._input1RegisterId;
   TRI_ASSERT(_block);
   _block->forRowInBlock([this, inReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
@@ -279,7 +279,7 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
           AqlValue value(elm.get("new"));
           AqlValueGuard guard(value, true);
           // store $NEW
-          output.moveValueInto(info._outputNewRegisterId.value(), input, guard);
+          output.moveValueInto(info._outputNewRegisterId, input, guard);
         }
         if (options.returnOld) {
           // store $OLD
@@ -287,11 +287,11 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
           if (slice.isNone()) {
             AqlValue value(VPackSlice::nullSlice());
             AqlValueGuard guard(value, true);
-            output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
+            output.moveValueInto(info._outputOldRegisterId, input, guard);
           } else {
             AqlValue value(slice);
             AqlValueGuard guard(value, true);
-            output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
+            output.moveValueInto(info._outputOldRegisterId, input, guard);
           }
         }
       }  // !wasError - end
@@ -319,7 +319,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info, ModificationStats&
   std::string key;
   std::string rev;
 
-  const RegisterId& inReg = info._input1RegisterId.value();
+  const RegisterId& inReg = info._input1RegisterId;
   TRI_ASSERT(_block);
   _block->forRowInBlock([this, &stats, &errorCode, &key, &rev, trx, inReg,
                          &info](InputAqlItemRow&& row) {
@@ -433,7 +433,7 @@ bool Remove::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 
           AqlValue value(slice);
           AqlValueGuard guard(value, true);
-          output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
+          output.moveValueInto(info._outputOldRegisterId, input, guard);
         }
       }
       ++_operationResultIterator;
@@ -461,9 +461,9 @@ bool Upsert::doModifications(ModificationExecutorInfos& info, ModificationStats&
   std::string errorMessage;
   std::string key;
   auto* trx = info._trx;
-  const RegisterId& inDocReg = info._input1RegisterId.value();
-  const RegisterId& insertReg = info._input2RegisterId.value();
-  const RegisterId& updateReg = info._input3RegisterId.value();
+  const RegisterId& inDocReg = info._input1RegisterId;
+  const RegisterId& insertReg = info._input2RegisterId;
+  const RegisterId& updateReg = info._input3RegisterId;
 
   _block->forRowInBlock([this, &stats, &errorCode, &errorMessage, &key, trx, inDocReg,
                          insertReg, updateReg, &info](InputAqlItemRow&& row) {
@@ -623,7 +623,7 @@ bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
           AqlValue value(elm.get("new"));
           AqlValueGuard guard(value, true);
           // store $NEW
-          output.moveValueInto(info._outputNewRegisterId.value(), input, guard);
+          output.moveValueInto(info._outputNewRegisterId, input, guard);
         }
       }
 
@@ -658,10 +658,9 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
   std::string key;
   std::string rev;
   auto* trx = info._trx;
-  const RegisterId& inDocReg = info._input1RegisterId.value();
-  const bool hasKeyVariable = info._input2RegisterId.has_value();
-  const RegisterId& keyReg = hasKeyVariable ? info._input2RegisterId.value()
-                                            : 42 /*invalid but unused*/;
+  const RegisterId& inDocReg = info._input1RegisterId;
+  const RegisterId& keyReg = info._input2RegisterId;
+  const bool hasKeyVariable = keyReg != ExecutionNode::MaxRegisterId;
 
   _block->forRowInBlock([this, &options, &stats, &errorCode, &errorMessage,
                          &key, &rev, trx, inDocReg, keyReg, hasKeyVariable,
@@ -797,14 +796,14 @@ bool UpdateReplace<ModType>::doOutput(ModificationExecutorInfos& info,
           AqlValue value(elm.get("new"));
           AqlValueGuard guard(value, true);
           // store $NEW
-          output.moveValueInto(info._outputNewRegisterId.value(), input, guard);
+          output.moveValueInto(info._outputNewRegisterId, input, guard);
         }
         if (options.returnOld) {
           auto slice = elm.get("old");
           AqlValue value(slice);
           AqlValueGuard guard(value, true);
           // store $OLD
-          output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
+          output.moveValueInto(info._outputOldRegisterId, input, guard);
         }
       }
       ++_operationResultIterator;
