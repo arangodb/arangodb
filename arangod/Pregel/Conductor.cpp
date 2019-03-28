@@ -687,16 +687,15 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder) {
 }
 
 VPackBuilder Conductor::toVelocyPack() const {
+  MUTEX_LOCKER(guard, _callbackMutex);
+
   VPackBuilder result;
   result.openObject();
   result.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
   result.add("gss", VPackValue(_globalSuperstep));
   result.add("totalRuntime", VPackValue(totalRuntimeSecs()));
   _aggregators->serializeValues(result);
-  {
-    MUTEX_LOCKER(guard, _callbackMutex);
-    _statistics.serializeValues(result);
-  }
+  _statistics.serializeValues(result);
   if (_state != ExecutionState::RUNNING) {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));
