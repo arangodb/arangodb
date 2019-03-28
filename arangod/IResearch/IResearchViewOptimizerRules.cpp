@@ -80,7 +80,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
 
   if (!viewNode.filterConditionIsEmpty()) {
     searchCondition.andCombine(&viewNode.filterCondition());
-    searchCondition.normalize(&plan);  // normalize the condition
+    searchCondition.normalize(&plan, true);  // normalize the condition
 
     if (searchCondition.isEmpty()) {
       // condition is always false
@@ -102,11 +102,11 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
   }
 
   // check filter condition
-  auto const conditionValid =
-      !searchCondition.root() ||
-      FilterFactory::filter(nullptr,
-        { query.trx(), nullptr, nullptr, nullptr, &viewNode.outVariable() },
-                            *searchCondition.root());
+  auto const conditionValid = !searchCondition.root() || FilterFactory::filter(
+    nullptr,
+    { query.trx(), nullptr, nullptr, nullptr, &viewNode.outVariable() },
+    *searchCondition.root()
+  );
 
   if (!conditionValid) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,

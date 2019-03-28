@@ -115,21 +115,14 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   RegisterId inDocRegister = variableToRegisterId(_inVariable);
-
-  boost::optional<RegisterId> outputNew;
-  if (_outVariableNew) {
-    outputNew = variableToRegisterId(_outVariableNew);
-  }
-
-  boost::optional<RegisterId> outputOld;
-  if (_outVariableOld) {
-    outputOld = variableToRegisterId(_outVariableOld);
-  }
+  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
+  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
-      inDocRegister, boost::none, boost::none, outputNew, outputOld, boost::none /*output*/,
+      inDocRegister, ExecutionNode::MaxRegisterId, ExecutionNode::MaxRegisterId,
+      outputNew, outputOld, ExecutionNode::MaxRegisterId /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
       getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
@@ -194,20 +187,14 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
 
   RegisterId inputRegister = variableToRegisterId(_inVariable);
 
-  boost::optional<RegisterId> outputNew;
-  if (_outVariableNew) {
-    outputNew = variableToRegisterId(_outVariableNew);
-  }
-
-  boost::optional<RegisterId> outputOld;
-  if (_outVariableOld) {
-    outputOld = variableToRegisterId(_outVariableOld);
-  }
+  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
+  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
-      inputRegister, boost::none, boost::none, outputNew, outputOld, boost::none /*output*/,
+      inputRegister, ExecutionNode::MaxRegisterId, ExecutionNode::MaxRegisterId,
+      outputNew, outputOld, ExecutionNode::MaxRegisterId /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
       getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
@@ -290,25 +277,15 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
 
   RegisterId inDocRegister = variableToRegisterId(_inDocVariable);
 
-  boost::optional<RegisterId> inKeyRegister;
-  if (_inKeyVariable) {
-    inKeyRegister = variableToRegisterId(_inKeyVariable);
-  }
-
-  boost::optional<RegisterId> outputNew;
-  if (_outVariableNew) {
-    outputNew = variableToRegisterId(_outVariableNew);
-  }
-
-  boost::optional<RegisterId> outputOld;
-  if (_outVariableOld) {
-    outputOld = variableToRegisterId(_outVariableOld);
-  }
+  RegisterId inKeyRegister = variableToRegisterOptionalId(_inKeyVariable);
+  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
+  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
-      inDocRegister, inKeyRegister, boost::none, outputNew, outputOld, boost::none /*output*/,
+      inDocRegister, inKeyRegister, ExecutionNode::MaxRegisterId, outputNew,
+      outputOld, ExecutionNode::MaxRegisterId /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
       getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
@@ -372,25 +349,17 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
 
   RegisterId inDocRegister = variableToRegisterId(_inDocVariable);
 
-  boost::optional<RegisterId> inKeyRegister;
-  if (_inKeyVariable) {
-    inKeyRegister = variableToRegisterId(_inKeyVariable);
-  }
+  RegisterId inKeyRegister = variableToRegisterOptionalId(_inKeyVariable);
 
-  boost::optional<RegisterId> outputNew;
-  if (_outVariableNew) {
-    outputNew = variableToRegisterId(_outVariableNew);
-  }
+  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
 
-  boost::optional<RegisterId> outputOld;
-  if (_outVariableOld) {
-    outputOld = variableToRegisterId(_outVariableOld);
-  }
+  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
-      inDocRegister, inKeyRegister, boost::none, outputNew, outputOld, boost::none /*output*/,
+      inDocRegister, inKeyRegister, ExecutionNode::MaxRegisterId, outputNew,
+      outputOld, ExecutionNode::MaxRegisterId /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
       getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
@@ -475,20 +444,14 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
   RegisterId insert = variableToRegisterId(_insertVariable);
   RegisterId update = variableToRegisterId(_updateVariable);
 
-  boost::optional<RegisterId> outputNew;
-  if (_outVariableNew) {
-    outputNew = variableToRegisterId(_outVariableNew);
-  }
+  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
 
-  boost::optional<RegisterId> outputOld;
-  if (_outVariableOld) {
-    outputOld = variableToRegisterId(_outVariableOld);
-  }
+  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
-      inDoc, insert, update, outputNew, outputOld, boost::none /*output*/,
+      inDoc, insert, update, outputNew, outputOld, ExecutionNode::MaxRegisterId /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
       getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),

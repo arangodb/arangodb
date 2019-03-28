@@ -35,8 +35,6 @@
 #include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
 
-#include <boost/optional.hpp>
-
 namespace arangodb {
 namespace transaction {
 class Methods;
@@ -87,13 +85,11 @@ inline OperationOptions convertOptions(ModificationOptions const& in,
   return out;
 }
 
-using wrap = std::reference_wrapper<boost::optional<RegisterId>>;
-inline std::shared_ptr<std::unordered_set<RegisterId>> makeSet(std::initializer_list<wrap> reg_wrap) {
+inline std::shared_ptr<std::unordered_set<RegisterId>> makeSet(std::initializer_list<RegisterId> regList) {
   auto rv = make_shared_unordered_set();
-  for (auto wrap : reg_wrap) {
-    auto const& opt = wrap.get();
-    if (opt.has_value()) {
-      rv->insert(opt.get());
+  for (RegisterId regId : regList) {
+    if (regId < ExecutionNode::MaxRegisterId) {
+      rv->insert(regId);
     }
   }
   return rv;
@@ -127,20 +123,17 @@ struct IgnoreDocumentNotFound : BoolWrapper {
 
 struct ModificationExecutorInfos : public ExecutorInfos {
   ModificationExecutorInfos(
-      boost::optional<RegisterId> input1RegisterId, boost::optional<RegisterId> input2RegisterId,
-      boost::optional<RegisterId> input3RegisterId, boost::optional<RegisterId> outputNewRegisterId,
-      boost::optional<RegisterId> outputOldRegisterId,
-      boost::optional<RegisterId> outputRegisterId, RegisterId nrInputRegisters,
+      RegisterId input1RegisterId, RegisterId input2RegisterId, RegisterId input3RegisterId,
+      RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
+      RegisterId outputRegisterId, RegisterId nrInputRegisters,
       RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
       std::unordered_set<RegisterId> registersToKeep, transaction::Methods* trx,
       OperationOptions options, aql::Collection const* aqlCollection,
       ProducesResults producesResults, ConsultAqlWriteFilter consultAqlWriteFilter,
-      IgnoreErrors ignoreErrors, DoCount doCount, /*bool returnInheritedResults,*/
-      IsReplace isReplace, IgnoreDocumentNotFound ignoreDocumentNotFound)
-      : ExecutorInfos(makeSet({wrap(input1RegisterId), wrap(input2RegisterId),
-                               wrap(input3RegisterId)}) /*input registers*/,
-                      makeSet({wrap(outputOldRegisterId), wrap(outputNewRegisterId),
-                               wrap(outputRegisterId)}) /*output registers*/,
+      IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
+      IgnoreDocumentNotFound ignoreDocumentNotFound)
+      : ExecutorInfos(makeSet({input1RegisterId, input2RegisterId, input3RegisterId}) /*input registers*/,
+                      makeSet({outputOldRegisterId, outputNewRegisterId, outputRegisterId}) /*output registers*/,
                       nrInputRegisters, nrOutputRegisters,
                       std::move(registersToClear), std::move(registersToKeep)),
         _trx(trx),
@@ -177,15 +170,15 @@ struct ModificationExecutorInfos : public ExecutorInfos {
   IgnoreDocumentNotFound _ignoreDocumentNotFound;  // needed for update replace
 
   // insert (singleinput) - upsert (inDoc) - update replace (inDoc)
-  boost::optional<RegisterId> _input1RegisterId;
+  RegisterId _input1RegisterId;
   // upsert (insertVar) -- update replace (keyVar)
-  boost::optional<RegisterId> _input2RegisterId;
+  RegisterId _input2RegisterId;
   // upsert (updateVar)
-  boost::optional<RegisterId> _input3RegisterId;
+  RegisterId _input3RegisterId;
 
-  boost::optional<RegisterId> _outputNewRegisterId;
-  boost::optional<RegisterId> _outputOldRegisterId;
-  boost::optional<RegisterId> _outputRegisterId;  // single remote
+  RegisterId _outputNewRegisterId;
+  RegisterId _outputOldRegisterId;
+  RegisterId _outputRegisterId;  // single remote
 };
 
 template <typename FetcherType>

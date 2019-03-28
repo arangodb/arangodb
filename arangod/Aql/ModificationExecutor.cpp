@@ -20,7 +20,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <boost/optional.hpp>
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -36,10 +35,14 @@ using namespace arangodb::aql;
 namespace arangodb {
 namespace aql {
 std::string toString(AllRowsFetcher&) { return "AllRowsFetcher"; }
-std::string toString(SingleBlockFetcher<true>&) { return "SingleBlockFetcher<true>"; }
-std::string toString(SingleBlockFetcher<false>&) { return "SingleBlockFetcher<false>"; }
+std::string toString(SingleBlockFetcher<true>&) {
+  return "SingleBlockFetcher<true>";
 }
+std::string toString(SingleBlockFetcher<false>&) {
+  return "SingleBlockFetcher<false>";
 }
+}  // namespace aql
+}  // namespace arangodb
 
 template <typename FetcherType>
 ModificationExecutorBase<FetcherType>::ModificationExecutorBase(Fetcher& fetcher, Infos& infos)
@@ -49,7 +52,7 @@ template <typename Modifier, typename FetcherType>
 ModificationExecutor<Modifier, FetcherType>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
     : ModificationExecutorBase<FetcherType>(fetcher, infos), _modifier() {
   this->_infos._trx->pinData(this->_infos._aqlCollection->id());  // important for mmfiles
-  //LOG_DEVEL << toString(_modifier) << " "  << toString(this->_fetcher); // <-- enable this first when debugging modification problems
+  // LOG_DEVEL << toString(_modifier) << " "  << toString(this->_fetcher); // <-- enable this first when debugging modification problems
 };
 
 template <typename Modifier, typename FetcherType>
@@ -62,8 +65,8 @@ ModificationExecutor<Modifier, FetcherType>::produceRow(OutputAqlItemRow& output
   ModificationExecutor::Stats stats;
 
   // TODO - fix / improve prefetching if possible
-  while (!this->_prepared &&
-         (this->_fetcher.upstreamState() != ExecutionState::DONE /*|| this->_fetcher._prefetched */)) {
+  while (!this->_prepared && (this->_fetcher.upstreamState() !=
+                              ExecutionState::DONE /*|| this->_fetcher._prefetched */)) {
     std::shared_ptr<AqlItemBlockShell> block;
 
     std::tie(state, block) = this->_fetcher.fetchBlockForModificationExecutor(
