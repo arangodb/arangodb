@@ -1017,14 +1017,16 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
               // potentially lost shard
               auto const& shardname = shard.first;
 
-              auto const& planurl = "/arango/Plan/Collections/" + dbname + "/" +
-                                    colname + "/shards/" + shardname;
+              auto const& planurlinsnapshot = "/Plan/Collections/" + dbname
+                + "/" + colname + "/shards/" + shardname;
+
+              auto const& planurl = "/arango" + planurlinsnapshot;
               auto const& currenturl = "/arango/Current/Collections/" + dbname +
                                        "/" + colname + "/" + shardname;
               auto const& healthurl =
                   "/arango/Supervision/Health/" + servername + "/Status";
               // check if it exists in Plan
-              if (snapshot.has(planurl)) {
+              if (snapshot.has(planurlinsnapshot)) {
                 continue;
               }
               LOG_TOPIC(TRACE, Logger::SUPERVISION)
