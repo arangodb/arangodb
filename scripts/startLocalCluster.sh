@@ -158,7 +158,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           --server.statistics false \
           --log.file cluster/$PORT.log \
           --log.force-direct false \
-          --log.use-microtime true \
           --log.level $LOG_LEVEL_AGENCY \
           --javascript.allow-admin-execute true \
           $STORAGE_ENGINE \
@@ -186,7 +185,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --server.statistics false \
         --log.file cluster/$PORT.log \
         --log.force-direct false \
-        --log.use-microtime true \
         --log.level $LOG_LEVEL_AGENCY \
         --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
@@ -238,7 +236,6 @@ start() {
           --javascript.module-directory $SRC_DIR/enterprise/js \
           --javascript.app-path cluster/apps$PORT \
           --log.force-direct false \
-          --log.use-microtime true \
           --log.level $LOG_LEVEL_CLUSTER \
           --javascript.allow-admin-execute true \
           $STORAGE_ENGINE \
@@ -261,7 +258,6 @@ start() {
         --javascript.module-directory $SRC_DIR/enterprise/js \
         --javascript.app-path cluster/apps$PORT \
         --log.force-direct false \
-        --log.use-microtime true \
         --log.thread true \
         --log.level $LOG_LEVEL_CLUSTER \
         --javascript.allow-admin-execute true \
