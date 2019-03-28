@@ -1,6 +1,8 @@
 devel
 -----
 
+* added AQL functions CRC32 and FNV64 for hashing data
+
 * renamed attribute key `openssl-version` in server/client tool version
   details output to `openssl-version-compile-time`.
 
