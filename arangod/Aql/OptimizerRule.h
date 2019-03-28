@@ -170,10 +170,8 @@ struct OptimizerRule {
     // needs to run after filter removal
     removeUnnecessaryCalculationsRule2,
 
-#ifdef USE_IRESEARCH
     // move filters and sort conditions into views and remove them
     handleArangoSearchViewsRule,
-#endif
 
     // remove now obsolete path variables
     removeTraversalPathVariable,
@@ -208,11 +206,9 @@ struct OptimizerRule {
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule,
 
-#ifdef USE_IRESEARCH
     // FIXME order-???
     // make operations on sharded IResearch views use scatter / gather / remote
     scatterIResearchViewInClusterRule,
-#endif
 
     // move FilterNodes & Calculation nodes in between
     // scatter(remote) <-> gather(remote) so they're
