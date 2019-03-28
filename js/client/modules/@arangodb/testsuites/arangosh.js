@@ -252,24 +252,32 @@ function arangosh (options) {
 
 function permissions(options) {
   let res = {};
+  let filtered = {};
   let rootDir = fs.join(fs.getTempPath(), 'permissions');
   const tests = tu.scanTestPaths(testPaths.permissions);
 
   fs.makeDirectoryRecursive(rootDir);
 
   tests.forEach(function (f, i) {
-    let content = fs.read(f);
-    content = `(function(){ const getOptions = true; ${content}
+    if (tu.filterTestcaseByOptions(f, options, filtered)) {
+      let content = fs.read(f);
+      content = `(function(){ const getOptions = true; ${content}
 }())`;
-    
-    let testOptions = executeScript(content, true, f);
-    res[f] = tu.runInArangosh(options, {
-      endpoint: 'tcp://127.0.0.1:8888',
-      rootDir: rootDir
-    },
-                              f,
-                              testOptions);
-  });
+      
+      let testOptions = executeScript(content, true, f);
+      res[f] = tu.runInArangosh(options, {
+        endpoint: 'tcp://127.0.0.1:8888',
+        rootDir: rootDir
+      },
+                                f,
+                                testOptions);
+    } else {
+      if (options.extremeVerbosity) {
+        print('Skipped ' + te + ' because of ' + filtered.filter);
+      }
+    }
+
+  });             
   return res;
 }
 
