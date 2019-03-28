@@ -17,6 +17,8 @@ devel
   `--log.use-localtime`, because the functionality provided by these options
   is covered by `--log.time-format` too.
 
+* added AQL functions CRC32 and FNV64 for hashing data
+
 * renamed attribute key `openssl-version` in server/client tool version
   details output to `openssl-version-compile-time`.
 
