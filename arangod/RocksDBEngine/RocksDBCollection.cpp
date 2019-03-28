@@ -768,7 +768,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
   }
 
   // document found, but revisionId may not have been present in the primary
-  // index this can happen for "older" collections
+  // index. this can happen for "older" collections
   TRI_ASSERT(documentId.isSet());
 
   // now look up the revision id in the actual document data
@@ -904,9 +904,13 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
                                  ManagedDocumentResult& mdr, OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool,
                                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                                 arangodb::velocypack::Slice const key,
                                  std::function<Result(void)> callbackDuringLock) {
   resultMarkerTick = 0;
+  
+  VPackSlice key = newSlice.get(StaticStrings::KeyString);
+  if (key.isNone()) {
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
 
   LocalDocumentId const documentId = LocalDocumentId::create();
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
