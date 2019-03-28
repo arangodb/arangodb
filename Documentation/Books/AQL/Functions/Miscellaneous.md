@@ -115,6 +115,28 @@ a request context. Otherwise, the return value of this function will be *null*.
 - returns **userName** (string|null): the current user name, or *null* if
   authentication is disabled
 
+### DECODE_REV()
+
+`DECODE_REV(revision) → details`
+
+Decompose the revision string specific in *revision* into its date and counter
+components.
+This function is supposed to be called with the *_rev* values of database
+documents.
+
+- **revision** (string): revision id string
+- returns **details** (object): the returned object will have an attribute
+  *date* with the date component of the revision as a string in ISO8601 format.
+  The returned object will also contain a *count* attribute with the counter
+  values of that revision.
+
+If the input revision id is not a string or cannot be processed, the function
+issues a warning and returns *null*.
+
+```js
+DECODE_REV( "_YU0HOEG---" )
+// { "date" : "2019-03-11T16:15:05.314Z", "count" : 0 }
+
 ### DOCUMENT()
 
 `DOCUMENT(collection, id) → doc`
