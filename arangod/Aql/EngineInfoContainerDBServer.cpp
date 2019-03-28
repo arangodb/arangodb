@@ -998,24 +998,8 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
   });
 
   // Build Lookup Infos
-  VPackBuilder infoBuilder;
-  
-  // lazily begin transactions on leaders if necessary
+  VPackBuilder infoBuilder;  
   transaction::Methods* trx = _query->trx();
-  
-  // snippets already know which shards to lock, there is no need for us to
-  // start a managed begin / end transaction for a single AQL query
-  if (trx->state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    std::vector<std::string> servers;
-    for (auto const& it : dbServerMapping) {
-      servers.emplace_back(it.first);
-    }
-    // start transaction on all servers with snippets
-    Result res = ClusterTrxMethods::beginTransactionOnLeaders(*trx->state(), servers);
-    if (res.fail()) {
-      return res;
-    }
-  }
 
   // we need to lock per server in a deterministic order to avoid deadlocks
   for (auto& it : dbServerMapping) {

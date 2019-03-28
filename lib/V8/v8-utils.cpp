@@ -1875,8 +1875,8 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
   StringUtils::tolowerInPlace(&ls);
   StringUtils::tolowerInPlace(&ts);
 
-  LogTopic const* topicPtr = LogTopic::lookup(ts);
-  LogTopic const& topic = ( ts.empty() || topicPtr == nullptr ) ? Logger::FIXME : *topicPtr;
+  LogTopic const* topicPtr = ts.empty() ? nullptr : LogTopic::lookup(ts);
+  LogTopic const& topic = (topicPtr != nullptr) ? *topicPtr : Logger::FIXME;
 
   if (args[1]->IsArray()) {
     auto loglines = v8::Handle<v8::Array>::Cast(args[1]);
@@ -1910,7 +1910,7 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
         prefix = ls + "!";
         LOG_TOPIC("6b817", WARN, topic) << prefix << message;
       }
-    } // for
+    }  // for
   } else {
     TRI_Utf8ValueNFC message(isolate, args[1]);
 
@@ -1937,7 +1937,6 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
       prefix = ls + "!";
       LOG_TOPIC("0c009", WARN, topic) << prefix << msg;
     }
-
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -4367,9 +4366,11 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
   // exception.
   if (message.IsEmpty()) {
     if (exceptionString == nullptr) {
-      LOG_TOPIC("49465", ERR, arangodb::Logger::FIXME) << "JavaScript exception";
+      LOG_TOPIC("49465", ERR, arangodb::Logger::FIXME)
+          << "JavaScript exception";
     } else {
-      LOG_TOPIC("7e60e", ERR, arangodb::Logger::FIXME) << "JavaScript exception: " << exceptionString;
+      LOG_TOPIC("7e60e", ERR, arangodb::Logger::FIXME)
+          << "JavaScript exception: " << exceptionString;
     }
   } else {
     TRI_Utf8ValueNFC filename(isolate, message->GetScriptResourceName());
@@ -4382,9 +4383,11 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 
     if (filenameString == nullptr) {
       if (exceptionString == nullptr) {
-        LOG_TOPIC("27c91", ERR, arangodb::Logger::FIXME) << "JavaScript exception";
+        LOG_TOPIC("27c91", ERR, arangodb::Logger::FIXME)
+            << "JavaScript exception";
       } else {
-        LOG_TOPIC("52220", ERR, arangodb::Logger::FIXME) << "JavaScript exception: " << exceptionString;
+        LOG_TOPIC("52220", ERR, arangodb::Logger::FIXME)
+            << "JavaScript exception: " << exceptionString;
       }
     } else {
       if (exceptionString == nullptr) {

@@ -151,13 +151,8 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   AnalyzerPool::ptr ensure(irs::string_ref const& name);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @return number of analyzers removed
-  //////////////////////////////////////////////////////////////////////////////
-  size_t erase(irs::string_ref const& name) noexcept;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief find analyzer
-  /// @param name analyzer name (used verbatim)
+  /// @param name analyzer name (already normalized)
   /// @return analyzer with the specified name or nullptr
   //////////////////////////////////////////////////////////////////////////////
   AnalyzerPool::ptr get(irs::string_ref const& name) const noexcept;
@@ -193,6 +188,14 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   );
 
   void prepare() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief remove the specified analyzer
+  /// @param name analyzer name (already normalized)
+  /// @param force remove even if the analyzer is actively referenced
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result remove(irs::string_ref const& name, bool force = false);
+
   void start() override;
   void stop() override;
 
