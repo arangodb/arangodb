@@ -964,7 +964,7 @@ void Supervision::handleShutdown() {
 }
 
 void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* agent,
-                                         std::string const& jobId) {
+                                         uint64_t& jobId) {
   std::unordered_set<std::string> failedServers;
 
   // Search for failed server
@@ -1043,16 +1043,17 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
                     builder->add("op", VPackValue("delete"));
                   }
                   // add a job done entry to "Target/Finished"
-                  builder->add(VPackValue("/arango/Target/Finished"));
+                  std::string jobIdStr = std::to_string(jobId++);
+                  builder->add(VPackValue("/arango/Target/Finished/" + jobIdStr));
                   {
                     VPackObjectBuilder op(builder.get());
-                    builder->add("op", VPackValue("push"));
+                    builder->add("op", VPackValue("set"));
                     builder->add(VPackValue("new"));
                     {
                       VPackObjectBuilder job(builder.get());
                       builder->add("type", VPackValue("cleanUpLostCollection"));
                       builder->add("server", VPackValue(shardname));
-                      builder->add("jobId", VPackValue(jobId));
+                      builder->add("jobId", VPackValue(jobIdStr));
                       builder->add("creator", VPackValue("supervision"));
                       builder->add("timeCreated", VPackValue(timepointToString(
                                                       std::chrono::system_clock::now())));
@@ -1114,7 +1115,7 @@ bool Supervision::handleJobs() {
   enforceReplication();
 
   LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin cleanupLostCollections";
-  cleanupLostCollections(_snapshot, _agent, std::to_string(_jobId++));
+  cleanupLostCollections(_snapshot, _agent, _jobId);
 
   LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin readyOrphanedIndexCreations";
   readyOrphanedIndexCreations();
