@@ -172,13 +172,13 @@ void SubqueryExecutor::writeOutput(OutputAqlItemRow& output) {
 }
 
 /// @brief shutdown, tell dependency and the subquery
-std::pair<ExecutionState, Result> SubqueryExecutor::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> SubqueryExecutor::shutdown() {
   // Note this shutdown needs to be repeatable.
   // Also note the ordering of this shutdown is different
   // from earlier versions we now shutdown subquery first
   if (!_shutdownDone) {
     // We take ownership of _state here for shutdown state
-    std::tie(_state, _shutdownResult) = _subquery.shutdown(errorCode);
+    std::tie(_state, _shutdownResult) = _subquery.shutdown();
     if (_state == ExecutionState::WAITING) {
       TRI_ASSERT(_shutdownResult.ok());
       return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
