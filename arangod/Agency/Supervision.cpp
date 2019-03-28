@@ -1142,7 +1142,9 @@ void Supervision::workJobs() {
   // since some jobs are just waiting, we cannot work on the same 1000
   // jobs in each round. This is where the randomization comes in. We work 
   // on up to 1000 *random* jobs. This will eventually cover everything with
-  // very high probability.
+  // very high probability. Note that the snapshot does not change, so
+  // `todos.size()` is constant for the loop, even though we do agency
+  // transactions to remove ToDo jobs.
   size_t const maximalJobsPerRound = 1000;
   bool selectRandom = todos.size() > maximalJobsPerRound;
 
@@ -1331,7 +1333,9 @@ void Supervision::enforceReplication() {
     }
   }
 
+  // We will loop over plannedDBs, so we use hasAsChildren
   auto const& plannedDBs = _snapshot.hasAsChildren(planColPrefix).first;
+  // We will lookup in currentDBs, so we use hasAsNode
   auto const& currentDBs = _snapshot.hasAsNode(curColPrefix).first;
 
   for (const auto& db_ : plannedDBs) {  // Planned databases
