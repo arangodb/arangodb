@@ -854,13 +854,23 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             // Report new current entry ...
             report.add("payload", localCollectionInfo.slice());
             // ... if and only if plan for this shard has changed in the meantime
-            report.add(VPackValue("precondition"));
-            {
-              VPackObjectBuilder p(&report);
-              report.add(
-                PLAN_COLLECTIONS + dbName + "/" + colName + "/shards/" + shName,
-                pdbs.get(std::vector<std::string>{dbName, colName, "shards", shName}));
+            try {
+              // Try to add a precondition, just in case we catch the exception.
+              // Even if the Plan entry is gone by now, it is still OK to
+              // report the Current value, it will be deleted in due course.
+              // It is the case that the Plan value is there but has changed
+              // that we want to protect against.
+              VPackSlice oldValue = pdbs.get(std::vector<std::string>{dbName, colName, "shards", shName});
+              report.add(VPackValue("precondition"));
+              {
+                VPackObjectBuilder p(&report);
+                report.add(
+                  PLAN_COLLECTIONS + dbName + "/" + colName + "/shards/" + shName,
+                  oldValue);
+              }
+            } catch(...) {
             }
+
           }
         }
       } else {  // Follower
