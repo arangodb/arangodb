@@ -113,7 +113,7 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
     S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
                                         lon.getNumericValue<double>());
     if (!ll.is_valid()) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+      LOG_TOPIC("8173c", DEBUG, arangodb::Logger::FIXME)
           << "illegal geo-coordinates, ignoring entry";
       return TRI_ERROR_NO_ERROR;
     }
@@ -273,7 +273,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       if (!qp.origin.is_valid()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_GEO_VALUE);
       }
-      // LOG_TOPIC(ERR, Logger::FIXME) << "Found center: " << c.toString();
+      // LOG_TOPIC("a9633", ERR, Logger::FIXME) << "Found center: " << c.toString();
 
       aql::AstNode const* min = node->getMemberUnchecked(1);
       TRI_ASSERT(min->type == aql::NODE_TYPE_VALUE);

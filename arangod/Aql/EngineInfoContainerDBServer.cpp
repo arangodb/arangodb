@@ -548,7 +548,7 @@ EngineInfoContainerDBServer::CollectionInfo& EngineInfoContainerDBServer::handle
   // What if we have an empty shard list here?
   if (shards->empty()) {
     // TODO FIXME
-    LOG_TOPIC(WARN, arangodb::Logger::AQL)
+    LOG_TOPIC("0997e", WARN, arangodb::Logger::AQL)
         << "TEMPORARY: A collection access of a query has no result in any "
            "shard";
   }
@@ -998,33 +998,17 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
   });
 
   // Build Lookup Infos
-  VPackBuilder infoBuilder;
-  
-  // lazily begin transactions on leaders if necessary
+  VPackBuilder infoBuilder;  
   transaction::Methods* trx = _query->trx();
-  
-  // snippets already know which shards to lock, there is no need for us to
-  // start a managed begin / end transaction for a single AQL query
-  if (trx->state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    std::vector<std::string> servers;
-    for (auto const& it : dbServerMapping) {
-      servers.emplace_back(it.first);
-    }
-    // start transaction on all servers with snippets
-    Result res = ClusterTrxMethods::beginTransactionOnLeaders(*trx->state(), servers);
-    if (res.fail()) {
-      return res;
-    }
-  }
 
   // we need to lock per server in a deterministic order to avoid deadlocks
   for (auto& it : dbServerMapping) {
     std::string const serverDest = "server:" + it.first;
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Building Engine Info for " << it.first;
+    LOG_TOPIC("4bbe6", DEBUG, arangodb::Logger::AQL) << "Building Engine Info for " << it.first;
     infoBuilder.clear();
     it.second.buildMessage(it.first, *this, *_query, infoBuilder);
-    LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+    LOG_TOPIC("2f1fd", DEBUG, arangodb::Logger::AQL)
         << "Sending the Engine info: " << infoBuilder.toJson();
 
     // Now we send to DBServers.
@@ -1040,10 +1024,10 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
                                url, infoBuilder.toJson(), headers, SETUP_TIMEOUT);
 
     if (res->getErrorCode() != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(DEBUG, Logger::AQL)
+      LOG_TOPIC("f9a77", DEBUG, Logger::AQL)
           << it.first << " responded with " << res->getErrorCode() << " -> "
           << res->stringifyErrorMessage();
-      LOG_TOPIC(TRACE, Logger::AQL) << infoBuilder.toJson();
+      LOG_TOPIC("41082", TRACE, Logger::AQL) << infoBuilder.toJson();
       return {res->getErrorCode(), res->stringifyErrorMessage()};
     }
 
@@ -1051,7 +1035,7 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
     VPackSlice response = builder->slice();
 
     if (!response.isObject() || !response.get("result").isObject()) {
-      LOG_TOPIC(ERR, Logger::AQL) << "Received error information from "
+      LOG_TOPIC("0c3f2", ERR, Logger::AQL) << "Received error information from "
                                   << it.first << " : " << response.toJson();
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
               "Unable to deploy query on all required "

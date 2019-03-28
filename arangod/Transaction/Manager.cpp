@@ -207,7 +207,7 @@ bool Manager::garbageCollect(bool abortAll) {
           }
         }
       } else if (mtrx.type == MetaType::StandaloneAQL && mtrx.expires < now) {
-        LOG_TOPIC(INFO, Logger::TRANSACTIONS) << "expired AQL query transaction '"
+        LOG_TOPIC("7ad2f", INFO, Logger::TRANSACTIONS) << "expired AQL query transaction '"
         << it->first << "'";
       } else if (mtrx.type == MetaType::Tombstone && mtrx.expires < now) {
         TRI_ASSERT(mtrx.state == nullptr);
@@ -222,13 +222,13 @@ bool Manager::garbageCollect(bool abortAll) {
   for (TRI_voc_tid_t tid : gcBuffer) {
     Result res = abortManagedTrx(tid);
     if (res.fail()) {
-      LOG_TOPIC(INFO, Logger::TRANSACTIONS) << "error while GC collecting "
+      LOG_TOPIC("0a07f", INFO, Logger::TRANSACTIONS) << "error while GC collecting "
       "transaction: '" << res.errorMessage() << "'";
     }
     didWork = true;
   }
   if (didWork) {
-    LOG_TOPIC(INFO, Logger::TRANSACTIONS) << "collecting expired transactions";
+    LOG_TOPIC("e5b31", INFO, Logger::TRANSACTIONS) << "collecting expired transactions";
   }
   return didWork;
 }
@@ -263,7 +263,7 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
   auto& buck = _transactions[bucket];
   auto it = buck._managed.find(tid);
   if (it == buck._managed.end()) {
-    LOG_TOPIC(ERR, Logger::TRANSACTIONS) << "a registered transaction was not found";
+    LOG_TOPIC("92a49", ERR, Logger::TRANSACTIONS) << "a registered transaction was not found";
     TRI_ASSERT(false);
     return;
   }
@@ -271,7 +271,7 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
   
   /// we need to make sure no-one else is still using the TransactionState
   if (!it->second.rwlock.writeLock(/*maxAttempts*/256)) {
-    LOG_TOPIC(ERR, Logger::TRANSACTIONS) << "a transaction is still in use";
+    LOG_TOPIC("9f7d7", ERR, Logger::TRANSACTIONS) << "a transaction is still in use";
     TRI_ASSERT(false);
     return;
   }
@@ -326,7 +326,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
   fillColls(collections.get("write"), writes) &&
   fillColls(collections.get("exclusive"), exclusives);
   if (!isValid) {
-    return res.reset(TRI_ERROR_BAD_PARAMETER, "invalid 'collections'");
+    return res.reset(TRI_ERROR_BAD_PARAMETER, "invalid 'collections' attribute");
   }
   
   std::unique_ptr<TransactionState> state;
@@ -435,7 +435,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
     std::this_thread::yield();
     
     if (i++ > 32) {
-      LOG_TOPIC(DEBUG, Logger::TRANSACTIONS) << "waiting on trx lock " << tid;
+      LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS) << "waiting on trx lock " << tid;
       i = 0;
       if (application_features::ApplicationServer::isStopping()) {
         return nullptr; // shutting down
@@ -458,7 +458,7 @@ void Manager::returnManagedTrx(TRI_voc_tid_t tid, AccessMode::Type mode) noexcep
 
   auto it = _transactions[bucket]._managed.find(tid);
   if (it == _transactions[bucket]._managed.end()) {
-    LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "managed transaction was not found";
+    LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS) << "managed transaction was not found";
     TRI_ASSERT(false);
     return;
   }
@@ -529,7 +529,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
   const size_t bucket = getBucket(tid);
   bool wasExpired = false;
   
-  TransactionState* state = nullptr;
+  std::unique_ptr<TransactionState> state;
   {
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
@@ -568,9 +568,9 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
       wasExpired = true;
     }
     
-    state = mtrx.state;
-    mtrx.type = MetaType::Tombstone;
+    state.reset(mtrx.state);
     mtrx.state = nullptr;
+    mtrx.type = MetaType::Tombstone;
     mtrx.expires = now + tombstoneTTL;
     mtrx.finalStatus = status;
     // it is sufficient to pretend that the operation already succeeded
@@ -595,7 +595,9 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
     return res.reset(TRI_ERROR_TRANSACTION_ABORTED, "transaction was not running");
   }
   
-  auto ctx = std::make_shared<ManagedContext>(tid, state, AccessMode::Type::NONE);
+  auto ctx = std::make_shared<ManagedContext>(tid, state.get(), AccessMode::Type::NONE);
+  state.release(); // now owned by ctx
+  
   transaction::Options trxOpts;
   MGMethods trx(ctx, trxOpts);
   TRI_ASSERT(trx.state()->isRunning());
@@ -615,8 +617,8 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
     if (res.ok() && wasExpired) {
       res.reset(TRI_ERROR_TRANSACTION_ABORTED);
     }
+    TRI_ASSERT(!trx.state()->isRunning());
   }
-  TRI_ASSERT(!trx.state()->isRunning());
   
   return res;
 }
@@ -655,7 +657,7 @@ void Manager::abortAllManagedTrx(TRI_voc_cid_t cid, bool leader) {
   for (TRI_voc_tid_t tid : toAbort) {
     Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/true);
     if (res.fail()) {
-      LOG_TOPIC(INFO, Logger::TRANSACTIONS) << "error while GC collecting "
+      LOG_TOPIC("2bf48", INFO, Logger::TRANSACTIONS) << "error while GC collecting "
       "transaction: '" << res.errorMessage() << "'";
     }
   }

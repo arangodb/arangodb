@@ -87,7 +87,7 @@ RequestStatistics* RequestStatistics::acquire() {
     statistics->_released = false;
   } else {
     statistics = nullptr;
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("62d99", TRACE, arangodb::Logger::FIXME)
         << "no free element on statistics queue";
   }
 
@@ -161,7 +161,7 @@ void RequestStatistics::process(RequestStatistics* statistics) {
   }
 
   if (tries > 1) {
-    LOG_TOPIC(WARN, Logger::MEMORY) << "_freeList.push failed " << tries - 1 << " times.";
+    LOG_TOPIC("fb453", WARN, Logger::MEMORY) << "_freeList.push failed " << tries - 1 << " times.";
   }
 }
 
@@ -237,45 +237,45 @@ std::string RequestStatistics::to_string() {
 }
 
 void RequestStatistics::trace_log() {
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("4a0b6", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_readStart      " << _readStart;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("8620b", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_readEnd        " << _readEnd;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("13bae", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_queueStart     " << _queueStart;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("e6292", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_queueEnd       " << _queueEnd;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("9c947", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_requestStart   " << _requestStart;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("09e63", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_requestEnd     " << _requestEnd;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("4eef0", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_writeStart     " << _writeStart;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("3922b", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_writeEnd       " << _writeEnd;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("49e75", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_receivedBytes  " << _receivedBytes;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("399d0", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_sentBytes      " << _sentBytes;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS)
+  LOG_TOPIC("54d62", TRACE, Logger::REQUESTS)
       << std::boolalpha << std::setprecision(20) << "_async          " << _async;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("5e68c", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_tooLarge       " << _tooLarge;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("f4089", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_executeError   " << _executeError;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("31657", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_ignore         " << _ignore;
 }

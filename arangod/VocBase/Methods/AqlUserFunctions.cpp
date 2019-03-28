@@ -246,7 +246,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
 
     v8::Handle<v8::Value> result;
     {
-      v8::TryCatch tryCatch(isolate);;
+      v8::TryCatch tryCatch(isolate);
 
       result = TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
                                            TRI_V8_STD_STRING(isolate, testCode),

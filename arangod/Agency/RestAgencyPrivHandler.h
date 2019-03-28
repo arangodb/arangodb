@@ -76,17 +76,17 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
     std::string const& val_str = _request->value(name, found);
 
     if (!found) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "Mandatory query string " << name << " missing.";
+      LOG_TOPIC("f4732", WARN, Logger::AGENCY) << "Mandatory query string " << name << " missing.";
       return false;
     } else {
       try {
         val = sto<T>::convert(val_str);
       } catch (std::invalid_argument const&) {
-        LOG_TOPIC(WARN, Logger::AGENCY) << "Value for query string "
+        LOG_TOPIC("c7aeb", WARN, Logger::AGENCY) << "Value for query string "
                                         << name << " cannot be converted to integral type";
         return false;
       } catch (std::out_of_range const&) {
-        LOG_TOPIC(WARN, Logger::AGENCY)
+        LOG_TOPIC("59881", WARN, Logger::AGENCY)
             << "Value for query string " << name
             << " does not fit into range of integral type";
         return false;
@@ -112,7 +112,7 @@ inline bool RestAgencyPrivHandler::readValue(char const* name, std::string& val)
   bool found = true;
   val = _request->value(name, found);
   if (!found) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Mandatory query string " << name << " missing.";
+    LOG_TOPIC("69758", WARN, Logger::AGENCY) << "Mandatory query string " << name << " missing.";
     return false;
   }
   return true;

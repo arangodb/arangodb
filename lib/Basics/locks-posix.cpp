@@ -48,7 +48,7 @@ void TRI_SignalCondition(TRI_condition_t* cond) {
   int rc = pthread_cond_signal(&cond->_cond);
 
   if (rc != 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("59b64", FATAL, arangodb::Logger::FIXME)
         << "could not signal the condition: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
@@ -61,7 +61,7 @@ void TRI_BroadcastCondition(TRI_condition_t* cond) {
   int rc = pthread_cond_broadcast(&cond->_cond);
 
   if (rc != 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("263d7", FATAL, arangodb::Logger::FIXME)
         << "could not broadcast the condition: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
@@ -74,7 +74,7 @@ void TRI_WaitCondition(TRI_condition_t* cond) {
   int rc = pthread_cond_wait(&cond->_cond, &cond->_mutex);
 
   if (rc != 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("674d8", FATAL, arangodb::Logger::FIXME)
         << "could not wait for the condition: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
@@ -89,7 +89,7 @@ bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
   uint64_t x, y;
 
   if (gettimeofday(&tp, nullptr) != 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not get time of day";
+    LOG_TOPIC("3515f", FATAL, arangodb::Logger::FIXME) << "could not get time of day";
     FATAL_ERROR_ABORT();
   }
 
@@ -108,7 +108,7 @@ bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
       return false;
     }
 
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("e3e39", FATAL, arangodb::Logger::FIXME)
         << "could not wait for the condition: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
@@ -121,7 +121,7 @@ void TRI_LockCondition(TRI_condition_t* cond) {
   int rc = pthread_mutex_lock(&cond->_mutex);
 
   if (rc != 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("30e7f", FATAL, arangodb::Logger::FIXME)
         << "could not lock the condition: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
@@ -132,7 +132,7 @@ void TRI_UnlockCondition(TRI_condition_t* cond) {
   int rc = pthread_mutex_unlock(&cond->_mutex);
 
   if (rc != 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("08fbe", FATAL, arangodb::Logger::FIXME)
         << "could not unlock the condition: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
