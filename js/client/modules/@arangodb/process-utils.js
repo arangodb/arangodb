@@ -890,7 +890,7 @@ function checkArangoAlive (arangod, options) {
   return ret;
 }
 
-function abortSurviviours(arangod, options) {
+function abortSurvivors(arangod, options) {
   print(Date() + " Killing in the name of: ");
   print(arangod);
   if (!arangod.hasOwnProperty('exitStatus')) {
@@ -916,7 +916,7 @@ function checkInstanceAlive (instanceInfo, options) {
     dumpAgency(instanceInfo, options);
     print(Date() + ' If cluster - will now start killing the rest.');
     instanceInfo.arangods.forEach((arangod) => {
-      abortSurviviours(arangod, options);
+      abortSurvivors(arangod, options);
     });
   }
   return rc;
