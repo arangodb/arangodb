@@ -42,7 +42,15 @@ VPackSlice transaction::helpers::extractKeyFromDocument(VPackSlice slice) {
   if (slice.isExternal()) {
     slice = slice.resolveExternal();
   }
-  TRI_ASSERT(slice.isObject());
+
+  if(!slice.isObject()) {
+    try {
+      LOG_DEVEL << slice.toJson();
+    } catch (...) {
+      LOG_DEVEL << "slice not pritable";
+    }
+    FATAL_ERROR_EXIT();
+  }
 
   if (slice.isEmptyObject()) {
     return VPackSlice();

@@ -130,6 +130,11 @@ class WriteLocker {
   bool tryLock() {
     TRI_ASSERT(!_isLocked);
     if (_readWriteLock->tryWriteLock()) {
+
+      _readWriteLock->_file = _file;
+      _readWriteLock->_line = _line;
+      _readWriteLock->_write = false;
+
       _isLocked = true;
     }
     return _isLocked;
@@ -139,6 +144,11 @@ class WriteLocker {
   void lock() {
     TRI_ASSERT(!_isLocked);
     _readWriteLock->writeLock();
+
+    _readWriteLock->_file = _file;
+    _readWriteLock->_line = _line;
+    _readWriteLock->_write = false;
+
     _isLocked = true;
   }
 
@@ -167,7 +177,7 @@ class WriteLocker {
 
   /// @brief if you want to plant a tree for the debugger...
   void const* _customPtr;
-  
+
   /// @brief file
   char const* _file;
 

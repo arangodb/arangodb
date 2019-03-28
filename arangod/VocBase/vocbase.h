@@ -371,7 +371,7 @@ struct TRI_vocbase_t {
       std::shared_ptr<arangodb::LogicalCollection>, TRI_vocbase_col_status_e& status);
 
   int loadCollection(arangodb::LogicalCollection* collection,
-                     TRI_vocbase_col_status_e& status, bool setStatus = true);
+                     TRI_vocbase_col_status_e& status, const char* = __FILE__, std::size_t =__LINE__ , bool setStatus = true);
 
   /// @brief adds a new collection
   /// caller must hold _dataSourceLock in write mode or set doLock

@@ -516,8 +516,10 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
 /// Note that this will READ lock the collection. You have to release the
 /// collection lock by yourself.
 int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
-                                  TRI_vocbase_col_status_e& status, bool setStatus) {
+                                  TRI_vocbase_col_status_e& status, char const* file, std::size_t line, bool setStatus) {
+
   TRI_ASSERT(collection->id() != 0);
+  LOG_DEVEL << "calling loadCollection for " << collection->name() << " from " << file << ":" << line;
 
   // read lock
   // check if the collection is already loaded
@@ -560,7 +562,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // someone else loaded the collection, release the WRITE lock and try again
   if (collection->status() == TRI_VOC_COL_STATUS_LOADED) {
     locker.unlock();
-    return loadCollection(collection, status, false);
+    return loadCollection(collection, status, file, line, false);
   }
 
   // someone is trying to unload the collection, cancel this,
@@ -580,7 +582,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
     locker.unlock();
 
-    return loadCollection(collection, status, false);
+    return loadCollection(collection, status, file, line, false);
   }
 
   // deleted, give up
@@ -620,7 +622,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
       std::this_thread::sleep_for(std::chrono::microseconds(collectionStatusPollInterval()));
     }
 
-    return loadCollection(collection, status, false);
+    return loadCollection(collection, status, file, line, false);
   }
 
   // unloaded, load collection
@@ -673,7 +675,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     // release the WRITE lock and try again
     locker.unlock();
 
-    return loadCollection(collection, status, false);
+    return loadCollection(collection, status, file, line, false);
   }
 
   std::string const colName(collection->name());

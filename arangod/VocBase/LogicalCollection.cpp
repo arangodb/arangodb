@@ -378,8 +378,10 @@ TRI_vocbase_col_status_e LogicalCollection::getStatusLocked() {
 }
 
 void LogicalCollection::executeWhileStatusWriteLocked(std::function<void()> const& callback) {
+  LOG_DEVEL << "asking for writelock" << this->name();
   WRITE_LOCKER_EVENTUAL(locker, _lock, this);
   callback();
+  LOG_DEVEL << "done with writelock" << this->name();
 }
 
 void LogicalCollection::executeWhileStatusLocked(std::function<void()> const& callback) {

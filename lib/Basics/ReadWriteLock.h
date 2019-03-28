@@ -72,6 +72,10 @@ class ReadWriteLock {
   /// @brief releases the write-lock
   void unlockWrite();
 
+  const char* _file;
+  std::size_t _line;
+  bool _write;
+
  private:
   /// @brief mutex for _readers_bell cv
   std::mutex _reader_mutex;

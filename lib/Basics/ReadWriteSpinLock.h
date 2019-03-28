@@ -132,6 +132,9 @@ class ReadWriteSpinLock {
     return _state.load(std::memory_order_relaxed) & WRITE_LOCK;
   }
 
+  const char* _file;
+  std::size_t _line;
+  bool _write;
  private:
   /// @brief _state, lowest bit is write_lock, the next 15 bits is the number of
   /// queued writers, the last 16 bits the number of active readers.
