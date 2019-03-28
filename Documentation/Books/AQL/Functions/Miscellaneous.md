@@ -233,9 +233,11 @@ documents are the same, or for grouping values in queries.
 
 See the following string functions:
 
+- [CRC32()](String.md#crc32)
+- [FNV64()](String.md#fnv64)
+- [MD5()](String.md#md5)
 - [SHA1()](String.md#sha1)
 - [SHA512()](String.md#sha512)
-- [MD5()](String.md#md5)
 
 Function calling
 ----------------
