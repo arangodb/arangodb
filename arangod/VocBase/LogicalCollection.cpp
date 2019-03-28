@@ -966,13 +966,8 @@ Result LogicalCollection::update(transaction::Methods* trx, VPackSlice const new
   }
 
   prevRev = 0;
-  VPackSlice key = newSlice.get(StaticStrings::KeyString);
-  if (key.isNone()) {
-    return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
-  }
-
   return getPhysical()->update(trx, newSlice, result, options, resultMarkerTick, lock,
-                               prevRev, previous, key, std::move(callbackDuringLock));
+                               prevRev, previous, std::move(callbackDuringLock));
 }
 
 /// @brief replaces a document or edge in a collection

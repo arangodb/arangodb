@@ -361,6 +361,22 @@
     "section" : "log",
     "type" : "boolean"
   },
+  "log.ids" : {
+    "category" : "option",
+    "default" : true,
+    "deprecatedIn" : null,
+    "description" : "log unique message ids",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
   "log.keep-logrotate" : {
     "category" : "option",
     "default" : false,
