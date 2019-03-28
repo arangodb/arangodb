@@ -152,7 +152,7 @@ bool RocksDBEventListenerThread::shaCalcFile(std::string const& filename) {
 
 
 bool RocksDBEventListenerThread::deleteFile(std::string const& filename) {
-  bool good = false;
+  bool good = false, found = false;
 
   // need filename without ".sst" for matching to ".sha." file
   std::string basename = TRI_Basename(filename.c_str());
@@ -161,30 +161,32 @@ bool RocksDBEventListenerThread::deleteFile(std::string const& filename) {
     basename = basename.substr(0, basename.size() - 4);
   } else {
     // abort looking
-    return false;
+    found = true;
   } // else
 
-  std::string dirname = TRI_Dirname(filename.c_str());
-  std::vector<std::string> filelist = TRI_FilesDirectory(dirname.c_str());
+  if (!found) {
+    std::string dirname = TRI_Dirname(filename.c_str());
+    std::vector<std::string> filelist = TRI_FilesDirectory(dirname.c_str());
 
-  // future thought: are there faster ways to find matching .sha. file?
-  for (auto iter = filelist.begin(); filelist.end() != iter; ++iter) {
-    // sha256 is 64 characters long.  ".sha." is added 5.  So 69 characters is minimum length
-    if (69 < iter->size() && 0 == iter->substr(0, basename.size()).compare(basename)
-        && 0 == iter->substr(basename.size(), 5).compare(".sha.")) {
-      std::string deletefile = dirname;
-      deletefile += TRI_DIR_SEPARATOR_CHAR;
-      deletefile += *iter;
-      int ret_val = TRI_UnlinkFile(deletefile.c_str());
-      good = (TRI_ERROR_NO_ERROR == ret_val);
-      if (!good) {
-        LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
-          << "deleteCalcFile:  TRI_UnlinkFile failed with " << ret_val
-          << " for " << deletefile.c_str();
+    // future thought: are there faster ways to find matching .sha. file?
+    for (auto iter = filelist.begin(); !found && filelist.end() != iter; ++iter) {
+      // sha256 is 64 characters long.  ".sha." is added 5.  So 69 characters is minimum length
+      if (69 < iter->size() && 0 == iter->substr(0, basename.size()).compare(basename)
+          && 0 == iter->substr(basename.size(), 5).compare(".sha.")) {
+        found = true;
+        std::string deletefile = dirname;
+        deletefile += TRI_DIR_SEPARATOR_CHAR;
+        deletefile += *iter;
+        int ret_val = TRI_UnlinkFile(deletefile.c_str());
+        good = (TRI_ERROR_NO_ERROR == ret_val);
+        if (!good) {
+          LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+            << "deleteCalcFile:  TRI_UnlinkFile failed with " << ret_val
+            << " for " << deletefile.c_str();
+        } // if
       } // if
-      break;
-    } // if
-  } // for
+    } // for
+  } // if
 
   return good;
 

@@ -53,10 +53,11 @@ arangodb::RocksDBHotBackup* toHotBackup(arangodb::RocksDBHotBackup* obj) {
 
 namespace arangodb {
 
-char const* RocksDBHotBackup::dirCreatingString = "CREATING";
-char const* RocksDBHotBackup::dirRestoringString = "RESTORING";
-char const* RocksDBHotBackup::dirDownloadingString = "DOWNLOADING";
-char const* RocksDBHotBackup::dirFailsafeString = "FAILSAFE";
+  static constexpr char const* dirCreatingString = {"CREATING"};
+  static constexpr char const* dirRestoringString = {"RESTORING"};
+  static constexpr char const* dirDownloadingString = {"DOWNLOADING"};
+  static constexpr char const* dirFailsafeString = {"FAILSAFE"};
+
 //
 // @brief static function to pick proper operation object and then have it
 //        parse parameters
@@ -456,11 +457,9 @@ void RocksDBHotBackupCreate::executeCreate() {
   std::string dirPathTemp = rebuildPath(dirCreatingString);
   bool flag = clearPath(dirCreatingString);
 
-  rocksdb::Checkpoint* ptr = nullptr;
-  auto guard = scopeGuard([&ptr]() {
-    delete ptr;
-  });
-  rocksdb::Status stat = rocksdb::Checkpoint::Create(rocksutils::globalRocksDB(), &ptr);
+  rocksdb::Checkpoint * temp_ptr = nullptr;
+  rocksdb::Status stat = rocksdb::Checkpoint::Create(rocksutils::globalRocksDB(), &temp_ptr);
+  std::unique_ptr<rocksdb::Checkpoint> ptr(temp_ptr);
 
   bool gotLock = false;
 
@@ -479,8 +478,6 @@ void RocksDBHotBackupCreate::executeCreate() {
         _success = stat.ok();
       } // if
     } // guardHold released
-
-    guard.fire();
 
     if (_success) {
       std::string errors;

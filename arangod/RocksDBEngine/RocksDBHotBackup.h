@@ -91,12 +91,6 @@ protected:
 
   unsigned _timeoutSeconds; // used to stop transaction, used again to stop rocksdb
 
-  static char const* dirCreatingString;
-  static char const* dirRestoringString;
-  static char const* dirDownloadingString;
-  static char const* dirFailsafeString;
-
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The following wrapper routines simplify unit testing
   ////////////////////////////////////////////////////////////////////////////////
