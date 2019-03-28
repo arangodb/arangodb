@@ -242,7 +242,7 @@ class DumpRestoreHelper {
     this.print("creating backup");
     let options = {
       "label": "testHotBackup"
-    }
+    };
     this.results.createHotBackup = pu.run.arangoBackup(options, this.instanceInfo, "create", this.instanceInfo.rootDir, true);
     this.print("done creating backup");
     return this.results.createHotBackup.status;
@@ -261,12 +261,13 @@ class DumpRestoreHelper {
     });
     if (backupName === undefined) {
       this.print("didn't find a backup matching our pattern!");
+      this.results.restoreHotBackup = { status: false };
       return false;
     }
     this.print("restoring backup");
     let options = {
-      "identifier": name
-    }
+      "identifier": backupName
+    };
     this.results.restoreHotBackup = pu.run.arangoBackup(options, this.instanceInfo, "restore", this.instanceInfo.rootDir, true);
     this.print("done restoring backup; waiting for server to come back up");
 
