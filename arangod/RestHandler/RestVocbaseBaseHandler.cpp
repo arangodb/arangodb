@@ -561,24 +561,24 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
     
-    if (pos > 0 && pos < value.size()) {
-      if (value.compare(pos, std::string::npos, " begin") == 0) {
-        value = _request->header(StaticStrings::TransactionBody, found);
-        if (found) {
-          auto trxOpts = VPackParser::fromJson(value);
-          Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());;
-          if (res.fail()) {
-            THROW_ARANGO_EXCEPTION(res);
-          }
-        } else {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "missing transaction config");
+    if (pos > 0 && pos < value.size() &&
+        value.compare(pos, std::string::npos, " begin") == 0) {
+      if (!ServerState::instance()->isDBServer()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+      }
+      value = _request->header(StaticStrings::TransactionBody, found);
+      if (found) {
+        auto trxOpts = VPackParser::fromJson(value);
+        Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());;
+        if (res.fail()) {
+          THROW_ARANGO_EXCEPTION(res);
         }
       }
     }
     
     auto ctx = mgr->leaseManagedTrx(tid, type);
     if (!ctx) {
-      LOG_TOPIC(DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
+      LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NOT_FOUND);
     }
     return std::make_unique<SingleCollectionTransaction>(ctx, name, type);
@@ -590,11 +590,10 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
 
 /// @brief create proper transaction context, inclusing the proper IDs
 std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createAQLTransactionContext() const {
-  TRI_ASSERT(ServerState::instance()->isDBServer());
   bool found = false;
   std::string value = _request->header(StaticStrings::TransactionId, found);
   if (!found) {
-    return std::make_shared<transaction::SimpleSmartContext>(_vocbase);
+    return std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
   }
     
   TRI_voc_tid_t tid = 0;
@@ -602,7 +601,8 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createAQLTransacti
   try {
     tid = std::stoull(value, &pos, 10);
   } catch (...) {}
-  if (tid == 0 || !transaction::isLeaderTransactionId(tid)) {
+  if (tid == 0 || (transaction::isLegacyTransactionId(tid) &&
+                   ServerState::instance()->isRunningInCluster())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
   }
   
@@ -610,31 +610,29 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createAQLTransacti
   TRI_ASSERT(mgr != nullptr);
   
   if (pos > 0 && pos < value.size()) {
+    if (!transaction::isLeaderTransactionId(tid) ||
+        !ServerState::instance()->isDBServer()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+    }
     if (value.compare(pos, std::string::npos, " aql") == 0) {
       return std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
+    } else if (value.compare(pos, std::string::npos, " begin") == 0) {
+      // this means we lazily start a transaction
+      value = _request->header(StaticStrings::TransactionBody, found);
+      if (found) {
+        auto trxOpts = VPackParser::fromJson(value);
+        Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());;
+        if (res.fail()) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
+      }
     }
   }
   
   auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
   if (!ctx) {
-    LOG_TOPIC(DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
+    LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NOT_FOUND);
   }
   return ctx;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prepareExecute, to react to X-Arango-Nolock header
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::prepareExecute(bool isContinue) {
-  RestBaseHandler::prepareExecute(isContinue);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdownExecute, to react to X-Arango-Nolock header
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::shutdownExecute(bool isFinalized) noexcept {
-  RestBaseHandler::shutdownExecute(isFinalized);
 }

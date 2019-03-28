@@ -50,21 +50,21 @@ RestAgencyHandler::RestAgencyHandler(GeneralRequest* request,
     : RestBaseHandler(request, response), _agent(agent) {}
 
 inline RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
-  LOG_TOPIC(WARN, Logger::AGENCY)
+  LOG_TOPIC("46536", WARN, Logger::AGENCY)
       << "Empty request to public agency interface.";
   generateError(rest::ResponseCode::NOT_FOUND, 404);
   return RestStatus::DONE;
 }
 
 inline RestStatus RestAgencyHandler::reportTooManySuffices() {
-  LOG_TOPIC(WARN, Logger::AGENCY)
+  LOG_TOPIC("ef6ae", WARN, Logger::AGENCY)
       << "Too many suffixes. Agency public interface takes one path.";
   generateError(rest::ResponseCode::NOT_FOUND, 404);
   return RestStatus::DONE;
 }
 
 inline RestStatus RestAgencyHandler::reportUnknownMethod() {
-  LOG_TOPIC(WARN, Logger::AGENCY)
+  LOG_TOPIC("9b810", WARN, Logger::AGENCY)
       << "Public REST interface has no method " << _request->suffixes()[0];
   generateError(rest::ResponseCode::NOT_FOUND, 405);
   return RestStatus::DONE;
@@ -72,7 +72,7 @@ inline RestStatus RestAgencyHandler::reportUnknownMethod() {
 
 inline RestStatus RestAgencyHandler::reportMessage(rest::ResponseCode code,
                                                    std::string const& message) {
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << message;
+  LOG_TOPIC("8a454", DEBUG, Logger::AGENCY) << message;
   Builder body;
   {
     VPackObjectBuilder b(&body);
@@ -88,7 +88,7 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
                       _request->requestPath();
     _response->setResponseCode(rest::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
+    LOG_TOPIC("9b62c", DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
   } catch (std::exception const&) {
     reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
@@ -287,7 +287,7 @@ RestStatus RestAgencyHandler::handleWrite() {
         try {
           max_index = *std::max_element(ret.indices.begin(), ret.indices.end());
         } catch (std::exception const& ex) {
-          LOG_TOPIC(WARN, Logger::AGENCY) << ex.what();
+          LOG_TOPIC("ac99c", WARN, Logger::AGENCY) << ex.what();
         }
 
         if (max_index > 0) {
@@ -396,7 +396,7 @@ RestStatus RestAgencyHandler::handleInquire() {
   try {
     query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << ex.what();
+    LOG_TOPIC("78755", DEBUG, Logger::AGENCY) << ex.what();
     generateError(rest::ResponseCode::BAD, 400);
     return RestStatus::DONE;
   }
@@ -437,7 +437,7 @@ RestStatus RestAgencyHandler::handleInquire() {
       try {
         max_index = *std::max_element(ret.indices.begin(), ret.indices.end());
       } catch (std::exception const& ex) {
-        LOG_TOPIC(WARN, Logger::AGENCY) << ex.what();
+        LOG_TOPIC("58732", WARN, Logger::AGENCY) << ex.what();
       }
 
       if (max_index > 0) {

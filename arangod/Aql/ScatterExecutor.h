@@ -48,7 +48,7 @@ class ExecutionBlockImpl<ScatterExecutor> : public BlockWithClients {
 
   ~ExecutionBlockImpl() override = default;
 
-  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   /// @brief getSomeForShard
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShard(

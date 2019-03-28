@@ -98,7 +98,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocate
 
   std::map<CollectionID, std::vector<VertexShardInfo>> result;
 
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Allocating memory";
+  LOG_TOPIC("76e8a", DEBUG, Logger::PREGEL) << "Allocating memory";
   uint64_t totalMemory = TRI_totalSystemMemory();
 
   // Contains the shards located on this db server in the right order
@@ -189,7 +189,7 @@ template <typename V, typename E>
 void GraphStore<V, E>::loadShards(WorkerConfig* config, std::function<void()> const& callback) {
   _config = config;
   TRI_ASSERT(_runningThreads == 0);
-  LOG_TOPIC(DEBUG, Logger::PREGEL)
+  LOG_TOPIC("ae902", DEBUG, Logger::PREGEL)
       << "Using " << config->localVertexShardIDs().size() << " threads to load data";
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
@@ -237,7 +237,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config, std::function<void()> co
           // update to next offset
           vertexOff += info.numVertices;
         } catch (...) {
-          LOG_TOPIC(WARN, Logger::PREGEL) << "unhandled exception while "
+          LOG_TOPIC("3f282", WARN, Logger::PREGEL) << "unhandled exception while "
                                           << "loading pregel graph";
         }
 
@@ -321,7 +321,7 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config, PregelShard sourceShar
     }
   }
   if (!trx->commit().ok()) {
-    LOG_TOPIC(WARN, Logger::PREGEL)
+    LOG_TOPIC("51ba0", WARN, Logger::PREGEL)
         << "Pregel worker: Failed to commit on a read transaction";
   }
 }
@@ -346,7 +346,7 @@ void GraphStore<V, E>::replaceVertexData(VertexEntry const* entry, void* data, s
   // if (size <= entry->_vertexDataOffset)
   void* ptr = _vertexData->data() + entry->_vertexDataOffset;
   memcpy(ptr, data, size);
-  LOG_TOPIC(WARN, Logger::PREGEL)
+  LOG_TOPIC("cd3ca", WARN, Logger::PREGEL)
       << "Don't use this function with varying sizes";
 }
 
@@ -416,7 +416,7 @@ void GraphStore<V, E>::_loadVertices(transaction::Methods& trx, ShardID const& v
   };
   while (cursor.nextDocument(cb, 1000)) {
     if (_destroyed) {
-      LOG_TOPIC(WARN, Logger::PREGEL) << "Aborted loading graph";
+      LOG_TOPIC("4355a", WARN, Logger::PREGEL) << "Aborted loading graph";
       break;
     }
   }
@@ -425,7 +425,7 @@ void GraphStore<V, E>::_loadVertices(transaction::Methods& trx, ShardID const& v
   _localVertexCount += (vertexOffset - originalVertexOffset);
 
   if (!trx.commit().ok()) {
-    LOG_TOPIC(WARN, Logger::PREGEL)
+    LOG_TOPIC("3f75d", WARN, Logger::PREGEL)
         << "Pregel worker: Failed to commit on a read transaction";
   }
 }
@@ -449,7 +449,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, ShardID const& edge
     // If this is called from loadDocument we didn't preallocate the vector
     if (_edges->size() <= offset) {
       if (!_config->lazyLoading()) {
-        LOG_TOPIC(ERR, Logger::PREGEL) << "Pregel did not preallocate enough "
+        LOG_TOPIC("9d0e6", ERR, Logger::PREGEL) << "Pregel did not preallocate enough "
                                        << "space for all edges. This hints "
                                        << "at a bug with collection count()";
         TRI_ASSERT(false);
@@ -478,17 +478,17 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, ShardID const& edge
         added++;
         offset++;
       } else {
-        LOG_TOPIC(ERR, Logger::PREGEL)
+        LOG_TOPIC("b80ba", ERR, Logger::PREGEL)
             << "Could not resolve target shard of edge";
       }
     } else {
-      LOG_TOPIC(ERR, Logger::PREGEL)
+      LOG_TOPIC("50646", ERR, Logger::PREGEL)
           << "Could not resolve target shard of edge";
     }
   };
   while (cursor->nextDocument(cb, 1000)) {
     if (_destroyed) {
-      LOG_TOPIC(WARN, Logger::PREGEL) << "Aborted loading graph";
+      LOG_TOPIC("d0359", WARN, Logger::PREGEL) << "Aborted loading graph";
       break;
     }
   }
@@ -560,7 +560,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
     }
     b->close();
     if (_destroyed) {
-      LOG_TOPIC(WARN, Logger::PREGEL)
+      LOG_TOPIC("73ec2", WARN, Logger::PREGEL)
           << "Storing data was canceled prematurely";
       trx->abort();
       trx.reset();
@@ -604,11 +604,11 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config, std::function<void()> 
         _storeVertices(_config->globalShardIDs(), it);
         // TODO can't just write edges with smart graphs
       } catch (...) {
-        LOG_TOPIC(ERR, Logger::PREGEL) << "Storing vertex data failed";
+        LOG_TOPIC("e22c8", ERR, Logger::PREGEL) << "Storing vertex data failed";
       }
       _runningThreads--;
       if (_runningThreads == 0) {
-        LOG_TOPIC(DEBUG, Logger::PREGEL)
+        LOG_TOPIC("b5a21", DEBUG, Logger::PREGEL)
             << "Storing data took " << (TRI_microtime() - now) << "s";
         cb();
       }

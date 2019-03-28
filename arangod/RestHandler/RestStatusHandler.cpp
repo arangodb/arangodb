@@ -23,6 +23,7 @@
 
 #include "RestStatusHandler.h"
 
+#include "Agency/AgencyComm.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"

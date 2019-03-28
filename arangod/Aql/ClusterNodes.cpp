@@ -27,8 +27,8 @@
 #include "Aql/Ast.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/DistributeExecutor.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/GraphNode.h"
@@ -37,9 +37,9 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
 #include "Aql/RemoteExecutor.h"
-#include "Aql/SortingGatherExecutor.h"
 #include "Aql/ScatterExecutor.h"
 #include "Aql/SingleRemoteModificationExecutor.h"
+#include "Aql/SortingGatherExecutor.h"
 
 #include "Transaction/Methods.h"
 
@@ -127,8 +127,9 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
   // TODO This is only for me to find out about the current behaviour. Should
   // probably be either removed, or made into an assert.
   if (!regsToClear.empty()) {
-    LOG_TOPIC(WARN, Logger::AQL) << "RemoteBlock has registers to clear. "
-                                 << "Shouldn't this be done before network?";
+    LOG_TOPIC("4fd06", WARN, Logger::AQL)
+        << "RemoteBlock has registers to clear. "
+        << "Shouldn't this be done before network?";
   }
 #endif
   ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
@@ -209,7 +210,7 @@ bool ScatterNode::readClientsFromVelocyPack(VPackSlice base) {
   auto const clientsSlice = base.get("clients");
 
   if (!clientsSlice.isArray()) {
-    LOG_TOPIC(ERR, Logger::AQL)
+    LOG_TOPIC("49ba1", ERR, Logger::AQL)
         << "invalid serialized ScatterNode definition, 'clients' attribute is "
            "expected to be an array of string";
     return false;
@@ -218,7 +219,7 @@ bool ScatterNode::readClientsFromVelocyPack(VPackSlice base) {
   size_t pos = 0;
   for (auto const clientSlice : velocypack::ArrayIterator(clientsSlice)) {
     if (!clientSlice.isString()) {
-      LOG_TOPIC(ERR, Logger::AQL)
+      LOG_TOPIC("c6131", ERR, Logger::AQL)
           << "invalid serialized ScatterNode definition, 'clients' attribute "
              "is expected to be an array of string but got not a string at "
              "line "
@@ -387,8 +388,9 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
     auto const sortModeSlice = base.get("sortmode");
 
     if (!toSortMode(VelocyPackHelper::getStringRef(sortModeSlice, ""), _sortmode)) {
-      LOG_TOPIC(ERR, Logger::AQL) << "invalid sort mode detected while "
-                                     "creating 'GatherNode' from vpack";
+      LOG_TOPIC("2c6f3", ERR, Logger::AQL)
+          << "invalid sort mode detected while "
+             "creating 'GatherNode' from vpack";
     }
   }
 }
@@ -501,23 +503,20 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
 
   TRI_ASSERT(previousNode != nullptr);
 
-  auto in = variableToRegisterOptionalId(_inVariable);
-  auto out = variableToRegisterOptionalId(_outVariable);
-  auto outputNew = variableToRegisterOptionalId(_outVariableNew);
-  auto outputOld = variableToRegisterOptionalId(_outVariableOld);
+  RegisterId in = variableToRegisterOptionalId(_inVariable);
+  RegisterId out = variableToRegisterOptionalId(_outVariable);
+  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
+  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   SingleRemoteModificationInfos infos(
-      in /*input1*/, boost::none /*input1*/, boost::none /*input1*/, outputNew,
-      outputOld, out /*output*/,
+      in, outputNew, outputOld, out,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
       calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
-      _collection, ProducesResults(false /*producesResults()*/),
-      ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
-      IgnoreErrors(_options.ignoreErrors), DoCount(true /*countStats()*/),
-      IsReplace(false) /*(needed by upsert)*/,
+      _collection, ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
+      IgnoreErrors(_options.ignoreErrors),
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound), _key,
       this->hasParent(), this->_replaceIndexNode);
 

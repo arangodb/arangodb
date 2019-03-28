@@ -55,7 +55,7 @@ function endpoints (options) {
   print(CYAN + 'Endpoints tests...' + RESET);
   
   // we append one cleanup directory for the invoking logic...
-  let dummyDir = fs.join(fs.getTempPath(), 'enpointsdummy');
+  let dummyDir = fs.join(fs.getTempPath(), 'endpointsdummy');
   fs.makeDirectory(dummyDir);
   pu.cleanupDBDirectoriesAppend(dummyDir);
 

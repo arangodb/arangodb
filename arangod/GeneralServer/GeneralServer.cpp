@@ -50,7 +50,7 @@ void GeneralServer::startListening() {
   unsigned int i = 0;
 
   for (auto& it : _endpointList->allEndpoints()) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("e62e0", TRACE, arangodb::Logger::FIXME)
         << "trying to bind to endpoint '" << it.first << "' for requests";
 
     // distribute endpoints across all io contexts
@@ -58,9 +58,9 @@ void GeneralServer::startListening() {
     bool ok = openEndpoint(ioContext, it.second);
 
     if (ok) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "bound to endpoint '" << it.first << "'";
+      LOG_TOPIC("dc45a", DEBUG, arangodb::Logger::FIXME) << "bound to endpoint '" << it.first << "'";
     } else {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("c81f6", FATAL, arangodb::Logger::FIXME)
           << "failed to bind to endpoint '" << it.first
           << "'. Please check whether another instance is already "
              "running using this endpoint and review your endpoints "

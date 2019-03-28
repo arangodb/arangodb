@@ -277,7 +277,7 @@ void MMFilesPrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 Result MMFilesPrimaryIndex::insert(transaction::Methods& trx, LocalDocumentId const& documentId,
                                    velocypack::Slice const&, Index::OperationMode mode) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+  LOG_TOPIC("a22f3", WARN, arangodb::Logger::ENGINES)
       << "insert() called for primary index";
 #endif
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -287,7 +287,7 @@ Result MMFilesPrimaryIndex::insert(transaction::Methods& trx, LocalDocumentId co
 Result MMFilesPrimaryIndex::remove(transaction::Methods& trx, LocalDocumentId const& documentId,
                                    velocypack::Slice const&, Index::OperationMode mode) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+  LOG_TOPIC("64dc0", WARN, arangodb::Logger::ENGINES)
       << "remove() called for primary index";
 #endif
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

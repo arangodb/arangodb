@@ -83,7 +83,12 @@ class ConfigBuilder {
     this.config['server.password'] = password;
   }
   setEndpoint(endpoint) { this.config['server.endpoint'] = endpoint; }
-  setDatabase(database) { this.config['server.database'] = database; }
+  setDatabase(database) {
+    if (this.haveSetAllDatabases()) {
+      throw new Error("must not specify all-databases and database");
+    }
+    this.config['server.database'] = database;
+  }
   setIncludeSystem(active) {
     if (this.type !== 'restore' && this.type !== 'dump') {
       throw '"include-system-collections" is not supported for binary: ' + this.type;
@@ -121,7 +126,13 @@ class ConfigBuilder {
     }
     this.config['collection'] = collection;
   };
-
+  setAllDatabases() {
+    this.config['all-databases'] = 'true';
+    delete this.config['server.database'];
+  }
+  haveSetAllDatabases() {
+    return this.config.hasOwnProperty('all-databases');
+  }
   toArgv() { return internal.toArgv(this.config); }
 
   getExe() { return this.executable; }
@@ -776,6 +787,9 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
 
   if (options.encrypted) {
     cfg.activateEncryption();
+  }
+  if (options.allDatabases) {
+    cfg.setAllDatabases();
   }
   return runArangoDumpRestoreCfg(cfg, options, rootDir, coreCheck);
 }

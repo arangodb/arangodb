@@ -212,7 +212,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::traceSkipS
 }
 
 std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+    InputAqlItemRow const& input) {
   // For every call we simply forward via HTTP
 
   if (!_isResponsibleForInitializeCursor) {
@@ -220,7 +220,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
-  if (items == nullptr) {
+  if (!input.isInitialized()) {
     // we simply ignore the initialCursor request, as the remote side
     // will initialize the cursor lazily
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
@@ -252,10 +252,12 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   // Used in 3.4.0 onwards
   builder.add("done", VPackValue(false));
   builder.add("error", VPackValue(false));
-  builder.add("pos", VPackValue(pos));
+  // NOTE API change. Before all items have been send.
+  // Now only the one output row is send.
+  builder.add("pos", VPackValue(0));
   builder.add(VPackValue("items"));
   builder.openObject();
-  items->toVelocyPack(_engine->getQuery()->trx(), builder);
+  input.toVelocyPack(_engine->getQuery()->trx(), builder);
   builder.close();
 
   builder.close();
@@ -278,7 +280,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown()
     // in flight is not overtaking in the drop phase here.
     // After this lock is released even a response
     // will be discarded in the handle response code
-    MUTEX_LOCKER(locker, _communicationMutex); 
+    MUTEX_LOCKER(locker, _communicationMutex);
     if (_lastTicketId != 0) {
       auto cc = ClusterComm::instance();
       if (cc == nullptr) {
@@ -388,7 +390,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
 
   // Make sure to cover against the race that this
   // Request is fullfilled before the register has taken place
-  MUTEX_LOCKER(locker, _communicationMutex); 
+  MUTEX_LOCKER(locker, _communicationMutex);
   // We can only track one request at a time.
   // So assert there is no other request in flight!
   TRI_ASSERT(_lastTicketId == 0);
@@ -403,7 +405,7 @@ bool ExecutionBlockImpl<RemoteExecutor>::handleAsyncResult(ClusterCommResult* re
   // So we cannot have the response being produced while sending the request.
   // Make sure to cover against the race that this
   // Request is fullfilled before the register has taken place
-  MUTEX_LOCKER(locker, _communicationMutex); 
+  MUTEX_LOCKER(locker, _communicationMutex);
   if (_lastTicketId == result->operationID) {
     // TODO Handle exceptions thrown while we are in this code
     // Query will not be woken up again.

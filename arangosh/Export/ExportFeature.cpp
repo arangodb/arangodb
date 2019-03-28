@@ -113,7 +113,7 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   if (1 == n) {
     _outputDirectory = positionals[0];
   } else if (1 < n) {
-    LOG_TOPIC(FATAL, Logger::CONFIG)
+    LOG_TOPIC("71137", FATAL, Logger::CONFIG)
         << "expecting at most one directory, got " +
                StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
@@ -127,33 +127,33 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   }
 
   if (_graphName.empty() && _collections.empty() && _query.empty()) {
-    LOG_TOPIC(FATAL, Logger::CONFIG)
+    LOG_TOPIC("488d8", FATAL, Logger::CONFIG)
         << "expecting at least one collection, a graph name or an AQL query";
     FATAL_ERROR_EXIT();
   }
 
   if (!_query.empty() && (!_collections.empty() || !_graphName.empty())) {
-    LOG_TOPIC(FATAL, Logger::CONFIG)
+    LOG_TOPIC("6ff88", FATAL, Logger::CONFIG)
         << "expecting either a list of collections or an AQL query";
     FATAL_ERROR_EXIT();
   }
 
   if (_typeExport == "xgmml" && _graphName.empty()) {
-    LOG_TOPIC(FATAL, Logger::CONFIG)
+    LOG_TOPIC("2c3be", FATAL, Logger::CONFIG)
         << "expecting a graph name to dump a graph";
     FATAL_ERROR_EXIT();
   }
 
   if ((_typeExport == "json" || _typeExport == "jsonl" || _typeExport == "csv") &&
       _collections.empty() && _query.empty()) {
-    LOG_TOPIC(FATAL, Logger::CONFIG)
+    LOG_TOPIC("cdcf7", FATAL, Logger::CONFIG)
         << "expecting at least one collection or an AQL query";
     FATAL_ERROR_EXIT();
   }
 
   if (_typeExport == "csv") {
     if (_csvFieldOptions.empty()) {
-      LOG_TOPIC(FATAL, Logger::CONFIG)
+      LOG_TOPIC("76fbf", FATAL, Logger::CONFIG)
           << "expecting at least one field definition";
       FATAL_ERROR_EXIT();
     }
@@ -179,13 +179,13 @@ void ExportFeature::prepare() {
   }
 
   if (_outputDirectory.empty() || (TRI_ExistsFile(_outputDirectory.c_str()) && !isDirectory)) {
-    LOG_TOPIC(FATAL, Logger::SYSCALL)
+    LOG_TOPIC("e8160", FATAL, Logger::SYSCALL)
         << "cannot write to output directory '" << _outputDirectory << "'";
     FATAL_ERROR_EXIT();
   }
 
   if (isDirectory && !isEmptyDirectory && !_overwrite) {
-    LOG_TOPIC(FATAL, Logger::SYSCALL)
+    LOG_TOPIC("dafee", FATAL, Logger::SYSCALL)
         << "output directory '" << _outputDirectory
         << "' already exists. use \"--overwrite true\" to "
            "overwrite data in it";
@@ -198,7 +198,7 @@ void ExportFeature::prepare() {
     int res = TRI_CreateDirectory(_outputDirectory.c_str(), systemError, errorMessage);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::SYSCALL) << "unable to create output directory '"
+      LOG_TOPIC("1efa3", ERR, Logger::SYSCALL) << "unable to create output directory '"
                                       << _outputDirectory << "': " << errorMessage;
       FATAL_ERROR_EXIT();
     }
@@ -217,7 +217,7 @@ void ExportFeature::start() {
   try {
     httpClient = client->createHttpClient();
   } catch (...) {
-    LOG_TOPIC(FATAL, Logger::COMMUNICATION)
+    LOG_TOPIC("98a44", FATAL, Logger::COMMUNICATION)
         << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
@@ -229,10 +229,10 @@ void ExportFeature::start() {
   httpClient->getServerVersion();
 
   if (!httpClient->isConnected()) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION)
+    LOG_TOPIC("b620d", ERR, Logger::COMMUNICATION)
         << "Could not connect to endpoint '" << client->endpoint() << "', database: '"
         << client->databaseName() << "', username: '" << client->username() << "'";
-    LOG_TOPIC(FATAL, Logger::COMMUNICATION) << httpClient->getErrorMessage() << "'";
+    LOG_TOPIC("f251e", FATAL, Logger::COMMUNICATION) << httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -546,9 +546,9 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClie
   if (response->wasHttpError()) {
     if (response->getHttpReturnCode() == 404) {
       if (_currentGraph.size()) {
-        LOG_TOPIC(FATAL, Logger::CONFIG) << "Graph '" << _currentGraph << "' not found.";
+        LOG_TOPIC("bf53d", FATAL, Logger::CONFIG) << "Graph '" << _currentGraph << "' not found.";
       } else if (_currentCollection.size()) {
-        LOG_TOPIC(FATAL, Logger::CONFIG) << "Collection " << _currentCollection << " not found.";
+        LOG_TOPIC("c590f", FATAL, Logger::CONFIG) << "Collection " << _currentCollection << " not found.";
       }
 
       FATAL_ERROR_EXIT();

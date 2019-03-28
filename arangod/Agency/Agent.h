@@ -26,7 +26,6 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgencyStrings.h"
-#include "Agency/AgentCallback.h"
 #include "Agency/AgentConfiguration.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Compactor.h"

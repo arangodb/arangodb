@@ -181,12 +181,12 @@ std::vector<apply_ret_t> Store::applyTransactions(query_t const& query,
             if (check(i[1]).successful()) {
               success.push_back(applies(i[0]) ? APPLIED : UNKNOWN_ERROR);
             } else {  // precondition failed
-              LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+              LOG_TOPIC("f6873", TRACE, Logger::AGENCY) << "Precondition failed!";
               success.push_back(PRECONDITION_FAILED);
             }
             break;
           default:  // Wrong
-            LOG_TOPIC(ERR, Logger::AGENCY)
+            LOG_TOPIC("795d6", ERR, Logger::AGENCY)
                 << "We can only handle log entry with or without precondition! "
                 << " however, We received " << i.toJson();
             success.push_back(UNKNOWN_ERROR);
@@ -201,7 +201,7 @@ std::vector<apply_ret_t> Store::applyTransactions(query_t const& query,
       }
 
     } catch (std::exception const& e) {  // Catch any errors
-      LOG_TOPIC(ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " " << e.what();
+      LOG_TOPIC("8264b", ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " " << e.what();
       success.push_back(UNKNOWN_ERROR);
     }
 
@@ -227,11 +227,11 @@ check_ret_t Store::applyTransaction(Slice const& query) {
       if (ret.successful()) {
         applies(query[0]);
       } else {  // precondition failed
-        LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+        LOG_TOPIC("ded9e", TRACE, Logger::AGENCY) << "Precondition failed!";
       }
       break;
     default:  // Wrong
-      LOG_TOPIC(ERR, Logger::AGENCY)
+      LOG_TOPIC("18f6d", ERR, Logger::AGENCY)
           << "We can only handle log entry with or without precondition! "
           << "However we received " << query.toJson();
       break;
@@ -367,7 +367,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
             std::make_shared<StoreCallback>(path, body.toJson()), 1.0, true, 0.01);
 
       } else {
-        LOG_TOPIC(WARN, Logger::AGENCY) << "Malformed URL " << url;
+        LOG_TOPIC("76aca", WARN, Logger::AGENCY) << "Malformed URL " << url;
       }
     }
   }
@@ -415,7 +415,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           }
         } else if (oper == "isArray") {  // isArray
           if (!op.value.isBoolean()) {
-            LOG_TOPIC(ERR, Logger::AGENCY)
+            LOG_TOPIC("4516b", ERR, Logger::AGENCY)
                 << "Non boolean expression for 'isArray' precondition";
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
@@ -431,7 +431,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           }
         } else if (oper == "oldEmpty") {  // isEmpty
           if (!op.value.isBoolean()) {
-            LOG_TOPIC(ERR, Logger::AGENCY)
+            LOG_TOPIC("9e1c8", ERR, Logger::AGENCY)
                 << "Non boolsh expression for 'oldEmpty' precondition";
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
@@ -491,7 +491,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
         } else {
           // Objects without any of the above cases are not considered to
           // be a precondition:
-          LOG_TOPIC(WARN, Logger::AGENCY)
+          LOG_TOPIC("44419", WARN, Logger::AGENCY)
               << "Malformed object-type precondition was ignored: "
               << "key: " << precond.key.toJson()
               << " value: " << precond.value.toJson();
@@ -520,7 +520,7 @@ std::vector<bool> Store::read(query_t const& queries, query_t& result) const {
       success.push_back(read(query, *result));
     }
   } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Read queries to stores must be arrays";
+    LOG_TOPIC("fec72", ERR, Logger::AGENCY) << "Read queries to stores must be arrays";
   }
   return success;
 }

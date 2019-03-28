@@ -213,7 +213,7 @@ class RocksDBCuckooIndexEstimator {
         break;
       }
       default: {
-        LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+        LOG_TOPIC("bcd09", WARN, arangodb::Logger::ENGINES)
             << "unable to restore index estimates: invalid format found";
         // Do not construct from serialization, use other constructor instead
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -497,7 +497,7 @@ class RocksDBCuckooIndexEstimator {
       }
       if (foundSomething) {
         _needToPersist.store(true);
-        LOG_TOPIC(TRACE, Logger::ENGINES) << "buffered updates with stamp " << seq;
+        LOG_TOPIC("69002", TRACE, Logger::ENGINES) << "buffered updates with stamp " << seq;
       }
     });
     return res;

@@ -52,7 +52,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::traceSkip
 
 /// @brief initializeCursor
 std::pair<ExecutionState, Result> ExecutionBlockImpl<ScatterExecutor>::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+    InputAqlItemRow const& input) {
   // local clean up
   _posForClient.clear();
 
@@ -60,7 +60,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<ScatterExecutor>::initializ
     _posForClient.emplace_back(0, 0);
   }
 
-  return BlockWithClients::initializeCursor(items, pos);
+  return BlockWithClients::initializeCursor(input);
 }
 
 /// @brief getSomeForShard

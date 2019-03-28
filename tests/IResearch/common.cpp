@@ -42,6 +42,7 @@
 #include "IResearch/AqlHelper.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchViewNode.h"
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "tests/Basics/icu-helper.h"
@@ -440,6 +441,59 @@ std::string mangleStringIdentity(std::string name) {
   return name;
 }
 
+void assertFilterOptimized(
+    TRI_vocbase_t& vocbase,
+    std::string const& queryString,
+    irs::filter const& expectedFilter,
+    arangodb::aql::ExpressionContext* exprCtx /*= nullptr*/,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */
+) {
+  auto options = arangodb::velocypack::Parser::fromJson(
+//    "{ \"tracing\" : 1 }"
+    "{ }"
+  );
+
+  arangodb::aql::Query query(
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    bindVars,
+    options,
+    arangodb::aql::PART_MAIN
+  );
+
+  query.prepare(arangodb::QueryRegistryFeature::registry());
+  CHECK(query.plan());
+  auto& plan = *query.plan();
+
+  arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan.findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+
+  CHECK(nodes.size() == 1);
+
+  auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+
+  CHECK(viewNode);
+
+  // execution time
+  {
+    arangodb::transaction ::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
+    );
+
+    irs::Or actualFilter;
+    arangodb::iresearch::QueryContext const ctx{ &trx, &plan, plan.getAst(), exprCtx, &viewNode->outVariable() };
+    CHECK(arangodb::iresearch::FilterFactory::filter(&actualFilter, ctx, viewNode->filterCondition()));
+    CHECK(!actualFilter.empty());
+    CHECK(expectedFilter == *actualFilter.begin());
+  }
+}
+
 void assertExpressionFilter(
     std::string const& queryString,
     irs::boost::boost_t boost /*= irs::boost::no_boost()*/,
@@ -493,7 +547,14 @@ void assertExpressionFilter(
 
   // supportsFilterCondition
   {
-    arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
+    );
+    arangodb::iresearch::QueryContext const ctx{ &trx, nullptr, nullptr, nullptr, ref };
     CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
   }
 
@@ -619,7 +680,15 @@ void assertFilter(
 
   // optimization time
   {
-    arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+    arangodb::transaction ::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
+    );
+
+    arangodb::iresearch::QueryContext const ctx{ &trx, nullptr, nullptr, nullptr, ref };
     CHECK((parseOk == arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
   }
 

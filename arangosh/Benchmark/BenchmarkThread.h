@@ -83,7 +83,7 @@ class BenchmarkThread : public arangodb::Thread {
     try {
       _httpClient = _client->createHttpClient();
     } catch (...) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("b69d7", FATAL, arangodb::Logger::FIXME)
           << "cannot create server connection, giving up!";
       FATAL_ERROR_EXIT();
     }
@@ -102,7 +102,7 @@ class BenchmarkThread : public arangodb::Thread {
         delete result;
       }
 
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("5cda7", FATAL, arangodb::Logger::FIXME)
           << "could not connect to server";
       FATAL_ERROR_EXIT();
     }
@@ -112,7 +112,7 @@ class BenchmarkThread : public arangodb::Thread {
     // if we're the first thread, set up the test
     if (_threadNumber == 0) {
       if (!_operation->setUp(_httpClient.get())) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("528b6", FATAL, arangodb::Logger::FIXME)
             << "could not set up the test";
         FATAL_ERROR_EXIT();
       }
@@ -143,20 +143,20 @@ class BenchmarkThread : public arangodb::Thread {
         try {
           executeBatchRequest(numOps);
         } catch (arangodb::basics::Exception const& ex) {
-          LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          LOG_TOPIC("bd1d1", FATAL, arangodb::Logger::FIXME)
               << "Caught exception during test execution: " << ex.code() << " "
               << ex.what();
           FATAL_ERROR_EXIT();
         } catch (std::bad_alloc const&) {
-          LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          LOG_TOPIC("29451", FATAL, arangodb::Logger::FIXME)
               << "Caught OOM exception during test execution!";
           FATAL_ERROR_EXIT();
         } catch (std::exception const& ex) {
-          LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          LOG_TOPIC("793e3", FATAL, arangodb::Logger::FIXME)
               << "Caught STD exception during test execution: " << ex.what();
           FATAL_ERROR_EXIT();
         } catch (...) {
-          LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          LOG_TOPIC("c1d6d", FATAL, arangodb::Logger::FIXME)
               << "Caught unknown exception during test execution!";
           FATAL_ERROR_EXIT();
         }
@@ -198,7 +198,7 @@ class BenchmarkThread : public arangodb::Thread {
     basics::StringBuffer batchPayload(true);
     int ret = batchPayload.reserve(numOperations * 1024);
     if (ret != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("bd98d", FATAL, arangodb::Logger::FIXME)
           << "Failed to reserve " << numOperations * 1024 << " bytes for "
           << numOperations << " batch operations: " << ret;
       FATAL_ERROR_EXIT();
@@ -225,7 +225,7 @@ class BenchmarkThread : public arangodb::Thread {
       const rest::RequestType type =
           _operation->type(_threadNumber, threadCounter, globalCounter);
       if (url.empty()) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "URL is empty!";
+        LOG_TOPIC("65da1", WARN, arangodb::Logger::FIXME) << "URL is empty!";
       }
 
       // headline, e.g. POST /... HTTP/1.1
@@ -267,7 +267,7 @@ class BenchmarkThread : public arangodb::Thread {
       }
       _warningCount++;
       if (_warningCount < MaxWarnings) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        LOG_TOPIC("04e82", WARN, arangodb::Logger::FIXME)
             << "batch operation failed because server did not reply";
       }
       return;
@@ -278,16 +278,16 @@ class BenchmarkThread : public arangodb::Thread {
 
       _warningCount++;
       if (_warningCount < MaxWarnings) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        LOG_TOPIC("948a3", WARN, arangodb::Logger::FIXME)
             << "batch operation failed with HTTP code " << result->getHttpReturnCode()
             << " - " << result->getHttpReturnMessage() << " ";
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        LOG_TOPIC("ea82d", WARN, arangodb::Logger::FIXME)
             << "We tried to send this:\n "
             << std::string(batchPayload.c_str(), batchPayload.length());
 #endif
       } else if (_warningCount == MaxWarnings) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "...more warnings...";
+        LOG_TOPIC("3ac4b", WARN, arangodb::Logger::FIXME) << "...more warnings...";
       }
     } else {
       auto const& headers = result->getHeaderFields();
@@ -300,13 +300,13 @@ class BenchmarkThread : public arangodb::Thread {
           _operationsCounter->incFailures(errorCount);
           _warningCount++;
           if (_warningCount < MaxWarnings) {
-            LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+            LOG_TOPIC("b1db5", WARN, arangodb::Logger::FIXME)
                 << "Server side warning count: " << errorCount;
             if (_verbose) {
-              LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              LOG_TOPIC("890f9", WARN, arangodb::Logger::FIXME)
                   << "Server reply: " << result->getBody().c_str();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-              LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              LOG_TOPIC("4a645", WARN, arangodb::Logger::FIXME)
                   << "We tried to send this:\n "
                   << std::string(batchPayload.c_str(), batchPayload.length());
 #endif
@@ -353,7 +353,7 @@ class BenchmarkThread : public arangodb::Thread {
       }
       _warningCount++;
       if (_warningCount < MaxWarnings) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        LOG_TOPIC("f5982", WARN, arangodb::Logger::FIXME)
             << "single operation failed because server did not reply";
       }
       return;
@@ -364,12 +364,12 @@ class BenchmarkThread : public arangodb::Thread {
 
       _warningCount++;
       if (_warningCount < MaxWarnings) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        LOG_TOPIC("fb835", WARN, arangodb::Logger::FIXME)
             << "request for URL '" << url << "' failed with HTTP code "
             << result->getHttpReturnCode() << ": "
             << std::string(result->getBody().c_str(), result->getBody().length());
       } else if (_warningCount == MaxWarnings) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "...more warnings...";
+        LOG_TOPIC("6daf1", WARN, arangodb::Logger::FIXME) << "...more warnings...";
       }
     }
     delete result;

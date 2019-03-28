@@ -497,7 +497,7 @@ class ClusterComm {
       std::string const& destination, rest::RequestType reqtype,
       std::string const& path, std::shared_ptr<std::string const> body,
       std::unordered_map<std::string, std::string> const& headerFields,
-      std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
+      std::shared_ptr<ClusterCommCallback> const& callback, ClusterCommTimeout timeout,
       bool singleRequest = false, ClusterCommTimeout initTimeout = -1.0);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -598,8 +598,8 @@ class ClusterComm {
   /// @brief Constructor for test cases.
   explicit ClusterComm(bool);
 
-  communicator::Destination createCommunicatorDestination(std::string const& destination,
-                                                          std::string const& path);
+  std::string createCommunicatorDestination(std::string const& destination,
+                                            std::string const& path) const;
   std::pair<ClusterCommResult*, HttpRequest*> prepareRequest(
       std::string const& destination, arangodb::rest::RequestType reqtype,
       std::string const* body,
