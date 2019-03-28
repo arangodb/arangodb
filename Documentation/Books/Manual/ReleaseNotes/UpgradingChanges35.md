@@ -65,7 +65,7 @@ when using the RocksDB engine, so there is no need to offer all of them in paral
 AQL
 ---
 
-3.5 enforces the invalidation of variables in AQL queries after usage of a AQL 
+3.5 enforces the invalidation of variables in AQL queries after usage of an AQL 
 COLLECT statements as documented. The documentation for variable invalidation claims
 that
 
@@ -101,3 +101,12 @@ specified `_id`, and that `_id` was already in use, the server would typically
 return the existing index with matching `_id`. This is somewhat unintuitive, as
 it would ignore if the rest of the definition did not match. This behavior has
 been changed so that the server will now return a duplicate identifier error.
+
+### Version details output
+
+The attribute key `openssl-version` in the server/client tool version details 
+output was renamed to `openssl-version-compile-time`.
+
+This change affects the output produced when starting one of the ArangoDB
+executables (e.g. arangod, arangosh) with the `--version` command. It also 
+changes the attribute name in the detailed response of the `/_api/version` REST API.
