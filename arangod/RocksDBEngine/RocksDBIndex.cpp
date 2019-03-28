@@ -317,10 +317,8 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type, uint64_t objectI
       return RocksDBKeyBounds::LegacyGeoIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_GEO_INDEX:
       return RocksDBKeyBounds::GeoIndex(objectId);
-#ifdef USE_IRESEARCH
     case RocksDBIndex::TRI_IDX_TYPE_IRESEARCH_LINK:
       return RocksDBKeyBounds::DatabaseViews(objectId);
-#endif
     case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
