@@ -1119,11 +1119,63 @@ bool Supervision::handleJobs() {
   LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin readyOrphanedIndexCreations";
   readyOrphanedIndexCreations();
 
-
   LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();
 
+  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin cleanupFinishedAndFailedJobs";
+  cleanupFinishedAndFailedJobs();
+
   return true;
+}
+
+// Guarded by caller
+void Supervision::cleanupFinishedAndFailedJobs() {
+  // This deletes old Supervision jobs in /Target/Finished and
+  // /Target/Failed. We can be rather generous here since old
+  // snapshots and log entries are kept for much longer.
+  // We only keep up to 500 finished jobs and 1000 failed jobs.
+  _lock.assertLockedByCurrentThread();
+
+  constexpr size_t maximalFinishedJobs = 500;
+  constexpr size_t maximalFailedJobs = 1000;
+
+  auto cleanup = [&](std::string prefix, size_t limit) {
+    auto jobs = _snapshot.hasAsChildren(prefix).first;
+    if (jobs.size() <= 2 * limit) {
+      return;
+    }
+    typedef std::pair<std::string, std::string> keyDate;
+    std::vector<keyDate> v;
+    for (auto const& p: jobs) {
+      auto created = p.second->hasAsString("timeCreated");
+      if (created.second) {
+        v.emplace_back(p.first, created.first);
+      } else {
+        v.emplace_back(p.first, "1970");   // will be sorted very early
+      }
+    }
+    std::sort(v.begin(), v.end(), [](keyDate const& a, keyDate const& b) -> bool {
+        return a.second < b.second;
+      });
+    size_t toBeDeleted = v.size() - limit;  // known to be positive
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Deleting " << toBeDeleted << " old jobs"
+      " in " << prefix;
+    VPackBuilder trx;  // We build a transaction here
+    { // Pair for operation, no precondition here
+      VPackArrayBuilder guard1(&trx);
+      for (auto it = v.begin(); toBeDeleted-- > 0 && it != v.end(); ++it) {
+        trx.add(VPackValue(prefix + it->first));
+        {
+          VPackObjectBuilder guard2(&trx);
+          trx.add("op", VPackValue("delete"));
+        }
+      }
+    }
+    singleWriteTransaction(_agent, trx, false);  // do not care about the result
+  };
+
+  cleanup(finishedPrefix, maximalFinishedJobs);
+  cleanup(failedPrefix, maximalFailedJobs);
 }
 
 // Guarded by caller
