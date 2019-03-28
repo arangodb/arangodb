@@ -59,6 +59,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
 
 void MaintenanceFeature::init() {
   _isShuttingDown = false;
+  _isPaused = std::chrono::steady_clock::now();
   _nextActionId = 1;
 
   setOptional(true);
@@ -139,6 +140,19 @@ void MaintenanceFeature::start() {
     }
   }  // for
 }  // MaintenanceFeature::start
+
+
+void MaintenanceFeature::pause(std::chrono::seconds const& s) {
+  _isPaused = std::chrono::steady_clock::now() + s;
+}
+
+void MaintenanceFeature::proceed() {
+  _isPaused = std::chrono::steady_clock::now();
+}
+
+void MaintenanceFeature::isPaused() {
+  return std::chrono::steady_clock::now() <= _isPaused;
+}
 
 void MaintenanceFeature::beginShutdown() {
   _isShuttingDown = true;
@@ -398,7 +412,7 @@ std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
 std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<std::string> const& labels) {
   std::shared_ptr<Action> ret_ptr;
 
-  while (!_isShuttingDown && !ret_ptr) {
+  while (!isPaused() && !_isShuttingDown && !ret_ptr) {
     // scan for ready action (and purge any that are done waiting)
     {
       WRITE_LOCKER(wLock, _actionRegistryLock);
@@ -417,7 +431,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
     }      // WRITE
 
     // no pointer ... wait 5 second
-    if (!_isShuttingDown && !ret_ptr) {
+    if (!isPaused() && !_isShuttingDown && !ret_ptr) {
       CONDITION_LOCKER(cLock, _actionRegistryCond);
       _actionRegistryCond.wait(100000);
     }  // if

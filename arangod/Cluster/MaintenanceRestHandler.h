@@ -64,6 +64,10 @@ class MaintenanceRestHandler : public RestBaseHandler {
   };
 
  protected:
+
+  /// @brief PUT method adds an Action to the worklist (or executes action directly)
+  void postAction();
+
   /// @brief PUT method adds an Action to the worklist (or executes action directly)
   void putAction();
 

@@ -49,6 +49,11 @@ RestStatus MaintenanceRestHandler::execute() {
       getAction();
       break;
 
+    // administrative commands for hot restore 
+    case rest::RequestType::POST:
+      return postAction();
+      break;
+
     // add an action to the list (or execute it directly)
     case rest::RequestType::PUT:
       putAction();
@@ -67,6 +72,52 @@ RestStatus MaintenanceRestHandler::execute() {
 
   return RestStatus::DONE;
 }
+
+
+RestStatus MaintenanceRestHandler::postAction() {
+
+  std::shared_ptr<VPackBuilder> body;
+  try {
+    body = _request->toVelocyPackBuilderPtr();
+  } catch (std::exception const& e) {
+    generateError(
+      rest::ResponseCode::BAD,
+      std::string("failed parsing ") + _request->body() + ": " + e.what());
+    return RestStatus::DONE;
+  }
+
+  if (body.isObject()) {
+    if (body.hasKey("execute") && body.get("execute").isString()) {
+      // {"execute": "pause", "duration": 60} / {"execute": "proceed"}
+      auto const ex = body.get("execute").copyString();
+      if (ex == "pause") {
+        if (body.hasKey("duration") && body.get("duration").isNumber()) {
+          auto const std::chrono::seconds dur(
+            body.get("duration").getNumber<int64_t>());
+          if (dur =< 0 || dur > 300) {
+            generateError(rest::ResponseCode::BAD,
+                          std::string("invalid mainenance pause duration: ")
+                          + dur.count() + " seconds");
+            return RestStatus::DONE;
+          }
+          ApplicationServer::getFeature<MaintenanceFeature>("Maintenance")->pause(dur);
+        }
+      } else {
+        
+      }
+    } else {
+      generateError(
+        rest::ResponseCode::BAD, std::string("invalid command ") + _request->body());
+      return RestStatus::DONE;
+    }
+  } else {
+    generateError(
+      rest::ResponseCode::BAD, std::string("invalid command ") + _request->body());
+    return RestStatus::DONE;
+  }
+  
+}
+
 
 void MaintenanceRestHandler::putAction() {
   bool good(true);

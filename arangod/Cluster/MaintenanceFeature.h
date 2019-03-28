@@ -74,6 +74,12 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   // shut down the feature
   virtual void unprepare() override{};
 
+  // Pause maintenance for 
+  void pause(std::chrono::seconds const& s = std::chrono::seconds(10));
+
+  // Proceed doing maintenance
+  void proceed();
+
   //
   // api features
   //
@@ -320,6 +326,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @return shared pointer to action object if exists, nullptr if not
   std::shared_ptr<maintenance::Action> findActionIdNoLock(uint64_t hash);
 
+  
+
   /// @brief option for forcing this feature to always be enable - used by the catch tests
   bool _forceActivation;
 
@@ -336,6 +344,9 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   /// @brief flag to indicate when it is time to stop thread pool
   std::atomic<bool> _isShuttingDown;
+
+  /// @brief flag to indicate when it is time to stop thread pool
+  std::atomic<bool> _isPaused;
 
   /// @brief simple counter for creating MaintenanceAction id.  Ok for it to roll over.
   std::atomic<uint64_t> _nextActionId;
