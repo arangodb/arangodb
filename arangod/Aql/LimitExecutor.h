@@ -82,7 +82,7 @@ class LimitExecutor {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
     /* This could be set to true after some investigation/fixes */
-    static const bool inputSizeRestrictsOutputSize = false;
+    static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = LimitExecutorInfos;
@@ -101,7 +101,7 @@ class LimitExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
-  inline size_t numberOfRowsInFlight() const { return 0; }
+  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
   
  private:
   Infos const& infos() const noexcept { return _infos; };
@@ -158,7 +158,7 @@ class LimitExecutor {
   Infos const& _infos;
   Fetcher& _fetcher;
   // Number of input lines seen
-  uint64_t _counter = 0;
+  size_t _counter = 0;
 };
 
 }  // namespace aql

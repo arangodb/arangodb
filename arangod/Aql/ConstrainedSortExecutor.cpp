@@ -196,3 +196,27 @@ std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRow(OutputAql
   }
   return {ExecutionState::HASMORE, NoStats{}};
 }
+
+std::pair<ExecutionState, size_t> ConstrainedSortExecutor::expectedNumberOfRows(size_t) const {
+  // This block cannot support atMost
+  size_t rowsLeft = 0;
+  if (_state != ExecutionState::DONE) {
+    ExecutionState state;
+    size_t expectedRows;
+    std::tie(state, expectedRows) =
+        _fetcher.preFetchNumberOfRows(ExecutionBlock::DefaultBatchSize());
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(expectedRows == 0);
+      return {state, 0};
+    }
+    // Return the minimum of upstream + limit
+    rowsLeft = (std::min)(expectedRows, _infos._limit);
+  } else {
+    // We have exactly the following rows available:
+    rowsLeft = _rows.size() - _returnNext;
+  }
+  if (rowsLeft > 0) {
+    return {ExecutionState::HASMORE, rowsLeft};
+  }
+  return {ExecutionState::DONE, rowsLeft};
+}

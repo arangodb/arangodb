@@ -74,7 +74,7 @@ class CountCollectExecutor {
   struct Properties {
     static const bool preservesOrder = false;
     static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = CountCollectExecutorInfos;
@@ -132,7 +132,12 @@ class CountCollectExecutor {
   void incrCount() noexcept { _count++; };
   uint64_t getCount() noexcept { return _count; };
 
-  inline size_t numberOfRowsInFlight() const { return 0; }
+  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
+    if (_state == ExecutionState::DONE) {
+      return {ExecutionState::DONE, 0};
+    }
+    return {ExecutionState::HASMORE, 1};
+  }
 
  private:
   Infos const& infos() const noexcept { return _infos; };

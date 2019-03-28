@@ -135,12 +135,13 @@ class HashedCollectExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
-  inline size_t numberOfRowsInFlight() const {
-    // We always need to be prepared for 1 more row.
-    // On empty input we can produce 1 row.
-    // Otherwise we will have an open group!
-    return 0;
-  }
+  /**
+   * @brief This Executor does not know how many distinct rows will be fetched
+   * from upstream, it can only report how many it has found by itself, plus
+   * it knows that it can only create as many new rows as pulled from upstream.
+   * So it will overestimate.
+   */
+  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
   using AggregateValuesType = std::vector<std::unique_ptr<Aggregator>>;
@@ -190,6 +191,8 @@ class HashedCollectExecutor {
   bool _isInitialized;  // init() was called successfully (e.g. it returned DONE)
 
   std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> _aggregatorFactories;
+
+  size_t _returnedGroups;
 };
 
 }  // namespace aql
