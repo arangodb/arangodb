@@ -1,6 +1,10 @@
 devel
 -----
 
+* added "smart joins" to the ArangoDB Enterprise Edition that allows running cluster
+  joins between two certain sharded collections with performance close to that of a 
+  local join operation. 
+
 * fixed internal issue #3815: fixed the removal of connected edges when
   removing a vertex graph node in a smart graph environment.
 
