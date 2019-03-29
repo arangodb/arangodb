@@ -1,6 +1,10 @@
 devel
 -----
 
+* don't create per-database system collection `_frontend` automatically.
+  This collection is only needed by the web UI, and it can be created lazily 
+  when needed.
+
 * added logging option `--log.time-format` to configure the time format used
   in log output. The possible values for this option are:
 
