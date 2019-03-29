@@ -153,7 +153,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
   bool found;
   std::string const& source = req.header(StaticStrings::ClusterCommSource, found);
   if (found) {  // log request source in cluster for debugging
-    LOG_TOPIC(DEBUG, Logger::REQUESTS)
+    LOG_TOPIC("e5db9", DEBUG, Logger::REQUESTS)
         << "\"request-source\",\"" << (void*)this << "\",\"" << source << "\"";
   }
 
@@ -169,7 +169,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
            !::startsWith(path, "/_api/agency/agency-callbacks")) ||
           (!::startsWith(path, "/_api/agency/agency-callbacks") &&
            !::startsWith(path, "/_api/aql"))) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        LOG_TOPIC("63f47", TRACE, arangodb::Logger::FIXME)
             << "Maintenance mode: refused path: " << path;
         std::unique_ptr<GeneralResponse> res =
             createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
@@ -201,7 +201,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
           (mode == ServerState::Mode::TRYAGAIN ||
            !::startsWith(path, "/_api/version")) &&
           !::startsWith(path, "/_api/wal")) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        LOG_TOPIC("a5119", TRACE, arangodb::Logger::FIXME)
             << "Redirect/Try-again: refused path: " << path;
         std::unique_ptr<GeneralResponse> res =
             createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
@@ -295,7 +295,7 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
   } else if (response) {
     messageId = response->messageId();
   } else {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION)
+    LOG_TOPIC("2cece", WARN, Logger::COMMUNICATION)
         << "could not find corresponding request/response";
   }
 
@@ -307,7 +307,7 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("90d3a", TRACE, arangodb::Logger::FIXME)
         << "no handler is known, giving up";
     addSimpleResponse(rest::ResponseCode::NOT_FOUND, respType, messageId,
                       VPackBuffer<uint8_t>());
@@ -520,7 +520,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
   if (vc->databaseAuthLevel() == auth::Level::NONE && !StringUtils::isPrefix(path, ApiUser)) {
     events::NotAuthorized(&req);
     result = rest::ResponseCode::UNAUTHORIZED;
-    LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
+    LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
 
     if (userAuthenticated) {
       req.setAuthenticated(false);
@@ -555,7 +555,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
           // simon: upgrade rights for Foxx apps. FIXME
           result = rest::ResponseCode::OK;
           vc->forceSuperuser();
-          LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Upgrading rights for " << path;
+          LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION) << "Upgrading rights for " << path;
         }
       }
     }

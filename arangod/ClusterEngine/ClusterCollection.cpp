@@ -331,11 +331,11 @@ void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
     std::string msg =
         "got invalid indexes for collection '" + _logicalCollection.name() + "'";
 
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+    LOG_TOPIC("f71d2", ERR, arangodb::Logger::FIXME) << msg;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto it : _indexes) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it->context();
+      LOG_TOPIC("f83f5", ERR, arangodb::Logger::FIXME) << "- " << it->context();
     }
 #endif
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
@@ -463,7 +463,6 @@ Result ClusterCollection::update(arangodb::transaction::Methods* trx,
                                  ManagedDocumentResult& mdr, OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool,
                                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                                 arangodb::velocypack::Slice const key,
                                  std::function<Result(void)> /*callbackDuringLock*/) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

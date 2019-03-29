@@ -29,6 +29,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/SortRegister.h"
 #include "Basics/Common.h"
+#include "Cluster/ClusterComm.h"
 #include "Rest/GeneralRequest.h"
 
 #include <velocypack/Builder.h>
@@ -59,7 +60,7 @@ class BlockWithClients : public ExecutionBlock {
 
  public:
   /// @brief initializeCursor
-  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   /// @brief shutdown
   std::pair<ExecutionState, Result> shutdown(int) override;
@@ -98,31 +99,6 @@ class BlockWithClients : public ExecutionBlock {
 
  private:
   bool _wasShutdown;
-};
-
-class SingleRemoteOperationBlock final : public ExecutionBlock {
-  /// @brief constructors/destructors
- private:
-  bool getOne(arangodb::aql::AqlItemBlock* aqlres, size_t outputCounter);
-
- public:
-  SingleRemoteOperationBlock(ExecutionEngine* engine, SingleRemoteOperationNode const* en);
-
-  /// @brief timeout
-  static double const defaultTimeOut;
-
-  /// @brief getSome
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
-
-  /// @brief skipSome
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
-
- private:
-  /// @brief _colectionName: the name of the sharded collection
-  Collection const* _collection;
-
-  /// @brief the key of the document to fetch
-  std::string const _key;
 };
 
 }  // namespace aql

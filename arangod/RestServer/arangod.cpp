@@ -112,10 +112,8 @@
 #include "Enterprise/RestServer/arangodEE.h"
 #endif
 
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
-#endif
 
 // storage engines
 #include "ClusterEngine/ClusterEngine.h"
@@ -240,10 +238,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new SslServerFeature(server));
 #endif
 
-#ifdef USE_IRESEARCH
     server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(server));
     server.addFeature(new arangodb::iresearch::IResearchFeature(server));
-#endif
 
     // storage engines
     server.addFeature(new ClusterEngine(server));
@@ -257,11 +253,11 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("5d508", ERR, arangodb::Logger::FIXME)
           << "arangod terminated because of an exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("3c63a", ERR, arangodb::Logger::FIXME)
           << "arangod terminated because of an exception of "
              "unknown type";
       ret = EXIT_FAILURE;
@@ -269,10 +265,10 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     Logger::flush();
     return context.exit(ret);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("8afa8", ERR, arangodb::Logger::FIXME)
         << "arangod terminated because of an exception: " << ex.what();
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("c444c", ERR, arangodb::Logger::FIXME)
         << "arangod terminated because of an exception of "
            "unknown type";
   }

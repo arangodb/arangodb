@@ -60,7 +60,7 @@ ClusterIndex::ClusterIndex(TRI_idx_iid_t id, LogicalCollection& collection,
   TRI_ASSERT(_info.slice().isObject());
   TRI_ASSERT(_info.isClosed());
 
-  // The Edge Index on RocksDB can serve _from and _to when beeing asked.
+  // The Edge Index on RocksDB can serve _from and _to when being asked.
   if (_engineType == ClusterEngineType::RocksDBEngine && _indexType == TRI_IDX_TYPE_EDGE_INDEX) {
     std::string attr = "";
     TRI_AttributeNamesToString(_fields[0], attr);
@@ -243,9 +243,7 @@ bool ClusterIndex::supportsFilterCondition(
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
-#ifdef USE_IRESEARCH
     case TRI_IDX_TYPE_IRESEARCH_LINK:
-#endif
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       // should not be called for these indexes
       return Index::supportsFilterCondition(allIndexes, node, reference, itemsInIndex,
@@ -315,9 +313,7 @@ bool ClusterIndex::supportsSortCondition(arangodb::aql::SortCondition const* sor
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
-#ifdef USE_IRESEARCH
     case TRI_IDX_TYPE_IRESEARCH_LINK:
-#endif
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
     case TRI_IDX_TYPE_EDGE_INDEX: {
       return Index::supportsSortCondition(sortCondition, reference, itemsInIndex,
@@ -365,9 +361,7 @@ aql::AstNode* ClusterIndex::specializeCondition(aql::AstNode* node,
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
-#ifdef USE_IRESEARCH
     case TRI_IDX_TYPE_IRESEARCH_LINK:
-#endif
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       return Index::specializeCondition(node, reference);  // unsupported
     }

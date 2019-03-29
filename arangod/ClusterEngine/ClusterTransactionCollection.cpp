@@ -105,7 +105,7 @@ int ClusterTransactionCollection::use(int nestingLevel) {
     if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
         !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
       // use and usage-lock
-      LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
+      LOG_TRX("8154f", TRACE, _transaction, nestingLevel) << "using collection " << _cid;
     }
   }
 
@@ -140,7 +140,7 @@ void ClusterTransactionCollection::release() {
   // the top level transaction releases all collections
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
-    LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
+    LOG_TRX("1cb8d", TRACE, _transaction, 0) << "unusing collection " << _cid;
     _collection = nullptr;
   }
 }
@@ -165,7 +165,7 @@ int ClusterTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   TRI_ASSERT(!isLocked());
 
   TRI_ASSERT(_collection);
-  LOG_TRX(_transaction, nestingLevel) << "write-locking collection " << _cid;
+  LOG_TRX("b4a05", TRACE, _transaction, nestingLevel) << "write-locking collection " << _cid;
 
   _lockType = type;
   // not an error, but we use TRI_ERROR_LOCKED to indicate that we actually
@@ -200,7 +200,7 @@ int ClusterTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   if (AccessMode::isWriteOrExclusive(type) && !AccessMode::isWriteOrExclusive(_lockType)) {
     // we should never try to write-unlock a collection that we have only
     // read-locked
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "logic error in doUnlock";
+    LOG_TOPIC("e8aab", ERR, arangodb::Logger::FIXME) << "logic error in doUnlock";
     TRI_ASSERT(false);
     return TRI_ERROR_INTERNAL;
   }

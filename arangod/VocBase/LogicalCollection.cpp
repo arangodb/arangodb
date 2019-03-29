@@ -641,14 +641,15 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   // Indexes
   result.add(VPackValue("indexes"));
   auto flags = Index::makeFlags();
-  // FIXME simon: hide links here, but increase chance of ASAN errors
-  /*auto filter = [&](arangodb::Index const* idx) { // hide hidden indexes
+  // hide hidden indexes. In effect hides unfinished indexes,
+  // and iResearch links (only on a single-server and coordinator)
+  auto filter = [&](arangodb::Index const* idx) {
      return (forPersistence || !idx->isHidden());
-   };*/
+   };
   if (forPersistence) {
     flags = Index::makeFlags(Index::Serialize::Internals);
   }
-  getIndexesVPack(result, flags/*, filter*/);
+  getIndexesVPack(result, flags, filter);
 
   // Cluster Specific
   result.add(StaticStrings::IsSmart, VPackValue(_isSmart));
@@ -965,13 +966,8 @@ Result LogicalCollection::update(transaction::Methods* trx, VPackSlice const new
   }
 
   prevRev = 0;
-  VPackSlice key = newSlice.get(StaticStrings::KeyString);
-  if (key.isNone()) {
-    return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
-  }
-
   return getPhysical()->update(trx, newSlice, result, options, resultMarkerTick, lock,
-                               prevRev, previous, key, std::move(callbackDuringLock));
+                               prevRev, previous, std::move(callbackDuringLock));
 }
 
 /// @brief replaces a document or edge in a collection

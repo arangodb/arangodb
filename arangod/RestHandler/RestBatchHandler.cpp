@@ -137,7 +137,7 @@ bool RestBatchHandler::executeNextHandler() {
     // error
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid multipart message received");
-    LOG_TOPIC(WARN, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("3204a", WARN, arangodb::Logger::REPLICATION)
         << "received a corrupted multipart message";
     return false;
   }
@@ -174,7 +174,7 @@ bool RestBatchHandler::executeNextHandler() {
   }
 
   // set up request object for the part
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+  LOG_TOPIC("910e9", TRACE, arangodb::Logger::REPLICATION)
       << "part header is: " << std::string(headerStart, headerLength);
 
   std::unique_ptr<HttpRequest> request(
@@ -189,7 +189,7 @@ bool RestBatchHandler::executeNextHandler() {
   request->setDatabaseName(_request->databaseName());
 
   if (bodyLength > 0) {
-    LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("63afb", TRACE, arangodb::Logger::REPLICATION)
         << "part body is '" << std::string(bodyStart, bodyLength) << "'";
     request->setBody(bodyStart, bodyLength);
   }
@@ -204,7 +204,7 @@ bool RestBatchHandler::executeNextHandler() {
   std::shared_ptr<RestHandler> handler;
 
   {
-    std::unique_ptr<HttpResponse> response(new HttpResponse(rest::ResponseCode::SERVER_ERROR));
+    std::unique_ptr<HttpResponse> response(new HttpResponse(rest::ResponseCode::SERVER_ERROR, new StringBuffer(false)));
 
     handler.reset(
         GeneralServerFeature::HANDLER_FACTORY->createHandler(std::move(request),
@@ -269,7 +269,7 @@ RestStatus RestBatchHandler::executeHttp() {
     return RestStatus::DONE;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+  LOG_TOPIC("b03fa", TRACE, arangodb::Logger::REPLICATION)
       << "boundary of multipart-message is '" << _boundary << "'";
 
   _errors = 0;
@@ -525,7 +525,7 @@ bool RestBatchHandler::extractPart(SearchHelper& helper) {
         if (value == StaticStrings::BatchContentType) {
           hasTypeHeader = true;
         } else {
-          LOG_TOPIC(WARN, arangodb::Logger::REPLICATION)
+          LOG_TOPIC("f7836", WARN, arangodb::Logger::REPLICATION)
               << "unexpected content-type '" << value << "' for multipart-message. expected: '"
               << StaticStrings::BatchContentType << "'";
         }

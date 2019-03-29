@@ -102,10 +102,10 @@ void MMFilesSynchronizerThread::run() {
         }
       } catch (arangodb::basics::Exception const& ex) {
         int res = ex.code();
-        LOG_TOPIC(ERR, arangodb::Logger::DATAFILES)
+        LOG_TOPIC("92c88", ERR, arangodb::Logger::DATAFILES)
             << "got unexpected error in synchronizerThread: " << TRI_errno_string(res);
       } catch (...) {
-        LOG_TOPIC(ERR, arangodb::Logger::DATAFILES)
+        LOG_TOPIC("5da0d", ERR, arangodb::Logger::DATAFILES)
             << "got unspecific error in synchronizerThread";
       }
     }
@@ -165,18 +165,18 @@ int MMFilesSynchronizerThread::doSync(bool& checkMore) {
   double startTime = TRI_microtime();
   int result = TRI_MSync(fd, region.mem, region.mem + region.size);
   if (TRI_microtime() - startTime > 1.0) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::DATAFILES)
+    LOG_TOPIC("c42eb", DEBUG, arangodb::Logger::DATAFILES)
         << "Long sync logfile " << id << ", region " << (void*)region.mem
         << ", size " << region.size;
   }
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::DATAFILES)
+  LOG_TOPIC("41878", DEBUG, arangodb::Logger::DATAFILES)
       << "syncing logfile " << id << ", region " << (void*)region.mem << " - "
       << (void*)(region.mem + region.size) << ", length: " << region.size
       << ", wfs: " << (region.waitForSync ? "true" : "false");
 
   if (result != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, arangodb::Logger::DATAFILES)
+    LOG_TOPIC("63d87", ERR, arangodb::Logger::DATAFILES)
         << "unable to sync wal logfile region";
 
     return TRI_ERROR_ARANGO_MSYNC_FAILED;

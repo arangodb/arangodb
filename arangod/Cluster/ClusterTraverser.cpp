@@ -172,7 +172,7 @@ void ClusterTraverser::destroyEngines() {
           message += std::string(": ") + res->errorMessage;
         }
 
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << message;
+        LOG_TOPIC("8a7a0", ERR, arangodb::Logger::FIXME) << message;
       }
     }
   }

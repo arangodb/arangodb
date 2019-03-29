@@ -656,8 +656,8 @@ function IResearchAqlTestSuite(args) {
         "FOR v IN 2..2 OUTBOUND doc UnitTestsGraph " +
         "RETURN v").toArray();
 
-      results.forEach(function(res) {
-        assertTrue(res.length, 1);
+      results.forEach(function(res, index) {
+        assertTrue(res.length, 1, "result length not 1 at index " + index);
         assertEqual(res[0].vName, "vEnd");
       });
     },
@@ -834,6 +834,24 @@ function IResearchAqlTestSuite(args) {
       linksView.drop();
       entities.drop();
       links.drop();
+    },
+
+    testAttributeInRangeOpenInterval : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH IN_RANGE(doc.c, 1, 3, false, false) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 4);
+      result.forEach(function(res) {
+        assertTrue(res.c > 1 && res.c < 3);
+      });
+    },
+
+    testAttributeInRangeClosedInterval : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH IN_RANGE(doc.c, 1, 3, true, true) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 12);
+      result.forEach(function(res) {
+        assertTrue(res.c >= 1 && res.c <= 3);
+      });
     }
   };
 }

@@ -38,7 +38,7 @@ Function::Function(std::string const& name, char const* arguments,
 
   // almost all AQL functions have a cxx implementation
   // only function V8() plus the ArangoSearch functions do not
-  LOG_TOPIC(TRACE, Logger::FIXME)
+  LOG_TOPIC("c70f6", TRACE, Logger::FIXME)
       << "registered AQL function '" << name
       << "'. cacheable: " << hasFlag(Flags::Cacheable)
       << ", deterministic: " << hasFlag(Flags::Deterministic)

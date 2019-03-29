@@ -145,9 +145,7 @@ class ExecutionNode {
     INDEX = 23,
     SHORTEST_PATH = 24,
     REMOTESINGLE = 25,
-#ifdef USE_IRESEARCH
     ENUMERATE_IRESEARCH_VIEW,
-#endif
     MAX_NODE_TYPE_VALUE
   };
 
@@ -268,7 +266,7 @@ class ExecutionNode {
     do {
       node = node->getFirstDependency();
     } while (node != nullptr && node->getType() != SINGLETON);
-    
+
     return node;
   }
 
@@ -553,6 +551,15 @@ class ExecutionNode {
   }
 
   std::unordered_set<RegisterId> calcRegsToKeep() const;
+
+  RegisterId variableToRegisterId(Variable const*) const;
+
+  RegisterId variableToRegisterOptionalId(Variable const* var) const {
+    if (var) {
+      return variableToRegisterId(var);
+    }
+    return ExecutionNode::MaxRegisterId;
+  }
 
  protected:
   /// @brief node id
@@ -895,7 +902,6 @@ class CalculationNode : public ExecutionNode {
 class SubqueryNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class SubqueryBlock;
 
  public:
   SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);

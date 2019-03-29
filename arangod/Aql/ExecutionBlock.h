@@ -39,7 +39,7 @@ class Methods;
 }
 
 namespace aql {
-class AqlItemBlock;
+class InputAqlItemRow;
 class ExecutionEngine;
 
 class ExecutionBlock {
@@ -87,7 +87,7 @@ class ExecutionBlock {
   ///    DESTRUCTOR
 
   /// @brief initializeCursor, could be called multiple times
-  virtual std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos);
+  virtual std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input);
 
   /// @brief shutdown, will be called exactly once for the whole query
   virtual std::pair<ExecutionState, Result> shutdown(int);

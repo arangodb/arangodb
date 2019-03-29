@@ -6,6 +6,34 @@ upgrading to ArangoDB 3.5, and adjust any client programs if necessary.
 
 The following incompatible changes have been made in ArangoDB 3.5:
 
+ID values in log messages
+-------------------------
+
+By default, ArangoDB and its client tools now show a 5 digit unique ID value in
+any of their log messages, e.g.
+
+    2019-03-25T21:23:19Z [8144] INFO [cf3f4] ArangoDB (version 3.5.0 enterprise [linux]) is ready for business. Have fun!.
+
+In this message, the `cf3f4` is the message's unique ID value. ArangoDB users can
+use this ID to build custom monitoring or alerting based on specific log ID values.
+
+The presence of these ID values in log messages may confuse custom log message filtering 
+or routing mechanisms that parse log messages and that rely on the old log message
+format.
+
+This can be fixed adjusting any existing log message parsers and making them aware
+of the ID values. The ID values are always 5 byte strings, consisting of the characters
+`[0-9a-f]`. ID values are placed directly behind the log level (e.g. `INFO`) for
+general log messages that do not contain a log topic, and directly behind the log
+topic for messages that contain a topic, e.g. 
+
+    2019-03-25T21:23:19Z [8144] INFO [cf3f4] ArangoDB (version 3.5.0 enterprise [linux]) is ready for business. Have fun!.
+    2019-03-25T21:23:16Z [8144] INFO {authentication} [3844e] Authentication is turned on (system only), authentication for unix sockets is turned on
+
+Alternatively, the log IDs can be suppressed in all log messages by setting the startup
+option `--log.ids false` when starting arangod or any of the client tools.
+
+
 Startup options
 ---------------
 
@@ -37,7 +65,7 @@ when using the RocksDB engine, so there is no need to offer all of them in paral
 AQL
 ---
 
-3.5 enforces the invalidation of variables in AQL queries after usage of a AQL 
+3.5 enforces the invalidation of variables in AQL queries after usage of an AQL 
 COLLECT statements as documented. The documentation for variable invalidation claims
 that
 
@@ -73,3 +101,19 @@ specified `_id`, and that `_id` was already in use, the server would typically
 return the existing index with matching `_id`. This is somewhat unintuitive, as
 it would ignore if the rest of the definition did not match. This behavior has
 been changed so that the server will now return a duplicate identifier error.
+
+### Version details output
+
+The attribute key `openssl-version` in the server/client tool version details 
+output was renamed to `openssl-version-compile-time`.
+
+This change affects the output produced when starting one of the ArangoDB
+executables (e.g. arangod, arangosh) with the `--version` command. It also 
+changes the attribute name in the detailed response of the `/_api/version` REST API.
+
+### Overcommit settings
+
+On Linux, ArangoDB will now show a startup warning in case the kernel setting 
+`vm.overcommit_memory` is set to a value of 2 and the jemalloc memory allocator 
+is in use. This combination does not play well together, and may lead to the 
+kernel denying arangod's memory allocation requests in more cases than necessary.

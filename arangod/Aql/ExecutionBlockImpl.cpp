@@ -38,6 +38,8 @@
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/EnumerateCollectionExecutor.h"
+#include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutorTraits.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/HashedCollectExecutor.h"
@@ -49,7 +51,10 @@
 #include "Aql/ShortestPathExecutor.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
+#include "Aql/SingleRemoteModificationExecutor.h"
+#include "Aql/SortedCollectExecutor.h"
 #include "Aql/SortingGatherExecutor.h"
+#include "Aql/SubqueryExecutor.h"
 #include "Aql/TraversalExecutor.h"
 
 #include <type_traits>
@@ -216,8 +221,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::traceSkipSomeEnd
 }
 
 template <class Executor>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
   // destroy and re-create the BlockFetcher
   _blockFetcher.~BlockFetcher();
   new (&_blockFetcher)
@@ -239,7 +243,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   //   }
   // }
 
-  return ExecutionBlock::initializeCursor(items, pos);
+  return ExecutionBlock::initializeCursor(input);
 }
 
 template <class Executor>
@@ -255,7 +259,7 @@ namespace aql {
 // TODO -- remove this specialization when cpp 17 becomes available
 template <>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+    InputAqlItemRow const& input) {
   // destroy and re-create the BlockFetcher
   _blockFetcher.~BlockFetcher();
   new (&_blockFetcher)
@@ -266,14 +270,10 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   _rowFetcher.~Fetcher();
   new (&_rowFetcher) Fetcher(_blockFetcher);
 
-  std::unique_ptr<AqlItemBlock> block;
-  if (items != nullptr) {
-    block = std::unique_ptr<AqlItemBlock>(
-        items->slice(pos, *(infos().registersToKeep()), infos().numberOfOutputRegisters()));
-  } else {
-    block = std::unique_ptr<AqlItemBlock>(
-        _engine->itemBlockManager().requestBlock(1, infos().numberOfOutputRegisters()));
-  }
+  std::unique_ptr<AqlItemBlock> block =
+      input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
+                         infos().numberOfOutputRegisters());
+
   auto shell = std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
                                                    std::move(block));
   _rowFetcher.injectBlock(shell);
@@ -282,7 +282,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   _executor.~IdExecutor<ConstFetcher>();
   new (&_executor) IdExecutor<ConstFetcher>(_rowFetcher, _infos);
 
-  return ExecutionBlock::initializeCursor(items, pos);
+  return ExecutionBlock::initializeCursor(input);
 }
 
 template <>
@@ -307,6 +307,27 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<ShortestPathExecutor>::shut
     return {state, result};
   }
   return this->executor().shutdown(errorCode);
+}
+
+template <>
+std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor>::shutdown(int errorCode) {
+  ExecutionState state;
+  Result subqueryResult;
+  // shutdown is repeatable
+  std::tie(state, subqueryResult) = this->executor().shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {ExecutionState::WAITING, subqueryResult};
+  }
+  Result result;
+
+  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {state, result};
+  }
+  if (result.fail()) {
+    return {state, result};
+  }
+  return {state, subqueryResult};
 }
 
 }  // namespace aql
@@ -365,13 +386,13 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
     }
     AqlItemBlock* block = requestBlock(nrItems, nrRegs);
     blockShell =
-        std::make_unique<AqlItemBlockShell>(_engine->itemBlockManager(),
+        std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
                                             std::unique_ptr<AqlItemBlock>{block});
   } else {
     AqlItemBlock* block = requestBlock(nrItems, nrRegs);
 
     blockShell =
-        std::make_unique<AqlItemBlockShell>(_engine->itemBlockManager(),
+        std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
                                             std::unique_ptr<AqlItemBlock>{block});
   }
 
@@ -383,8 +404,8 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
-template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>;
+template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ConstrainedSortExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<CountCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<DistinctCollectExecutor>;
@@ -396,10 +417,28 @@ template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<t
 template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, AllRowsFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Remove, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Remove, AllRowsFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Replace, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Replace, AllRowsFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Update, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Update, AllRowsFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Upsert, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Upsert, AllRowsFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<IndexTag>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Insert>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Remove>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Update>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Replace>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Upsert>>;
 template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;

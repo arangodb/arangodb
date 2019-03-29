@@ -28,11 +28,11 @@
 // / @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var arangosh = require('@arangodb/arangosh');
+const internal = require('internal');
+const arangosh = require('@arangodb/arangosh');
 
-var ArangoStatement = require('@arangodb/arango-statement-common').ArangoStatement;
-var ArangoQueryCursor = require('@arangodb/arango-query-cursor').ArangoQueryCursor;
+const ArangoStatement = require('@arangodb/arango-statement-common').ArangoStatement;
+const ArangoQueryCursor = require('@arangodb/arango-query-cursor').ArangoQueryCursor;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief return a string representation of the statement

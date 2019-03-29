@@ -59,12 +59,12 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
   try {
     ok = _agency.registerCallback(cb->key, getEndpointUrl(rand)).successful();
     if (!ok) {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "Registering callback failed";
+      LOG_TOPIC("b88f4", ERR, Logger::CLUSTER) << "Registering callback failed";
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::CLUSTER) << "Couldn't register callback " << e.what();
+    LOG_TOPIC("f5330", ERR, Logger::CLUSTER) << "Couldn't register callback " << e.what();
   } catch (...) {
-    LOG_TOPIC(ERR, Logger::CLUSTER)
+    LOG_TOPIC("1d24f", ERR, Logger::CLUSTER)
         << "Couldn't register callback. Unknown exception";
   }
   if (!ok) {

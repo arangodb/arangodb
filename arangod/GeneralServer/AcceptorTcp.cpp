@@ -55,14 +55,14 @@ void AcceptorTcp::open() {
 
     asio_ns::ip::tcp::resolver::iterator iter = resolver->resolve(*query, err);
     if (err) {
-      LOG_TOPIC(ERR, Logger::COMMUNICATION)
+      LOG_TOPIC("383bc", ERR, Logger::COMMUNICATION)
           << "unable to to resolve endpoint ' " << _endpoint->specification()
           << "': " << err.message();
       throw std::runtime_error(err.message());
     }
 
     if (asio_ns::ip::tcp::resolver::iterator{} == iter) {
-      LOG_TOPIC(ERR, Logger::COMMUNICATION)
+      LOG_TOPIC("05077", ERR, Logger::COMMUNICATION)
           << "unable to to resolve endpoint: endpoint is default constructed";
     }
 
@@ -79,7 +79,7 @@ void AcceptorTcp::open() {
 
   if (::setsockopt(_acceptor->native_handle(), SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
                    (char const*)&trueOption, sizeof(BOOL)) != 0) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION)
+    LOG_TOPIC("1bcff", ERR, Logger::COMMUNICATION)
         << "unable to set acceptor socket option: " << WSAGetLastError();
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
                                    "unable to set acceptor socket option");
@@ -91,7 +91,7 @@ void AcceptorTcp::open() {
 
   _acceptor->bind(asioEndpoint, err);
   if (err) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION)
+    LOG_TOPIC("874fa", ERR, Logger::COMMUNICATION)
         << "unable to bind to endpoint '" << _endpoint->specification()
         << "': " << err.message();
     throw std::runtime_error(err.message());
@@ -100,7 +100,7 @@ void AcceptorTcp::open() {
   TRI_ASSERT(_endpoint->listenBacklog() > 8);
   _acceptor->listen(_endpoint->listenBacklog(), err);
   if (err) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION)
+    LOG_TOPIC("c487e", ERR, Logger::COMMUNICATION)
         << "unable to listen to endpoint '" << _endpoint->specification()
         << ": " << err.message();
     throw std::runtime_error(err.message());

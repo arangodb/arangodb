@@ -28,6 +28,18 @@
 
 #include <v8.h>
 
+class TRI_action_t;
+struct TRI_v8_global_t;
+
+namespace arangodb {
+class GeneralRequest;
+}
+
+v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
+                                          TRI_v8_global_t const* v8g,
+                                          arangodb::GeneralRequest* request,
+                                          TRI_action_t const* action);
+
 void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context);
 
 void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context);

@@ -45,9 +45,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchRocksDBLink.h"
-#endif
 
 using namespace arangodb;
 
@@ -474,7 +472,7 @@ void RocksDBIndexFactory::prepareIndexes(
           auto idxFrom = prepareIndexFromSlice(from.slice(), false, col, true);
 
           if (!idxFrom) {
-            LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+            LOG_TOPIC("37c1b", ERR, arangodb::Logger::ENGINES)
                 << "error creating index from definition '"
                 << from.slice().toString() << "'";
 
@@ -484,7 +482,7 @@ void RocksDBIndexFactory::prepareIndexes(
           auto idxTo = prepareIndexFromSlice(to.slice(), false, col, true);
 
           if (!idxTo) {
-            LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+            LOG_TOPIC("84c11", ERR, arangodb::Logger::ENGINES)
                 << "error creating index from definition '"
                 << to.slice().toString() << "'";
 
@@ -517,7 +515,7 @@ void RocksDBIndexFactory::prepareIndexes(
         auto idx = prepareIndexFromSlice(b.slice(), false, col, true);
 
         if (!idx) {
-          LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+          LOG_TOPIC("aa39e", ERR, arangodb::Logger::ENGINES)
               << "error creating index from definition '" << b.slice().toString() << "'";
 
           continue;
@@ -531,21 +529,21 @@ void RocksDBIndexFactory::prepareIndexes(
 
     auto idx = prepareIndexFromSlice(v, false, col, true);
     if (!idx) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("ddafd", ERR, arangodb::Logger::ENGINES)
           << "error creating index from definition '" << v.toString() << "'";
 
       continue;
     }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     else {
-      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+      LOG_TOPIC("c455a", DEBUG, arangodb::Logger::ENGINES)
           << "created index '" << idx->id() << "' from definition '"
           << v.toJson() << "'";
     }
 #endif
 
     if (basics::VelocyPackHelper::getBooleanValue(v, "_inprogress", false)) {
-      LOG_TOPIC(WARN, Logger::ENGINES) << "dropping failed index '" << idx->id() << "'";
+      LOG_TOPIC("66770", WARN, Logger::ENGINES) << "dropping failed index '" << idx->id() << "'";
       idx->drop();
       continue;
     }

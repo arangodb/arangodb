@@ -211,7 +211,7 @@ static void ValidateResult(ShortestPathExecutorInfos& infos, OutputAqlItemRow& r
   }
 }
 static void TestExecutor(ShortestPathExecutorInfos& infos,
-                         std::shared_ptr<VPackBuilder> input,
+                         std::shared_ptr<VPackBuilder> const& input,
                          std::vector<std::pair<std::string, std::string>> const& resultPaths) {
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor};
@@ -221,12 +221,11 @@ static void TestExecutor(ShortestPathExecutorInfos& infos,
   ExecutionState state = ExecutionState::HASMORE;
   auto outputBlockShell =
       std::make_unique<AqlItemBlockShell>(itemBlockManager, std::move(block));
-
-  OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
-  FakePathFinder& finder = static_cast<FakePathFinder&>(infos.finder());
+  auto& finder = dynamic_cast<FakePathFinder&>(infos.finder());
   WHEN("not waiting") {
     SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+    OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+                            infos.registersToKeep(), infos.registersToClear());
     ShortestPathExecutor testee(fetcher, infos);
     // Fetch fullPath
     for (size_t i = 0; i < resultPaths.size(); ++i) {
@@ -253,6 +252,8 @@ static void TestExecutor(ShortestPathExecutorInfos& infos,
   }
   WHEN("waiting") {
     SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+    OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+                            infos.registersToKeep(), infos.registersToClear());
     ShortestPathExecutor testee(fetcher, infos);
     // Fetch fullPath
     for (size_t i = 0; i < resultPaths.size(); ++i) {
