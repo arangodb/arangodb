@@ -171,7 +171,7 @@ SECTION("test_accessors") {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   REQUIRE((analyzers->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1", "identity", nullptr).ok()));
   auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1");
-  REQUIRE((false != analyzer));
+  REQUIRE((false == !analyzer));
 
   struct ExecContext: public arangodb::ExecContext {
     ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
