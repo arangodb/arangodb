@@ -829,18 +829,17 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = f
 // / @brief dump the state of the agency to disk. if we still can get one.
 // //////////////////////////////////////////////////////////////////////////////
 function dumpAgency(instanceInfo, options) {
-  function dumpAgent(arangod, path, fn) {
+  function dumpAgent(arangod, path, method, fn) {
     let opts = {
-      method: 'GET',
-      jwt: crypto.jwtEncode(instanceInfo.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),
-      // headers: {'content-type': 'application/json' }
-    };
+      method: method,
+      jwt: crypto.jwtEncode(instanceInfo.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256')
+    }
     print('--------------------------------- '+ fn + ' -----------------------------------------------');
-    let agencyReply = download(arangod.url + path, '', opts);
+    let agencyReply = download(arangod.url + path, method == 'POST' ? '[["/"]]' : '', opts);
     if (agencyReply.code == 200) {
       let agencyValue = JSON.parse(agencyReply.body);
       print(JSON.stringify(agencyValue));
-      fs.write(fs.join(options.testOutputDirectory, fn + '_' + arangod.pid + ".json"), agencyValue);
+      fs.write(fs.join(options.testOutputDirectory, fn + '_' + arangod.pid + ".json"), JSON.stringify(agencyValue, null, 2));
     }
     else {
       print(agencyReply)
@@ -854,11 +853,11 @@ function dumpAgency(instanceInfo, options) {
         print(arangod)
 
         print(Date() + " Attempting to dump Agent: " + arangod);
-        dumpAgent(arangod, '/_api/agency/config', 'agencyConfig');
+        dumpAgent(arangod, '/_api/agency/config', 'GET', 'agencyConfig');
 
-        dumpAgent(arangod, '/_api/agency/state', 'agencyState');
+        dumpAgent(arangod, '/_api/agency/state', 'GET', 'agencyState');
 
-        dumpAgent(arangod, '/_api/agency/read', 'agencyPlan');
+        dumpAgent(arangod, '/_api/agency/read', 'POST', 'agencyPlan');
       }
     }
   });
