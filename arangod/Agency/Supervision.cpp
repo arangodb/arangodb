@@ -833,10 +833,10 @@ void Supervision::run() {
                 doChecks();
                 LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Finished doChecks";
               } catch (std::exception const& e) {
-                LOG_TOPIC(ERR, Logger::SUPERVISION)
+                LOG_TOPIC(WARN, Logger::SUPERVISION)
                     << e.what() << " " << __FILE__ << " " << __LINE__;
               } catch (...) {
-                LOG_TOPIC(ERR, Logger::SUPERVISION)
+                LOG_TOPIC(WARN, Logger::SUPERVISION)
                     << "Supervision::doChecks() generated an uncaught "
                        "exception.";
               }
@@ -846,9 +846,15 @@ void Supervision::run() {
                      "heartbeats: "
                   << _agent->leaderFor();
             }
-            LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin handleJobs";
-            handleJobs();
-            LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Finished handleJobs";
+            try {
+              LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin handleJobs";
+              handleJobs();
+              LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Finished handleJobs";
+            } catch(std::exception const& e) {
+              LOG_TOPIC(WARN, Logger::SUPERVISION)
+                << "Caught exception in handleJobs(), error message: "
+                << e.what();
+            }
           } else {
             reportStatus("Maintenance");
           }
