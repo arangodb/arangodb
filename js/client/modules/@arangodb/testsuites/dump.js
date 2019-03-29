@@ -240,10 +240,10 @@ class DumpRestoreHelper {
 
   createHotBackup() {
     this.print("creating backup");
-    let options = {
+    let cmds = {
       "label": "testHotBackup"
     };
-    this.results.createHotBackup = pu.run.arangoBackup(options, this.instanceInfo, "create", this.instanceInfo.rootDir, true);
+    this.results.createHotBackup = pu.run.arangoBackup(this.options, this.instanceInfo, "create", cmds, this.instanceInfo.rootDir, true);
     this.print("done creating backup");
     return this.results.createHotBackup.status;
   }
@@ -265,10 +265,11 @@ class DumpRestoreHelper {
       return false;
     }
     this.print("restoring backup");
-    let options = {
-      "identifier": backupName
+    let cmds = {
+      "identifier": backupName,
+      "max-wait-for-restart": 100.0
     };
-    this.results.restoreHotBackup = pu.run.arangoBackup(options, this.instanceInfo, "restore", this.instanceInfo.rootDir, true);
+    this.results.restoreHotBackup = pu.run.arangoBackup(this.options, this.instanceInfo, "restore", cmds, this.instanceInfo.rootDir, true);
     this.print("done restoring backup; waiting for server to come back up");
 
     

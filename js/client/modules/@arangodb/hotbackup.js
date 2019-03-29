@@ -65,9 +65,58 @@ exports.create = function (userString = undefined) {
 // / @brief restore a hot backup to the server
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.restore = function(restoreBackupName) {
+waitForRestart = (maxWait) => {
+  if (maxWait = 0.0 || maxWait === undefined || maxWait === null || 
+      isNaN(parseFloat(maxWait))) {
+    return;
+  }
+  
+  let start = Date.now();
+  while (((Date.now() - start) / 1000) < maxWait) {
+    let currentUptime = this.getUptime();
+    let keys = Object.keys(currentUptime);
+    if (keys.length !== originalUptimeKeys ) {
+      try {
+        arango.reconnect(this.instanceInfo.endpoint, '_system', 'root', '');
+      }
+      catch(x) {https://github.com/arangodb/arangodb/pull/8414
+        this.print(".");
+        
+        sleep(1.0);
+        continue;
+      }
+    }
+    let newer = true;
+    keys.forEach(key => {
+      if (!originalUptime.hasOwnProperty(key)) {
+        newer = false;
+      }
+      if (originalUptime[key] < currentUptime[key]) {
+        newer = false;
+      }
+    });
+    
+    if (newer) {
+      try {
+        arango.reconnect(this.instanceInfo.endpoint, '_system', 'root', '');
+        this.print("reconnected");
+        return this.results.restoreHotBackup.status;
+      }
+      catch(x) {
+        sleep(1.0);
+        this.print(",");
+        continue;
+      }
+    }
+    sleep(1.0);
+  }
+  throw ("Arangod didn't come back up in the expected timeframe!");
+};
+
+exports.restore = function(restoreBackupName, maxWait) {
   let reply = internal.db._connection.POST('_admin/hotbackup/restore', { directory: restoreBackupName });
   if (!reply.error && reply.code === 200) {
+    waitForRestart(maxWait);
     return reply.result;
   }
   throw new ArangoError(reply);

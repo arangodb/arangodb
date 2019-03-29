@@ -787,7 +787,7 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
 // / @brief runs arangobench
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangoBackup (options, instanceInfo, which, rootDir, coreCheck = false) {
+function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck = false) {
   let args = {
     'configuration': fs.join(CONFIG_DIR, 'arangobackup.conf'),
     'log.foreground-tty': 'true',
@@ -800,6 +800,8 @@ function runArangoBackup (options, instanceInfo, which, rootDir, coreCheck = fal
   if (options.password) {
     args['server.password'] = options.password;
   }
+  
+  args = Object.assign(args, cmds);
 
   if (!args.hasOwnProperty('verbose')) {
     args['log.level'] = 'warning';
