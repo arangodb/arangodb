@@ -861,12 +861,14 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
               // It is the case that the Plan value is there but has changed
               // that we want to protect against.
               VPackSlice oldValue = pdbs.get(std::vector<std::string>{dbName, colName, "shards", shName});
-              report.add(VPackValue("precondition"));
-              {
-                VPackObjectBuilder p(&report);
-                report.add(
-                  PLAN_COLLECTIONS + dbName + "/" + colName + "/shards/" + shName,
-                  oldValue);
+              if (!oldValue.isNone()) {
+                report.add(VPackValue("precondition"));
+                {
+                  VPackObjectBuilder p(&report);
+                  report.add(
+                    PLAN_COLLECTIONS + dbName + "/" + colName + "/shards/" + shName,
+                    oldValue);
+                }
               }
             } catch(...) {
             }
