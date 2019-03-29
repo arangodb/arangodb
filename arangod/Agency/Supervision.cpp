@@ -1392,7 +1392,7 @@ void Supervision::enforceReplication() {
   // the function:
   int const maxNrAddRemoveJobsInTodo = 50;
 
-  auto todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  auto const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
   int nrAddRemoveJobsInTodo = 0;
   for (auto it = todos.begin(); it != todos.end(); ++it) {
     auto jobNode = *(it->second);
@@ -1523,7 +1523,7 @@ void Supervision::fixPrototypeChain(Builder& migrate) {
   std::function<std::string(std::string const&, std::string const&)> resolve;
   resolve = [&](std::string const& db, std::string const& col) {
     std::string s;
-    auto tmp_n = snap.hasAsNode(planColPrefix + db + "/" + col);
+    auto const& tmp_n = snap.hasAsNode(planColPrefix + db + "/" + col);
     if (tmp_n.second) {
       Node const& n = tmp_n.first;
       s = n.hasAsString("distributeShardsLike").first;

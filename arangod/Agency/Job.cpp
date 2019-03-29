@@ -71,7 +71,7 @@ Job::~Job() {}
 std::string Job::agencyPrefix = "arango";
 
 bool Job::finish(std::string const& server, std::string const& shard,
-                 bool success, std::string const& reason, query_t const payload) noexcept {
+                 bool success, std::string const& reason, query_t const payload) {
   try {  // protect everything, just in case
     Builder pending, finished;
 

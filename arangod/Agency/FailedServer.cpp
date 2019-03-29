@@ -94,7 +94,7 @@ bool FailedServer::start(bool& aborts) {
   {
     VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
-      auto toDoJob = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      auto const& toDoJob = _snapshot.hasAsNode(toDoPrefix + _jobId);
       if (toDoJob.second) {
         toDoJob.first.toBuilder(todo);
       } else {

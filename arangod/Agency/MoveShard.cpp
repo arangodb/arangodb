@@ -190,7 +190,7 @@ bool MoveShard::start(bool&) {
     finish("", "", true, "collection has been dropped in the meantime");
     return false;
   }
-  auto collection = _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection);
+  auto const& collection = _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection);
   if (collection.second && collection.first.has("distributeShardsLike")) {
     finish("", "", false,
            "collection must not have 'distributeShardsLike' attribute");

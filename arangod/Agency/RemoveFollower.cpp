@@ -131,7 +131,7 @@ bool RemoveFollower::start(bool&) {
     finish("", "", true, "collection has been dropped in the meantime");
     return false;
   }
-  Node collection =
+  Node const& collection =
       _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection).first;
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
