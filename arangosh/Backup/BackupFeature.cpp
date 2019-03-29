@@ -22,12 +22,15 @@
 
 #include "BackupFeature.h"
 
+#include <chrono>
 #include <regex>
+#include <thread>
 
 #include <velocypack/Iterator.h>
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -70,6 +73,81 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
                           itoa(response->getHttpReturnCode()) + ": " + errorMsg};
   }
   return {TRI_ERROR_NO_ERROR};
+}
+
+arangodb::Result getUptime(arangodb::httpclient::SimpleHttpClient& client, double& uptime) {
+  arangodb::Result result;
+
+  std::string const url = "/_admin/statistics";
+  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
+      client.request(arangodb::rest::RequestType::GET, url, nullptr, 0));
+  auto check = ::checkHttpResponse(client, response);
+  if (check.fail()) {
+    return check;
+  }
+
+  // extract vpack body from response
+  std::shared_ptr<VPackBuilder> parsedBody;
+  try {
+    parsedBody = response->getBodyVelocyPack();
+  } catch (...) {
+    result.reset(::ErrorMalformedJsonResponse);
+    return result;
+  }
+  VPackSlice const resBody = parsedBody->slice();
+  TRI_ASSERT(resBody.isObject());
+  VPackSlice const serverObject = resBody.get("server");
+  TRI_ASSERT(serverObject.isObject());
+  VPackSlice const uptimeSlice = serverObject.get("uptime");
+  TRI_ASSERT(uptimeSlice.isNumber());
+  uptime = uptimeSlice.getNumericValue<double>();
+
+  return result;
+}
+
+arangodb::Result waitForRestart(arangodb::ClientManager& clientManager,
+                                double originalUptime, double maxWaitForRestart) {
+  arangodb::Result result;
+
+  auto start = std::chrono::high_resolution_clock::now();
+  auto timeSinceStart = [start]() -> double {
+    auto now = std::chrono::high_resolution_clock::now();
+    auto duration = now - start;
+    return (static_cast<double>(duration.count()) /
+            decltype(duration)::period::den* decltype(duration)::period::num);
+  };
+
+  LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
+      << "Waiting for server to restart...";
+
+  // sleep once to allow shutdown to start
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+
+  while (timeSinceStart() < maxWaitForRestart) {
+    std::unique_ptr<arangodb::httpclient::SimpleHttpClient> client;
+    try {
+      result = clientManager.getConnectedClient(client, true, false, false, true);
+      if (result.ok() && client != nullptr) {
+        double uptime = 0.0;
+        result = ::getUptime(*client, uptime);
+        if (result.ok() && uptime < originalUptime) {
+          LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
+              << "...server back up and running!";
+          return result;
+        }
+        // server still down, or still up prior to restart; fall through, wait, retry
+      }
+    } catch (...) {
+    }  // ignore errors here
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+
+  // okay, we timed out
+  result.reset(
+      TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+      "Server failed to respond to requests in the expected timeframe.");
+
+  return result;
 }
 
 arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
@@ -121,7 +199,7 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
   VPackBuilder bodyBuilder;
   {
     VPackObjectBuilder guard(&bodyBuilder);
-    bodyBuilder.add("timeout", VPackValue(options.maxWaitTime));
+    bodyBuilder.add("timeout", VPackValue(options.maxWaitForLock));
     bodyBuilder.add("forceBackup", VPackValue(options.force));
     if (!options.label.empty()) {
       bodyBuilder.add("userString", VPackValue(options.label));
@@ -163,7 +241,8 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
 }
 
 arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
-                                arangodb::BackupFeature::Options const& options) {
+                                arangodb::BackupFeature::Options const& options,
+                                arangodb::ClientManager& clientManager) {
   arangodb::Result result;
 
   std::string const url = "/_admin/hotbackup/restore";
@@ -202,8 +281,20 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
         << previous.copyString() << "'";
   }
 
+  double originalUptime = 0.0;
+  if (options.maxWaitForRestart > 0.0) {
+    result = ::getUptime(client, originalUptime);
+    if (result.fail()) {
+      return result;
+    }
+  }
+
   LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
       << "Successfully restored '" << options.identifier << "'";
+
+  if (options.maxWaitForRestart > 0.0) {
+    result = ::waitForRestart(clientManager, originalUptime, options.maxWaitForRestart);
+  }
 
   return result;
 }
@@ -302,10 +393,18 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       "an additional label to add to the backup identifier upon creation",
       new StringParameter(&_options.label));
 
-  options->addOption("--max-wait-time",
+  options->addOption("--max-wait-for-lock",
                      "maximum time to wait (in seconds) to aquire a lock on "
                      "all necessary resources",
-                     new DoubleParameter(&_options.maxWaitTime));
+                     new DoubleParameter(&_options.maxWaitForLock));
+
+  options->addOption(
+      "--max-wait-for-restart",
+      "maximum time to wait (in seconds) for the server to restart after a "
+      "restore operation before reporting an error; if zero, arangobackup will "
+      "not wait to check that the server restarts and will simply return the "
+      "result of the restore request",
+      new DoubleParameter(&_options.maxWaitForRestart));
 
   options->addOption("--save-current",
                      "whether to save the current state as a backup before "
@@ -357,16 +456,27 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
       }
     }
 
-    if (_options.maxWaitTime < 0.0) {
+    if (_options.maxWaitForLock < 0.0) {
       LOG_TOPIC(FATAL, Logger::BACKUP)
-          << "expected --max-wait-time to be a positive number, got '"
-          << _options.maxWaitTime << "'";
+          << "expected --max-wait-for-lock to be a non-negative number, got '"
+          << _options.maxWaitForLock << "'";
       FATAL_ERROR_EXIT();
     }
-  } else if (_options.operation == ::OperationDelete || _options.operation == ::OperationRestore) {
+  }
+
+  if (_options.operation == ::OperationDelete || _options.operation == ::OperationRestore) {
     if (_options.identifier.empty()) {
       LOG_TOPIC(FATAL, Logger::BACKUP)
           << "must specify a backup via --identifier";
+      FATAL_ERROR_EXIT();
+    }
+  }
+
+  if (_options.operation == ::OperationRestore) {
+    if (_options.maxWaitForRestart < 0.0) {
+      LOG_TOPIC(FATAL, Logger::BACKUP) << "expected --max-wait-for-restart to "
+                                          "be a non-negative number, got '"
+                                       << _options.maxWaitForRestart << "'";
       FATAL_ERROR_EXIT();
     }
   }
@@ -381,7 +491,7 @@ void BackupFeature::start() {
   } else if (_options.operation == OperationCreate) {
     result = ::executeCreate(*client, _options);
   } else if (_options.operation == OperationRestore) {
-    result = ::executeRestore(*client, _options);
+    result = ::executeRestore(*client, _options, _clientManager);
   } else if (_options.operation == OperationDelete) {
     result = ::executeDelete(*client, _options);
   }
