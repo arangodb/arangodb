@@ -37,20 +37,22 @@ namespace arangodb {
 class RocksDBEventListenerThread : public arangodb::Thread {
 public:
 
-  RocksDBEventListenerThread(std::string const & name) : Thread(name) {}
+  RocksDBEventListenerThread(std::string const& name) : Thread(name) {}
+  ~RocksDBEventListenerThread();
 
-  void queueShaCalcFile(std::string const & pathName);
+  void queueShaCalcFile(std::string const& pathName);
 
-  void queueDeleteFile(std::string const & pathName);
+  void queueDeleteFile(std::string const& pathName);
 
   void signalLoop();
 
-  static bool shaCalcFile(std::string const & filename);
+  static bool shaCalcFile(std::string const& filename);
 
-  static bool deleteFile(std::string const & filename);
+  static bool deleteFile(std::string const& filename);
 
-  static void checkMissingShaFiles(std::string const & pathname);
-protected:
+  static void checkMissingShaFiles(std::string const& pathname);
+
+ protected:
   void run() override;
 
   struct actionNeeded_t {

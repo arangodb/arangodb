@@ -59,6 +59,7 @@ class RocksDBTransactionManager final : public TransactionManager {
 
   // unregister a transaction
   void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) override {
+    // TODO: this is unsafe. can we fix it properly as we did in devel already?
 //    TRI_ASSERT(_nrRunning != 0);
     if (0 != _nrRunning) {  // temporary hack until larger problem addressed
       --_nrRunning;

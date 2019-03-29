@@ -128,7 +128,7 @@ static constexpr uint64_t databaseIdForGlobalApplier = 0;
 // handles for recovery helpers
 std::vector<std::shared_ptr<RocksDBRecoveryHelper>> RocksDBEngine::_recoveryHelpers;
 
-RocksDBFilePurgePreventer::RocksDBFilePurgePreventer(RocksDBEngine* engine) 
+RocksDBFilePurgePreventer::RocksDBFilePurgePreventer(RocksDBEngine* engine)
     : _engine(engine) {
   TRI_ASSERT(_engine != nullptr);
   _engine->_purgeLock.readLock();
@@ -140,13 +140,13 @@ RocksDBFilePurgePreventer::~RocksDBFilePurgePreventer() {
   }
 }
 
-RocksDBFilePurgePreventer::RocksDBFilePurgePreventer(RocksDBFilePurgePreventer&& other) 
+RocksDBFilePurgePreventer::RocksDBFilePurgePreventer(RocksDBFilePurgePreventer&& other)
     : _engine(other._engine) {
   // steal engine from other
   other._engine = nullptr;
 }
 
-RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(RocksDBEngine* engine) 
+RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(RocksDBEngine* engine)
     : _engine(nullptr) {
   TRI_ASSERT(engine != nullptr);
 
@@ -162,7 +162,7 @@ RocksDBFilePurgeEnabler::~RocksDBFilePurgeEnabler() {
   }
 }
 
-RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(RocksDBFilePurgeEnabler&& other) 
+RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(RocksDBFilePurgeEnabler&& other)
     : _engine(other._engine) {
   // steal engine from other
   other._engine = nullptr;
@@ -190,6 +190,8 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 #endif
       _useThrottle(true),
 #ifdef USE_ENTERPRISE
+      // TODO: shall we turn this on by default for all enterprise installations,
+      // or should it explicitly activated by end users
       _createShaFiles(true),
 #else
       _createShaFiles(false),
@@ -293,7 +295,7 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "kicks in after server start",
                      new DoubleParameter(&_pruneWaitTimeInitial),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
-  
+
   options->addOption("--rocksdb.wal-archive-size-limit",
                      "maximum total size (in bytes) of archived WAL files (0 = unlimited)",
                      new UInt64Parameter(&_maxWalArchiveSizeLimit),
@@ -303,7 +305,8 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new BooleanParameter(&_useThrottle));
 
   options->addOption("--rocksdb.create-sha-files", "enable generation of sha256 files for each .sst file",
-                     new BooleanParameter(&_createShaFiles));
+                     new BooleanParameter(&_createShaFiles),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Enterprise));
 
   options->addOption("--rocksdb.debug-logging",
                      "true to enable rocksdb debug logging",
@@ -752,6 +755,11 @@ void RocksDBEngine::beginShutdown() {
   if (_replicationManager != nullptr) {
     _replicationManager->beginShutdown();
   }
+
+  // TODO: signal the event listener that we are going to shut down soon
+  // if (_shaListener != nullptr) {
+  //   _shaListener->beginShutdown();
+  // }
 }
 
 void RocksDBEngine::stop() {
@@ -798,7 +806,7 @@ void RocksDBEngine::unprepare() {
 
   shutdownRocksDBInstance();
 }
-  
+
 std::unique_ptr<TransactionManager> RocksDBEngine::createTransactionManager() {
   return std::unique_ptr<TransactionManager>(new RocksDBTransactionManager());
 }
@@ -1659,12 +1667,12 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
   uint64_t totalArchiveSize = 0;
   for (size_t current = 0; current < files.size(); current++) {
     auto const& f = files[current].get();
-    
+
     if (f->Type() != rocksdb::WalFileType::kArchivedLogFile) {
       // we are only interested in files of the archive
       continue;
     }
-    
+
     // determine the size of the archive only if it there is a cap on the archive size
     // otherwise we can save the underlying file access
     if (_maxWalArchiveSizeLimit > 0) {
@@ -1672,7 +1680,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     }
 
     if (f->StartSequence() < minTickToKeep) {
-      // this file will be removed because it does not contain any data we 
+      // this file will be removed because it does not contain any data we
       // still need
       if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
         LOG_TOPIC(DEBUG, Logger::ENGINES)
@@ -1680,17 +1688,17 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
             << f->StartSequence() << " added to prunable list because it is not needed anymore";
         _prunableWalFiles.emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
       }
-    } 
+    }
   }
 
   if (_maxWalArchiveSizeLimit == 0) {
     // size of the archive is not restricted. done!
     return;
   }
-  
+
   // print current archive size
   LOG_TOPIC(TRACE, Logger::ENGINES) << "total size of the RocksDB WAL file archive: " << totalArchiveSize;
-    
+
   if (totalArchiveSize <= _maxWalArchiveSizeLimit) {
     // archive is smaller than allowed. all good
     return;
@@ -1703,7 +1711,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     if (f->Type() != rocksdb::WalFileType::kArchivedLogFile) {
       continue;
     }
-      
+
     // force pruning
     bool doPrint = false;
     auto it = _prunableWalFiles.find(f->PathName());
@@ -1716,7 +1724,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     } else {
       // file already in list. now set its expiration time to the past
       // so we are sure it will get deleted
-      
+
       // using an expiration time of -1.0 indicates the file is subject to deletion
       // because the archive outgrew the maximum allowed size
       if ((*it).second > 0.0) {
@@ -1724,16 +1732,16 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       }
       (*it).second = -1.0;
     }
-      
+
     if (doPrint) {
       LOG_TOPIC(WARN, Logger::ENGINES)
           << "forcing removal of RocksDB WAL file '" << f->PathName() << "' with start sequence "
           << f->StartSequence() << " because of overflowing archive. configured maximum archive size is " << _maxWalArchiveSizeLimit << ", actual archive size is: " << totalArchiveSize;
     }
-    
+
     TRI_ASSERT(totalArchiveSize >= f->SizeFileBytes());
     totalArchiveSize -= f->SizeFileBytes();
-      
+
     if (totalArchiveSize <= _maxWalArchiveSizeLimit) {
       // got enough files to remove
       break;
@@ -1757,7 +1765,7 @@ void RocksDBEngine::pruneWalFiles() {
   RocksDBFilePurgeEnabler purgeEnabler(rocksutils::globalRocksEngine()->startPurging());
 
   WRITE_LOCKER(lock, _walFileLock);
-  
+
   // go through the map of WAL files that we have already and check if they are
   // "expired"
   for (auto it = _prunableWalFiles.begin(); it != _prunableWalFiles.end();
