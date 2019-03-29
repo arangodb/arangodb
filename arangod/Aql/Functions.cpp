@@ -6717,7 +6717,7 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
   }
 
   uint64_t execNr = arg1.toInt64();
-  pregel::PregelFeature* feature = pregel::PregelFeature::instance();
+  std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
   if (!feature) {
     ::registerWarning(expressionContext, AFN, TRI_ERROR_FAILED);
     return AqlValue(AqlValueHintEmptyArray());
