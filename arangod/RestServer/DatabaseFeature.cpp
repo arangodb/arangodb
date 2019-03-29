@@ -393,6 +393,9 @@ void DatabaseFeature::beginShutdown() {
 void DatabaseFeature::stop() {
   stopAppliers();
   MUTEX_LOCKER(mutexLocker, _databasesMutex);
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->cleanupReplicationContexts();
 
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
