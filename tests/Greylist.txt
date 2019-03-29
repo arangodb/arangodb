@@ -4,6 +4,70 @@ In this file we collect information about which tests are currently
 greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 
+ - `tests/js/server/shell/shell-foxx-legacy-model.js` fails in docker
+
+    [FAILED]  tests/js/server/shell/shell-foxx-legacy-model.js
+
+      "testFromShaped" failed: ArangoError 4: internal error - ArangoError: internal error
+    at Object.flush (/work/ArangoDB/js/server/bootstrap/modules/internal.js:137:31)
+    at Object.testFromShaped (tests/js/server/shell/shell-foxx-legacy-model.js:332:20)
+    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:515:23)
+    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:171:24)
+    at tests/js/server/shell/shell-foxx-legacy-model.js:473:9
+    at tests/js/server/shell/shell-foxx-legacy-model.js:477:3
+    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:248:12)
+    at eval (eval at callback (/work/ArangoDB/js/actions/_admin/app.js:82:18), <anonymous>:2:52)
+    at eval (eval at callback (/work/ArangoDB/js/actions/_admin/app.js:82:18), <anonymous>:2:132)
+    at Function.callback (/work/ArangoDB/js/actions/_admin/app.js:82:18)
+
+      "testFromWal" failed: ArangoError 4: internal error - ArangoError: internal error
+    at Object.flush (/work/ArangoDB/js/server/bootstrap/modules/internal.js:137:31)
+    at Object.testFromWal (tests/js/server/shell/shell-foxx-legacy-model.js:347:20)
+    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:515:23)
+    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:171:24)
+    at tests/js/server/shell/shell-foxx-legacy-model.js:473:9
+    at tests/js/server/shell/shell-foxx-legacy-model.js:477:3
+    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:248:12)
+    at eval (eval at callback (/work/ArangoDB/js/actions/_admin/app.js:82:18), <anonymous>:2:52)
+    at eval (eval at callback (/work/ArangoDB/js/actions/_admin/app.js:82:18), <anonymous>:2:132)
+    at Function.callback (/work/ArangoDB/js/actions/_admin/app.js:82:18)
+
+      "testFromDbWithSchema" failed: ArangoError 4: internal error - ArangoError: internal error
+    at Object.flush (/work/ArangoDB/js/server/bootstrap/modules/internal.js:137:31)
+    at Object.testFromDbWithSchema (tests/js/server/shell/shell-foxx-legacy-model.js:364:20)
+    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:515:23)
+    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:171:24)
+    at tests/js/server/shell/shell-foxx-legacy-model.js:473:9
+    at tests/js/server/shell/shell-foxx-legacy-model.js:477:3
+    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:248:12)
+    at eval (eval at callback (/work/ArangoDB/js/actions/_admin/app.js:82:18), <anonymous>:2:52)
+    at eval (eval at callback (/work/ArangoDB/js/actions/_admin/app.js:82:18), <anonymous>:2:132)
+    at Function.callback (/work/ArangoDB/js/actions/_admin/app.js:82:18)
+
+      "testSettingFromDb" failed: ArangoError 4: internal error - ArangoError: internal error
+    at Object.flush (/work/ArangoDB/js/server/bootstrap/modules/internal.js:137:31)
+    at Object.testSettingFromDb (tests/js/server/shell/shell-foxx-legacy-model.js:379:20)
+    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:515:23)
+    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:171:24)
+    at tests/js/server/shell/shell-foxx-legacy-model.js:473:9
+    at tests/js/server/shell/shell-foxx-legacy-model.js:477:3
+    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:248:12)
+    at eval (eval at callback (/work/ArangoDB/js/actions/_admin/app.js:82:18), <anonymous>:2:52)
+    at eval (eval at callback (/work/ArangoDB/js/actions/_admin/app.js:82:18), <anonymous>:2:132)
+    at Function.callback (/work/ArangoDB/js/actions/_admin/app.js:82:18)
+
+      "testSettingFromDbWithSchema" failed: ArangoError 4: internal error - ArangoError: internal error
+    at Object.flush (/work/ArangoDB/js/server/bootstrap/modules/internal.js:137:31)
+    at Object.testSettingFromDbWithSchema (tests/js/server/shell/shell-foxx-legacy-model.js:401:20)
+    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:515:23)
+    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:171:24)
+    at tests/js/server/shell/shell-foxx-legacy-model.js:473:9
+    at tests/js/server/shell/shell-foxx-legacy-model.js:477:3
+    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:248:12)
+    at eval (eval at callback (/work/ArangoDB/js/actions/_admin/app.js:82:18), <anonymous>:2:52)
+    at eval (eval at callback (/work/ArangoDB/js/actions/_admin/app.js:82:18), <anonymous>:2:132)
+    at Function.callback (/work/ArangoDB/js/actions/_admin/app.js:82:18)
+ 
  - `./tests/js/server/replication/fuzz/replication-fuzz.js` often fails with
 
     [FAILED]  tests/js/server/replication/fuzz/replication-fuzz.js
