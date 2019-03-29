@@ -71,6 +71,14 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
   options->addOption("--javascript.files-black-list-expression",
                      "Files in this re will not be accessible - FIX DESCRIPTION",
                      new StringParameter(&_filesBlackList));
+
+  options->addOption("--javascript.files-white-list",
+                     "Paths to be added to files-white-list-expression",
+                     new VectorParameter<StringParameter>(&_filesWhiteListVec));
+
+  options->addOption("--javascript.files-black-list",
+                     "Paths to be added to files-black-list-expression",
+                     new VectorParameter<StringParameter>(&_filesBlackListVec));
 }
 
 void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -104,6 +112,32 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
         << ex.what();
     FATAL_ERROR_EXIT();
   }
+
+  auto convertToRe = [](std::vector<std::string>& files, std::string& target_re) {
+    if(!files.empty()){
+      std::stringstream ss;
+      std::string last = std::move(files.back());
+      files.pop_back();
+
+      // Do we need to check for "()|" in filenames?
+
+      if(!target_re.empty()){
+        ss << "(" << target_re << ")|";
+      }
+
+      while (!files.empty()) {
+        ss << files.back() << "|";
+        files.pop_back();
+      }
+
+      ss << last;
+
+      target_re = ss.str();
+    }
+  };
+
+  convertToRe(_filesWhiteListVec, _filesWhiteList);
+  convertToRe(_filesBlackListVec, _filesBlackList);
 
   try {
     std::regex(_filesWhiteList, std::regex::nosubs | std::regex::ECMAScript);

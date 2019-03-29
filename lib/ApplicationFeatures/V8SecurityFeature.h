@@ -87,6 +87,10 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   std::string _filesWhiteList;
   /// @brief
   std::string _filesBlackList;
+  /// @brief
+  std::vector<std::string> _filesWhiteListVec;
+  /// @brief
+  std::vector<std::string> _filesBlackListVec;
   /// @brief regular expression for pathWhiteList
   std::regex _filesWhiteListRegex;
   /// @brief regular expression for pathBlackList
