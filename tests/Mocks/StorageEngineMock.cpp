@@ -484,7 +484,6 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
 
   if (0 == type.compare("edge")) {
     index = EdgeIndexMock::make(id, _logicalCollection, info);
-#ifdef USE_IRESEARCH
   } else if (0 == type.compare(arangodb::iresearch::DATA_SOURCE_TYPE.name())) {
     if (arangodb::ServerState::instance()->isCoordinator()) {
       arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(index, _logicalCollection,
@@ -493,7 +492,6 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
       arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, _logicalCollection,
                                                                        info, id, false);
     }
-#endif
   }
 
   if (!index) {

@@ -18,6 +18,9 @@ devel
   `--log.use-localtime`, because the functionality provided by these options
   is covered by `--log.time-format` too.
 
+* fixed internal issue #3815: fixed the removal of connected edges when
+  removing a vertex graph node in a smart graph environment.
+
 * show startup warning in case kernel setting `vm.overcommit_memory` is set  
   to a value of 2 and the jemalloc memory allocator is in use. This combination
   does not play well together.

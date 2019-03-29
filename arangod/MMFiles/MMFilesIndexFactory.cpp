@@ -46,9 +46,7 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchMMFilesLink.h"
-#endif
 
 using namespace arangodb;
 
