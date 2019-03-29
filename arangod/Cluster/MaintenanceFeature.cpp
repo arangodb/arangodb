@@ -406,7 +406,7 @@ std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
 std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<std::string> const& labels) {
   std::shared_ptr<Action> ret_ptr;
 
-  while (!_isShuttingDown && !ret_ptr) {
+  while (!_isShuttingDown) {
     // use priority queue for ready action (and purge any that are done waiting)
     {
       WRITE_LOCKER(wLock, _actionRegistryLock);
@@ -433,17 +433,19 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
       // When we get here, there is currently nothing to do, so we might
       // as well clean up those jobs in the _actionRegistry, which are
       // in state DONE:
-      for (auto loop = _actionRegistry.begin(); _actionRegistry.end() != loop;) {
-        if ((*loop)->done()) {
-          loop = _actionRegistry.erase(loop);
-        } else {
-          ++loop;
-        }  // else
-      }    // for
+      if (RandomGenerator::interval(uint32_t(10)) == 0) {
+        for (auto loop = _actionRegistry.begin(); _actionRegistry.end() != loop;) {
+          if ((*loop)->done()) {
+            loop = _actionRegistry.erase(loop);
+          } else {
+            ++loop;
+          }  // else
+        }    // for
+      }
     }      // WRITE
 
     // no pointer ... wait 0.1 seconds unless woken up
-    if (!_isShuttingDown && !ret_ptr) {
+    if (!_isShuttingDown) {
       CONDITION_LOCKER(cLock, _actionRegistryCond);
       _actionRegistryCond.wait(std::chrono::milliseconds(100));
     }  // if
