@@ -65,7 +65,6 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-#include <boost/optional.hpp>
 #include <type_traits>
 
 namespace arangodb {
@@ -146,9 +145,7 @@ class ExecutionNode {
     INDEX = 23,
     SHORTEST_PATH = 24,
     REMOTESINGLE = 25,
-#ifdef USE_IRESEARCH
     ENUMERATE_IRESEARCH_VIEW,
-#endif
     MAX_NODE_TYPE_VALUE
   };
 
@@ -557,11 +554,11 @@ class ExecutionNode {
 
   RegisterId variableToRegisterId(Variable const*) const;
 
-  boost::optional<RegisterId> variableToRegisterOptionalId(Variable const* var) const {
+  RegisterId variableToRegisterOptionalId(Variable const* var) const {
     if (var) {
       return variableToRegisterId(var);
     }
-    return boost::none;
+    return ExecutionNode::MaxRegisterId;
   }
 
  protected:

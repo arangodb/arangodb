@@ -96,7 +96,8 @@ struct IResearchQueryScorerSetup {
     arangodb::tests::init(true);
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
@@ -366,7 +367,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
       "LET arr = [0,1] "
       "FOR i in 0..1 "
       "  LET rnd = _NONDETERM_(i) "
-      "  FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "  FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "LIMIT 10 "
       "RETURN { d, score: d.seq + 3*customscorer(d, arr[TO_NUMBER(rnd != 0)]) }";
 
@@ -478,7 +479,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET i = 1"
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name < 'B' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'B', true, false) "
       "RETURN [ customscorer(d, i), customscorer(d, 1) ] ";
 
     CHECK(arangodb::tests::assertRules(
@@ -584,7 +585,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_({ value : 2 }) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, obj.value), customscorer(d, obj.value) ] ";
 
     CHECK(arangodb::tests::assertRules(
@@ -695,7 +696,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_({ value : 2 }) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, obj.value+1), customscorer(d, obj.value+1) ] ";
 
     CHECK(arangodb::tests::assertRules(
@@ -806,7 +807,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, obj[1]), customscorer(d, obj[1]) ] ";
 
     CHECK(arangodb::tests::assertRules(
@@ -917,7 +918,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, obj[0] > obj[1] ? 1 : 2), customscorer(d, obj[0] > obj[1] ? 1 : 2) ] ";
 
     CHECK(arangodb::tests::assertRules(
@@ -1028,7 +1029,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, obj[0] > obj[1] ? 1 : 2), customscorer(d, obj[1] > obj[2] ? 1 : 2) ] ";
 
     CHECK(arangodb::tests::assertRules(
@@ -1148,7 +1149,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, 5*obj[0]*TO_NUMBER(obj[1] > obj[2])/obj[1] - 1), customscorer(d, 5*obj[0]*TO_NUMBER(obj[1] > obj[2])/obj[1] - 1) ] ";
 
     CHECK(arangodb::tests::assertRules(
@@ -1259,7 +1260,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, { [ CONCAT(obj[0], obj[1]) ] : 1 }), customscorer(d, { [ CONCAT(obj[0], obj[1]) ] : 1 }) ]";
 
     CHECK(arangodb::tests::assertRules(
@@ -1346,7 +1347,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, { foo : obj[1] }), customscorer(d, { foo : obj[1] }) ]";
 
     CHECK(arangodb::tests::assertRules(
@@ -1433,7 +1434,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, 5*obj[0]*TO_NUMBER(obj[1] > obj[2])/obj[1] - 1), customscorer(d, 5*obj[0]*TO_NUMBER(obj[1] > obj[2])/obj[1] - 2) ] ";
 
     CHECK(arangodb::tests::assertRules(
@@ -1553,7 +1554,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, obj any == 3), customscorer(d, obj any == 3) ]";
 
     CHECK(arangodb::tests::assertRules(
@@ -1640,7 +1641,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, obj any == 3), customscorer(d, obj all == 3) ]";
 
     CHECK(arangodb::tests::assertRules(
@@ -1724,7 +1725,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   // con't deduplicate scorers with default values
   {
     std::string const queryString =
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ tfidf(d), tfidf(d, false) ] ";
 
     CHECK(arangodb::tests::assertRules(

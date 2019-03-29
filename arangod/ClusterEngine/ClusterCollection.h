@@ -151,7 +151,7 @@ class ClusterCollection final : public PhysicalCollection {
   Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
                 ManagedDocumentResult& result, OperationOptions& options,
                 TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-                ManagedDocumentResult& previous, arangodb::velocypack::Slice const key,
+                ManagedDocumentResult& previous,
                 std::function<Result(void)> callbackDuringLock) override;
 
   Result replace(transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
