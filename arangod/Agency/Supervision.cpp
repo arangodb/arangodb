@@ -38,6 +38,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Cluster/ServerState.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -1197,6 +1198,8 @@ void Supervision::workJobs() {
   _lock.assertLockedByCurrentThread();
 
   bool dummy = false;
+  // ATTENTION: It is necessary to copy the todos here, since we modify
+  // below!
   auto todos = _snapshot.hasAsChildren(toDoPrefix).first;
   auto it = todos.begin();
   static std::string const FAILED = "failed";
@@ -1218,7 +1221,7 @@ void Supervision::workJobs() {
 
   LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin ToDos of type Failed*";
   while (it != todos.end()) {
-    if (selectRandom && rand() % todos.size() > maximalJobsPerRound) {
+    if (selectRandom && RandomGenerator::interval(static_cast<uint64_t>(todos.size())) > maximalJobsPerRound) {
       LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
       ++it;
       continue;
