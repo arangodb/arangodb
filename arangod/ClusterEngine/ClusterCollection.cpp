@@ -463,7 +463,6 @@ Result ClusterCollection::update(arangodb::transaction::Methods* trx,
                                  ManagedDocumentResult& mdr, OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool,
                                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                                 arangodb::velocypack::Slice const key,
                                  std::function<Result(void)> /*callbackDuringLock*/) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

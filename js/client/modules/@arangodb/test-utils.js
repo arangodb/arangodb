@@ -606,7 +606,8 @@ function runThere (options, instanceInfo, file) {
           reply.hasOwnProperty('message') &&
           (
             (reply.message.search('Request timeout reached') >= 0 ) ||
-            (reply.message.search('timeout during read') >= 0 )
+            (reply.message.search('timeout during read') >= 0 ) ||
+            (reply.message.search('Connection closed by remote') >= 0 )
           )) {
         print(RED + Date() + " request timeout reached, aborting test execution" + RESET);
         return {

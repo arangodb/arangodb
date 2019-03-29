@@ -834,10 +834,18 @@ function dumpAgency(instanceInfo, options) {
       if (arangod.hasOwnProperty('exitStatus')) {
         print(Date() + " this agent is already dead: " + arangod);
       } else {
+        print(Date() + " Attempting to dump Agent: " + arangod);
         let agencyConfig = arangod.GET('_api/agency/config');
-        let agencyState = arangod.GET('_api/agency/state');
+        print(JSON.stringify(agencyConfig));
         fs.write(fs.join(options.testOutputDirectory, "agencyConfig_" + arangod.pid + ".json"), agencyConfig);
+
+        let agencyState = arangod.GET('_api/agency/state');
+        print(JSON.stringify(agencyState));
         fs.write(fs.join(options.testOutputDirectory, "agencyState_" + arangod.pid + ".json"), agencyState);
+
+        let agencyPlan = arangod.GET('_api/agency/read');
+        print(JSON.stringify(agencyPlan));
+        fs.write(fs.join(options.testOutputDirectory, "agencyPlan_" + arangod.pid + ".json"), agencyPlan);
       }
     }
   });
@@ -882,7 +890,7 @@ function checkArangoAlive (arangod, options) {
   return ret;
 }
 
-function abortSurviviours(arangod, options) {
+function abortSurvivors(arangod, options) {
   print(Date() + " Killing in the name of: ");
   print(arangod);
   if (!arangod.hasOwnProperty('exitStatus')) {
@@ -908,7 +916,7 @@ function checkInstanceAlive (instanceInfo, options) {
     dumpAgency(instanceInfo, options);
     print(Date() + ' If cluster - will now start killing the rest.');
     instanceInfo.arangods.forEach((arangod) => {
-      abortSurviviours(arangod, options);
+      abortSurvivors(arangod, options);
     });
   }
   return rc;
