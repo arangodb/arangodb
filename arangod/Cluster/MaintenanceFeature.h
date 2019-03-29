@@ -32,7 +32,19 @@
 #include "Cluster/MaintenanceWorker.h"
 #include "ProgramOptions/ProgramOptions.h"
 
+#include <queue>
+
 namespace arangodb {
+
+template<typename T>
+struct SharedPtrComparer {
+  bool operator()(std::shared_ptr<T> const& a, std::shared_ptr<T> const& b) {
+    if (a == nullptr || b == nullptr) {
+      return false;
+    }
+    return *a < *b;
+  }
+};
 
 class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
@@ -349,6 +361,22 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   //
   /// @brief all actions executing, waiting, and done
   std::deque<std::shared_ptr<maintenance::Action>> _actionRegistry;
+
+  // The following is protected with the _actionRegistryLock exactly as
+  // the _actionRegistry. This priority queue is used to find the highest
+  // priority action that is ready. Therefore, _prioQueue contains all the
+  // actions in state READY. The sorting is done such that all fast track
+  // actions come before all non-fast track actions. Therefore, a fast track
+  // thread can just look at the top action and if this is not fast track,
+  // it does not have to pop anything. If a worker picks an action and starts
+  // work on it, the action leaves state READY and is popped from the priority
+  // queue.
+  // We also need to be able to delete actions which are READY. In that case
+  // we need to leave the action in _prioQueue (since we cannot remove anything
+  // but the top from it), and simply put it into a different state.
+  std::priority_queue<std::shared_ptr<maintenance::Action>,
+                      std::vector<std::shared_ptr<maintenance::Action>>,
+                      SharedPtrComparer<maintenance::Action>> _prioQueue;
 
   /// @brief lock to protect _actionRegistry and state changes to MaintenanceActions within
   mutable arangodb::basics::ReadWriteLock _actionRegistryLock;
