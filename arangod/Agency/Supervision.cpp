@@ -1150,12 +1150,13 @@ void Supervision::cleanupFinishedAndFailedJobs() {
   constexpr size_t maximalFailedJobs = 1000;
 
   auto cleanup = [&](std::string prefix, size_t limit) {
-    auto jobs = _snapshot.hasAsChildren(prefix).first;
+    auto const& jobs = _snapshot.hasAsChildren(prefix).first;
     if (jobs.size() <= 2 * limit) {
       return;
     }
     typedef std::pair<std::string, std::string> keyDate;
     std::vector<keyDate> v;
+    v.reserve(jobs.size());
     for (auto const& p: jobs) {
       auto created = p.second->hasAsString("timeCreated");
       if (created.second) {

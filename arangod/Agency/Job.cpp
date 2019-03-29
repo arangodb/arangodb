@@ -415,7 +415,7 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot, std::string const& d
 
     if (otherCollection != collection && col.has("distributeShardsLike") &&  // use .has() form to prevent logging of missing
         col.hasAsSlice("distributeShardsLike").first.copyString() == collection) {
-      auto const theirshards = sortedShardList(col("shards"));
+      auto const& theirshards = sortedShardList(col.hasAsNode("shards").first);
       if (theirshards.size() > 0) {  // do not care about virtual collections
         if (theirshards.size() == myshards.size()) {
           ret.emplace_back(otherCollection,
