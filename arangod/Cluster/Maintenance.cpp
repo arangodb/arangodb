@@ -274,7 +274,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                                   index.get(StaticStrings::IndexType).copyString()},
                                  {FIELDS, index.get(FIELDS).toJson()},
                                  {ID, index.get(ID).copyString()}},
-                                HIGHER_PRIORITY, std::make_shared<VPackBuilder>(index)));
+                                INDEX_PRIORITY, std::make_shared<VPackBuilder>(index)));
         }
       }
     }
