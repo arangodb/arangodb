@@ -1071,7 +1071,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
         const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(split.first);
 
       if (!res.ok()) {
-        LOG_TOPIC(,WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("36062", WARN, arangodb::iresearch::TOPIC)
           << "failure to load analyzers for database '" << split.first << "' while getting analyzer '" << name << "': " << res.errorNumber() << " " << res.errorMessage();
         TRI_set_errno(res.errorNumber());
 
@@ -1429,7 +1429,7 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers( // load
       arangodb::velocypack::Slice const& slice // analyzer definition
     )->arangodb::Result {
       if (!slice.isObject()) {
-        LOG_TOPIC(,ERR, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("5c7a5", ERR, arangodb::iresearch::TOPIC)
           << "failed to find an object value for analyzer definition while loading analyzer form collection '" << ANALYZER_COLLECTION_NAME << "' in database '" << vocbase->name() + "', skipping it: " << slice.toString();
 
         return arangodb::Result(); // skip analyzer
@@ -1444,7 +1444,7 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers( // load
 
       if (!slice.hasKey(arangodb::StaticStrings::KeyString) // no such field (required)
           || !slice.get(arangodb::StaticStrings::KeyString).isString()) {
-        LOG_TOPIC(,ERR, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("1dc56", ERR, arangodb::iresearch::TOPIC)
           << "failed to find a string value for analyzer '" << arangodb::StaticStrings::KeyString << "' while loading analyzer form collection '" << ANALYZER_COLLECTION_NAME << "' in database '" << vocbase->name() + "', skipping it: " << slice.toString();
 
         return arangodb::Result(); // skip analyzer
@@ -1454,7 +1454,7 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers( // load
 
       if (!slice.hasKey("name") // no such field (required)
           || !(slice.get("name").isString() || slice.get("name").isNull())) {
-        LOG_TOPIC(,ERR, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("f5920", ERR, arangodb::iresearch::TOPIC)
           << "failed to find a string value for analyzer 'name' while loading analyzer form collection '" << ANALYZER_COLLECTION_NAME << "' in database '" << vocbase->name() + "', skipping it: " << slice.toString();
 
         return arangodb::Result(); // skip analyzer
@@ -1464,7 +1464,7 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers( // load
 
       if (!slice.hasKey("type") // no such field (required)
           || !(slice.get("type").isString() || slice.get("name").isNull())) {
-        LOG_TOPIC(,ERR, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("9f5c8", ERR, arangodb::iresearch::TOPIC)
           << "failed to find a string value for analyzer 'type' while loading analyzer form collection '" << ANALYZER_COLLECTION_NAME << "' in database '" << vocbase->name() + "', skipping it: " << slice.toString();
 
         return arangodb::Result(); // skip analyzer
@@ -1482,7 +1482,7 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers( // load
         } else if (subSlice.isString() || subSlice.isNull()) {
           properties = getStringRef(subSlice);
         } else {
-          LOG_TOPIC(,ERR, arangodb::iresearch::TOPIC)
+          LOG_TOPIC("a297e", ERR, arangodb::iresearch::TOPIC)
             << "failed to find a string value for analyzer 'properties' while loading analyzer form collection '" << ANALYZER_COLLECTION_NAME << "' in database '" << vocbase->name() + "', skipping it: " << slice.toString();
 
           return arangodb::Result(); // skip analyzer
@@ -1493,7 +1493,7 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers( // load
         auto subSlice = slice.get("features");
 
         if (!subSlice.isArray()) {
-          LOG_TOPIC(,ERR, arangodb::iresearch::TOPIC)
+          LOG_TOPIC("7ec8a", ERR, arangodb::iresearch::TOPIC)
             << "failed to find an array value for analyzer 'features' while loading analyzer form collection '" << ANALYZER_COLLECTION_NAME << "' in database '" << vocbase->name() + "', skipping it: " << slice.toString();
 
           return arangodb::Result(); // skip analyzer
@@ -1506,7 +1506,7 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers( // load
           auto subEntry = *subItr;
 
           if (!subEntry.isString() && !subSlice.isNull()) {
-            LOG_TOPIC(,ERR, arangodb::iresearch::TOPIC)
+            LOG_TOPIC("7620d", ERR, arangodb::iresearch::TOPIC)
               << "failed to find a string value for an entry in analyzer 'features' while loading analyzer form collection '" << ANALYZER_COLLECTION_NAME << "' in database '" << vocbase->name() + "', skipping it: " << slice.toString();
 
             return arangodb::Result(); // skip analyzer
@@ -1516,7 +1516,7 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers( // load
           auto* feature = irs::attribute::type_id::get(featureName);
 
           if (!feature) {
-            LOG_TOPIC(,ERR, arangodb::iresearch::TOPIC)
+            LOG_TOPIC("4fedc", ERR, arangodb::iresearch::TOPIC)
               << "failed to find feature '" << featureName << "' while loading analyzer form collection '" << ANALYZER_COLLECTION_NAME << "' in database '" << vocbase->name() + "', skipping it: " << slice.toString();
 
             return arangodb::Result(); // skip analyzer
@@ -2318,7 +2318,7 @@ bool IResearchAnalyzerFeature::visit( // visit analyzers
     );
 
     if (!res.ok()) {
-      LOG_TOPIC(,WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("73695", WARN, arangodb::iresearch::TOPIC)
         << "failure to load analyzers while visiting database '" << vocbase->name() << "': " << res.errorNumber() << " " << res.errorMessage();
       TRI_set_errno(res.errorNumber());
 
