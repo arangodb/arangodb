@@ -73,6 +73,8 @@ bool ReadWriteLock::writeLock(std::chrono::microseconds timeout) {
           return true;
         }
       }
+      // TODO: it seems this may repeatedly wait for the timeout
+      // it is not guaranteed to finish within timeout
       status = _writers_bell.wait_for(guard, timeout);
     }
   }

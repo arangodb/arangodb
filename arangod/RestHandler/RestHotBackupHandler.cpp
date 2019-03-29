@@ -44,6 +44,32 @@ RestStatus RestHotBackupHandler::execute() {
     // extract the request specifics
     RequestType const type = _request->requestType();
     std::vector<std::string> const& suffixes = _request->suffixes();
+    std::shared_ptr<RocksDBHotBackup> operation(parseHotBackupParams(type, suffixes));
+
+    /// TODO: add test for rocksdb engine
+
+    auto reportError = [&]() {
+      if (!operation->result().isEmpty()) {
+        std::string msg = operation->resultSlice().toJson();
+        generateError(operation->restResponseCode(),
+                      operation->restResponseError(), msg);
+      } else if (operation->errorMessage().empty()) {
+        generateError(operation->restResponseCode(),
+                      operation->restResponseError());
+      } else {
+        generateError(operation->restResponseCode(),
+                      operation->restResponseError(),
+                      operation->errorMessage());
+      }
+    };
+
+    if (operation) {
+      if (!operation->valid()) {
+        reportError();
+        return RestStatus::DONE;
+      }
+      operation->execute();
+
 
     if (ServerState::instance()->isCoordinator()) {
       
@@ -129,7 +155,7 @@ std::shared_ptr<RocksDBHotBackup> RestHotBackupHandler::parseHotBackupParams(
 
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (parseSuccess) {
-    operation=RocksDBHotBackup::operationFactory(type, suffixes, body);
+    operation = RocksDBHotBackup::operationFactory(type, suffixes, body);
   } // if
 
   return operation;
