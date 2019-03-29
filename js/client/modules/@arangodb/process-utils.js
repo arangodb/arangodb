@@ -833,16 +833,16 @@ function dumpAgency(instanceInfo, options) {
     let opts = {
       method: method,
       jwt: crypto.jwtEncode(instanceInfo.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256')
-    }
+    };
     print('--------------------------------- '+ fn + ' -----------------------------------------------');
-    let agencyReply = download(arangod.url + path, method == 'POST' ? '[["/"]]' : '', opts);
-    if (agencyReply.code == 200) {
+    let agencyReply = download(arangod.url + path, method === 'POST' ? '[["/"]]' : '', opts);
+    if (agencyReply.code === 200) {
       let agencyValue = JSON.parse(agencyReply.body);
       print(JSON.stringify(agencyValue));
       fs.write(fs.join(options.testOutputDirectory, fn + '_' + arangod.pid + ".json"), JSON.stringify(agencyValue, null, 2));
     }
     else {
-      print(agencyReply)
+      print(agencyReply);
     }
   }
   instanceInfo.arangods.forEach((arangod) => {
@@ -850,8 +850,6 @@ function dumpAgency(instanceInfo, options) {
       if (arangod.hasOwnProperty('exitStatus')) {
         print(Date() + " this agent is already dead: " + arangod);
       } else {
-        print(arangod)
-
         print(Date() + " Attempting to dump Agent: " + arangod);
         dumpAgent(arangod, '/_api/agency/config', 'GET', 'agencyConfig');
 
