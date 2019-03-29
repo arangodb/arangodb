@@ -649,58 +649,6 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-/*
- * 
- 
-Global analyzers V8 API
-
-/// @brief Get corresponding control object for managing server-wide analyzers
-var analyzers = require('@arangodb/analysis').analyzers;
-
-/// @brief get a list of all registered analyzers
-var analyzers = require('@arangodb/analysis').analyzers;
-var analyzersList = analyzers.toArray();
-
-/// @brief get analyzer by an identifier
-/// @returns undefined if analyzer is not found
-var analyzers = require('@arangodb/analysis').analyzers;
-var analyzer = analyzers[name: <string>];
-
-/// @brief Get analyzer properties
-/// @param name analyzer name
-/// @returns json representing analyzer properties
-var analyzers = require('@arangodb/analysis').analyzers;
-var analyzer = analyzers[name: <string>];
-var properties = analyzer.properties();
-
-/// @brief Get analyzer name 
-/// @param name analyzer name
-/// @returns json representing analyzer properties
-var analyzers = require('@arangodb/analysis').analyzers;
-var analyzer = analyzers[name: <string>]
-var properties = analyzer.name();
-
-/// @brief Get analyzer type
-/// @param name analyzer name
-/// @returns json representing analyzer properties
-var analyzers = require('@arangodb/analysis').analyzers;
-var analyzer = analyzers[name: <string>];
-var properties = analyzer.type();
-
-/// @brief register new analyzer
-/// @param name analyzer name
-/// @returns registered analyzer object
-var analyzers = require('@arangodb/analysis').analyzers;
-var analyzer = analyzers.save(name: <string>, type: <string>, parameters: <json>);
-
-/// @brief remove already registered analyzer
-/// @param name analyzer name
-/// @param force forcefully remove an analyzer even if it's still in use, 'false' by default
-/// @returns true if analyzer was succesfully removed, false - otherwise
-var analyzers = require('@arangodb/analysis').analyzers;
-analyzers.remove(name: <string> [, force: <bool>])
-
-*/
 }
 
 namespace arangodb {
