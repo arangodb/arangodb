@@ -245,12 +245,13 @@ void GeneralServerFeature::stop() {
   }
 
   _jobManager->deleteJobs();
-}
 
-void GeneralServerFeature::unprepare() {
   for (auto& server : _servers) {
     delete server;
   }
+}
+
+void GeneralServerFeature::unprepare() {
 
   _jobManager.reset();
 
