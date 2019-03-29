@@ -1116,6 +1116,9 @@ bool Supervision::handleJobs() {
 
   LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin cleanupLostCollections";
   cleanupLostCollections(_snapshot, _agent, _jobId);
+  // Note that this function consumes job IDs, potentially many, so the member
+  // is incremented inside the function. Furthermore, `cleanupLostCollections`
+  // is static for catch testing purposes.
 
   LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin readyOrphanedIndexCreations";
   readyOrphanedIndexCreations();
