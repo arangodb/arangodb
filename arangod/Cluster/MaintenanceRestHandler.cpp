@@ -76,16 +76,17 @@ RestStatus MaintenanceRestHandler::execute() {
 
 RestStatus MaintenanceRestHandler::postAction() {
 
+  std::stringstream error;
+  
   std::shared_ptr<VPackBuilder> body;
   try {
     body = _request->toVelocyPackBuilderPtr();
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "parsed post action " << body->toJson();
   } catch (std::exception const& e) {
-    generateError(
-      rest::ResponseCode::BAD,
-      std::string("failed parsing ") + _request->body() + ": " + e.what());
+    error << "failed parsing post action " << _request->body() + ": " + e.what();
     return RestStatus::DONE;
   }
-  
+
   if (body.isObject()) {
     if (body.hasKey("execute") && body.get("execute").isString()) {
       // {"execute": "pause", "duration": 60} / {"execute": "proceed"}
@@ -95,32 +96,38 @@ RestStatus MaintenanceRestHandler::postAction() {
           auto const std::chrono::seconds dur(
             body.get("duration").getNumber<int64_t>());
           if (dur =< 0 || dur > 300) {
-            generateError(rest::ResponseCode::BAD,
-                          std::string("invalid mainenance pause duration: ")
-                          + dur.count() + " seconds");
-            return RestStatus::DONE;
+            error << "invalid mainenance pause duration: " << dur.count()
+                  << " seconds";
           }
           // Pause maintenance
+          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+            << "Maintenance is paused for " << dur.count() << " seconds";
           ApplicationServer::getFeature<MaintenanceFeature>("Maintenance")->pause(dur);
         }
       } else if (ex == "proceed") {
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          << "Maintenance is prceeded "  << dur.count() << " seconds";
         ApplicationServer::getFeature<MaintenanceFeature>("Maintenance")->proceed();
       } else {
-        generateError(
-          rest::ResponseCode::BAD, std::string("invalid command ") + _request->body());
-        return RestStatus::DONE;        
+        error << "invalid POST command"
       }
     } else {
-      generateError(
-        rest::ResponseCode::BAD, std::string("invalid object ") + _request->body());
-      return RestStatus::DONE;
+      error << "invalid POST object";
     }
   } else {
-    generateError(
-      rest::ResponseCode::BAD, std::string("invalid json ") + _request->body());
-    return RestStatus::DONE;
+    error << "invalid POST body";
   }
-  
+
+  if (error.str().empty()) {
+    generateResult(200, "\"OK\"");
+  } else {
+    error << ": " << _request->body();
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str(); 
+    generateError(rest::ResponseCode::BAD, error.str());
+  }
+
+  return RestStatus::DONE;
+
 }
 
 
