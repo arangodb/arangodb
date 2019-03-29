@@ -328,7 +328,7 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
     if (drop) {
       actions.emplace_back(ActionDescription(
           {{NAME, DROP_COLLECTION}, {DATABASE, dbname}, {COLLECTION, colname}},
-          HIGHER_PRIORITY));
+          localLeader ? LEADER_PRIORITY : FOLLOWER_PRIORITY));
     } else {
       // The shard exists in both Plan and Local
       commonShrds.erase(it);  // it not a common shard?
