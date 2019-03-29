@@ -7145,7 +7145,7 @@ AqlValue Functions::PregelResult(arangodb::aql::Query* query, transaction::Metho
   }
 
   uint64_t execNr = arg1.toInt64(trx);
-  pregel::PregelFeature* feature = pregel::PregelFeature::instance();
+  std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
   if (!feature) {
     ::registerWarning(query, AFN, TRI_ERROR_FAILED);
     return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
