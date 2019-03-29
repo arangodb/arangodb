@@ -1227,7 +1227,7 @@ void Supervision::workJobs() {
       continue;
     }
  
-    auto jobNode = *(it->second);
+    auto const& jobNode = *(it->second);
     if (jobNode.hasAsString("type").first.compare(0, FAILED.length(), FAILED) == 0) {
       LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
       JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
@@ -1243,12 +1243,12 @@ void Supervision::workJobs() {
   if (!_haveAborts) {
     LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin ToDos";
     for (auto const& todoEnt : todos) {
-      if (selectRandom && rand() % todos.size() > maximalJobsPerRound) {
+      if (selectRandom && RandomGenerator::interval(static_cast<uint64_t>(todos.size())) > maximalJobsPerRound) {
         LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
         continue;
       }
 
-      auto jobNode = *(todoEnt.second);
+      auto const& jobNode = *(todoEnt.second);
       LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
       JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
         .run(dummy);
@@ -1262,11 +1262,11 @@ void Supervision::workJobs() {
   selectRandom = pends.size() > maximalJobsPerRound;
 
   for (auto const& pendEnt : pends) {
-    if (selectRandom && rand() % pends.size() > maximalJobsPerRound) {
+    if (selectRandom && RandomGenerator::interval(static_cast<uint64_t>(pends.size())) > maximalJobsPerRound) {
       LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Skipped Pending Job";
       continue;
     }
-    auto jobNode = *(pendEnt.second);
+    auto const& jobNode = *(pendEnt.second);
     LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
     JobContext(PENDING, jobNode.hasAsString("jobId").first, _snapshot, _agent)
       .run(dummy);
