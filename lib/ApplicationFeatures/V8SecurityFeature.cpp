@@ -68,7 +68,7 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                      "Files in this re will be accessible - FIXME",
                      new StringParameter(&_filesWhiteList));
 
-  options->addOption("--javascript.endpoints-files-black",
+  options->addOption("--javascript.files-blacki-list",
                      "Files in this re will not be accessible - FIXME",
                      new StringParameter(&_filesBlackList));
 }
