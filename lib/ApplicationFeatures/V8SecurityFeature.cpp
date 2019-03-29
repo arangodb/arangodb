@@ -215,3 +215,8 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
   return std::regex_search(path, _filesWhiteListRegex) &&
          !std::regex_search(path, _filesBlackListRegex);
 }
+
+bool V8SecurityFeature::isAllowedToExecuteJavaScript(v8::Isolate* isolate) const {
+  //implement me
+  return true;
+}

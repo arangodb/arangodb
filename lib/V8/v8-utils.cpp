@@ -174,7 +174,11 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to read files in this path");
   }
-  // TODO isAllowedToExecuteCode
+
+  if (!v8security->isAllowedToExecuteJavaScript(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute JavaScript code");
+  }
 
   size_t length;
   char* content = TRI_SlurpFile(filename, &length);
@@ -279,7 +283,10 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path, bool
   LOG_TOPIC("65c8d", TRACE, arangodb::Logger::FIXME)
       << "loading JavaScript directory: '" << path << "'";
 
-  //TODO allowed to execute
+  if (!v8security->isAllowedToExecuteJavaScript(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute JavaScript code");
+  }
 
   std::vector<std::string> files = TRI_FilesDirectory(path);
 
@@ -434,7 +441,10 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  //TODO - allowed to execute
+  if (!v8security->isAllowedToExecuteJavaScript(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute JavaScript code");
+  }
 
   if (args.Length() > 1) {
     filename = args[1];
@@ -509,7 +519,13 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  //allowed to execute
+  // TODO is compilation alone dangerous? could it reveal
+  // information about other parts?
+  // //allowed to execute
+  // if (!v8security->isAllowedToExecuteJavaScript(isolate)) {
+  //   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+  //                                  "not allowed to execute JavaScript code");
+  // }
 
   // extract arguments
   if (args.Length() != 1) {
@@ -655,7 +671,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  //allow connect?
+  //TODO -- allow connect?
 
   std::string const signature = "download(<url>, <body>, <options>, <outfile>)";
 

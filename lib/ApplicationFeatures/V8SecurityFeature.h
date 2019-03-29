@@ -64,6 +64,9 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   bool isAllowedToAccessPath(v8::Isolate* isolate, std::string path, bool write = false) const;
   bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, bool write = false) const;
 
+  /// @brief tests if the execution of JavaScript code is allowed
+  bool isAllowedToExecuteJavaScript(v8::Isolate* isolate) const;
+
  private:
   /// @brief regular expression string for startup options filtering
   std::string _startupOptionsFilter;
