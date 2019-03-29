@@ -72,8 +72,7 @@ std::
                                                                                // %m%&m)
                                                                          // zero-pad 4 digit years to length of 6 and add "+"
                                                                          // prefix, keep negative as-is
-                                                                         {"%yyy"
-                                                                          "yyy",
+                                                                         {"%yyyyyy",
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                                                                             auto ymd = year_month_day(
                                                                                 floor<date::days>(tp));
@@ -126,16 +125,14 @@ std::
                                                                             }
                                                                             wrk.append(std::to_string(yearnum));
                                                                           }},
-                                                                         {"%mmm"
-                                                                          "m",
+                                                                         {"%mmmm",
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                                                                             auto ymd = year_month_day(
                                                                                 floor<date::days>(tp));
                                                                             wrk.append(
                                                                                 ::monthNames[static_cast<unsigned>(ymd.month()) - 1]);
                                                                           }},
-                                                                         {"%yyy"
-                                                                          "y",
+                                                                         {"%yyyy",
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                                                                             auto ymd = year_month_day(
                                                                                 floor<date::days>(tp));
@@ -179,31 +176,27 @@ std::
                                                                             }
                                                                           }},
 
-                                                                         {"%www"
-                                                                          "w",
+                                                                         {"%wwww",
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                                                                             weekday wd{floor<date::days>(tp)};
                                                                             wrk.append(
                                                                                 ::weekDayNames[static_cast<unsigned>(wd)]);
                                                                           }},
 
-                                                                         {"%mm"
-                                                                          "m",
+                                                                         {"%mmm",
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                                                                             auto ymd = year_month_day(
                                                                                 floor<date::days>(tp));
                                                                             wrk.append(
                                                                                 ::monthNamesShort[static_cast<unsigned>(ymd.month()) - 1]);
                                                                           }},
-                                                                         {"%ww"
-                                                                          "w",
+                                                                         {"%www",
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                                                                             weekday wd{floor<date::days>(tp)};
                                                                             wrk.append(
                                                                                 weekDayNamesShort[static_cast<unsigned>(wd)]);
                                                                           }},
-                                                                         {"%ff"
-                                                                          "f",
+                                                                         {"%fff",
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                                                                             auto day_time = make_time(
                                                                                 tp - floor<date::days>(tp));
@@ -220,8 +213,7 @@ std::
                                                                             }
                                                                             wrk.append(std::to_string(millis));
                                                                           }},
-                                                                         {"%xx"
-                                                                          "x",
+                                                                         {"%xxx",
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                                                                             auto ymd = year_month_day(
                                                                                 floor<date::days>(tp));
