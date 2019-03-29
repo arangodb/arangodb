@@ -177,11 +177,11 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
 }
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
-                                              std::string path, bool read) const {
+                                              std::string path, bool write) const {
   // check security context first
   TRI_GET_GLOBALS();
   auto& sec = v8g->_securityContext;
-  if ((read && !sec.canReadFs()) || (!read && !sec.canWriteFs())) {
+  if ((!write && !sec.canReadFs()) || (write && !sec.canWriteFs())) {
     return false;
   }
 
