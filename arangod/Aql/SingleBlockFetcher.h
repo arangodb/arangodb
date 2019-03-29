@@ -114,7 +114,7 @@ class SingleBlockFetcher {
   }
 
   std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   };
 
   std::pair<ExecutionState, std::size_t> preFetchNumberOfRows(std::size_t) {

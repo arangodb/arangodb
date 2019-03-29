@@ -6603,7 +6603,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
       args->addMember(array);
     } else {
       TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unsupported geo type");
     }
   };
 
