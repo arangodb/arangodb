@@ -273,7 +273,7 @@ function permissions(options) {
                                 testOptions);
     } else {
       if (options.extremeVerbosity) {
-        print('Skipped ' + te + ' because of ' + filtered.filter);
+        print('Skipped ' + f + ' because of ' + filtered.filter);
       }
     }
 
