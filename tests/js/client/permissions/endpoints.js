@@ -32,7 +32,7 @@ if (getOptions === true) {
   return {
     'javascript.endpoints-filter':
       'tcp://127.0.0.1:8888' + '|' +     // Will match http:// 
-      '127.0.0.1:8899'       + '|' +     // won't match at all.
+      '127.0.0.1:8899'       + '|' +     // will match at http and https.
       'ssl://127.0.0.1:7777' + '|' +     // will match https://
       'arangodb.org'         + '|' +     // will match https + http
       'http://127.0.0.1:9999'            // won't match at all.
@@ -69,8 +69,6 @@ function testSuite() {
     }
   }
   return {
-    setUp: function() {},
-    tearDown: function() {},
     testDownload : function() {
       downloadForbidden('http://127.0.0.1:8888/testbla', 'GET');
       downloadForbidden('http://127.0.0.1:8888/testbla', 'POST');
