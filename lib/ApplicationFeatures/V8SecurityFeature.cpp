@@ -64,12 +64,12 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
       new StringParameter(&_endpointsFilter));
 
   // TODO - update descriptions once mechanics decided
-  options->addOption("--javascript.files-white-list",
-                     "Files in this re will be accessible - FIXME",
+  options->addOption("--javascript.files-white-list-expression",
+                     "Files in this re will be accessible - FIX DESCRIPTION",
                      new StringParameter(&_filesWhiteList));
 
-  options->addOption("--javascript.files-blacki-list",
-                     "Files in this re will not be accessible - FIXME",
+  options->addOption("--javascript.files-black-list-expression",
+                     "Files in this re will not be accessible - FIX DESCRIPTION",
                      new StringParameter(&_filesBlackList));
 }
 
@@ -109,7 +109,7 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
     std::regex(_filesWhiteList, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
     LOG_TOPIC("ab9d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript.files-white-list' is not a valid regular "
+        << "value for '--javascript.files-white-list-expression' is not a valid regular "
            "expression: "
         << ex.what();
     FATAL_ERROR_EXIT();
@@ -119,7 +119,7 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
     std::regex(_filesBlackList, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
     LOG_TOPIC("ab8d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript.files-black-list' is not a valid regular "
+        << "value for '--javascript.files-black-list-expression' is not a valid regular "
            "expression: "
         << ex.what();
     FATAL_ERROR_EXIT();
