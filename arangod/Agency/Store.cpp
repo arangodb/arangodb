@@ -555,6 +555,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   //   a fast path for exactly one path, in which we do not have to copy all
   //   a slow path for more than one path
 
+  MUTEX_LOCKER(storeLocker, _storeLock);  // Freeze KV-Store for read
   if (query_strs.size() == 1) {
     auto const& path = query_strs[0];
     std::vector<std::string> pv = split(path, '/');
@@ -571,13 +572,12 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
       VPackObjectBuilder guard(&ret);
     }
     // And close surrounding object structures:
-    for (size_t i = 0; i < e; ++i) {
+    for (i = 0; i < e; ++i) {
       ret.close();
     }
   }  else {  // slow path for 0 or more than 2 paths:
     // Create response tree
     Node copy("copy");
-    MUTEX_LOCKER(storeLocker, _storeLock);  // Freeze KV-Store for read
     for (auto const& path : query_strs) {
       std::vector<std::string> pv = split(path, '/');
       size_t e = _node.exists(pv).size();
