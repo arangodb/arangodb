@@ -154,6 +154,12 @@ v3.4.5 (2019-03-27)
 * coordinator route for full agency dumps contains compactions and
   time stamps
 
+* lots of agency performance improvements, mostly avoiding copying
+
+* priority queue for maintenance jobs
+
+* do not wait for replication after each job execution in Supervision
+
 v3.4.4 (2019-03-12)
 -------------------
 
