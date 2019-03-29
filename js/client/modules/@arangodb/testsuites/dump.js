@@ -270,50 +270,7 @@ class DumpRestoreHelper {
       "max-wait-for-restart": 100.0
     };
     this.results.restoreHotBackup = pu.run.arangoBackup(this.options, this.instanceInfo, "restore", cmds, this.instanceInfo.rootDir, true);
-    this.print("done restoring backup; waiting for server to come back up");
-
-    
-    let i = 0;
-    while (i < 100) {
-      i++;
-      let currentUptime = this.getUptime();
-      let keys = Object.keys(currentUptime);
-      if (keys.length !== originalUptimeKeys ) {
-        try {
-          arango.reconnect(this.instanceInfo.endpoint, '_system', 'root', '');
-        }
-        catch(x) {
-          this.print(".");
-          
-          sleep(1.0);
-          continue;
-        }
-      }
-      let newer = true;
-      keys.forEach(key => {
-        if (!originalUptime.hasOwnProperty(key)) {
-          newer = false;
-        }
-        if (originalUptime[key] < currentUptime[key]) {
-          newer = false;
-        }
-      });
-      
-      if (newer) {
-        try {
-          arango.reconnect(this.instanceInfo.endpoint, '_system', 'root', '');
-          this.print("reconnected");
-          return this.results.restoreHotBackup.status;
-        }
-        catch(x) {
-          sleep(1.0);
-          this.print(",");
-          continue;
-        }
-      }
-      sleep(1.0);
-    }
-    throw ("Arangod didn't come back up in the expected timeframe!");
+    this.print("done restoring backup");
   }
 
   listHotBackup() {
