@@ -474,7 +474,7 @@ std::pair<irs::string_ref, irs::string_ref> splitAnalyzerName( // split name
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read analyzers from vocbase
-/// @return visitation compleated fully
+/// @return visitation completed fully
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::Result visitAnalyzers( // visit analyzers
   TRI_vocbase_t& vocbase, // vocbase to visit
@@ -527,7 +527,7 @@ arangodb::Result visitAnalyzers( // visit analyzers
   }
 
   auto commit  = irs::make_finally([&trx]()->void { trx.commit(); }); // end read-only transaction
-  auto result = trx.all(ANALYZER_COLLECTION_NAME, 0, 2, options);
+  auto result = trx.all(ANALYZER_COLLECTION_NAME, 0, 0, options);
 
   if (!result.result.ok()) {
     return result.result;
