@@ -37,8 +37,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
@@ -165,6 +165,17 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
                                bool stripShebang, bool execute, bool useGlobalContext) {
   v8::HandleScope handleScope(isolate);
 
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToAccessPath(isolate, filename, false)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to read files in this path");
+  }
+  // TODO isAllowedToExecuteCode
+
   size_t length;
   char* content = TRI_SlurpFile(filename, &length);
 
@@ -261,8 +272,14 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path, bool
                                     bool execute, bool useGlobalContext) {
   v8::HandleScope scope(isolate);
 
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
   LOG_TOPIC("65c8d", TRACE, arangodb::Logger::FIXME)
       << "loading JavaScript directory: '" << path << "'";
+
+  //TODO allowed to execute
 
   std::vector<std::string> files = TRI_FilesDirectory(path);
 
@@ -277,6 +294,11 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path, bool
     ;
 
     std::string full = FileUtils::buildFilename(path, filename);
+
+    if (!v8security->isAllowedToAccessPath(isolate, full, false)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                     "not allowed to read files in this path");
+    }
 
     bool ok = LoadJavaScriptFile(isolate, full.c_str(), stripShebang, execute, useGlobalContext);
 
@@ -407,6 +429,13 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Value> source = args[0];
   v8::Handle<v8::Value> filename;
 
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  //TODO - allowed to execute
+
   if (args.Length() > 1) {
     filename = args[1];
   } else {
@@ -475,6 +504,13 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  //allowed to execute
+
   // extract arguments
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("parseFile(<filename>)");
@@ -488,6 +524,12 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
+  }
+
+
+  if (!v8security->isAllowedToAccessPath(isolate, *name, false)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to read files in this path");
   }
 
   size_t length;
@@ -607,6 +649,13 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
+
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  //allow connect?
 
   std::string const signature = "download(<url>, <body>, <options>, <outfile>)";
 
@@ -813,6 +862,11 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      "invalid value provided for outfile");
     }
 
+    if (!v8security->isAllowedToAccessPath(isolate, outfile, true)) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to modify files in this path");
+    }
+
     if (TRI_ExistsFile(outfile.c_str())) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_CANNOT_OVERWRITE_FILE);
     }
@@ -893,13 +947,13 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         << "downloading file. endpoint: " << endpoint << ", relative URL: " << url;
 
     V8SecurityFeature* v8security =
-       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-           "V8Security");
+        application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+            "V8Security");
     TRI_ASSERT(v8security != nullptr);
 
     if (!v8security->isAllowedToConnectToEndpoint(isolate, endpoint)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                    "not allowed to connect to this endpoint");
+                                     "not allowed to connect to this endpoint");
     }
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
@@ -2345,18 +2399,18 @@ static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string destination = TRI_ObjectToString(isolate, args[1]);
 
   V8SecurityFeature* v8security =
-     application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-         "V8Security");
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
   TRI_ASSERT(v8security != nullptr);
-
-  if (!v8security->isAllowedToAccessPath(isolate, source, true)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                  "not allowed to read files in this path");
-  }
 
   if (!v8security->isAllowedToAccessPath(isolate, source, false)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                  "not allowed to modify files in this path");
+                                   "not allowed to read files in this path");
+  }
+
+  if (!v8security->isAllowedToAccessPath(isolate, source, true)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to modify files in this path");
   }
 
   bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
@@ -2732,13 +2786,13 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   V8SecurityFeature* v8security =
-     application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-         "V8Security");
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToAccessPath(isolate, name, false)) {
+  if (!v8security->isAllowedToAccessPath(isolate, name, true)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                  "not allowed to modify files in this path");
+                                   "not allowed to modify files in this path");
   }
 
   std::ofstream file;
@@ -2803,13 +2857,13 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   V8SecurityFeature* v8security =
-     application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-         "V8Security");
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToAccessPath(isolate, name, false)) {
+  if (!v8security->isAllowedToAccessPath(isolate, name, true)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                  "not allowed to modify files in this path");
+                                   "not allowed to modify files in this path");
   }
 
   bool flush = false;
@@ -2904,13 +2958,13 @@ static void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   V8SecurityFeature* v8security =
-     application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-         "V8Security");
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToAccessPath(isolate, *name, false)) {
+  if (!v8security->isAllowedToAccessPath(isolate, *name, true)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                  "not allowed to modify files in this path");
+                                   "not allowed to modify files in this path");
   }
 
   int res = TRI_UnlinkFile(*name);

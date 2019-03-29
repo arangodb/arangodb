@@ -61,8 +61,8 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
 
   /// @brief tests if the path (or path component) shall be accessible for the
   /// calling JavaScript code
-  bool isAllowedToAccessPath(v8::Isolate* isolate, std::string path, bool read) const;
-  bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, bool read) const;
+  bool isAllowedToAccessPath(v8::Isolate* isolate, std::string path, bool write = false) const;
+  bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, bool write = false) const;
 
  private:
   /// @brief regular expression string for startup options filtering
