@@ -2761,6 +2761,9 @@ ResultT<bool> RestReplicationHandler::isLockHeld(aql::QueryId id) const {
   if (queryRegistry == nullptr) {
     return ResultT<bool>::error(TRI_ERROR_SHUTTING_DOWN);
   }
+  if (_vocbase.isDropped()) {
+    return ResultT<bool>::error(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
   auto res = queryRegistry->isQueryInUse(&_vocbase, id);
   if (!res.ok()) {
     // API compatibility otherwise just return res...
