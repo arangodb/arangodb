@@ -324,7 +324,6 @@ static arangodb::Result cancelReadLockOnLeader(std::string const& endpoint,
     auto const vp = result->getBodyVelocyPack();
     auto const& slice = vp->slice();
     if (slice.isObject()) {
-      TRI_ASSERT(slice.isObject());
       VPackSlice s = slice.get(StaticStrings::ErrorNum);
       if (s.isNumber()) {
         int errorNum = s.getNumber<int>();
@@ -486,10 +485,9 @@ arangodb::Result SynchronizeShard::getReadLock(
           << "startReadLockOnLeader: Lock not yet acquired, retrying... ";
       } else {                                    // No news
         if (result->getHttpReturnCode() == 404) {
-          auto const vp = putres->result->getBodyVelocyPack();
+          auto const vp = result->getBodyVelocyPack();
           auto const& slice = vp->slice();
           if (slice.isObject()) {
-            TRI_ASSERT(slice.isObject());
             VPackSlice s = slice.get(StaticStrings::ErrorNum);
             if (s.isNumber()) {
               int errorNum = s.getNumber<int>();
