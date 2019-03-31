@@ -449,11 +449,10 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, ShardID const& edge
     // If this is called from loadDocument we didn't preallocate the vector
     if (_edges->size() <= offset) {
       if (!_config->lazyLoading()) {
-        LOG_TOPIC("9d0e6", ERR, Logger::PREGEL) << "Pregel did not preallocate enough "
-                                       << "space for all edges. This hints "
-                                       << "at a bug with collection count()";
+        std::string msg = "Pregel did not preallocate enough space for all edges. This hints at a bug with collection count()";
+        LOG_TOPIC("9d0e6", ERR, Logger::PREGEL) << msg;
         TRI_ASSERT(false);
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
       }
       // lazy loading always uses vector backed storage
       ((VectorTypedBuffer<Edge<E>>*)_edges)->appendEmptyElement();

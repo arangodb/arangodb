@@ -115,7 +115,6 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
       arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
       bool lock, TRI_voc_rid_t& prevRev,
       arangodb::ManagedDocumentResult& previous,
-      arangodb::velocypack::Slice const key,
       std::function<arangodb::Result(void)> callbackDuringLock) override;
   virtual void load() override {}
   virtual void unload() override {}

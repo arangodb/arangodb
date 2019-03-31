@@ -76,7 +76,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_bytes_accum>(
   }
 
   properties.openObject();
-  properties.add("type", arangodb::iresearch::toValuePair(POLICY_BYTES_ACCUM));
+  properties.add("type", arangodb::velocypack::Value(POLICY_BYTES_ACCUM));
   properties.add("threshold", arangodb::velocypack::Value(options.threshold));
   properties.close();
 
@@ -159,7 +159,7 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
   }
 
   properties.openObject();
-  properties.add("type", arangodb::iresearch::toValuePair(POLICY_TIER));
+  properties.add("type", arangodb::velocypack::Value(POLICY_TIER));
   properties.add("lookahead", arangodb::velocypack::Value(size_t(1)));  // FIXME remove in 3.5
   properties.add("segmentsBytesFloor",
                  arangodb::velocypack::Value(options.floor_segment_bytes));
