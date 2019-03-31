@@ -75,6 +75,11 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl,
       << "Register query with id " << id << " : " << query->queryString();
   auto& vocbase = query->vocbase();
 
+  if (vocbase.isDropped()) {
+    // don't register any queries for dropped databases
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
   // create the query info object outside of the lock
   auto p = std::make_unique<QueryInfo>(id, query, ttl, isPrepared);
   p->_isOpen = keepLease;
@@ -193,6 +198,11 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id, int errorCod
 
     // remove query from the table of running queries
     m->second.erase(q);
+
+    if (m->second.empty()) {
+      // clear empty entries in database-to-queries map
+      _queries.erase(m);
+    }
   }
 
   TRI_ASSERT(queryInfo != nullptr);
@@ -218,8 +228,31 @@ void QueryRegistry::destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode) {
   destroy(vocbase->name(), id, errorCode);
 }
 
+void QueryRegistry::destroy(std::string const& vocbase) {
+  {
+    WRITE_LOCKER(writeLocker, _lock);
+
+    auto m = _queries.find(vocbase);
+
+    if (m == _queries.end()) {
+      return;
+    }
+
+    for (auto& it : (*m).second) {
+      it.second->_expires = 0.0; 
+      if (it.second->_isOpen) {
+        // query in use by another thread/request
+        it.second->_query->kill();
+      }
+    }
+  }
+
+  expireQueries();
+}
+
+
 ResultT<bool> QueryRegistry::isQueryInUse(TRI_vocbase_t* vocbase, QueryId id) {
-  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Test if query with id " << id << "is in use.";
+  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Test if query with id " << id << " is in use.";
 
   READ_LOCKER(readLocker, _lock);
 
@@ -262,7 +295,7 @@ void QueryRegistry::expireQueries() {
   }
 
   if (!queriesLeft.empty()) {
-    LOG_TOPIC(TRACE, Logger::QUERIES) << "queries left in QueryRegistry: " << queriesLeft;
+    LOG_TOPIC(TRACE, Logger::AQL) << "queries left in QueryRegistry: " << queriesLeft;
   }
 
   for (auto& p : toDelete) {

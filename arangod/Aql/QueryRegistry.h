@@ -79,6 +79,9 @@ class QueryRegistry {
 
   void destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode);
 
+  /// @brief delete queries for a specific database
+  void destroy(std::string const& vocbase);
+
   ResultT<bool> isQueryInUse(TRI_vocbase_t* vocbase, QueryId id);
 
   /// @brief expireQueries, this deletes all expired queries from the registry
