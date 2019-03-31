@@ -41,9 +41,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchViewNode.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -152,7 +150,6 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
 
       break;
     }
-#ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       TRI_ASSERT(_type == ExecutionNode::MAX_NODE_TYPE_VALUE);
       auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
@@ -167,7 +164,6 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       _view = viewNode.view().get();
       break;
     }
-#endif
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REMOVE:
@@ -189,18 +185,14 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
 }
 
 Collection const* EngineInfoContainerDBServer::EngineInfo::collection() const noexcept {
-#ifdef USE_IRESEARCH
   TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW != _type);
-#endif
   return _collection;
 }
 
-#ifdef USE_IRESEARCH
 LogicalView const* EngineInfoContainerDBServer::EngineInfo::view() const noexcept {
   TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW == _type);
   return _view;
 }
-#endif
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     ServerID const& serverId, Query& query, std::vector<ShardID> const& shards,
@@ -230,12 +222,11 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     // "varUsageComputed" flag below (which will handle the counting)
     plan.increaseCounter(nodeType);
 
-#ifdef USE_IRESEARCH
     if (ExecutionNode::ENUMERATE_IRESEARCH_VIEW == nodeType) {
       auto* viewNode = ExecutionNode::castTo<iresearch::IResearchViewNode*>(clone);
       viewNode->shards() = shards;
     } else
-#endif
+
     if (ExecutionNode::REMOTE == nodeType) {
       auto rem = ExecutionNode::castTo<RemoteNode*>(clone);
       // update the remote node with the information about the query
@@ -390,7 +381,6 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
       updateCollection(col);
       break;
     }
-#ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
       auto* view = viewNode.view().get();
@@ -409,7 +399,6 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
 
       break;
     }
-#endif
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REMOVE:
@@ -454,12 +443,9 @@ void EngineInfoContainerDBServer::closeSnippet(QueryId coordinatorEngineId) {
 
   e->connectQueryId(coordinatorEngineId);
 
-#ifdef USE_IRESEARCH
   if (ExecutionNode::ENUMERATE_IRESEARCH_VIEW == e->type()) {
     _viewInfos[e->view()].engines.emplace_back(std::move(e));
-  } else
-#endif
-  {
+  } else {
     TRI_ASSERT(e->collection() != nullptr);
     auto it = _collectionInfos.find(e->collection());
     // This is not possible we have a snippet where no collection is involved
@@ -590,7 +576,6 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
     EngineInfo const& engine = *it.first;
     std::vector<ShardID> const& shards = it.second;
 
-#ifdef USE_IRESEARCH
     // serialize for the list of shards
     if (engine.type() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
       engine.serializeSnippet(serverId, query, shards, infoBuilder);
@@ -605,7 +590,6 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
       }
       continue;
     }
-#endif
 
     bool isResponsibleForInit = true;
     for (auto const& shard : shards) {

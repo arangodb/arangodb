@@ -176,9 +176,20 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
       let collectionsBefore = [];
       if (!serverDead) {
-        db._collections().forEach(collection => {
-          collectionsBefore.push(collection._name);
-        });
+        try {
+          db._collections().forEach(collection => {
+            collectionsBefore.push(collection._name);
+          });
+        }
+        catch (x) {
+          results[te] = {
+            status: false,
+            message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
+          };
+          continueTesting = false;
+          serverDead = true;
+          first = false;
+        }
       }
       while (first || options.loopEternal) {
         if (!continueTesting) {
@@ -410,21 +421,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if (options.replication) {
-    whichFilter.filter = 'replication';
-    if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
-      whichFilter.filter = 'testcase';
-      return ((testname.search(options.test) >= 0) &&
-              (testname.indexOf('replication') !== -1));
-    } else {
-      return testname.indexOf('replication') !== -1;
-    }
-  } else if (testname.indexOf('replication') !== -1) {
-
-    whichFilter.filter = 'replication';
-    return false;
-  }
-
   if ((testname.indexOf('-cluster') !== -1) && !options.cluster) {
     whichFilter.filter = 'noncluster';
     return false;
@@ -606,7 +602,12 @@ function runThere (options, instanceInfo, file) {
     } else {
       if ((reply.code === 500) &&
           reply.hasOwnProperty('message') &&
-          (reply.message === 'Request timeout reached')) {
+          (
+            (reply.message.search('Request timeout reached') >= 0 ) ||
+            (reply.message.search('timeout during read') >= 0 ) ||
+            (reply.message.search('Connection closed by remote') >= 0 )
+          )) {
+        print(RED + Date() + " request timeout reached, aborting test execution" + RESET);
         return {
           status: false,
           message: reply.message,

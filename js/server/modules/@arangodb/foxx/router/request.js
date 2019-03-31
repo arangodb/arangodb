@@ -189,7 +189,11 @@ module.exports =
     }
 
     get arangoUser () {
-      return this._raw.user;
+      if (this._raw.authorized) {
+        return this._raw.user;
+      } else {
+        return null;
+      }
     }
 
     get arangoVersion () {

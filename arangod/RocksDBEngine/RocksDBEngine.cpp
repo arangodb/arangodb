@@ -45,6 +45,7 @@
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RocksDBEngine/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
@@ -95,9 +96,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchView.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -544,6 +543,8 @@ void RocksDBEngine::start() {
     _listener.reset(new RocksDBThrottle);
     _options.listeners.push_back(_listener);
   }
+
+  _options.listeners.push_back(std::make_shared<RocksDBBackgroundErrorListener>());
 
   if (opts->_totalWriteBufferSize > 0) {
     _options.db_write_buffer_size = opts->_totalWriteBufferSize;
@@ -1988,7 +1989,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       view->open();
 
-#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && defined(USE_IRESEARCH)
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
       struct DummyTransaction : transaction::Methods {
         explicit DummyTransaction(std::shared_ptr<transaction::Context> const& ctx)
             : transaction::Methods(ctx) {}

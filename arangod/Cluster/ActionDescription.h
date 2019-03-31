@@ -67,6 +67,7 @@ struct ActionDescription {
    */
   explicit ActionDescription(
       std::map<std::string, std::string> const& desc,
+      int priority,
       std::shared_ptr<VPackBuilder> const suppl = std::make_shared<VPackBuilder>());
 
   /**
@@ -155,12 +156,23 @@ struct ActionDescription {
    */
   std::shared_ptr<VPackBuilder> const properties() const;
 
+  /**
+   * @brief Get priority, the higher the more priority, 1 is default
+   * @return int
+   */
+  int priority() const {
+    return _priority;
+  }
+
  private:
   /** @brief discriminatory properties */
   std::map<std::string, std::string> const _description;
 
   /** @brief non-discriminatory properties */
   std::shared_ptr<VPackBuilder> const _properties;
+
+  /** @brief priority */
+  int _priority;
 };
 
 }  // namespace maintenance

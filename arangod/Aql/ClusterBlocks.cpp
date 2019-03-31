@@ -105,12 +105,7 @@ bool OurLessThan::operator()(std::pair<size_t, size_t> const& a,
     int cmp;
 
     if (attributePath.empty()) {
-#if 0  // #ifdef USE_IRESEARCH
-      TRI_ASSERT(reg.comparator);
-      cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
-#else
       cmp = AqlValue::Compare(_trx, lhs, rhs, true);
-#endif
     } else {
       // Take attributePath into consideration:
       bool mustDestroyA;

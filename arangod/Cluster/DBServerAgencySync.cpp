@@ -58,6 +58,7 @@ void DBServerAgencySync::work() {
 }
 
 Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
+
   using namespace arangodb::basics;
   Result result;
   DatabaseFeature* dbfeature = nullptr;
@@ -197,7 +198,23 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne done";
 
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo";
+    // Give some asynchronous jobs created in phaseOne a chance to complete
+    // before we collect data for phaseTwo:
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+      << "DBServerAgencySync::hesitating between phases 1 and 2 for 0.1s...";
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    auto current = clusterInfo->getCurrent();
+    if (current == nullptr) {
+      // TODO increase log level, except during shutdown?
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          << "DBServerAgencySync::execute no current";
+      result.errorMessage = "DBServerAgencySync::execute no current";
+      return result;
+    }
+    LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+        << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
+
     local.clear();
     glc = getLocalCollections(local);
     // We intentionally refetch local collections here, such that phase 2
@@ -210,16 +227,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       return result;
     }
 
-    auto current = clusterInfo->getCurrent();
-    if (current == nullptr) {
-      // TODO increase log level, except during shutdown?
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-          << "DBServerAgencySync::execute no current";
-      result.errorMessage = "DBServerAgencySync::execute no current";
-      return result;
-    }
-    LOG_TOPIC(TRACE, Logger::MAINTENANCE)
-        << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo";
 
     tmp = arangodb::maintenance::phaseTwo(plan->slice(), current->slice(),
                                           local.slice(), serverId, *mfeature, rb);
@@ -243,21 +251,30 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         // Report to current
         if (!agency.isEmptyObject()) {
           std::vector<AgencyOperation> operations;
+          std::vector<AgencyPrecondition> preconditions;
           for (auto const& ao : VPackObjectIterator(agency)) {
             auto const key = ao.key.copyString();
             auto const op = ao.value.get("op").copyString();
+
+            if (ao.value.hasKey("precondition")) {
+              auto const precondition = ao.value.get("precondition");
+              preconditions.push_back(
+                AgencyPrecondition(
+                  precondition.keyAt(0).copyString(), AgencyPrecondition::Type::VALUE, precondition.valueAt(0)));
+            }
+            
             if (op == "set") {
               auto const value = ao.value.get("payload");
               operations.push_back(AgencyOperation(key, AgencyValueOperationType::SET, value));
             } else if (op == "delete") {
               operations.push_back(AgencyOperation(key, AgencySimpleOperationType::DELETE_OP));
             }
+            
           }
           operations.push_back(AgencyOperation("Current/Version",
                                                AgencySimpleOperationType::INCREMENT_OP));
-          AgencyPrecondition precondition("Plan/Version",
-            AgencyPrecondition::Type::VALUE, plan->slice().get("Version"));
-          AgencyWriteTransaction currentTransaction(operations, precondition);
+
+          AgencyWriteTransaction currentTransaction(operations, preconditions);
           AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
           if (!r.successful()) {
             LOG_TOPIC(INFO, Logger::MAINTENANCE)

@@ -1,12 +1,40 @@
 v3.4.5 (2019-03-27)
 -------------------
 
-* fixed internal issue #3757 : when restarting a follower in active failover mode,
+* fixed a shutdown issue when the server was shut down while there were
+  active Pregel jobs executing
+
+* fixed internal issue #3815: fixed the removal of connected edges when
+  removing a vertex graph node in a smart graph environment.
+
+* added AQL functions CRC32 and FNV64 for hashing data
+
+* internal issue #2276: fixed the sorting of the databases in the database 
+  selection dropdown in the web ui. The sort order differed based on whether
+  authentication was enabled or disabled.
+
+* fixed internal issue #3789: restricted the allowed query names for user-
+  defined custom queries within the web ui.
+
+* fixed internal issuel #3546: improved the shards view in the web ui if there
+  is only one shard to display.
+
+* fixed a display issues when editing a graph within the web ui
+
+* fixed internal-issue #3787: Let user know about conflicting attribute in
+  AQL queries if information is available.
+
+* fixed issue #8294: wrong equals behaviour on arrays with ArangoSearch
+
+* fixed internal issue #528: ArangoSearch range query sometimes doesn't work
+  correctly with numeric values
+
+* fixed internal issue #3757: when restarting a follower in active failover mode,
   try an incremental sync instead of a full resync. Fixed also the case where a
   double resync was made
 
-* don't check for the presence of ArangoDB upgrades available when firing up an arangosh
-  enterprise edition build
+* don't check for the presence of ArangoDB upgrades available when firing up an
+  arangosh enterprise edition build
 
 * added startup option `--rocksdb.allow-fallocate`
   
@@ -21,14 +49,16 @@ v3.4.5 (2019-03-27)
   If set to true, this will limit the amount of .sst files RocksDB will inspect at 
   startup, which can reduce the number of IO operations performed at start.
 
-* don't run compact() on a collection after a truncate() was done in the same transaction
+* don't run compact() on a collection after a truncate() was done in the same 
+  transaction
 
-  running compact() in the same transaction will only increase the data size on disk due to 
-  RocksDB not being able to remove any documents physically due to the snapshot that is
-  taken at transaction start.
+  running compact() in the same transaction will only increase the data size on 
+  disk due to RocksDB not being able to remove any documents physically due to the 
+  snapshot that is taken at transaction start.
 
-  This change also exposes db.<collection>.compact() in the arangosh, in order to manually 
-  run a compaction on the data range of a collection should it be needed for maintenance.
+  This change also exposes db.<collection>.compact() in the arangosh, in order to 
+  manually run a compaction on the data range of a collection should it be needed 
+  for maintenance.
 
 * don't attempt to remove non-existing WAL files, because such attempt will
   trigger unnecessary error log messages in the RocksDB library
@@ -40,8 +70,6 @@ v3.4.5 (2019-03-27)
 * added --log.file-group to specify the group of newly created log files
 
 * fixed some escaping issues within the web ui.
-
-* fixed issue #8165: AQL optimizer does not pick up multiple Geo index
 
 * fixed issue #8359: How to update a document with unique index (constraints)?
 
@@ -134,6 +162,13 @@ v3.4.5 (2019-03-27)
 * coordinator route for full agency dumps contains compactions and
   time stamps
 
+* lots of agency performance improvements, mostly avoiding copying
+
+* priority queue for maintenance jobs
+
+* do not wait for replication after each job execution in Supervision
+
+
 v3.4.4 (2019-03-12)
 -------------------
 
@@ -148,6 +183,7 @@ v3.4.4 (2019-03-12)
 * fixed overflow in Windows NowNanos in RocksDB
 
 * fixed issue #8165: AQL optimizer does not pick up multiple geo index
+
 
 * when creating a new database with an initial user, set the database permission
   for this user as specified in the documentation

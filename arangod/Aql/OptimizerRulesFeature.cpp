@@ -28,9 +28,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchViewOptimizerRules.h"
-#endif
 
 using namespace arangodb::application_features;
 
@@ -271,12 +269,11 @@ void OptimizerRulesFeature::addRules() {
   registerRule("replace-function-with-index", replaceNearWithinFulltext,
                OptimizerRule::replaceNearWithinFulltext,
                DoesNotCreateAdditionalPlans, CanNotBeDisabled);
-#ifdef USE_IRESEARCH
+
   // move filters and sort conditions into views
   registerRule("handle-arangosearch-views", arangodb::iresearch::handleViewsRule,
                OptimizerRule::handleArangoSearchViewsRule,
                DoesNotCreateAdditionalPlans, CanNotBeDisabled);
-#endif
 
   // remove FILTER DISTANCE(...) and SORT DISTANCE(...)
   OptimizerRulesFeature::registerRule("geo-index-optimizer", geoIndexRule,
@@ -327,13 +324,11 @@ void OptimizerRulesFeature::addRules() {
                  DoesNotCreateAdditionalPlans, CanBeDisabled);
 #endif
 
-#ifdef USE_IRESEARCH
     // distribute view queries in cluster
     registerRule("scatter-arangosearch-view-in-cluster",
                  arangodb::iresearch::scatterViewInClusterRule,
                  OptimizerRule::scatterIResearchViewInClusterRule,
                  DoesNotCreateAdditionalPlans, CanNotBeDisabled);
-#endif
 
     registerRule("restrict-to-single-shard", restrictToSingleShardRule,
                  OptimizerRule::restrictToSingleShardRule,
