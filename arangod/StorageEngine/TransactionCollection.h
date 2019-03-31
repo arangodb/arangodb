@@ -45,11 +45,10 @@ class TransactionCollection {
   TransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType)
       : _transaction(trx),
         _cid(cid),
-        _collection(nullptr),
         _accessType(accessType),
         _lockType(AccessMode::Type::NONE) {}
 
-  virtual ~TransactionCollection() = default;
+  virtual ~TransactionCollection();
 
   inline TRI_voc_cid_t id() const { return _cid; }
 

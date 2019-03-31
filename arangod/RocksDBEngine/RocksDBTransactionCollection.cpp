@@ -161,6 +161,12 @@ void RocksDBTransactionCollection::unuse(int nestingLevel) {
 }
 
 void RocksDBTransactionCollection::release() {
+  // questionable
+  if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
+      _transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+    return;
+  }
+
   if (isLocked()) {
     // unlock our own r/w locks
     doUnlock(_accessType, 0);
