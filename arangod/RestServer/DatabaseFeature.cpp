@@ -159,6 +159,12 @@ void DatabaseManagerThread::run() {
               TRI_RemoveDirectory(path.c_str());
             }
           }
+  
+          auto queryRegistry = QueryRegistryFeature::registry();
+          if (queryRegistry != nullptr) {
+            // destroy all items in the QueryRegistry for this database
+            queryRegistry->destroy(database->name());
+          }
 
           try {
             engine->dropDatabase(*database);
