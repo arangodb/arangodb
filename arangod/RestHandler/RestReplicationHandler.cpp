@@ -2717,11 +2717,15 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   // is not responsible anymore, it has been handed over to the
   // registry.
   auto q = query.release();
+
   // Make sure to return the query after we are done
-  TRI_DEFER(queryRegistry->close(&_vocbase, id));
+  auto guard = scopeGuard([this, id, &queryRegistry]() {
+    queryRegistry->close(&_vocbase, id);
+  });
 
   if (isTombstoned(id)) {
     try {
+      guard.fire();
       // Code does not matter, read only access, so we can roll back.
       queryRegistry->destroy(&_vocbase, id, TRI_ERROR_QUERY_KILLED);
     } catch (...) {
