@@ -38,7 +38,7 @@ if (getOptions === true) {
       'http://127.0.0.1:9999'            // won't match at all.
     ],
     'javascript.endpoints-white-list': [
-      'arangodb.org/white'
+      'white.arangodb.org'
     ]
   };
 }
@@ -83,8 +83,8 @@ function testSuite() {
       downloadForbidden('http://arangodb.org/testbla', 'GET');
       downloadForbidden('https://arangodb.org/testbla', 'GET');
       
-      downloadPermitted('https://arangodb.org/white/bla', 'GET');
-      downloadPermitted('http://arangodb.org/white/bla', 'GET');
+      downloadPermitted('https://white.arangodb.org//bla', 'GET');
+      downloadPermitted('http://white.arangodb.org//bla', 'GET');
       downloadPermitted('http://arangodb.com/blog', 'GET');
       downloadPermitted('http://arangodb.com/blog', 'GET');
       downloadPermitted('http://heise.de', 'GET');

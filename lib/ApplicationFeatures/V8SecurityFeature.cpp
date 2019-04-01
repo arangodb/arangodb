@@ -293,18 +293,18 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
 }
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
-                                              char const* path, bool read) const {
+                                              char const* path, FSAccessType access) const {
   // expects 0 terminated utf-8 string
   TRI_ASSERT(path != nullptr);
-  return isAllowedToAccessPath(isolate, std::string(path), read);
+  return isAllowedToAccessPath(isolate, std::string(path), access);
 }
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
-                                              std::string path, bool write) const {
+                                              std::string path, FSAccessType access) const {
   // check security context first
   TRI_GET_GLOBALS();
   auto& sec = v8g->_securityContext;
-  if ((!write && sec.canReadFs()) || (write && sec.canWriteFs())) {
+  if ((access == FSAccessType::READ && sec.canReadFs()) || (access == FSAccessType::WRITE && sec.canWriteFs())) {
     return true;  // context may read / write without restrictions
   }
 
