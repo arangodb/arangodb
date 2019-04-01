@@ -267,11 +267,57 @@ The HTTP API for creating indexes at POST `/_api/index` has been extended two-fo
 Web interface
 -------------
 
-For the RocksDB engine, the selection of index types "persistent" and "skiplist" 
+When using the RocksDB engine, the selection of index types "persistent" and "skiplist" 
 has been removed from the web interface when creating new indexes. 
 
 The index types "hash", "skiplist" and "persistent" are just aliases of each other 
-when using the RocksDB engine, so there is no need to offer all of them in parallel.
+when using the RocksDB engine, so there is no need to offer them all.
+
+
+JavaScript
+----------
+
+The bundled version of the V8 JavaScript engine has been upgraded from 5.7.492.77 to 
+7.1.302.28.
+
+Among other things, the new version of V8 provides a native JavaScript `BigInt` type which 
+can be used to store arbitrary-precision integers. However, to store such `BigInt` objects
+in ArangoDB, they need to be explicitly converted to either strings or simple JavaScript
+numbers.
+Converting BigInts to strings for storage is preferred because converting a BigInt to a 
+simple number may lead to precision loss.
+
+```js
+// will fail with "bad parameter" error:
+value = BigInt("123456789012345678901234567890");
+db.collection.insert({ value });
+
+// will succeed:
+db.collection.insert({ value: String(value) });
+
+// will succeed, but lead to precision loss:
+db.collection.insert({ value: Number(value) });
+```
+
+The new V8 version also changes the default timezone of date strings to be conditional 
+on whether a time part is included:
+
+```js
+> new Date("2019-04-01");
+Mon Apr 01 2019 02:00:00 GMT+0200 (Central European Summer Time)
+
+> new Date("2019-04-01T00:00:00");
+Mon Apr 01 2019 00:00:00 GMT+0200 (Central European Summer Time)
+```
+If the timezone is explicitly set in the date string, then the specified timezone will
+always be honored: 
+
+```js
+> new Date("2019-04-01Z");
+Mon Apr 01 2019 02:00:00 GMT+0200 (Central European Summer Time)
+> new Date("2019-04-01T00:00:00Z");
+Mon Apr 01 2019 02:00:00 GMT+0200 (Central European Summer Time)
+```
 
 
 Client tools
@@ -405,6 +451,3 @@ The bundled JEMalloc memory allocator used in ArangoDB release packages has been
 upgraded from version 5.0.1 to version 5.1.0.
 
 The bundled version of the RocksDB library has been upgraded from 5.16 to 6.0.
-
-The bundled version of the V8 JavaScript engine has been upgraded from 5.7.492.77 to 
-7.1.302.28.
