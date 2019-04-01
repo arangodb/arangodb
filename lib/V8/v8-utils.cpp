@@ -1801,6 +1801,9 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   for (uint32_t i = 0; i < files->Length(); ++i) {
     v8::Handle<v8::Value> file = files->Get(i);
     if (file->IsString()) {
+
+      // TODO - allowed to read/write file
+
       filenames.emplace_back(TRI_ObjectToString(isolate, file));
     } else {
       res = TRI_ERROR_BAD_PARAMETER;
@@ -2325,6 +2328,8 @@ static void JS_MTime(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string filename = TRI_ObjectToString(isolate, args[0]);
 
+  // TODO - allowed to read/write file
+
   int64_t mtime;
   int res = TRI_MTimeFile(filename.c_str(), &mtime);
 
@@ -2366,6 +2371,9 @@ static void JS_MoveFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(
         "cannot move source file into destination directory");
   }
+
+  // TODO - allowed to read/write file
+
   std::string systemErrorStr;
   long errorNo;
 
@@ -2411,6 +2419,9 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(
         "cannot copy source file into destination directory");
   }
+
+  // TODO - allowed to read/write file
+
   std::string systemErrorStr;
   long errorNo;
   int res = TRI_CreateRecursiveDirectory(destination.c_str(), errorNo, systemErrorStr);
@@ -2484,6 +2495,9 @@ static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
       destination += file;
     }
   }
+
+  // TODO - allowed to read/write file
+
   if (!TRI_CopyFile(source, destination, systemErrorStr)) {
     std::string errMsg = "cannot copy file [" + source + "] to [" +
                          destination + " ] : " + systemErrorStr;
@@ -2731,6 +2745,7 @@ static void JS_Read(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
   }
 
+  // TODO - allowed to read/write file
   size_t length;
   char* content = TRI_SlurpFile(*name, &length);
 
@@ -2767,6 +2782,8 @@ static void JS_ReadBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
   }
 
+  // TODO - allowed to read/write file
+
   size_t length;
   char* content = TRI_SlurpFile(*name, &length);
 
@@ -2799,6 +2816,8 @@ static void JS_Read64(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
   }
+
+  // TODO - allowed to read/write file
 
   std::string base64;
 
@@ -3055,6 +3074,8 @@ static void JS_RemoveDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) 
     TRI_V8_THROW_EXCEPTION_PARAMETER(err);
   }
 
+  // TODO - allowed to read/write file
+
   int res = TRI_RemoveEmptyDirectory(*name);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -3108,6 +3129,9 @@ static void JS_RemoveRecursiveDirectory(v8::FunctionCallbackInfo<v8::Value> cons
     }
 
     std::string const path(*name);
+
+    // TODO - allowed to read/write file
+
 #ifdef _WIN32
     // windows paths are case-insensitive
     if (!TRI_CaseEqualString(path.c_str(), tempPath.c_str(), tempPath.size())) {
@@ -4001,6 +4025,8 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
+
+  // TODO - allowed to read/write file
 
   std::vector<std::string> arguments;
 
