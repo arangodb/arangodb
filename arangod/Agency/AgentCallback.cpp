@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,12 +24,14 @@
 #include "AgentCallback.h"
 
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
+using namespace arangodb::application_features;
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
 AgentCallback::AgentCallback()
-    : _agent(0), _last(0), _toLog(0), _startTime(0.0) {}
+    : _agent(nullptr), _last(0), _toLog(0), _startTime(0.0) {}
 
 AgentCallback::AgentCallback(Agent* agent, std::string const& slaveID, index_t last, size_t toLog)
     : _agent(agent),
@@ -38,7 +40,7 @@ AgentCallback::AgentCallback(Agent* agent, std::string const& slaveID, index_t l
       _toLog(toLog),
       _startTime(TRI_microtime()) {}
 
-void AgentCallback::shutdown() { _agent = 0; }
+void AgentCallback::shutdown() { _agent = nullptr; }
 
 bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
   if (res->status == CL_COMM_SENT) {
@@ -88,7 +90,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
         << "comm_status(" << res->status << "), last(" << _last << "), follower("
         << _slaveID << "), time(" << TRI_microtime() - _startTime << ")";
   } else {
-    if (_agent == nullptr || !_agent->isStopping()) {
+    if (!ApplicationServer::isStopping() && (_agent == nullptr || !_agent->isStopping())) {
       // Do not warn if we are already shutting down:
       LOG_TOPIC(WARN, Logger::AGENCY)
           << "Got bad callback from AppendEntriesRPC: "

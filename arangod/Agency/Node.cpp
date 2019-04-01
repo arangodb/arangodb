@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -389,6 +389,14 @@ bool Node::addTimeToLive(long millis) {
   store().timeTable().insert(std::pair<TimePoint, std::string>(tkey, uri()));
   _ttl = tkey;
   return true;
+}
+
+void Node::timeToLive(TimePoint const& ttl) {
+  _ttl = ttl;
+}
+
+TimePoint const& Node::timeToLive() const {
+  return _ttl;
 }
 
 // remove time to live entry for this node
@@ -909,6 +917,13 @@ bool Node::isInt() const {
   return slice().isInt() || slice().isSmallInt();
 }
 
+bool Node::isNumber() const {
+  if (type() == NODE) {
+    return false;
+  }
+  return slice().isNumber();
+}
+
 double Node::getDouble() const {
   if (type() == NODE) {
     throw StoreException("Must not convert NODE type to double");
@@ -993,8 +1008,10 @@ std::pair<uint64_t, bool> Node::hasAsUInt(std::string const& url) const {
   // retrieve node, throws if does not exist
   try {
     Node const& target(operator()(url));
-    ret_pair.first = target.getUInt();
-    ret_pair.second = true;
+    if (target.isNumber()) {
+      ret_pair.first = target.getUInt();
+      ret_pair.second = true;
+    }
   } catch (...) {
     // do nothing, ret_pair second already false
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
@@ -1010,8 +1027,10 @@ std::pair<bool, bool> Node::hasAsBool(std::string const& url) const {
   // retrieve node, throws if does not exist
   try {
     Node const& target(operator()(url));
-    ret_pair.first = target.getBool();
-    ret_pair.second = true;
+    if (target.isBool()) {
+      ret_pair.first = target.getBool();
+      ret_pair.second = true;
+    }
   } catch (...) {
     // do nothing, ret_pair second already false
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
@@ -1029,8 +1048,10 @@ std::pair<std::string, bool> Node::hasAsString(std::string const& url) const {
   // retrieve node, throws if does not exist
   try {
     Node const& target(operator()(url));
-    ret_pair.first = target.getString();
-    ret_pair.second = true;
+    if (target.isString()) {
+      ret_pair.first = target.getString();
+      ret_pair.second = true;
+    }
   } catch (...) {
     // do nothing, ret_pair second already false
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)

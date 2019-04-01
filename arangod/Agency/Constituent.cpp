@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -112,7 +112,7 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
 
   if (tmp != t || tmpVotedFor != votedFor) {
     LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": changing term or votedFor, "
-                                    << "current role:" << roleStr[_role]
+                                    << "current role: " << roleStr[_role]
                                     << " term " << t << " votedFor: " << votedFor;
 
     Builder body;
@@ -128,17 +128,19 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
     TRI_ASSERT(_vocbase != nullptr);
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, "election", AccessMode::Type::WRITE);
-
     Result res = trx.begin();
+
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
     OperationOptions options;
+
     options.waitForSync = _agent->config().waitForSync();
     options.silent = true;
 
     OperationResult result;
+
     if (tmp != t) {
       try {
         result = trx.insert("election", body.slice(), options);
@@ -496,10 +498,9 @@ void Constituent::callElection() {
     }
 
     if (!isStopping() && cc != nullptr) {
-      auto res = ClusterComm::instance()->wait(
-          "", coordinatorTransactionID, 0, "",
-          duration<double>(timeout - steady_clock::now()).count());
-
+      auto res = cc->wait("", coordinatorTransactionID, 0, "",
+        duration<double>(timeout - steady_clock::now()).count());
+      
       if (res.status == CL_COMM_SENT) {
         auto body = res.result->getBodyVelocyPack();
         VPackSlice slc = body->slice();

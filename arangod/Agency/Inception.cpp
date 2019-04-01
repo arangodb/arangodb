@@ -28,7 +28,6 @@
 #include "Basics/ConditionLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/RestHandlerFactory.h"
 
 #include <chrono>
 #include <numeric>
@@ -245,10 +244,19 @@ bool Inception::restartingActiveAgent() {
       auto comres =
           cc->syncRequest(clientId, 1, p, rest::RequestType::POST, path, greetstr,
                           std::unordered_map<std::string, std::string>(), 2.0);
-      if (comres->status == CL_COMM_SENT) {
+
+      if (comres->status == CL_COMM_SENT && comres->result->getHttpReturnCode() == 200) {
         auto const theirConfigVP = comres->result->getBodyVelocyPack();
         auto const& theirConfig = theirConfigVP->slice();
+
+        if (!theirConfig.isObject()) {
+          continue;
+        }
         auto const& tcc = theirConfig.get("configuration");
+
+        if (!tcc.isObject() || !tcc.hasKey("id")) {
+          continue;
+        }
         auto const& theirId = tcc.get("id").copyString();
 
         _agent->updatePeerEndpoint(theirId, p);
@@ -405,7 +413,8 @@ void Inception::reportVersionForEp(std::string const& endpoint, size_t version) 
 
 // @brief Thread main
 void Inception::run() {
-  while (ServerState::isMaintenance() && !this->isStopping() && !_agent->isStopping()) {
+  auto server = ServerState::instance();
+  while (server->isMaintenance() && !this->isStopping() && !_agent->isStopping()) {
     std::this_thread::sleep_for(std::chrono::microseconds(1000000));
     LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Waiting for RestHandlerFactory to exit maintenance mode before we "
@@ -417,8 +426,7 @@ void Inception::run() {
   // Are we starting from persisted pool?
   if (config.startup() == "persistence") {
     if (restartingActiveAgent()) {
-      LOG_TOPIC(INFO, Logger::AGENCY)
-          << "Activating agent with pool " << _agent->config().pool();
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent.";
       _agent->ready(true);
     } else {
       if (!this->isStopping()) {
@@ -443,8 +451,7 @@ void Inception::run() {
     }
   }
 
-  LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Activating agent with pool " << _agent->config().pool();
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent.";
   _agent->ready(true);
 }
 

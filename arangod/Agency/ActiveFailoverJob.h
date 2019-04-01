@@ -48,6 +48,7 @@ struct ActiveFailoverJob final : public Job {
   std::string findBestFollower();
 
  private:
+  /// @brief the old leader UUID
   std::string _server;
 };
 }  // namespace consensus

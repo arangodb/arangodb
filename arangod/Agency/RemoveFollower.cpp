@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -68,7 +68,7 @@ RemoveFollower::~RemoveFollower() {}
 void RemoveFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 bool RemoveFollower::create(std::shared_ptr<VPackBuilder> envelope) {
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "Todo: RemoveFollower(s) "
       << " to shard " << _shard << " in collection " << _collection;
 
@@ -414,7 +414,7 @@ bool RemoveFollower::start(bool&) {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     _status = FINISHED;
-    LOG_TOPIC(INFO, Logger::SUPERVISION)
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
         << "Pending: RemoveFollower(s) to shard " << _shard << " in collection "
         << _collection;
     return true;

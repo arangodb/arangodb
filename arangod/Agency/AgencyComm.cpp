@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -488,7 +488,7 @@ std::vector<std::string> AgencyCommManager::slicePath(std::string const& p1) {
 }
 
 std::string AgencyCommManager::generateStamp() {
-  time_t tt = time(0);
+  time_t tt = time(nullptr);
   struct tm tb;
   char buffer[21];
 
@@ -1381,10 +1381,30 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
     // Some reporting:
     if (tries > 20) {
+      auto serverState = application_features::ApplicationServer::server->state();
+      std::string serverStateStr;
+      switch (serverState) {
+        case arangodb::application_features::ServerState::UNINITIALIZED:
+        case arangodb::application_features::ServerState::IN_COLLECT_OPTIONS:
+        case arangodb::application_features::ServerState::IN_VALIDATE_OPTIONS:
+        case arangodb::application_features::ServerState::IN_PREPARE:
+        case arangodb::application_features::ServerState::IN_START:
+          serverStateStr = "in startup";
+          break;
+        case arangodb::application_features::ServerState::IN_WAIT:
+          serverStateStr = "running";
+          break;
+        case arangodb::application_features::ServerState::IN_STOP:
+        case arangodb::application_features::ServerState::IN_UNPREPARE:
+        case arangodb::application_features::ServerState::STOPPED:
+        case arangodb::application_features::ServerState::ABORT:
+          serverStateStr = "in shutdown";
+      }
       LOG_TOPIC(INFO, Logger::AGENCYCOMM)
           << "Flaky agency communication to " << endpoint
           << ". Unsuccessful consecutive tries: " << tries << " (" << elapsed
-          << "s). Network checks advised.";
+          << "s). Network checks advised."
+          << " Server " << serverStateStr << ".";
     }
 
     if (1 < tries) {

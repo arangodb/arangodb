@@ -26,7 +26,9 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 namespace consensus {
+
 class Agent;
 }
 
@@ -72,6 +74,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
  private:
   std::unique_ptr<consensus::Agent> _agent;
 };
+
 }  // namespace arangodb
 
 #endif
