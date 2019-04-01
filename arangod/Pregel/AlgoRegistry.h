@@ -34,11 +34,11 @@ namespace pregel {
 
 struct AlgoRegistry {
   static IAlgorithm* createAlgorithm(std::string const& algorithm, VPackSlice userParams);
-  static std::unique_ptr<IWorker> createWorker(TRI_vocbase_t& vocbase, VPackSlice body);
+  static std::shared_ptr<IWorker> createWorker(TRI_vocbase_t& vocbase, VPackSlice body);
 
  private:
   template <typename V, typename E, typename M>
-  static std::unique_ptr<IWorker> createWorker(TRI_vocbase_t& vocbase,
+  static std::shared_ptr<IWorker> createWorker(TRI_vocbase_t& vocbase,
                                                Algorithm<V, E, M>* algo, VPackSlice body);
 };
 

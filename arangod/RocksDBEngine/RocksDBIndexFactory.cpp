@@ -45,9 +45,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchRocksDBLink.h"
-#endif
 
 using namespace arangodb;
 

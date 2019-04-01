@@ -26,8 +26,6 @@
 
 #include "RestHandler/RestReplicationHandler.h"
 
-#include "RocksDBEngine/RocksDBReplicationManager.h"
-
 namespace arangodb {
 
 /// @brief replication request handler
