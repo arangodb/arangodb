@@ -1377,7 +1377,7 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddGlobalFunctionVocbase(
       isolate,
       TRI_V8_ASCII_STRING(isolate, "SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION"),
-      JS_ExecuteGlobalContextFunction);
+      JS_ExecuteGlobalContextFunction, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_GET_CURRENT_REQUEST"),

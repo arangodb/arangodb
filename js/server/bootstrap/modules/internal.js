@@ -233,18 +233,6 @@
   };
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief executes a string in all V8 contexts
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION) {
-    exports.executeGlobalContextFunction = global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
-  } else {
-    exports.executeGlobalContextFunction = function () {
-      // nothing to do. we're probably in --no-server mode
-    };
-  }
-  
-  // //////////////////////////////////////////////////////////////////////////////
   // / @brief getCurrentRequest
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -268,11 +256,10 @@
 
   if (global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION) {
     exports.reloadAqlFunctions = function () {
-      exports.executeGlobalContextFunction('reloadAql');
+      global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION('reloadAql');
       require('@arangodb/aql').reload();
     };
-    delete global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
-  }else {
+  } else {
     exports.reloadAqlFunctions = function () {
       require('@arangodb/aql').reload();
     };

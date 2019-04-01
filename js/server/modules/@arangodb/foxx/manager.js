@@ -391,7 +391,7 @@ function commitLocalState (replace) {
 // Change propagation
 
 function reloadRouting () {
-  require('internal').executeGlobalContextFunction('reloadRouting');
+  global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION('reloadRouting');
   actions.reloadRouting();
 }
 
