@@ -676,7 +676,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/y":{"op":"set","new":12}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
       wait(1.1);
-      assertEqual(readAndCheck([["/a/y"]]), [{"a":{"y":12}}]);
+      assertEqual(readAndCheck([["/a/y"]]), [{a:{}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12}}}]]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]),
                   [{"foo":{"bar":{"baz":12}}}]);
