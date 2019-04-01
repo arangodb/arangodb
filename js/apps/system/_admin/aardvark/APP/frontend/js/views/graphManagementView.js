@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, require, Joi, frontendConfig */
+/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, Joi, frontendConfig */
 
 (function () {
   'use strict';
@@ -558,7 +558,7 @@
         reducedCollection;
 
       searchInput = $('#graphManagementSearchInput');
-      searchString = $('#graphManagementSearchInput').val();
+      searchString = arangoHelper.escapeHtml($('#graphManagementSearchInput').val());
       reducedCollection = this.collection.filter(
         function (u) {
           return u.get('_key').indexOf(searchString) !== -1;
@@ -827,98 +827,98 @@
         );
       }
 
+      if (frontendConfig.isEnterprise === true && frontendConfig.isCluster && !graph) {
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-numberOfShards',
+            'Shards*',
+            '',
+            'Number of shards the smart graph is using.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                msg: 'Must be a number.'
+              }
+            ]
+          )
+        );
+
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-replicationFactor',
+            'Replication factor',
+            '',
+            'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                msg: 'Must be a number.'
+              }
+            ]
+          )
+        );
+
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-smartGraphAttribute',
+            'Smart Graph Attribute*',
+            '',
+            'The attribute name that is used to smartly shard the vertices of a graph. \n' +
+            'Every vertex in this Graph has to have this attribute. \n' +
+            'Cannot be modified later.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional(),
+                msg: 'Must be a string.'
+              }
+            ]
+          )
+        );
+      }
+
+      if (frontendConfig.isCluster && !graph) {
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'general-numberOfShards',
+            'Shards',
+            '',
+            'Number of shards the graph is using.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                msg: 'Must be a number.'
+              }
+            ]
+          )
+        );
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'general-replicationFactor',
+            'Replication factor',
+            '',
+            'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                msg: 'Must be a number.'
+              }
+            ]
+          )
+        );
+      }
+
       edgeDefinitions.forEach(
         function (edgeDefinition) {
-          if (frontendConfig.isEnterprise === true && frontendConfig.isCluster) {
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'new-numberOfShards',
-                'Shards*',
-                '',
-                'Number of shards the smart graph is using.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                    msg: 'Must be a number.'
-                  }
-                ]
-              )
-            );
-
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'new-replicationFactor',
-                'Replication factor',
-                '',
-                'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                    msg: 'Must be a number.'
-                  }
-                ]
-              )
-            );
-
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'new-smartGraphAttribute',
-                'Smart Graph Attribute*',
-                '',
-                'The attribute name that is used to smartly shard the vertices of a graph. \n' +
-                'Every vertex in this Graph has to have this attribute. \n' +
-                'Cannot be modified later.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional(),
-                    msg: 'Must be a string.'
-                  }
-                ]
-              )
-            );
-          }
-
-          if (frontendConfig.isCluster && !graph) {
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'general-numberOfShards',
-                'Shards',
-                '',
-                'Number of shards the graph is using.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                    msg: 'Must be a number.'
-                  }
-                ]
-              )
-            );
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'general-replicationFactor',
-                'Replication factor',
-                '',
-                'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                    msg: 'Must be a number.'
-                  }
-                ]
-              )
-            );
-          }
-
           if (self.counter === 0) {
             if (edgeDefinition.collection) {
               self.removedECollList.push(edgeDefinition.collection);

@@ -80,6 +80,8 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   bool _dynamicLevelBytes;
   bool _enableStatistics;
   bool _useFileLogging;
+  bool _limitOpenFilesAtStartup;
+  bool _allowFAllocate;
 };
 
 }  // namespace arangodb

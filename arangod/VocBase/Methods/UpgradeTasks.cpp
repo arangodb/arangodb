@@ -90,7 +90,7 @@ bool createSystemCollection(TRI_vocbase_t* vocbase, std::string const& name) {
 
     bb.close();
     res = Collections::create(vocbase, name, TRI_COL_TYPE_DOCUMENT, bb.slice(),
-                              /*waitsForSyncReplication*/ true,
+                              /*waitsForSyncReplication*/ false,
                               /*enforceReplicationFactor*/ true,
                               [](std::shared_ptr<LogicalCollection> const&) -> void {});
   }

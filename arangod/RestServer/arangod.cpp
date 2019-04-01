@@ -110,10 +110,8 @@
 #include "Enterprise/RestServer/arangodEE.h"
 #endif
 
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
-#endif
 
 // storage engines
 #include "ClusterEngine/ClusterEngine.h"
@@ -236,10 +234,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new SslServerFeature(server));
 #endif
 
-#ifdef USE_IRESEARCH
     server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(server));
     server.addFeature(new arangodb::iresearch::IResearchFeature(server));
-#endif
 
     // storage engines
     server.addFeature(new ClusterEngine(server));

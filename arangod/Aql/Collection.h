@@ -76,6 +76,9 @@ struct Collection {
     // non-sharding case: simply return the name
     return _name;
   }
+  
+  /// @brief collection type
+  TRI_col_type_e type() const;
 
   /// @brief count the number of documents in the collection
   size_t count(transaction::Methods* trx) const;
@@ -118,6 +121,10 @@ struct Collection {
 
   /// @brief check if collection is a satellite collection
   bool isSatellite() const;
+
+  /// @brief return the name of the smart join attribute (empty string
+  /// if no smart join attribute is present)
+  std::string const& smartJoinAttribute() const;
 
  private:
   arangodb::LogicalCollection* _collection;

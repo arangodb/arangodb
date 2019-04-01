@@ -154,6 +154,9 @@ class Supervision : public arangodb::CriticalThread {
   // @brief Check shards in agency
   std::vector<check_t> checkShards();
 
+  // @brief 
+  void cleanupFinishedAndFailedJobs();
+
   void workJobs();
 
   /// @brief Get unique ids from agency
@@ -169,7 +172,7 @@ class Supervision : public arangodb::CriticalThread {
 
  public:
   static void cleanupLostCollections(Node const& snapshot, AgentInterface* agent,
-                                     std::string const& jobId);
+                                     uint64_t& jobId);
 
  private:
   /**

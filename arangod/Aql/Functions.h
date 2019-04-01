@@ -266,6 +266,10 @@ struct Functions {
                        VPackFunctionParameters const&);
   static AqlValue Sha512(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
+  static AqlValue Crc32(arangodb::aql::Query*, transaction::Methods*,
+                        VPackFunctionParameters const&);
+  static AqlValue Fnv64(arangodb::aql::Query*, transaction::Methods*,
+                        VPackFunctionParameters const&);
   static AqlValue Hash(arangodb::aql::Query*, transaction::Methods*,
                        VPackFunctionParameters const&);
   static AqlValue IsKey(arangodb::aql::Query*, transaction::Methods*,
