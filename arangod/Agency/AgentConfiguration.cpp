@@ -514,8 +514,7 @@ bool config_t::findInPool(std::string const& id) const {
 
 /// @brief merge from persisted configuration
 bool config_t::merge(VPackSlice const& conf) {
-  WRITE_LOCKER(writeLocker,
-               _lock);  // All must happen under the lock or else ...
+  WRITE_LOCKER(writeLocker, _lock);  // All must happen under the lock or else ...
 
   // FIXME: All these "command line beats persistence" are wrong, since
   // the given default values never happen. Only fixed _supervision with
