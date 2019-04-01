@@ -34,13 +34,11 @@ bool JavaScriptSecurityContext::canDefineHttpAction() const {
 }
 
 bool JavaScriptSecurityContext::canReadFs() const {
-  //FIXME
-  return true;
+  return _type == Type::Internal;
 }
 
 bool JavaScriptSecurityContext::canWriteFs() const {
-  //FIXME
-  return true;
+  return _type == Type::Internal;
 }
 
 /*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createRestrictedContext() {
