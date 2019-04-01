@@ -195,12 +195,16 @@ TraverserCache* arangodb::traverser::Traverser::traverserCache() {
   return _opts->cache();
 }
 
+size_t arangodb::traverser::Traverser::getAndResetFilteredPaths() {
+  return traverserCache()->getAndResetFilteredDocuments();
+}
+
 size_t arangodb::traverser::Traverser::getAndResetReadDocuments() {
   return traverserCache()->getAndResetInsertedDocuments();
 }
 
-size_t arangodb::traverser::Traverser::getAndResetFilteredPaths() {
-  return traverserCache()->getAndResetFilteredDocuments();
+size_t arangodb::traverser::Traverser::getAndResetHttpRequests() {
+  return _enumerator->getAndResetHttpRequests();
 }
 
 void arangodb::traverser::Traverser::allowOptimizedNeighbors() {

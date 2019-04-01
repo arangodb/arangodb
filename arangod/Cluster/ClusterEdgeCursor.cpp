@@ -43,7 +43,8 @@ ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, u
     : _position(0),
       _resolver(opts->trx()->resolver()),
       _opts(opts),
-      _cache(static_cast<ClusterTraverserCache*>(opts->cache())) {
+      _cache(static_cast<ClusterTraverserCache*>(opts->cache())),
+      _httpRequests(0) {
   TRI_ASSERT(_cache != nullptr);
   auto trx = _opts->trx();
   transaction::BuilderLeaser leased(trx);
@@ -60,7 +61,8 @@ ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, b
     : _position(0),
       _resolver(opts->trx()->resolver()),
       _opts(opts),
-      _cache(static_cast<ClusterTraverserCache*>(opts->cache())) {
+      _cache(static_cast<ClusterTraverserCache*>(opts->cache())),
+      _httpRequests(0) {
   TRI_ASSERT(_cache != nullptr);
   auto trx = _opts->trx();
   transaction::BuilderLeaser leased(trx);

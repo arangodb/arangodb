@@ -68,6 +68,9 @@ class SingleServerEdgeCursor final : public EdgeCursor {
   void readAll(EdgeCursor::Callback const& callback) override;
 
   std::vector<std::vector<OperationCursor*>>& getCursors() { return _cursors; }
+  
+  /// @brief number of HTTP requests performed. always 0 in single server
+  size_t httpRequests() const override { return 0; }
 
  private:
   // returns false if cursor can not be further advanced
