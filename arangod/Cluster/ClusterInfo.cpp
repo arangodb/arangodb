@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -368,7 +368,7 @@ void ClusterInfo::loadPlan() {
   uint64_t storedVersion = _planProt.wantedVersion;  // this is the version
                                                      // we will set in the end
 
-  LOG_TOPIC(TRACE, Logger::CLUSTER) << "loadPlan: wantedVersion=" << storedVersion
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "loadPlan: wantedVersion=" << storedVersion
                                     << ", doneVersion=" << _planProt.doneVersion;
   if (_planProt.doneVersion == storedVersion) {
     // Somebody else did, what we intended to do, so just return
@@ -635,6 +635,9 @@ void ClusterInfo::loadPlan() {
     } else {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "\"Plan\" is not an object in agency";
     }
+    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+      << "loadPlan done: wantedVersion=" << storedVersion
+      << ", doneVersion=" << _planProt.doneVersion;
     return;
   }
 
@@ -661,6 +664,9 @@ void ClusterInfo::loadCurrent() {
     // Somebody else did, what we intended to do, so just return
     return;
   }
+
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "loadCurrent: wantedVersion: "
+    << _currentProt.wantedVersion;
 
   // Now contact the agency:
   AgencyCommResult result = _agency.getValues(prefixCurrent);
@@ -769,6 +775,8 @@ void ClusterInfo::loadCurrent() {
     } else {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "Current is not an object!";
     }
+
+    LOG_TOPIC(DEBUG, Logger::CLUSTER) << "loadCurrent done.";
 
     return;
   }
@@ -1139,6 +1147,8 @@ int ClusterInfo::createCollectionCoordinator(
     }
   }
 
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, checking things...";
+
   // mop: why do these ask the agency instead of checking cluster info?
   if (!ac.exists("Plan/Databases/" + databaseName)) {
     events::CreateCollection(name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -1344,6 +1354,8 @@ int ClusterInfo::createCollectionCoordinator(
     break;  // Leave loop, since we are done
   }
 
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, Plan changed, waiting for success...";
+
   bool isSmart = false;
   VPackSlice smartSlice = json.get("isSmart");
   if (smartSlice.isBool() && smartSlice.getBool()) {
@@ -1355,6 +1367,8 @@ int ClusterInfo::createCollectionCoordinator(
     events::CreateCollection(name, TRI_ERROR_NO_ERROR);
     return TRI_ERROR_NO_ERROR;
   }
+
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, loading Plan from agency...";
 
   {
     while (true) {

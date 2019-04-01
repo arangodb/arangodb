@@ -41,7 +41,7 @@ if [[ -f cluster/startup_parameters ]];then
 else
   #store parmeters
   if [[ -n "${params[@]}" ]]; then
-    echo "${params[@]}" > cluster/startup_parameters 
+    echo "${params[@]}" > cluster/startup_parameters
   fi
 fi
 
@@ -96,7 +96,8 @@ if [ -z "$JWT_SECRET" ];then
   AUTHENTICATION="--server.authentication false"
   AUTHORIZATION_HEADER=""
 else
-  AUTHENTICATION="--server.jwt-secret $JWT_SECRET"
+  echo $JWT_SECRET > cluster/secret.txt
+  AUTHENTICATION="--server.jwt-secret-keyfile cluster/secret.txt"
   AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
 fi
 
@@ -111,10 +112,10 @@ fi
 if [ ! -z "$INTERACTIVE_MODE" ] ; then
     if [ "$INTERACTIVE_MODE" == "C" ] ; then
         ARANGOD="${BUILD}/bin/arangod "
-        CO_ARANGOD="$XTERM $XTERMOPTIONS -e ${BUILD}/bin/arangod --console "
+        CO_ARANGOD="$XTERM $XTERMOPTIONS ${BUILD}/bin/arangod --console "
         echo "Starting one coordinator in terminal with --console"
     elif [ "$INTERACTIVE_MODE" == "R" ] ; then
-        ARANGOD="$XTERM $XTERMOPTIONS -e rr ${BUILD}/bin/arangod --console "
+        ARANGOD="$XTERM $XTERMOPTIONS rr ${BUILD}/bin/arangod --console "
         CO_ARANGOD=$ARANGOD
         echo Running cluster in rr with --console.
     fi
@@ -123,7 +124,7 @@ else
     CO_ARANGOD=$ARANGOD
 fi
 
-echo == Starting agency ... 
+echo == Starting agency ...
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     port=$(( $AG_BASE + $aid ))
     AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$port "
