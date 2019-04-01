@@ -164,6 +164,8 @@ void RocksDBTransactionCollection::release() {
   // questionable
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
       _transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+    TRI_ASSERT(!_usageLocked);
+    _collection = nullptr;
     return;
   }
 
