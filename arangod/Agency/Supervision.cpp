@@ -168,6 +168,7 @@ Supervision::Supervision()
       _okThreshold(5.),
       _jobId(0),
       _jobIdMax(0),
+      _haveAborts(false),
       _selfShutdown(false),
       _upgraded(false) {}
 
@@ -871,7 +872,7 @@ void Supervision::run() {
           }
         }
       }
-      
+
       auto lapTime = std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::steady_clock::now() - lapStart).count();
       

@@ -245,7 +245,7 @@ std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
     if (!i.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(30000,
                                      "Transaction syntax is [{<operations>}, "
-                                     "<preconditions>}, \"clientId\"]");
+                                     "{<preconditions>}, \"clientId\"]");
     }
 
     if (applicable[j] == APPLIED) {
@@ -1599,11 +1599,12 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   }
 
   if (n > 0) {
-    std::string const compstr
-      = "FOR c in compact FILTER c._key >= '" + firstIndex +
-        "' SORT c._key LIMIT 1 RETURN c";
 
-    arangodb::aql::Query compQuery(false, *_vocbase, aql::QueryString(compstr),
+    std::string const compQueryStr =
+      std::string("FOR c in compact FILTER c._key >= '") + firstIndex
+      + std::string("' SORT c._key LIMIT 1 RETURN c");
+        
+    arangodb::aql::Query compQuery(false, *_vocbase, aql::QueryString(compQueryStr),
                                bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     aql::QueryResult compQueryResult = compQuery.executeSync(_queryRegistry);

@@ -1508,8 +1508,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
             continue;
           }
         } else {
-          // How odd, we are supposed to get at least {results=[...]}, let's
-          // retry...
+          // How odd, we are supposed to get at least {results=[...]}, let's retry...
           isInquiry = false;
           continue;
         }
@@ -1725,7 +1724,9 @@ bool AgencyComm::tryInitializeStructure() {
     {
       VPackObjectBuilder c(&builder);
       builder.add("LatestID", VPackValue(1));
+      addEmptyVPackObject("Problems", builder);
       builder.add("UserVersion", VPackValue(1));
+      addEmptyVPackObject("ServerStates", builder);
       builder.add("HeartbeatIntervalMs", VPackValue(1000));
     }
 

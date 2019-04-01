@@ -481,8 +481,7 @@ void Agent::sendAppendEntriesRPC() {
       }
 
       // If the follower is behind our first log entry send last snapshot and
-      // following logs. Else try to have the follower catch up in regular
-      // order.
+      // following logs. Else try to have the follower catch up in regular order.
       bool needSnapshot = lastConfirmed < _state.firstIndex();
       if (needSnapshot) {
         lastConfirmed = _state.lastCompactionAt() - 1;
@@ -859,15 +858,14 @@ bool Agent::challengeLeadership() {
       // ensure that a leader resigns before another one even starts an
       // election. However, the Raft paper does not mention this at all. Rather,
       // in the paper it is written that the leader should resign immediately if
-      // it sees a higher term from another server. Currently we have not
-      // implemented to return the follower's term with a response to
-      // AppendEntriesRPC, so the leader cannot find out a higher term this
-      // way. The leader can, however, see a higher term in the incoming
-      // AppendEntriesRPC a new leader sends out, and it will immediately
-      // resign if it sees that. For the moment, this value here can stay.
-      // We should soon implement sending the follower's term back with
-      // each response and probably get rid of this method altogether,
-      // but this requires a bit more thought.
+      // it sees a higher term from another server. Currently we have not implemented
+      // to return the follower's term with a response to AppendEntriesRPC, so
+      // the leader cannot find out a higher term this way. The leader can,
+      // however, see a higher term in the incoming AppendEntriesRPC a new
+      // leader sends out, and it will immediately resign if it sees that. For
+      // the moment, this value here can stay. We should soon implement sending
+      // the follower's term back with each response and probably get rid of
+      // this method altogether, but this requires a bit more thought.
       if (_config.maxPing() * _config.timeoutMult() > m.count()) {
         ++good;
       }
