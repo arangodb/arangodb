@@ -460,8 +460,6 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::TryCatch tryCatch(isolate);
   ;
 
-  // TODO - allowed to read/write file
-
   v8::ScriptOrigin scriptOrigin(TRI_ObjectToString(context, filename));
   v8::Handle<v8::Script> script =
       v8::Script::Compile(TRI_IGETC,
