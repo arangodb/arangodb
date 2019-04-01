@@ -284,6 +284,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    */
   arangodb::Result copyAllErrors(errors_t& errors) const;
 
+  bool isPaused() const;
+
   /// @brief Lowest limit for worker threads
   static uint32_t const minThreadLimit;
 
@@ -346,7 +348,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   std::atomic<bool> _isShuttingDown;
 
   /// @brief flag to indicate when it is time to stop thread pool
-  std::atomic<bool> _isPaused;
+  std::atomic<std::chrono::steady_clock::time_point> _isPaused;
 
   /// @brief simple counter for creating MaintenanceAction id.  Ok for it to roll over.
   std::atomic<uint64_t> _nextActionId;

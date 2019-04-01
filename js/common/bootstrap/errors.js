@@ -321,14 +321,10 @@
     "ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE" : { "code" : 4003, "message" : "in smart vertex collections _key must be prefixed with the value of the smart graph attribute" },
     "ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE" : { "code" : 4004, "message" : "attribute cannot be used as smart graph attribute" },
     "ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH" : { "code" : 4005, "message" : "smart graph attribute mismatch" },
-<<<<<<< HEAD
-    "ERROR_REMOTE_REPOSITORY_CONFIG_BAD" : { "code" : 4006, "message" : "remote hotback repository configuration error" },
-=======
     "ERROR_INVALID_SMART_JOIN_ATTRIBUTE" : { "code" : 4006, "message" : "invalid smart join attribute declaration" },
     "ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE" : { "code" : 4007, "message" : "shard key value must be prefixed with the value of the smart join attribute" },
     "ERROR_NO_SMART_JOIN_ATTRIBUTE" : { "code" : 4008, "message" : "smart join attribute not given or invalid" },
     "ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE" : { "code" : 4009, "message" : "must not change the value of the smartJoinAttribute" },
->>>>>>> e9b8e9f766744a5f884ecf3720be3cba4fad8b19
     "ERROR_CLUSTER_REPAIRS_FAILED" : { "code" : 5000, "message" : "error during cluster repairs" },
     "ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY" : { "code" : 5001, "message" : "not enough (healthy) db servers" },
     "ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED" : { "code" : 5002, "message" : "replication factor violated during cluster repairs" },
@@ -358,7 +354,15 @@
     "ERROR_ACTION_ALREADY_REGISTERED" : { "code" : 6001, "message" : "maintenance action already registered" },
     "ERROR_ACTION_OPERATION_UNABORTABLE" : { "code" : 6002, "message" : "this maintenance action cannot be stopped" },
     "ERROR_ACTION_UNFINISHED"      : { "code" : 6003, "message" : "maintenance action still processing" },
-    "ERROR_NO_SUCH_ACTION"         : { "code" : 6004, "message" : "no such maintenance action" }
+    "ERROR_NO_SUCH_ACTION"         : { "code" : 6004, "message" : "no such maintenance action" },
+    "ERROR_HOT_BACKUP_INTERNAL"    : { "code" :  7001, "message" : " \"internal hot backup error\"" },
+    "ERROR_HOT_RESTORE_INTERNAL"   : { "code" :  7002, "message" : " \"internal hot restore error\"" },
+    "ERROR_BACKUP_TOPOLOGY"        : { "code" :  7003, "message" : " \"backup does not match this topology\"" },
+    "ERROR_NO_SPACE_LEFT_ON_DEVICE" : { "code" :  7003, "message" : " \"no space left on device\"" },
+    "ERROR_FAILED_TO_UPLOAD_BACKUP" : { "code" :  7004, "message" : " \"failed to upload hot backup set to remote target\"" },
+    "ERROR_FAILED_TO_DOWNLOAD_BACKUP" : { "code" :  7005, "message" : " \"failed to download hot backup set from remote source\"" },
+    "ERROR_NO_SUCH_HOT_BACKUP"     : { "code" :  7006, "message" : " \"no such hot backup set can be found" },
+    "ERROR_REMOTE_REPOSITORY_CONFIG_BAD" : { "code" :  7007, "message" : " \"remote hotback repository configuration error\"" }
   };
 
   // For compatibility with <= 3.3

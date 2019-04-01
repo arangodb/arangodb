@@ -57,6 +57,11 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
   init();
 }  // MaintenanceFeature::MaintenanceFeature
 
+bool MaintenanceFeature::isPaused() const {
+  std::chrono::steady_clock::time_point tmp = _isPaused;
+  return tmp > std::chrono::steady_clock::now();
+}
+
 void MaintenanceFeature::init() {
   _isShuttingDown = false;
   _isPaused = std::chrono::steady_clock::now();
@@ -148,10 +153,6 @@ void MaintenanceFeature::pause(std::chrono::seconds const& s) {
 
 void MaintenanceFeature::proceed() {
   _isPaused = std::chrono::steady_clock::now();
-}
-
-void MaintenanceFeature::isPaused() {
-  return std::chrono::steady_clock::now() <= _isPaused;
 }
 
 void MaintenanceFeature::beginShutdown() {

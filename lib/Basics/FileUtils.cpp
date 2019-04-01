@@ -293,80 +293,27 @@ bool createDirectory(std::string const& name, int mask, int* errorNumber) {
 }
 
 /// @brief will not copy files/directories for which the filter function
-/// returns true (now wrapper for version below with TRI_copy_recursive_e filter)
-bool copyRecursive(std::string const& source, std::string const& target,
-                   std::function<bool(std::string const&)> const& filter,
-                   std::string& error) {
-
-  // "auto lambda" will not work here
-  std::function<TRI_copy_recursive_e(std::string const&)> lambda =
-    [&filter] (std::string const& pathname) -> TRI_copy_recursive_e {
-    return filter(pathname) ? TRI_COPY_IGNORE : TRI_COPY_COPY;
-  };
-
-  return copyRecursive(source, target, lambda, error);
-
-} // copyRecursive (bool filter())
-
-
-/// @brief will not copy files/directories for which the filter function
-/// returns true (now wrapper for version below with TRI_copy_recursive_e filter)
-bool copyDirectoryRecursive(std::string const& source, std::string const& target,
-                   std::function<bool(std::string const&)> const& filter,
-                   std::string& error) {
-
-  // "auto lambda" will not work here
-  std::function<TRI_copy_recursive_e(std::string const&)> lambda =
-    [&filter] (std::string const& pathname) -> TRI_copy_recursive_e {
-    return filter(pathname) ? TRI_COPY_IGNORE : TRI_COPY_COPY;
-  };
-
-  return copyDirectoryRecursive(source, target, lambda, error);
-
-} // copyDirectoryRecursive (bool filter())
-
-
-/// @brief will not copy files/directories for which the filter function
 /// returns true
 bool copyRecursive(std::string const& source, std::string const& target,
-                   std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
+                   std::function<bool(std::string const&)> const& filter,
                    std::string& error) {
-
-  bool ret_bool = false;
-
   if (isDirectory(source)) {
-    ret_bool = copyDirectoryRecursive(source, target, filter, error);
-  } else {
-    switch (filter(source)) {
-      case TRI_COPY_IGNORE:
-        ret_bool = true;  // original TRI_ERROR_NO_ERROR implies "false", seems wrong
-        break;
+    return copyDirectoryRecursive(source, target, filter, error);
+  }
 
-      case TRI_COPY_COPY:
-        ret_bool = TRI_CopyFile(source, target, error);
-        break;
-
-      case TRI_COPY_LINK:
-        ret_bool = TRI_CreateHardlink(source, target, error);
-        break;
-
-      default:
-        ret_bool = false; // TRI_ERROR_BAD_PARAMETER seems wrong since returns "true"
-        break;
-    } // switch
-  } // else
-
-  return ret_bool;
-} // copyRecursive (TRI_copy_recursive_e filter())
-
+  if (filter(source)) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  return TRI_CopyFile(source, target, error);
+}
 
 /// @brief will not copy files/directories for which the filter function
 /// returns true
 bool copyDirectoryRecursive(std::string const& source, std::string const& target,
-                            std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
+                            std::function<bool(std::string const&)> const& filter,
                             std::string& error) {
   char* fn = nullptr;
-  bool rc_bool = true;
+  bool rc = true;
 
   auto isSubDirectory = [](std::string const& name) -> bool {
     return isDirectory(name);
@@ -408,7 +355,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
   // the man page recommends to use plain readdir() because it can be expected
   // to be thread-safe in reality, and newer versions of POSIX may require its
   // thread-safety formally, and in addition obsolete readdir_r() altogether
-  while ((oneItem = (readdir(filedir))) != nullptr && rc_bool) {
+  while ((oneItem = (readdir(filedir))) != nullptr) {
     fn = oneItem->d_name;
 #endif
 
@@ -420,48 +367,36 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
     std::string dst = target + TRI_DIR_SEPARATOR_STR + fn;
     std::string src = source + TRI_DIR_SEPARATOR_STR + fn;
 
-    switch (filter(src)) {
-      case TRI_COPY_IGNORE:
-        break;
+    if (filter(src)) {
+      continue;
+    }
 
-      case TRI_COPY_COPY:
-        // Handle subdirectories:
-        if (isSubDirectory(src)) {
-          long systemError;
-          int rc = TRI_CreateDirectory(dst.c_str(), systemError, error);
-          if (rc != TRI_ERROR_NO_ERROR) {
-            rc_bool = false;
-            break;
-          }
-          if (!copyDirectoryRecursive(src, dst, filter, error)) {
-            rc_bool = false;
-            break;
-          }
-          if (!TRI_CopyAttributes(src, dst, error)) {
-            rc_bool = false;
-            break;
-          }
+    // Handle subdirectories:
+    if (isSubDirectory(src)) {
+      long systemError;
+      int rc = TRI_CreateDirectory(dst.c_str(), systemError, error);
+      if (rc != TRI_ERROR_NO_ERROR) {
+        break;
+      }
+      if (!copyDirectoryRecursive(src, dst, filter, error)) {
+        break;
+      }
+      if (!TRI_CopyAttributes(src, dst, error)) {
+        break;
+      }
 #ifndef _WIN32
-        } else if (isSymbolicLink(src)) {
-          if (!TRI_CopySymlink(src, dst, error)) {
-            rc_bool = false;
-          }
+    } else if (isSymbolicLink(src)) {
+      if (!TRI_CopySymlink(src, dst, error)) {
+        break;
+      }
 #endif
-        } else {
-          if (!TRI_CopyFile(src, dst, error)) {
-            rc_bool = false;
-          }
-        }
+    } else {
+      if (!TRI_CopyFile(src, dst, error)) {
         break;
-
-      case TRI_COPY_LINK:
-        if (!TRI_CreateHardlink(src, dst, error)) {
-          rc_bool = false;
-        } // if
-        break;
-    } // switch
+      }
+    }
 #ifdef TRI_HAVE_WIN32_LIST_FILES
-  } while (_wfindnext(handle, &oneItem) != -1 && rc_bool);
+  } while (_wfindnext(handle, &oneItem) != -1);
 
   _findclose(handle);
 
@@ -470,7 +405,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
   closedir(filedir);
 
 #endif
-  return rc_bool;
+  return rc;
 }
 
 std::vector<std::string> listFiles(std::string const& directory) {
@@ -710,38 +645,6 @@ std::string slurpProgram(std::string const& program) {
 
   return std::string(buffer.data(), buffer.length());
 }
-
-int slurpProgramWithExitcode(std::string const& program, std::string& output) {
-#ifdef _WIN32
-  UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
-  FILE* fp = _wpopen(uprog.getTerminatedBuffer(), L"r");
-#else
-  FILE* fp = popen(program.c_str(), "r");
-#endif
-
-  constexpr size_t chunkSize = 8192;
-  StringBuffer buffer(chunkSize, false);
-
-  if (fp) {
-    int c;
-
-    while ((c = getc(fp)) != EOF) {
-      buffer.appendChar((char)c);
-    }
-
-#ifdef _WIN32
-    int res = _pclose(fp);
-#else
-    int res = pclose(fp);
-#endif
-
-    output = std::string(buffer.data(), buffer.length());
-    return res;
-  }
-
-  throwProgramError(program);
-};
-
 }  // namespace FileUtils
 }  // namespace basics
 }  // namespace arangodb

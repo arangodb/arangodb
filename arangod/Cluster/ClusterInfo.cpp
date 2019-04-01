@@ -3613,14 +3613,14 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
   //    If lock obtained -> Send create
   //    Else report error
 
-  std::string const hotBackupPrefix("Target/HotBackup");
-  std::string const backupURL(hotBackupPrefix + "/" + backupId);
+  std::string const backupURL("Target/HotBackup/" + backupId);
 
   AgencyComm ac;
   VPackBuilder lock;
   {
     VPackObjectBuilder b(&lock);
     lock.add(backupURL, VPackValue(0));
+    lock.add("Supervision/Maintenance", VPackValue("on"))
   }
   LOG_DEVEL << lock.toJson();
 
