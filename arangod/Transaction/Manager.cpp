@@ -353,7 +353,13 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
       if (cid == 0) {
         return false;
       }
-      state->addCollection(cid, cname, mode, /*nestingLevel*/0, false);
+      Result res = state->addCollection(cid, cname, mode, /*nestingLevel*/ 0, false);
+      if (res.errorNumber() == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
+        // special error message to indicate which collection was undeclared
+        LOG_TOPIC("da1a8", WARN, arangodb::Logger::TRANSACTIONS)
+            << res.errorMessage() + ": " + cname + " [" +
+                   AccessMode::typeString(mode) + "]";
+      }
     }
     return true;
   };
