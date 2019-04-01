@@ -187,7 +187,6 @@ class PhysicalCollection {
                         ManagedDocumentResult& result, OperationOptions& options,
                         TRI_voc_tick_t& resultMarkerTick, bool lock,
                         TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                        arangodb::velocypack::Slice key,
                         std::function<Result(void)> callbackDuringLock) = 0;
 
   virtual Result replace(transaction::Methods* trx, arangodb::velocypack::Slice newSlice,

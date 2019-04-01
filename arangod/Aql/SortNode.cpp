@@ -38,10 +38,8 @@ std::string const ConstrainedHeap = "constrained-heap";
 std::string const Standard = "standard";
 }  // namespace
 
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchViewNode.h"
 #include "IResearch/IResearchOrderFactory.h"
-#endif
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;

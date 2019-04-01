@@ -93,7 +93,7 @@ ClusterCollection::ClusterCollection(LogicalCollection& collection, ClusterEngin
     }
   } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
   }
 }
 
@@ -187,7 +187,7 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
 
   } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
   }
   merge.close();
   TRI_ASSERT(merge.slice().isObject());
@@ -244,7 +244,7 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 
   } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
   }
 }
 
@@ -463,7 +463,6 @@ Result ClusterCollection::update(arangodb::transaction::Methods* trx,
                                  ManagedDocumentResult& mdr, OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool,
                                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                                 arangodb::velocypack::Slice const key,
                                  std::function<Result(void)> /*callbackDuringLock*/) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

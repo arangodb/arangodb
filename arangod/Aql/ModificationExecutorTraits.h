@@ -49,7 +49,8 @@ inline std::string toString(Replace&){ return "Replace"; };
 
 struct ModificationBase {
   ModificationBase()
-      : _operationResultIterator(VPackSlice::emptyArraySlice()) {}
+      : _operationResultIterator(VPackSlice::emptyArraySlice()),
+        _last_not_skip(std::numeric_limits<decltype(_last_not_skip)>::max()) {}
 
   std::size_t _defaultBlockSize = ExecutionBlock::DefaultBatchSize();
   velocypack::Builder _tmpBuilder;  // default
