@@ -441,6 +441,7 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
+  //TODO REVIEW - should we check here? does compiling alone reveal information
   if (!v8security->isAllowedToExecuteJavaScript(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to execute JavaScript code");
@@ -458,6 +459,8 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::TryCatch tryCatch(isolate);
   ;
+
+  // TODO - allowed to read/write file
 
   v8::ScriptOrigin scriptOrigin(TRI_ObjectToString(context, filename));
   v8::Handle<v8::Script> script =
@@ -962,11 +965,6 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     LOG_TOPIC("d6bdb", TRACE, arangodb::Logger::FIXME)
         << "downloading file. endpoint: " << endpoint << ", relative URL: " << url;
 
-    V8SecurityFeature* v8security =
-        application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-            "V8Security");
-    TRI_ASSERT(v8security != nullptr);
-
     if (!v8security->isAllowedToConnectToEndpoint(isolate, endpoint)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "not allowed to connect to this endpoint");
@@ -1124,6 +1122,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
+  // TODO - allowed to execute file
 
   // extract arguments
   if (args.Length() != 3) {
@@ -1291,6 +1291,8 @@ static void JS_Exists(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
   }
 
+  // TODO - allowed to read/write file
+
   if (TRI_ExistsFile(*name)) {
     TRI_V8_RETURN_TRUE();
   } else {
@@ -1345,6 +1347,9 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
     mode = mode | digit << ((length - i - 1) * 3);
   }
+
+  // TODO - allowed to read/write file
+
   std::string err;
   int rc = TRI_ChMod(*name, mode, err);
 
@@ -1374,6 +1379,8 @@ static void JS_SizeFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
   }
+
+  // TODO - allowed to read/write file
 
   if (!TRI_ExistsFile(*name) || TRI_IsDirectory(*name)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FILE_NOT_FOUND);
@@ -1427,6 +1434,8 @@ static void JS_GetTempPath(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string path = TRI_GetTempPath();
   v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, path);
 
+  // TODO - allowed to read/write file
+
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -1449,6 +1458,8 @@ static void JS_GetTempFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     path = TRI_ObjectToString(isolate, args[0]);
     p = path.c_str();
   }
+
+  // TODO - allowed to read/write file
 
   bool create = false;
   if (args.Length() > 1) {
@@ -1487,6 +1498,8 @@ static void JS_IsDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
   }
 
+  // TODO - allowed to read/write file
+
   // return result
   if (TRI_IsDirectory(*name)) {
     TRI_V8_RETURN_TRUE();
@@ -1514,6 +1527,8 @@ static void JS_IsFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
   }
+
+  // TODO - allowed to read/write file
 
   // return result
   if (TRI_ExistsFile(*name) && !TRI_IsDirectory(*name)) {
@@ -1551,6 +1566,8 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        cwd.errorMessage());
   }
 
+  // TODO - allowed to read/write file
+
   char* abs = TRI_GetAbsolutePath(*name, cwd.result().c_str());
   v8::Handle<v8::String> res;
 
@@ -1580,6 +1597,8 @@ static void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_Utf8ValueNFC name(isolate, args[0]);
+
+  // TODO - allowed to read/write file
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
@@ -1619,6 +1638,8 @@ static void JS_ListTree(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
   }
 
+  // TODO - allowed to read/write file
+
   // constructed listing
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
   std::vector<std::string> files(TRI_FullTreeDirectory(*name));
@@ -1653,6 +1674,9 @@ static void JS_MakeDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
   }
+
+  // TODO - allowed to read/write file
+
   long systemError = 0;
   std::string systemErrorStr;
   int res = TRI_CreateDirectory(*name, systemError, systemErrorStr);
@@ -1685,6 +1709,9 @@ static void JS_MakeDirectoryRecursive(v8::FunctionCallbackInfo<v8::Value> const&
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
   }
+
+  // TODO - allowed to read/write file
+
   long systemError = 0;
   std::string systemErrorStr;
   int res = TRI_CreateRecursiveDirectory(*name, systemError, systemErrorStr);
@@ -1731,6 +1758,9 @@ static void JS_UnzipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     password = TRI_ObjectToString(isolate, args[4]);
     p = password.c_str();
   }
+
+  // TODO - allowed to read/write file
+
   std::string errMsg;
   int res = TRI_UnzipFile(filename.c_str(), outPath.c_str(), skipPaths, overwrite, p, errMsg);
 
@@ -1790,6 +1820,8 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     p = password.c_str();
   }
 
+  // TODO - allowed to read/write file
+
   res = TRI_ZipFile(filename.c_str(), dir.c_str(), filenames, p);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1819,6 +1851,8 @@ static void JS_Adler32(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
   }
+
+  // TODO - allowed to read/write file
 
   uint32_t chksum = 0;
   int res = TRI_Adler32(*name, chksum);
@@ -1871,6 +1905,8 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Value> filename = args[0];
+
+  // TODO - allowed to read/write file
 
   // save state of __dirname and __filename
   v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
