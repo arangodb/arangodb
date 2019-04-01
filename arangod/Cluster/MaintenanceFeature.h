@@ -32,7 +32,19 @@
 #include "Cluster/MaintenanceWorker.h"
 #include "ProgramOptions/ProgramOptions.h"
 
+#include <queue>
+
 namespace arangodb {
+
+template<typename T>
+struct SharedPtrComparer {
+  bool operator()(std::shared_ptr<T> const& a, std::shared_ptr<T> const& b) {
+    if (a == nullptr || b == nullptr) {
+      return false;
+    }
+    return *a < *b;
+  }
+};
 
 class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
@@ -115,12 +127,10 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
  public:
   /// @brief This API will attempt to fail an existing Action that is waiting
-  ///  or executing.  Will not fail Actions that have already succeeded or
-  ///  failed.
+  ///  or executing.  Will not fail Actions that have already succeeded or failed.
   Result deleteAction(uint64_t id);
 
-  /// @brief Create a VPackBuilder object with snapshot of current action
-  /// registry
+  /// @brief Create a VPackBuilder object with snapshot of current action registry
   VPackBuilder toVelocyPack() const;
 
   /// @brief Fill the envelope with snapshot of current action registry
@@ -139,16 +149,14 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   bool isShuttingDown() const { return (_isShuttingDown); };
 
-  /// @brief Return number of seconds to say "not done" to block retries too
-  /// soon
+  /// @brief Return number of seconds to say "not done" to block retries too soon
   uint32_t getSecondsActionsBlock() const { return _secondsActionsBlock; };
 
   /**
    * @brief Find and return found action or nullptr
    * @param desc Description of sought action
    */
-  std::shared_ptr<maintenance::Action> findAction(
-      std::shared_ptr<maintenance::ActionDescription> const& desc);
+  std::shared_ptr<maintenance::Action> findAction(std::shared_ptr<maintenance::ActionDescription> const desc);
 
   /**
    * @brief add index error to bucket
@@ -277,8 +285,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /**
    * @brief copy all error maps (shards, indexes and databases) for Maintenance
    *
-   * @param  errors  errors struct into which all maintenace feature error are
-   * copied
+   * @param  errors  errors struct into which all maintenace feature error are copied
    * @return         success
    */
   arangodb::Result copyAllErrors(errors_t& errors) const;
@@ -310,8 +317,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   void init();
 
   /// @brief Search for action by hash
-  /// @return shared pointer to action object if exists, _actionRegistry.end()
-  /// if not
+  /// @return shared pointer to action object if exists, _actionRegistry.end() if not
   std::shared_ptr<maintenance::Action> findActionHash(size_t hash);
 
   /// @brief Search for action by hash (but lock already held by caller)
@@ -326,28 +332,24 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @return shared pointer to action object if exists, nullptr if not
   std::shared_ptr<maintenance::Action> findActionIdNoLock(uint64_t hash);
 
-  /// @brief option for forcing this feature to always be enable - used by the
-  /// catch tests
+  /// @brief option for forcing this feature to always be enable - used by the catch tests
   bool _forceActivation;
 
   /// @brief tunable option for thread pool size
   uint32_t _maintenanceThreadsMax;
 
-  /// @brief tunable option for number of seconds COMPLETE or FAILED actions
-  /// block
+  /// @brief tunable option for number of seconds COMPLETE or FAILED actions block
   ///  duplicates from adding to _actionRegistry
   int32_t _secondsActionsBlock;
 
-  /// @brief tunable option for number of seconds COMPLETE and FAILE actions
-  /// remain
+  /// @brief tunable option for number of seconds COMPLETE and FAILE actions remain
   ///  within _actionRegistry
   int32_t _secondsActionsLinger;
 
   /// @brief flag to indicate when it is time to stop thread pool
   std::atomic<bool> _isShuttingDown;
 
-  /// @brief simple counter for creating MaintenanceAction id.  Ok for it to
-  /// roll over.
+  /// @brief simple counter for creating MaintenanceAction id.  Ok for it to roll over.
   std::atomic<uint64_t> _nextActionId;
 
   //
@@ -360,8 +362,23 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief all actions executing, waiting, and done
   std::deque<std::shared_ptr<maintenance::Action>> _actionRegistry;
 
-  /// @brief lock to protect _actionRegistry and state changes to
-  /// MaintenanceActions within
+  // The following is protected with the _actionRegistryLock exactly as
+  // the _actionRegistry. This priority queue is used to find the highest
+  // priority action that is ready. Therefore, _prioQueue contains all the
+  // actions in state READY. The sorting is done such that all fast track
+  // actions come before all non-fast track actions. Therefore, a fast track
+  // thread can just look at the top action and if this is not fast track,
+  // it does not have to pop anything. If a worker picks an action and starts
+  // work on it, the action leaves state READY and is popped from the priority
+  // queue.
+  // We also need to be able to delete actions which are READY. In that case
+  // we need to leave the action in _prioQueue (since we cannot remove anything
+  // but the top from it), and simply put it into a different state.
+  std::priority_queue<std::shared_ptr<maintenance::Action>,
+                      std::vector<std::shared_ptr<maintenance::Action>>,
+                      SharedPtrComparer<maintenance::Action>> _prioQueue;
+
+  /// @brief lock to protect _actionRegistry and state changes to MaintenanceActions within
   mutable arangodb::basics::ReadWriteLock _actionRegistryLock;
 
   /// @brief condition variable to motivate workers to find new action

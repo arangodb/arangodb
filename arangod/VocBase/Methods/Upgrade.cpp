@@ -20,11 +20,12 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "Upgrade.h"
+#include "Basics/Common.h"
 
 #include "Agency/AgencyComm.h"
 #include "Basics/StringUtils.h"
+#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Rest/Version.h"

@@ -122,6 +122,7 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
 
   std::map<std::string, std::string> desc;
   auto prop = std::make_shared<VPackBuilder>();
+  int priority = 1;
 
   VPackObjectIterator it(parameters, true);
   for (; it.valid() && good; ++it) {
@@ -136,12 +137,14 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
     } else if (key.isString() && (key.copyString() == "properties") && value.isObject()) {
       // code here
       prop.reset(new VPackBuilder(value));
+    } else if (key.isString() && (key.copyString() == "priority") && value.isInteger()) {
+      priority = static_cast<int>(value.getInt());
     } else {
       good = false;
     }  // else
   }    // for
 
-  _actionDesc = std::make_shared<maintenance::ActionDescription>(desc, prop);
+  _actionDesc = std::make_shared<maintenance::ActionDescription>(desc, priority, prop);
 
   return good;
 

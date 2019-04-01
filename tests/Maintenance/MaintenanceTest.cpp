@@ -291,24 +291,24 @@ TEST_CASE("ActionDescription", "[cluster][maintenance]") {
   dbsIds = matchShortLongIds(supervision);
 
   SECTION("Construct minimal ActionDescription") {
-    ActionDescription desc(std::map<std::string,std::string>{{"name", "SomeAction"}});
+    ActionDescription desc(std::map<std::string,std::string>{{"name", "SomeAction"}}, NORMAL_PRIORITY);
     REQUIRE(desc.get("name") == "SomeAction");
   }
 
   SECTION("Construct minimal ActionDescription with nullptr props") {
     std::shared_ptr<VPackBuilder> props;
-    ActionDescription desc({{"name", "SomeAction"}}, props);
+    ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
   }
 
   SECTION("Construct minimal ActionDescription with empty props") {
     std::shared_ptr<VPackBuilder> props;
-    ActionDescription desc({{"name", "SomeAction"}}, props);
+    ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
     REQUIRE(desc.get("name") == "SomeAction");
   }
 
   SECTION("Retrieve non-assigned key from ActionDescription") {
     std::shared_ptr<VPackBuilder> props;
-    ActionDescription desc({{"name", "SomeAction"}}, props);
+    ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
     REQUIRE(desc.get("name") == "SomeAction");
     try {
       auto bogus = desc.get("bogus");
@@ -322,7 +322,7 @@ TEST_CASE("ActionDescription", "[cluster][maintenance]") {
 
   SECTION("Retrieve non-assigned key from ActionDescription") {
     std::shared_ptr<VPackBuilder> props;
-    ActionDescription desc({{"name", "SomeAction"}, {"bogus", "bogus"}}, props);
+    ActionDescription desc({{"name", "SomeAction"}, {"bogus", "bogus"}}, NORMAL_PRIORITY, props);
     REQUIRE(desc.get("name") == "SomeAction");
     try {
       auto bogus = desc.get("bogus");
@@ -336,14 +336,14 @@ TEST_CASE("ActionDescription", "[cluster][maintenance]") {
 
   SECTION("Retrieve non-assigned properties from ActionDescription") {
     std::shared_ptr<VPackBuilder> props;
-    ActionDescription desc({{"name", "SomeAction"}}, props);
+    ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
     REQUIRE(desc.get("name") == "SomeAction");
     REQUIRE(desc.properties() == nullptr);
   }
 
   SECTION("Retrieve empty properties from ActionDescription") {
     auto props = std::make_shared<VPackBuilder>();
-    ActionDescription desc({{"name", "SomeAction"}}, props);
+    ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
     REQUIRE(desc.get("name") == "SomeAction");
     REQUIRE(desc.properties()->isEmpty());
   }
@@ -351,7 +351,7 @@ TEST_CASE("ActionDescription", "[cluster][maintenance]") {
   SECTION("Retrieve empty object properties from ActionDescription") {
     auto props = std::make_shared<VPackBuilder>();
     { VPackObjectBuilder empty(props.get()); }
-    ActionDescription desc({{"name", "SomeAction"}}, props);
+    ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
     REQUIRE(desc.get("name") == "SomeAction");
     REQUIRE(desc.properties()->slice().isEmptyObject());
   }
@@ -360,7 +360,7 @@ TEST_CASE("ActionDescription", "[cluster][maintenance]") {
     auto props = std::make_shared<VPackBuilder>();
     { VPackObjectBuilder obj(props.get());
       props->add("hello", VPackValue("world")); }
-    ActionDescription desc({{"name", "SomeAction"}}, props);
+    ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
     REQUIRE(desc.get("name") == "SomeAction");
     REQUIRE(desc.properties()->slice().hasKey("hello"));
     REQUIRE(desc.properties()->slice().get("hello").copyString() == "world");
@@ -371,7 +371,7 @@ TEST_CASE("ActionDescription", "[cluster][maintenance]") {
     auto props = std::make_shared<VPackBuilder>();
     { VPackObjectBuilder obj(props.get());
       props->add("pi", VPackValue(3.14159265359)); }
-    ActionDescription desc({{"name", "SomeAction"}}, props);
+    ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
     REQUIRE(desc.get("name") == "SomeAction");
     REQUIRE(desc.properties()->slice().hasKey("pi"));
     REQUIRE(
@@ -383,7 +383,7 @@ TEST_CASE("ActionDescription", "[cluster][maintenance]") {
     auto props = std::make_shared<VPackBuilder>();
     { VPackObjectBuilder obj(props.get());
       props->add("one", VPackValue(one)); }
-    ActionDescription desc({{"name", "SomeAction"}}, props);
+    ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
     REQUIRE(desc.get("name") == "SomeAction");
     REQUIRE(desc.properties()->slice().hasKey("one"));
     REQUIRE(
@@ -401,7 +401,7 @@ TEST_CASE("ActionDescription", "[cluster][maintenance]") {
         props->add(VPackValue(pi));
         props->add(VPackValue(one));
         props->add(VPackValue(hello)); }}
-    ActionDescription desc({{"name", "SomeAction"}}, props);
+    ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
     REQUIRE(desc.get("name") == "SomeAction");
     REQUIRE(desc.properties()->slice().hasKey("array"));
     REQUIRE(desc.properties()->slice().get("array").isArray());

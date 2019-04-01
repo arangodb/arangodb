@@ -258,9 +258,11 @@ inline arangodb::consensus::trans_ret_t generalTransaction(AgentInterface* _agen
 
   auto ret = _agent->transact(envelope);
 
-  if (ret.maxind > 0) {
-    _agent->waitFor(ret.maxind);
-  }
+  // This is for now disabled to speed up things. We wait after a full
+  // Supervision run, which is good enough.
+  //if (ret.maxind > 0) {
+  // _agent->waitFor(ret.maxind);
+  //
 
   return ret;
 }

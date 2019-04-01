@@ -94,7 +94,7 @@ bool FailedServer::start(bool& aborts) {
   {
     VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
-      auto toDoJob = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      auto const& toDoJob = _snapshot.hasAsNode(toDoPrefix + _jobId);
       if (toDoJob.second) {
         toDoJob.first.toBuilder(todo);
       } else {
@@ -214,7 +214,7 @@ bool FailedServer::start(bool& aborts) {
   }
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, *transactions);
+  write_ret_t res = singleWriteTransaction(_agent, *transactions, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC("bbd90", DEBUG, Logger::SUPERVISION)
@@ -285,7 +285,7 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
   }
 
   if (selfCreate) {
-    write_ret_t res = singleWriteTransaction(_agent, *_jb);
+    write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
     if (!res.accepted || res.indices.size() != 1 || res.indices[0] == 0) {
       LOG_TOPIC("70ce1", INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
       return false;
@@ -345,7 +345,7 @@ JOB_STATUS FailedServer::status() {
     deleteTodos->close();
     deleteTodos->close();
     // Transact to agency
-    write_ret_t res = singleWriteTransaction(_agent, *deleteTodos);
+    write_ret_t res = singleWriteTransaction(_agent, *deleteTodos, false);
 
     if (!res.accepted || res.indices.size() != 1 || !res.indices[0]) {
       LOG_TOPIC("e8735", WARN, Logger::SUPERVISION)

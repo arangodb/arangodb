@@ -31,8 +31,9 @@ using namespace arangodb::maintenance;
 
 /// @brief ctor
 ActionDescription::ActionDescription(std::map<std::string, std::string> const& d,
-                                     std::shared_ptr<VPackBuilder> const& p)
-    : _description(d), _properties(p) {
+                                     int priority,
+                                     std::shared_ptr<VPackBuilder> const p)
+    : _description(d), _properties(p), _priority(priority) {
   TRI_ASSERT(d.find(NAME) != d.end());
   TRI_ASSERT(p == nullptr || p->isEmpty() || p->slice().isObject());
 }
@@ -134,7 +135,7 @@ std::size_t hash<ActionDescription>::operator()(ActionDescription const& a) cons
 }
 
 ostream& operator<<(ostream& out, arangodb::maintenance::ActionDescription const& d) {
-  out << d.toJson();
+  out << d.toJson() << " Priority: " << d.priority();
   return out;
 }
 }  // namespace std
