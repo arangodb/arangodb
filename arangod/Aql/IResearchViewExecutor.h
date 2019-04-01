@@ -166,6 +166,7 @@ class IResearchViewExecutor {
   };  // ReadContext
 
   struct IndexResult {
+    IndexResult() : id(), cid(0), scores() {}
     LocalDocumentId id;
     TRI_voc_cid_t cid;
     std::vector<AqlValue> scores;

@@ -223,10 +223,11 @@ inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find c
   return collection->collection();
 }
 
-LocalDocumentId readPK(irs::doc_iterator& it,
-                       irs::columnstore_reader::values_reader_f const& values) {
-  LocalDocumentId documentId;
-
+// Returns true unless the iterator is exhausted. documentId will always be
+// written. It will always be unset when readPK returns false, but may also be
+// unset if readPK returns true.
+bool readPK(irs::doc_iterator& it, irs::columnstore_reader::values_reader_f const& values,
+            LocalDocumentId& documentId) {
   if (it.next()) {
     irs::bytes_ref key;
     irs::doc_id_t const docId = it.value();
@@ -244,9 +245,13 @@ LocalDocumentId readPK(irs::doc_iterator& it,
             << docId << "'";
       }
     }
+
+    return true;
+  } else {
+    documentId = {};
   }
 
-  return documentId;
+  return false;
 }
 
 template <bool ordered>
@@ -334,20 +339,26 @@ template <bool ordered>
 void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadContext& ctx) {
   TRI_ASSERT(_filter != nullptr);
 
+  std::size_t const atMost = ctx.outputRow.numRowsLeft();
+
   size_t const count = _reader->size();
-  for (; _readerOffset < count; ++_readerOffset, _itr.reset()) {
+  for (; _readerOffset < count; ) {
     if (!_itr && !resetIterator()) {
       continue;
     }
 
     TRI_ASSERT(_pkReader);
 
-    IndexResult result{{}, {}, {}};
+    IndexResult result{};
 
     // try to read a document PK from iresearch
-    result.id = readPK(*_itr, _pkReader);
+    bool const iteratorExhausted = !readPK(*_itr, _pkReader, result.id);
 
     if (!result.id.isSet()) {
+      if (iteratorExhausted) {
+        ++_readerOffset;
+        _itr.reset();
+      }
       continue;
     }
 
@@ -363,13 +374,22 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
     TRI_ASSERT(result.scores.size() == infos().getNumScoreRegisters());
 
     _indexResultBuffer.emplace_back(std::move(result));
-    break;
+    if (iteratorExhausted) {
+      ++_readerOffset;
+      _itr.reset();
+      break;
+    }
+    if (_indexResultBuffer.size() >= atMost) {
+      break;
+    }
   }
 }
 
 template <bool ordered>
 bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
-  fillBuffer(ctx);
+  if (_indexResultBuffer.empty()) {
+    fillBuffer(ctx);
+  }
 
   if (_indexResultBuffer.empty()) {
     return false;
