@@ -68,9 +68,10 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                      "Files in this re will be accessible - FIX DESCRIPTION",
                      new StringParameter(&_filesWhiteList));
 
-  options->addOption("--javascript.files-black-list-expression",
-                     "Files in this re will not be accessible - FIX DESCRIPTION",
-                     new StringParameter(&_filesBlackList));
+  options->addOption(
+      "--javascript.files-black-list-expression",
+      "Files in this re will not be accessible - FIX DESCRIPTION",
+      new StringParameter(&_filesBlackList));
 
   options->addOption("--javascript.files-white-list",
                      "Paths to be added to files-white-list-expression",
@@ -114,14 +115,14 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   }
 
   auto convertToRe = [](std::vector<std::string>& files, std::string& target_re) {
-    if(!files.empty()){
+    if (!files.empty()) {
       std::stringstream ss;
       std::string last = std::move(files.back());
       files.pop_back();
 
       // Do we need to check for "()|" in filenames?
 
-      if(!target_re.empty()){
+      if (!target_re.empty()) {
         ss << "(" << target_re << ")|";
       }
 
@@ -143,7 +144,8 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
     std::regex(_filesWhiteList, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
     LOG_TOPIC("ab9d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript.files-white-list-expression' is not a valid regular "
+        << "value for '--javascript.files-white-list-expression' is not a "
+           "valid regular "
            "expression: "
         << ex.what();
     FATAL_ERROR_EXIT();
@@ -153,7 +155,8 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
     std::regex(_filesBlackList, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
     LOG_TOPIC("ab8d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript.files-black-list-expression' is not a valid regular "
+        << "value for '--javascript.files-black-list-expression' is not a "
+           "valid regular "
            "expression: "
         << ex.what();
     FATAL_ERROR_EXIT();
@@ -246,11 +249,14 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
     return !std::regex_search(path, _filesBlackListRegex);
   }
 
-  return std::regex_search(path, _filesWhiteListRegex) &&
-         !std::regex_search(path, _filesBlackListRegex);
+  if (std::regex_search(path, _filesWhiteListRegex)) {
+    return true;  // white-list wins - simple implementation
+  } else {
+    return !std::regex_search(path, _filesBlackListRegex);
+  }
 }
 
 bool V8SecurityFeature::isAllowedToExecuteJavaScript(v8::Isolate* isolate) const {
-  //implement me
+  // implement me
   return true;
 }
