@@ -361,4 +361,3 @@
   // For compatibility with <= 3.3
   internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
 }());
-

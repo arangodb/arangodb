@@ -855,6 +855,24 @@ function analyzeServerCrash (arangod, options, checkStr) {
   return crashUtils.analyzeCrash(ARANGOD_BIN, arangod, options, checkStr);
 }
 
+
+function checkUptime (instanceInfo, options) {
+  let ret = {};
+  let opts = Object.assign(makeAuthorizationHeaders(options),
+                           { method: 'GET' });
+  instanceInfo.arangods.forEach(arangod => {
+    let reply = download(arangod.url + '/_admin/statistics', '', opts);
+    if (reply.hasOwnProperty('error') || reply.code !== 200) {
+      throw new Error("unable to get statistics reply: " + JSON.stringify(reply));
+    }
+  
+    let statisticsReply = JSON.parse(reply.body);
+    
+    ret [ arangod.name ] = statisticsReply.server.uptime;
+  });
+  return ret;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief periodic checks whether spawned arangod processes are still alive
 // //////////////////////////////////////////////////////////////////////////////
@@ -1486,6 +1504,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
     throw x;
   }
   instanceInfo.role = role;
+  instanceInfo['name'] = role + ' - ' + port;
 
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
     runProcdump(options, instanceInfo, rootDir, instanceInfo.pid);
@@ -1668,7 +1687,8 @@ exports.makeArgs = {
 exports.arangod = {
   check: {
     alive: checkArangoAlive,
-    instanceAlive: checkInstanceAlive
+    instanceAlive: checkInstanceAlive,
+    uptime: checkUptime
   },
   shutdown: shutdownArangod
 };
