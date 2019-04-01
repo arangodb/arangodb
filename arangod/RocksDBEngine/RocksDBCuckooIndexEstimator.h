@@ -531,6 +531,7 @@ class RocksDBCuckooIndexEstimator {
       // truncate will increase this sequence
       rocksdb::SequenceNumber ignoreSeq = 0;
       while (true) {
+        bool appliedSomething = false;
         bool foundTruncate = false;
         // find out if we have buffers to apply
         {
@@ -574,6 +575,7 @@ class RocksDBCuckooIndexEstimator {
         }
 
         if (foundTruncate) {
+          appliedSomething = true;
           clear();  // clear estimates
         }
 
@@ -587,6 +589,7 @@ class RocksDBCuckooIndexEstimator {
           for (auto const& key : inserts) {
             insert(key);
           }
+          appliedSomething = true;
           inserts.clear();
         }
 
@@ -595,10 +598,14 @@ class RocksDBCuckooIndexEstimator {
           for (auto const& key : removals) {
             remove(key);
           }
+          appliedSomething = true;
           removals.clear();
         }
       }  // </while(true)>
     });
+    if (!appliedSomething) {
+      appliedSeq = commitSeq;
+    }
     return appliedSeq;
   }
 
