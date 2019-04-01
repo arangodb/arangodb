@@ -28,10 +28,42 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+const fs = require("fs");
+const rootDir = fs.join(fs.getTempPath(),  'permissions');
+const testresults = fs.join(rootDir, 'testresult.json'); // where we want to put our results ;-)
+const topLevelForbidden = fs.join(rootDir, 'forbidden');
+const topLevelAllowed = fs.join(rootDir, 'allowed');
+
+const topLevelAllowedFile = fs.join(topLevelAllowed, 'allowed.txt');
+const topLevelForbiddenFile = fs.join(topLevelForbidden, 'forbidden.txt');
+
+const subLevelForbidden = fs.join(topLevelAllowed, 'forbidden');
+const subLevelAllowed = fs.join(topLevelForbidden, 'allowed');
+
+const subLevelAllowedFile = fs.join(subLevelAllowed, 'allowed.txt');
+const subLevelForbiddenFile = fs.join(subLevelForbidden, 'forbidden.txt');
+
 if (getOptions === true) {
+  fs.makeDirectoryRecursive(subLevelForbidden);
+  fs.makeDirectoryRecursive(subLevelAllowed);
+  fs.write(topLevelAllowedFile, 'this file is allowed.\n');
+  fs.write(topLevelForbiddenFile, 'forbidden fruits are tasty!\n');
+  fs.write(subLevelAllowedFile, 'this file is allowed.\n');
+  fs.write(subLevelForbiddenFile, 'forbidden fruits are tasty!\n');
+
   return {
-    'javascript.files-black-list-expression': [],
-    'javascript.files-white-list-expression': []
+    'temp.path': fs.getTempPath(),     // Adjust the temp-path to match our current temp path
+    'javascript.files-black-list-expression': [
+      '/var/lib/', // that for sure!
+      '/etc/', // if not this, what else?
+      topLevelForbidden,
+      subLevelForbidden
+    ],
+    'javascript.files-white-list-expression': [
+      testresults,
+      topLevelAllowed,
+      subLevelAllowed
+    ]
   };
 }
 
@@ -39,8 +71,38 @@ var jsunity = require('jsunity');
 var env = require('process').env;
 var arangodb = require("@arangodb");
 function testSuite() {
+  function tryReadForbidden(fn) {
+    try {
+      fs.read(fn);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, fs + ' wasn\'t forbidden');
+    }
+  }
+  function tryReadAllowed(fn, expectedContent) {
+    try {
+      let content = fs.read(fn);
+      assertEqual(content,
+                  expectedContent,
+                  'Expected ' + fn + 'to contain "' + expectedContent + '" but it contained: "' + content + '"!');
+    }
+    catch (err) {
+      assertTrue(false, fs + ' wasn\'t able to read file.');
+    }
+  }
   return {
     testReadFile : function() {
+
+      tryReadForbidden('/etc/passwd');
+      tryReadForbidden('/var/log/mail.log');
+      tryReadForbidden(topLevelForbiddenFile);
+      tryReadForbidden(subLevelForbiddenFile);
+
+      
+      tryReadAllowed(topLevelAllowedFile);
+      tryReadAllowed(subLevelAllowedFile);
+      
     }
   };
 }
