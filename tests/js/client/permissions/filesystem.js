@@ -37,32 +37,35 @@ const topLevelAllowed = fs.join(rootDir, 'allowed');
 const topLevelAllowedFile = fs.join(topLevelAllowed, 'allowed.txt');
 const topLevelForbiddenFile = fs.join(topLevelForbidden, 'forbidden.txt');
 
-const subLevelForbidden = fs.join(topLevelAllowed, 'forbidden');
+// N/A const subLevelForbidden = fs.join(topLevelAllowed, 'forbidden');
 const subLevelAllowed = fs.join(topLevelForbidden, 'allowed');
 
 const subLevelAllowedFile = fs.join(subLevelAllowed, 'allowed.txt');
-const subLevelForbiddenFile = fs.join(subLevelForbidden, 'forbidden.txt');
+// N/A const subLevelForbiddenFile = fs.join(subLevelForbidden, 'forbidden.txt');
 
 if (getOptions === true) {
-  fs.makeDirectoryRecursive(subLevelForbidden);
+  // N/A fs.makeDirectoryRecursive(subLevelForbidden);
+  fs.makeDirectoryRecursive(topLevelAllowed);
   fs.makeDirectoryRecursive(subLevelAllowed);
+  print("writing topLevelAllowedFile: " + topLevelAllowedFile);
   fs.write(topLevelAllowedFile, 'this file is allowed.\n');
   fs.write(topLevelForbiddenFile, 'forbidden fruits are tasty!\n');
   fs.write(subLevelAllowedFile, 'this file is allowed.\n');
-  fs.write(subLevelForbiddenFile, 'forbidden fruits are tasty!\n');
+   // N/A fs.write(subLevelForbiddenFile, 'forbidden fruits are tasty!\n');
 
   return {
     'temp.path': fs.getTempPath(),     // Adjust the temp-path to match our current temp path
     'javascript.files-black-list': [
-      '/var/lib/', // that for sure!
-      '/etc/', // if not this, what else?
-      topLevelForbidden,
-      subLevelForbidden
+      '/var/lib/.*', // that for sure!
+      '/var/log/.*', // that for sure!
+      '/etc/passwd', // if not this, what else?
+      topLevelForbidden + '.*',
+      // N/A  subLevelForbidden + '.*'
     ],
     'javascript.files-white-list': [
       testresults,
-      topLevelAllowed,
-      subLevelAllowed
+      topLevelAllowed + '.*',
+      subLevelAllowed + '.*'
     ]
   };
 }
@@ -88,7 +91,7 @@ function testSuite() {
                   'Expected ' + fn + 'to contain "' + expectedContent + '" but it contained: "' + content + '"!');
     }
     catch (err) {
-      assertTrue(false, fs + ' wasn\'t able to read file.');
+      assertTrue(false, fn + ' wasn\'t able to read file: ' + err);
     }
   }
   return {
@@ -97,11 +100,11 @@ function testSuite() {
       tryReadForbidden('/etc/passwd');
       tryReadForbidden('/var/log/mail.log');
       tryReadForbidden(topLevelForbiddenFile);
-      tryReadForbidden(subLevelForbiddenFile);
+      // N/A tryReadForbidden(subLevelForbiddenFile);
 
       
-      tryReadAllowed(topLevelAllowedFile);
-      tryReadAllowed(subLevelAllowedFile);
+      tryReadAllowed(topLevelAllowedFile, 'this file is allowed.\n');
+      tryReadAllowed(subLevelAllowedFile, 'this file is allowed.\n');
       
     }
   };
