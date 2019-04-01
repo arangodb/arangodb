@@ -97,14 +97,14 @@ void Inception::gossip() {
             continue;
           }
         }
-        std::string clientid = config.id() + std::to_string(j++);
         LOG_TOPIC("cc3fd", DEBUG, Logger::AGENCY)
             << "Sending gossip message 1: " << out->toJson() << " to peer " << p;
         if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
           return;
         }
+        CoordTransactionID coordTrxId = TRI_NewTickServer();
         std::unordered_map<std::string, std::string> hf;
-        cc->asyncRequest(clientid, p, rest::RequestType::POST, path,
+        cc->asyncRequest(coordTrxId, p, rest::RequestType::POST, path,
                          std::make_shared<std::string>(out->toJson()), hf,
                          std::make_shared<GossipCallback>(_agent, version), 1.0,
                          true, 0.5);
@@ -133,8 +133,9 @@ void Inception::gossip() {
         if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
           return;
         }
+        CoordTransactionID coordTrxId = TRI_NewTickServer();
         std::unordered_map<std::string, std::string> hf;
-        cc->asyncRequest(clientid, pair.second, rest::RequestType::POST, path,
+        cc->asyncRequest(coordTrxId, pair.second, rest::RequestType::POST, path,
                          std::make_shared<std::string>(out->toJson()), hf,
                          std::make_shared<GossipCallback>(_agent, version), 1.0,
                          true, 0.5);
