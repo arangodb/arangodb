@@ -292,7 +292,7 @@ bool Inception::restartingActiveAgent() {
                   return false;
                 }
                 comres =
-                    cc->syncRequest(cliendId, theirLeaderEp,
+                    cc->syncRequest(clientId, theirLeaderEp,
                                     rest::RequestType::POST, path, greetstr,
                                     std::unordered_map<std::string, std::string>(), 2.0);
                 // Failed to contact leader move on until we do. This way at
