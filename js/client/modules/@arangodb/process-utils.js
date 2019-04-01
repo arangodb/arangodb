@@ -854,11 +854,12 @@ function dumpAgency(instanceInfo, options) {
         print(arangod)
 
         print(Date() + " Attempting to dump Agent: " + arangod);
-        dumpAgent(arangod, '/_api/agency/config', 'agencyConfig');
 
-        dumpAgent(arangod, '/_api/agency/state', 'agencyState');
+        dumpAgent(arangod, '/_api/agency/config', 'GET', 'agencyConfig');
 
-        dumpAgent(arangod, '/_api/agency/read', 'agencyPlan');
+        dumpAgent(arangod, '/_api/agency/state', 'GET', 'agencyState');
+
+        dumpAgent(arangod, '/_api/agency/read', 'POST', 'agencyPlan');
       }
     }
   });

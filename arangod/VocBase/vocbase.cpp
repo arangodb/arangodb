@@ -38,6 +38,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/RecursiveLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -67,86 +68,6 @@
 #include "VocBase/ticks.h"
 
 #include <thread>
-
-namespace {
-
-template <typename T>
-class RecursiveReadLocker {
- public:
-  RecursiveReadLocker(T& mutex, std::atomic<std::thread::id>& owner, void const* ptr, char const* file, int line)
-    : _locker(&mutex, arangodb::basics::LockerType::TRY, true, ptr, file, line) {
-    if (!_locker.isLocked() && owner.load() != std::this_thread::get_id()) {
-      _locker.lock();
-    }
-  }
-
- private:
-  arangodb::basics::ReadLocker<T> _locker;
-};
-
-template <typename T>
-class RecursiveWriteLocker {
- public:
-  RecursiveWriteLocker(T& mutex, std::atomic<std::thread::id>& owner,
-                       arangodb::basics::LockerType type, bool acquire,
-                       void const* ptr, char const* file, int line)
-    : _locked(false), _locker(&mutex, type, false, ptr, file, line), _owner(owner), _update(noop) {
-    if (acquire) {
-      lock();
-    }
-  }
-
-  ~RecursiveWriteLocker() { unlock(); }
-
-  bool isLocked() { return _locked; }
-
-  void lock() {
-    // recursive locking of the same instance is not yet supported (create a new
-    // instance instead)
-    TRI_ASSERT(_update != owned);
-
-    if (std::this_thread::get_id() != _owner.load()) {  // not recursive
-      _locker.lock();
-      _owner.store(std::this_thread::get_id());
-      _update = owned;
-    }
-
-    _locked = true;
-  }
-
-  void unlock() {
-    _update(*this);
-    _locked = false;
-  }
-
- private:
-  bool _locked;  // track locked state separately for recursive lock aquisition
-  arangodb::basics::WriteLocker<T> _locker;
-  std::atomic<std::thread::id>& _owner;
-  void (*_update)(RecursiveWriteLocker& locker);
-
-  static void noop(RecursiveWriteLocker&) {}
-  static void owned(RecursiveWriteLocker& locker) {
-    static std::thread::id unowned;
-    locker._owner.store(unowned);
-    locker._locker.unlock();
-    locker._update = noop;
-  }
-};
-
-#define NAME__(name, line) name##line
-#define NAME_EXPANDER__(name, line) NAME__(name, line)
-#define NAME(name) NAME_EXPANDER__(name, __LINE__)
-#define RECURSIVE_READ_LOCKER(lock, owner, ptr)                            \
-  RecursiveReadLocker<typename std::decay<decltype(lock)>::type> NAME( \
-      RecursiveLocker)(lock, owner, ptr, __FILE__, __LINE__)
-#define RECURSIVE_WRITE_LOCKER_NAMED(name, lock, owner, acquire, ptr)       \
-  RecursiveWriteLocker<typename std::decay<decltype(lock)>::type> name( \
-      lock, owner, arangodb::basics::LockerType::BLOCKING, acquire, ptr, __FILE__, __LINE__)
-#define RECURSIVE_WRITE_LOCKER(lock, owner, ptr)                            \
-  RECURSIVE_WRITE_LOCKER_NAMED(NAME(RecursiveLocker), lock, owner, true, ptr)
-
-}  // namespace
 
 using namespace arangodb;
 using namespace arangodb::basics;
