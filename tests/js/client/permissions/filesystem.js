@@ -53,13 +53,13 @@ if (getOptions === true) {
 
   return {
     'temp.path': fs.getTempPath(),     // Adjust the temp-path to match our current temp path
-    'javascript.files-black-list-expression': [
+    'javascript.files-black-list': [
       '/var/lib/', // that for sure!
       '/etc/', // if not this, what else?
       topLevelForbidden,
       subLevelForbidden
     ],
-    'javascript.files-white-list-expression': [
+    'javascript.files-white-list': [
       testresults,
       topLevelAllowed,
       subLevelAllowed
@@ -77,7 +77,7 @@ function testSuite() {
       fail();
     }
     catch (err) {
-      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, fs + ' wasn\'t forbidden');
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'access to ' + fn + ' wasn\'t forbidden');
     }
   }
   function tryReadAllowed(fn, expectedContent) {
