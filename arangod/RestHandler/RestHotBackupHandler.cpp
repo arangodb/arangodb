@@ -98,8 +98,6 @@ bool RestHotBackupHandler::verifyPermitted() {
   // second test:  is rocksdb the storage engine
   if (retFlag) {
     // test for rocksdb engine
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    TRI_ASSERT(engine != nullptr);
     if (!EngineSelectorFeature::isRocksDB()) {
       generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
                     "hotbackup current supports only the rocksdb storage engine");
