@@ -30,6 +30,7 @@
 #include "Basics/StringUtils.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogTimeFormat.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -44,7 +45,9 @@ using namespace arangodb::options;
 namespace arangodb {
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, bool threaded)
-  : ApplicationFeature(server, "Logger"), _threaded(threaded) {
+  : ApplicationFeature(server, "Logger"),
+    _timeFormatString(LogTimeFormats::defaultFormatName()),
+    _threaded(threaded) {
   setOptional(false);
 
   startsAfter("ShellColors");
@@ -67,7 +70,8 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--log", "the global or topic-specific log level",
                      new VectorParameter<StringParameter>(&_levels),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setDeprecatedIn(30500);
 
   options->addSection("log", "Configure the logging");
 
@@ -84,10 +88,18 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new VectorParameter<StringParameter>(&_levels));
 
   options->addOption("--log.use-local-time", "use local timezone instead of UTC",
-                     new BooleanParameter(&_useLocalTime));
+                     new BooleanParameter(&_useLocalTime),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setDeprecatedIn(30500);
 
   options->addOption("--log.use-microtime", "use microtime instead",
-                     new BooleanParameter(&_useMicrotime));
+                     new BooleanParameter(&_useMicrotime),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setDeprecatedIn(30500);
+  
+  options->addOption("--log.time-format", "time format to use in logs",
+                     new DiscreteValuesParameter<StringParameter>(&_timeFormatString, LogTimeFormats::getAvailableFormatNames()))
+                     .setIntroducedIn(30500);
 
   options->addOption("--log.ids", "log unique message ids", 
                      new BooleanParameter(&_showIds))
@@ -139,7 +151,8 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.performance",
                      "shortcut for '--log.level performance=trace'",
                      new BooleanParameter(&_performance),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setDeprecatedIn(30500);
 
   options->addOption("--log.keep-logrotate",
                      "keep the old log file after receiving a sighup",
@@ -184,6 +197,14 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_performance) {
     _levels.push_back("performance=trace");
+  }
+  
+  if (options->processingResult().touched("log.time-format") &&
+      (options->processingResult().touched("log.use-microtime") ||
+       options->processingResult().touched("log.use-local-time"))) {
+    LOG_TOPIC("c3f28", FATAL, arangodb::Logger::FIXME)
+        << "cannot combine `--log.time-format` with either `--log.use-microtime` or `--log.use-local-time`";
+    FATAL_ERROR_EXIT();
   }
 
   if (!_fileMode.empty()) {
@@ -249,8 +270,7 @@ void LoggerFeature::prepare() {
   Logger::setShowIds(_showIds);
   Logger::setShowRole(_showRole);
   Logger::setUseColor(_useColor);
-  Logger::setUseLocalTime(_useLocalTime);
-  Logger::setUseMicrotime(_useMicrotime);
+  Logger::setTimeFormat(LogTimeFormats::formatFromName(_timeFormatString));
   Logger::setUseEscaped(_useEscaped);
   Logger::setShowLineNumber(_lineNumber);
   Logger::setShortenFilenames(_shortenFilenames);

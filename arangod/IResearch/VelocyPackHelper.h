@@ -46,6 +46,40 @@ namespace iresearch {
 uint8_t const COMPACT_ARRAY = 0x13;
 uint8_t const COMPACT_OBJECT = 0x14;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a string_ref value to the 'builder' (for JSON arrays)
+////////////////////////////////////////////////////////////////////////////////
+arangodb::velocypack::Builder& addBytesRef( // add a value
+  arangodb::velocypack::Builder& builder, // builder
+  irs::bytes_ref const& value // value
+);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a string_ref value to the 'builder' (for JSON objects)
+////////////////////////////////////////////////////////////////////////////////
+arangodb::velocypack::Builder& addBytesRef( // add a value
+  arangodb::velocypack::Builder& builder, // builder
+  irs::string_ref const& key, // key
+  irs::bytes_ref const& value // value
+);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a string_ref value to the 'builder' (for JSON arrays)
+////////////////////////////////////////////////////////////////////////////////
+arangodb::velocypack::Builder& addStringRef( // add a value
+  arangodb::velocypack::Builder& builder, // builder
+  irs::string_ref const& value // value
+);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a string_ref value to the 'builder' (for JSON objects)
+////////////////////////////////////////////////////////////////////////////////
+arangodb::velocypack::Builder& addStringRef( // add a value
+  arangodb::velocypack::Builder& builder, // builder
+  irs::string_ref const& key, // key
+  irs::string_ref const& value // value
+);
+
 inline bool isArrayOrObject(VPackSlice const& slice) {
   auto const type = slice.type();
   return VPackValueType::Array == type || VPackValueType::Object == type;
@@ -196,35 +230,6 @@ bool mergeSliceSkipKeys(arangodb::velocypack::Builder& builder,
 bool mergeSliceSkipOffsets(arangodb::velocypack::Builder& builder,
                            arangodb::velocypack::Slice const& slice,
                            std::function<bool(size_t offset)> const& acceptor);
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief convert an irs::byte_type array to an
-///        arangodb::velocypack::ValuePair
-//////////////////////////////////////////////////////////////////////////////
-inline arangodb::velocypack::ValuePair toValuePair(const irs::byte_type* data, size_t size) {
-  return arangodb::velocypack::ValuePair(data, size, arangodb::velocypack::ValueType::Binary);
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief convert an irs::bytes_ref to an arangodb::velocypack::ValuePair
-//////////////////////////////////////////////////////////////////////////////
-inline arangodb::velocypack::ValuePair toValuePair(irs::bytes_ref const& ref) {
-  return toValuePair(ref.c_str(), ref.size());
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief convert a char array to an arangodb::velocypack::ValuePair
-//////////////////////////////////////////////////////////////////////////////
-inline arangodb::velocypack::ValuePair toValuePair(const char* data, size_t size) {
-  return arangodb::velocypack::ValuePair(data, size, arangodb::velocypack::ValueType::String);
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief convert an irs::string_ref to an arangodb::velocypack::ValuePair
-//////////////////////////////////////////////////////////////////////////////
-inline arangodb::velocypack::ValuePair toValuePair(irs::string_ref const& ref) {
-  return toValuePair(ref.c_str(), ref.size());
-}
 
 ////////////////////////////////////////////////////////////////////////////
 /// @struct IteratorValue
