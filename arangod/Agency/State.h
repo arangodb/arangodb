@@ -26,8 +26,6 @@
 
 #include "Agency/Store.h"
 #include "AgencyCommon.h"
-#include "Basics/MutexLocker.h"
-#include "Cluster/ClusterComm.h"
 #include "Utils/OperationOptions.h"
 
 #include <velocypack/vpack.h>
@@ -198,14 +196,16 @@ class State {
 
   /// @brief Log single log entry. Must be guarded by caller.
   index_t logNonBlocking(index_t idx, velocypack::Slice const& slice,
-                         term_t term, std::string const& clientId = std::string(),
+                         term_t term, uint64_t millis,
+                         std::string const& clientId = std::string(),
                          bool leading = false, bool reconfiguration = false);
 
   /// @brief Save currentTerm, votedFor, log entries
-  bool persist(index_t, term_t, arangodb::velocypack::Slice const&, std::string const&) const;
+  bool persist(index_t, term_t, uint64_t, arangodb::velocypack::Slice const&,
+               std::string const&) const;
 
   /// @brief Save currentTerm, votedFor, log entries for reconfiguration
-  bool persistconf(index_t, term_t, arangodb::velocypack::Slice const&,
+  bool persistconf(index_t, term_t, uint64_t, arangodb::velocypack::Slice const&,
                    std::string const&) const;
 
   bool saveCompacted();
