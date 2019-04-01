@@ -1505,12 +1505,6 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollection(
   return useCollectionInternal(std::move(collection), status);
 }
 
-/// @brief locks a collection for usage by name
-std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollectionByUuid(
-    std::string const& uuid, TRI_vocbase_col_status_e& status) {
-  return useCollectionInternal(lookupCollectionByUuid(uuid), status);
-}
-
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollectionInternal(
     std::shared_ptr<arangodb::LogicalCollection> coll, TRI_vocbase_col_status_e& status) {
   if (!coll) {
