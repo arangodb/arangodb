@@ -36,7 +36,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
  public:
   static consensus::Agent* AGENT;
 
-  explicit AgencyFeature(application_features::ApplicationServer& server);
+  explicit AgencyFeature(application_features::ApplicationServer* server);
   ~AgencyFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
