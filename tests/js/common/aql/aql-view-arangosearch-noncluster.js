@@ -712,6 +712,24 @@ function iResearchAqlTestSuite () {
       linksView.drop();
       entities.drop();
       links.drop();
+    },
+
+    testAttributeInRangeOpenInterval : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH IN_RANGE(doc.c, 1, 3, false, false) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 4);
+      result.forEach(function(res) {
+        assertTrue(res.c > 1 && res.c < 3);
+      });
+    },
+
+    testAttributeInRangeClosedInterval : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH IN_RANGE(doc.c, 1, 3, true, true) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 12);
+      result.forEach(function(res) {
+        assertTrue(res.c >= 1 && res.c <= 3);
+      });
     }
 
   };

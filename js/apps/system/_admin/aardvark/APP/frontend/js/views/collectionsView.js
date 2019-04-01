@@ -355,6 +355,7 @@
           var collSync = $('#new-collection-sync').val();
           var shards = 1;
           var shardBy = [];
+          var smartJoinAttribute = '';
 
           if (replicationFactor === '') {
             replicationFactor = 1;
@@ -364,6 +365,10 @@
           }
 
           if (isCoordinator) {
+            if (frontendConfig.isEnterprise && $('#smart-join-attribute').val() !== '') {
+              smartJoinAttribute = $('#smart-join-attribute').val().trim();
+            }
+
             shards = $('#new-collection-shards').val();
 
             if (shards === '') {
@@ -379,6 +384,8 @@
             shardBy = _.pluck($('#new-collection-shardBy').select2('data'), 'text');
             if (shardBy.length === 0) {
               shardBy.push('_key');
+            } else {
+              _.each(shardBy, function (element, index) { shardBy[index] = arangoHelper.escapeHtml(element); });
             }
           }
           if (collName.substr(0, 1) === '_') {
@@ -426,6 +433,9 @@
           };
           if (self.engine.name !== 'rocksdb') {
             tmpObj.journalSize = collSize;
+          }
+          if (smartJoinAttribute !== '') {
+            tmpObj.smartJoinAttribute = smartJoinAttribute;
           }
           this.collection.newCollection(tmpObj, callback);
           window.modalView.hide();
@@ -521,6 +531,18 @@
                   '',
                   'Create satellite collection? This will disable replication factor.',
                   [{value: false, label: 'No'}, {value: true, label: 'Yes'}]
+                )
+              );
+              advancedTableContent.push(
+                window.modalView.createTextEntry(
+                  'smart-join-attribute',
+                  'Smart join attribute',
+                  '',
+                  'String attribute name. Can be left empty if smart joins are not used.',
+                  '',
+                  false,
+                  [
+                  ]
                 )
               );
             }

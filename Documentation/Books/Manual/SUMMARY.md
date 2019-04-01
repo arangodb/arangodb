@@ -241,6 +241,7 @@
     * [Auth and OAuth2](Foxx/Migrating2x/Auth.md)
     * [Foxx Queries](Foxx/Migrating2x/Queries.md)
 * [Satellite Collections](Satellites.md)
+* [Smart Joins](SmartJoins.md)
 
 ## OPERATIONS
 
@@ -365,6 +366,7 @@
   <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
   * [Datacenter to datacenter replication](Security/DC2DC/README.md)
 * [Monitoring](Monitoring/README.md)
+  * [Log Levels](Monitoring/LogLevels.md)
   <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
   * [Datacenter to datacenter replication](Monitoring/DC2DC/README.md)
 * [Troubleshooting](Troubleshooting/README.md)

@@ -143,9 +143,7 @@ class ExecutionNode {
     INDEX = 23,
     SHORTEST_PATH = 24,
     REMOTESINGLE = 25,
-#ifdef USE_IRESEARCH
     ENUMERATE_IRESEARCH_VIEW,
-#endif
     MAX_NODE_TYPE_VALUE
   };
 
@@ -258,6 +256,16 @@ class ExecutionNode {
       TRI_ASSERT(it != nullptr);
       result.emplace_back(it);
     }
+  }
+
+  /// @brief get the singleton node of the node
+  ExecutionNode const* getSingleton() const {
+    auto node = this;
+    do {
+      node = node->getFirstDependency();
+    } while (node != nullptr && node->getType() != SINGLETON);
+    
+    return node;
   }
 
   /// @brief get the node and its dependencies as a vector

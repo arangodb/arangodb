@@ -48,9 +48,7 @@
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchViewNode.h"
-#endif
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -88,10 +86,8 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::SHORTEST_PATH), "ShortestPathNode"},
     {static_cast<int>(ExecutionNode::REMOTESINGLE),
      "SingleRemoteOperationNode"},
-#ifdef USE_IRESEARCH
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW),
      "EnumerateViewNode"},
-#endif
 };
 
 }  // namespace
@@ -299,10 +295,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new ShortestPathNode(plan, slice);
     case REMOTESINGLE:
       return new SingleRemoteOperationNode(plan, slice);
-#ifdef USE_IRESEARCH
     case ENUMERATE_IRESEARCH_VIEW:
       return new iresearch::IResearchViewNode(*plan, slice);
-#endif
     default: {
       // should not reach this point
       TRI_ASSERT(false);
@@ -591,9 +585,7 @@ ExecutionNode const* ExecutionNode::getLoop() const {
 
     if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
         type == ENUMERATE_LIST || type == SHORTEST_PATH
-#ifdef USE_IRESEARCH
         || type == ENUMERATE_IRESEARCH_VIEW
-#endif
     ) {
       return node;
     }
@@ -1026,7 +1018,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       break;
     }
 
-#ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       auto ep = ExecutionNode::castTo<iresearch::IResearchViewNode const*>(en);
       TRI_ASSERT(ep);
@@ -1034,7 +1025,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
       break;
     }
-#endif
 
     default: {
       // should not reach this point
@@ -1234,6 +1224,8 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
                                                      outVariable, _random);
 
   c->projections(_projections);
+  c->_prototypeCollection = _prototypeCollection;
+  c->_prototypeOutVariable = _prototypeOutVariable;
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
@@ -1561,9 +1553,7 @@ bool SubqueryNode::mayAccessCollections() {
   // if the subquery contains any of these nodes, it may access data from
   // a collection
   std::vector<ExecutionNode::NodeType> const types = {
-#ifdef USE_IRESEARCH
       ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
-#endif
       ExecutionNode::ENUMERATE_COLLECTION,
       ExecutionNode::INDEX,
       ExecutionNode::INSERT,

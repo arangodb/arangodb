@@ -33,6 +33,9 @@ The available log levels are:
 
 Note that levels `debug` and `trace` will be very verbose.
 
+See [Log Levels](../../Monitoring/LogLevels.md) in the Monitoring chapter for a
+detailed description of the different levels.
+
 Some relevant log topics available in ArangoDB 3 are:
 
 - `agency`: information about the agency
@@ -88,6 +91,16 @@ To additionally log HTTP request to a file named "requests.log" add the options:
 ```
 --log.level requests=info --log.output requests=file:///path/to/requests.log
 ```
+
+If you specify `--log.file-mode octalvalue` then any newly created log
+file will use "octalvalue" as file mode. Please note that the `umask`
+value will be applied as well.
+
+If you specify `--log.file-group name` then any newly created log file
+will try to use "name" as group name. Please note that you have to be
+a member of that group. Otherwise the group ownership will not be
+changed. Please note that this option is only available under Linux
+and Mac. It is not available under Windows.
 
 ### Forcing direct output
 

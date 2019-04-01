@@ -253,9 +253,7 @@ void RocksDBOptimizerRules::removeSortRandRule(Optimizer* opt,
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
         case EN::INDEX:
-#ifdef USE_IRESEARCH
         case EN::ENUMERATE_IRESEARCH_VIEW:
-#endif
         {
           // if we found another SortNode, a CollectNode, FilterNode, a
           // SubqueryNode, an EnumerateListNode, a TraversalNode or an IndexNode

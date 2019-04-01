@@ -120,7 +120,7 @@ std::shared_ptr<RocksDBHotBackup> RestHotBackupHandler::parseHotBackupParams(
 
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (parseSuccess) {
-    operation=RocksDBHotBackup::operationFactory(type, suffixes, body);
+    operation = RocksDBHotBackup::operationFactory(type, suffixes, body);
   } // if
 
   return operation;

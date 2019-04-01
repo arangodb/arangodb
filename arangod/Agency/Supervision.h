@@ -154,6 +154,9 @@ class Supervision : public arangodb::CriticalThread {
   // @brief Check shards in agency
   std::vector<check_t> checkShards();
 
+  // @brief 
+  void cleanupFinishedAndFailedJobs();
+
   void workJobs();
 
   /// @brief Get unique ids from agency
@@ -169,7 +172,7 @@ class Supervision : public arangodb::CriticalThread {
 
  public:
   static void cleanupLostCollections(Node const& snapshot, AgentInterface* agent,
-                                     std::string const& jobId);
+                                     uint64_t& jobId);
 
  private:
   /**
@@ -199,6 +202,7 @@ class Supervision : public arangodb::CriticalThread {
   double _okThreshold;
   uint64_t _jobId;
   uint64_t _jobIdMax;
+  bool _haveAborts;        /**< @brief We have accumulated pending aborts in a round */
 
   // mop: this feels very hacky...we have a hen and egg problem here
   // we are using /Shutdown in the agency to determine that the cluster should

@@ -1,15 +1,15 @@
 @Q:
   FOR v,e,p IN <span class="hljs-number">1.</span><span class="hljs-number">.3</span> OUTBOUND <span class="hljs-string">'circles/A'</span> GRAPH <span class="hljs-string">'traversalGraph'</span>
-    LET localScopeVar = RAND() &gt; <span class="hljs-number">0.5</span>
-    FILTER p.edges[<span class="hljs-number">0</span>].theTruth != localScopeVar
-  RETURN v._key
+      LET localScopeVar = RAND() &gt; <span class="hljs-number">0.5</span>
+      FILTER p.edges[<span class="hljs-number">0</span>].theTruth != localScopeVar
+      RETURN v._key
 
 @R
 <span style="color:rgb(85,85,255)">Query String:</span>
  <span style="color:rgb(0,187,0)">  FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
-     LET localScopeVar = RAND() &gt; 0.5
-     FILTER p.edges[0].theTruth != localScopeVar
-   RETURN v._key
+       LET localScopeVar = RAND() &gt; 0.5
+       FILTER p.edges[0].theTruth != localScopeVar
+       RETURN v._key
  </span>
 
 <span style="color:rgb(85,85,255)">Execution plan:</span>
@@ -31,8 +31,8 @@
  <span style="color:rgb(187,187,0)">RAND</span>   <span style="color:rgb(0,187,0)">false</span>           <span style="color:rgb(0,187,0)">false</span>       <span style="color:rgb(0,187,0)">false</span>  
 
 <span style="color:rgb(85,85,255)">Traversals on graphs:</span>
- <span style="color:rgb(187,0,187)">Id</span>   <span style="color:rgb(187,0,187)">Depth</span>   <span style="color:rgb(187,0,187)">Vertex collections</span>   <span style="color:rgb(187,0,187)">Edge collections</span>   <span style="color:rgb(187,0,187)">Options</span>                                   <span style="color:rgb(187,0,187)">Filter conditions</span>
-  2   1..3    <span style="color:rgb(187,0,0)">circles</span>              <span style="color:rgb(187,0,0)">edges</span>              <span style="color:rgb(0,187,187)">uniqueVertices</span>: <span style="color:rgb(0,187,0)">none</span>, <span style="color:rgb(0,187,187)">uniqueEdges</span>: <span style="color:rgb(0,187,0)">path</span>   
+ <span style="color:rgb(187,0,187)">Id</span>  <span style="color:rgb(187,0,187)">Depth</span>  <span style="color:rgb(187,0,187)">Vertex collections</span>  <span style="color:rgb(187,0,187)">Edge collections</span>  <span style="color:rgb(187,0,187)">Options</span>                                  <span style="color:rgb(187,0,187)">Filter / Prune Conditions</span>
+ 2   1..3   <span style="color:rgb(187,0,0)">circles</span>             <span style="color:rgb(187,0,0)">edges</span>             <span style="color:rgb(0,187,187)">uniqueVertices</span>: <span style="color:rgb(0,187,0)">none</span>, <span style="color:rgb(0,187,187)">uniqueEdges</span>: <span style="color:rgb(0,187,0)">path</span>                           
 
 <span style="color:rgb(85,85,255)">Optimization rules applied:</span>
  <span style="color:rgb(187,0,187)">Id</span>   <span style="color:rgb(187,0,187)">RuleName</span>

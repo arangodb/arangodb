@@ -141,7 +141,6 @@ Traverser::Traverser(arangodb::traverser::TraverserOptions* opts,
     : _trx(trx),
       _mmdr(mmdr),
       _startIdBuilder(trx),
-      _pruneNext(false),
       _done(true),
       _opts(opts),
       _canUseOptimizedNeighbors(false) {

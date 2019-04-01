@@ -81,7 +81,7 @@ FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
 
 FailedLeader::~FailedLeader() {}
 
-void FailedLeader::run() { runHelper("", _shard); }
+void FailedLeader::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 void FailedLeader::rollback() {
   // Create new plan servers (exchange _to and _from)
@@ -156,7 +156,7 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   if (b == nullptr) {
     _jb->close(); // object
     _jb->close(); // array
-    write_ret_t res = singleWriteTransaction(_agent, *_jb);
+    write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
     return (res.accepted && res.indices.size() == 1 && res.indices[0]);
   }
 
@@ -164,7 +164,7 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
 
 }
 
-bool FailedLeader::start() {
+bool FailedLeader::start(bool& aborts) {
   std::vector<std::string> existing =
       _snapshot.exists(planColPrefix + _database + "/" + _collection + "/" +
                        "distributeShardsLike");
@@ -209,7 +209,7 @@ bool FailedLeader::start() {
   {
     VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
-      auto jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      auto const& jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
       if (jobIdNode.second) {
         jobIdNode.first.toBuilder(todo);
       } else {
@@ -309,7 +309,9 @@ bool FailedLeader::start() {
     if (jobId.second && !abortable(_snapshot, jobId.first)) {
       return false;
     } else if (jobId.second) {
+      aborts = true;
       JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+      return false;
     }
   }
 
@@ -318,21 +320,22 @@ bool FailedLeader::start() {
 
   trans_ret_t res = generalTransaction(_agent, pending);
 
+  if (!res.accepted) {  // lost leadership
+    LOG_TOPIC(INFO, Logger::SUPERVISION) << "Leadership lost! Job " << _jobId << " handed off.";
+    return false;
+  }
+
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "FailedLeader result: " << res.result->toJson();
 
   // Something went south. Let's see
   auto result = res.result->slice()[0];
 
-  if (res.accepted && result.isNumber()) {
+  if (result.isNumber()) {
     return true;
   }
 
   TRI_ASSERT(result.isObject());
-
-  if (!res.accepted) {  // lost leadership
-    LOG_TOPIC(INFO, Logger::SUPERVISION) << "Leadership lost! Job " << _jobId << " handed off.";
-  }
 
   if (result.isObject()) {
     // Still failing _from?
@@ -398,7 +401,7 @@ JOB_STATUS FailedLeader::status() {
   }
 
   std::string database, shard;
-  auto job = _snapshot.hasAsNode(pendingPrefix + _jobId);
+  auto const& job = _snapshot.hasAsNode(pendingPrefix + _jobId);
   if (job.second) {
     auto tmp_database = job.first.hasAsString("database");
     auto tmp_shard = job.first.hasAsString("shard");

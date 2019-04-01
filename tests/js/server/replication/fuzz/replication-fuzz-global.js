@@ -77,7 +77,9 @@ function ReplicationSuite() {
       verbose: true,
       includeSystem: false,
       requireFromPresent: true,
-      incremental: true
+      incremental: true,
+      autoResync: true,
+      autoResyncRetries: 5 
     });
 
     let state = {};
@@ -97,7 +99,7 @@ function ReplicationSuite() {
 
       if (slaveState.state.lastError.errorNum > 0) {
         console.topic("replication=error", "slave has errored:", JSON.stringify(slaveState.state.lastError));
-        break;
+        throw JSON.stringify(slaveState.state.lastError);
       }
 
       if (!slaveState.state.running) {
@@ -182,6 +184,11 @@ function ReplicationSuite() {
           let insert = function() {
             let collection = pickCollection();
             collection.insert({ value: Date.now() });
+          };
+          
+          let insertOverwrite = function() {
+            let collection = pickCollection();
+            collection.insert({ _key: "test", value: Date.now() }, { overwrite: true });
           };
           
           let remove = function() {
@@ -315,6 +322,20 @@ function ReplicationSuite() {
             });
           };
           
+          let insertBatch = function() {
+            let collection = pickCollection();
+            db._executeTransaction({
+              collections: { write: [collection.name()] },
+              action: function(params) {
+                let collection = params.cn, db = require("internal").db;
+                for (let i = 0; i < 1000; ++i) {
+                  db[collection].insert({ value1: Date.now() });
+                }
+              },
+              params: { cn: collection.name() }
+            });
+          };
+          
           let createCollection = function() {
             let name = "test" + internal.genRandomAlphaNumbers(16) + Date.now();
             return db._create(name);
@@ -339,6 +360,11 @@ function ReplicationSuite() {
           let changeCollection = function() {
             let collection = pickCollection();
             collection.properties({ waitForSync: false });
+          };
+          
+          let truncateCollection = function() {
+            let collection = pickCollection();
+            collection.truncate();
           };
 
           let createIndex = function () {
@@ -375,6 +401,7 @@ function ReplicationSuite() {
 
           let ops = [
             { name: "insert", func: insert },
+            { name: "insertOverwrite", func: insertOverwrite },
             { name: "remove", func: remove },
             { name: "replace", func: replace },
             { name: "update", func: update },
@@ -385,10 +412,12 @@ function ReplicationSuite() {
             { name: "removeMulti", func: removeMulti },
             { name: "removeInsert", func: removeInsert },
             { name: "insertRemove", func: insertRemove },
+            { name: "insertBatch", func: insertBatch },
             { name: "createCollection", func: createCollection },
             { name: "dropCollection", func: dropCollection },
             { name: "renameCollection", func: renameCollection },
             { name: "changeCollection", func: changeCollection },
+            { name: "truncateCollection", func: truncateCollection },
             { name: "createIndex", func: createIndex },
             { name: "dropIndex", func: dropIndex },
             { name: "createDatabase", func: createDatabase },
@@ -412,6 +441,10 @@ function ReplicationSuite() {
 
             db._collections().filter(function(c) { return c.name()[0] !== '_'; }).forEach(function(c) {
               total += c.name() + "-" + c.count() + "-" + collectionChecksum(c.name());
+              c.indexes().forEach(function(index) {
+                delete index.selectivityEstimate;
+                total += index.type + "-" + JSON.stringify(index.fields);
+              });
             });
           });
 
@@ -428,10 +461,13 @@ function ReplicationSuite() {
 
             db._collections().filter(function(c) { return c.name()[0] !== '_'; }).forEach(function(c) {
               total += c.name() + "-" + c.count() + "-" + collectionChecksum(c.name());
+              c.indexes().forEach(function(index) {
+                delete index.selectivityEstimate;
+                total += index.type + "-" + JSON.stringify(index.fields);
+              });
             });
           });
 
-          assertTrue(total.length > 0);
           assertEqual(total, state.state);
         }
       );

@@ -607,6 +607,9 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     WBReader handler(startSeqs);
     rocksdb::SequenceNumber earliest = engine->settingsManager()->earliestSeqNeeded();
     auto minTick = std::min(earliest, engine->releasedTick());
+  
+    // prevent purging of WAL files while we are in here
+    RocksDBFilePurgePreventer purgePreventer(rocksutils::globalRocksEngine()->disallowPurging());
 
     std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
     rocksdb::Status s =

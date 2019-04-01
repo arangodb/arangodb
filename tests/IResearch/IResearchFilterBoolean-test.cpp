@@ -2146,9 +2146,12 @@ SECTION("BinaryAnd") {
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
     irs::Or expected;
-    auto& range = expected.add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(minTerm)
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(minTerm);
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15 and d.a.b.c < 40 RETURN d", expected);
@@ -2174,11 +2177,16 @@ SECTION("BinaryAnd") {
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
     irs::Or expected;
-    auto& range = expected.add<irs::by_granular_range>();
-    range.boost(1.5);
-    range.field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(minTerm)
-        .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
+    auto& root = expected.add<irs::And>();
+    root.boost(1.5);
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MIN>(false)
+        .insert<irs::Bound::MIN>(minTerm);
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MAX>(false)
+        .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess("FOR d IN collection FILTER boost(d.a.b.c > 15 and d.a.b.c < 40, 1.5) RETURN d", expected);
   }
@@ -2431,10 +2439,15 @@ SECTION("BinaryAnd") {
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
     irs::Or expected;
-    auto& range = expected.add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b[42].c"))
-        .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(minTerm)
-        .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b[42].c"))
+        .include<irs::Bound::MIN>(false)
+        .insert<irs::Bound::MIN>(minTerm);
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b[42].c"))
+        .include<irs::Bound::MAX>(false)
+        .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b[42].c > 15 and d.a.b[42].c < 40 RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['a'].b[42].c > 15 and d['a']['b'][42]['c'] < 40 RETURN d", expected);
@@ -2459,10 +2472,15 @@ SECTION("BinaryAnd") {
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
     irs::Or expected;
-    auto& range = expected.add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm)
-        .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MIN>(true)
+        .insert<irs::Bound::MIN>(minTerm);
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MAX>(false)
+        .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15 and d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a['b']['c'] >= 15 and d['a']['b']['c'] < 40 RETURN d", expected);
@@ -2483,10 +2501,15 @@ SECTION("BinaryAnd") {
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
     irs::Or expected;
-    auto& range = expected.add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm)
-        .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MIN>(true)
+        .insert<irs::Bound::MIN>(minTerm);
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MAX>(true)
+        .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15 and d.a.b.c <= 40 RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a['b']['c'] >= 15 and d.a.b.c <= 40 RETURN d", expected);
@@ -2598,10 +2621,15 @@ SECTION("BinaryAnd") {
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
     irs::Or expected;
-    auto& range = expected.add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(minTerm)
-        .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MIN>(false)
+        .insert<irs::Bound::MIN>(minTerm);
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MAX>(true)
+        .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15 and d.a.b.c <= 40 RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['a'].b.c > 15 and d.a.b.c <= 40 RETURN d", expected);
@@ -2719,10 +2747,15 @@ SECTION("BinaryAnd") {
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
     irs::Or expected;
-    auto& range = expected.add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a"))
-        .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(minTerm)
-        .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a"))
+        .include<irs::Bound::MIN>(false)
+        .insert<irs::Bound::MIN>(minTerm);
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a"))
+        .include<irs::Bound::MAX>(true)
+        .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] > 15 &&  d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]  <= 40 RETURN d", expected, &ctx);
     assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER 15 < d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] &&  40 >= d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] RETURN d", expected, &ctx);
@@ -2763,10 +2796,15 @@ SECTION("BinaryAnd") {
   // string range
   {
     irs::Or expected;
-    auto& range = expected.add<irs::by_range>();
-    range.field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("15")
-        .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("40");
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_range>()
+        .field(mangleStringIdentity("a.b.c"))
+        .include<irs::Bound::MIN>(false)
+        .term<irs::Bound::MIN>("15");
+    root.add<irs::by_range>()
+        .field(mangleStringIdentity("a.b.c"))
+        .include<irs::Bound::MAX>(false)
+        .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > '15' and d.a.b.c < '40' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['a']['b']['c'] > '15' and d.a.b.c < '40' RETURN d", expected);
@@ -2781,10 +2819,15 @@ SECTION("BinaryAnd") {
   // string range
   {
     irs::Or expected;
-    auto& range = expected.add<irs::by_range>();
-    range.field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("15")
-        .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("40");
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_range>()
+        .field(mangleStringIdentity("a.b.c"))
+        .include<irs::Bound::MIN>(true)
+        .term<irs::Bound::MIN>("15");
+    root.add<irs::by_range>()
+        .field(mangleStringIdentity("a.b.c"))
+        .include<irs::Bound::MAX>(false)
+        .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c < '40' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['a']['b'].c >= '15' and d['a']['b']['c'] < '40' RETURN d", expected);
@@ -2799,11 +2842,16 @@ SECTION("BinaryAnd") {
   // string range, boost, analyzer
   {
     irs::Or expected;
-    auto& range = expected.add<irs::by_range>();
-    range.boost(0.5);
-    range.field(mangleString("a.b.c", "test_analyzer"))
-        .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("15")
-        .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("40");
+    auto& root = expected.add<irs::And>();
+    root.boost(0.5);
+    root.add<irs::by_range>()
+        .field(mangleString("a.b.c", "test_analyzer"))
+        .include<irs::Bound::MIN>(true)
+        .term<irs::Bound::MIN>("15");
+    root.add<irs::by_range>()
+        .field(mangleString("a.b.c", "test_analyzer"))
+        .include<irs::Bound::MAX>(false)
+        .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess("FOR d IN collection FILTER analyzer(boost(d.a.b.c >= '15' and d.a.b.c < '40', 0.5), 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER boost(analyzer(d['a']['b'].c >= '15' and d['a']['b']['c'] < '40', 'test_analyzer'), 0.5) RETURN d", expected);
@@ -2812,10 +2860,15 @@ SECTION("BinaryAnd") {
   // string range
   {
     irs::Or expected;
-    auto& range = expected.add<irs::by_range>();
-    range.field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("15")
-        .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_range>()
+        .field(mangleStringIdentity("a.b.c"))
+        .include<irs::Bound::MIN>(true)
+        .term<irs::Bound::MIN>("15");
+    root.add<irs::by_range>()
+        .field(mangleStringIdentity("a.b.c"))
+        .include<irs::Bound::MAX>(true)
+        .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c <= '40' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['a']['b']['c'] >= '15' and d.a.b.c <= '40' RETURN d", expected);
@@ -2882,10 +2935,15 @@ SECTION("BinaryAnd") {
   // string range
   {
     irs::Or expected;
-    auto& range = expected.add<irs::by_range>();
-    range.field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("15")
-        .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_range>()
+        .field(mangleStringIdentity("a.b.c"))
+        .include<irs::Bound::MIN>(false)
+        .term<irs::Bound::MIN>("15");
+    root.add<irs::by_range>()
+        .field(mangleStringIdentity("a.b.c"))
+        .include<irs::Bound::MAX>(true)
+        .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > '15' and d.a.b.c <= '40' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > '15' and d.a.b.c <= '40' RETURN d", expected);
@@ -2903,10 +2961,15 @@ SECTION("BinaryAnd") {
     ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
-    auto& range = expected.add<irs::by_range>();
-    range.field(mangleStringIdentity("a.b.c.e.f"))
-        .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("15")
-        .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_range>()
+        .field(mangleStringIdentity("a.b.c.e.f"))
+        .include<irs::Bound::MIN>(false)
+        .term<irs::Bound::MIN>("15");
+    root.add<irs::by_range>()
+        .field(mangleStringIdentity("a.b.c.e.f"))
+        .include<irs::Bound::MAX>(true)
+        .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess(
       "LET numVal=2 FOR d IN collection FILTER d.a.b.c.e.f > TO_STRING(numVal+13) && d.a.b.c.e.f <= TO_STRING(numVal+38) RETURN d",
@@ -2927,11 +2990,16 @@ SECTION("BinaryAnd") {
     ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
-    auto& range = expected.add<irs::by_range>();
-    range.boost(2.f);
-    range.field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("15")
-        .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
+    auto& root = expected.add<irs::And>();
+    root.boost(2.f);
+    root.add<irs::by_range>()
+        .field(mangleString("a.b.c.e.f", "test_analyzer"))
+        .include<irs::Bound::MIN>(false)
+        .term<irs::Bound::MIN>("15");
+    root.add<irs::by_range>()
+        .field(mangleString("a.b.c.e.f", "test_analyzer"))
+        .include<irs::Bound::MAX>(true)
+        .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess(
       "LET numVal=2 FOR d IN collection FILTER boost(analyzer(d.a.b.c.e.f > TO_STRING(numVal+13) && d.a.b.c.e.f <= TO_STRING(numVal+38), 'test_analyzer'), numVal) RETURN d",
@@ -2955,10 +3023,15 @@ SECTION("BinaryAnd") {
     ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
-    auto& range = expected.add<irs::by_range>();
-    range.field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("15")
-        .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_range>()
+        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
+        .include<irs::Bound::MIN>(false)
+        .term<irs::Bound::MIN>("15");
+    root.add<irs::by_range>()
+        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
+        .include<irs::Bound::MAX>(true)
+        .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] > '15' && d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]  <= '40' RETURN d", expected, &ctx);
     assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER '15' < d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] && '40' >= d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] RETURN d", expected, &ctx);
@@ -3099,10 +3172,15 @@ SECTION("BinaryAnd") {
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
     irs::Or expected;
-    expected.add<irs::by_granular_range>()
-            .field(mangleNumeric("a.b.c"))
-            .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm)
-            .include<irs::Bound::MIN>(true).insert<irs::Bound::MAX>(maxTerm);
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MIN>(true)
+        .insert<irs::Bound::MIN>(minTerm);
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MAX>(false)
+        .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15.5 and d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['a']['b'].c >= 15.5 and d['a']['b'].c < 40 RETURN d", expected);
@@ -3400,10 +3478,15 @@ SECTION("BinaryAnd") {
     ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
-    auto& range = expected.add<irs::by_range>();
-    range.field(mangleBool("a.b.c.e.f"))
-         .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_true())
-         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_range>()
+        .field(mangleBool("a.b.c.e.f"))
+        .include<irs::Bound::MIN>(true)
+        .term<irs::Bound::MIN>(irs::boolean_token_stream::value_true());
+    root.add<irs::by_range>()
+        .field(mangleBool("a.b.c.e.f"))
+        .include<irs::Bound::MAX>(true)
+        .term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
 
     assertFilterSuccess(
       "LET numVal=2 FOR d IN collection FILTER d.a.b.c.e.f >= (numVal < 13) && d.a.b.c.e.f <= (numVal > 1) RETURN d",
@@ -3424,11 +3507,16 @@ SECTION("BinaryAnd") {
     ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
-    auto& range = expected.add<irs::by_range>();
-    range.boost(1.5);
-    range.field(mangleBool("a.b.c.e.f"))
-         .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_true())
-         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
+    auto& root = expected.add<irs::And>();
+    root.boost(1.5);
+    root.add<irs::by_range>()
+        .field(mangleBool("a.b.c.e.f"))
+        .include<irs::Bound::MIN>(true)
+        .term<irs::Bound::MIN>(irs::boolean_token_stream::value_true());
+    root.add<irs::by_range>()
+        .field(mangleBool("a.b.c.e.f"))
+        .include<irs::Bound::MAX>(true)
+        .term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
 
     assertFilterSuccess(
       "LET numVal=2 FOR d IN collection FILTER boost(d.a.b.c.e.f >= (numVal < 13) && d.a.b.c.e.f <= (numVal > 1), 1.5) RETURN d",
@@ -3478,10 +3566,16 @@ SECTION("BinaryAnd") {
     ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
 
     irs::Or expected;
-    auto& range = expected.add<irs::by_range>();
-    range.field(mangleNull("a.b.c.e.f"))
-         .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::null_token_stream::value_null())
-         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::null_token_stream::value_null());
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_range>()
+        .field(mangleNull("a.b.c.e.f"))
+        .include<irs::Bound::MIN>(true)
+        .term<irs::Bound::MIN>(irs::null_token_stream::value_null());
+    root.add<irs::by_range>()
+        .field(mangleNull("a.b.c.e.f"))
+        .include<irs::Bound::MAX>(true)
+        .term<irs::Bound::MAX>(irs::null_token_stream::value_null());
+
 
     assertFilterSuccess(
       "LET nullVal=null FOR d IN collection FILTER d.a.b.c.e.f >= (nullVal && true) && d.a.b.c.e.f <= (nullVal && false) RETURN d",
@@ -3502,11 +3596,16 @@ SECTION("BinaryAnd") {
     ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
 
     irs::Or expected;
-    auto& range = expected.add<irs::by_range>();
-    range.boost(1.5);
-    range.field(mangleNull("a.b.c.e.f"))
-         .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::null_token_stream::value_null())
-         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::null_token_stream::value_null());
+    auto& root = expected.add<irs::And>();
+    root.boost(1.5);
+    root.add<irs::by_range>()
+        .field(mangleNull("a.b.c.e.f"))
+        .include<irs::Bound::MIN>(true)
+        .term<irs::Bound::MIN>(irs::null_token_stream::value_null());
+    root.add<irs::by_range>()
+        .field(mangleNull("a.b.c.e.f"))
+        .include<irs::Bound::MAX>(true)
+        .term<irs::Bound::MAX>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
       "LET nullVal=null FOR d IN collection FILTER boost(d.a.b.c.e.f >= (nullVal && true) && d.a.b.c.e.f <= (nullVal && false), 1.5) RETURN d",
@@ -3530,10 +3629,15 @@ SECTION("BinaryAnd") {
     ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
-    expected.add<irs::by_granular_range>()
-            .field(mangleNumeric("a.b.c.e.f"))
-            .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm)
-            .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c.e.f"))
+        .include<irs::Bound::MIN>(true)
+        .insert<irs::Bound::MIN>(minTerm);
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c.e.f"))
+        .include<irs::Bound::MAX>(false)
+        .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
       "LET numVal=2 FOR d IN collection FILTER d.a['b'].c.e.f >= (numVal + 13.5) && d.a.b.c.e.f < (numVal + 38) RETURN d",

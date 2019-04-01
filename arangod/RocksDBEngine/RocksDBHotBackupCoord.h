@@ -26,27 +26,26 @@
 
 namespace arangodb {
 
-
 class RocksDBHotBackupCreateCoord : public RocksDBHotBackup {
-public:
 
+ public:
   RocksDBHotBackupCreateCoord() = delete;
-  RocksDBHotBackupCreateCoord(const VPackSlice body)
-    : RocksDBHotBackup(body) {};
+  RocksDBHotBackupCreateCoord(VPackSlice body)
+    : RocksDBHotBackup(body) {}
 
-  void execute() override {};
+  void execute() override {}
 
 };// class RocksDBHotBackupCreate
 
 
 class RocksDBHotBackupRestoreCoord : public RocksDBHotBackup {
-public:
+ public:
 
   RocksDBHotBackupRestoreCoord() = delete;
-  RocksDBHotBackupRestoreCoord(const VPackSlice body)
-    : RocksDBHotBackup(body) {};
+  RocksDBHotBackupRestoreCoord(VPackSlice body)
+    : RocksDBHotBackup(body) {}
 
-  void execute() override {};
+  void execute() override {}
 
 };// class RocksDBHotBackupRestore
 
@@ -76,12 +75,11 @@ public:
 
 
 class RocksDBHotBackupPolicyCoord : public RocksDBHotBackup {
-public:
+ public:
 
-  void execute() override {};
+  void execute() override {}
 
 };// class RocksDBHotBackupPolicy
-
 
 }  // namespace arangodb
 

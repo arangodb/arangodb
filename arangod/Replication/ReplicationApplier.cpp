@@ -294,7 +294,30 @@ void ReplicationApplier::doStart(std::function<void()>&& cb,
   // reset error
   _state._lastError.reset();
 
+  {
+    // steal thread
+    std::unique_ptr<Thread> t = std::move(_thread);
+    TRI_ASSERT(_thread == nullptr);
+    // now _thread is empty
+    // and release the write lock so when "thread" goes
+    // out of scope, it actually can call the thread
+    // deleter without holding the write lock (which would
+    // deadlock)
+    writeLocker.unlock();
+  }
+
+  if (application_features::ApplicationServer::isStopping()) {
+    // dont build a new applier if we shutting down
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+
+  // reacquire the lock
+  writeLocker.lockEventual(); 
+ 
+  // build a new instance in _thread 
   cb();
+
+  TRI_ASSERT(_thread != nullptr);
 
   if (!_thread->start()) {
     _thread.reset();
@@ -434,9 +457,15 @@ void ReplicationApplier::reconfigure(ReplicationApplierConfiguration const& conf
 }
 
 /// @brief load the applier state from persistent storage
+bool ReplicationApplier::loadState() {
+  WRITE_LOCKER_EVENTUAL(readLocker, _statusLock);
+  return loadStateNoLock();
+}
+
+/// @brief load the applier state from persistent storage
 /// must currently be called while holding the write-lock
 /// returns whether a previous state was found
-bool ReplicationApplier::loadState() {
+bool ReplicationApplier::loadStateNoLock() {
   if (!applies()) {
     // unsupported
     return false;
@@ -581,7 +610,7 @@ void ReplicationApplier::setError(arangodb::Result const& r) {
 }
 
 Result ReplicationApplier::lastError() const {
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  READ_LOCKER_EVENTUAL(writeLocker, _statusLock);
   return Result(_state._lastError.code, _state._lastError.message);
 }
 
@@ -660,7 +689,7 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
 
     // steal thread
     std::unique_ptr<Thread> t = std::move(_thread);
-    TRI_ASSERT(_thread.get() == nullptr);
+    TRI_ASSERT(_thread == nullptr);
     // now _thread is empty
     // and release the write lock so when "thread" goes
     // out of scope, it actually can call the thread

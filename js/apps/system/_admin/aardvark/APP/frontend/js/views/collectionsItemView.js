@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, frontendConfig, exports, Backbone, _, $, templateEngine, arangoHelper, Joi */
+/* global window, frontendConfig, Backbone, _, $, templateEngine, arangoHelper, Joi */
 
 (function () {
   'use strict';
@@ -139,8 +139,8 @@
     deleteCollection: function () {
       this.model.destroy(
         {
-          error: function () {
-            arangoHelper.arangoError('Could not delete collection.');
+          error: function (_, data) {
+            arangoHelper.arangoError('Could not drop collection: ' + data.responseJSON.errorMessage);
           },
           success: function () {
             window.modalView.hide();

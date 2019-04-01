@@ -42,7 +42,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
       _from(id(from)),
       _to(id(to)),
       _isLeader(isLeader),  // will be initialized properly when information known
-      _remainsFollower(remainsFollower) {}
+      _remainsFollower(remainsFollower),
+      _toServerIsFollower(false) {}
 
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
                      std::string const& creator, std::string const& database,
@@ -55,7 +56,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent, std::string co
       _from(id(from)),
       _to(id(to)),
       _isLeader(isLeader),  // will be initialized properly when information known
-      _remainsFollower(isLeader) {}
+      _remainsFollower(isLeader),
+      _toServerIsFollower(false) {}
 
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      JOB_STATUS status, std::string const& jobId)
@@ -93,7 +95,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
 
 MoveShard::~MoveShard() {}
 
-void MoveShard::run() { runHelper(_to, _shard); }
+void MoveShard::run(bool& aborts) { runHelper(_to, _shard, aborts); }
 
 bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
@@ -155,7 +157,7 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   _jb->close();  // transaction object
   _jb->close();  // close array
 
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
@@ -167,7 +169,7 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   return false;
 }
 
-bool MoveShard::start() {
+bool MoveShard::start(bool&) {
   // If anything throws here, the run() method catches it and finishes
   // the job.
 
@@ -188,7 +190,7 @@ bool MoveShard::start() {
     finish("", "", true, "collection has been dropped in the meantime");
     return false;
   }
-  auto collection = _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection);
+  auto const& collection = _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection);
   if (collection.second && collection.first.has("distributeShardsLike")) {
     finish("", "", false,
            "collection must not have 'distributeShardsLike' attribute");
@@ -265,11 +267,16 @@ bool MoveShard::start() {
 
   int found = -1;
   int count = 0;
+  _toServerIsFollower = false;
   for (auto const& srv : VPackArrayIterator(planned)) {
     TRI_ASSERT(srv.isString());
     if (srv.copyString() == _to) {
-      finish("", "", false, "toServer must not yet be planned for shard");
-      return false;
+      if (!_isLeader) {
+        finish("", "", false, "toServer must not be planned for a following shard");
+        return false;
+      } else {
+        _toServerIsFollower = true;
+      }
     }
     if (srv.copyString() == _from) {
       found = count;
@@ -347,10 +354,11 @@ bool MoveShard::start() {
                          if (_isLeader) {
                            TRI_ASSERT(plan[0].copyString() != _to);
                            pending.add(plan[0]);
-                           pending.add(VPackValue(_to));
+                           if (!_toServerIsFollower) {
+                             pending.add(VPackValue(_to));
+                           }
                            for (size_t i = 1; i < plan.length(); ++i) {
                              pending.add(plan[i]);
-                             TRI_ASSERT(plan[i].copyString() != _to);
                            }
                          } else {
                            for (auto const& srv : VPackArrayIterator(plan)) {
@@ -381,7 +389,7 @@ bool MoveShard::start() {
   }  // array for transaction done
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, pending);
+  write_ret_t res = singleWriteTransaction(_agent, pending, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
@@ -389,7 +397,7 @@ bool MoveShard::start() {
     return true;
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "Start precondition failed for MoveShard job " + _jobId;
   return false;
 }
@@ -421,7 +429,7 @@ JOB_STATUS MoveShard::pendingLeader() {
         _snapshot.hasAsString(pendingPrefix + _jobId + "/timeCreated").first;
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
-    if (now - timeCreated > std::chrono::duration<double>(10000.0)) {
+    if (now - timeCreated > std::chrono::duration<double>(43200.0)) { // 12h
       abort();
       return true;
     }
@@ -641,7 +649,7 @@ JOB_STATUS MoveShard::pendingLeader() {
   }
 
   // Transact to agency:
-  write_ret_t res = singleWriteTransaction(_agent, trx);
+  write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
@@ -649,7 +657,7 @@ JOB_STATUS MoveShard::pendingLeader() {
     return (finishedAfterTransaction ? FINISHED : PENDING);
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "Precondition failed for MoveShard job " + _jobId;
   return PENDING;
 }
@@ -727,7 +735,7 @@ JOB_STATUS MoveShard::pendingFollower() {
     trx.add(precondition.slice());
   }
 
-  write_ret_t res = singleWriteTransaction(_agent, trx);
+  write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return FINISHED;
@@ -746,17 +754,36 @@ arangodb::Result MoveShard::abort() {
     return result;
   }
 
-  // Can now only be TODO or PENDING
+
+  // Can now only be TODO or PENDING.
   if (_status == TODO) {
-    finish("", "", true, "job aborted");
-    return result;
+
+    // Do NOT remove, just cause it seems obvious!
+    // We're working off a snapshot.
+    // Make sure ToDo is still actually to be done
+    auto todoPrec = std::make_shared<Builder>();
+    { VPackArrayBuilder b(todoPrec.get());
+      { VPackObjectBuilder o(todoPrec.get()); } // nothing to declare
+      { VPackObjectBuilder path(todoPrec.get()); // expect jobs still to be sitting in ToDo
+        todoPrec->add(VPackValue(toDoPrefix + _jobId));
+        { VPackObjectBuilder guard(todoPrec.get());
+          todoPrec->add("oldEmpty", VPackValue(false));
+        }
+      }
+    }
+
+    if (finish("", "", true, "job aborted", todoPrec)) {
+      return result;
+    }
+    _status = PENDING;
+    // If the above finish failed, then we must be in PENDING
   }
 
   // Can now only be PENDING
   // Find the other shards in the same distributeShardsLike group:
   std::vector<Job::shard_t> shardsLikeMe =
     clones(_snapshot, _database, _collection, _shard);
-    
+
   // We can no longer abort by reverting to where we started, if any of the
   // shards of the distributeShardsLike group has already gone to new leader
   if (_isLeader) {
@@ -771,7 +798,7 @@ arangodb::Result MoveShard::abort() {
       }
     }
   }
-  
+
   Builder trx;  // to build the transaction
 
   // Now look after a PENDING job:
@@ -827,12 +854,12 @@ arangodb::Result MoveShard::abort() {
         _snapshot, _database, shardsLikeMe,
         [this, &trx](
           Slice plan, Slice current, std::string& planPath, std::string& curPath) {
-          // Current still as is 
+          // Current still as is
           trx.add(curPath, current);
         });
     }
   }
-  write_ret_t res = singleWriteTransaction(_agent, trx);
+  write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (!res.accepted) {
     result = Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE,

@@ -657,6 +657,8 @@ void HeartbeatThread::runSingleServer() {
         if (applier->isActive()) {
           applier->stopAndJoin();
         }
+        // we are leader now. make sure the applier drops its previous state
+        applier->forget();
         lastTick = EngineSelectorFeature::ENGINE->currentTick();
 
         // put the leader in optional read-only mode
@@ -957,7 +959,7 @@ void HeartbeatThread::runCoordinator() {
           // calling pregel code
           ClusterInfo::instance()->setFailedServers(failedServers);
 
-          pregel::PregelFeature* prgl = pregel::PregelFeature::instance();
+          std::shared_ptr<pregel::PregelFeature> prgl = pregel::PregelFeature::instance();
           if (prgl != nullptr && failedServers.size() > 0) {
             pregel::RecoveryManager* mngr = prgl->recoveryManager();
             if (mngr != nullptr) {

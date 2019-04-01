@@ -64,7 +64,7 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
 
 AddFollower::~AddFollower() {}
 
-void AddFollower::run() { runHelper("", _shard); }
+void AddFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC(INFO, Logger::SUPERVISION)
@@ -107,7 +107,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   _jb->close();  // transaction object
   _jb->close();  // close array
 
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
@@ -119,7 +119,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   return false;
 }
 
-bool AddFollower::start() {
+bool AddFollower::start(bool&) {
   // If anything throws here, the run() method catches it and finishes
   // the job.
 
@@ -128,7 +128,7 @@ bool AddFollower::start() {
     finish("", "", true, "collection has been dropped in the meantime");
     return false;
   }
-  Node collection =
+  Node const& collection =
       _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection).first;
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
@@ -146,7 +146,19 @@ bool AddFollower::start() {
 
   // First check that we still have too few followers for the current
   // `replicationFactor`:
-  size_t desiredReplFactor = collection.hasAsUInt("replicationFactor").first;
+  size_t desiredReplFactor = 1;
+  auto replFact = collection.hasAsUInt("replicationFactor");
+  if (replFact.second) {
+    desiredReplFactor = replFact.first;
+  } else {
+    auto replFact2 = collection.hasAsString("replicationFactor");
+    if (replFact2.second && replFact2.first == "satellite") {
+      // satellites => distribute to every server
+      auto available = Job::availableServers(_snapshot);
+      desiredReplFactor = Job::countGoodOrBadServersInList(_snapshot, available);
+    }
+  }
+
   VPackBuilder onlyFollowers;
   {
     VPackArrayBuilder guard(&onlyFollowers);
@@ -159,7 +171,7 @@ bool AddFollower::start() {
     }
   }
   size_t actualReplFactor
-      = 1 + Job::countGoodServersInList(_snapshot, onlyFollowers.slice());
+      = 1 + Job::countGoodOrBadServersInList(_snapshot, onlyFollowers.slice());
       // Leader plus good followers in plan
   if (actualReplFactor >= desiredReplFactor) {
     finish("", "", true, "job no longer necessary, have enough replicas");
@@ -286,7 +298,7 @@ bool AddFollower::start() {
   }    // array for transaction done
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, trx);
+  write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     _status = FINISHED;
