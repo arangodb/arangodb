@@ -224,8 +224,8 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
   // check security context first
   TRI_GET_GLOBALS();
   auto& sec = v8g->_securityContext;
-  if ((!write && !sec.canReadFs()) || (write && !sec.canWriteFs())) {
-    return false;
+  if ((!write && sec.canReadFs()) || (write && sec.canWriteFs())) {
+    return true; //context may read / write without restrictions
   }
 
   LOG_DEVEL << "@ path in" << path;
