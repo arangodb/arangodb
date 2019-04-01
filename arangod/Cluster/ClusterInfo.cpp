@@ -900,7 +900,7 @@ void ClusterInfo::loadCurrent() {
     return;
   }
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "loadCurrent: wantedVersion: "
+  LOG_TOPIC("54789", DEBUG, Logger::CLUSTER) << "loadCurrent: wantedVersion: "
     << _currentProt.wantedVersion;
 
   // Now contact the agency:
@@ -938,7 +938,7 @@ void ClusterInfo::loadCurrent() {
   if (!currentSlice.isObject()) {
     LOG_TOPIC("b8410", ERR, Logger::CLUSTER) << "Current is not an object!";
 
-    LOG_TOPIC(DEBUG, Logger::CLUSTER) << "loadCurrent done.";
+    LOG_TOPIC("eed43", DEBUG, Logger::CLUSTER) << "loadCurrent done.";
 
     return;
   }
@@ -1554,7 +1554,7 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
     return Result(TRI_ERROR_BAD_PARAMETER);  // must not be empty
   }
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, loading Plan from agency...";
+  LOG_TOPIC("4315c", DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, loading Plan from agency...";
 
   {
     // check if a collection with the same name is already planned
@@ -1589,7 +1589,7 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, checking things...";
+  LOG_TOPIC("66541", DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, checking things...";
 
   // mop: why do these ask the agency instead of checking cluster info?
   if (!ac.exists("Plan/Databases/" + databaseName)) {
@@ -1824,7 +1824,7 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
     break;  // Leave loop, since we are done
   }
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, Plan changed, waiting for success...";
+  LOG_TOPIC("98bca", DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, Plan changed, waiting for success...";
 
   bool isSmart = false;
   VPackSlice smartSlice = json.get(StaticStrings::IsSmart);

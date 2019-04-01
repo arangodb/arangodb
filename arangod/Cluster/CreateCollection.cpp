@@ -185,7 +185,7 @@ bool CreateCollection::first() {
                              _description.get(SERVER_ID), _result);
   }
 
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC("4562c", DEBUG, Logger::MAINTENANCE)
     << "Create collection done, notifying Maintenance";
 
   notify();

@@ -1348,7 +1348,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
     // Check again for shutdown, since some time has passed:
     if (!application_features::ApplicationServer::isRetryOK()) {
-      LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+      LOG_TOPIC("afe45", INFO, Logger::AGENCYCOMM)
           << "Unsuccessful AgencyComm: Timeout because of shutdown "
           << "errorCode: " << result.errorCode()
           << " errorMessage: " << result.errorMessage()

@@ -213,7 +213,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       result.errorMessage = "DBServerAgencySync::execute no current";
       return result;
     }
-    LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+    LOG_TOPIC("675fc", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
 
     local.clear();

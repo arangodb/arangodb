@@ -752,7 +752,7 @@ void Agent::advanceCommitIndex() {
                               _commitIndex, t, true);
 
       _commitIndex = index;
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
+      LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
           << "Critical mass for commiting " << _commitIndex + 1 << " through "
           << index << " to read db, done";
       // Wake up rest handlers:
