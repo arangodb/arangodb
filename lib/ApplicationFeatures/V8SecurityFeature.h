@@ -23,8 +23,8 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_V8SECURITY_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_V8SECURITY_FEATURE_H 1
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include <regex>
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace v8 {
 class Isolate;
@@ -49,14 +49,14 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   /// users via JavaScript actions. will use _startupOptionsFilter*
   bool shouldExposeStartupOption(v8::Isolate* isolate, std::string const& name) const;
 
-  /// @brief tests if the value of the environment variable should be exposed to end
-  /// users via JavaScript actions. will use _environmentVariablesFilter*
+  /// @brief tests if the value of the environment variable should be exposed to
+  /// end users via JavaScript actions. will use _environmentVariablesFilter*
   bool shouldExposeEnvironmentVariable(v8::Isolate* isolate, std::string const& name) const;
 
-  /// @brief tests if the IP address or domain/host name given should be accessible
-  /// via the JS_Download (internal.download) function in JavaScript actions
-  /// the endpoint is passed in via protocol (e.g. tcp://, ssl://, unix://) and port
-  /// number (if applicable)
+  /// @brief tests if the IP address or domain/host name given should be
+  /// accessible via the JS_Download (internal.download) function in JavaScript
+  /// actions the endpoint is passed in via protocol (e.g. tcp://, ssl://,
+  /// unix://) and port number (if applicable)
   bool isAllowedToConnectToEndpoint(v8::Isolate* isolate, std::string const& endpoint) const;
 
   /// @brief tests if the path (or path component) shall be accessible for the
@@ -68,32 +68,42 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   bool isAllowedToExecuteJavaScript(v8::Isolate* isolate) const;
 
  private:
-  /// @brief regular expression string for startup options filtering
-  std::string _startupOptionsFilter;
-  /// @brief regular expression generated from _startupOptionsFilter
-  std::regex _startupOptionsFilterRegex;
+  // All the following options have white and black lists.
+  // The white-list will take precedence over the black list
+  // Items is the corresponding Vector will be joined with
+  // an logical OR to the final expression. That in turn
+  // will be compile into an std::regex.
+
+  std::string _startupOptionsWhiteList;
+  std::vector<std::string> _startupOptionsWhiteListVec;
+  std::regex _startupOptionsWhiteListRegex;
+  std::string _startupOptionsBlackList;
+  std::vector<std::string> _startupOptionsBlackListVec;
+  std::regex _startupOptionsBlackListRegex;
+
   /// @brief regular expression string for forbidden IP address/host names
   /// to connect to via JS_Download/internal.download
-  std::string _endpointsFilter;
+  std::string _endpointsWhiteList;
+  std::vector<std::string> _endpointsWhiteListVec;
+  std::regex _endpointsWhiteListRegex;
+  std::string _endpointsBlackList;
+  std::vector<std::string> _endpointsBlackListVec;
+  std::regex _endpointsBlackListRegex;
 
   /// @brief regular expression string for environment variables filtering
-  std::string _environmentVariablesFilter;
-  /// @brief regular expression generated from _environmentVariablesFilter
-  std::regex _environmentVariablesFilterRegex;
-  /// @brief regular expression generated from _endpointsFilter
-  std::regex _endpointsFilterRegex;
+  std::string _environmentVariablesWhiteList;
+  std::vector<std::string> _environmentVariablesWhiteListVec;
+  std::regex _environmentVariablesWhiteListRegex;
+  std::string _environmentVariablesBlackList;
+  std::vector<std::string> _environmentVariablesBlackListVec;
+  std::regex _environmentVariablesBlackListRegex;
 
-  /// @brief
+  /// @brief variables for file access
   std::string _filesWhiteList;
-  /// @brief
-  std::string _filesBlackList;
-  /// @brief
   std::vector<std::string> _filesWhiteListVec;
-  /// @brief
-  std::vector<std::string> _filesBlackListVec;
-  /// @brief regular expression for pathWhiteList
   std::regex _filesWhiteListRegex;
-  /// @brief regular expression for pathBlackList
+  std::string _filesBlackList;
+  std::vector<std::string> _filesBlackListVec;
   std::regex _filesBlackListRegex;
 };
 
