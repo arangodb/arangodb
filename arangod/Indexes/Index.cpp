@@ -33,9 +33,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchCommon.h"
-#endif
 
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -233,11 +231,9 @@ Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "geo") == 0) {
     return TRI_IDX_TYPE_GEO_INDEX;
   }
-#ifdef USE_IRESEARCH
   if (arangodb::iresearch::DATA_SOURCE_TYPE.name() == type) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
   }
-#endif
   if (::strcmp(type, "noaccess") == 0) {
     return TRI_IDX_TYPE_NO_ACCESS_INDEX;
   }
@@ -270,10 +266,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "geo2";
     case TRI_IDX_TYPE_GEO_INDEX:
       return "geo";
-#ifdef USE_IRESEARCH
     case TRI_IDX_TYPE_IRESEARCH_LINK:
       return arangodb::iresearch::DATA_SOURCE_TYPE.name().c_str();
-#endif
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";
     case TRI_IDX_TYPE_UNKNOWN: {
@@ -397,7 +391,6 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
       }
     }
   }
-#ifdef USE_IRESEARCH
   else if (type == IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
     // FIXME TODO the check below is insufficient and will lead to false-positives since there are other IResearchLink-specific properties which may differ
     // FIXME TODO use IndexFactory::compare(...) instead
@@ -423,7 +416,6 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
       return false;
     }
   }
-#endif
 
   // other index types: fields must be identical if present
   value = lhs.get(arangodb::StaticStrings::IndexFields);

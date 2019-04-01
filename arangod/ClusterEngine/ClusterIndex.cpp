@@ -229,9 +229,7 @@ bool ClusterIndex::supportsFilterCondition(
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
-#ifdef USE_IRESEARCH
     case TRI_IDX_TYPE_IRESEARCH_LINK:
-#endif
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       // should not be called for these indexes
       return Index::supportsFilterCondition(allIndexes, node, reference, itemsInIndex,
@@ -291,9 +289,7 @@ bool ClusterIndex::supportsSortCondition(arangodb::aql::SortCondition const* sor
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
-#ifdef USE_IRESEARCH
     case TRI_IDX_TYPE_IRESEARCH_LINK:
-#endif
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       return Index::supportsSortCondition(sortCondition, reference, itemsInIndex,
                                           estimatedCost, coveredAttributes);
@@ -354,9 +350,7 @@ aql::AstNode* ClusterIndex::specializeCondition(aql::AstNode* node,
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
-#ifdef USE_IRESEARCH
     case TRI_IDX_TYPE_IRESEARCH_LINK:
-#endif
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       return Index::specializeCondition(node, reference);  // unsupported
     }

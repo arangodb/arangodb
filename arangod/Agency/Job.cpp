@@ -72,102 +72,109 @@ std::string Job::agencyPrefix = "arango";
 
 bool Job::finish(std::string const& server, std::string const& shard,
                  bool success, std::string const& reason, query_t const payload) {
-  Builder pending, finished;
+  try {  // protect everything, just in case
+    Builder pending, finished;
 
-  // Get todo entry
-  bool started = false;
-  {
-    VPackArrayBuilder guard(&pending);
-    if (_snapshot.exists(pendingPrefix + _jobId).size() == 3) {
-      _snapshot.hasAsBuilder(pendingPrefix + _jobId, pending);
-      started = true;
-    } else if (_snapshot.exists(toDoPrefix + _jobId).size() == 3) {
-      _snapshot.hasAsBuilder(toDoPrefix + _jobId, pending);
-    } else {
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
-          << "Nothing in pending to finish up for job " << _jobId;
-      return false;
+    // Get todo entry
+    bool started = false;
+    {
+      VPackArrayBuilder guard(&pending);
+      if (_snapshot.exists(pendingPrefix + _jobId).size() == 3) {
+        _snapshot.hasAsBuilder(pendingPrefix + _jobId, pending);
+        started = true;
+      } else if (_snapshot.exists(toDoPrefix + _jobId).size() == 3) {
+        _snapshot.hasAsBuilder(toDoPrefix + _jobId, pending);
+      } else {
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
+            << "Nothing in pending to finish up for job " << _jobId;
+        return false;
+      }
     }
-  }
 
-  std::string jobType;
-  try {
-    jobType = pending.slice()[0].get("type").copyString();
-  } catch (std::exception const&) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Failed to obtain type of job " << _jobId;
-  }
+    std::string jobType;
+    try {
+      jobType = pending.slice()[0].get("type").copyString();
+    } catch (std::exception const&) {
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Failed to obtain type of job " << _jobId;
+    }
 
-  // Additional payload, which is to be executed in the finish transaction
-  Slice operations = Slice::emptyObjectSlice();
-  Slice preconditions  = Slice::emptyObjectSlice();
-  
-  if (payload != nullptr) {
-    Slice slice = payload->slice();
-    TRI_ASSERT(slice.isObject() || slice.isArray());
-    if (slice.isObject()) {     // opers only
-      operations = slice;
-      TRI_ASSERT(operations.isObject());
-    } else {
-      TRI_ASSERT(slice.length() < 3); // opers + precs only
-      if (slice.length() > 0) {
-        operations = slice[0];
+    // Additional payload, which is to be executed in the finish transaction
+    Slice operations = Slice::emptyObjectSlice();
+    Slice preconditions  = Slice::emptyObjectSlice();
+
+    if (payload != nullptr) {
+      Slice slice = payload->slice();
+      TRI_ASSERT(slice.isObject() || slice.isArray());
+      if (slice.isObject()) {     // opers only
+        operations = slice;
         TRI_ASSERT(operations.isObject());
-        if (slice.length() > 1) {
-          preconditions = slice[1];
-          TRI_ASSERT(preconditions.isObject());
+      } else {
+        TRI_ASSERT(slice.length() < 3); // opers + precs only
+        if (slice.length() > 0) {
+          operations = slice[0];
+          TRI_ASSERT(operations.isObject());
+          if (slice.length() > 1) {
+            preconditions = slice[1];
+            TRI_ASSERT(preconditions.isObject());
+          }
         }
       }
     }
-  }
 
-  // Prepare pending entry, block toserver
-  {
-    VPackArrayBuilder guard(&finished);
+    // Prepare pending entry, block toserver
+    {
+      VPackArrayBuilder guard(&finished);
 
-    { // operations --
-      VPackObjectBuilder operguard(&finished);
+      { // operations --
+        VPackObjectBuilder operguard(&finished);
 
-      addPutJobIntoSomewhere(finished, success ? "Finished" : "Failed",
-                             pending.slice()[0], reason);
+        addPutJobIntoSomewhere(finished, success ? "Finished" : "Failed",
+                               pending.slice()[0], reason);
 
-      addRemoveJobFromSomewhere(finished, "ToDo", _jobId);
-      addRemoveJobFromSomewhere(finished, "Pending", _jobId);
+        addRemoveJobFromSomewhere(finished, "ToDo", _jobId);
+        addRemoveJobFromSomewhere(finished, "Pending", _jobId);
 
-      if (operations.length() > 0) {
-        for (auto const& oper : VPackObjectIterator(operations)) {
-          finished.add(oper.key.copyString(), oper.value);
+        if (operations.length() > 0) {
+          for (auto const& oper : VPackObjectIterator(operations)) {
+            finished.add(oper.key.copyString(), oper.value);
+          }
         }
-      }
-      
-      // --- Remove blocks if specified:
-      if (started && !server.empty()) {
-        addReleaseServer(finished, server);
-      }
-      if (started && !shard.empty()) {
-        addReleaseShard(finished, shard);
-      }
 
-    } // -- operations
-
-    if (preconditions != Slice::emptyObjectSlice()) { // preconditions --
-      VPackObjectBuilder precguard(&finished);
-      if (preconditions.length() > 0) {
-        for (auto const& prec : VPackObjectIterator(preconditions)) {
-          finished.add(prec.key.copyString(), prec.value);
+        // --- Remove blocks if specified:
+        if (started && !server.empty()) {
+          addReleaseServer(finished, server);
         }
-      }      
-    } // -- preconditions
+        if (started && !shard.empty()) {
+          addReleaseShard(finished, shard);
+        }
 
+      } // -- operations
+
+      if (preconditions != Slice::emptyObjectSlice()) { // preconditions --
+        VPackObjectBuilder precguard(&finished);
+        if (preconditions.length() > 0) {
+          for (auto const& prec : VPackObjectIterator(preconditions)) {
+            finished.add(prec.key.copyString(), prec.value);
+          }
+        }
+      } // -- preconditions
+
+    }
+
+    write_ret_t res = singleWriteTransaction(_agent, finished, false);
+    if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+          << "Successfully finished job " << jobType << "(" << _jobId << ")";
+      _status = (success ? FINISHED : FAILED);
+      return true;
+    }
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "Caught exception in finish, message: " << e.what();
+  } catch (...) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "Caught unspecified exception in finish.";
   }
-
-  write_ret_t res = singleWriteTransaction(_agent, finished);
-  if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << "Successfully finished job " << jobType << "(" << _jobId << ")";
-    _status = (success ? FINISHED : FAILED);
-    return true;
-  }
-
   return false;
 }
 
@@ -410,16 +417,16 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot, std::string const& d
 
   for (const auto& colptr : snapshot.hasAsChildren(databasePath).first) {  // collections
 
-    auto const col = *colptr.second;
-    auto const otherCollection = colptr.first;
+    auto const &col = *colptr.second;
+    auto const &otherCollection = colptr.first;
 
     if (otherCollection != collection && col.has("distributeShardsLike") &&  // use .has() form to prevent logging of missing
         col.hasAsSlice("distributeShardsLike").first.copyString() == collection) {
-      auto const theirshards = sortedShardList(col("shards"));
+      auto const& theirshards = sortedShardList(col.hasAsNode("shards").first);
       if (theirshards.size() > 0) {  // do not care about virtual collections
         if (theirshards.size() == myshards.size()) {
           ret.emplace_back(otherCollection,
-                           sortedShardList(col.hasAsNode("shards").first)[steps]);
+                           theirshards[steps]);
         } else {
           LOG_TOPIC(ERR, Logger::SUPERVISION)
               << "Shard distribution of clone(" << otherCollection

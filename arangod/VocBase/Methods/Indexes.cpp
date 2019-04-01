@@ -116,13 +116,9 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     VPackBuilder tmpInner;
     auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
-#ifdef USE_IRESEARCH
     c->getIndexesVPack(tmpInner, flags, [withLinks](arangodb::Index const* idx) {
       return withLinks || idx->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK;
     });
-#else
-    c->getIndexesVPack(tmpInner, flags);
-#endif
 
     tmp.openArray();
     for (VPackSlice const& s : VPackArrayIterator(tmpInner.slice())) {
@@ -162,11 +158,9 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     tmp.openArray(true);
     for (std::shared_ptr<arangodb::Index> const& idx : indexes) {
-#ifdef USE_IRESEARCH
       if (!withLinks && idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
         continue;
       }
-#endif
       idx->toVelocyPack(tmp, flags);
     }
     tmp.close();

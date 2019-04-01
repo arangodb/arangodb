@@ -96,9 +96,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchView.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -762,7 +760,6 @@ void RocksDBEngine::stop() {
 
   // in case we missed the beginShutdown somehow, call it again
   replicationManager()->beginShutdown();
-
   replicationManager()->dropAll();
 
   if (_backgroundThread) {
@@ -995,6 +992,12 @@ int RocksDBEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builde
 
 std::string RocksDBEngine::versionFilename(TRI_voc_tick_t id) const {
   return _basePath + TRI_DIR_SEPARATOR_CHAR + "VERSION-" + std::to_string(id);
+}
+  
+void RocksDBEngine::cleanupReplicationContexts() {
+  if (_replicationManager != nullptr) {
+    _replicationManager->dropAll();
+  }
 }
 
 VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
@@ -1991,7 +1994,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       view->open();
 
-#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && defined(USE_IRESEARCH)
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
       struct DummyTransaction : transaction::Methods {
         explicit DummyTransaction(std::shared_ptr<transaction::Context> const& ctx)
             : transaction::Methods(ctx) {}

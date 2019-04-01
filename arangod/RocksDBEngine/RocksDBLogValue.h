@@ -64,10 +64,8 @@ class RocksDBLogValue {
   static RocksDBLogValue ViewDrop(TRI_voc_tick_t, TRI_voc_cid_t, StringRef const& uuid);
   static RocksDBLogValue ViewChange(TRI_voc_tick_t, TRI_voc_cid_t);
 
-#ifdef USE_IRESEARCH
   static RocksDBLogValue IResearchLinkDrop(TRI_voc_tick_t, TRI_voc_cid_t,
                                            TRI_voc_cid_t, TRI_idx_iid_t);
-#endif
 
   static RocksDBLogValue BeginTransaction(TRI_voc_tick_t vocbaseId, TRI_voc_tid_t tid);
   static RocksDBLogValue CommitTransaction(TRI_voc_tick_t vocbaseId, TRI_voc_tid_t tid);
@@ -119,9 +117,7 @@ class RocksDBLogValue {
   RocksDBLogValue(RocksDBLogType, uint64_t);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, uint64_t);
-#ifdef USE_IRESEARCH
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, uint64_t, uint64_t);
-#endif
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, VPackSlice const&);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, StringRef const& data);
 

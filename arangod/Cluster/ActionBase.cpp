@@ -40,12 +40,13 @@ inline static std::chrono::system_clock::duration secs_since_epoch() {
 }
 
 ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription const& desc)
-    : _feature(feature), _description(desc), _state(READY), _progress(0) {
+    : _feature(feature), _description(desc), _state(READY), _progress(0),
+      _priority(desc.priority()) {
   init();
 }
 
 ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription&& desc)
-    : _feature(feature), _description(std::move(desc)), _state(READY), _progress(0) {
+    : _feature(feature), _description(std::move(desc)), _state(READY), _progress(0), _priority(desc.priority()) {
   init();
 }
 

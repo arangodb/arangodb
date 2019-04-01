@@ -553,7 +553,6 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::v
 
   if (0 == type.compare("edge")) {
     index = EdgeIndexMock::make(++lastId, _logicalCollection, info);
-#ifdef USE_IRESEARCH
   } else if (0 == type.compare(arangodb::iresearch::DATA_SOURCE_TYPE.name())) {
 
     if (arangodb::ServerState::instance()->isCoordinator()) {
@@ -565,7 +564,6 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::v
         _logicalCollection, info, ++lastId, false
       );
     }
-#endif
   }
 
   if (!index) {
@@ -1264,6 +1262,8 @@ void StorageEngineMock::getDatabases(arangodb::velocypack::Builder& result) {
   result.add(system.slice());
   result.close();
 }
+  
+void StorageEngineMock::cleanupReplicationContexts() {}
 
 arangodb::velocypack::Builder StorageEngineMock::getReplicationApplierConfiguration(
     TRI_vocbase_t& vocbase,
