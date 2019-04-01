@@ -120,8 +120,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                 velocypack::Slice const& doc, Index::OperationMode mode) override;
 
   Result update(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& oldDocumentId,
-                velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
+                LocalDocumentId const& documentId,
+                velocypack::Slice const& oldDoc,
                 velocypack::Slice const& newDoc, Index::OperationMode mode) override;
 
  private:

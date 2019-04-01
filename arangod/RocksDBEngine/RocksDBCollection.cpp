@@ -218,7 +218,7 @@ void RocksDBCollection::unload() {
 TRI_voc_rid_t RocksDBCollection::revision() const { return _revisionId; }
 
 TRI_voc_rid_t RocksDBCollection::revision(transaction::Methods* trx) const {
-  auto state = RocksDBTransactionState::toState(trx);
+  auto* state = RocksDBTransactionState::toState(trx);
   auto trxCollection = static_cast<RocksDBTransactionCollection*>(
       state->findCollection(_logicalCollection.id()));
 
@@ -231,7 +231,7 @@ uint64_t RocksDBCollection::numberDocuments() const { return _numberDocuments; }
 
 uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  auto state = RocksDBTransactionState::toState(trx);
+  auto* state = RocksDBTransactionState::toState(trx);
   auto trxCollection = static_cast<RocksDBTransactionCollection*>(
       state->findCollection(_logicalCollection.id()));
 
@@ -780,13 +780,14 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
 
 Result RocksDBCollection::read(transaction::Methods* trx,
                                arangodb::velocypack::StringRef const& key,
-                               ManagedDocumentResult& result, bool) {
+                               ManagedDocumentResult& result, bool /*lock*/) {
+  Result res;
   LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key);
-  if (documentId.isSet()) {
-    return lookupDocumentVPack(documentId, trx, result, true);
+  if (!documentId.isSet()) {
+    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
-  // not found
-  return Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  // found
+  return res.reset(lookupDocumentVPack(documentId, trx, result, /*withCache*/true));
 }
 
 // read using a token!
@@ -794,7 +795,7 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& documentId,
                                      ManagedDocumentResult& result) const {
   if (documentId.isSet()) {
-    auto res = lookupDocumentVPack(documentId, trx, result, true);
+    auto res = lookupDocumentVPack(documentId, trx, result, /*withCache*/true);
     return res.ok();
   }
   return false;
@@ -865,7 +866,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
-  auto state = RocksDBTransactionState::toState(trx);
+  auto* state = RocksDBTransactionState::toState(trx);
   state->prepareOperation(_logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
   res = insertDocument(trx, documentId, newSlice, options);
@@ -902,13 +903,12 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
                                  arangodb::velocypack::Slice const newSlice,
                                  ManagedDocumentResult& mdr, OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick, bool,
+                                 TRI_voc_tick_t& resultMarkerTick, bool /*lock*/,
                                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
                                  arangodb::velocypack::Slice const key,
                                  std::function<Result(void)> callbackDuringLock) {
   resultMarkerTick = 0;
 
-  LocalDocumentId const documentId = LocalDocumentId::create();
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   Result res = this->read(trx, key, previous, /*lock*/ false);
 
@@ -917,8 +917,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   }
 
   TRI_ASSERT(!previous.empty());
-
-  LocalDocumentId const oldDocumentId = previous.localDocumentId();
+  LocalDocumentId const documentId = previous.localDocumentId();
   VPackSlice oldDoc(previous.vpack());
   TRI_voc_rid_t const oldRevisionId = transaction::helpers::extractRevFromDocument(oldDoc);
 
@@ -971,12 +970,12 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
   VPackSlice const newDoc(builder->slice());
 
-  auto state = RocksDBTransactionState::toState(trx);
+  auto* state = RocksDBTransactionState::toState(trx);
   RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
 
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-  res = updateDocument(trx, oldDocumentId, oldDoc, documentId, newDoc, options);
+  res = updateDocument(trx, documentId, oldDoc, newDoc, options);
 
   if (res.ok()) {
     trackWaitForSync(trx, options);
@@ -1033,7 +1032,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   }
 
   TRI_ASSERT(!previous.empty());
-  LocalDocumentId const oldDocumentId = previous.localDocumentId();
+  LocalDocumentId const documentId = previous.localDocumentId();
 
   VPackSlice oldDoc(previous.vpack());
   TRI_voc_rid_t oldRevisionId = transaction::helpers::extractRevFromDocument(oldDoc);
@@ -1052,8 +1051,6 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
     }
   }
   
-  LocalDocumentId const documentId = LocalDocumentId::create();
-
   // merge old and new values
   TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
@@ -1076,13 +1073,13 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 
   VPackSlice const newDoc(builder->slice());
 
-  auto state = RocksDBTransactionState::toState(trx);
+  auto* state = RocksDBTransactionState::toState(trx);
   RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
-  res = updateDocument(trx, oldDocumentId, oldDoc, documentId, newDoc, options);
+  res = updateDocument(trx, documentId, oldDoc, newDoc, options);
 
   if (res.ok()) {
     trackWaitForSync(trx, options);
@@ -1285,7 +1282,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
-  rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
+  rocksdb::Status s = mthds->Delete(RocksDBColumnFamily::documents(), key.ref());
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
@@ -1309,9 +1306,8 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 }
 
 Result RocksDBCollection::updateDocument(transaction::Methods* trx,
-                                         LocalDocumentId const& oldDocumentId,
+                                         LocalDocumentId const& documentId,
                                          VPackSlice const& oldDoc,
-                                         LocalDocumentId const& newDocumentId,
                                          VPackSlice const& newDoc,
                                          OperationOptions& options) const {
   // Coordinator doesn't know index internals
@@ -1325,20 +1321,16 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
   RocksDBKeyLeaser key(trx);
-  key->constructDocument(_objectId, oldDocumentId);
+  key->constructDocument(_objectId, documentId);
+  TRI_ASSERT(key->containsLocalDocumentId(documentId));
+
+  // blacklist value to prevent reading from cache
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
-  rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
-  if (!s.ok()) {
-    return res.reset(rocksutils::convertStatus(s, rocksutils::document));
-  }
-
-  key->constructDocument(_objectId, newDocumentId);
-  // simon: we do not need to blacklist the new documentId
-  TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
-  s = mthds->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
-                          rocksdb::Slice(newDoc.startAs<char>(),
-                                         static_cast<size_t>(newDoc.byteSize())));
+  // Overwrite the document
+  rocksdb::Status s = mthds->Put(RocksDBColumnFamily::documents(), key.ref(),
+                                 rocksdb::Slice(newDoc.startAs<char>(),
+                                 static_cast<size_t>(newDoc.byteSize())));
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
@@ -1346,7 +1338,7 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId,
+    res = rIdx->update(*trx, mthds, documentId, oldDoc,
                        newDoc, options.indexOperationMode);
 
     if (res.fail()) {

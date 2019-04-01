@@ -151,10 +151,10 @@ class PhysicalCollection {
                                     arangodb::velocypack::Slice const&) const = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-                      ManagedDocumentResult& result, bool) = 0;
+                      ManagedDocumentResult& result, bool lock) = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::Slice const& key,
-                      ManagedDocumentResult& result, bool) = 0;
+                      ManagedDocumentResult& result, bool lock) = 0;
 
   virtual bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                             ManagedDocumentResult& result) const = 0;

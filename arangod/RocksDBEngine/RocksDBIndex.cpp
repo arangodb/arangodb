@@ -42,6 +42,9 @@
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 
@@ -240,24 +243,78 @@ void RocksDBIndex::afterTruncate(TRI_voc_tick_t) {
   }
 }
 
+
+namespace {
+  bool attributesEqual(VPackSlice first, VPackSlice second,
+                       std::vector<arangodb::basics::AttributeName>::const_iterator begin,
+                       std::vector<arangodb::basics::AttributeName>::const_iterator end) {
+    for (; begin != end; ++begin) {
+      // fetch subattribute
+      first = first.get(begin->name);
+      second = second.get(begin->name);
+      if (first.isExternal()) {
+        first = first.resolveExternal();
+      }
+      if (second.isExternal()) {
+        second = second.resolveExternal();
+      }
+      
+      if (begin->shouldExpand &&
+          first.isArray() && second.isArray()) {
+        VPackArrayIterator it1(first), it2(second);
+        while (it1.valid() && it2.valid()) {
+          if (!attributesEqual(*it1, *it2, begin, end)) {
+            return false;
+          }
+          it1++;
+          it2++;
+        }
+        return true;
+      }
+      
+      int dist = std::distance(begin, end);
+      bool notF1 = first.isNone() || (dist == 1 && !first.isObject());
+      bool notF2 = second.isNone() || (dist == 1 && !second.isObject());
+      if (notF1 != notF2) {
+        return false;
+      }
+    }
+    
+    return (basics::VelocyPackHelper::compare(first, second, true) == 0);
+  }
+} // namespace
+  
+
 Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
-                            LocalDocumentId const& oldDocumentId,
-                            velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
+                            LocalDocumentId const& documentId,
+                            velocypack::Slice const& oldDoc,
                             velocypack::Slice const& newDoc, Index::OperationMode mode) {
   // It is illegal to call this method on the primary index
   // RocksDBPrimaryIndex must override this method accordingly
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
+  
+  bool equal = true;
+  for (std::vector<basics::AttributeName> const& path : _fields) {
+    if (!::attributesEqual(oldDoc, newDoc, path.begin(), path.end())) {
+      equal = false;
+      break;
+    }
+  }
+  Result res;
+  if (equal) {
+    return res;
+  }
 
   /// only if the insert needs to see the changes of the update, enable indexing:
-  IndexingEnabler enabler(mthd, mthd->isIndexingDisabled() && hasExpansion() && unique());
+  IndexingEnabler enabler(mthd, mthd->isIndexingDisabled() && unique());
 
   TRI_ASSERT((hasExpansion() && unique()) ? !mthd->isIndexingDisabled() : true);
 
-  Result res = remove(trx, mthd, oldDocumentId, oldDoc, mode);
-  if (!res.ok()) {
+  res = remove(trx, mthd, documentId, oldDoc, mode);
+  if (res.fail()) {
     return res;
   }
-  return insert(trx, mthd, newDocumentId, newDoc, mode);
+  return res.reset(insert(trx, mthd, documentId, newDoc, mode));
 }
 
 /// @brief return the memory usage of the index

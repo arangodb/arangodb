@@ -105,9 +105,8 @@ class RocksDBIndex : public Index {
                         Index::OperationMode mode) = 0;
 
   virtual Result update(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& oldDocumentId,
+                        LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const& oldDoc,
-                        LocalDocumentId const& newDocumentId,
                         velocypack::Slice const& newDoc, Index::OperationMode mode);
 
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }

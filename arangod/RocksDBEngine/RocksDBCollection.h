@@ -181,11 +181,7 @@ class RocksDBCollection final : public PhysicalCollection {
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
   RocksDBCollectionMeta& meta() { return _meta; }
-
- private:
-  /// @brief return engine-specific figures
-  void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
-
+  
   // @brief return the primary index
   // WARNING: Make sure that this instance
   // is somehow protected. If it goes out of all scopes
@@ -194,6 +190,10 @@ class RocksDBCollection final : public PhysicalCollection {
     TRI_ASSERT(_primaryIndex != nullptr);
     return _primaryIndex;
   }
+
+ private:
+  /// @brief return engine-specific figures
+  void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
 
   arangodb::Result insertDocument(arangodb::transaction::Methods* trx,
                                   LocalDocumentId const& documentId,
@@ -205,9 +205,8 @@ class RocksDBCollection final : public PhysicalCollection {
                                   arangodb::velocypack::Slice const& doc,
                                   OperationOptions& options) const;
 
-  arangodb::Result updateDocument(transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
+  arangodb::Result updateDocument(transaction::Methods* trx, LocalDocumentId const& documentId,
                                   arangodb::velocypack::Slice const& oldDoc,
-                                  LocalDocumentId const& newDocumentId,
                                   arangodb::velocypack::Slice const& newDoc,
                                   OperationOptions& options) const;
 

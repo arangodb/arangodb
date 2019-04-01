@@ -41,11 +41,11 @@
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ticks.h"
@@ -182,22 +182,23 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       for (auto& pair : _deltas) {
         WBReader::Operations const& ops = pair.second;
         // now adjust the counter in collections which are already loaded
-        auto dbColPair = rocksutils::mapObjectToCollection(pair.first);
-        if (dbColPair.second == 0 && dbColPair.first == 0) {
+        RocksDBEngine::IndexTriple triple = rocksutils::mapObjectToIndex(pair.first);
+        if (std::get<0>(triple) == 0 && std::get<1>(triple) == 0) {
           // collection with this objectID not known.Skip.
           continue;
         }
-        auto vocbase = dbfeature->useDatabase(dbColPair.first);
+        
+        auto vocbase = dbfeature->useDatabase(std::get<0>(triple));
         if (vocbase == nullptr) {
           continue;
         }
         TRI_DEFER(vocbase->release());
-        auto collection = vocbase->lookupCollection(dbColPair.second);
-        if (collection == nullptr) {
+        auto coll = vocbase->lookupCollection(std::get<1>(triple));
+        if (!coll) {
           continue;
         }
 
-        auto* rcoll = static_cast<RocksDBCollection*>(collection->getPhysical());
+        auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
         if (ops.mustTruncate) {  // first we must reset the counter
           rcoll->meta().countRefUnsafe()._added = 0;
           rcoll->meta().countRefUnsafe()._removed = 0;
@@ -214,7 +215,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         auto const& it = _generators.find(rcoll->objectId());
         if (it != _generators.end()) {
           std::string k(basics::StringUtils::itoa(it->second));
-          collection->keyGenerator()->track(k.data(), k.size());
+          coll->keyGenerator()->track(k.data(), k.size());
           _generators.erase(it);
         }
       }
@@ -245,7 +246,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
  private:
-  bool shouldHandleCollection(uint64_t objectId, Operations** ops) {
+  bool shouldHandlePrimary(uint64_t objectId, Operations** ops) {
     auto it = _deltas.find(objectId);
     if (it != _deltas.end()) {
       *ops = &(it->second);
@@ -289,20 +290,20 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   /// Truncate indexes of collection with objectId
   bool truncateIndexes(uint64_t objectId) {
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-    RocksDBEngine::CollectionPair pair = engine->mapObjectToCollection(objectId);
-    if (pair.first == 0 || pair.second == 0) {
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
+    RocksDBEngine::IndexTriple triple = engine->mapObjectToIndex(objectId);
+    if (std::get<0>(triple) == 0 || std::get<1>(triple) == 0) {
       return false;
     }
 
     DatabaseFeature* df = DatabaseFeature::DATABASE;
-    TRI_vocbase_t* vb = df->useDatabase(pair.first);
+    TRI_vocbase_t* vb = df->useDatabase(std::get<0>(triple));
     if (vb == nullptr) {
       return false;
     }
     TRI_DEFER(vb->release());
 
-    auto coll = vb->lookupCollection(pair.second);
+    auto coll = vb->lookupCollection(std::get<1>(triple));
     if (coll == nullptr) {
       return false;
     }
@@ -320,7 +321,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   // find estimator for index
   RocksDBCuckooIndexEstimator<uint64_t>* findEstimator(uint64_t objectId) {
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
     RocksDBEngine::IndexTriple triple = engine->mapObjectToIndex(objectId);
     if (std::get<0>(triple) == 0 && std::get<1>(triple) == 0) {
       return nullptr;
@@ -419,10 +420,9 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     incTick();
 
     updateMaxTick(column_family_id, key, value);
-    if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
-      uint64_t objectId = RocksDBKey::objectId(key);
+    if (column_family_id == RocksDBColumnFamily::primary()->GetID()) {
       Operations* ops = nullptr;
-      if (shouldHandleCollection(objectId, &ops)) {
+      if (shouldHandlePrimary(RocksDBKey::objectId(key), &ops)) {
         TRI_ASSERT(ops != nullptr);
         ops->lastSequenceNumber = _currentSequence;
         ops->added++;
@@ -448,7 +448,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       }
     }
 
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
       helper->PutCF(column_family_id, key, value);
     }
@@ -460,13 +460,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     incTick();
 
     if (cfId == RocksDBColumnFamily::documents()->GetID()) {
-      uint64_t objectId = RocksDBKey::objectId(key);
 
       storeMaxHLC(RocksDBKey::documentId(key).id());
-      storeMaxTick(objectId);
+      storeMaxTick(RocksDBKey::objectId(key));
 
+    } else if (cfId == RocksDBColumnFamily::primary()->GetID()) {
       Operations* ops = nullptr;
-      if (shouldHandleCollection(objectId, &ops)) {
+      if (shouldHandlePrimary(RocksDBKey::objectId(key), &ops)) {
         TRI_ASSERT(ops != nullptr);
         ops->lastSequenceNumber = _currentSequence;
         ops->removed++;
@@ -498,7 +498,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
     LOG_TOPIC("5f341", TRACE, Logger::ENGINES) << "recovering DELETE " << RocksDBKey(key);
     handleDeleteCF(column_family_id, key);
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
       helper->DeleteCF(column_family_id, key);
     }
@@ -510,7 +510,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     LOG_TOPIC("aa997", TRACE, Logger::ENGINES) << "recovering SINGLE DELETE " << RocksDBKey(key);
     handleDeleteCF(column_family_id, key);
 
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
       helper->SingleDeleteCF(column_family_id, key);
     }
@@ -525,10 +525,54 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         << RocksDBKey(end_key);
     incTick();
     // drop and truncate can use this, truncate is handled via a Log marker
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
       helper->DeleteRangeCF(column_family_id, begin_key, end_key);
     }
+    
+    // check for a range-delete of the primary index
+    if (column_family_id == RocksDBColumnFamily::primary()->GetID()) {
+      uint64_t objectId = RocksDBKey::objectId(begin_key);
+      TRI_ASSERT(objectId == RocksDBKey::objectId(end_key));
+      
+      Operations* ops = nullptr;
+      if (shouldHandlePrimary(objectId, &ops)) {
+        TRI_ASSERT(ops != nullptr);
+        ops->lastSequenceNumber = _currentSequence;
+        ops->removed = 0;
+        ops->added = 0;
+        ops->mustTruncate = true;
+      }
+      // index estimates have their own commitSeq
+      if (!truncateIndexes(objectId)) {
+        // unable to truncate indexes of the collection.
+        // may be due to collection having been deleted etc.
+        LOG_TOPIC("04032", WARN, Logger::ENGINES)
+        << "unable to truncate indexes for objectId " << objectId;
+      }
+    }
+    
+//  case RocksDBLogType::CollectionTruncate: {
+//    uint64_t objectId = RocksDBLogValue::objectId(blob);
+//    Operations* ops = nullptr;
+//    if (shouldHandleCollection(objectId, &ops)) {
+//      TRI_ASSERT(ops != nullptr);
+//      ops->lastSequenceNumber = _currentSequence;
+//      ops->removed = 0;
+//      ops->added = 0;
+//      ops->mustTruncate = true;
+//    }
+//    // index estimates have their own commitSeq
+//    if (!truncateIndexes(objectId)) {
+//      // unable to truncate indexes of the collection.
+//      // may be due to collection having been deleted etc.
+//      LOG_TOPIC("04032", WARN, Logger::ENGINES)
+//      << "unable to truncate indexes for objectId " << objectId;
+//    }
+//
+//    _lastRemovedDocRid = 0;  // reset in any other case
+//    break;
+//  }
 
     return rocksdb::Status();  // make WAL iterator happy
   }
@@ -538,39 +582,15 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     RocksDBLogType type = RocksDBLogValue::type(blob);
     switch (type) {
       case RocksDBLogType::DocumentRemoveV2:  // remove within a trx
-        TRI_ASSERT(_lastRemovedDocRid == 0);
-        _lastRemovedDocRid = RocksDBLogValue::revisionId(blob);
-        break;
       case RocksDBLogType::SingleRemoveV2:  // single remove
         TRI_ASSERT(_lastRemovedDocRid == 0);
         _lastRemovedDocRid = RocksDBLogValue::revisionId(blob);
         break;
-      case RocksDBLogType::CollectionTruncate: {
-        uint64_t objectId = RocksDBLogValue::objectId(blob);
-        Operations* ops = nullptr;
-        if (shouldHandleCollection(objectId, &ops)) {
-          TRI_ASSERT(ops != nullptr);
-          ops->lastSequenceNumber = _currentSequence;
-          ops->removed = 0;
-          ops->added = 0;
-          ops->mustTruncate = true;
-        }
-        // index estimates have their own commitSeq
-        if (!truncateIndexes(objectId)) {
-          // unable to truncate indexes of the collection.
-          // may be due to collection having been deleted etc.
-          LOG_TOPIC("04032", WARN, Logger::ENGINES)
-              << "unable to truncate indexes for objectId " << objectId;
-        }
-
-        _lastRemovedDocRid = 0;  // reset in any other case
-        break;
-      }
       default:
         _lastRemovedDocRid = 0;  // reset in any other case
         break;
     }
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
       helper->LogData(blob);
     }
@@ -585,7 +605,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
 
   Result res = basics::catchToResult([&]() -> Result {
     Result rv;
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto& helper : engine->recoveryHelpers()) {
       helper->prepare();
     }
@@ -598,7 +618,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
             RocksDBCollection* rcoll =
                 static_cast<RocksDBCollection*>(coll->getPhysical());
             rocksdb::SequenceNumber seq = rcoll->meta().currentCount()._committedSeq;
-            startSeqs.emplace(rcoll->objectId(), seq);
+            startSeqs.emplace(rcoll->primaryIndex()->objectId(), seq);
           },
           /*includeDeleted*/ false);
     });

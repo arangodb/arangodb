@@ -739,75 +739,70 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
   return res;
 }
 
-Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthds,
-                                 LocalDocumentId const& oldDocumentId,
-                                 velocypack::Slice const& oldDoc,
-                                 LocalDocumentId const& newDocumentId,
-                                 velocypack::Slice const& newDoc,
-                                 Index::OperationMode mode) {
-  if (!_unique || _useExpansion) {
-    // only unique index supports in-place updates
-    // lets also not handle the complex case of expanded arrays
-    return RocksDBIndex::update(trx, mthds, oldDocumentId, oldDoc,
-                                newDocumentId, newDoc, mode);
-  } else {
-    Result res;
-    rocksdb::Status s;
-    bool equal = true;
+//Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthds,
+//                                 LocalDocumentId const& documentId,
+//                                 velocypack::Slice const& oldDoc,
+//                                 velocypack::Slice const& newDoc,
+//                                 Index::OperationMode mode) {
+//  if (!_unique || _useExpansion) {
+//    // only unique index supports in-place updates
+//    // lets also not handle the complex case of expanded arrays
+//    return RocksDBIndex::update(trx, mthds, documentId, oldDoc,
+//                                newDoc, mode);
+//  }
+//  Result res;
+//  rocksdb::Status s;
+//  bool equal = true;
+//
+//  for (size_t i = 0; i < _paths.size(); ++i) {
+//    TRI_ASSERT(!_paths[i].empty());
+//    VPackSlice oldSlice = oldDoc.get(_paths[i]);
+//    VPackSlice newSlice = newDoc.get(_paths[i]);
+//
+//    if ((oldSlice.isNone() || oldSlice.isNull()) &&
+//        (newSlice.isNone() || newSlice.isNull())) {
+//      // attribute not found
+//      if (_sparse) {  // if sparse we do not have to index
+//        return res;
+//      }
+//    } else if (basics::VelocyPackHelper::compare(oldSlice, newSlice, true)) {
+//      equal = false;
+//      break;
+//    }
+//  }
+//  if (!equal) {
+//    // we can only use in-place updates if no indexed attributes changed
+//    return RocksDBIndex::update(trx, mthds, documentId, oldDoc,
+//                                newDoc, mode);
+//  }
 
-    for (size_t i = 0; i < _paths.size(); ++i) {
-      TRI_ASSERT(!_paths[i].empty());
-      VPackSlice oldSlice = oldDoc.get(_paths[i]);
-      VPackSlice newSlice = newDoc.get(_paths[i]);
-
-      if ((oldSlice.isNone() || oldSlice.isNull()) &&
-          (newSlice.isNone() || newSlice.isNull())) {
-        // attribute not found
-        if (_sparse) {
-          // if sparse we do not have to index, this is indicated by result
-          // being shorter than n
-          return res;
-        }
-      } else if (basics::VelocyPackHelper::compare(oldSlice, newSlice, true)) {
-        equal = false;
-        break;
-      }
-    }
-    if (!equal) {
-      // we can only use in-place updates if no indexed attributes changed
-      return RocksDBIndex::update(trx, mthds, oldDocumentId, oldDoc,
-                                  newDocumentId, newDoc, mode);
-    }
-
-    // more expensive method to
-    SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
-    SmallVector<RocksDBKey> elements{elementsArena};
-    SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
-    SmallVector<uint64_t> hashes{hashesArena};
-    {
-      // rethrow all types of exceptions from here...
-      transaction::BuilderLeaser leased(&trx);
-      int r = fillElement(*(leased.get()), newDocumentId, newDoc, elements, hashes);
-
-      if (r != TRI_ERROR_NO_ERROR) {
-        return addErrorMsg(res, r);
-      }
-    }
-
-    RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(newDocumentId);
-    size_t const count = elements.size();
-    for (size_t i = 0; i < count; ++i) {
-      RocksDBKey& key = elements[i];
-      s = mthds->Put(_cf, key, value.string());
-      if (!s.ok()) {
-        res = rocksutils::convertStatus(s, rocksutils::index);
-        break;
-      }
-    }
-
-    return res;
-  }
-}
+//  SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
+//  SmallVector<RocksDBKey> elements{elementsArena};
+//  SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
+//  SmallVector<uint64_t> hashes{hashesArena};
+//  {
+//    // rethrow all types of exceptions from here...
+//    transaction::BuilderLeaser leased(&trx);
+//    int r = fillElement(*(leased.get()), documentId, newDoc, elements, hashes);
+//
+//    if (r != TRI_ERROR_NO_ERROR) {
+//      return addErrorMsg(res, r);
+//    }
+//  }
+//
+//  RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(documentId);
+//  size_t const count = elements.size();
+//  for (size_t i = 0; i < count; ++i) {
+//    RocksDBKey& key = elements[i];
+//    s = mthds->Put(_cf, key, value.string());
+//    if (!s.ok()) {
+//      res = rocksutils::convertStatus(s, rocksutils::index);
+//      break;
+//    }
+//  }
+//
+//  return res; // nothing changed
+//}
 
 /// @brief removes a document from the index
 Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthds,
@@ -844,10 +839,8 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
       }
     }
   } else {
-    // non-unique index contain the unique objectID
-    // they should be written exactly once
     for (size_t i = 0; i < count; ++i) {
-      s = mthds->SingleDelete(_cf, elements[i]);
+      s = mthds->Delete(_cf, elements[i]);
       if (!s.ok()) {
         res.reset(rocksutils::convertStatus(s, rocksutils::index));
       }

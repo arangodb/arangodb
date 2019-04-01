@@ -214,6 +214,8 @@ class Index {
   static IndexType type(char const* type, size_t len);
 
   static IndexType type(std::string const& type);
+  
+ public:
 
   virtual char const* typeName() const = 0;
 
@@ -374,7 +376,7 @@ class Index {
                       std::shared_ptr<basics::LocalTaskQueue> queue);
 
   static size_t sortWeight(arangodb::aql::AstNode const* node);
-
+  
  protected:
   /// @brief return the name of the (sole) index attribute
   /// it is only allowed to call this method if the index contains a
