@@ -90,7 +90,6 @@
             "frontend/js/lib/strftime-min.js",
             "frontend/js/lib/d3.fisheye.min.js",
             "frontend/js/lib/bootstrap-pagination.min.js",
-            "frontend/js/lib/jqconsole.min.js",
             "frontend/js/lib/highlight.js",
             "frontend/js/lib/joi-browser.min.js",
             "frontend/js/lib/md5.min.js",
