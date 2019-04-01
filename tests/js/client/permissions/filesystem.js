@@ -45,6 +45,7 @@ const subLevelAllowedFile = fs.join(subLevelAllowed, 'allowed.txt');
 
 if (getOptions === true) {
   // N/A fs.makeDirectoryRecursive(subLevelForbidden);
+  fs.makeDirectoryRecursive(topLevelAllowed);
   fs.makeDirectoryRecursive(subLevelAllowed);
   fs.write(topLevelAllowedFile, 'this file is allowed.\n');
   fs.write(topLevelForbiddenFile, 'forbidden fruits are tasty!\n');
