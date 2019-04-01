@@ -815,7 +815,7 @@ void Supervision::run() {
           }
           LOG_TOPIC("edeee", TRACE, Logger::SUPERVISION) << "Begin updateSnapshot";
           updateSnapshot();
-          LOG_TOPIC("aaabb"; TRACE, Logger::SUPERVISION) << "Finished updateSnapshot";
+          LOG_TOPIC("aaabb", TRACE, Logger::SUPERVISION) << "Finished updateSnapshot";
 
           if (!_snapshot.has("Supervision/Maintenance")) {
             reportStatus("Normal");
