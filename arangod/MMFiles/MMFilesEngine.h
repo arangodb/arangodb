@@ -86,6 +86,8 @@ class MMFilesEngine final : public StorageEngine {
   bool supportsDfdb() const override { return true; }
 
   bool useRawDocumentPointers() override { return true; }
+  
+  void cleanupReplicationContexts() override {}
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                          int& status) override;
