@@ -69,7 +69,7 @@ function testSuite() {
       }
     }
     catch (err) {
-      assertNotEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while fetching: ' + url);
+      assertNotEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while fetching: ' + url + " Detail error: " + JSON.stringify(err) + ' ' );
     }
   }
   return {
