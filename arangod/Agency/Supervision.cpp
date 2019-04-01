@@ -813,9 +813,9 @@ void Supervision::run() {
           if (_jobId == 0 || _jobId == _jobIdMax) {
             getUniqueIds();  // cannot fail but only hang
           }
-          LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin updateSnapshot";
+          LOG_TOPIC("edeee", TRACE, Logger::SUPERVISION) << "Begin updateSnapshot";
           updateSnapshot();
-          LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Finished updateSnapshot";
+          LOG_TOPIC("aaabb"; TRACE, Logger::SUPERVISION) << "Finished updateSnapshot";
 
           if (!_snapshot.has("Supervision/Maintenance")) {
             reportStatus("Normal");
@@ -830,9 +830,9 @@ void Supervision::run() {
               // 55 seconds is less than a minute, which fits to the
               // 60 seconds timeout in /_admin/cluster/health
               try {
-                LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin doChecks";
+                LOG_TOPIC("aa565", TRACE, Logger::SUPERVISION) << "Begin doChecks";
                 doChecks();
-                LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Finished doChecks";
+                LOG_TOPIC("675fc", TRACE, Logger::SUPERVISION) << "Finished doChecks";
               } catch (std::exception const& e) {
                 LOG_TOPIC("e0869", ERR, Logger::SUPERVISION)
                     << e.what() << " " << __FILE__ << " " << __LINE__;
@@ -848,11 +848,11 @@ void Supervision::run() {
                   << _agent->leaderFor();
             }
             try {
-              LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin handleJobs";
+              LOG_TOPIC("7895a", TRACE, Logger::SUPERVISION) << "Begin handleJobs";
               handleJobs();
-              LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Finished handleJobs";
+              LOG_TOPIC("febbc", TRACE, Logger::SUPERVISION) << "Finished handleJobs";
             } catch(std::exception const& e) {
-              LOG_TOPIC(WARN, Logger::SUPERVISION)
+              LOG_TOPIC("76123", WARN, Logger::SUPERVISION)
                 << "Caught exception in handleJobs(), error message: "
                 << e.what();
             }
@@ -1036,7 +1036,7 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
               if (snapshot.has(planurlinsnapshot)) {
                 continue;
               }
-              LOG_TOPIC(TRACE, Logger::SUPERVISION)
+              LOG_TOPIC("89987", TRACE, Logger::SUPERVISION)
                   << "Found a lost shard: " << shard.first;
               // Now remove that shard
               {
@@ -1115,25 +1115,25 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
 bool Supervision::handleJobs() {
   _lock.assertLockedByCurrentThread();
   // Do supervision
-  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin shrinkCluster";
+  LOG_TOPIC("76ffe", TRACE, Logger::SUPERVISION) << "Begin shrinkCluster";
   shrinkCluster();
 
-  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin enforceReplication";
+  LOG_TOPIC("43256", TRACE, Logger::SUPERVISION) << "Begin enforceReplication";
   enforceReplication();
 
-  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin cleanupLostCollections";
+  LOG_TOPIC("76190", TRACE, Logger::SUPERVISION) << "Begin cleanupLostCollections";
   cleanupLostCollections(_snapshot, _agent, _jobId);
   // Note that this function consumes job IDs, potentially many, so the member
   // is incremented inside the function. Furthermore, `cleanupLostCollections`
   // is static for catch testing purposes.
 
-  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin readyOrphanedIndexCreations";
+  LOG_TOPIC("00789", TRACE, Logger::SUPERVISION) << "Begin readyOrphanedIndexCreations";
   readyOrphanedIndexCreations();
 
-  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin workJobs";
+  LOG_TOPIC("00aab", TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();
 
-  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin cleanupFinishedAndFailedJobs";
+  LOG_TOPIC("0892b", TRACE, Logger::SUPERVISION) << "Begin cleanupFinishedAndFailedJobs";
   cleanupFinishedAndFailedJobs();
 
   return true;
@@ -1170,7 +1170,7 @@ void Supervision::cleanupFinishedAndFailedJobs() {
         return a.second < b.second;
       });
     size_t toBeDeleted = v.size() - limit;  // known to be positive
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Deleting " << toBeDeleted << " old jobs"
+    LOG_TOPIC("98451", INFO, Logger::AGENCY) << "Deleting " << toBeDeleted << " old jobs"
       " in " << prefix;
     VPackBuilder trx;  // We build a transaction here
     { // Pair for operation, no precondition here
@@ -1219,20 +1219,20 @@ void Supervision::workJobs() {
   size_t const maximalJobsPerRound = 1000;
   bool selectRandom = todos.size() > maximalJobsPerRound;
 
-  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin ToDos of type Failed*";
+  LOG_TOPIC("00567", TRACE, Logger::SUPERVISION) << "Begin ToDos of type Failed*";
   while (it != todos.end()) {
     if (selectRandom && RandomGenerator::interval(static_cast<uint64_t>(todos.size())) > maximalJobsPerRound) {
-      LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
+      LOG_TOPIC("675fe", TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
       ++it;
       continue;
     }
  
     auto const& jobNode = *(it->second);
     if (jobNode.hasAsString("type").first.compare(0, FAILED.length(), FAILED) == 0) {
-      LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
+      LOG_TOPIC("87812", TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
       JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
         .run(_haveAborts);
-      LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
+      LOG_TOPIC("98115", TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
       it = todos.erase(it);
     } else {
       ++it;
@@ -1241,36 +1241,36 @@ void Supervision::workJobs() {
 
   // Do not start other jobs, if above resilience jobs aborted stuff
   if (!_haveAborts) {
-    LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin ToDos";
+    LOG_TOPIC("00654", TRACE, Logger::SUPERVISION) << "Begin ToDos";
     for (auto const& todoEnt : todos) {
       if (selectRandom && RandomGenerator::interval(static_cast<uint64_t>(todos.size())) > maximalJobsPerRound) {
-        LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
+        LOG_TOPIC("77889", TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
         continue;
       }
 
       auto const& jobNode = *(todoEnt.second);
-      LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
+      LOG_TOPIC("aa667", TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
       JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
         .run(dummy);
-      LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
+      LOG_TOPIC("65bcd", TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
     }
   }
 
 
-  LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin Pendings";
+  LOG_TOPIC("08641", TRACE, Logger::SUPERVISION) << "Begin Pendings";
   auto const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
   selectRandom = pends.size() > maximalJobsPerRound;
 
   for (auto const& pendEnt : pends) {
     if (selectRandom && RandomGenerator::interval(static_cast<uint64_t>(pends.size())) > maximalJobsPerRound) {
-      LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Skipped Pending Job";
+      LOG_TOPIC("54310", TRACE, Logger::SUPERVISION) << "Skipped Pending Job";
       continue;
     }
     auto const& jobNode = *(pendEnt.second);
-    LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
+    LOG_TOPIC("009ba", TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
     JobContext(PENDING, jobNode.hasAsString("jobId").first, _snapshot, _agent)
       .run(dummy);
-    LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
+    LOG_TOPIC("99006", TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
   }
 
 }
