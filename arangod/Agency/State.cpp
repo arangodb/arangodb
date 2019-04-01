@@ -1546,7 +1546,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     + stringify(lastIndex) + std::string("' SORT l._key RETURN l");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query logQuery(false, _vocbase, aql::QueryString(logQuerystr), bindVars,
+  arangodb::aql::Query logQuery(false, _vocbase, aql::QueryString(logQueryStr), bindVars,
                              nullptr, arangodb::aql::PART_MAIN);
 
   aql::QueryResult logQueryResult = logQuery.execute(_queryRegistry);
