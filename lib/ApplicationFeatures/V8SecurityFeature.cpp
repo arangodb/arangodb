@@ -222,6 +222,8 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
     return false;
   }
 
+  LOG_DEVEL << "@ path in" << path;
+
   // remove link
   path = TRI_ResolveSymbolicLink(std::move(path));
 
@@ -234,6 +236,10 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
       path = std::string(absPath.get());
     }
   }
+
+  LOG_DEVEL << "@ path resolved" << path;
+  LOG_DEVEL << "@ white-list expression" << _filesWhiteList;
+  LOG_DEVEL << "@ black-list expression" << _filesBlackList;
 
   if (_filesWhiteList.empty() && _filesBlackList.empty()) {
     return true;
