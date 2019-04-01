@@ -296,6 +296,9 @@ bool IResearchViewExecutor<ordered>::writeRow(ReadContext& ctx, IndexResult& res
 template <bool ordered>
 void IResearchViewExecutor<ordered>::evaluateScores(ReadContext& ctx,
                                                     std::vector<AqlValue>& scores) {
+  // This must not be called in the unordered case.
+  TRI_ASSERT(ordered);
+
   // evaluate scores
   _scr->evaluate();
 
@@ -339,27 +342,26 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
 
     TRI_ASSERT(_pkReader);
 
-    // try to read a document PK from iresearch
-    LocalDocumentId documentId = readPK(*_itr, _pkReader);
+    IndexResult result{{}, {}, {}};
 
-    if (!documentId.isSet()) {
+    // try to read a document PK from iresearch
+    result.id = readPK(*_itr, _pkReader);
+
+    if (!result.id.isSet()) {
       continue;
     }
 
-    std::vector<AqlValue> scores;
-    scores.reserve(infos().getNumScoreRegisters());
+    result.cid = _reader->cid(_readerOffset);  // CID is constant only until resetIterator(); save it
 
-    TRI_voc_cid_t const cid =
-        _reader->cid(_readerOffset);  // CID is constant until resetIterator()
+    result.scores.reserve(infos().getNumScoreRegisters());
 
     // in the ordered case we have to write scores as well as a document
     if /* constexpr */ (ordered) {
-      evaluateScores(ctx, scores);
+      evaluateScores(ctx, result.scores);
     }
 
-    TRI_ASSERT(scores.size() == infos().getNumScoreRegisters());
+    TRI_ASSERT(result.scores.size() == infos().getNumScoreRegisters());
 
-    IndexResult result{documentId, cid, std::move(scores)};
     _indexResultBuffer.emplace_back(std::move(result));
     break;
   }
