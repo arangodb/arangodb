@@ -363,6 +363,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_FORBIDDEN:
       return ResponseCode::FORBIDDEN;
 
+    case TRI_ERROR_HTTP_NOT_FOUND:
     case TRI_ERROR_ARANGO_DATABASE_NOT_FOUND:
     case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
     case TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED:
