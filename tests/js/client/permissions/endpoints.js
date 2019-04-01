@@ -30,12 +30,16 @@
 
 if (getOptions === true) {
   return {
-    'javascript.endpoints-filter':
-      'tcp://127.0.0.1:8888' + '|' +     // Will match http:// 
-      '127.0.0.1:8899'       + '|' +     // will match at http and https.
-      'ssl://127.0.0.1:7777' + '|' +     // will match https://
-      'arangodb.org'         + '|' +     // will match https + http
+    'javascript.endpoints-black-list': [
+      'tcp://127.0.0.1:8888',     // Will match http:// 
+      '127.0.0.1:8899',           // will match at http and https.
+      'ssl://127.0.0.1:7777',     // will match https://
+      'arangodb.org',             // will match https + http
       'http://127.0.0.1:9999'            // won't match at all.
+    ],
+    'javascript.endpoints-white-list': [
+      'arangodb.org/white'
+    ]
   };
 }
 
@@ -50,12 +54,12 @@ function testSuite() {
       fail();
     }
     catch (err) {
-      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while fetching: ' + url);
     }
   }
   function downloadPermitted(url, method) {
     try {
-      let reply = download(url, '', { method: method, timeout: 3 } );
+      let reply = download(url, '', { method: method, timeout: 30 } );
       if (reply.code === 200) {
         assertEqual(reply.code, 200);
       }
@@ -65,7 +69,7 @@ function testSuite() {
       }
     }
     catch (err) {
-      assertNotEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
+      assertNotEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while fetching: ' + url);
     }
   }
   return {
@@ -79,6 +83,8 @@ function testSuite() {
       downloadForbidden('http://arangodb.org/testbla', 'GET');
       downloadForbidden('https://arangodb.org/testbla', 'GET');
       
+      downloadPermitted('https://arangodb.org/white/bla', 'GET');
+      downloadPermitted('http://arangodb.org/white/bla', 'GET');
       downloadPermitted('http://arangodb.com/blog', 'GET');
       downloadPermitted('http://arangodb.com/blog', 'GET');
       downloadPermitted('http://heise.de', 'GET');
