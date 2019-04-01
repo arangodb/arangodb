@@ -956,7 +956,7 @@ void RocksDBHotBackupLock::parseParameters(rest::RequestType const type) {
   if (!_valid) {
     try {
       _result.add(VPackValue(VPackValueType::Object));
-      _result.add("httpMethod", VPackValue("only POST or DELTE allowed"));
+      _result.add("httpMethod", VPackValue("only POST or DELETE allowed"));
       _result.close();
       _respCode = rest::ResponseCode::BAD;
       _respError = TRI_ERROR_HTTP_BAD_PARAMETER;
