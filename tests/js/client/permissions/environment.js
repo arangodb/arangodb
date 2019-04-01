@@ -30,7 +30,7 @@
 
 if (getOptions === true) {
   return {
-    'javascript.environment-variables-filter': 'PATH'
+    'javascript.environment-variables-black-list': 'PATH'
   };
 }
 
