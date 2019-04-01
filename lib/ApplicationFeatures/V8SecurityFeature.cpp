@@ -246,9 +246,11 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
   LOG_DEVEL << "@ path resolved" << path;
   LOG_DEVEL << "@ white-list expression" << _filesWhiteList;
   LOG_DEVEL << "@ black-list expression" << _filesBlackList;
+  LOG_DEVEL << "testing " << path << " against white-list " << _filesWhiteList << " - "  << std::regex_search(path, _filesWhiteListRegex);
+  LOG_DEVEL << "testing " << path << " against black-list " << _filesBlackList << " - "  << std::regex_search(path, _filesBlackListRegex);
 
   if (_filesWhiteList.empty() && _filesBlackList.empty()) {
-    LOG_DEVEL << "both empty";
+    LOG_DEVEL << "both empty - allow access";
     return true;
   }
 
@@ -264,12 +266,11 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
     return !std::regex_search(path, _filesBlackListRegex);
   }
 
-  LOG_DEVEL << "testing " << path << " against white-list " << _filesWhiteList << " - "  << std::regex_search(path, _filesWhiteListRegex);
   if (std::regex_search(path, _filesWhiteListRegex)) {
-    LOG_DEVEL << "white true";
+    LOG_DEVEL << "white true - allow access";
     return true;  // white-list wins - simple implementation
   } else {
-    LOG_DEVEL << "testing " << path << " against black-list " << _filesBlackList << " - "  << !std::regex_search(path, _filesBlackListRegex);
+    LOG_DEVEL << "black check";
     return !std::regex_search(path, _filesBlackListRegex);
   }
 }
