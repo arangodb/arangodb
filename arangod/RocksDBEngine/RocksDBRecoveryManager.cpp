@@ -426,8 +426,9 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         TRI_ASSERT(ops != nullptr);
         ops->lastSequenceNumber = _currentSequence;
         ops->added++;
-        ops->lastRevisionId =
-            transaction::helpers::extractRevFromDocument(RocksDBValue::data(value));
+        if (!RocksDBValue::revisionId(value, ops->lastRevisionId)) {
+          TRI_ASSERT(false);
+        }
       }
     } else {
       // We have to adjust the estimate with an insert
