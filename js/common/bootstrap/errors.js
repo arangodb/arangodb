@@ -328,7 +328,11 @@
     "ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE" : { "code" : 4007, "message" : "shard key value must be prefixed with the value of the smart join attribute" },
     "ERROR_NO_SMART_JOIN_ATTRIBUTE" : { "code" : 4008, "message" : "smart join attribute not given or invalid" },
     "ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE" : { "code" : 4009, "message" : "must not change the value of the smartJoinAttribute" },
+<<<<<<< HEAD
 >>>>>>> 182bee2f4aea209d9b21dd43b5b8006de2d7848d
+=======
+>>>>>>> b58de5166a2e1aa128a445a1e71036e84feb7595
+>>>>>>> 04a0e1fe63e0ffa03e04b12cace006f1d795bf71
     "ERROR_CLUSTER_REPAIRS_FAILED" : { "code" : 5000, "message" : "error during cluster repairs" },
     "ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY" : { "code" : 5001, "message" : "not enough (healthy) db servers" },
     "ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED" : { "code" : 5002, "message" : "replication factor violated during cluster repairs" },

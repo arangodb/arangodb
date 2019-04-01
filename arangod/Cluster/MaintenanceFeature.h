@@ -68,6 +68,9 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
+  // Is maintenance paused?
+  bool isPaused() const;
+
   // preparation phase for feature in the preparation phase, the features must
   // not start any threads. furthermore, they must not write any files under
   // elevated privileges if they want other features to access them, or if they
