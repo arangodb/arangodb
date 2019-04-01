@@ -150,8 +150,8 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
     _jb->add("shard", VPackValue(_shard));
     _jb->add("fromServer", VPackValue(_from));
     _jb->add("jobId", VPackValue(_jobId));
-    _jb->add("timeCreated", VPackValue(timepointToString(system_clock::now())));}
-  
+    _jb->add("timeCreated", VPackValue(timepointToString(system_clock::now())));
+  }
 
   if (b == nullptr) {
     _jb->close(); // object
@@ -239,7 +239,7 @@ bool FailedLeader::start(bool& aborts) {
 
   // Transactions
   Builder pending;
-  
+
   {
     VPackArrayBuilder transactions(&pending);
     {
@@ -432,22 +432,6 @@ JOB_STATUS FailedLeader::status() {
   }
 
   if (done) {
-    // Remove shard to /arango/Target/FailedServers/<server> array
-    Builder del;
-    {
-      VPackArrayBuilder a(&del);
-      {
-        VPackObjectBuilder o(&del);
-        del.add(VPackValue(failedServersPrefix + "/" + _from));
-        {
-          VPackObjectBuilder erase(&del);
-          del.add("op", VPackValue("erase"));
-          del.add("val", VPackValue(_shard));
-        }
-      }
-    }
-
-    write_ret_t res = singleWriteTransaction(_agent, del);
     if (finish("", shard)) {
       LOG_TOPIC(INFO, Logger::SUPERVISION)
           << "Finished failedLeader for " + _shard + " from " + _from + " to " + _to;

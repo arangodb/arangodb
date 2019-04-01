@@ -107,7 +107,6 @@ bool FailedServer::start(bool& aborts) {
     }
   }  // Todo entry
 
-  // Pending entry
   auto transactions = std::make_shared<VPackBuilder>();
   {
     VPackArrayBuilder a(transactions.get());
@@ -115,13 +114,16 @@ bool FailedServer::start(bool& aborts) {
     // Operations -------------->
     {
       VPackObjectBuilder oper(transactions.get());
+      // Add pending
 
       auto const& databases = _snapshot.hasAsChildren("/Plan/Collections").first;
+      // auto const& current = _snapshot.hasAsChildren("/Current/Collections").first;
 
       size_t sub = 0;
 
       // FIXME: looks OK, but only the non-clone shards are put into the job
       for (auto const& database : databases) {
+        // dead code   auto cdatabase = current.at(database.first)->children();
 
         for (auto const& collptr : database.second->children()) {
           auto const& collection = *(collptr.second);
@@ -191,7 +193,7 @@ bool FailedServer::start(bool& aborts) {
       {
         VPackObjectBuilder ts(transactions.get());
         transactions->add("timeStarted",
-                    VPackValue(timepointToString(system_clock::now())));
+                          VPackValue(timepointToString(system_clock::now())));
         for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
           transactions->add(obj.key.copyString(), obj.value);
         }
@@ -217,18 +219,20 @@ bool FailedServer::start(bool& aborts) {
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "Pending job for failed DB Server " << _server;
+
+
     return true;
   }
 
   LOG_TOPIC(INFO, Logger::SUPERVISION)
-    << "Precondition failed for starting FailedServer " + _jobId;
+      << "Precondition failed for starting FailedServer " + _jobId;
 
   return false;
 }
 
 bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
-    << "Todo: Handle failover for db server " + _server;
+      << "Todo: Handle failover for db server " + _server;
 
   using namespace std::chrono;
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?

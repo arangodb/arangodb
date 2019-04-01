@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -104,12 +104,15 @@ bool State::persist(index_t index, term_t term, arangodb::velocypack::Slice cons
   SingleCollectionTransaction trx(ctx, "log", AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+
   Result res = trx.begin();
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
   OperationResult result;
+
   try {
     result = trx.insert("log", body.slice(), _options);
   } catch (std::exception const& e) {
@@ -373,7 +376,7 @@ index_t State::logFollower(query_t const& transactions) {
       // Now we must completely erase our log and compaction snapshots and
       // start from the snapshot
       Store snapshot(_agent, "snapshot");
-      snapshot = slices[0].get("readDB");
+      snapshot = slices[0];
       if (!storeLogFromSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
         LOG_TOPIC(FATAL, Logger::AGENCY)
             << "Could not restore received log snapshot.";
@@ -491,6 +494,7 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
         LOG_TOPIC(TRACE, Logger::AGENCY) << "removeConflicts done: ndups=" << ndups
                                          << " first log entry: " << _log.front().index
                                          << " last log entry: " << _log.back().index;
+
         break;
       } else {
         ++ndups;
@@ -706,8 +710,7 @@ bool State::createCollection(std::string const& name) {
     body.add("isSystem", VPackValue(LogicalCollection::IsSystemName(name)));
   }
 
-  arangodb::LogicalCollection const* collection =
-      _vocbase->createCollection(body.slice());
+  auto collection = _vocbase->createCollection(body.slice());
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");
@@ -734,7 +737,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
     MUTEX_LOCKER(logLock, _logLock);
     if (_log.empty()) {
       std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
-      VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+      VPackSlice value = arangodb::velocypack::Slice::emptyObjectSlice();
       buf->append(value.startAs<char const>(), value.byteSize());
       _log.push_back(log_t(index_t(0), term_t(0), buf, std::string()));
       persist(0, 0, value, std::string());
@@ -795,7 +798,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
       VPackSlice i = result[0];
       VPackSlice ii = i.resolveExternals();
       try {
-        store = ii.get("readDB");
+        store = ii;
         index = basics::StringUtils::uint64(ii.get("_key").copyString());
         term = ii.get("term").getNumber<uint64_t>();
         return true;
@@ -932,7 +935,6 @@ bool State::loadOrPersistConfiguration() {
 
     auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
     SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
-
     Result res = trx.begin();
     OperationResult result;
 
@@ -991,6 +993,7 @@ bool State::loadRemaining() {
     // We know that _cur has been set in loadCompacted to the index of the
     // snapshot that was loaded or to 0 if there is no snapshot.
     index_t lastIndex = _cur;
+
     for (auto const& i : VPackArrayIterator(result)) {
       buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
 
@@ -1009,7 +1012,7 @@ bool State::loadRemaining() {
         // Empty patches :
         if (index > lastIndex + 1) {
           std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
-          VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+          VPackSlice value = arangodb::velocypack::Slice::emptyObjectSlice();
           buf->append(value.startAs<char const>(), value.byteSize());
           term_t term(ii.get("term").getNumber<uint64_t>());
           for (index_t i = lastIndex + 1; i < index; ++i) {
@@ -1162,6 +1165,7 @@ bool State::compactPersisted(index_t cind, index_t keep) {
   bindVars->close();
 
   std::stringstream i_str;
+
   i_str << std::setw(20) << std::setfill('0') << cut;
 
   std::string const aql(std::string("FOR l IN log FILTER l._key < \"") +
@@ -1201,6 +1205,7 @@ bool State::removeObsolete(index_t cind) {
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
     }
   }
+
   return true;
 }
 
@@ -1209,6 +1214,7 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
                                       arangodb::consensus::Store& snapshot) {
   if (checkCollection("compact")) {
     std::stringstream i_str;
+
     i_str << std::setw(20) << std::setfill('0') << cind;
 
     Builder store;
@@ -1221,12 +1227,12 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
       }
       store.add("term", VPackValue(static_cast<double>(term)));
       store.add("_key", VPackValue(i_str.str()));
+      store.add("version", VPackValue(2));
     }
 
     TRI_ASSERT(_vocbase != nullptr);
     auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
     SingleCollectionTransaction trx(ctx, "compact", AccessMode::Type::WRITE);
-
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -1235,22 +1241,25 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
 
     OperationResult result;
     try {
-      auto result = trx.insert("compact", store.slice(), _options);
+      result = trx.insert("compact", store.slice(), _options);
       if (!result.ok()) {
         if (result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+          LOG_TOPIC(DEBUG, Logger::AGENCY)
+            << "Failed to insert compacted agency state, will attempt to update: "
+            << result.errorMessage();
           result = trx.replace("compact", store.slice(), _options);
-          if (!result.ok()) {
-            LOG_TOPIC(FATAL, Logger::AGENCY)
-              << "Failed to persist compated state: " << result.errorMessage();
-          }
         } else {
           LOG_TOPIC(FATAL, Logger::AGENCY)
-            << "Failed to persist compated state: " << result.errorMessage();
+            << "Failed to persist compacted agency state" << result.errorMessage();
+          FATAL_ERROR_EXIT();
         }
-      } 
+      }
     } catch (std::exception const& e) {
-      LOG_TOPIC(FATAL, Logger::AGENCY) << "Failed to persist compated state: " << e.what();
+      LOG_TOPIC(FATAL, Logger::AGENCY)
+        << "Failed to persist compacted agency state: " << e.what();
+      FATAL_ERROR_EXIT();
     }
+
     res = trx.finish(result.result);
 
     if (res.ok()) {
@@ -1262,6 +1271,7 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
 
   LOG_TOPIC(ERR, Logger::AGENCY)
       << "Failed to persist snapshot for compaction!";
+
   return false;
 }
 
@@ -1270,11 +1280,13 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
 /// log is empty and something ought to be appended to it rather quickly.
 bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
   _logLock.assertLockedByCurrentThread();
+
   if (!persistCompactionSnapshot(index, term, snapshot)) {
     LOG_TOPIC(ERR, Logger::AGENCY)
         << "Could not persist received log snapshot.";
     return false;
   }
+
   // Now we need to completely erase our log, both persisted and volatile:
   LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Removing complete log because of new snapshot.";
@@ -1316,20 +1328,24 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
 
   MUTEX_LOCKER(guard, _configurationWriteLock);
   SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
-
   Result res = trx.begin();
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
   auto result = trx.update("configuration", builder.slice(), _options);
+
   if (result.fail()) {
     THROW_ARANGO_EXCEPTION(result.result);
   }
+
   res = trx.finish(result.result);
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
   LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Updated persisted agency configuration: " << builder.slice().toJson();
 }
@@ -1454,7 +1470,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t* vocbase,
     // Result can only have length 0 or 1.
     VPackSlice ii = result[0].resolveExternals();
     buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
-    store = ii.get("readDB");
+    store = ii;
     index = arangodb::basics::StringUtils::uint64(ii.get("_key").copyString());
     term = ii.get("term").getNumber<uint64_t>();
     LOG_TOPIC(INFO, Logger::AGENCY)
@@ -1526,13 +1542,11 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   auto bindVars = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder b(bindVars.get()); }
 
-  std::string const querystr 
-    = "FOR l IN log FILTER l._key <= 'buf" + stringify(lastIndex) +
-      "' SORT l._key RETURN {'_key': l._key, 'timestamp': l.timestamp,"
-                            "'clientId': l.clientId, 'request': l.request}";
+  std::string const logQueryStr = std::string("FOR l IN log FILTER l._key <= '")
+    + stringify(lastIndex) + std::string("' SORT l._key RETURN l");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query logQuery(false, _vocbase, aql::QueryString(querystr), bindVars,
+  arangodb::aql::Query logQuery(false, _vocbase, aql::QueryString(logQueryStr), bindVars,
                              nullptr, arangodb::aql::PART_MAIN);
 
   aql::QueryResult logQueryResult = logQuery.execute(_queryRegistry);

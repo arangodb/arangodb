@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -213,11 +213,14 @@ class Node {
   /// @brief Part of relative path which exists
   bool has(std::string const&) const;
 
-  /// @brief Is UInt
+  /// @brief Is Int
   bool isInt() const;
 
   /// @brief Is UInt
   bool isUInt() const;
+
+  /// @brief Is number
+  bool isNumber() const;
 
   /// @brief Is boolean
   bool isBool() const;
@@ -227,6 +230,18 @@ class Node {
 
   /// @brief Is string
   bool isString() const;
+
+  /**
+   * @brief Get seconds this node still has to live. (Must be guarded by caller)
+   * @return  seconds to live (int64_t::max, if none set)
+   */
+  TimePoint const& timeToLive() const;
+
+  /**
+   * @brief Set expiry for this node
+   * @param Time point of expiry
+   */
+  void timeToLive(TimePoint const& ttl);
 
   /// @brief accessor to Node object
   /// @return  second is true if url exists, first populated if second true
@@ -277,32 +292,11 @@ class Node {
   // These two operator() functions could be "protected" once
   //  unit tests updated.
   //
- public:
   /// @brief Get node specified by path string
   Node& operator()(std::string const& path);
 
   /// @brief Get node specified by path string
   Node const& operator()(std::string const& path) const;
-
-  //
-  // The protected accessors are the "old" interface.  They throw.
-  //  Please use the hasAsXXX replacements.
-  //
-
-  /// @brief Get node specified by path string, always throw if not there
-  Node const& get(std::string const& path) const;
-
-  /// @brief Get integer value (throws if type NODE or if conversion fails)
-  int64_t getInt() const;
-
-  /// @brief Get insigned value (throws if type NODE or if conversion fails)
-  uint64_t getUInt() const;
-
-  /// @brief Get bool value (throws if type NODE or if conversion fails)
-  bool getBool() const;
-
-  /// @brief Get double value (throws if type NODE or if conversion fails)
-  double getDouble() const;
 
   /// @brief Get string value (throws if type NODE or if conversion fails)
   std::string getString() const;
@@ -310,8 +304,34 @@ class Node {
   /// @brief Get array value
   Slice getArray() const;
 
+  /// @brief Get insigned value (throws if type NODE or if conversion fails)
+  uint64_t getUInt() const;
+
+  //
+  // The protected accessors are the "old" interface.  They throw.
+  //  Please use the hasAsXXX replacements.
+  //
+ protected:
+  /// @brief Get node specified by path string, always throw if not there
+  Node const& get(std::string const& path) const;
+
+  /// @brief Get integer value (throws if type NODE or if conversion fails)
+  int64_t getInt() const;
+
+  /// @brief Get bool value (throws if type NODE or if conversion fails)
+  bool getBool() const;
+
+  /// @brief Get double value (throws if type NODE or if conversion fails)
+  double getDouble() const;
+
+ public:
   /// @brief Clear key value store
   void clear();
+
+  // @brief Helper function to return static instance of dummy node below
+  static Node const& dummyNode() {
+    return _dummyNode;
+  }
 
  protected:
   /// @brief Add time to live entry
@@ -332,6 +352,7 @@ class Node {
   mutable bool _vecBufDirty;
   bool _isArray;
   static Children const dummyChildren;
+  static Node const _dummyNode;
 
 };
 

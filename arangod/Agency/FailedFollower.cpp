@@ -94,9 +94,11 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   } else {
     _jb = envelope;
   }
-  
+
+  // Todo entry
   _jb->add(VPackValue(toDoPrefix + _jobId));
-  { VPackObjectBuilder todo(_jb.get());
+  {
+    VPackObjectBuilder todo(_jb.get());
     _jb->add("creator", VPackValue(_creator));
     _jb->add("type", VPackValue("failedFollower"));
     _jb->add("database", VPackValue(_database));
@@ -104,7 +106,8 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->add("shard", VPackValue(_shard));
     _jb->add("fromServer", VPackValue(_from));
     _jb->add("jobId", VPackValue(_jobId));
-    _jb->add("timeCreated", VPackValue(timepointToString(_created))); }
+    _jb->add("timeCreated", VPackValue(timepointToString(_created)));
+  }
 
   if (envelope == nullptr) {
     _jb->close(); // object
@@ -112,7 +115,7 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
     write_ret_t res = singleWriteTransaction(_agent, *_jb);
     return (res.accepted && res.indices.size() == 1 && res.indices[0]);
   }
- 
+
   return true;
 
 }

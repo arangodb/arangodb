@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,6 +71,9 @@ struct HealthRecord {
     if (endpoint.empty()) {
       endpoint = node.hasAsString("Endpoint").first;
     }
+    if (hostId.empty()) {
+      hostId = node.hasAsString("Host").first;
+    }
     if (node.has("Status")) {
       status = node.hasAsString("Status").first;
       if (node.has("SyncStatus")) {  // New format
@@ -99,9 +102,6 @@ struct HealthRecord {
         if (node.has("LastHeartbeatAcked")) {
           lastAcked = node.hasAsString("LastHeartbeatAcked").first;
         }
-      }
-      if (node.has("Host")) {
-        hostId = node.hasAsString("Host").first;
       }
     }
     return *this;
@@ -147,10 +147,11 @@ Supervision::Supervision()
       _snapshot("Supervision"),
       _transient("Transient"),
       _frequency(1.),
-      _gracePeriod(5.),
-      _okThreshold(1.5),
+      _gracePeriod(10.),
+      _okThreshold(5.),
       _jobId(0),
       _jobIdMax(0),
+      _haveAborts(false),
       _selfShutdown(false),
       _upgraded(false) {}
 
@@ -209,7 +210,7 @@ void Supervision::upgradeZero(Builder& builder) {
           if (fails.length() > 0) {
             for (VPackSlice fail : VPackArrayIterator(fails)) {
               builder.add(VPackValue(fail.copyString()));
-              { VPackObjectBuilder ooo(&builder); }
+              { VPackArrayBuilder ooo(&builder); }
             }
           }
         }
@@ -428,8 +429,6 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     }
   }
 
-  // LOG_TOPIC(ERR, Logger::FIXME) << "ServersRegistered: " << serversRegistered;
-
   // Remove all machines, which are no longer planned
   for (auto const& machine : machinesPlanned) {
     todelete.erase(std::remove(todelete.begin(), todelete.end(), machine.first),
@@ -443,8 +442,6 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   for (auto const& machine : machinesPlanned) {
     std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
         lastStatus, serverID(machine.first), shortName;
-
-    // LOG_TOPIC(ERR, Logger::FIXME) << "ServerID: " << serverID;
 
     // short name arrives asynchronous to machine registering, make sure
     //  it has arrived before trying to use it
@@ -532,9 +529,6 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       // Status changed?
       bool changed = transist.statusDiff(persist);
 
-      /*LOG_TOPIC(ERR, Logger::FIXME) << "Changed: " << changed
-        << "transist: " << transist << " persist: " << persist;*/
-
       // Take necessary actions if any
       std::shared_ptr<VPackBuilder> envelope;
       if (changed) {
@@ -607,6 +601,53 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   }  // for
 
   return ret;
+}
+
+bool Supervision::earlyBird() const {
+  std::vector<std::string> tpath{"Sync", "ServerStates"};
+  std::vector<std::string> pdbpath{"Plan", "DBServers"};
+  std::vector<std::string> pcpath{"Plan", "Coordinators"};
+
+  if (!_snapshot.has(pdbpath)) {
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+        << "No Plan/DBServers key in persistent store";
+    return false;
+  }
+  VPackBuilder dbserversB = _snapshot(pdbpath).toBuilder();
+  VPackSlice dbservers = dbserversB.slice();
+
+  if (!_snapshot.has(pcpath)) {
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+        << "No Plan/Coordinators key in persistent store";
+    return false;
+  }
+  VPackBuilder coordinatorsB = _snapshot(pcpath).toBuilder();
+  VPackSlice coordinators = coordinatorsB.slice();
+
+  if (!_transient.has(tpath)) {
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+        << "No Sync/ServerStates key in transient store";
+    return false;
+  }
+  VPackBuilder serverStatesB = _transient(tpath).toBuilder();
+  VPackSlice serverStates = serverStatesB.slice();
+
+  // every db server in plan accounted for in transient store?
+  for (auto const& server : VPackObjectIterator(dbservers)) {
+    auto serverId = server.key.copyString();
+    if (!serverStates.hasKey(serverId)) {
+      return false;
+    }
+  }
+  // every db server in plan accounted for in transient store?
+  for (auto const& server : VPackObjectIterator(coordinators)) {
+    auto serverId = server.key.copyString();
+    if (!serverStates.hasKey(serverId)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // Update local agency snapshot, guarded by callers
@@ -759,7 +800,7 @@ void Supervision::run() {
 
             _haveAborts = false;
 
-            if (_agent->leaderFor() > 10) {
+            if (_agent->leaderFor() > 55 || earlyBird()) {
               // 55 seconds is less than a minute, which fits to the
               // 60 seconds timeout in /_admin/cluster/health
               try {
@@ -772,6 +813,11 @@ void Supervision::run() {
                     << "Supervision::doChecks() generated an uncaught "
                        "exception.";
               }
+            } else {
+              LOG_TOPIC(INFO, Logger::SUPERVISION)
+                  << "Postponing supervision for now, waiting for incoming "
+                     "heartbeats: "
+                  << _agent->leaderFor();
             }
 
             handleJobs();
@@ -820,7 +866,10 @@ void Supervision::run() {
 // Guarded by caller
 bool Supervision::isShuttingDown() {
   _lock.assertLockedByCurrentThread();
-  return _snapshot.hasAsBool("Shutdown").first;
+  if (_snapshot.has("Shutdown")) {
+    return _snapshot.hasAsBool("Shutdown").first;
+  }
+  return false;
 }
 
 // Guarded by caller
@@ -1018,8 +1067,6 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
   }
 
   auto const& trx = builder->slice();
-
-  LOG_TOPIC(ERR, Logger::FIXME) << "Trx: " << trx.toJson();
 
   if (trx.length() > 0) {
     // do it! fire and forget!
@@ -1370,6 +1417,7 @@ void Supervision::shrinkCluster() {
   // Get servers from plan
   auto availServers = Job::availableServers(_snapshot);
 
+  // set by external service like Kubernetes / Starter / DCOS
   size_t targetNumDBServers;
   std::string const NDBServers("/Target/NumberOfDBServers");
 
