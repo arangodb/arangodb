@@ -159,6 +159,11 @@ void DatabaseManagerThread::run() {
               TRI_RemoveDirectory(path.c_str());
             }
           }
+        
+          auto queryRegistry = QueryRegistryFeature::registry();
+          if (queryRegistry != nullptr) {
+            queryRegistry->destroy(database->name());
+          }
 
           try {
             engine->dropDatabase(*database);
@@ -388,6 +393,9 @@ void DatabaseFeature::beginShutdown() {
 void DatabaseFeature::stop() {
   stopAppliers();
   MUTEX_LOCKER(mutexLocker, _databasesMutex);
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->cleanupReplicationContexts();
 
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
