@@ -103,7 +103,9 @@ struct Collection {
   std::shared_ptr<std::vector<std::string>> shardIds(std::unordered_set<std::string> const& includedShards) const;
 
   /// @brief returns the shard keys of a collection
-  std::vector<std::string> shardKeys() const;
+  /// if "normalize" is true, then the shard keys for a smart vertex collection
+  /// will be reported as "_key" instead of "_key:"
+  std::vector<std::string> shardKeys(bool normalize) const;
 
   size_t numberOfShards() const;
 
