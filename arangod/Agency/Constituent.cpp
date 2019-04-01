@@ -473,7 +473,7 @@ void Constituent::callElection() {
                          rest::RequestType::GET, path.str(),
                          std::make_shared<std::string>(body), headerFields, nullptr,
                          0.9 * _agent->config().minPing() * _agent->config().timeoutMult(),
-                         true);
+                         /*single*/ true);
       }
     }
   }
