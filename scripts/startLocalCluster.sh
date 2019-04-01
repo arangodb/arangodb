@@ -157,7 +157,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
           --server.statistics false \
           --log.file cluster/$PORT.log \
-          --log.force-direct true \
+          --log.force-direct false \
           --log.level $LOG_LEVEL_AGENCY \
           --javascript.allow-admin-execute true \
           $STORAGE_ENGINE \
@@ -184,7 +184,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --server.statistics false \
         --log.file cluster/$PORT.log \
-        --log.force-direct true \
+        --log.force-direct false \
         --log.level $LOG_LEVEL_AGENCY \
         --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
@@ -235,7 +235,7 @@ start() {
           --javascript.startup-directory $SRC_DIR/js \
           --javascript.module-directory $SRC_DIR/enterprise/js \
           --javascript.app-path cluster/apps$PORT \
-          --log.force-direct true \
+          --log.force-direct false \
           --log.level $LOG_LEVEL_CLUSTER \
           --javascript.allow-admin-execute true \
           $STORAGE_ENGINE \
@@ -257,7 +257,7 @@ start() {
         --javascript.startup-directory $SRC_DIR/js \
         --javascript.module-directory $SRC_DIR/enterprise/js \
         --javascript.app-path cluster/apps$PORT \
-        --log.force-direct true \
+        --log.force-direct false \
         --log.thread true \
         --log.level $LOG_LEVEL_CLUSTER \
         --javascript.allow-admin-execute true \

@@ -97,9 +97,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchView.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -2013,7 +2011,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       view->open();
 
-#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && defined(USE_IRESEARCH)
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
       struct DummyTransaction : transaction::Methods {
         explicit DummyTransaction(std::shared_ptr<transaction::Context> const& ctx)
             : transaction::Methods(ctx) {}

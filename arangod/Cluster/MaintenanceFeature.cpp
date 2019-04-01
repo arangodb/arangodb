@@ -33,6 +33,7 @@
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/ServerState.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -167,7 +168,7 @@ void MaintenanceFeature::stop() {
 
     // loop on each worker, retesting at 10ms just in case
     while (itWorker->isRunning()) {
-      _workerCompletion.wait(10000);
+      _workerCompletion.wait(std::chrono::microseconds(10000));
     }  // if
   }    // for
 
@@ -314,7 +315,9 @@ void MaintenanceFeature::registerAction(std::shared_ptr<Action> action, bool exe
   // mark as executing so no other workers accidentally grab it
   if (executeNow) {
     action->setState(maintenance::EXECUTING);
-  }  // if
+  } else if (action->getState() == maintenance::READY) {
+    _prioQueue.push(action);
+  }
 
   // WARNING: holding write lock to _actionRegistry and about to
   //   lock condition variable
@@ -323,7 +326,13 @@ void MaintenanceFeature::registerAction(std::shared_ptr<Action> action, bool exe
 
     if (!executeNow) {
       CONDITION_LOCKER(cLock, _actionRegistryCond);
-      _actionRegistryCond.signal();
+      _actionRegistryCond.broadcast();
+      // Note that we do a broadcast here for the following reason: if we did
+      // signal here, we cannot control which of the sleepers is woken up.
+      // If the new action is not fast track, then we could wake up the
+      // fast track worker, which would leave the action as it is. This would
+      // cause a delay of up to 0.1 seconds. With the broadcast, the worst
+      // case is that we wake up sleeping workers unnecessarily.
     }  // if
   }    // lock
 }
@@ -413,28 +422,49 @@ std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
 std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<std::string> const& labels) {
   std::shared_ptr<Action> ret_ptr;
 
-  while (!isPaused() && !_isShuttingDown && !ret_ptr) {
+  while (!isPaused() && !_isShuttingDown) {
     // scan for ready action (and purge any that are done waiting)
+
     {
       WRITE_LOCKER(wLock, _actionRegistryLock);
 
-      for (auto loop = _actionRegistry.begin(); _actionRegistry.end() != loop && !ret_ptr;) {
-        auto state = (*loop)->getState();
-        if (state == maintenance::READY && (*loop)->matches(labels)) {
-          ret_ptr = *loop;
-          ret_ptr->setState(maintenance::EXECUTING);
-        } else if ((*loop)->done()) {
-          loop = _actionRegistry.erase(loop);
-        } else {
-          ++loop;
-        }  // else
-      }    // for
+      while (!_prioQueue.empty()) {
+        // If _prioQueue is empty, we have no ready job and simply loop in the
+        // outer loop.
+        auto const& top = _prioQueue.top();
+        if (top->getState() != maintenance::READY) {  // in case it is deleted
+          _prioQueue.pop();
+          continue;
+        }
+        if (top->matches(labels)) {
+          ret_ptr = top;
+          _prioQueue.pop();
+          return ret_ptr;
+        }
+        // We are not interested, this can only mean that we are fast track
+        // and the top action is not. Therefore, the whole queue does not
+        // contain any fast track, so we can idle.
+        break;
+      }
+ 
+      // When we get here, there is currently nothing to do, so we might
+      // as well clean up those jobs in the _actionRegistry, which are
+      // in state DONE:
+      if (RandomGenerator::interval(uint32_t(10)) == 0) {
+        for (auto loop = _actionRegistry.begin(); _actionRegistry.end() != loop;) {
+          if ((*loop)->done()) {
+            loop = _actionRegistry.erase(loop);
+          } else {
+            ++loop;
+          }  // else
+        }    // for
+      }
     }      // WRITE
 
     // no pointer ... wait 5 second
-    if (!isPaused() && !_isShuttingDown && !ret_ptr) {
+    if (!isPaused() && !_isShuttingDown) {
       CONDITION_LOCKER(cLock, _actionRegistryCond);
-      _actionRegistryCond.wait(100000);
+      _actionRegistryCond.wait(std::chrono::milliseconds(100));
     }  // if
 
   }  // while

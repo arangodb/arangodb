@@ -101,9 +101,7 @@ class EngineInfoContainerDBServer {
     ///    'ExecutionNode::MAX_NODE_TYPE_VALUE' otherwise
     ExecutionNode::NodeType type() const noexcept { return _type; }
 
-#ifdef USE_IRESEARCH
     LogicalView const* view() const noexcept;
-#endif
 
    private:
     EngineInfo(EngineInfo&) = delete;
