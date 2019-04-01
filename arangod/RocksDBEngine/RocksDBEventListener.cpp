@@ -269,15 +269,10 @@ RocksDBEventListener::RocksDBEventListener()
 //
 RocksDBEventListener::~RocksDBEventListener() {
 
-  // TODO: this shutdown code should be called unconditionally,
-  // and the thread's beginShutdown() method should also be
-  // called on beginShutdown() of the ApplicationServer
-  if (!_shaThread.isStopping()) {
-    _shaThread.beginShutdown();
-    _shaThread.signalLoop();
-    _threadDone.wait();
-  } // if
-}
+  _shaThread.signalLoop();
+  _threadDone.wait();
+
+} // RocksDBEventListener::~RocksDBEventListener
 
 
 ///

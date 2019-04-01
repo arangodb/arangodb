@@ -87,12 +87,13 @@ class RocksDBEventListener : public rocksdb::EventListener {
 
   void OnCompactionCompleted(rocksdb::DB* db, const rocksdb::CompactionJobInfo& ci) override;
 
+  void beginShutdown() {_shaThread.beginShutdown();};
+
  protected:
 
   /// thread to perform sha256 and file deletes in background
   basics::ConditionVariable _threadDone;
   RocksDBEventListenerThread _shaThread;
-
 
 };  // class RocksDBEventListener
 
