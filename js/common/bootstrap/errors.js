@@ -321,7 +321,14 @@
     "ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE" : { "code" : 4003, "message" : "in smart vertex collections _key must be prefixed with the value of the smart graph attribute" },
     "ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE" : { "code" : 4004, "message" : "attribute cannot be used as smart graph attribute" },
     "ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH" : { "code" : 4005, "message" : "smart graph attribute mismatch" },
+<<<<<<< HEAD
     "ERROR_REMOTE_REPOSITORY_CONFIG_BAD" : { "code" : 4006, "message" : "remote hotback repository configuration error" },
+=======
+    "ERROR_INVALID_SMART_JOIN_ATTRIBUTE" : { "code" : 4006, "message" : "invalid smart join attribute declaration" },
+    "ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE" : { "code" : 4007, "message" : "shard key value must be prefixed with the value of the smart join attribute" },
+    "ERROR_NO_SMART_JOIN_ATTRIBUTE" : { "code" : 4008, "message" : "smart join attribute not given or invalid" },
+    "ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE" : { "code" : 4009, "message" : "must not change the value of the smartJoinAttribute" },
+>>>>>>> 182bee2f4aea209d9b21dd43b5b8006de2d7848d
     "ERROR_CLUSTER_REPAIRS_FAILED" : { "code" : 5000, "message" : "error during cluster repairs" },
     "ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY" : { "code" : 5001, "message" : "not enough (healthy) db servers" },
     "ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED" : { "code" : 5002, "message" : "replication factor violated during cluster repairs" },

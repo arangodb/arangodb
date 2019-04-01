@@ -450,7 +450,7 @@ void ClusterInfo::loadPlan() {
   uint64_t storedVersion = _planProt.wantedVersion;  // this is the version
                                                      // we will set in the end
 
-  LOG_TOPIC(TRACE, Logger::CLUSTER) << "loadPlan: wantedVersion=" << storedVersion
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "loadPlan: wantedVersion=" << storedVersion
                                     << ", doneVersion=" << _planProt.doneVersion;
   if (_planProt.doneVersion == storedVersion) {
     // Somebody else did, what we intended to do, so just return
@@ -877,6 +877,9 @@ void ClusterInfo::loadPlan() {
     } else {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "\"Plan\" is not an object in agency";
     }
+    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+      << "loadPlan done: wantedVersion=" << storedVersion
+      << ", doneVersion=" << _planProt.doneVersion;
     return;
   }
 
@@ -903,6 +906,9 @@ void ClusterInfo::loadCurrent() {
     // Somebody else did, what we intended to do, so just return
     return;
   }
+
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "loadCurrent: wantedVersion: "
+    << _currentProt.wantedVersion;
 
   // Now contact the agency:
   AgencyCommResult result = _agency.getValues(prefixCurrent);
@@ -1021,6 +1027,8 @@ void ClusterInfo::loadCurrent() {
     } else {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "Current is not an object!";
     }
+
+    LOG_TOPIC(DEBUG, Logger::CLUSTER) << "loadCurrent done.";
 
     return;
   }
@@ -1511,6 +1519,8 @@ int ClusterInfo::createCollectionCoordinator(
     return TRI_ERROR_BAD_PARAMETER;  // must not be empty
   }
 
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, loading Plan from agency...";
+
   {
     // check if a collection with the same name is already planned
     loadPlan();
@@ -1541,6 +1551,8 @@ int ClusterInfo::createCollectionCoordinator(
       }
     }
   }
+
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, checking things...";
 
   // mop: why do these ask the agency instead of checking cluster info?
   if (!ac.exists("Plan/Databases/" + databaseName)) {
@@ -1757,6 +1769,8 @@ int ClusterInfo::createCollectionCoordinator(
     }
     break;  // Leave loop, since we are done
   }
+
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, Plan changed, waiting for success...";
 
   bool isSmart = false;
   VPackSlice smartSlice = json.get(StaticStrings::IsSmart);

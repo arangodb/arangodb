@@ -247,10 +247,6 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice const
     return true;
   }
 
-  if (tooOld) {
-    return true;
-  }
-
   // the transient applier state is just used for one shard / collection
   if (_state.applier._restrictCollections.empty()) {
     return false;

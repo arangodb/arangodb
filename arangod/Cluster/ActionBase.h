@@ -182,6 +182,11 @@ class ActionBase {
 
   std::string const static FAST_TRACK;
 
+  /// @brief return priority, inherited from ActionDescription
+  int priority() const {
+    return _priority;
+  }
+
  protected:
   /// @brief common initialization for all constructors
   void init();
@@ -215,6 +220,7 @@ class ActionBase {
 
   Result _result;
 
+  int _priority;
 };  // class ActionBase
 
 }  // namespace maintenance

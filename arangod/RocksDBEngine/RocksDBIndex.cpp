@@ -242,6 +242,11 @@ Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* m
   // RocksDBPrimaryIndex must override this method accordingly
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
 
+  /// only if the insert needs to see the changes of the update, enable indexing:
+  IndexingEnabler enabler(mthd, mthd->isIndexingDisabled() && hasExpansion() && unique());
+
+  TRI_ASSERT((hasExpansion() && unique()) ? !mthd->isIndexingDisabled() : true);
+
   Result res = removeInternal(trx, mthd, oldDocumentId, oldDoc, mode);
   if (!res.ok()) {
     return res;
@@ -312,10 +317,8 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type, uint64_t objectI
       return RocksDBKeyBounds::LegacyGeoIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_GEO_INDEX:
       return RocksDBKeyBounds::GeoIndex(objectId);
-#ifdef USE_IRESEARCH
     case RocksDBIndex::TRI_IDX_TYPE_IRESEARCH_LINK:
       return RocksDBKeyBounds::DatabaseViews(objectId);
-#endif
     case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

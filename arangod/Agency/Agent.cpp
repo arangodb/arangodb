@@ -738,7 +738,7 @@ void Agent::advanceCommitIndex() {
     WRITE_LOCKER(oLocker, _outputLock);
     if (index > _commitIndex) {
       CONDITION_LOCKER(guard, _waitForCV);
-      LOG_TOPIC(TRACE, Logger::AGENCY)
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Critical mass for commiting " << _commitIndex + 1 << " through "
           << index << " to read db";
       // Change _readDB and _commitIndex atomically together:
@@ -747,6 +747,9 @@ void Agent::advanceCommitIndex() {
                               _commitIndex, t, true);
 
       _commitIndex = index;
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+          << "Critical mass for commiting " << _commitIndex + 1 << " through "
+          << index << " to read db, done";
       // Wake up rest handlers:
       _waitForCV.broadcast();
 
@@ -1639,13 +1642,13 @@ Store const& Agent::transient() const {
 /// Rebuild from persisted state
 void Agent::setPersistedState(VPackSlice const& compaction) {
   // Catch up with compacted state, this is only called at startup
-  _spearhead = compaction.get("readDB");
+  _spearhead = compaction;
 
   // Catch up with commit
   try {
     WRITE_LOCKER(oLocker, _outputLock);
     CONDITION_LOCKER(guard, _waitForCV);
-    _readDB = compaction.get("readDB");
+    _readDB = compaction;
     _commitIndex =
         arangodb::basics::StringUtils::uint64(compaction.get("_key").copyString());
     _waitForCV.broadcast();

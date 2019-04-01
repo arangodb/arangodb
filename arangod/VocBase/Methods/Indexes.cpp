@@ -116,13 +116,9 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     VPackBuilder tmpInner;
     auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
-#ifdef USE_IRESEARCH
     c->getIndexesVPack(tmpInner, flags, [withLinks](arangodb::Index const* idx) {
       return withLinks || idx->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK;
     });
-#else
-    c->getIndexesVPack(tmpInner, flags);
-#endif
 
     tmp.openArray();
     for (VPackSlice const& s : VPackArrayIterator(tmpInner.slice())) {
@@ -162,23 +158,22 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     tmp.openArray(true);
     for (std::shared_ptr<arangodb::Index> const& idx : indexes) {
-#ifdef USE_IRESEARCH
       if (!withLinks && idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
         continue;
       }
-#endif
       idx->toVelocyPack(tmp, flags);
     }
     tmp.close();
     trx.finish(res);
   }
-
+  
+  bool mergeEdgeIdxs = !ServerState::instance()->isDBServer();
+  
   double selectivity = 0, memory = 0, cacheSize = 0, cacheUsage = 0,
          cacheLifeTimeHitRate = 0, cacheWindowedHitRate = 0;
 
   VPackArrayBuilder a(&result);
   for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
-    auto type = index.get(arangodb::StaticStrings::IndexType);
     std::string id = collection->name() + TRI_INDEX_HANDLE_SEPARATOR_CHR +
                      index.get(arangodb::StaticStrings::IndexId).copyString();
     VPackBuilder merge;
@@ -186,7 +181,8 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     merge.openObject(true);
     merge.add(arangodb::StaticStrings::IndexId, arangodb::velocypack::Value(id));
 
-    if (type.isString() && type.compareString("edge") == 0) {
+    auto type = index.get(arangodb::StaticStrings::IndexType);
+    if (mergeEdgeIdxs && Index::type(type.copyString()) == Index::TRI_IDX_TYPE_EDGE_INDEX) {
       VPackSlice fields = index.get("fields");
       TRI_ASSERT(fields.isArray() && fields.length() <= 2);
 

@@ -959,7 +959,7 @@ void HeartbeatThread::runCoordinator() {
           // calling pregel code
           ClusterInfo::instance()->setFailedServers(failedServers);
 
-          pregel::PregelFeature* prgl = pregel::PregelFeature::instance();
+          std::shared_ptr<pregel::PregelFeature> prgl = pregel::PregelFeature::instance();
           if (prgl != nullptr && failedServers.size() > 0) {
             pregel::RecoveryManager* mngr = prgl->recoveryManager();
             if (mngr != nullptr) {

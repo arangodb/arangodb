@@ -212,10 +212,11 @@ bool IResearchViewConditionHandler::before(ExecutionNode* en) {
         }
       }
 
-      auto sortCondition =
-          buildSort(*_plan, node->outVariable(), _sorts, _variableDefinitions,
-                    true  // node->isInInnerLoop() // build scorers only in case if we're inside a loop
-          );
+      auto sortCondition = buildSort(*_plan,
+                                     node->outVariable(),
+                                     _sorts,
+                                     _variableDefinitions,
+                                     true); // build scorers only in case if we're inside a loop
 
       if (filterCondition.isEmpty() && sortCondition.empty()) {
         // no conditions left
@@ -258,7 +259,7 @@ bool IResearchViewConditionHandler::before(ExecutionNode* en) {
 bool IResearchViewConditionHandler::handleFilterCondition(ExecutionNode* en,
                                                           Condition& condition) {
   // normalize the condition
-  condition.normalize(_plan);
+  condition.normalize(_plan, true);
   TRI_IF_FAILURE("ConditionFinder::normalizePlan") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

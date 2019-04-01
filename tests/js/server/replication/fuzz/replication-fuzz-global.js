@@ -65,55 +65,41 @@ function ReplicationSuite() {
     return db._collection(name).count();
   };
 
-  var compare = function(masterFunc, masterFunc2, slaveFuncFinal) {
-    var state = {};
-
-    assertEqual(cn, db._name());
+  var compare = function(masterFunc, slaveFuncFinal) {
+    db._useDatabase("_system"); 
     db._flushCache();
-    masterFunc(state);
-    
     connectToSlave();
-    assertEqual(cn, db._name());
 
-    var syncResult = replication.sync({
+    let syncResult = replication.setupReplicationGlobal({
       endpoint: masterEndpoint,
       username: "root",
       password: "",
       verbose: true,
       includeSystem: false,
-      keepBarrier: true,
       requireFromPresent: true,
-      incremental: true
+      incremental: true,
+      autoResync: true,
+      autoResyncRetries: 5 
     });
 
-    assertTrue(syncResult.hasOwnProperty('lastLogTick'));
-
+    let state = {};
     connectToMaster();
-    masterFunc2(state);
-
+    masterFunc(state);
+    
     // use lastLogTick as of now
     state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
-    let applierConfiguration = {
-      endpoint: masterEndpoint,
-      username: "root",
-      password: "" 
-    };
-
+    db._useDatabase("_system");
     connectToSlave();
-    assertEqual(cn, db._name());
-
-    replication.applier.properties(applierConfiguration);
-    replication.applier.start(syncResult.lastLogTick, syncResult.barrierId);
 
     var printed = false;
 
     while (true) {
-      var slaveState = replication.applier.state();
+      let slaveState = replication.globalApplier.state();
 
       if (slaveState.state.lastError.errorNum > 0) {
         console.topic("replication=error", "slave has errored:", JSON.stringify(slaveState.state.lastError));
-        break;
+        throw JSON.stringify(slaveState.state.lastError);
       }
 
       if (!slaveState.state.running) {
@@ -142,45 +128,20 @@ function ReplicationSuite() {
 
     setUp: function() {
       db._useDatabase("_system");
-      connectToMaster();
-      try {
-        db._dropDatabase(cn);
-      } catch (err) {}
-
-      db._createDatabase(cn);
-      db._useDatabase(cn);
-
-      db._useDatabase("_system");
-      connectToSlave();
-      
-      try {
-        db._dropDatabase(cn);
-      } catch (err) {}
-
-      db._createDatabase(cn);
     },
 
     tearDown: function() {
       db._useDatabase("_system");
       connectToMaster();
 
-      db._useDatabase(cn);
       connectToSlave();
-      replication.applier.stop();
-      replication.applier.forget();
-      
-      db._useDatabase("_system");
-      db._dropDatabase(cn);
+      replication.globalApplier.forget();
     },
     
-    testFuzz: function() {
-      db._useDatabase(cn);
+    testFuzzGlobal: function() {
       connectToMaster();
 
       compare(
-        function(state) {
-        },
-
         function(state) {
           let pickDatabase = function() {
             db._useDatabase('_system');
@@ -375,7 +336,6 @@ function ReplicationSuite() {
             });
           };
           
-          
           let createCollection = function() {
             let name = "test" + internal.genRandomAlphaNumbers(16) + Date.now();
             return db._create(name);
@@ -388,10 +348,6 @@ function ReplicationSuite() {
           
           let dropCollection = function() {
             let collection = pickCollection();
-            if (db._name() === cn) {
-              // don't drop collections from our test database
-              return false;
-            }
             db._drop(collection.name());
           };
           
@@ -438,10 +394,6 @@ function ReplicationSuite() {
           let dropDatabase = function () {
             pickDatabase();
             let name = db._name();
-            if (name === cn) {
-              // we do not want to delete our test database
-              return;
-            }
             db._useDatabase('_system');
             db._dropDatabase(name);
           };
@@ -478,28 +430,44 @@ function ReplicationSuite() {
             op.func();
           }
 
-          db._useDatabase(cn);
           let total = "";
-          db._collections().filter(function(c) { return c.name()[0] !== '_'; }).forEach(function(c) {
-            total += c.name() + "-" + c.count() + "-" + collectionChecksum(c.name());
-            c.indexes().forEach(function(index) {
-              delete index.selectivityEstimate;
-              total += index.type + "-" + JSON.stringify(index.fields);
+          db._useDatabase('_system');
+
+          db._databases().forEach(function(d) {
+            if (d === '_system') {
+              return;
+            }
+            db._useDatabase(d);
+
+            db._collections().filter(function(c) { return c.name()[0] !== '_'; }).forEach(function(c) {
+              total += c.name() + "-" + c.count() + "-" + collectionChecksum(c.name());
+              c.indexes().forEach(function(index) {
+                delete index.selectivityEstimate;
+                total += index.type + "-" + JSON.stringify(index.fields);
+              });
             });
           });
+
           state.state = total;
         },
 
         function(state) {
-          db._useDatabase(cn);
           let total = "";
-          db._collections().filter(function(c) { return c.name()[0] !== '_'; }).forEach(function(c) {
-            total += c.name() + "-" + c.count() + "-" + collectionChecksum(c.name());
-            c.indexes().forEach(function(index) {
-              delete index.selectivityEstimate;
-              total += index.type + "-" + JSON.stringify(index.fields);
+          db._databases().forEach(function(d) {
+            if (d === '_system') {
+              return;
+            }
+            db._useDatabase(d);
+
+            db._collections().filter(function(c) { return c.name()[0] !== '_'; }).forEach(function(c) {
+              total += c.name() + "-" + c.count() + "-" + collectionChecksum(c.name());
+              c.indexes().forEach(function(index) {
+                delete index.selectivityEstimate;
+                total += index.type + "-" + JSON.stringify(index.fields);
+              });
             });
           });
+
           assertEqual(total, state.state);
         }
       );
