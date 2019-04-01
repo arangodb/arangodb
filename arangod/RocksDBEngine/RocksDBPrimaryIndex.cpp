@@ -581,24 +581,6 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
                                    velocypack::Slice const& oldDoc,
                                    velocypack::Slice const& newDoc,
                                    Index::OperationMode mode) {
-//  Result res;
-//  VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
-//  TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
-//  RocksDBKeyLeaser key(&trx);
-//
-//  key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
-//
-//  TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(newDoc);
-//  auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
-//
-//  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
-//
-//  rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string());
-//  if (!s.ok()) {
-//    res.reset(rocksutils::convertStatus(s, rocksutils::index));
-//    addErrorMsg(res);
-//  }
-//  return res;
   return Result(); // primary-index never changes
 }
 
