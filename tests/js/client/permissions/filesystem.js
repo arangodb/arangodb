@@ -84,15 +84,10 @@ function testSuite() {
     }
   }
   function tryReadAllowed(fn, expectedContent) {
-    try {
-      let content = fs.read(fn);
-      assertEqual(content,
-                  expectedContent,
-                  'Expected ' + fn + 'to contain "' + expectedContent + '" but it contained: "' + content + '"!');
-    }
-    catch (err) {
-      assertTrue(false, fn + ' wasn\'t able to read file: ' + err);
-    }
+    let content = fs.read(fn);
+    assertEqual(content,
+                expectedContent,
+                'Expected ' + fn + 'to contain "' + expectedContent + '" but it contained: "' + content + '"!');
   }
   return {
     testReadFile : function() {
@@ -102,10 +97,10 @@ function testSuite() {
       tryReadForbidden(topLevelForbiddenFile);
       // N/A tryReadForbidden(subLevelForbiddenFile);
 
-      
+
       tryReadAllowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryReadAllowed(subLevelAllowedFile, 'this file is allowed.\n');
-      
+
     }
   };
 }
