@@ -261,9 +261,9 @@ bool IResearchViewExecutor<ordered>::writeRow(ReadContext& ctx, IndexResult& res
   if (!collection) {
     // TODO Register AQL warning instead?
     LOG_TOPIC("09c4f", WARN, arangodb::iresearch::TOPIC)
-    << "failed to find collection while reading document from "
-       "arangosearch view, cid '"
-    << cid << "'";
+        << "failed to find collection while reading document from "
+           "arangosearch view, cid '"
+        << cid << "'";
 
     return false;
   }
@@ -294,6 +294,40 @@ bool IResearchViewExecutor<ordered>::writeRow(ReadContext& ctx, IndexResult& res
 }
 
 template <bool ordered>
+void IResearchViewExecutor<ordered>::evaluateScores(ReadContext& ctx,
+                                                    std::vector<AqlValue>& scores) {
+  // evaluate scores
+  _scr->evaluate();
+
+  // in arangodb we assume all scorers return float_t
+  auto begin = reinterpret_cast<const float_t*>(_scrVal.begin());
+  auto end = reinterpret_cast<const float_t*>(_scrVal.end());
+
+  // scorer register are placed consecutively after the document output register
+  // is used here currently only for assertions.
+  RegisterId scoreReg = ctx.docOutReg + 1;
+
+  // copy scores, registerId's are sequential
+  for (; begin != end; ++begin, ++scoreReg) {
+    TRI_ASSERT(infos().isScoreReg(scoreReg));
+    AqlValue value{AqlValueHintDouble{*begin}};
+    scores.emplace_back(value);
+  }
+
+  // We should either have no _scrVals to evaluate, or all
+  TRI_ASSERT(begin == nullptr || !infos().isScoreReg(scoreReg));
+
+  while (infos().isScoreReg(scoreReg)) {
+    AqlValue value{};
+    scores.emplace_back(value);
+    ++scoreReg;
+  }
+
+  // we should have written exactly all score registers by now
+  TRI_ASSERT(!infos().isScoreReg(scoreReg));
+}
+
+template <bool ordered>
 void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadContext& ctx) {
   TRI_ASSERT(_filter != nullptr);
 
@@ -315,44 +349,17 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
     std::vector<AqlValue> scores;
     scores.reserve(infos().getNumScoreRegisters());
 
-    TRI_voc_cid_t const cid = _reader->cid(_readerOffset);  // CID is constant until resetIterator()
+    TRI_voc_cid_t const cid =
+        _reader->cid(_readerOffset);  // CID is constant until resetIterator()
 
     // in the ordered case we have to write scores as well as a document
     if /* constexpr */ (ordered) {
-      // evaluate scores
-      _scr->evaluate();
-
-      // in arangodb we assume all scorers return float_t
-      auto begin = reinterpret_cast<const float_t*>(_scrVal.begin());
-      auto end = reinterpret_cast<const float_t*>(_scrVal.end());
-
-      // scorer register are placed consecutively after the document output register
-      // is used here currently only for assertions.
-      RegisterId scoreReg = ctx.docOutReg + 1;
-
-      // copy scores, registerId's are sequential
-      for (; begin != end; ++begin, ++scoreReg) {
-        TRI_ASSERT(infos().isScoreReg(scoreReg));
-        AqlValue value{AqlValueHintDouble{*begin}};
-        scores.emplace_back(value);
-      }
-
-      // We should either have no _scrVals to evaluate, or all
-      TRI_ASSERT(begin == nullptr || !infos().isScoreReg(scoreReg));
-
-      while (infos().isScoreReg(scoreReg)) {
-        AqlValue value{};
-        scores.emplace_back(value);
-        ++scoreReg;
-      }
-
-      // we should have written exactly all score registers by now
-      TRI_ASSERT(!infos().isScoreReg(scoreReg));
+      evaluateScores(ctx, scores);
     }
 
     TRI_ASSERT(scores.size() == infos().getNumScoreRegisters());
 
-    IndexResult result { documentId, cid, std::move(scores) };
+    IndexResult result{documentId, cid, std::move(scores)};
     _indexResultBuffer.emplace_back(std::move(result));
     break;
   }
@@ -366,16 +373,13 @@ bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
     return false;
   }
 
-
   IndexResult result = _indexResultBuffer.front();
   _indexResultBuffer.pop_front();
 
   if (writeRow(ctx, result)) {
-
     // we read and wrote a document, return true. we don't know if there are more.
     return true;  // do not change iterator if already reached limit
   }
-
 
   // no documents found, we're exhausted.
   return false;
@@ -538,7 +542,7 @@ bool IResearchViewExecutor<ordered>::readDocument(
   return collection.readDocumentWithCallback(infos().getQuery().trx(), docPk, callback);
 }
 
-template<bool ordered>
+template <bool ordered>
 size_t IResearchViewExecutor<ordered>::numberOfRowsInFlight() const {
   // not implemented
   TRI_ASSERT(false);

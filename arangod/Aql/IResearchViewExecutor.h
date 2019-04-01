@@ -143,7 +143,7 @@ class IResearchViewExecutor {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
   // not implemented!
-  inline size_t numberOfRowsInFlight() const;
+  size_t numberOfRowsInFlight() const;
 
  private:
   class ReadContext {
@@ -175,6 +175,8 @@ class IResearchViewExecutor {
   Infos const& infos() const noexcept;
 
   bool next(ReadContext& ctx);
+
+  void evaluateScores(ReadContext& ctx, std::vector<AqlValue>& scores);
 
   void fillBuffer(ReadContext& ctx);
 
