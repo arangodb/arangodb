@@ -360,7 +360,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   std::atomic<bool> _isShuttingDown;
 
   /// @brief flag to indicate when it is time to stop thread pool
-  std::atomic<std::chrono::steady_clock::time_point> _isPaused;
+  std::atomic<std::chrono::steady_clock::duration> _isPaused;
 
   /// @brief simple counter for creating MaintenanceAction id.  Ok for it to roll over.
   std::atomic<uint64_t> _nextActionId;

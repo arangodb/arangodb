@@ -3329,7 +3329,7 @@ arangodb::Result hotBackupCoordinator(
   for (auto const& dbServer : dbServers) {
     cc->asyncRequest(
       "", coordTransactionID, "server:" + dbServer, RequestType::POST, backupUrl, body,
-      headers, nullptr, lockWait);
+      headers, nullptr, wait);
   }
 
   return arangodb::Result();

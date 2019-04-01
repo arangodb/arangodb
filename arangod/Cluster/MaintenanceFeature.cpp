@@ -59,13 +59,14 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
 }  // MaintenanceFeature::MaintenanceFeature
 
 bool MaintenanceFeature::isPaused() const {
-  std::chrono::steady_clock::time_point tmp = _isPaused;
-  return tmp > std::chrono::steady_clock::now();
+  std::chrono::steady_clock::duration tmp = _isPaused;
+  return tmp > std::chrono::duration_cast<std::chrono::seconds>(
+    std::chrono::steady_clock::now().time_since_epoch());
 }
 
 void MaintenanceFeature::init() {
   _isShuttingDown = false;
-  _isPaused = std::chrono::steady_clock::now();
+  _isPaused = std::chrono::steady_clock::duration::zero();
   _nextActionId = 1;
 
   setOptional(true);
@@ -149,11 +150,12 @@ void MaintenanceFeature::start() {
 
 
 void MaintenanceFeature::pause(std::chrono::seconds const& s) {
-  _isPaused = std::chrono::steady_clock::now() + s;
+  _isPaused = std::chrono::duration_cast<std::chrono::seconds>(
+    std::chrono::steady_clock::now().time_since_epoch()) + std::chrono::seconds(s);
 }
 
 void MaintenanceFeature::proceed() {
-  _isPaused = std::chrono::steady_clock::now();
+  _isPaused = std::chrono::steady_clock::duration::zero();
 }
 
 void MaintenanceFeature::beginShutdown() {
