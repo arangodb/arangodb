@@ -65,8 +65,8 @@ JOB_STATUS ResignLeadership::status() {
     return _status;
   }
 
-  Node::Children const todos = _snapshot.hasAsChildren(toDoPrefix).first;
-  Node::Children const pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  Node::Children& const todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  Node::Children& const pends = _snapshot.hasAsChildren(pendingPrefix).first;
   size_t found = 0;
 
   for (auto const& subJob : todos) {
@@ -94,7 +94,7 @@ JOB_STATUS ResignLeadership::status() {
     return PENDING;
   }
 
-  Node::Children const failed = _snapshot.hasAsChildren(failedPrefix).first;
+  Node::Children const& failed = _snapshot.hasAsChildren(failedPrefix).first;
   size_t failedFound = 0;
   for (auto const& subJob : failed) {
     if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
@@ -130,7 +130,7 @@ JOB_STATUS ResignLeadership::status() {
   }
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, reportTrx);
+  write_ret_t res = singleWriteTransaction(_agent, reportTrx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0] != 0) {
     return FINISHED;
@@ -176,7 +176,7 @@ bool ResignLeadership::create(std::shared_ptr<VPackBuilder> envelope) {
     return true;
   }
 
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
@@ -217,7 +217,7 @@ bool ResignLeadership::start(bool& aborts) {
 
   // Check that _to is not in `Target/CleanedServers`:
   VPackBuilder cleanedServersBuilder;
-  auto cleanedServersNode = _snapshot.hasAsNode(cleanedPrefix);
+  auto const& cleanedServersNode = _snapshot.hasAsNode(cleanedPrefix);
   if (cleanedServersNode.second) {
     cleanedServersNode.first.toBuilder(cleanedServersBuilder);
   } else {
@@ -240,7 +240,7 @@ bool ResignLeadership::start(bool& aborts) {
   //   so that hasAsNode does not generate a warning log message)
   VPackBuilder failedServersBuilder;
   if (_snapshot.has(failedServersPrefix)) {
-    auto failedServersNode = _snapshot.hasAsNode(failedServersPrefix);
+    auto const& failedServersNode = _snapshot.hasAsNode(failedServersPrefix);
     if (failedServersNode.second) {
       failedServersNode.first.toBuilder(failedServersBuilder);
     } else {
@@ -336,7 +336,7 @@ bool ResignLeadership::start(bool& aborts) {
   }  // array for transaction done
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, *pending);
+  write_ret_t res = singleWriteTransaction(_agent, *pending, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Pending: Clean out server " + _server;
