@@ -130,7 +130,7 @@ class IResearchViewExecutor {
   using Stats = IResearchViewStats;
 
   IResearchViewExecutor() = delete;
-  IResearchViewExecutor(IResearchViewExecutor&&) noexcept = default;
+  IResearchViewExecutor(IResearchViewExecutor&&) = default;
   IResearchViewExecutor(IResearchViewExecutor const&) = delete;
   IResearchViewExecutor(Fetcher& fetcher, Infos&);
   ~IResearchViewExecutor() = default;
@@ -165,10 +165,18 @@ class IResearchViewExecutor {
     IndexIterator::DocumentCallback const callback;
   };  // ReadContext
 
+  struct IndexResult {
+    LocalDocumentId id;
+    TRI_voc_cid_t cid;
+    std::vector<AqlValue> scores;
+  };
+
  private:
   Infos const& infos() const noexcept;
 
   bool next(ReadContext& ctx);
+
+  bool writeRow(ReadContext& ctx, IndexResult& result);
 
   bool resetIterator();
 
@@ -186,6 +194,8 @@ class IResearchViewExecutor {
   InputAqlItemRow _inputRow;
 
   ExecutionState _upstreamState;
+
+  std::deque<IndexResult> _indexResultBuffer;
 
   // IResearchViewBlockBase members:
   irs::attribute_view _filterCtx;  // filter context

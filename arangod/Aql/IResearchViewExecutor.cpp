@@ -237,10 +237,8 @@ LocalDocumentId readPK(irs::doc_iterator& it,
       TRI_ASSERT(readSuccess == documentId.isSet());
 
       if (!readSuccess) {
-        // TODO This warning was previously emitted only in the ordered case.
-        // Must it stay that way?
-        // TODO Maybe this should be an exception?
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        // TODO Register AQL warning instead?
+        LOG_TOPIC("6442f", WARN, arangodb::iresearch::TOPIC)
             << "failed to read document primary key while reading document "
                "from arangosearch view, doc_id '"
             << docId << "'";
@@ -249,6 +247,50 @@ LocalDocumentId readPK(irs::doc_iterator& it,
   }
 
   return documentId;
+}
+
+template <bool ordered>
+bool IResearchViewExecutor<ordered>::writeRow(ReadContext& ctx, IndexResult& result) {
+  LocalDocumentId const& documentId = result.id;
+  TRI_voc_cid_t const& cid = result.cid;
+
+  TRI_ASSERT(documentId.isSet());
+
+  auto collection = lookupCollection(*infos().getQuery().trx(), cid);
+
+  if (!collection) {
+    // TODO Register AQL warning instead?
+    LOG_TOPIC("09c4f", WARN, arangodb::iresearch::TOPIC)
+    << "failed to find collection while reading document from "
+       "arangosearch view, cid '"
+    << cid << "'";
+
+    return false;
+  }
+
+  // read document from underlying storage engine, if we got an id
+  if (collection->readDocumentWithCallback(infos().getQuery().trx(), documentId, ctx.callback)) {
+    // in the ordered case we have to write scores as well as a document
+    if /* constexpr */ (ordered) {
+      // scorer register are placed consecutively after the document output register
+      RegisterId scoreReg = ctx.docOutReg + 1;
+
+      for (auto& it : result.scores) {
+        TRI_ASSERT(infos().isScoreReg(scoreReg));
+        bool mustDestroy = false;
+        AqlValueGuard guard{it, mustDestroy};
+        ctx.outputRow.moveValueInto(scoreReg, ctx.inputRow, guard);
+        ++scoreReg;
+      }
+
+      // we should have written exactly all score registers by now
+      TRI_ASSERT(!infos().isScoreReg(scoreReg));
+    }
+
+    return true;
+  }
+
+  return false;
 }
 
 template <bool ordered>
@@ -261,65 +303,63 @@ bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
       continue;
     }
 
-    auto const cid = _reader->cid(_readerOffset);  // CID is constant until resetIterator()
-    auto collection = lookupCollection(*infos().getQuery().trx(), cid);
-
-    if (!collection) {
-      // TODO shouldn't this be an exception?
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to find collection while reading document from "
-             "arangosearch view, cid '"
-          << cid << "'";
-      continue;
-    }
-
     TRI_ASSERT(_pkReader);
 
     // try to read a document PK from iresearch
     LocalDocumentId documentId = readPK(*_itr, _pkReader);
 
-    // read document from underlying storage engine, if we got an id
-    if (documentId.isSet() &&
-        collection->readDocumentWithCallback(infos().getQuery().trx(),
-                                             documentId, ctx.callback)) {
-      // in the ordered case we have to write scores as well as a document
-      if /* constexpr */ (ordered) {
-        // evaluate scores
-        _scr->evaluate();
+    if (!documentId.isSet()) {
+      continue;
+    }
 
-        // in arangodb we assume all scorers return float_t
-        auto begin = reinterpret_cast<const float_t*>(_scrVal.begin());
-        auto end = reinterpret_cast<const float_t*>(_scrVal.end());
+    std::vector<AqlValue> scores;
+    scores.reserve(infos().getNumScoreRegisters());
 
-        // scorer register are placed consecutively after the document output register
-        RegisterId scoreReg = ctx.docOutReg + 1;
+    TRI_voc_cid_t const cid = _reader->cid(_readerOffset);  // CID is constant until resetIterator()
 
-        // copy scores, registerId's are sequential
-        for (; begin != end; ++begin, ++scoreReg) {
-          TRI_ASSERT(infos().isScoreReg(scoreReg));
-          AqlValue a{AqlValueHintDouble{*begin}};
-          bool mustDestroy = false;
-          AqlValueGuard guard{a, mustDestroy};
-          ctx.outputRow.moveValueInto(scoreReg, ctx.inputRow, guard);
-        }
+    // in the ordered case we have to write scores as well as a document
+    if /* constexpr */ (ordered) {
+      // evaluate scores
+      _scr->evaluate();
 
-        // We should either have no _scrVals to evaluate, or all
-        TRI_ASSERT(begin == nullptr || !infos().isScoreReg(scoreReg));
+      // in arangodb we assume all scorers return float_t
+      auto begin = reinterpret_cast<const float_t*>(_scrVal.begin());
+      auto end = reinterpret_cast<const float_t*>(_scrVal.end());
 
-        while (infos().isScoreReg(scoreReg)) {
-          AqlValue value{};
-          ctx.outputRow.cloneValueInto(scoreReg, ctx.inputRow, value);
-          ++scoreReg;
-        }
+      // scorer register are placed consecutively after the document output register
+      // is used here currently only for assertions.
+      RegisterId scoreReg = ctx.docOutReg + 1;
 
-        // we should have written exactly all score registers by now
-        TRI_ASSERT(!infos().isScoreReg(scoreReg));
-        TRI_ASSERT(ctx.outputRow.produced());
+      // copy scores, registerId's are sequential
+      for (; begin != end; ++begin, ++scoreReg) {
+        TRI_ASSERT(infos().isScoreReg(scoreReg));
+        AqlValue value{AqlValueHintDouble{*begin}};
+        scores.emplace_back(value);
       }
+
+      // We should either have no _scrVals to evaluate, or all
+      TRI_ASSERT(begin == nullptr || !infos().isScoreReg(scoreReg));
+
+      while (infos().isScoreReg(scoreReg)) {
+        AqlValue value{};
+        scores.emplace_back(value);
+        ++scoreReg;
+      }
+
+      // we should have written exactly all score registers by now
+      TRI_ASSERT(!infos().isScoreReg(scoreReg));
+    }
+
+    TRI_ASSERT(scores.size() == infos().getNumScoreRegisters());
+
+    IndexResult result { documentId, cid, std::move(scores) };
+
+    if (writeRow(ctx, result)) {
 
       // we read and wrote a document, return true. we don't know if there are more.
       return true;  // do not change iterator if already reached limit
     }
+
   }
 
   // no documents found, we're exhausted.
