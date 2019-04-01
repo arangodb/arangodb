@@ -56,7 +56,7 @@ MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
 void MaintenanceWorker::run() {
   bool more(false);
 
-  while (eSTOP != _loopState && !_feature.isShuttingDown()) {
+  while (eSTOP != _loopState && !_feature.isShuttingDown() && !_feature.isPaused()) {
     try {
       switch (_loopState) {
         case eFIND_ACTION:

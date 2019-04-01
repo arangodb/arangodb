@@ -61,7 +61,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
 void MaintenanceFeature::init() {
   _isShuttingDown = false;
   _nextActionId = 1;
-  _pauseUntil = std::chrono::steady_clock::duration::zero()
+  _pauseUntil = std::chrono::steady_clock::duration::zero();
 
   setOptional(true);
   requiresElevatedPrivileges(false);  // ??? this mean admin priv?
@@ -408,7 +408,7 @@ std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
 std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<std::string> const& labels) {
   std::shared_ptr<Action> ret_ptr;
 
-  while (!_isShuttingDown) {
+  while (!isPaused() && !_isShuttingDown) {
     // use priority queue for ready action (and purge any that are done waiting)
     {
       WRITE_LOCKER(wLock, _actionRegistryLock);
@@ -447,7 +447,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
     }      // WRITE
 
     // no pointer ... wait 0.1 seconds unless woken up
-    if (!_isShuttingDown) {
+    if (!isPaused() && !_isShuttingDown) {
       CONDITION_LOCKER(cLock, _actionRegistryCond);
       _actionRegistryCond.wait(std::chrono::milliseconds(100));
     }  // if
@@ -757,4 +757,13 @@ void MaintenanceFeature::delShardVersion(std::string const& shname) {
 bool MaintenanceFeature::isPaused() const {
   std::chrono::steady_clock::duration t = _pauseUntil;
   return t > std::chrono::steady_clock::now().time_since_epoch();
+}
+
+void MaintenanceFeature::pause(std::chrono::seconds const& s) {
+  _pauseUntil =
+    std::chrono::steady_clock::now().time_since_epoch() + s;
+}
+
+ void MaintenanceFeature::proceed() {
+  _pauseUntil = std::chrono::steady_clock::duration::zero();
 }
