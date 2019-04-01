@@ -39,7 +39,9 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/conversions.h"
 #include "Basics/fpconv.h"
+#include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
@@ -4191,6 +4193,36 @@ AqlValue Functions::Sha512(ExpressionContext*, transaction::Methods* trx,
   return AqlValue(&hex[0], 128);
 }
 
+/// @brief function Crc32
+AqlValue Functions::Crc32(ExpressionContext*, transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  ::appendAsString(trx, adapter, value);
+
+  uint32_t crc = TRI_Crc32HashPointer(buffer->c_str(), buffer->length());
+  char out[9];
+  size_t length = TRI_StringUInt32HexInPlace(crc, &out[0]);
+  return AqlValue(&out[0], length);
+}
+
+/// @brief function Fnv64
+AqlValue Functions::Fnv64(ExpressionContext*, transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  ::appendAsString(trx, adapter, value);
+
+  uint64_t hash = TRI_FnvHashPointer(buffer->c_str(), buffer->length());
+  char out[17];
+  size_t length = TRI_StringUInt64HexInPlace(hash, &out[0]);
+  return AqlValue(&out[0], length);
+}
+
 /// @brief function HASH
 AqlValue Functions::Hash(ExpressionContext*, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
@@ -6685,7 +6717,7 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
   }
 
   uint64_t execNr = arg1.toInt64();
-  pregel::PregelFeature* feature = pregel::PregelFeature::instance();
+  std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
   if (!feature) {
     ::registerWarning(expressionContext, AFN, TRI_ERROR_FAILED);
     return AqlValue(AqlValueHintEmptyArray());

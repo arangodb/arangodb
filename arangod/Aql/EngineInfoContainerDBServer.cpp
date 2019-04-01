@@ -44,9 +44,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchViewNode.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -188,7 +186,6 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       setRestrictedShard(ExecutionNode::castTo<IndexNode*>(node), _source);
       break;
     }
-#ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       TRI_ASSERT(EngineType::Collection == type());
       auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
@@ -201,7 +198,6 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
                            findFirstScatter(viewNode));
       break;
     }
-#endif
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REMOVE:
@@ -232,7 +228,6 @@ void EngineInfoContainerDBServer::EngineInfo::collection(Collection* col) noexce
   source->collection = col;
 }
 
-#ifdef USE_IRESEARCH
 LogicalView const* EngineInfoContainerDBServer::EngineInfo::view() const noexcept {
   TRI_ASSERT(EngineType::View == type());
   auto* source = boost::get<ViewSource>(&_source);
@@ -257,7 +252,6 @@ void EngineInfoContainerDBServer::EngineInfo::addClient(ServerID const& server) 
     source->gather->sortMode(GatherNode::evaluateSortMode(++source->numClients));
   }
 }
-#endif
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     ServerID const& serverId, Query& query, std::vector<ShardID> const& shards,
@@ -287,13 +281,10 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     // "varUsageComputed" flag below (which will handle the counting)
     plan.increaseCounter(nodeType);
 
-#ifdef USE_IRESEARCH
     if (ExecutionNode::ENUMERATE_IRESEARCH_VIEW == nodeType) {
       auto* viewNode = ExecutionNode::castTo<iresearch::IResearchViewNode*>(clone);
       viewNode->shards() = shards;
-    } else
-#endif
-    if (ExecutionNode::REMOTE == nodeType) {
+    } else if (ExecutionNode::REMOTE == nodeType) {
       auto rem = ExecutionNode::castTo<RemoteNode*>(clone);
       // update the remote node with the information about the query
       rem->server("server:" + arangodb::ServerState::instance()->getId());
@@ -451,7 +442,6 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
       updateCollection(col);
       break;
     }
-#ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
       auto* view = viewNode.view().get();
@@ -463,7 +453,6 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
 
       break;
     }
-#endif
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REMOVE:
@@ -508,12 +497,9 @@ void EngineInfoContainerDBServer::closeSnippet(QueryId coordinatorEngineId) {
 
   e->connectQueryId(coordinatorEngineId);
 
-#ifdef USE_IRESEARCH
   if (EngineInfo::EngineType::View == e->type()) {
     _viewInfos[e->view()].engines.emplace_back(std::move(e));
-  } else
-#endif
-  {
+  } else {
     TRI_ASSERT(e->collection() != nullptr);
     auto it = _collectionInfos.find(e->collection());
     // This is not possible we have a snippet where no collection is involved
@@ -644,7 +630,6 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
     EngineInfo& engine = *it.first;
     std::vector<ShardID> const& shards = it.second;
 
-#ifdef USE_IRESEARCH
     // serialize for the list of shards
     if (engine.type() == EngineInfo::EngineType::View) {
       engine.serializeSnippet(serverId, query, shards, infoBuilder);
@@ -652,7 +637,6 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
 
       continue;
     }
-#endif
 
     bool isResponsibleForInit = true;
     for (auto const& shard : shards) {
@@ -998,24 +982,8 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
   });
 
   // Build Lookup Infos
-  VPackBuilder infoBuilder;
-  
-  // lazily begin transactions on leaders if necessary
+  VPackBuilder infoBuilder;  
   transaction::Methods* trx = _query->trx();
-  
-  // snippets already know which shards to lock, there is no need for us to
-  // start a managed begin / end transaction for a single AQL query
-  if (trx->state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    std::vector<std::string> servers;
-    for (auto const& it : dbServerMapping) {
-      servers.emplace_back(it.first);
-    }
-    // start transaction on all servers with snippets
-    Result res = ClusterTrxMethods::beginTransactionOnLeaders(*trx->state(), servers);
-    if (res.fail()) {
-      return res;
-    }
-  }
 
   // we need to lock per server in a deterministic order to avoid deadlocks
   for (auto& it : dbServerMapping) {

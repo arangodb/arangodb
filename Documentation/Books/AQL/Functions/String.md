@@ -113,6 +113,22 @@ COUNT()
 
 This is an alias for [LENGTH()](#length).
 
+CRC32()
+-----
+
+`CRC32(text) → hash`
+
+Calculate the CRC32 checksum for *text* and return it in a hexadecimal
+string representation. The polynomial used is 0x1EDC6F41. The initial
+value used is 0xFFFFFFFF, and the final xor value is also 0xFFFFFFFF.
+
+- **text** (string): a string
+- returns **hash** (string): CRC32 checksum as hex string
+
+```js
+CRC32("foobar") // "D5F5C7F"
+```
+
 ENCODE_URI_COMPONENT()
 -----------
 
@@ -168,6 +184,21 @@ string *text*. Positions start at 0.
 FIND_LAST("foobarbaz", "ba") // 6
 FIND_LAST("foobarbaz", "ba", 7) // -1
 FIND_LAST("foobarbaz", "ba", 0, 4) // 3
+```
+
+FNV64()
+-----
+
+`FNV64(text) → hash`
+
+Calculate the FNV-1A 64 bit hash for *text* and return it in a hexadecimal
+string representation.
+
+- **text** (string): a string
+- returns **hash** (string): FNV-1A hash as hex string
+
+```js
+FNV64("foobar") // "85944171F73967E8"
 ```
 
 JSON_PARSE()

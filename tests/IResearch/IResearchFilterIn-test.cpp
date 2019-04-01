@@ -35,6 +35,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -54,6 +55,7 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
+#include "V8Server/V8DealerFeature.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
@@ -71,29 +73,33 @@
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct IResearchFilterSetup {
+struct IResearchFilterInSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchFilterSetup(): engine(server), server(nullptr, nullptr) {
+  IResearchFilterInSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
     arangodb::tests::init();
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
+
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
     features.emplace_back(new arangodb::AuthenticationFeature(server), true);
     features.emplace_back(new arangodb::DatabaseFeature(server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ViewTypesFeature(server), false); // required for IResearchFeature
     features.emplace_back(new arangodb::AqlFeature(server), true);
     features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
@@ -104,6 +110,11 @@ struct IResearchFilterSetup {
       features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
+    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
+    arangodb::application_features::ApplicationServer::server->addFeature(
+      new arangodb::ClusterFeature(server)
+    );
+
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
     }
@@ -111,6 +122,12 @@ struct IResearchFilterSetup {
     for (auto& f : features) {
       f.first->prepare();
     }
+
+    auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature
+    >("Database");
+    dbFeature->loadDatabases(databases->slice());
 
     for (auto& f : features) {
       if (f.second) {
@@ -146,17 +163,20 @@ struct IResearchFilterSetup {
         return params[0];
     }});
 
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    TRI_vocbase_t* vocbase;
+
+    dbFeature->createDatabase(1, "testVocbase", vocbase); // required for IResearchAnalyzerFeature::emplace(...)
+    analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
   }
 
-  ~IResearchFilterSetup() {
-    system.reset(); // destroy before reseting the 'ENGINE'
+  ~IResearchFilterInSetup() {
     arangodb::AqlFeature(server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f : features) {
@@ -170,6 +190,7 @@ struct IResearchFilterSetup {
     }
 
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 }; // IResearchFilterSetup
 
@@ -182,7 +203,7 @@ struct IResearchFilterSetup {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_CASE("IResearchFilterTestIn", "[iresearch][iresearch-filter]") {
-  IResearchFilterSetup s;
+  IResearchFilterInSetup s;
   UNUSED(s);
 
 SECTION("BinaryIn") {
@@ -250,9 +271,9 @@ SECTION("BinaryIn") {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "test_analyzer")).term("1");
-    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "test_analyzer")).term("2");
-    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "testVocbase::test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "testVocbase::test_analyzer")).term("2");
+    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "testVocbase::test_analyzer")).term("3");
 
     assertFilterSuccess("FOR d IN collection FILTER ANALYZER(d.a['b']['c'][412].e.f in ['1','2','3'], 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER ANALYZER(d.a.b.c[412].e.f in ['1','2','3'], 'test_analyzer') RETURN d", expected);
@@ -276,9 +297,9 @@ SECTION("BinaryIn") {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(2.5);
-    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "test_analyzer")).term("1");
-    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "test_analyzer")).term("2");
-    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "testVocbase::test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "testVocbase::test_analyzer")).term("2");
+    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "testVocbase::test_analyzer")).term("3");
 
     assertFilterSuccess("FOR d IN collection FILTER ANALYZER(BOOST(d.a['b']['c'][412].e.f in ['1','2','3'], 2.5), 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER BOOST(ANALYZER(d.a.b.c[412].e.f in ['1','2','3'], 'test_analyzer'), 2.5) RETURN d", expected);
@@ -308,7 +329,7 @@ SECTION("BinaryIn") {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field(mangleString("quick.brown.fox", "test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("quick.brown.fox", "testVocbase::test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
@@ -350,7 +371,7 @@ SECTION("BinaryIn") {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(1.5);
-    root.add<irs::by_term>().field(mangleString("quick.brown.fox", "test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("quick.brown.fox", "testVocbase::test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
@@ -491,9 +512,9 @@ SECTION("BinaryIn") {
 
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("3");
 
     assertFilterSuccess("LET x=['1', 2, '3'] FOR d IN collection FILTER ANALYZER(d.a.b.c.e.f in x, 'test_analyzer') RETURN d", expected, &ctx);
   }
@@ -539,9 +560,9 @@ SECTION("BinaryIn") {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(1.5);
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("3");
 
     assertFilterSuccess("LET x=['1', 2, '3'] FOR d IN collection FILTER ANALYZER(BOOST(d.a.b.c.e.f in x, 1.5), 'test_analyzer') RETURN d", expected, &ctx);
     assertFilterSuccess("LET x=['1', 2, '3'] FOR d IN collection FILTER BOOST(ANALYZER(d.a.b.c.e.f in x, 'test_analyzer'), 1.5) RETURN d", expected, &ctx);
@@ -1265,8 +1286,8 @@ SECTION("BinaryIn") {
 
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("str");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("str");
     root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
     root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
@@ -1295,8 +1316,8 @@ SECTION("BinaryIn") {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(2.5);
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("str");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("str");
     root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
     root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
@@ -2115,9 +2136,9 @@ SECTION("BinaryNotIn") {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
-    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("1");
-    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("2");
-    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "testVocbase::test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "testVocbase::test_analyzer")).term("2");
+    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "testVocbase::test_analyzer")).term("3");
 
     assertFilterSuccess("FOR d IN collection FILTER analyzer(d.a.b.c[323].e.f not in ['1','2','3'], 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER analyzer(d.a['b'].c[323].e.f not in ['1','2','3'], 'test_analyzer') RETURN d", expected);
@@ -2129,9 +2150,9 @@ SECTION("BinaryNotIn") {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
     root.boost(2.5);
-    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("1");
-    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("2");
-    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "testVocbase::test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "testVocbase::test_analyzer")).term("2");
+    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "testVocbase::test_analyzer")).term("3");
 
     assertFilterSuccess("FOR d IN collection FILTER boost(analyzer(d.a.b.c[323].e.f not in ['1','2','3'], 'test_analyzer'), 2.5) RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER analyzer(boost(d.a['b'].c[323].e.f not in ['1','2','3'], 2.5), 'test_analyzer') RETURN d", expected);
@@ -2163,7 +2184,7 @@ SECTION("BinaryNotIn") {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
-    root.add<irs::by_term>().field(mangleString("quick.brown.fox", "test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("quick.brown.fox", "testVocbase::test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
@@ -2184,7 +2205,7 @@ SECTION("BinaryNotIn") {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
     root.boost(1.5);
-    root.add<irs::by_term>().field(mangleString("quick.brown.fox", "test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("quick.brown.fox", "testVocbase::test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
@@ -2297,9 +2318,9 @@ SECTION("BinaryNotIn") {
 
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("3");
 
     assertFilterSuccess("LET x=['1', 2, '3'] FOR d IN collection FILTER analyzer(d.a.b.c.e.f not in x, 'test_analyzer') RETURN d", expected, &ctx);
   }
@@ -2321,9 +2342,9 @@ SECTION("BinaryNotIn") {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
     root.boost(3.5);
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("3");
 
     assertFilterSuccess("LET x=['1', 2, '3'] FOR d IN collection FILTER boost(analyzer(d.a.b.c.e.f not in x, 'test_analyzer'), 3.5) RETURN d", expected, &ctx);
     assertFilterSuccess("LET x=['1', 2, '3'] FOR d IN collection FILTER analyzer(boost(d.a.b.c.e.f not in x, 3.5), 'test_analyzer') RETURN d", expected, &ctx);
@@ -2373,9 +2394,9 @@ SECTION("BinaryNotIn") {
 
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("3");
 
     // not a constant in array
     assertFilterSuccess(
@@ -2402,9 +2423,9 @@ SECTION("BinaryNotIn") {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
     root.boost(1.5);
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("3");
 
     // not a constant in array
     assertFilterSuccess(

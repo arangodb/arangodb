@@ -61,9 +61,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
 
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchViewNode.h"
-#endif
 
 #include <boost/optional.hpp>
 #include <tuple>
@@ -83,9 +81,7 @@ bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
       continue;
     }
     if (setter->getType() == EN::INDEX || setter->getType() == EN::ENUMERATE_COLLECTION ||
-#ifdef USE_IRESEARCH
         setter->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
-#endif
         setter->getType() == EN::SUBQUERY || setter->getType() == EN::TRAVERSAL ||
         setter->getType() == EN::SHORTEST_PATH) {
       return true;
@@ -1666,9 +1662,7 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
           lastNode = current;
         }
       } else if (currentType == EN::INDEX || currentType == EN::ENUMERATE_COLLECTION ||
-#ifdef USE_IRESEARCH
                  currentType == EN::ENUMERATE_IRESEARCH_VIEW ||
-#endif
                  currentType == EN::ENUMERATE_LIST ||
                  currentType == EN::TRAVERSAL || currentType == EN::SHORTEST_PATH ||
                  currentType == EN::COLLECT || currentType == EN::NORESULTS) {
@@ -2028,7 +2022,6 @@ class arangodb::aql::RedundantCalculationsReplacer final
     }
   }
 
-#ifdef USE_IRESEARCH
   void replaceInView(ExecutionNode* en) {
     auto view = ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(en);
     if (view->filterConditionIsEmpty()) {
@@ -2058,7 +2051,6 @@ class arangodb::aql::RedundantCalculationsReplacer final
       view->filterCondition(cloned);
     }
   }
-#endif
 
   bool before(ExecutionNode* en) override final {
     switch (en->getType()) {
@@ -2067,12 +2059,10 @@ class arangodb::aql::RedundantCalculationsReplacer final
         break;
       }
 
-#ifdef USE_IRESEARCH
       case EN::ENUMERATE_IRESEARCH_VIEW: {
         replaceInView(en);
         break;
       }
-#endif
 
       case EN::RETURN: {
         replaceInVariable<ReturnNode>(en);
@@ -3130,9 +3120,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::TRAVERSAL:
       case EN::SHORTEST_PATH:
       case EN::ENUMERATE_LIST:
-#ifdef USE_IRESEARCH
       case EN::ENUMERATE_IRESEARCH_VIEW:
-#endif
         // found some other FOR loop
         return true;
 
@@ -4348,9 +4336,7 @@ void arangodb::aql::distributeFilternCalcToClusterRule(Optimizer* opt,
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
         case EN::SUBQUERY:
-#ifdef USE_IRESEARCH
         case EN::ENUMERATE_IRESEARCH_VIEW:
-#endif
           // do break
           stopSearching = true;
           break;
@@ -4484,9 +4470,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
         case EN::REMOTESINGLE:
-#ifdef USE_IRESEARCH
         case EN::ENUMERATE_IRESEARCH_VIEW:
-#endif
 
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -5001,9 +4985,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
       }
       case EN::SINGLETON:
       case EN::ENUMERATE_LIST:
-#ifdef USE_IRESEARCH
       case EN::ENUMERATE_IRESEARCH_VIEW:
-#endif
       case EN::SUBQUERY:
       case EN::COLLECT:
       case EN::INSERT:
@@ -5674,9 +5656,7 @@ void arangodb::aql::patchUpdateStatementsRule(Optimizer* opt,
       auto const type = dep->getType();
 
       if (type == EN::ENUMERATE_LIST ||
-#ifdef USE_IRESEARCH
           type == EN::ENUMERATE_IRESEARCH_VIEW ||
-#endif
           type == EN::SUBQUERY) {
         // not suitable
         modified = false;
@@ -6623,7 +6603,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
       args->addMember(array);
     } else {
       TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unsupported geo type");
     }
   };
 

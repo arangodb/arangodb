@@ -66,9 +66,11 @@ struct IResearchLinkHelperSetup {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCYCOMM.name(), arangodb::LogLevel::FATAL);
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
 
     features.emplace_back(new arangodb::AqlFeature(server), true); // required for UserManager::loadFromDB()
@@ -76,7 +78,7 @@ struct IResearchLinkHelperSetup {
     features.emplace_back(new arangodb::DatabaseFeature(server), false);
     features.emplace_back(new arangodb::DatabasePathFeature(server), false); // required for IResearchLink::init(...)
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required for constructing TRI_vocbase_t
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server), false); // required by IResearchAnalyzerFeature::storeAnalyzer(...)
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required by IResearchAnalyzerFeature::storeAnalyzer(...)
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // required for AqlFeature::stop()
     features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ViewTypesFeature(server), false); // required for LogicalView::instantiate(...)
@@ -100,22 +102,17 @@ struct IResearchLinkHelperSetup {
       f.first->prepare();
     }
 
-    for (auto& f: features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
-
     auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
     auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
       arangodb::DatabaseFeature
     >("Database");
     dbFeature->loadDatabases(databases->slice());
 
-    auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
-      arangodb::SystemDatabaseFeature
-    >();
-    sysDatabase->start(); // load system database after loadDatabases()
+    for (auto& f: features) {
+      if (f.second) {
+        f.first->start();
+      }
+    }
 
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
@@ -140,6 +137,7 @@ struct IResearchLinkHelperSetup {
     }
 
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCYCOMM.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
@@ -266,7 +264,7 @@ SECTION("test_normalize") {
     arangodb::velocypack::Builder builder;
     builder.openObject();
     CHECK((false == arangodb::iresearch::IResearchLinkHelper::normalize(builder, json->slice(), false, *sysVocbase).ok()));
-    CHECK((true == !analyzers->get("testAnalyzer1")));
+    CHECK((true == !analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1")));
   }
 
   // analyzer single-server (inRecovery) fail persist in recovery
@@ -278,7 +276,7 @@ SECTION("test_normalize") {
     arangodb::velocypack::Builder builder;
     builder.openObject();
     CHECK((false == arangodb::iresearch::IResearchLinkHelper::normalize(builder, json->slice(), false, *sysVocbase).ok()));
-    CHECK((true == !analyzers->get("testAnalyzer2")));
+    CHECK((true == !analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2")));
   }
 
   // analyzer single-server (no engine) fail persist if not storage engine, else SEGFAULT in Methods(...)
@@ -290,7 +288,7 @@ SECTION("test_normalize") {
     arangodb::velocypack::Builder builder;
     builder.openObject();
     CHECK((false == arangodb::iresearch::IResearchLinkHelper::normalize(builder, json->slice(), false, *sysVocbase).ok()));
-    CHECK((true == !analyzers->get("testAnalyzer3")));
+    CHECK((true == !analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer3")));
   }
 
   // analyzer coordinator
@@ -302,7 +300,7 @@ SECTION("test_normalize") {
     arangodb::velocypack::Builder builder;
     builder.openObject();
     CHECK((false == arangodb::iresearch::IResearchLinkHelper::normalize(builder, json->slice(), false, *sysVocbase).ok()));
-    CHECK((true == !analyzers->get("testAnalyzer4")));
+    CHECK((true == !analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer4")));
   }
 
   // analyzer coordinator (inRecovery) fail persist in recovery
@@ -317,7 +315,7 @@ SECTION("test_normalize") {
     arangodb::velocypack::Builder builder;
     builder.openObject();
     CHECK((false == arangodb::iresearch::IResearchLinkHelper::normalize(builder, json->slice(), false, *sysVocbase).ok()));
-    CHECK((true == !analyzers->get("testAnalyzer5")));
+    CHECK((true == !analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer5")));
   }
 
   // analyzer coordinator (no engine)
@@ -332,7 +330,7 @@ SECTION("test_normalize") {
     arangodb::velocypack::Builder builder;
     builder.openObject();
     CHECK((false == arangodb::iresearch::IResearchLinkHelper::normalize(builder, json->slice(), false, *sysVocbase).ok()));
-    CHECK((true == !analyzers->get("testAnalyzer6")));
+    CHECK((true == !analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer6")));
   }
 
   // analyzer db-server
@@ -343,9 +341,9 @@ SECTION("test_normalize") {
     auto serverRoleRestore = irs::make_finally([&before]()->void { arangodb::ServerState::instance()->setRole(before); });
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    CHECK((true == !analyzers->get("testAnalyzer7")));
+    CHECK((true == !analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer7")));
     CHECK((true == arangodb::iresearch::IResearchLinkHelper::normalize(builder, json->slice(), false, *sysVocbase).ok()));
-    CHECK((false == !analyzers->get("testAnalyzer7")));
+    CHECK((false == !analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer7")));
   }
 
   // meta has analyzer which is not authorised

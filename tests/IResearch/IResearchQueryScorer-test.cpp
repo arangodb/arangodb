@@ -34,7 +34,9 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
+#include "Cluster/ClusterFeature.h"
 #include "V8/v8-globals.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "Transaction/Methods.h"
@@ -85,7 +87,6 @@ namespace {
 struct IResearchQueryScorerSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
   IResearchQueryScorerSetup(): engine(server), server(nullptr, nullptr) {
@@ -95,7 +96,8 @@ struct IResearchQueryScorerSetup {
     arangodb::tests::init(true);
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
@@ -103,6 +105,7 @@ struct IResearchQueryScorerSetup {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
+    features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ViewTypesFeature(server), true);
     features.emplace_back(new arangodb::AuthenticationFeature(server), true);
     features.emplace_back(new arangodb::DatabasePathFeature(server), false);
@@ -110,8 +113,7 @@ struct IResearchQueryScorerSetup {
     features.emplace_back(new arangodb::ShardingFeature(server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::AqlFeature(server), true);
     features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
@@ -123,6 +125,11 @@ struct IResearchQueryScorerSetup {
       features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
+    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
+    arangodb::application_features::ApplicationServer::server->addFeature(
+      new arangodb::ClusterFeature(server)
+    );
+
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
     }
@@ -130,6 +137,12 @@ struct IResearchQueryScorerSetup {
     for (auto& f : features) {
       f.first->prepare();
     }
+
+    auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature
+    >("Database");
+    dbFeature->loadDatabases(databases->slice());
 
     for (auto& f : features) {
       if (f.second) {
@@ -180,21 +193,21 @@ struct IResearchQueryScorerSetup {
       arangodb::iresearch::IResearchAnalyzerFeature
     >();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    TRI_vocbase_t* vocbase;
 
-    analyzers->emplace(result, "test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
-    analyzers->emplace(result, "test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+    dbFeature->createDatabase(1, "testVocbase", vocbase); // required for IResearchAnalyzerFeature::emplace(...)
+    analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
+    analyzers->emplace(result, "testVocbase::test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
 
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
   ~IResearchQueryScorerSetup() {
-    system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f : features) {
@@ -208,6 +221,7 @@ struct IResearchQueryScorerSetup {
     }
 
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 }; // IResearchQueryScorerSetup
 
@@ -353,7 +367,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
       "LET arr = [0,1] "
       "FOR i in 0..1 "
       "  LET rnd = _NONDETERM_(i) "
-      "  FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "  FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "LIMIT 10 "
       "RETURN { d, score: d.seq + 3*customscorer(d, arr[TO_NUMBER(rnd != 0)]) }";
 
@@ -465,7 +479,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET i = 1"
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name < 'B' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'B', true, false) "
       "RETURN [ customscorer(d, i), customscorer(d, 1) ] ";
 
     CHECK(arangodb::tests::assertRules(
@@ -571,7 +585,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_({ value : 2 }) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, obj.value), customscorer(d, obj.value) ] ";
 
     CHECK(arangodb::tests::assertRules(
@@ -682,7 +696,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_({ value : 2 }) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, obj.value+1), customscorer(d, obj.value+1) ] ";
 
     CHECK(arangodb::tests::assertRules(
@@ -793,7 +807,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, obj[1]), customscorer(d, obj[1]) ] ";
 
     CHECK(arangodb::tests::assertRules(
@@ -904,7 +918,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, obj[0] > obj[1] ? 1 : 2), customscorer(d, obj[0] > obj[1] ? 1 : 2) ] ";
 
     CHECK(arangodb::tests::assertRules(
@@ -1015,7 +1029,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, obj[0] > obj[1] ? 1 : 2), customscorer(d, obj[1] > obj[2] ? 1 : 2) ] ";
 
     CHECK(arangodb::tests::assertRules(
@@ -1135,7 +1149,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, 5*obj[0]*TO_NUMBER(obj[1] > obj[2])/obj[1] - 1), customscorer(d, 5*obj[0]*TO_NUMBER(obj[1] > obj[2])/obj[1] - 1) ] ";
 
     CHECK(arangodb::tests::assertRules(
@@ -1246,7 +1260,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, { [ CONCAT(obj[0], obj[1]) ] : 1 }), customscorer(d, { [ CONCAT(obj[0], obj[1]) ] : 1 }) ]";
 
     CHECK(arangodb::tests::assertRules(
@@ -1333,7 +1347,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, { foo : obj[1] }), customscorer(d, { foo : obj[1] }) ]";
 
     CHECK(arangodb::tests::assertRules(
@@ -1420,7 +1434,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, 5*obj[0]*TO_NUMBER(obj[1] > obj[2])/obj[1] - 1), customscorer(d, 5*obj[0]*TO_NUMBER(obj[1] > obj[2])/obj[1] - 2) ] ";
 
     CHECK(arangodb::tests::assertRules(
@@ -1540,7 +1554,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, obj any == 3), customscorer(d, obj any == 3) ]";
 
     CHECK(arangodb::tests::assertRules(
@@ -1627,7 +1641,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ customscorer(d, obj any == 3), customscorer(d, obj all == 3) ]";
 
     CHECK(arangodb::tests::assertRules(
@@ -1711,7 +1725,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   // con't deduplicate scorers with default values
   {
     std::string const queryString =
-      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'C', true, true) "
       "RETURN [ tfidf(d), tfidf(d, false) ] ";
 
     CHECK(arangodb::tests::assertRules(

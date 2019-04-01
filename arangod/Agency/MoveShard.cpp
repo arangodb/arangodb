@@ -83,6 +83,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     _isLeader = tmp_isLeader.first.isTrue();
     _remainsFollower =
         tmp_remainsFollower.second ? tmp_remainsFollower.first.isTrue() : _isLeader;
+    _toServerIsFollower = false;
     _creator = tmp_creator.first;
   } else {
     std::stringstream err;

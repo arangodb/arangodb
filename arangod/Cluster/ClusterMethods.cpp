@@ -173,7 +173,6 @@ Result beginTransactionOnSomeLeaders(TransactionState& state,
 
   for (auto const& pair : shards) {
     auto const& it = shardMap->find(pair.first);
-    // TRI_ASSERT(state->id() % 4 == 0);
     if (it->second.empty()) {
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;  // something is broken
     }
@@ -219,7 +218,7 @@ static void addTransactionHeaderForShard(transaction::Methods& trx,
     ClusterTrxMethods::addTransactionHeader(trx, leader, headers);
   } else {
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "couldnt find shard in shardMap");
   }
 }
 }  // namespace
@@ -1180,7 +1179,7 @@ Result createDocumentOnCoordinator(transaction::Methods& trx, std::string const&
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   auto collid = std::to_string(collinfo->id());
-  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
 
   // create vars used in this function
   bool const useMultiple = slice.isArray();  // insert more than one document
@@ -1209,7 +1208,7 @@ Result createDocumentOnCoordinator(transaction::Methods& trx, std::string const&
 
   // lazily begin transactions on leaders
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-  if (isManaged) {
+  if (isManaged && shardMap.size() > 1) {
     Result res = beginTransactionOnSomeLeaders(*trx.state(), collinfo, shardMap);
     if (res.fail()) {
       return res.errorNumber();
@@ -1264,7 +1263,7 @@ Result createDocumentOnCoordinator(transaction::Methods& trx, std::string const&
     }
 
     auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-    addTransactionHeaderForShard(trx, *shards, /*shard*/it.first, *headers);
+    addTransactionHeaderForShard(trx, *shardIds, /*shard*/it.first, *headers);
     requests.emplace_back("shard:" + it.first, arangodb::rest::RequestType::POST,
                           baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
                           body, std::move(headers));
@@ -1336,7 +1335,7 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
   }
   bool useDefaultSharding = collinfo->usesDefaultShardKeys();
   auto collid = std::to_string(collinfo->id());
-  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
   bool useMultiple = slice.isArray();
 
   std::string const baseUrl =
@@ -1415,7 +1414,7 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
 
     // lazily begin transactions on leaders
     const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-    if (isManaged) {
+    if (isManaged && shardMap.size() > 1) {
       Result res = beginTransactionOnSomeLeaders(*trx.state(), collinfo, shardMap);
       if (res.fail()) {
         return res.errorNumber();
@@ -1439,7 +1438,7 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
         body = std::make_shared<std::string>(reqBuilder.slice().toJson());
       }
       auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-      addTransactionHeaderForShard(trx, *shards, /*shard*/it.first, *headers);
+      addTransactionHeaderForShard(trx, *shardIds, /*shard*/it.first, *headers);
       requests.emplace_back("shard:" + it.first, arangodb::rest::RequestType::DELETE_REQ,
                             baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
                             body, std::move(headers));
@@ -1477,11 +1476,10 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
 
   // slowpath we do not know which server is responsible ask all of them.
 
-  std::shared_ptr<ShardMap> shardMap = collinfo->shardIds();
   // lazily begin transactions on leaders
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-  if (isManaged) {
-    Result res = ::beginTransactionOnAllLeaders(trx, *shardMap);
+  if (isManaged && shardIds->size() > 1) {
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds);
     if (res.fail()) {
       return res.errorNumber();
     }
@@ -1497,10 +1495,10 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
   
   auto body = std::make_shared<std::string>(slice.toJson());
   std::vector<ClusterCommRequest> requests;
-  for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardMap) {
+  for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
     ShardID const& shard = shardServers.first;
     auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-    addTransactionHeaderForShard(trx, *shardMap, shard, *headers);
+    addTransactionHeaderForShard(trx, *shardIds, shard, *headers);
     requests.emplace_back("shard:" + shard, arangodb::rest::RequestType::DELETE_REQ,
                           baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
                           body, std::move(headers));
@@ -1541,7 +1539,7 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
 
   // We select all results from all shards an merge them back again.
   std::vector<std::shared_ptr<VPackBuilder>> allResults;
-  allResults.reserve(shardMap->size());
+  allResults.reserve(shardIds->size());
   // If no server responds we return 500
   responseCode = rest::ResponseCode::SERVER_ERROR;
   for (auto const& req : requests) {
@@ -1560,7 +1558,7 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
-  TRI_ASSERT(allResults.size() == shardMap->size());
+  TRI_ASSERT(allResults.size() == shardIds->size());
   mergeResultsAllShards(allResults, resultBody, errorCounter,
                         static_cast<size_t>(slice.length()));
   return TRI_ERROR_NO_ERROR;
@@ -1723,7 +1721,7 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
     
-    if (isManaged) { // lazily begin the transaction
+    if (isManaged && shardMap.size() > 1) { // lazily begin the transaction
       Result res = beginTransactionOnSomeLeaders(*trx.state(), collinfo, shardMap);
       if (res.fail()) {
         return res.errorNumber();
@@ -2447,7 +2445,7 @@ int modifyDocumentOnCoordinator(
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
     
-    if (isManaged) {  // lazily begin transactions on leaders
+    if (isManaged && shardMap.size() > 1) {  // lazily begin transactions on leaders
       Result res = beginTransactionOnSomeLeaders(*trx.state(), collinfo, shardMap);
       if (res.fail()) {
         return res.errorNumber();

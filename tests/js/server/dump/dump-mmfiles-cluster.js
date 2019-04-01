@@ -404,7 +404,11 @@ function dumpTestEnterpriseSuite () {
     },
 
     testHiddenCollectionsOmitted : function () {
-      const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+      let dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+      if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
+        // when dumping multiple database the database name is one layer added:
+        dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
+      }
 
       const smartEdgeCollectionPath = fs.join(dumpDir, `${edges}.structure.json`);
       const localEdgeCollectionPath = fs.join(dumpDir, `_local_${edges}.structure.json`);
@@ -420,7 +424,11 @@ function dumpTestEnterpriseSuite () {
     testShadowCollectionsOmitted : function () {
       const encryption = fs.read(fs.join(instanceInfo.rootDir, 'dump', 'ENCRYPTION'));
       if (encryption === '' || encryption === 'none') {
-        const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+        let dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+        if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
+          // when dumping multiple database the database name is one layer added:
+          dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
+        }
         const collStructure = JSON.parse(
           fs.read(fs.join(dumpDir, `${edges}.structure.json`))
         );
