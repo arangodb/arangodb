@@ -226,12 +226,13 @@ bool Inception::restartingActiveAgent() {
 
     auto gp = myConfig.gossipPeers();
     std::vector<std::string> informed;
+    CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
     for (auto const& p : gp) {
       if (this->isStopping() && _agent->isStopping() && cc == nullptr) {
         return false;
       }
-      auto comres = cc->syncRequest(clientId, p,
+      auto comres = cc->syncRequest(coordinatorTransactionID, p,
                                     rest::RequestType::POST, path, greetstr,
                                     std::unordered_map<std::string, std::string>(), 2.0);
 
@@ -265,8 +266,9 @@ bool Inception::restartingActiveAgent() {
           return false;
         }
 
+        CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
         auto comres =
-            cc->syncRequest(clientId, p.second,
+            cc->syncRequest(coordinatorTransactionID, p.second,
                             rest::RequestType::POST, path, greetstr,
                             std::unordered_map<std::string, std::string>(), 2.0);
 
@@ -293,7 +295,7 @@ bool Inception::restartingActiveAgent() {
                   return false;
                 }
                 comres =
-                    cc->syncRequest(clientId, theirLeaderEp,
+                    cc->syncRequest(coordinatorTransactionID, theirLeaderEp,
                                     rest::RequestType::POST, path, greetstr,
                                     std::unordered_map<std::string, std::string>(), 2.0);
                 // Failed to contact leader move on until we do. This way at
