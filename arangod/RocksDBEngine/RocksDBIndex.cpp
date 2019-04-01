@@ -261,9 +261,10 @@ namespace {
       
       if (begin->shouldExpand &&
           first.isArray() && second.isArray()) {
+        auto next = begin + 1;
         VPackArrayIterator it1(first), it2(second);
         while (it1.valid() && it2.valid()) {
-          if (!attributesEqual(*it1, *it2, begin, end)) {
+          if (!attributesEqual(*it1, *it2, next, end)) {
             return false;
           }
           it1++;
@@ -277,6 +278,9 @@ namespace {
       bool notF2 = second.isNone() || (dist == 1 && !second.isObject());
       if (notF1 != notF2) {
         return false;
+      }
+      if (notF1 || notF2) { // one of the paths was not found
+        break;
       }
     }
     
@@ -292,6 +296,7 @@ Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
   // It is illegal to call this method on the primary index
   // RocksDBPrimaryIndex must override this method accordingly
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
+  TRI_ASSERT(oldDoc.isObject() && newDoc.isObject());
   
   bool equal = true;
   for (std::vector<basics::AttributeName> const& path : _fields) {
