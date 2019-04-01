@@ -214,12 +214,6 @@ class OutputAqlItemRow {
     //   return lastWrittenIndex + 1;
   }
 
-  /**
-  * @brief Returns the number of rows left to write. *Always* includes the
-  *        current row, whether it was already written or not!
-  */
-  size_t numRowsLeftToWrite() const { return block().size() - _baseIndex; }
-
   // Use this function with caution! We need it only for the ConstrainedSortExecutor
   void setBaseIndex(std::size_t index) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

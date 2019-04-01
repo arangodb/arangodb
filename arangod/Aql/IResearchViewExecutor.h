@@ -182,11 +182,10 @@ class IResearchViewExecutor {
                     IndexIterator::DocumentCallback const& callback);
 
   LocalDocumentId getNextPk(irs::doc_iterator& it,
-                            irs::columnstore_reader::values_reader_f const& values,
-                            size_t atMost);
+                            irs::columnstore_reader::values_reader_f const& values);
 
   void fillPkBuffer(irs::doc_iterator& it,
-                    irs::columnstore_reader::values_reader_f const& values, size_t atMost);
+                    irs::columnstore_reader::values_reader_f const& values);
 
  private:
   Infos const& _infos;
