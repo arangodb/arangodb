@@ -195,7 +195,7 @@ let appendHeaders = function(appender, headers) {
         curl += '-X ' + method + ' ';
       }
       if (headers !== undefined && headers !== '') {
-        for (i in headers) {
+        for (let i in headers) {
           if (headers.hasOwnProperty(i)) {
             curl += "--header '" + i + ': ' + headers[i] + "' ";
           }
