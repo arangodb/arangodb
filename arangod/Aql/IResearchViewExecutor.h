@@ -176,6 +176,8 @@ class IResearchViewExecutor {
 
   bool next(ReadContext& ctx);
 
+  void fillBuffer(ReadContext& ctx);
+
   bool writeRow(ReadContext& ctx, IndexResult& result);
 
   bool resetIterator();

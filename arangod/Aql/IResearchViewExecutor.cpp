@@ -294,7 +294,7 @@ bool IResearchViewExecutor<ordered>::writeRow(ReadContext& ctx, IndexResult& res
 }
 
 template <bool ordered>
-bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
+void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadContext& ctx) {
   TRI_ASSERT(_filter != nullptr);
 
   size_t const count = _reader->size();
@@ -353,14 +353,29 @@ bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
     TRI_ASSERT(scores.size() == infos().getNumScoreRegisters());
 
     IndexResult result { documentId, cid, std::move(scores) };
-
-    if (writeRow(ctx, result)) {
-
-      // we read and wrote a document, return true. we don't know if there are more.
-      return true;  // do not change iterator if already reached limit
-    }
-
+    _indexResultBuffer.emplace_back(std::move(result));
+    break;
   }
+}
+
+template <bool ordered>
+bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
+  fillBuffer(ctx);
+
+  if (_indexResultBuffer.empty()) {
+    return false;
+  }
+
+
+  IndexResult result = _indexResultBuffer.front();
+  _indexResultBuffer.pop_front();
+
+  if (writeRow(ctx, result)) {
+
+    // we read and wrote a document, return true. we don't know if there are more.
+    return true;  // do not change iterator if already reached limit
+  }
+
 
   // no documents found, we're exhausted.
   return false;
