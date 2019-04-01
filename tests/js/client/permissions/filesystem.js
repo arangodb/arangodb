@@ -47,6 +47,7 @@ if (getOptions === true) {
   // N/A fs.makeDirectoryRecursive(subLevelForbidden);
   fs.makeDirectoryRecursive(topLevelAllowed);
   fs.makeDirectoryRecursive(subLevelAllowed);
+  print("writing topLevelAllowedFile: " + topLevelAllowedFile);
   fs.write(topLevelAllowedFile, 'this file is allowed.\n');
   fs.write(topLevelForbiddenFile, 'forbidden fruits are tasty!\n');
   fs.write(subLevelAllowedFile, 'this file is allowed.\n');
@@ -90,7 +91,7 @@ function testSuite() {
                   'Expected ' + fn + 'to contain "' + expectedContent + '" but it contained: "' + content + '"!');
     }
     catch (err) {
-      assertTrue(false, fs + ' wasn\'t able to read file.');
+      assertTrue(false, fn + ' wasn\'t able to read file: ' + err);
     }
   }
   return {
@@ -102,8 +103,8 @@ function testSuite() {
       // N/A tryReadForbidden(subLevelForbiddenFile);
 
       
-      tryReadAllowed(topLevelAllowedFile);
-      tryReadAllowed(subLevelAllowedFile);
+      tryReadAllowed(topLevelAllowedFile, 'this file is allowed.\n');
+      tryReadAllowed(subLevelAllowedFile, 'this file is allowed.\n');
       
     }
   };
