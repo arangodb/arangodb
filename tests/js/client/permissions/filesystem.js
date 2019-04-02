@@ -43,6 +43,11 @@ const subLevelAllowed = fs.join(topLevelForbidden, 'allowed');
 const subLevelAllowedFile = fs.join(subLevelAllowed, 'allowed.txt');
 // N/A const subLevelForbiddenFile = fs.join(subLevelForbidden, 'forbidden.txt');
 
+const topLevelAllowedWriteFile = fs.join(topLevelAllowed, 'allowed_write.txt');
+const topLevelForbiddenWriteFile = fs.join(topLevelForbidden, 'forbidden_write.txt');
+const subLevelAllowedWriteFile = fs.join(subLevelAllowed, 'allowed_write.txt');
+// N/A const subLevelForbiddenWriteFile = fs.join(subLevelForbidden, 'forbidden_write.txt');
+
 if (getOptions === true) {
   // N/A fs.makeDirectoryRecursive(subLevelForbidden);
   fs.makeDirectoryRecursive(topLevelAllowed);
@@ -88,6 +93,20 @@ function testSuite() {
                 expectedContent,
                 'Expected ' + fn + 'to contain "' + expectedContent + '" but it contained: "' + content + '"!');
   }
+  function tryWriteForbidden(fn) {
+    try {
+      let rc = fs.write(fn, "1212 this is just a test");
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Write access to ' + fn + ' wasn\'t forbidden');
+    }
+  }
+  function tryWriteAllowed(fn) {
+    let rc = fs.write(fn, "1212 this is just a test");
+    assertTrue(rc, 'Expected ' + fn + ' to be writeable');
+  }
+
   return {
     testReadFile : function() {
 
@@ -96,9 +115,15 @@ function testSuite() {
       tryReadForbidden(topLevelForbiddenFile);
       // N/A tryReadForbidden(subLevelForbiddenFile);
 
-
       tryReadAllowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryReadAllowed(subLevelAllowedFile, 'this file is allowed.\n');
+    },
+    testWriteFile : function() {
+      tryWriteForbidden('/var/log/mail.log');
+      tryWriteForbidden(topLevelForbiddenWriteFile);
+
+      tryWriteAllowed(topLevelAllowedWriteFile);
+      tryWriteAllowed(subLevelAllowedWriteFile);
 
     }
   };
