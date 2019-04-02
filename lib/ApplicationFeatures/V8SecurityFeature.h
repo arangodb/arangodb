@@ -45,10 +45,14 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
 
+  /// @brief tests if in the current security context it is allowed to
+  /// execute external binaries
+  bool isAllowedToExecuteExternalBinaries(v8::Isolate* isolate) const;
+
   /// @brief tests if in the current security context it is allowed to define
   /// additional HTTP REST actions
   /// must only be called in arangod!
-  bool canDefineHttpAction(v8::Isolate* isolate) const;
+  bool isAllowedToDefineHttpAction(v8::Isolate* isolate) const;
 
   /// @brief tests if the value of the startup option should be exposed to end
   /// users via JavaScript actions. will use _startupOptionsFilter*
@@ -73,6 +77,8 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   bool isAllowedToExecuteJavaScript(v8::Isolate* isolate) const;
 
  private:
+  bool _allowExecutionOfBinaries;
+
   // All the following options have white and black lists.
   // The white-list will take precedence over the black list
   // Items is the corresponding Vector will be joined with

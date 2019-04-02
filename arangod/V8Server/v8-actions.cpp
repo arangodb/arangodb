@@ -486,7 +486,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
       req->Set(RequestTypeKey, HeadConstant);
       break;
     }
-    case rest::RequestType::GET: 
+    case rest::RequestType::GET:
     default: {
       TRI_GET_GLOBAL_STRING(GetConstant);
       req->Set(RequestTypeKey, GetConstant);
@@ -542,7 +542,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     TRI_GET_GLOBAL_STRING(CookiesKey);
     req->Set(CookiesKey, cookiesObject);
   }
-  
+
   // copy suffix, which comes from the action:
   std::vector<std::string> const& suffixes = request->decodedSuffixes();
   std::vector<std::string> const& rawSuffixes = request->suffixes();
@@ -803,7 +803,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
         httpResponse->body().appendText(content, length);
         TRI_FreeString(content);
-      } 
+      }
       break;
 
       case Endpoint::TransportType::VST: {
@@ -815,7 +815,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         // create vpack from file
         response->setContentType(rest::ContentType::TEXT);
         response->setPayload(std::move(buffer), true);
-      } 
+      }
       break;
 
       default:
@@ -999,13 +999,13 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "defineAction(<name>, <callback>, <parameter>)");
   }
-  
+
   V8SecurityFeature* v8security =
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->canDefineHttpAction(isolate)) {
+  if (!v8security->isAllowedToDefineHttpAction(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "operation only allowed for internal scripts");
   }
 

@@ -39,13 +39,18 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "V8Security") {
+    : ApplicationFeature(server, "V8Security"), _allowExecutionOfBinaries(false) {
   setOptional(false);
   startsAfter("V8Platform");
 }
 
 void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("javascript", "Configure the Javascript engine");
+
+  options->addOption(
+      "--javascript.execute-binaries",
+      "allow execution of external binaries. default set to false",
+      new BooleanParameter(&_allowExecutionOfBinaries));
 
   options->addOption("--javascript.startup-options-white-list",
                      "startup options whose names match this regular "
@@ -258,7 +263,14 @@ void V8SecurityFeature::start() {
       std::regex(_filesBlackList, std::regex::nosubs | std::regex::ECMAScript);
 }
 
-bool V8SecurityFeature::canDefineHttpAction(v8::Isolate* isolate) const {
+bool V8SecurityFeature::isAllowedToExecuteExternalBinaries(v8::Isolate* isolate) const {
+  // TRI_GET_GLOBALS();
+  // v8g may be a nullptr when we are in arangosh
+  // return v8g != nullptr && v8g->_securityContext.isAllowedDefineHttpAction(); -- check context?
+  return _allowExecutionOfBinaries;
+}
+
+bool V8SecurityFeature::isAllowedToDefineHttpAction(v8::Isolate* isolate) const {
   TRI_GET_GLOBALS();
   // v8g may be a nullptr when we are in arangosh
   return v8g != nullptr && v8g->_securityContext.canDefineHttpAction();
@@ -288,23 +300,26 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
     // this includes connecting to self or to other instances in a cluster
     return true;
   }
+
   return checkBlackAndWhiteList(name, !_endpointsWhiteList.empty(), _endpointsWhiteListRegex,
                                 !_endpointsBlackList.empty(), _endpointsBlackListRegex);
 }
 
-bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
-                                              char const* path, FSAccessType access) const {
+bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* path,
+                                              FSAccessType access) const {
   // expects 0 terminated utf-8 string
   TRI_ASSERT(path != nullptr);
+
   return isAllowedToAccessPath(isolate, std::string(path), access);
 }
 
-bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
-                                              std::string path, FSAccessType access) const {
+bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string path,
+                                              FSAccessType access) const {
   // check security context first
   TRI_GET_GLOBALS();
   auto& sec = v8g->_securityContext;
-  if ((access == FSAccessType::READ && sec.canReadFs()) || (access == FSAccessType::WRITE && sec.canWriteFs())) {
+  if ((access == FSAccessType::READ && sec.canReadFs()) ||
+      (access == FSAccessType::WRITE && sec.canWriteFs())) {
     return true;  // context may read / write without restrictions
   }
 

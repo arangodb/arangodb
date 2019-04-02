@@ -4083,6 +4083,16 @@ static void JS_GetExternalSpawned(v8::FunctionCallbackInfo<v8::Value> const& arg
     TRI_V8_THROW_EXCEPTION_USAGE("getExternalSpawned()");
   }
 
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute or modify state of external binaries");
+  }
+
   v8::Handle<v8::Array> spawnedProcesses =
       v8::Array::New(isolate, static_cast<int>(ExternalProcesses.size()));
 
@@ -4112,11 +4122,23 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
         "executeExternal(<filename>[, <arguments> [,<usePipes>] ])");
   }
 
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute or modify state of external binaries");
+  }
+
   TRI_Utf8ValueNFC name(isolate, args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
+
+  //TODO read
 
   std::vector<std::string> arguments;
 
@@ -4180,6 +4202,16 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "statusExternal(<external-identifier>[, <wait>])");
   }
 
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute or modify state of external binaries");
+  }
+
   ExternalId pid;
 
 #ifndef _WIN32
@@ -4239,12 +4271,15 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
+  if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute or modify state of external binaries");
+  }
+
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to read files in this path");
   }
-
-  // TODO - allowed to execute
 
   std::vector<std::string> arguments;
 
@@ -4313,6 +4348,17 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "killExternal(<external-identifier>[[, <signal>], isTerminal])");
   }
+
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute or modify state of external binaries");
+  }
+
   int signal = SIGTERM;
   if (args.Length() >= 2) {
     signal = static_cast<int>(TRI_ObjectToInt64(isolate, args[1]));
@@ -4360,6 +4406,17 @@ static void JS_SuspendExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
     TRI_V8_THROW_EXCEPTION_USAGE("suspendExternal(<external-identifier>)");
   }
 
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute or modify state of external binaries");
+  }
+
+
   ExternalId pid;
 
 #ifndef _WIN32
@@ -4387,6 +4444,16 @@ static void JS_ContinueExternal(v8::FunctionCallbackInfo<v8::Value> const& args)
   // extract the arguments
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("continueExternal(<external-identifier>)");
+  }
+
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute or modify state of external binaries");
   }
 
   ExternalId pid;
