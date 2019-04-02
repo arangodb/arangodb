@@ -1462,7 +1462,7 @@ class PropagateConstantAttributesHelper {
                   // don't remove a smart join attribute access!
                   return;
                 } else {
-                  std::vector<std::string> const& shardKeys = collection->shardKeys(true);
+                  std::vector<std::string> shardKeys = collection->shardKeys(true);
                   if (std::find(shardKeys.begin(), shardKeys.end(), nameAttribute->getString()) != shardKeys.end()) {
                     // don't remove equality lookups on shard keys, as this may prevent
                     // the restrict-to-single-shard rule from being applied later!
