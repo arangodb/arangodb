@@ -52,7 +52,7 @@ class SingleServerTraverser final : public Traverser {
   void setStartVertex(std::string const& v) override;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief No eingines on single server
+  /// @brief No engines on single server
   //////////////////////////////////////////////////////////////////////////////
   void destroyEngines() override {}
 

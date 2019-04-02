@@ -115,6 +115,10 @@ class Query {
   /// @brief set the query to killed
   void kill();
 
+  /// @brief increase number of HTTP requests. this is normally
+  /// called during the setup of a query
+  void incHttpRequests(size_t requests);
+
   void setExecutionTime();
 
   QueryString const& queryString() const { return _queryString; }
