@@ -25,7 +25,9 @@
 #include "Aql/Collection.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
-#include "Cluster/ServerState.h"
+#include "Basics/StaticStrings.h"
+#include "StorageEngine/TransactionState.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <algorithm>
@@ -89,7 +91,7 @@ void handleStats(ModificationStats& stats, ModificationExecutorInfos& info, int 
   if (ignoreErrors) {
     // update the ignored counter
     if (info._doCount) {
-      stats.incrWritesExecuted();
+      stats.incrWritesIgnored();
     }
     return;
   }
@@ -160,9 +162,10 @@ void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
   try {
     if (opRes.slice().isArray()) {
       for (auto doc : VPackArrayIterator(opRes.slice())) {
-        if (doc.isObject() && doc.hasKey("errorNum") && doc.get("errorNum").getInt() == code) {
-          if (doc.hasKey("errorMessage")) {
-            message = doc.get("errorMessage").copyString();
+        if (doc.isObject() && doc.hasKey(StaticStrings::ErrorNum) && doc.get(StaticStrings::ErrorNum).getInt() == code) {
+          VPackSlice s = doc.get(StaticStrings::ErrorMessage);
+          if (s.isString()) {
+            message = s.copyString();
             break;
           }
         }
@@ -183,12 +186,10 @@ void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
 ///////////////////////////////////////////////////////////////////////////////
 // INSERT /////////////////////////////////////////////////////////////////////
 bool Insert::doModifications(ModificationExecutorInfos& info, ModificationStats& stats) {
-  OperationOptions& options = info._options;
-
   reset();
   _tmpBuilder.openArray();
 
-  const RegisterId& inReg = info._input1RegisterId.value();
+  RegisterId const inReg = info._input1RegisterId;
   TRI_ASSERT(_block);
   _block->forRowInBlock([this, inReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
@@ -219,7 +220,7 @@ bool Insert::doModifications(ModificationExecutorInfos& info, ModificationStats&
 
   // execute insert
   TRI_ASSERT(info._trx);
-  auto operationResult = info._trx->insert(info._aqlCollection->name(), toInsert, options);
+  auto operationResult = info._trx->insert(info._aqlCollection->name(), toInsert, info._options);
   setOperationResult(std::move(operationResult));
 
   // handle statisitcs
@@ -231,7 +232,7 @@ bool Insert::doModifications(ModificationExecutorInfos& info, ModificationStats&
     THROW_ARANGO_EXCEPTION(_operationResult.result);
   }
 
-  if (!options.silent) {
+  if (!info._options.silent) {
     TRI_ASSERT(_operationResult.buffer != nullptr);
     TRI_ASSERT(_operationResult.slice().isArray());
 
@@ -254,8 +255,6 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
   std::size_t blockSize = _block->block().size();
   TRI_ASSERT(_blockIndex < blockSize);
 
-  OperationOptions& options = info._options;
-
   // ignore-skip values
   while (_blockIndex < _operations.size() &&
          _operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
@@ -264,7 +263,7 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
 
-  if (_justCopy || options.silent) {
+  if (_justCopy || info._options.silent) {
     output.copyRow(input);
   } else {
     if (_operations[_blockIndex] == ModOperationType::APPLY_RETURN) {
@@ -275,23 +274,23 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
           arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
 
       if (!wasError) {
-        if (options.returnNew) {
+        if (info._options.returnNew) {
           AqlValue value(elm.get("new"));
           AqlValueGuard guard(value, true);
           // store $NEW
-          output.moveValueInto(info._outputNewRegisterId.value(), input, guard);
+          output.moveValueInto(info._outputNewRegisterId, input, guard);
         }
-        if (options.returnOld) {
+        if (info._options.returnOld) {
           // store $OLD
           auto slice = elm.get("old");
           if (slice.isNone()) {
             AqlValue value(VPackSlice::nullSlice());
             AqlValueGuard guard(value, true);
-            output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
+            output.moveValueInto(info._outputOldRegisterId, input, guard);
           } else {
             AqlValue value(slice);
             AqlValueGuard guard(value, true);
-            output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
+            output.moveValueInto(info._outputOldRegisterId, input, guard);
           }
         }
       }  // !wasError - end
@@ -309,8 +308,6 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 ///////////////////////////////////////////////////////////////////////////////
 // REMOVE /////////////////////////////////////////////////////////////////////
 bool Remove::doModifications(ModificationExecutorInfos& info, ModificationStats& stats) {
-  OperationOptions& options = info._options;
-
   reset();
   _tmpBuilder.openArray();
 
@@ -319,7 +316,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info, ModificationStats&
   std::string key;
   std::string rev;
 
-  const RegisterId& inReg = info._input1RegisterId.value();
+  RegisterId const inReg = info._input1RegisterId;
   TRI_ASSERT(_block);
   _block->forRowInBlock([this, &stats, &errorCode, &key, &rev, trx, inReg,
                          &info](InputAqlItemRow&& row) {
@@ -375,7 +372,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info, ModificationStats&
   }
 
   TRI_ASSERT(info._trx);
-  auto operationResult = info._trx->remove(info._aqlCollection->name(), toRemove, options);
+  auto operationResult = info._trx->remove(info._aqlCollection->name(), toRemove, info._options);
   setOperationResult(std::move(operationResult));
 
   handleBabyStats(stats, info, _operationResult, toRemove.length(),
@@ -387,7 +384,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info, ModificationStats&
     THROW_ARANGO_EXCEPTION(_operationResult.result);
   }
 
-  if (!options.silent) {
+  if (!info._options.silent) {
     TRI_ASSERT(_operationResult.buffer != nullptr);
     TRI_ASSERT(_operationResult.slice().isArray());
 
@@ -408,15 +405,13 @@ bool Remove::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
   TRI_ASSERT(_last_not_skip <= blockSize);
   TRI_ASSERT(_blockIndex < blockSize);
 
-  OperationOptions& options = info._options;
-
   while (_blockIndex < _operations.size() &&
          _operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
     _blockIndex++;
   }
 
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
-  if (_justCopy || options.silent) {
+  if (_justCopy || info._options.silent) {
     output.copyRow(input);
   } else {
     if (_operations[_blockIndex] == ModOperationType::APPLY_RETURN) {
@@ -427,13 +422,13 @@ bool Remove::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
           arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
 
       if (!wasError) {
-        if (options.returnOld) {
+        if (info._options.returnOld) {
           // store $OLD
           auto slice = elm.get("old");
 
           AqlValue value(slice);
           AqlValueGuard guard(value, true);
-          output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
+          output.moveValueInto(info._outputOldRegisterId, input, guard);
         }
       }
       ++_operationResultIterator;
@@ -450,8 +445,6 @@ bool Remove::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 ///////////////////////////////////////////////////////////////////////////////
 // UPSERT /////////////////////////////////////////////////////////////////////
 bool Upsert::doModifications(ModificationExecutorInfos& info, ModificationStats& stats) {
-  OperationOptions& options = info._options;
-
   reset();
 
   _insertBuilder.openArray();
@@ -461,9 +454,9 @@ bool Upsert::doModifications(ModificationExecutorInfos& info, ModificationStats&
   std::string errorMessage;
   std::string key;
   auto* trx = info._trx;
-  const RegisterId& inDocReg = info._input1RegisterId.value();
-  const RegisterId& insertReg = info._input2RegisterId.value();
-  const RegisterId& updateReg = info._input3RegisterId.value();
+  RegisterId const inDocReg = info._input1RegisterId;
+  RegisterId const insertReg = info._input2RegisterId;
+  RegisterId const updateReg = info._input3RegisterId;
 
   _block->forRowInBlock([this, &stats, &errorCode, &errorMessage, &key, trx, inDocReg,
                          insertReg, updateReg, &info](InputAqlItemRow&& row) {
@@ -540,6 +533,8 @@ bool Upsert::doModifications(ModificationExecutorInfos& info, ModificationStats&
     _justCopy = true;
     return _last_not_skip != std::numeric_limits<decltype(_last_not_skip)>::max();
   }
+  
+  OperationOptions const& options = info._options;
 
   TRI_ASSERT(info._trx);
   OperationResult opRes;  // temporary value
@@ -592,15 +587,13 @@ bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
   TRI_ASSERT(_last_not_skip <= blockSize);
   TRI_ASSERT(_blockIndex < blockSize);
 
-  OperationOptions& options = info._options;
-
   while (_blockIndex < _operations.size() &&
          _operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
     _blockIndex++;
   }
 
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
-  if (_justCopy || options.silent) {
+  if (_justCopy || info._options.silent) {
     output.copyRow(input);
   } else {
     auto& op = _operations[_blockIndex];
@@ -619,11 +612,11 @@ bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
           arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
 
       if (!wasError) {
-        if (options.returnNew) {
+        if (info._options.returnNew) {
           AqlValue value(elm.get("new"));
           AqlValueGuard guard(value, true);
           // store $NEW
-          output.moveValueInto(info._outputNewRegisterId.value(), input, guard);
+          output.moveValueInto(info._outputNewRegisterId, input, guard);
         }
       }
 
@@ -643,10 +636,11 @@ bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 template <typename ModType>
 bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
                                              ModificationStats& stats) {
-  OperationOptions& options = info._options;
+  OperationOptions const& options = info._options;
 
   // check if we're a DB server in a cluster
-  bool const isDBServer = ServerState::instance()->isDBServer();
+  auto* trx = info._trx;
+  bool const isDBServer = trx->state()->isDBServer();
   info._producesResults = ProducesResults(
       info._producesResults || (isDBServer && info._ignoreDocumentNotFound));
 
@@ -657,11 +651,9 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
   std::string errorMessage;
   std::string key;
   std::string rev;
-  auto* trx = info._trx;
-  const RegisterId& inDocReg = info._input1RegisterId.value();
-  const bool hasKeyVariable = info._input2RegisterId.has_value();
-  const RegisterId& keyReg = hasKeyVariable ? info._input2RegisterId.value()
-                                            : 42 /*invalid but unused*/;
+  RegisterId const inDocReg = info._input1RegisterId;
+  RegisterId const keyReg = info._input2RegisterId;
+  bool const hasKeyVariable = keyReg != ExecutionNode::MaxRegisterId;
 
   _block->forRowInBlock([this, &options, &stats, &errorCode, &errorMessage,
                          &key, &rev, trx, inDocReg, keyReg, hasKeyVariable,
@@ -774,8 +766,6 @@ bool UpdateReplace<ModType>::doOutput(ModificationExecutorInfos& info,
   TRI_ASSERT(_blockIndex < blockSize);
   TRI_ASSERT(_operationResultArraySlice.isArray());
 
-  OperationOptions& options = info._options;
-
   while (_blockIndex < _operations.size() &&
          _operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
     _blockIndex++;
@@ -793,18 +783,18 @@ bool UpdateReplace<ModType>::doOutput(ModificationExecutorInfos& info,
           arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
 
       if (!wasError) {
-        if (options.returnNew) {
+        if (info._options.returnNew) {
           AqlValue value(elm.get("new"));
           AqlValueGuard guard(value, true);
           // store $NEW
-          output.moveValueInto(info._outputNewRegisterId.value(), input, guard);
+          output.moveValueInto(info._outputNewRegisterId, input, guard);
         }
-        if (options.returnOld) {
+        if (info._options.returnOld) {
           auto slice = elm.get("old");
           AqlValue value(slice);
           AqlValueGuard guard(value, true);
           // store $OLD
-          output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
+          output.moveValueInto(info._outputOldRegisterId, input, guard);
         }
       }
       ++_operationResultIterator;

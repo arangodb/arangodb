@@ -39,17 +39,16 @@ class CollectionGuard {
 
   CollectionGuard(CollectionGuard&& other)
       : _vocbase(other._vocbase),
-        _collection(other._collection),
+        _collection(std::move(other._collection)),
         _originalStatus(other._originalStatus),
         _restoreOriginalStatus(other._restoreOriginalStatus) {
-    other._collection = nullptr;
+    other._collection.reset();
     other._vocbase = nullptr;
   }
 
   /// @brief create the guard, using a collection id
   CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, bool restoreOriginalStatus = false)
       : _vocbase(vocbase),
-        _collection(nullptr),
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
         _restoreOriginalStatus(restoreOriginalStatus) {
     _collection = _vocbase->useCollection(cid, _originalStatus);
@@ -58,28 +57,12 @@ class CollectionGuard {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }
-
-  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, std::string const& name)
+  
+  /// @brief create the guard, using a collection name
+  CollectionGuard(TRI_vocbase_t* vocbase, std::string const& name) 
       : _vocbase(vocbase),
-        _collection(nullptr),
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
         _restoreOriginalStatus(false) {
-    _collection = _vocbase->useCollection(id, _originalStatus);
-    if (!_collection && !name.empty()) {
-      _collection = _vocbase->useCollection(name, _originalStatus);
-    }
-    if (_collection == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    }
-  }
-
-  /// @brief create the guard, using a collection name
-  CollectionGuard(TRI_vocbase_t* vocbase, std::string const& name,
-                  bool restoreOriginalStatus = false)
-      : _vocbase(vocbase),
-        _collection(nullptr),
-        _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
-        _restoreOriginalStatus(restoreOriginalStatus) {
     if (!name.empty() && name[0] >= '0' && name[0] <= '9') {
       TRI_voc_cid_t id =
           NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
@@ -92,7 +75,7 @@ class CollectionGuard {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }
-
+  
   CollectionGuard(TRI_vocbase_t* vocbase, std::shared_ptr<LogicalCollection> const& collection)
       : _vocbase(vocbase),
         _collection(collection),
@@ -118,14 +101,6 @@ class CollectionGuard {
   }
 
  public:
-  /// @brief prematurely release the usage lock
-  void release() {
-    if (_collection != nullptr) {
-      _vocbase->releaseCollection(_collection.get());
-      _collection = nullptr;
-    }
-  }
-
   /// @brief return the collection pointer
   inline arangodb::LogicalCollection* collection() const {
     return _collection.get();

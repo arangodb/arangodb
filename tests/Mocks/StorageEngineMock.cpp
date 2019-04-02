@@ -484,7 +484,6 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
 
   if (0 == type.compare("edge")) {
     index = EdgeIndexMock::make(id, _logicalCollection, info);
-#ifdef USE_IRESEARCH
   } else if (0 == type.compare(arangodb::iresearch::DATA_SOURCE_TYPE.name())) {
     if (arangodb::ServerState::instance()->isCoordinator()) {
       arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(index, _logicalCollection,
@@ -493,7 +492,6 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
       arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, _logicalCollection,
                                                                        info, id, false);
     }
-#endif
   }
 
   if (!index) {
@@ -855,10 +853,8 @@ arangodb::Result PhysicalCollectionMock::replace(
     std::function<arangodb::Result(void)> callbackDuringLock) {
   before();
 
-  auto key = newSlice.get(arangodb::StaticStrings::KeyString);
-
   return update(trx, newSlice, result, options, resultMarkerTick, lock, prevRev,
-                previous, key, callbackDuringLock);
+                previous,callbackDuringLock);
 }
 
 TRI_voc_rid_t PhysicalCollectionMock::revision(arangodb::transaction::Methods*) const {
@@ -887,8 +883,13 @@ arangodb::Result PhysicalCollectionMock::update(
     arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
     arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-    arangodb::ManagedDocumentResult& previous, arangodb::velocypack::Slice const key,
+    arangodb::ManagedDocumentResult& previous,
     std::function<arangodb::Result(void)> callbackDuringLock) {
+  auto key = newSlice.get(arangodb::StaticStrings::KeyString);
+  if (key.isNone()) {
+    return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+
   TRI_ASSERT(callbackDuringLock == nullptr);  // not implemented
   before();
 
@@ -1173,6 +1174,10 @@ void StorageEngineMock::getDatabases(arangodb::velocypack::Builder& result) {
   result.openArray();
   result.add(system.slice());
   result.close();
+}
+  
+void StorageEngineMock::cleanupReplicationContexts() {
+  // nothing to do here
 }
 
 arangodb::velocypack::Builder StorageEngineMock::getReplicationApplierConfiguration(

@@ -2238,6 +2238,14 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
   if (other) {
     // definition shares an identifier with an existing index with a
     // different definition
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    VPackBuilder builder;
+    other->toVelocyPack(builder, static_cast<std::underlying_type<Index::Serialize>::type>(
+                                     Index::Serialize::Basics));
+    LOG_TOPIC("928ae", WARN, Logger::ENGINES)
+        << "attempted to create index '" << info.toJson()
+        << "' but found conflicting index '" << builder.slice().toJson() << "'";
+#endif
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
                                    "duplicate value for `" +
                                        arangodb::StaticStrings::IndexId +
@@ -2574,6 +2582,10 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector,
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
+      if (_logicalCollection.vocbase().isDropped()) {
+        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+      }
+
       std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
       if (waitTime < 32) {
         waitTime *= 2;
@@ -2687,6 +2699,9 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector,
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
+      if (_logicalCollection.vocbase().isDropped()) {
+        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+      }
       std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
       if (waitTime < 32) {
         waitTime *= 2;
@@ -3363,8 +3378,13 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
                                  VPackSlice const newSlice, ManagedDocumentResult& result,
                                  OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                                  bool lock, TRI_voc_rid_t& prevRev,
-                                 ManagedDocumentResult& previous, VPackSlice const key,
+                                 ManagedDocumentResult& previous,
                                  std::function<Result(void)> callbackDuringLock) {
+  VPackSlice key = newSlice.get(StaticStrings::KeyString);
+  if (key.isNone()) {
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 

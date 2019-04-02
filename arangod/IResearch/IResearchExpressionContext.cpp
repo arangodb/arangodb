@@ -76,7 +76,7 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var, bool doCop
   auto const it = vars.find(var->id);
 
   if (vars.end() == it) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot find variable");
   }
 
   auto const& varInfo = it->second;

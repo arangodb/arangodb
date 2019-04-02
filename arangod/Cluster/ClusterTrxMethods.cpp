@@ -435,20 +435,18 @@ void ClusterTrxMethods::addTransactionHeader(transaction::Methods const& trx,
 
   const bool addBegin = !state.knowsServer(server);
   if (addBegin) {
-    if (state.isCoordinator()) {
-      TRI_ASSERT(state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+    if (state.isCoordinator() &&
+        state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
       return;  // do not add header to servers without a snippet
-    } else if (transaction::isLeaderTransactionId(state.id())) {
-      TRI_ASSERT(state.isDBServer());
-      transaction::BuilderLeaser builder(trx.transactionContextPtr());
-      ::buildTransactionBody(state, server, *builder.get());
-      headers.emplace(StaticStrings::TransactionBody, builder->toJson());
-      headers.emplace(arangodb::StaticStrings::TransactionId,
-                      std::to_string(tidPlus).append(" begin"));
-      state.addKnownServer(server);  // remember server
-    } else {                         // broken logic
-      TRI_ASSERT(false);
     }
+    TRI_ASSERT(state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
+               transaction::isLeaderTransactionId(state.id()));
+    transaction::BuilderLeaser builder(trx.transactionContextPtr());
+    ::buildTransactionBody(state, server, *builder.get());
+    headers.emplace(StaticStrings::TransactionBody, builder->toJson());
+    headers.emplace(arangodb::StaticStrings::TransactionId,
+                    std::to_string(tidPlus).append(" begin"));
+    state.addKnownServer(server);  // remember server
   } else {
     headers.emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus));
   }
@@ -467,7 +465,16 @@ void ClusterTrxMethods::addAQLTransactionHeader(transaction::Methods const& trx,
   std::string value = std::to_string(state.id() + 1);
   const bool addBegin = !state.knowsServer(server);
   if (addBegin) {
-    value.append(" aql");          // This is a single AQL query
+    if (state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
+      value.append(" aql"); // This is a single AQL query
+    } else if (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+      transaction::BuilderLeaser builder(trx.transactionContextPtr());
+      ::buildTransactionBody(state, server, *builder.get());
+      headers.emplace(StaticStrings::TransactionBody, builder->toJson());
+      value.append(" begin"); // part of a managed transaction
+    } else {
+      TRI_ASSERT(false);
+    }
     state.addKnownServer(server);  // remember server
   }
   headers.emplace(arangodb::StaticStrings::TransactionId, std::move(value));

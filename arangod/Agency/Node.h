@@ -231,6 +231,18 @@ class Node {
   /// @brief Is string
   bool isString() const;
 
+  /**
+   * @brief Get seconds this node still has to live. (Must be guarded by caller)
+   * @return  seconds to live (int64_t::max, if none set)
+   */
+  TimePoint const& timeToLive() const;
+
+  /**
+   * @brief Set expiry for this node
+   * @param Time point of expiry
+   */
+  void timeToLive(TimePoint const& ttl);
+
   /// @brief accessor to Node object
   /// @return  second is true if url exists, first populated if second true
   std::pair<Node const&, bool> hasAsNode(std::string const&) const;
@@ -316,6 +328,11 @@ class Node {
   /// @brief Clear key value store
   void clear();
 
+  // @brief Helper function to return static instance of dummy node below
+  static Node const& dummyNode() {
+    return _dummyNode;
+  }
+
  protected:
   /// @brief Add time to live entry
   virtual bool addTimeToLive(long millis);
@@ -335,6 +352,7 @@ class Node {
   mutable bool _vecBufDirty;
   bool _isArray;
   static Children const dummyChildren;
+  static Node const _dummyNode;
 
 };
 
