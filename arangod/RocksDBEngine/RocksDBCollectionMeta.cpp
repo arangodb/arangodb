@@ -124,15 +124,15 @@ void RocksDBCollectionMeta::removeBlocker(uint64_t trxId) {
   }
 }
 
-/// @brief updates and returns the largest safe seq to squash updated against
-rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq() const {
+/// @brief returns the largest safe seq to squash updates against
+rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq(rocksdb::SequenceNumber current) const {
   READ_LOCKER(locker, _blockerLock);
   // if we have a blocker use the lowest counter
   if (!_blockersBySeq.empty()) {
     auto it = _blockersBySeq.begin();
     return it->first;
   }
-  return rocksutils::globalRocksDB()->GetLatestSequenceNumber();
+  return current;
 }
 
 rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::SequenceNumber commitSeq,
@@ -173,7 +173,8 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
 /// @brief get the current count
 RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::currentCount() {
   bool didWork = false;
-  const rocksdb::SequenceNumber commitSeq = committableSeq();
+  auto current = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
+  const rocksdb::SequenceNumber commitSeq = committableSeq(current);
   rocksdb::SequenceNumber seq = applyAdjustments(commitSeq, didWork);
   if (didWork) {  // make sure serializeMeta has something to do
     std::lock_guard<std::mutex> guard(_countLock);
@@ -199,7 +200,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
   Result res;
 
   bool didWork = false;
-  const rocksdb::SequenceNumber maxCommitSeq = committableSeq();
+  const rocksdb::SequenceNumber maxCommitSeq = committableSeq(appliedSeq);
   rocksdb::SequenceNumber seq = applyAdjustments(maxCommitSeq, didWork);
   if (didWork) {
     appliedSeq = std::min(appliedSeq, seq);
