@@ -186,7 +186,7 @@ char* TRI_SlurpFile(char const* filename, size_t* length);
 /// @brief read file and pass blocks to user function
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ProcessFile(char const* filename, std::function<bool(const char * block, size_t size)> reader);
+bool TRI_ProcessFile(char const* filename, std::function<bool(char const* block, size_t size)> const& reader);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a lock file based on the PID
@@ -392,23 +392,20 @@ struct TRI_SHA256Functor {
   unsigned char _digest[SHA256_DIGEST_LENGTH];
 
   TRI_SHA256Functor() {
-    int ret_val;
-    ret_val=SHA256_Init(&_context);
+    int ret_val = SHA256_Init(&_context);
     if (1 != ret_val) {
       TRI_ASSERT(false);
     } // if
-  };
+  }
 
-  bool operator () (const char * data, size_t size) {
-    int ret_val;
-    ret_val = SHA256_Update(&_context, (const void *)data, size);
+  bool operator()(char const* data, size_t size) {
+    int ret_val = SHA256_Update(&_context, static_cast<void const*>(data), size);
     return 1 == ret_val;
-  };
+  }
 
   std::string final() {
-    int ret_val;
-    ret_val = SHA256_Final(_digest, &_context);
-    if ( 1 != ret_val) {
+    int ret_val = SHA256_Final(_digest, &_context);
+    if (1 != ret_val) {
       TRI_ASSERT(false);
     } // if
     return arangodb::basics::StringUtils::encodeHex((char const *)_digest, SHA256_DIGEST_LENGTH);

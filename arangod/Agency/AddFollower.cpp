@@ -107,7 +107,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   _jb->close();  // transaction object
   _jb->close();  // close array
 
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
@@ -128,7 +128,7 @@ bool AddFollower::start(bool&) {
     finish("", "", true, "collection has been dropped in the meantime");
     return false;
   }
-  Node collection =
+  Node const& collection =
       _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection).first;
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
@@ -155,7 +155,7 @@ bool AddFollower::start(bool&) {
     if (replFact2.second && replFact2.first == "satellite") {
       // satellites => distribute to every server
       auto available = Job::availableServers(_snapshot);
-      desiredReplFactor = Job::countGoodServersInList(_snapshot, available);
+      desiredReplFactor = Job::countGoodOrBadServersInList(_snapshot, available);
     }
   }
 
@@ -171,7 +171,7 @@ bool AddFollower::start(bool&) {
     }
   }
   size_t actualReplFactor
-      = 1 + Job::countGoodServersInList(_snapshot, onlyFollowers.slice());
+      = 1 + Job::countGoodOrBadServersInList(_snapshot, onlyFollowers.slice());
       // Leader plus good followers in plan
   if (actualReplFactor >= desiredReplFactor) {
     finish("", "", true, "job no longer necessary, have enough replicas");
@@ -298,7 +298,7 @@ bool AddFollower::start(bool&) {
   }    // array for transaction done
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, trx);
+  write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     _status = FINISHED;

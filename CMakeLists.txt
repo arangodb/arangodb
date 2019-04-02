@@ -89,7 +89,7 @@ set(ARANGODB_VERSION_MINOR "4")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "4")
+  set(ARANGODB_VERSION_PATCH "5")
   set(ARANGODB_VERSION_RELEASE_TYPE "")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -1007,13 +1007,7 @@ endif ()
 # IResearch
 # ------------------------------------------------------------------------------
 
-option(USE_IRESEARCH "enable ArangoSearch views" ON)
-
-if(USE_IRESEARCH)
-  add_definitions("-DUSE_IRESEARCH=1")
-
-  set(LIB_ARANGO_IRESEARCH arango_iresearch)
-endif()
+set(LIB_ARANGO_IRESEARCH arango_iresearch)
 
 # 3rdParty exports:
 #

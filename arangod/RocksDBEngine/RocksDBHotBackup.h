@@ -22,9 +22,12 @@
 #ifndef ARANGOD_ROCKSDB_HOTBACKUP_H
 #define ARANGOD_ROCKSDB_HOTBACKUP_H 1
 
-#include <velocypack/velocypack-aliases.h>
 #include "Basics/Result.h"
-#include "Rest/GeneralResponse.h"
+#include "Rest/CommonDefines.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 
@@ -35,28 +38,28 @@ namespace arangodb {
 class RocksDBHotBackup {
 public:
   static std::shared_ptr<RocksDBHotBackup> operationFactory(arangodb::rest::RequestType const type,
-                                                            std::vector<std::string> const & suffixes,
-                                                            const VPackSlice body);
+                                                            std::vector<std::string> const& suffixes,
+                                                            VPackSlice body);
 
   RocksDBHotBackup() = delete;
-  RocksDBHotBackup(const VPackSlice body);
-  virtual ~RocksDBHotBackup();
+  explicit RocksDBHotBackup(VPackSlice body);
+  virtual ~RocksDBHotBackup() = default;
 
-  bool valid() const {return _valid;};
-  bool success() const {return _success;};
+  bool valid() const {return _valid;}
+  bool success() const {return _success;}
 
-  rest::ResponseCode restResponseCode() const {return _respCode;};
-  int restResponseError() const {return _respError;};
-  std::string const& errorMessage() const {return _errorMessage;};
+  rest::ResponseCode restResponseCode() const {return _respCode;}
+  int restResponseError() const {return _respError;}
+  std::string const& errorMessage() const {return _errorMessage;}
 
   /// @brief Validate and extract parameters appropriate to the operation type
-  virtual void parseParameters(rest::RequestType const) {};
+  virtual void parseParameters(rest::RequestType) {}
 
   /// @brief Execute the operation
-  virtual void execute() {};
+  virtual void execute() {}
 
-  VPackSlice resultSlice() {return _result.slice();};
-  VPackBuilder const& result() const { return _result;};
+  VPackSlice resultSlice() {return _result.slice();}
+  VPackBuilder const& result() const { return _result;}
 
   std::string getRocksDBPath();
   unsigned getTimeout() const {return _timeoutSeconds;}
@@ -65,19 +68,19 @@ public:
   std::string rebuildPathPrefix();
 
   /// @brief Build rebuildPathPrefix() + "/" + suffix
-  std::string rebuildPath(const std::string & suffix);
+  std::string rebuildPath(std::string const& suffix);
 
 protected:
-  virtual std::string buildDirectoryPath(const std::string & timestamp, const std::string & userString);
-  bool clearPath(const std::string & path);
+  virtual std::string buildDirectoryPath(std::string const& timestamp, std::string const& userString);
+  bool clearPath(std::string const& path);
 
   // retrieve configuration values from request's body
-  void getParamValue(const char * key, std::string & value, bool required);
-  void getParamValue(const char * key, bool &value, bool required);
-  void getParamValue(const char * key, unsigned & value, bool required);
-  void getParamValue(const char * key, VPackSlice & value, bool required);
+  void getParamValue(char const* key, std::string& value, bool required);
+  void getParamValue(char const* key, bool& value, bool required);
+  void getParamValue(char const* key, unsigned& value, bool required);
+  void getParamValue(char const* key, VPackSlice& value, bool required);
 
-  const VPackSlice _body;   // request's configuration
+  VPackSlice const _body;   // request's configuration
   bool _valid;          // are parameters valid
   bool _success;        // did operation finish successfully
 
@@ -88,12 +91,6 @@ protected:
   bool _isSingle;       // is single db server (not cluster)
 
   unsigned _timeoutSeconds; // used to stop transaction, used again to stop rocksdb
-
-  static const char * dirCreatingString;
-  static const char * dirRestoringString;
-  static const char * dirDownloadingString;
-  static const char * dirFailsafeString;
-
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The following wrapper routines simplify unit testing
@@ -115,11 +112,11 @@ class RocksDBHotBackupCreate : public RocksDBHotBackup {
 public:
 
   RocksDBHotBackupCreate() = delete;
-  RocksDBHotBackupCreate(const VPackSlice body);
-  ~RocksDBHotBackupCreate();
+  virtual ~RocksDBHotBackupCreate() = default;
+  explicit RocksDBHotBackupCreate(VPackSlice body);
 
   // @brief Validate and extract parameters appropriate to the operation type
-  void parseParameters(rest::RequestType const) override;
+  void parseParameters(rest::RequestType) override;
 
   // @brief Execute an operation
   void execute() override;
@@ -153,22 +150,21 @@ class RocksDBHotBackupRestore : public RocksDBHotBackup {
 public:
 
   RocksDBHotBackupRestore() = delete;
-  RocksDBHotBackupRestore(const VPackSlice body);
-  ~RocksDBHotBackupRestore();
+  explicit RocksDBHotBackupRestore(VPackSlice body);
 
   // @brief Validate and extract parameters appropriate to the operation type
-  void parseParameters(rest::RequestType const) override;
+  void parseParameters(rest::RequestType) override;
 
   // @brief Execute an operation
   void execute() override;
 
   // @brief accessors to the parameters
-  const std::string & getTimestampCurrent() const {return _timestampCurrent;}
-  const std::string & getDirectoryRestore() const {return _directoryRestore;}
+  std::string const& getTimestampCurrent() const {return _timestampCurrent;}
+  std::string const& getDirectoryRestore() const {return _directoryRestore;}
 
-  bool createRestoringDirectory(std::string & nameOutput);
+  bool createRestoringDirectory(std::string& nameOutput);
 
-protected:
+ protected:
 
   bool _saveCurrent;
   std::string _timestampCurrent;
@@ -189,10 +185,9 @@ class RocksDBHotBackupList : public RocksDBHotBackup {
 public:
 
   RocksDBHotBackupList() = delete;
-  RocksDBHotBackupList(const VPackSlice body);
-  ~RocksDBHotBackupList();
+  explicit RocksDBHotBackupList(VPackSlice body);
 
-  void parseParameters(rest::RequestType const) override;
+  void parseParameters(rest::RequestType) override;
   void execute() override;
 
 };// class RocksDBHotBackupList
@@ -222,7 +217,7 @@ protected:
 class RocksDBHotBackupPolicy : public RocksDBHotBackup {
 public:
 
-  void execute() override {};
+  void execute() override {}
 
 };// class RocksDBHotBackupPolicy
 

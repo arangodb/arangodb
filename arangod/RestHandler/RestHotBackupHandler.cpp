@@ -98,9 +98,7 @@ bool RestHotBackupHandler::verifyPermitted() {
   // second test:  is rocksdb the storage engine
   if (retFlag) {
     // test for rocksdb engine
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    TRI_ASSERT(engine != nullptr);
-    if (0!=engine->typeName().compare(arangodb::RocksDBEngine::EngineName)) {
+    if (!EngineSelectorFeature::isRocksDB()) {
       generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
                     "hotbackup current supports only the rocksdb storage engine");
       retFlag = false;
@@ -120,7 +118,7 @@ std::shared_ptr<RocksDBHotBackup> RestHotBackupHandler::parseHotBackupParams(
 
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (parseSuccess) {
-    operation=RocksDBHotBackup::operationFactory(type, suffixes, body);
+    operation = RocksDBHotBackup::operationFactory(type, suffixes, body);
   } // if
 
   return operation;

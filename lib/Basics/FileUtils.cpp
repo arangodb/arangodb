@@ -300,7 +300,7 @@ bool copyRecursive(std::string const& source, std::string const& target,
 
   // "auto lambda" will not work here
   std::function<TRI_copy_recursive_e(std::string const&)> lambda =
-    [&filter] (std::string const & pathname) -> TRI_copy_recursive_e {
+    [&filter] (std::string const& pathname) -> TRI_copy_recursive_e {
     return filter(pathname) ? TRI_COPY_IGNORE : TRI_COPY_COPY;
   };
 
@@ -317,7 +317,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
 
   // "auto lambda" will not work here
   std::function<TRI_copy_recursive_e(std::string const&)> lambda =
-    [&filter] (std::string const & pathname) -> TRI_copy_recursive_e {
+    [&filter] (std::string const& pathname) -> TRI_copy_recursive_e {
     return filter(pathname) ? TRI_COPY_IGNORE : TRI_COPY_COPY;
   };
 
@@ -332,7 +332,7 @@ bool copyRecursive(std::string const& source, std::string const& target,
                    std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
                    std::string& error) {
 
-  bool ret_bool(false);
+  bool ret_bool = false;
 
   if (isDirectory(source)) {
     ret_bool = copyDirectoryRecursive(source, target, filter, error);
@@ -444,7 +444,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
 #ifndef _WIN32
         } else if (isSymbolicLink(src)) {
           if (!TRI_CopySymlink(src, dst, error)) {
-            rc_bool=false;
+            rc_bool = false;
           }
 #endif
         } else {
@@ -711,7 +711,7 @@ std::string slurpProgram(std::string const& program) {
   return std::string(buffer.data(), buffer.length());
 }
 
-int slurpProgramWithExitcode(std::string const& program, std::string &stdout) {
+int slurpProgramWithExitcode(std::string const& program, std::string& output) {
 #ifdef _WIN32
   UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
   FILE* fp = _wpopen(uprog.getTerminatedBuffer(), L"r");
@@ -735,12 +735,11 @@ int slurpProgramWithExitcode(std::string const& program, std::string &stdout) {
     int res = pclose(fp);
 #endif
 
-    stdout = std::string(buffer.data(), buffer.length());
+    output = std::string(buffer.data(), buffer.length());
     return res;
   }
 
   throwProgramError(program);
-  return 0; // dead code
 };
 
 }  // namespace FileUtils

@@ -320,7 +320,10 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE, "in smart vertex collections _key must be prefixed with the value of the smart graph attribute");
   REG_ERROR(ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE, "attribute cannot be used as smart graph attribute");
   REG_ERROR(ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH, "smart graph attribute mismatch");
-  REG_ERROR(ERROR_REMOTE_REPOSITORY_CONFIG_BAD, "remote hotback repository configuration error");
+  REG_ERROR(ERROR_INVALID_SMART_JOIN_ATTRIBUTE, "invalid smart join attribute declaration");
+  REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE, "shard key value must be prefixed with the value of the smart join attribute");
+  REG_ERROR(ERROR_NO_SMART_JOIN_ATTRIBUTE, "smart join attribute not given or invalid");
+  REG_ERROR(ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE, "must not change the value of the smartJoinAttribute");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_FAILED, "error during cluster repairs");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY, "not enough (healthy) db servers");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED, "replication factor violated during cluster repairs");
@@ -351,4 +354,5 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ACTION_OPERATION_UNABORTABLE, "this maintenance action cannot be stopped");
   REG_ERROR(ERROR_ACTION_UNFINISHED, "maintenance action still processing");
   REG_ERROR(ERROR_NO_SUCH_ACTION, "no such maintenance action");
+  REG_ERROR(ERROR_REMOTE_REPOSITORY_CONFIG_BAD, "remote hotback repository configuration error");
 }

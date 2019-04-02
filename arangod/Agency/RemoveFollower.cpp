@@ -110,7 +110,7 @@ bool RemoveFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   _jb->close();  // transaction object
   _jb->close();  // close array
 
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
@@ -131,7 +131,7 @@ bool RemoveFollower::start(bool&) {
     finish("", "", true, "collection has been dropped in the meantime");
     return false;
   }
-  Node collection =
+  Node const& collection =
       _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection).first;
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
@@ -158,7 +158,7 @@ bool RemoveFollower::start(bool&) {
     if (replFact2.second && replFact2.first == "satellite") {
       // satellites => distribute to every server
       auto available = Job::availableServers(_snapshot);
-      desiredReplFactor = Job::countGoodServersInList(_snapshot, available);
+      desiredReplFactor = Job::countGoodOrBadServersInList(_snapshot, available);
     }
   }
 
@@ -410,7 +410,7 @@ bool RemoveFollower::start(bool&) {
   }    // array for transaction done
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, trx);
+  write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     _status = FINISHED;

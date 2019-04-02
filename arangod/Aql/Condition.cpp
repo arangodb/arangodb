@@ -111,8 +111,10 @@ struct PermutationState {
   size_t const n;
 };
 
-}  // namespace
 
+//------------------------------------------------------------------------
+// Rules for single-valued variables
+//------------------------------------------------------------------------
 //        |         | a == y | a != y | a <  y | a <= y | a >= y | a > y
 // -------|------------------|--------|--------|--------|--------|--------
 // x  < y |         |   IMP  |   OIS  |   OIS  |  OIS   |   IMP  |  IMP
@@ -138,6 +140,7 @@ struct PermutationState {
 // x  < y |         |   SIO  |   DIJ  |   DIJ  |   DIJ  |   SIO  |  SIO
 // x == y |  a >  x |   IMP  |   OIS  |   IMP  |   IMP  |   OIS  |  OIS
 // x  > y |         |   IMP  |   OIS  |   IMP  |   IMP  |   OIS  |  OIS
+//------------------------------------------------------------------------
 // the 7th column is here as fallback if the operation is not in the table
 // above.
 // IMP -> IMPOSSIBLE -> empty result -> the complete AND set of conditions can
@@ -153,7 +156,7 @@ struct PermutationState {
 // larger than that of B
 //  -> A can be dropped.
 
-ConditionPartCompareResult const ConditionPart::ResultsTable[3][7][7] = {
+ConditionPartCompareResult const ResultsTable[3][7][7] = {
     {// X < Y
      {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF,
       OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, DISJOINT},
@@ -196,6 +199,96 @@ ConditionPartCompareResult const ConditionPart::ResultsTable[3][7][7] = {
      {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE,
       OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
      {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}}};
+
+//------------------------------------------------------------------------
+// Rules for multi-valued variables
+//------------------------------------------------------------------------
+//        |         | a == y | a != y | a <  y | a <= y | a >= y | a > y
+// -------|------------------|--------|--------|--------|--------|--------
+// x  < y |         |   DIJ  |   DIJ  |   OIS  |  OIS   |   DIJ  |  DIJ
+// x == y |  a == x |   OIS  |   IMP  |   DIJ  |  OIS   |   OIS  |  DIJ
+// x  > y |         |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   OIS  |  OIS
+// -------|------------------|--------|--------|--------|--------|--------
+// x  < y |         |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   DIJ  |  DIJ
+// x == y |  a != x |   IMP  |   OIS  |   DIJ  |  DIJ   |   DIJ  |  DIJ
+// x  > y |         |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   DIJ  |  DIJ
+// -------|------------------|--------|--------|--------|--------|--------
+// x  < y |         |   DIJ  |   DIJ  |   OIS  |  OIS   |   DIJ  |  DIJ
+// x == y |  a <  x |   DIJ  |   DIJ  |   OIS  |  OIS   |   DIJ  |  DIJ
+// x  > y |         |   SIO  |   DIJ  |   SIO  |  SIO   |   DIJ  |  DIJ
+// -------|------------------|--------|--------|--------|--------|--------
+// x  < y |         |   DIJ  |   DIJ  |   OIS  |  OIS   |   DIJ  |  DIJ
+// x == y |  a <= x |   SIO  |   DIJ  |   SIO  |  OIS   |   DIJ  |  DIJ
+// x  > y |         |   SIO  |   DIJ  |   SIO  |  SIO   |   DIJ  |  DIJ
+// -------|------------------|--------|--------|--------|--------|--------
+// x  < y |         |   SIO  |   DIJ  |   DIJ  |  DIJ   |   SIO  |  SIO
+// x == y |  a >= x |   SIO  |   DIJ  |   DIJ  |  DIJ   |   OIS  |  SIO
+// x  > y |         |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   OIS  |  OIS
+// -------|------------------|--------|--------|--------|--------|--------
+// x  < y |         |   SIO  |   DIJ  |   DIJ  |  DIJ   |   SIO  |  SIO
+// x == y |  a >  x |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   OIS  |  OIS
+// x  > y |         |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   OIS  |  OIS
+//------------------------------------------------------------------------
+// the 7th column is here as fallback if the operation is not in the table
+// above.
+// IMP -> IMPOSSIBLE -> empty result -> the complete AND set of conditions can
+// be dropped.
+// CEQ -> CONVERT_EQUAL -> both conditions can be combined to a equals x.
+// DIJ -> DISJOINT -> neither condition is a consequence of the other -> both
+// have to stay in place.
+// SIO -> SELF_CONTAINED_IN_OTHER -> the left condition is a consequence of the
+// right condition
+// OIS -> OTHER_CONTAINED_IN_SELF -> the right condition is a consequence of the
+// left condition
+// If a condition (A) is a consequence of another (B), the solution set of A is
+// larger than that of B
+//  -> A can be dropped.
+
+ConditionPartCompareResult const ResultsTableMultiValued[3][7][7] = {
+    {// X < Y
+     {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
+      OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT, DISJOINT},
+     {DISJOINT, DISJOINT, DISJOINT, DISJOINT,
+      DISJOINT, DISJOINT, DISJOINT},
+     {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
+      OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT, DISJOINT},
+     {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
+      OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT, DISJOINT},
+     {SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT,
+      SELF_CONTAINED_IN_OTHER, SELF_CONTAINED_IN_OTHER, DISJOINT},
+     {SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT,
+      SELF_CONTAINED_IN_OTHER, SELF_CONTAINED_IN_OTHER, DISJOINT},
+     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}},
+    {// X == Y
+     {OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, DISJOINT, OTHER_CONTAINED_IN_SELF,
+      OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT},
+     {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT,
+      DISJOINT, DISJOINT, DISJOINT},
+     {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
+      OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT, DISJOINT},
+     {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER,
+      OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT, DISJOINT},
+     {SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT,
+      OTHER_CONTAINED_IN_SELF, SELF_CONTAINED_IN_OTHER, DISJOINT},
+     {DISJOINT, DISJOINT, DISJOINT, DISJOINT,
+      OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
+     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}},
+    {// X > Y
+     {DISJOINT, DISJOINT, DISJOINT, DISJOINT,
+      OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
+     {DISJOINT, DISJOINT, DISJOINT,
+      DISJOINT, DISJOINT, DISJOINT, DISJOINT},
+     {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER,
+      SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT},
+     {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER,
+      SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT},
+     {DISJOINT, DISJOINT, DISJOINT, DISJOINT,
+      OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
+     {DISJOINT, DISJOINT, DISJOINT, DISJOINT,
+      OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
+     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}}};
+
+}  // namespace
 
 ConditionPart::ConditionPart(Variable const* variable, std::string const& attributeName,
                              AstNode const* operatorNode, AttributeSideType side, void* data)
@@ -269,7 +362,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other, bool isReversed) con
             auto w = other.valueNode->getMemberUnchecked(j);
 
             ConditionPartCompareResult res =
-                ConditionPart::ResultsTable[CompareAstNodes(v, w, true) + 1][0][0];
+                ResultsTable[CompareAstNodes(v, w, true) + 1][0][0];
 
             if (res != CompareResult::OTHER_CONTAINED_IN_SELF &&
                 res != CompareResult::CONVERT_EQUAL && res != CompareResult::IMPOSSIBLE) {
@@ -331,8 +424,8 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other, bool isReversed) con
 
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
   ConditionPartCompareResult res =
-      ConditionPart::ResultsTable[CompareAstNodes(other.valueNode, valueNode, true) + 1]
-                                 [other.whichCompareOperation()][whichCompareOperation()];
+      ResultsTable[CompareAstNodes(other.valueNode, valueNode, true) + 1]
+                  [other.whichCompareOperation()][whichCompareOperation()];
 
   if (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
       res == CompareResult::CONVERT_EQUAL || res == CompareResult::IMPOSSIBLE) {
@@ -517,7 +610,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
 
 /// @brief normalize the condition
 /// this will convert the condition into its disjunctive normal form
-void Condition::normalize(ExecutionPlan* plan) {
+void Condition::normalize(ExecutionPlan* plan, bool multivalued /*= false*/) {
   if (_isNormalized) {
     // already normalized
     return;
@@ -527,7 +620,7 @@ void Condition::normalize(ExecutionPlan* plan) {
   _root = transformNodePostorder(_root);
   _root = fixRoot(_root, 0);
 
-  optimize(plan);
+  optimize(plan, multivalued);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_root != nullptr) {
@@ -798,7 +891,7 @@ bool Condition::removeInvalidVariables(std::unordered_set<Variable const*> const
 }
 
 /// @brief optimize the condition expression tree
-void Condition::optimize(ExecutionPlan* plan) {
+void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
   if (_root == nullptr) {
     return;
   }
@@ -817,6 +910,10 @@ void Condition::optimize(ExecutionPlan* plan) {
   // handle sub nodes of top-level OR node
   size_t n = _root->numMembers();
   size_t r = 0;
+
+  const auto* resultsTable = multivalued
+    ? ResultsTableMultiValued
+    : ResultsTable;
 
   while (r < n) {  // foreach OR-Node
     bool retry = false;
@@ -977,7 +1074,8 @@ void Condition::optimize(ExecutionPlan* plan) {
 
           // IN-merging
           if (leftNode->type == NODE_TYPE_OPERATOR_BINARY_IN &&
-              leftNode->getMemberUnchecked(1)->isConstant()) {
+              leftNode->getMemberUnchecked(1)->isConstant() &&
+              !multivalued) {
             TRI_ASSERT(leftNode->numMembers() == 2);
 
             if (rightNode->type == NODE_TYPE_OPERATOR_BINARY_IN &&
@@ -1003,8 +1101,8 @@ void Condition::optimize(ExecutionPlan* plan) {
               for (size_t k = 0; k < values->numMembers(); ++k) {
                 auto value = values->getMemberUnchecked(k);
                 ConditionPartCompareResult res =
-                    ConditionPart::ResultsTable[CompareAstNodes(value, other.valueNode, true) + 1][0 /*NODE_TYPE_OPERATOR_BINARY_EQ*/]
-                                               [other.whichCompareOperation()];
+                    ResultsTable[CompareAstNodes(value, other.valueNode, true) + 1][0 /*NODE_TYPE_OPERATOR_BINARY_EQ*/]
+                                [other.whichCompareOperation()];
 
                 bool const keep = (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
                                    res == CompareResult::CONVERT_EQUAL);
@@ -1032,7 +1130,7 @@ void Condition::optimize(ExecutionPlan* plan) {
           // end of IN-merging
 
           // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-          ConditionPartCompareResult res = ConditionPart::ResultsTable
+          ConditionPartCompareResult res = resultsTable
               [CompareAstNodes(current.valueNode, other.valueNode, true) + 1]
               [current.whichCompareOperation()][other.whichCompareOperation()];
 

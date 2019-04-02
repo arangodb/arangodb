@@ -153,26 +153,6 @@ $ kubectl get nodes
   ip-172-31-45-199.us-west-2.compute.internal   Ready    <none>   1d    v1.10.3
 ```
 
-### Create a storage class for persistent data
-
-* Edit a new file `gp2-storage-class.yaml`
-```
-kind: StorageClass
-apiVersion: storage.k8s.io/v1
-metadata:
-    name: gp2
-provisioner: kubernetes.io/aws-ebs
-parameters:
-    type: gp2
-reclaimPolicy: Retain
-mountOptions:
-    - debug
-```
-* Apply the storage class 
-```
-$ kubectl apply -f gp2-storage-class.yaml
-```
-
 ### Setup `helm`
 * Create service account for `tiller`
 ```
