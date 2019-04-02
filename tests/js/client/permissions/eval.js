@@ -44,16 +44,22 @@ const arangodb = require("@arangodb");
 function testSuite() {
   return {
     setUp: function() {},
-    tearDown: function() {},    
+    tearDown: function() {},
     testEval: function() {
       try {
         require("internal").parseFile(testFile);
         fail();
       } catch (err) {
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
-      }            
+      }
       try {
         require("internal").parse(`print('hello world')`);
+        fail();
+      } catch (err) {
+        assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
+      }
+      try {
+        require("internal").load(testFile);
         fail();
       } catch (err) {
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
