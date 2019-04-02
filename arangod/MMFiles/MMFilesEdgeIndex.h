@@ -176,8 +176,6 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
   Result sizeHint(transaction::Methods& trx, size_t size) override;
 
-  bool hasBatchInsert() const override { return true; }
-
   TRI_MMFilesEdgeIndexHash_t* from() const { return _edgesFrom.get(); }
 
   TRI_MMFilesEdgeIndexHash_t* to() const { return _edgesTo.get(); }

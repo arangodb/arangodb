@@ -147,7 +147,7 @@ Result RocksDBBuilderIndex::remove(transaction::Methods& trx, RocksDBMethods* mt
 }
 
 // fast mode assuming exclusive access locked from outside
-template <typename WriteBatchType, typename MethodsType>
+template <typename WriteBatchType, typename MethodsType, bool foreground>
 static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
                                   rocksdb::Snapshot const* snap) {
   // fillindex can be non transactional, we just need to clean up
@@ -204,8 +204,18 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
       TRI_ASSERT(ridx.hasSelectivityEstimate() && ops.size() == 1);
       auto it = ops.begin();
       TRI_ASSERT(ridx.id() == it->first);
-      ridx.estimator()->bufferUpdates(seq, std::move(it->second.inserts),
-                                      std::move(it->second.removals));
+      
+      if (foreground) {
+        for (uint64_t hash : it->second.inserts) {
+          ridx.estimator()->insert(hash);
+        }
+        for (uint64_t hash : it->second.removals) {
+          ridx.estimator()->remove(hash);
+        }
+      } else {
+        ridx.estimator()->bufferUpdates(seq, std::move(it->second.inserts),
+                                        std::move(it->second.removals));
+      }
     }
   };
 
@@ -266,12 +276,12 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
     // unique index. we need to keep track of all our changes because we need to
     // avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
-    res = ::fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(*internal, batch, snap);
+    res = ::fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods, true>(*internal, batch, snap);
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap WriteBatch
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
-    res = ::fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods>(*internal, batch, snap);
+    res = ::fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods, true>(*internal, batch, snap);
   }
 
   return res;
@@ -544,19 +554,20 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   });
 
   locker.unlock();
+  // Step 1. Capture with snapshot
   if (internal->unique()) {
     const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
     // unique index. we need to keep track of all our changes because we need to
     // avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
-    res = ::fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(*internal, batch, snap);
+    res = ::fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods, false>(*internal, batch, snap);
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap WriteBatch
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
-    res = ::fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods>(*internal, batch, snap);
+    res = ::fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods, false>(*internal, batch, snap);
   }
-
+  
   if (res.fail()) {
     return res;
   }
@@ -565,6 +576,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   rootDB->ReleaseSnapshot(snap);
   snap = nullptr;
 
+  // Step 2. Scan the WAL for documents without lock
   int maxCatchups = 3;
   rocksdb::SequenceNumber lastScanned = 0;
   uint64_t numScanned = 0;
@@ -589,7 +601,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     if (res.fail()) {
       return res;
     }
-
+    
     scanFrom = lastScanned;
   } while (maxCatchups-- > 0 && numScanned > 5000);
 
@@ -597,6 +609,8 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     return res.reset(TRI_ERROR_LOCK_TIMEOUT);
   }
 
+  // Step 3. Scan the WAL for documents with a lock
+  
   scanFrom = lastScanned;
   if (internal->unique()) {
     const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
