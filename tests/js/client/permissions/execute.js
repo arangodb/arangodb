@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global fail, getOptions, assertTrue, assertEqual, assertNotEqual */
+/* global fail, getOptions, assertTrue, assertEqual, assertNotEqual, print */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief teardown for dump/reload tests
@@ -42,7 +42,7 @@ const executeExternalAndWait = internal.executeExternalAndWait;
 const killExternal = internal.killExternal;
 const statusExternal = internal.statusExternal;
 
-var arangodb = require("@arangodb");
+const arangodb = require("@arangodb");
 function testSuite() {
   return {
     testExternalProcesses : function() {
