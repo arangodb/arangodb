@@ -343,7 +343,7 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
 
   std::vector<arangodb::aql::ConditionPart> parts;
   parts.reserve(n);
-      
+
   std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> result;
 
   for (size_t i = 0; i < n; ++i) {
@@ -431,7 +431,7 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
 
   for (size_t i = 0; i < n; ++i) {
     auto& p = parts[i];
-        
+
     if (p.operatorType == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN &&
         p.valueNode->isArray()) {
       TRI_ASSERT(p.valueNode->isConstant());
@@ -442,15 +442,15 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
         auto emptyArray = ast->createNodeArray();
         auto mergedIn =
             ast->createNodeUnionizedArray(parts[previousIn].valueNode, p.valueNode);
-    
+
         arangodb::aql::AstNode* clone = ast->clone(root->getMember(previousIn));
         root->changeMember(previousIn, clone);
         static_cast<ConditionData*>(parts[previousIn].data)->first = clone;
-        
+
         clone = ast->clone(root->getMember(i));
         root->changeMember(i, clone);
         static_cast<ConditionData*>(parts[i].data)->first = clone;
-            
+
         // can now edit nodes in place...
         parts[previousIn].valueNode = mergedIn;
         {
@@ -459,7 +459,7 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
           TEMPORARILY_UNLOCK_NODE(n1);
           n1->changeMember(1, mergedIn);
         }
-            
+
         p.valueNode = emptyArray;
         {
           auto n2 = root->getMember(i)->getMember(0);
@@ -467,14 +467,14 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
           TEMPORARILY_UNLOCK_NODE(n2);
           n2->changeMember(1, emptyArray);
         }
-    
+
       } else {
         // note first IN
         previousIn = i;
       }
     }
   }
-            
+
   // now sort all conditions by variable name, attribute name, attribute value
   std::sort(parts.begin(), parts.end(),
             [](arangodb::aql::ConditionPart const& lhs,
@@ -526,7 +526,7 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
             });
 
   TRI_ASSERT(parts.size() == conditionData.size());
-    
+
   // clean up
   while (root->numMembers()) {
     root->removeMemberUnchecked(0);
@@ -567,7 +567,7 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
       usedIndexes.emplace_back(conditionData->second);
     }
   }
-    
+
   return true;
 }
 
@@ -823,7 +823,8 @@ transaction::Methods::~Methods() {
     TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
     // store result
     _transactionContextPtr->storeTransactionResult(_state->id(),
-                                                   _state->hasFailedOperations());
+                                                   _state->hasFailedOperations(),
+                                                   _state->wasRegistered());
     _transactionContextPtr->unregisterTransaction();
 
     delete _state;
@@ -3434,7 +3435,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
 
   return Result{};
 }
-  
+
 #ifndef USE_ENTERPRISE
 /*static*/ int Methods::validateSmartJoinAttribute(LogicalCollection const&,
                                                    arangodb::velocypack::Slice) {

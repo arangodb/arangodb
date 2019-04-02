@@ -103,6 +103,8 @@ class TransactionState {
   inline bool isRunning() const {
     return _status == transaction::Status::RUNNING;
   }
+  void setRegistered() noexcept { _registeredTransaction = true; }
+  bool wasRegistered() const noexcept { return _registeredTransaction; }
 
   int increaseNesting() { return ++_nestingLevel; }
   int decreaseNesting() {
@@ -257,6 +259,8 @@ class TransactionState {
 
   /// the list of locked shards (cluster only)
   std::unordered_set<std::string> _lockedShards;
+
+  bool _registeredTransaction;
 };
 
 }  // namespace arangodb
