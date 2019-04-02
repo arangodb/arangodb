@@ -28,6 +28,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
+#include "Basics/FileUtils.h"
 
 #include "Agency/AgencyComm.h"
 #include "Cluster/TraverserEngineRegistry.h"
@@ -240,6 +241,16 @@ int truncateCollectionOnCoordinator(std::string const& dbname, std::string const
 
 int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector,
                            double maxWaitTime = -1.0);
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief create hotbackup on a coordinator
+//////////////////////////////////////////////////////////////////////////////
+
+ enum HotBackupMode {CONSISTENT, DIRTY};
+
+ arangodb::Result hotBackupCoordinator(HotBackupMode const&, uint64_t const&);
+
+ arangodb::Result loadLocalBackup(HotBackupMode const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the active journals for the collection on all DBservers

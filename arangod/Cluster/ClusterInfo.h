@@ -275,7 +275,19 @@ class ClusterInfo {
 
   uint64_t uniqid(uint64_t = 1);
 
+  /**
+   * @brief Agency dump including replicated log and compaction
+   * @param  body  Builder to fill with dump
+   * @return       Operation's result
+   */
   arangodb::Result agencyDump(std::shared_ptr<VPackBuilder> body);
+
+  /**
+   * @brief Agency dump including replicated log and compaction
+   * @param  body  Builder to fill with dump
+   * @return       Operation's result
+   */
+  arangodb::Result agencyReplan(std::shared_ptr<VPackBuilder> body);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief flush the caches (used for testing only)

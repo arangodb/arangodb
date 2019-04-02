@@ -3611,6 +3611,22 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 
 }
 
+
+arangodb::Result agencyReplan(Slice const plan) {
+
+  AgencyCommResult res = _agency.setValue("arango/Plan", plan);
+  if (!res.successful()) {
+    return arangodb::Result(
+      TRI_HOTBACKUP_ERROR_INTERNAL,
+      std::string("Failed to replace plan in agency: ") + res.errorMessage());
+  }
+
+  return arangodb::Result();
+  
+}
+
+
+
 arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId) {
   return Result();
 }
