@@ -1,4 +1,5 @@
 /* jshint strict: false */
+/* global: arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoDatabase
@@ -30,6 +31,7 @@
 
 var internal = require('internal');
 var arangosh = require('@arangodb/arangosh');
+const sleep = require("internal").sleep;
 
 var ArangoError = require('@arangodb').ArangoError;
 
@@ -65,21 +67,22 @@ exports.create = function (userString = undefined) {
 // / @brief restore a hot backup to the server
 // //////////////////////////////////////////////////////////////////////////////
 
-waitForRestart = (maxWait) => {
-  if (maxWait = 0.0 || maxWait === undefined || maxWait === null || 
+const waitForRestart = (maxWait, originalUptime) => {
+  if (maxWait === 0.0 || maxWait === undefined || maxWait === null || 
       isNaN(parseFloat(maxWait))) {
     return;
   }
   
   let start = Date.now();
+  let originalUptimeKeys = Object.keys(originalUptime);
   while (((Date.now() - start) / 1000) < maxWait) {
     let currentUptime = this.getUptime();
     let keys = Object.keys(currentUptime);
     if (keys.length !== originalUptimeKeys ) {
       try {
-        arango.reconnect(this.instanceInfo.endpoint, '_system', 'root', '');
+        internal.db._connection.reconnect(this.instanceInfo.endpoint, '_system', 'root', '');
       }
-      catch(x) {https://github.com/arangodb/arangodb/pull/8414
+      catch(x) {
         this.print(".");
         
         sleep(1.0);
@@ -98,7 +101,7 @@ waitForRestart = (maxWait) => {
     
     if (newer) {
       try {
-        arango.reconnect(this.instanceInfo.endpoint, '_system', 'root', '');
+        internal.db._connection.reconnect(this.instanceInfo.endpoint, '_system', 'root', '');
         this.print("reconnected");
         return this.results.restoreHotBackup.status;
       }
@@ -114,9 +117,10 @@ waitForRestart = (maxWait) => {
 };
 
 exports.restore = function(restoreBackupName, maxWait) {
+  let originalUptime = this.getUptime();
   let reply = internal.db._connection.POST('_admin/hotbackup/restore', { directory: restoreBackupName });
   if (!reply.error && reply.code === 200) {
-    waitForRestart(maxWait);
+    waitForRestart(maxWait, originalUptime);
     return reply.result;
   }
   throw new ArangoError(reply);

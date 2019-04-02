@@ -250,8 +250,6 @@ class DumpRestoreHelper {
 
   restoreHotBackup() {
     this.print("restoring backup - start");
-    let originalUptime = this.getUptime();
-    let originalUptimeKeys = Object.keys(originalUptime);
     let list = this.listHotBackup();
     let backupName;
     list.forEach(function (name, i) {
