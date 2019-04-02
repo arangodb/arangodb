@@ -355,9 +355,10 @@
     "ERROR_ACTION_OPERATION_UNABORTABLE" : { "code" : 6002, "message" : "this maintenance action cannot be stopped" },
     "ERROR_ACTION_UNFINISHED"      : { "code" : 6003, "message" : "maintenance action still processing" },
     "ERROR_NO_SUCH_ACTION"         : { "code" : 6004, "message" : "no such maintenance action" },
-    "ERROR_REMOTE_REPOSITORY_CONFIG_BAD" : { "code" : 7006, "message" : "remote hotback repository configuration error" },
+    "ERROR_REMOTE_REPOSITORY_CONFIG_BAD" : { "code" : 7006, "message" : "remote hotback repository configuration error" }
   };
 
   // For compatibility with <= 3.3
   internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
 }());
+
