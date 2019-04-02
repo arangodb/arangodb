@@ -24,6 +24,8 @@
 #ifndef ARANGOD_CLUSTER_SERVER_STATE_H
 #define ARANGOD_CLUSTER_SERVER_STATE_H 1
 
+#include <mutex>
+
 #include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "VocBase/voc-types.h"
@@ -283,8 +285,10 @@ class ServerState {
   /// @brief r/w lock for state
   mutable arangodb::basics::ReadWriteSpinLock _lock;
 
-  /// @brief the server's id, can be set just once
+  /// @brief the server's id, can be set just once, use getId and setId, do not access directly
   std::string _id;
+  /// @brief lock for writing and reading server id
+  mutable std::mutex _idLock;
 
   /// @brief the server's short id, can be set just once
   std::atomic<uint32_t> _shortId;
