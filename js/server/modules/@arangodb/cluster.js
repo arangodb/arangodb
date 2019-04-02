@@ -532,7 +532,7 @@ function waitForStatisticsCollections() {
     wait(1.0);
   }
   console.topic('startup=info',
-                'waitForStatisticsCollections: timeout of 120s reached.);
+                'waitForStatisticsCollections: timeout of 120s reached.');
   return false;
 }
 
