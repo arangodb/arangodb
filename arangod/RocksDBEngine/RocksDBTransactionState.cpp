@@ -360,6 +360,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     for (auto& trxColl : _collections) {
       TRI_IF_FAILURE("RocksDBCommitCounts") { continue; }
       auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
+      TRI_ASSERT(!rcoll->hasOperations());
       TRI_ASSERT(rcoll->stealTrackedOperations().empty());
     }
     // don't write anything if the transaction is empty
