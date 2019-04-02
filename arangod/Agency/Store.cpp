@@ -49,11 +49,6 @@ struct NotEmpty {
   bool operator()(const std::string& s) { return !s.empty(); }
 };
 
-/// Emptyness of string
-struct Empty {
-  bool operator()(const std::string& s) { return s.empty(); }
-};
-
 /// @brief Split strings by separator
 inline static std::vector<std::string> split(const std::string& str, char separator) {
   std::vector<std::string> result;
@@ -533,7 +528,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   bool showHidden = false;
 
   // Collect all paths
-  std::list<std::string> query_strs;
+  std::vector<std::string> query_strs;
   if (query.isArray()) {
     for (auto const& sub_query : VPackArrayIterator(query)) {
       std::string subqstr = sub_query.copyString();
@@ -545,7 +540,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   }
 
   // Remove double ranges (inclusion / identity)
-  query_strs.sort();  // sort paths
+  std::sort(query_strs.begin(), query_strs.end());  // sort paths
   for (auto i = query_strs.begin(), j = i; i != query_strs.end(); ++i) {
     if (i != j && i->compare(0, i->size(), *j) == 0) {
       *i = "";
@@ -553,29 +548,55 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
       j = i;
     }
   }
-  auto cut = std::remove_if(query_strs.begin(), query_strs.end(), Empty());
+  auto cut = std::remove_if(query_strs.begin(), query_strs.end(),
+      [](std::string const& s) -> bool { return s.empty(); });
   query_strs.erase(cut, query_strs.end());
 
-  // Create response tree
-  Node copy("copy");
+  // Distinguish two cases:
+  //   a fast path for exactly one path, in which we do not have to copy all
+  //   a slow path for more than one path
+
   MUTEX_LOCKER(storeLocker, _storeLock);  // Freeze KV-Store for read
-  for (auto const path : query_strs) {
+  if (query_strs.size() == 1) {
+    auto const& path = query_strs[0];
     std::vector<std::string> pv = split(path, '/');
-    size_t e = _node.exists(pv).size();
+    // Build surrounding object structure:
+    size_t e = _node.exists(pv).size();   // note: e <= pv.size()!
+    size_t i = 0;
+    for (auto it = pv.begin(); i < e; ++i, ++it) {
+      ret.openObject();
+      ret.add(VPackValue(*it));
+    }
     if (e == pv.size()) {  // existing
-      copy(pv) = _node(pv);
-    } else {  // non-existing
-      for (size_t i = 0; i < pv.size() - e + 1; ++i) {
-        pv.pop_back();
-      }
-      if (copy(pv).type() == LEAF && copy(pv).slice().isNone()) {
-        copy(pv) = arangodb::velocypack::Slice::emptyObjectSlice();
+      _node(pv).toBuilder(ret, showHidden);
+    } else {
+      VPackObjectBuilder guard(&ret);
+    }
+    // And close surrounding object structures:
+    for (i = 0; i < e; ++i) {
+      ret.close();
+    }
+  }  else {  // slow path for 0 or more than 2 paths:
+    // Create response tree
+    Node copy("copy");
+    for (auto const& path : query_strs) {
+      std::vector<std::string> pv = split(path, '/');
+      size_t e = _node.exists(pv).size();
+      if (e == pv.size()) {  // existing
+        copy(pv) = _node(pv);
+      } else {  // non-existing
+        for (size_t i = 0; i < pv.size() - e + 1; ++i) {
+          pv.pop_back();
+        }
+        if (copy(pv).type() == LEAF && copy(pv).slice().isNone()) {
+          copy(pv) = arangodb::velocypack::Slice::emptyObjectSlice();
+        }
       }
     }
-  }
 
-  // Into result builder
-  copy.toBuilder(ret, showHidden);
+    // Into result builder
+    copy.toBuilder(ret, showHidden);
+  }
 
   return success;
 }

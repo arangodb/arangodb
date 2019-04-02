@@ -119,7 +119,7 @@ bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
     return true;
   }
 
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
   }
@@ -211,7 +211,7 @@ bool ActiveFailoverJob::start(bool&) {
   }  // array for transaction done
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, pending);
+  write_ret_t res = singleWriteTransaction(_agent, pending, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     _status = FINISHED;

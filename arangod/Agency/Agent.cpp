@@ -598,6 +598,7 @@ void Agent::sendAppendEntriesRPC() {
           builder.add("term", VPackValue(entry.term));
           builder.add("query", VPackSlice(entry.entry->data()));
           builder.add("clientId", VPackValue(entry.clientId));
+          builder.add("timestamp", VPackValue(entry.timestamp.count()));
           builder.close();
           highest = entry.index;
           ++toLog;
@@ -739,7 +740,7 @@ void Agent::advanceCommitIndex() {
     WRITE_LOCKER(oLocker, _outputLock);
     if (index > _commitIndex) {
       CONDITION_LOCKER(guard, _waitForCV);
-      LOG_TOPIC(TRACE, Logger::AGENCY)
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Critical mass for commiting " << _commitIndex + 1 << " through "
           << index << " to read db";
       // Change _readDB and _commitIndex atomically together:
@@ -748,6 +749,9 @@ void Agent::advanceCommitIndex() {
                               _commitIndex, t, true);
 
       _commitIndex = index;
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+          << "Critical mass for commiting " << _commitIndex + 1 << " through "
+          << index << " to read db, done";
       // Wake up rest handlers:
       _waitForCV.broadcast();
 

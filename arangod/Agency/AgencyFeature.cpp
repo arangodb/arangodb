@@ -247,7 +247,6 @@ void AgencyFeature::start() {
     arangodb::consensus::Supervision::setAgencyPrefix(std::string("/") +
                                                       feature->agencyPrefix());
     arangodb::consensus::Job::agencyPrefix = feature->agencyPrefix();
-    ;
   }
 
   // TODO: Port this to new options handling
