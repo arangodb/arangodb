@@ -43,6 +43,8 @@ class RestHotBackupHandler : public RestBaseHandler {
   RestStatus execute() override;
 
  protected:
+  bool verifyPermitted();
+
   std::shared_ptr<RocksDBHotBackup> parseHotBackupParams(RequestType const,
                                                          std::vector<std::string> const &);
 };
