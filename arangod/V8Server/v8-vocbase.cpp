@@ -607,7 +607,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
-  
+
   auto queryRegistry = QueryRegistryFeature::registry();
   TRI_ASSERT(queryRegistry != nullptr);
 
@@ -703,7 +703,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
-  
+
   auto queryRegistry = QueryRegistryFeature::registry();
   TRI_ASSERT(queryRegistry != nullptr);
 
@@ -1403,7 +1403,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
 
-  if (!v8g->_securityContext.allowUseDatabase()) {
+  if (!v8g->_securityContext.canUseDatabase()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 

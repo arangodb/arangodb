@@ -51,7 +51,7 @@ class JavaScriptSecurityContext {
   bool isInternal() const { return _type == Type::Internal; }
 
   /// @brief whether or not db._useDatabase(...) is allowed
-  bool allowUseDatabase() const { return _allowUseDatabase; }
+  bool canUseDatabase() const { return _canUseDatabase; }
 
   /// @brief whether fs read is allowed
   bool canReadFs() const;
@@ -63,6 +63,10 @@ class JavaScriptSecurityContext {
   /// add REST endpoints
   /// currently only internal operations are allowed to do this
   bool canDefineHttpAction() const;
+
+  /// @brief whether or not execution or state-modification of external
+  /// binaries is allowed.
+  bool canExecuteExternalBinaries() const;
 
   /// @brief create a security context that is most restricted
   static JavaScriptSecurityContext createRestrictedContext();
@@ -87,7 +91,7 @@ class JavaScriptSecurityContext {
 
  private:
   Type _type;
-  bool _allowUseDatabase = false;
+  bool _canUseDatabase = false;
 };
 
 }  // namespace arangodb

@@ -264,9 +264,11 @@ void V8SecurityFeature::start() {
 }
 
 bool V8SecurityFeature::isAllowedToExecuteExternalBinaries(v8::Isolate* isolate) const {
-  // TRI_GET_GLOBALS();
+  TRI_GET_GLOBALS();
   // v8g may be a nullptr when we are in arangosh
-  // return v8g != nullptr && v8g->_securityContext.isAllowedDefineHttpAction(); -- check context?
+  if (v8g != nullptr) {
+   return _allowExecutionOfBinaries || v8g->_securityContext.canExecuteExternalBinaries();
+  }
   return _allowExecutionOfBinaries;
 }
 

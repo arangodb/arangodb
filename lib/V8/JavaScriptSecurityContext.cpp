@@ -26,10 +26,14 @@
 using namespace arangodb;
 
 void JavaScriptSecurityContext::reset() {
-  _allowUseDatabase = false;
+  _canUseDatabase = false;
 }
 
 bool JavaScriptSecurityContext::canDefineHttpAction() const {
+  return _type == Type::Internal;
+}
+
+bool JavaScriptSecurityContext::canExecuteExternalBinaries() const {
   return _type == Type::Internal;
 }
 
@@ -43,36 +47,36 @@ bool JavaScriptSecurityContext::canWriteFs() const {
 
 /*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createRestrictedContext() {
   JavaScriptSecurityContext context(Type::Restricted);
-  context._allowUseDatabase = false;
+  context._canUseDatabase = false;
   return context;
 }
 
 /*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createInternalContext() {
   JavaScriptSecurityContext context(Type::Internal);
-  context._allowUseDatabase = true;
+  context._canUseDatabase = true;
   return context;
 }
 
 /*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createAdminScriptContext() {
   JavaScriptSecurityContext context(Type::AdminScript);
-  context._allowUseDatabase = true;
+  context._canUseDatabase = true;
   return context;
 }
 
 /*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createQueryContext() {
   JavaScriptSecurityContext context(Type::Query);
-  context._allowUseDatabase = false;
+  context._canUseDatabase = false;
   return context;
 }
 
 /*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createTaskContext(bool allowUseDatabase) {
   JavaScriptSecurityContext context(Type::Task);
-  context._allowUseDatabase = allowUseDatabase;
+  context._canUseDatabase = allowUseDatabase;
   return context;
 }
 
 /*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createRestActionContext(bool allowUseDatabase) {
   JavaScriptSecurityContext context(Type::RestAction);
-  context._allowUseDatabase = allowUseDatabase;
+  context._canUseDatabase = allowUseDatabase;
   return context;
 }
