@@ -54,6 +54,7 @@ ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, u
   fetchEdgesFromEngines(trx->vocbase().name(), _cache->engines(), b->slice(), depth,
                         _cache->cache(), _edgeList, _cache->datalake(), *(leased.get()),
                         _cache->filteredDocuments(), _cache->insertedDocuments());
+  _httpRequests += _cache->engines()->size();
 }
 
 // ShortestPath variant
@@ -72,6 +73,7 @@ ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, b
   fetchEdgesFromEngines(trx->vocbase().name(), _cache->engines(), b->slice(),
                         backward, _cache->cache(), _edgeList, _cache->datalake(),
                         *(leased.get()), _cache->insertedDocuments());
+  _httpRequests += _cache->engines()->size();
 }
 
 bool ClusterEdgeCursor::next(EdgeCursor::Callback const& callback) {
