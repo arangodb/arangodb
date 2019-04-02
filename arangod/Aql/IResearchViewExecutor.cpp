@@ -135,6 +135,7 @@ IResearchViewExecutor<ordered>::IResearchViewExecutor(IResearchViewExecutor::Fet
       _fetcher(fetcher),
       _inputRow(CreateInvalidInputRowHint{}),
       _upstreamState(ExecutionState::HASMORE),
+      _indexReadBuffer(_infos.getNumScoreRegisters()),
       _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
       _ctx(&infos.getQuery(), infos.numberOfOutputRegisters(),
            infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
@@ -255,9 +256,9 @@ bool readPK(irs::doc_iterator& it, irs::columnstore_reader::values_reader_f cons
 }
 
 template <bool ordered>
-bool IResearchViewExecutor<ordered>::writeRow(ReadContext& ctx, IndexResult& result) {
-  LocalDocumentId const& documentId = result.id;
-  TRI_voc_cid_t const& cid = result.cid;
+bool IResearchViewExecutor<ordered>::writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
+  LocalDocumentId const& documentId = _indexReadBuffer.getId(bufferEntry);
+  TRI_voc_cid_t const& cid = _indexReadBuffer.getCid();
 
   TRI_ASSERT(documentId.isSet());
 
@@ -280,7 +281,7 @@ bool IResearchViewExecutor<ordered>::writeRow(ReadContext& ctx, IndexResult& res
       // scorer register are placed consecutively after the document output register
       RegisterId scoreReg = ctx.docOutReg + 1;
 
-      for (auto& it : result.scores) {
+      for (auto& it : _indexReadBuffer.getScores(bufferEntry)) {
         TRI_ASSERT(infos().isScoreReg(scoreReg));
         bool mustDestroy = false;
         AqlValueGuard guard{it, mustDestroy};
@@ -299,8 +300,7 @@ bool IResearchViewExecutor<ordered>::writeRow(ReadContext& ctx, IndexResult& res
 }
 
 template <bool ordered>
-void IResearchViewExecutor<ordered>::evaluateScores(ReadContext& ctx,
-                                                    std::vector<AqlValue>& scores) {
+void IResearchViewExecutor<ordered>::evaluateScores(ReadContext& ctx) {
   // This must not be called in the unordered case.
   TRI_ASSERT(ordered);
 
@@ -318,21 +318,20 @@ void IResearchViewExecutor<ordered>::evaluateScores(ReadContext& ctx,
   // copy scores, registerId's are sequential
   for (; begin != end; ++begin, ++scoreReg) {
     TRI_ASSERT(infos().isScoreReg(scoreReg));
-    AqlValue value{AqlValueHintDouble{*begin}};
-    scores.emplace_back(value);
+    _indexReadBuffer.pushScore(*begin);
   }
 
   // We should either have no _scrVals to evaluate, or all
   TRI_ASSERT(begin == nullptr || !infos().isScoreReg(scoreReg));
 
   while (infos().isScoreReg(scoreReg)) {
-    AqlValue value{};
-    scores.emplace_back(value);
+    _indexReadBuffer.pushScoreNone();
     ++scoreReg;
   }
 
   // we should have written exactly all score registers by now
   TRI_ASSERT(!infos().isScoreReg(scoreReg));
+  TRI_ASSERT(scoreReg - ctx.docOutReg - 1 == infos().getNumScoreRegisters());
 }
 
 template <bool ordered>
@@ -343,43 +342,64 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
 
   size_t const count = _reader->size();
   for (; _readerOffset < count; ) {
-    if (!_itr && !resetIterator()) {
-      continue;
+    if (!_itr) {
+      if (!_indexReadBuffer.empty()) {
+        // We may not reset the iterator and continue with the next reader if we
+        // still have documents in the buffer, as the cid changes with each
+        // reader.
+        break;
+      }
+
+      if(!resetIterator()) {
+        continue;
+      }
+
+      // CID is constant until the next resetIterator()
+      _indexReadBuffer.setCidAndReset(_reader->cid(_readerOffset));
     }
 
     TRI_ASSERT(_pkReader);
 
-    IndexResult result{};
+    LocalDocumentId documentId;
 
     // try to read a document PK from iresearch
-    bool const iteratorExhausted = !readPK(*_itr, _pkReader, result.id);
+    bool const iteratorExhausted = !readPK(*_itr, _pkReader, documentId);
 
-    if (!result.id.isSet()) {
+    if (!documentId.isSet()) {
+      // No document read, we cannot write it.
+
       if (iteratorExhausted) {
+        // The iterator is exhausted, we need to continue with the next reader.
         ++_readerOffset;
         _itr.reset();
       }
       continue;
     }
 
-    result.cid = _reader->cid(_readerOffset);  // CID is constant only until resetIterator(); save it
+    // The CID must stay the same for all documents in the buffer
+    TRI_ASSERT(_indexReadBuffer.getCid() == _reader->cid(_readerOffset));
 
-    result.scores.reserve(infos().getNumScoreRegisters());
+    _indexReadBuffer.pushDocument(documentId);
 
     // in the ordered case we have to write scores as well as a document
     if /* constexpr */ (ordered) {
-      evaluateScores(ctx, result.scores);
+      // Writes into _scoreBuffer
+      evaluateScores(ctx);
     }
 
-    TRI_ASSERT(result.scores.size() == infos().getNumScoreRegisters());
+    // doc and scores are both pushed, sizes must now be coherent
+    _indexReadBuffer.assertSizeCoherence();
 
-    _indexResultBuffer.emplace_back(std::move(result));
     if (iteratorExhausted) {
+      // The iterator is exhausted, we need to continue with the next reader.
       ++_readerOffset;
       _itr.reset();
+
+      // Here we have at least one document in _indexReadBuffer, so we may not
+      // add documents from a new reader.
       break;
     }
-    if (_indexResultBuffer.size() >= atMost) {
+    if (_indexReadBuffer.size() >= atMost) {
       break;
     }
   }
@@ -387,18 +407,17 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
 
 template <bool ordered>
 bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
-  if (_indexResultBuffer.empty()) {
+  if (_indexReadBuffer.empty()) {
     fillBuffer(ctx);
   }
 
-  if (_indexResultBuffer.empty()) {
+  if (_indexReadBuffer.empty()) {
     return false;
   }
 
-  IndexResult result = _indexResultBuffer.front();
-  _indexResultBuffer.pop_front();
+  IndexReadBufferEntry bufferEntry = _indexReadBuffer.pop_front();
 
-  if (writeRow(ctx, result)) {
+  if (writeRow(ctx, bufferEntry)) {
     // we read and wrote a document, return true. we don't know if there are more.
     return true;  // do not change iterator if already reached limit
   }

@@ -165,11 +165,135 @@ class IResearchViewExecutor {
     IndexIterator::DocumentCallback const callback;
   };  // ReadContext
 
-  struct IndexResult {
-    IndexResult() : id(), cid(0), scores() {}
-    LocalDocumentId id;
-    TRI_voc_cid_t cid;
-    std::vector<AqlValue> scores;
+
+  class IndexReadBuffer;
+  class IndexReadBufferEntry {
+    friend class IndexReadBuffer;
+
+    IndexReadBufferEntry() = delete;
+    inline IndexReadBufferEntry(std::size_t keyIdx) : _keyIdx(keyIdx) {}
+
+   protected:
+    std::size_t _keyIdx;
+  };
+
+  // Holds and encapsulates the data read from the iresearch index.
+  class IndexReadBuffer {
+   public:
+    class ScoreIterator {
+     public:
+      ScoreIterator() = delete;
+      inline ScoreIterator(std::vector<AqlValue>& scoreBuffer,
+                           std::size_t keyIdx, std::size_t numScores)
+          : _scoreBuffer(scoreBuffer),
+            _scoreBaseIdx(keyIdx * numScores),
+            _numScores(numScores) {
+        TRI_ASSERT(_scoreBaseIdx + _numScores <= _scoreBuffer.size());
+      }
+
+      inline std::vector<AqlValue>::iterator begin() {
+        return _scoreBuffer.begin() + _scoreBaseIdx;
+      }
+      inline std::vector<AqlValue>::iterator end() {
+        return _scoreBuffer.begin() + _scoreBaseIdx + _numScores;
+      }
+
+     private:
+      std::vector<AqlValue>& _scoreBuffer;
+      std::size_t _scoreBaseIdx;
+      std::size_t _numScores;
+    };
+
+   public:
+    IndexReadBuffer() = delete;
+    IndexReadBuffer(std::size_t numScoreRegisters)
+        : _keyBuffer(),
+          _scoreBuffer(),
+          _cid(0),
+          _numScoreRegisters(numScoreRegisters),
+          _keyBaseIdx(0) {}
+
+    inline LocalDocumentId const& getId(IndexReadBufferEntry bufferEntry) const {
+      assertSizeCoherence();
+      TRI_ASSERT(bufferEntry._keyIdx < _keyBuffer.size());
+      return _keyBuffer[bufferEntry._keyIdx];
+    }
+
+    inline TRI_voc_cid_t const& getCid() const {
+      assertSizeCoherence();
+      return _cid;
+    }
+
+    inline ScoreIterator getScores(IndexReadBufferEntry bufferEntry) {
+      assertSizeCoherence();
+      return ScoreIterator{_scoreBuffer, bufferEntry._keyIdx, _numScoreRegisters};
+    }
+
+    inline void pushDocument(LocalDocumentId documentId) {
+      _keyBuffer.emplace_back(documentId);
+    }
+
+    // A note on the scores: instead of saving an array of AqlValues, we could
+    // save an array of floats plus a bitfield noting which entries should be
+    // None.
+
+    inline void pushScore(float_t scoreValue) {
+      AqlValue value{AqlValueHintDouble{scoreValue}};
+      _scoreBuffer.emplace_back(value);
+    }
+
+    inline void pushScoreNone() {
+      AqlValue value{};
+      _scoreBuffer.emplace_back(value);
+    }
+
+    inline void setCidAndReset(TRI_voc_cid_t cid) {
+      // Should only be called after everything was consumed
+      TRI_ASSERT(empty());
+      _cid = cid;
+      _keyBaseIdx = 0;
+      _keyBuffer.clear();
+      _scoreBuffer.clear();
+    }
+
+    inline std::size_t size() const {
+      assertSizeCoherence();
+      return _keyBuffer.size() - _keyBaseIdx;
+    }
+
+    inline bool empty() const { return size() == 0; }
+
+    inline IndexReadBufferEntry pop_front() {
+      TRI_ASSERT(!empty());
+      TRI_ASSERT(_keyBaseIdx < _keyBuffer.size());
+      assertSizeCoherence();
+      IndexReadBufferEntry entry{_keyBaseIdx};
+      ++_keyBaseIdx;
+      return entry;
+    }
+
+    // This is violated while documents and scores are pushed, but must hold
+    // before and after.
+    inline void assertSizeCoherence() const {
+      TRI_ASSERT(_scoreBuffer.size() == _keyBuffer.size() * _numScoreRegisters);
+    };
+
+   private:
+    // _keyBuffer, _scoreBuffer and _cid together hold all the information
+    // read from the iresearch index. All document ids in _keyBuffer belong to the
+    // collection referred to by the cid in _cid. For the _scoreBuffer, it
+    // holds that
+    //   _scoreBuffer.size() == _keyBuffer.size() * infos().getNumScoreRegisters()
+    // and all entries
+    //   _scoreBuffer[i]
+    // correspond to
+    //   _keyBuffer[i / getNumScoreRegisters()]
+    // .
+    std::vector<LocalDocumentId> _keyBuffer;
+    std::vector<AqlValue> _scoreBuffer;
+    TRI_voc_cid_t _cid;
+    std::size_t _numScoreRegisters;
+    std::size_t _keyBaseIdx;
   };
 
  private:
@@ -177,11 +301,11 @@ class IResearchViewExecutor {
 
   bool next(ReadContext& ctx);
 
-  void evaluateScores(ReadContext& ctx, std::vector<AqlValue>& scores);
+  void evaluateScores(ReadContext& ctx);
 
   void fillBuffer(ReadContext& ctx);
 
-  bool writeRow(ReadContext& ctx, IndexResult& result);
+  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
 
   bool resetIterator();
 
@@ -200,7 +324,7 @@ class IResearchViewExecutor {
 
   ExecutionState _upstreamState;
 
-  std::deque<IndexResult> _indexResultBuffer;
+  IndexReadBuffer _indexReadBuffer;
 
   // IResearchViewBlockBase members:
   irs::attribute_view _filterCtx;  // filter context
