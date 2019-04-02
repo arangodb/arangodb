@@ -201,8 +201,8 @@ const IResearchViewExecutorInfos& IResearchViewExecutor<ordered>::infos() const 
 
 inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find collection
     arangodb::transaction::Methods& trx,  // transaction
-    TRI_voc_cid_t cid                     // collection identifier
-) {
+    TRI_voc_cid_t cid,                    // collection identifier
+    Query& query) {
   TRI_ASSERT(trx.state());
 
   // this is necessary for MMFiles
@@ -212,11 +212,11 @@ inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find c
   auto* collection = trx.state()->collection(cid, arangodb::AccessMode::Type::READ);
 
   if (!collection) {
-    // TODO Register AQL warning instead?
-    LOG_TOPIC("ebced", WARN, arangodb::iresearch::TOPIC)
-        << "failed to find collection while reading document from arangosearch "
+    std::stringstream msg;
+    msg << "failed to find collection while reading document from arangosearch "
            "view, cid '"
         << cid << "'";
+    query.registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
 
     return nullptr;  // not a valid collection reference
   }
@@ -239,7 +239,6 @@ bool readPK(irs::doc_iterator& it, irs::columnstore_reader::values_reader_f cons
       TRI_ASSERT(readSuccess == documentId.isSet());
 
       if (!readSuccess) {
-        // TODO Register AQL warning instead?
         LOG_TOPIC("6442f", WARN, arangodb::iresearch::TOPIC)
             << "failed to read document primary key while reading document "
                "from arangosearch view, doc_id '"
@@ -262,20 +261,20 @@ bool IResearchViewExecutor<ordered>::writeRow(ReadContext& ctx, IndexReadBufferE
 
   TRI_ASSERT(documentId.isSet());
 
-  auto collection = lookupCollection(*infos().getQuery().trx(), cid);
+  Query& query = infos().getQuery();
+  auto collection = lookupCollection(*query.trx(), cid, query);
 
   if (!collection) {
-    // TODO Register AQL warning instead?
-    LOG_TOPIC("09c4f", WARN, arangodb::iresearch::TOPIC)
-        << "failed to find collection while reading document from "
+    std::stringstream msg;
+    msg << "failed to find collection while reading document from "
            "arangosearch view, cid '"
         << cid << "'";
-
+    query.registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
     return false;
   }
 
   // read document from underlying storage engine, if we got an id
-  if (collection->readDocumentWithCallback(infos().getQuery().trx(), documentId, ctx.callback)) {
+  if (collection->readDocumentWithCallback(query.trx(), documentId, ctx.callback)) {
     // in the ordered case we have to write scores as well as a document
     if /* constexpr */ (ordered) {
       // scorer register are placed consecutively after the document output register
@@ -341,7 +340,7 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
   std::size_t const atMost = ctx.outputRow.numRowsLeft();
 
   size_t const count = _reader->size();
-  for (; _readerOffset < count; ) {
+  for (; _readerOffset < count;) {
     if (!_itr) {
       if (!_indexReadBuffer.empty()) {
         // We may not reset the iterator and continue with the next reader if we
@@ -350,7 +349,7 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
         break;
       }
 
-      if(!resetIterator()) {
+      if (!resetIterator()) {
         continue;
       }
 
@@ -443,7 +442,6 @@ bool IResearchViewExecutor<ordered>::resetIterator() {
   _pkReader = ::pkColumn(segmentReader);
 
   if (!_pkReader) {
-    // TODO Register AQL warning instead?
     LOG_TOPIC("bd01b", WARN, arangodb::iresearch::TOPIC)
         << "encountered a sub-reader without a primary key column while "
            "executing a query, ignoring";
@@ -571,7 +569,6 @@ bool IResearchViewExecutor<ordered>::readDocument(
 
   if (!pkValues(docId, tmpRef) ||
       !arangodb::iresearch::DocumentPrimaryKey::read(docPk, tmpRef)) {
-    // TODO Register AQL warning instead?
     LOG_TOPIC("6442f", WARN, arangodb::iresearch::TOPIC)
         << "failed to read document primary key while reading document from "
            "arangosearch view, doc_id '"
