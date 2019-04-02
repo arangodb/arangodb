@@ -254,12 +254,9 @@ std::string AgencyWriteTransaction::randomClientId() {
 
   auto ss = ServerState::instance();
   if (ss != nullptr && !ss->getId().empty()) {
-    id = ss->getId() + ":" + uuid;
-  } else {
-    id = "<-?->:" + uuid;
+    return ss->getId() + ":" + uuid;
   }
-
-  return id;
+  return uuid;
 }
 
 
