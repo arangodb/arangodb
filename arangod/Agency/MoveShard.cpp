@@ -459,7 +459,7 @@ JOB_STATUS MoveShard::pendingLeader() {
   if (plan.isArray() &&
       Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
-      << "MoveShard: found FAILED server in Plan, aborting job, db: "
+      << "MoveShard (leader): found FAILED server in Plan, aborting job, db: "
       << _database << " coll: " << _collection << " shard: " << _shard;
     abort();
     return FAILED;
@@ -679,6 +679,20 @@ JOB_STATUS MoveShard::pendingLeader() {
 }
 
 JOB_STATUS MoveShard::pendingFollower() {
+  // Check if any of the servers in the Plan are FAILED, if so,
+  // we abort:
+  std::string planPath =
+      planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
+  Slice plan = _snapshot.hasAsSlice(planPath).first;
+  if (plan.isArray() &&
+      Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "MoveShard (follower): found FAILED server in Plan, aborting job, db: "
+      << _database << " coll: " << _collection << " shard: " << _shard;
+    abort();
+    return FAILED;
+  }
+
   // Find the other shards in the same distributeShardsLike group:
   std::vector<Job::shard_t> shardsLikeMe =
       clones(_snapshot, _database, _collection, _shard);
