@@ -60,6 +60,9 @@ bool ReadWriteLock::writeLock(std::chrono::microseconds timeout) {
   // -> announce that we want to write
   _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
 
+  std::chrono::time_point<std::chrono::steady_clock> end_time;
+  end_time = std::chrono::steady_clock::now() + timeout;
+
   std::cv_status status(std::cv_status::no_timeout);
   {
     std::unique_lock<std::mutex> guard(_writer_mutex);
@@ -75,7 +78,7 @@ bool ReadWriteLock::writeLock(std::chrono::microseconds timeout) {
       }
       // TODO: it seems this may repeatedly wait for the timeout
       // it is not guaranteed to finish within timeout
-      status = _writers_bell.wait_for(guard, timeout);
+      status = _writers_bell.wait_until(guard, end_time);
     }
   }
 

@@ -114,6 +114,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     TransactionManagerFeature::manager()->registerTransaction(
         _id, std::unique_ptr<RocksDBTransactionData>());
 
+    setRegistered();
+
     TRI_ASSERT(_rocksTransaction == nullptr);
     TRI_ASSERT(_cacheTx == nullptr);
 

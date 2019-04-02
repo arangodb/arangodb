@@ -189,8 +189,6 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 #endif
       _useThrottle(true),
 #ifdef USE_ENTERPRISE
-      // TODO: shall we turn this on by default for all enterprise installations,
-      // or should it explicitly activated by end users
       _createShaFiles(true),
 #else
       _createShaFiles(false),
@@ -726,7 +724,7 @@ void RocksDBEngine::start() {
   if (logger != nullptr) {
     logger->enable();
   }
-  
+
   if (opts->_limitOpenFilesAtStartup) {
     _db->SetDBOptions({{"max_open_files", "-1"}});
   }
@@ -769,10 +767,10 @@ void RocksDBEngine::beginShutdown() {
     _replicationManager->beginShutdown();
   }
 
-  // TODO: signal the event listener that we are going to shut down soon
-  // if (_shaListener != nullptr) {
-  //   _shaListener->beginShutdown();
-  // }
+  //signal the event listener that we are going to shut down soon
+  if (_shaListener != nullptr) {
+     _shaListener->beginShutdown();
+  } // if
 }
 
 void RocksDBEngine::stop() {

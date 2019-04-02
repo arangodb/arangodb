@@ -185,11 +185,14 @@ CollectionNameResolver const* transaction::Context::createResolver() {
 /// @brief unregister the transaction
 /// this will save the transaction's id and status locally
 void transaction::Context::storeTransactionResult(TRI_voc_tid_t id,
-                                                  bool hasFailedOperations) noexcept {
+                                                  bool hasFailedOperations,
+                                                  bool wasRegistered) noexcept {
   TRI_ASSERT(_transaction.id == 0);
 
-  _transaction.id = id;
-  _transaction.hasFailedOperations = hasFailedOperations;
+  if (wasRegistered) {
+    _transaction.id = id;
+    _transaction.hasFailedOperations = hasFailedOperations;
+  } // if
 }
 
 transaction::ContextData* transaction::Context::contextData() {
