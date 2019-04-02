@@ -249,6 +249,20 @@ bool AgencyWriteTransaction::validate(AgencyCommResult const& result) const {
           result.slice().get("results").isArray());
 }
 
+std::string AgencyWriteTransaction::randomClientId() {
+  std::string uuid = to_string(boost::uuids::random_generator()()), id;
+
+  auto ss = ServerState::instance();
+  if (ss != nullptr && !ss->getId().empty()) {
+    id = ss->getId() + ":" + uuid;
+  } else {
+    id = "<-?->:" + uuid;
+  }
+
+  return id;
+}
+
+
 // -----------------------------------------------------------------------------
 // --SECTION-- AgencyTransientTransaction
 // -----------------------------------------------------------------------------
@@ -1186,13 +1200,13 @@ bool AgencyComm::ensureStructureInitialized() {
 
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
       << "Agency is fresh. Needs initial structure.";
-    
+
     if (tryInitializeStructure()) {
       LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
         << "Successfully initialized agency";
       break;
     }
-    
+
     LOG_TOPIC(WARN, Logger::AGENCYCOMM)
       << "Initializing agency failed. We'll try again soon";
     // We should really have exclusive access, here, this is strange!
@@ -1818,18 +1832,18 @@ bool AgencyComm::shouldInitializeStructure() {
     auto result = getValues("Plan");
 
     if (!result.successful()) { // Not 200 - 299
-      
+
       if (result.httpCode() == 401) {
         // unauthorized
         LOG_TOPIC(FATAL, Logger::STARTUP) << "Unauthorized. Wrong credentials.";
         FATAL_ERROR_EXIT();
       }
-      
+
       // Agency not ready yet
       LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
         << "waiting for agency to become ready";
       continue;
-      
+
     } else {
 
       // Sanity
@@ -1858,9 +1872,9 @@ bool AgencyComm::shouldInitializeStructure() {
         }
         continue;
       }
-      
+
     }
-    
+
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
 
   }

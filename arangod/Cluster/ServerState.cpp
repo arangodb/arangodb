@@ -367,7 +367,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
     id = getPersistedId();
     LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Restarting with persisted UUID " << id;
   }
-  _id = id;
+  setId(id);
   _myEndpoint = myEndpoint;
   _advertisedEndpoint = advEndpoint;
   TRI_ASSERT(!_myEndpoint.empty());
@@ -683,7 +683,7 @@ void ServerState::setRole(ServerState::RoleEnum role) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::getId() const {
-  READ_LOCKER(readLocker, _lock);
+  std::lock_guard<std::mutex> guard(_idLock);
   return _id;
 }
 
@@ -696,7 +696,7 @@ void ServerState::setId(std::string const& id) {
     return;
   }
 
-  WRITE_LOCKER(writeLocker, _lock);
+  std::lock_guard<std::mutex> guard(_idLock);
   _id = id;
 }
 
