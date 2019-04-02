@@ -3463,6 +3463,7 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(Optimizer* opt,
 
 /// @brief optimize queries in the cluster so that the entire query gets pushed
 /// to a single server
+#if 0
 void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
                                                    std::unique_ptr<ExecutionPlan> plan,
                                                    OptimizerRule const* rule) {
@@ -3556,6 +3557,7 @@ void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
 
   opt->addPlan(std::move(plan), rule, wasModified);
 }
+#endif
 
 /// @brief scatter operations in cluster
 /// this rule inserts scatter, gather and remote nodes so operations on sharded
