@@ -519,6 +519,7 @@ function waitForStatisticsCollections() {
   // trigger failovers. We want to have these collections in place before
   // we start.
   let count = 0;
+  let db = require('internal').db;
   while (count++ < 120) {
     console.topic('startup=info',
                   'waitForStatisticsCollections: checking for collections...');
