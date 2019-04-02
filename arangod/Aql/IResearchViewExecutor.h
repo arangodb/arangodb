@@ -159,7 +159,6 @@ class IResearchViewExecutor {
           callback(copyDocumentCallback(*this)) {}
 
     aql::RegisterId const docOutReg;
-    size_t pos{};
     InputAqlItemRow& inputRow;
     OutputAqlItemRow& outputRow;
     IndexIterator::DocumentCallback const callback;
