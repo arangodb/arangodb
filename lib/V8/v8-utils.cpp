@@ -1114,7 +1114,16 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  // TODO - allowed to execute file
+
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToParseJavaScript(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to parse JavaScript code");
+  }
 
   // extract arguments
   if (args.Length() != 3) {
@@ -1453,9 +1462,9 @@ static void JS_GetTempPath(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToAccessPath(isolate, path, FSAccessType::READ)) {
+  if (!v8security->isAllowedToAccessPath(isolate, path, FSAccessType::WRITE)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   "not allowed to modify files in this path");
   }
 
   TRI_V8_RETURN(result);
@@ -2021,7 +2030,10 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  // TODO execute
+  if (!v8security->isAllowedToParseJavaScript(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to parse JavaScript code");
+  }
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
