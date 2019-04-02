@@ -218,10 +218,15 @@ bool MoveShard::start(bool&) {
   // Check that the toServer is in state "GOOD":
   std::string health = checkServerHealth(_snapshot, _to);
   if (health != "GOOD") {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
-        << "server " << _to << " is currently " << health
-        << ", not starting MoveShard job " << _jobId;
-    return false;
+    if (health == "BAD") {
+      LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+          << "server " << _to << " is currently " << health
+          << ", not starting MoveShard job " << _jobId;
+      return false;
+    } else {   // FAILED
+      finish("", "", false, "toServer is FAILED");
+      return false;
+    }
   }
 
   // Check that _to is not in `Target/CleanedServers`:
