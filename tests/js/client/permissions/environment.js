@@ -28,14 +28,16 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var env = require('process').env;
 if (getOptions === true) {
+  env['PATHTT'] = 'whitelist';
   return {
-    'javascript.environment-variables-black-list': 'PATH'
+    'javascript.environment-variables-black-list': 'PATH',
+    'javascript.environment-variables-white-list': 'PATHTT'
   };
 }
 
 var jsunity = require('jsunity');
-var env = require('process').env;
 
 function testSuite() {
   return {
@@ -71,6 +73,9 @@ function testSuite() {
       // the test env always has the INSTANCEINFO
       assertTrue(env.hasOwnProperty('INSTANCEINFO'));
       assertTrue(env['INSTANCEINFO'].length > 0);
+
+      assertTrue(env.hasOwnProperty('PATHTT'));
+      assertEqual(env['PATHTT'], 'whitelist');
       
     }
   };

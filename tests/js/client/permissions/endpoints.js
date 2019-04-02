@@ -74,6 +74,7 @@ function testSuite() {
   }
   return {
     testDownload : function() {
+      // The filter will only match the host part. We specify one anyways.
       downloadForbidden('http://127.0.0.1:8888/testbla', 'GET');
       downloadForbidden('http://127.0.0.1:8888/testbla', 'POST');
       downloadForbidden('http://127.0.0.1:8899/testbla', 'GET');
@@ -83,8 +84,8 @@ function testSuite() {
       downloadForbidden('http://arangodb.org/testbla', 'GET');
       downloadForbidden('https://arangodb.org/testbla', 'GET');
       
-      downloadPermitted('https://white.arangodb.org//bla', 'GET');
-      downloadPermitted('http://white.arangodb.org//bla', 'GET');
+      downloadPermitted('https://white.arangodb.org/bla', 'GET');
+      downloadPermitted('http://white.arangodb.org/bla', 'GET');
       downloadPermitted('http://arangodb.com/blog', 'GET');
       downloadPermitted('http://arangodb.com/blog', 'GET');
       downloadPermitted('http://heise.de', 'GET');

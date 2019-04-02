@@ -231,7 +231,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
       TRI_V8_PAIR_STRING(isolate, content + bangOffset, (int)length);
 
   v8::TryCatch tryCatch(isolate);
-  ;
+
   v8::ScriptOrigin scriptOrigin(name);
   v8::Handle<v8::Script> script =
       v8::Script::Compile(TRI_IGETC, source, &scriptOrigin).FromMaybe(v8::Local<v8::Script>());
@@ -298,7 +298,6 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path, bool
     }
 
     v8::TryCatch tryCatch(isolate);
-    ;
 
     std::string full = FileUtils::buildFilename(path, filename);
 
@@ -457,7 +456,6 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::TryCatch tryCatch(isolate);
-  ;
 
   v8::ScriptOrigin scriptOrigin(TRI_ObjectToString(context, filename));
   v8::Handle<v8::Script> script =
@@ -552,7 +550,7 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::TryCatch tryCatch(isolate);
-  ;
+
   v8::ScriptOrigin scriptOrigin(TRI_ObjectToString(context, args[0]));
   v8::Handle<v8::Script> script =
       v8::Script::Compile(TRI_IGETC, TRI_V8_PAIR_STRING(isolate, content, (int)length), &scriptOrigin)
@@ -1173,7 +1171,6 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   {
     v8::TryCatch tryCatch(isolate);
-    ;
 
     v8::ScriptOrigin scriptOrigin(TRI_ObjectToString(context, filename));
     script = v8::Script::Compile(TRI_IGETC, TRI_ObjectToString(context, source), &scriptOrigin)
@@ -2053,7 +2050,6 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Value> result;
   {
     v8::TryCatch tryCatch(isolate);
-    ;
 
     result = TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
                                          TRI_V8_PAIR_STRING(isolate, content, length),
@@ -4977,7 +4973,6 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
   // value
   if (printResult && !result->IsUndefined()) {
     v8::TryCatch tryCatch(isolate);
-    ;
 
     v8::Handle<v8::String> printFuncName =
         TRI_V8_ASCII_STRING(isolate, "print");
