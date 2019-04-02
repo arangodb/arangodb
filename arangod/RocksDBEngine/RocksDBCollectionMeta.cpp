@@ -26,6 +26,7 @@
 #include "Basics/WriteLocker.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/KeyGenerator.h"
@@ -131,7 +132,7 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq() const {
     auto it = _blockersBySeq.begin();
     return it->first;
   }
-  return std::numeric_limits<rocksdb::SequenceNumber>::max();
+  return rocksutils::globalRocksDB()->GetLatestSequenceNumber();
 }
 
 rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::SequenceNumber commitSeq,

@@ -524,6 +524,7 @@ class RocksDBCuckooIndexEstimator {
   /// @brief call with output from committableSeq(current), and before serialize
   rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq) {
     rocksdb::SequenceNumber appliedSeq = 0;
+    bool appliedSomething = false;
     Result res = basics::catchVoidToResult([&]() -> void {
       std::vector<Key> inserts;
       std::vector<Key> removals;
@@ -531,7 +532,6 @@ class RocksDBCuckooIndexEstimator {
       // truncate will increase this sequence
       rocksdb::SequenceNumber ignoreSeq = 0;
       while (true) {
-        bool appliedSomething = false;
         bool foundTruncate = false;
         // find out if we have buffers to apply
         {
