@@ -35,6 +35,7 @@ const _ = require("lodash");
 const wait = require("internal").wait;
 const supervisionState = require("@arangodb/cluster").supervisionState;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const waitForStatisticsCollections = require('@arangodb/cluster').waitForStatisticsCollections;
 
 // in the `useData` case, use this many documents:
 const numDocuments = 1000;
@@ -805,6 +806,8 @@ function MovingShardsSuite ({useData}) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
+
+waitForStatisticsCollections();
 
 jsunity.run(function MovingShardsSuite_nodata() {
   let derivedSuite = {};
