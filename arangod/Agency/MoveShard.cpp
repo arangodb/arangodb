@@ -454,6 +454,17 @@ JOB_STATUS MoveShard::pendingLeader() {
   Builder pre;  // precondition
   bool finishedAfterTransaction = false;
 
+  // Check if any of the servers in the Plan are FAILED, if so,
+  // we abort:
+  if (plan.isArray() &&
+      Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "MoveShard: found FAILED server in Plan, aborting job, db: "
+      << _database << " coll: " << _collection << " shard: " << _shard;
+    abort();
+    return FAILED;
+  }
+
   if (plan[0].copyString() == _from) {
     // Still the old leader, let's check that the toServer is insync:
     size_t done = 0;  // count the number of shards for which _to is in sync:
