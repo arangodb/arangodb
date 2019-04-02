@@ -39,7 +39,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "V8Security"), _allowExecutionOfBinaries(false) {
+    : ApplicationFeature(server, "V8Security"), _allowParseJS(false), _allowExecutionOfBinaries(false) {
   setOptional(false);
   startsAfter("V8Platform");
 }
@@ -51,6 +51,11 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
       "--javascript.allow-external-process-control",
       "allow execution of external binaries. default set to false",
       new BooleanParameter(&_allowExecutionOfBinaries));
+
+  options->addOption(
+      "--javascript.allow-parse-js",
+      "controls if parsing and compiling of js code is allowed",
+      new BooleanParameter(&_allowParseJS));
 
   options->addOption("--javascript.startup-options-white-list",
                      "startup options whose names match this regular "
@@ -342,7 +347,12 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string 
                                 !_filesBlackList.empty(), _filesBlackListRegex);
 }
 
-bool V8SecurityFeature::isAllowedToExecuteJavaScript(v8::Isolate* isolate) const {
-  // implement me
-  return true;
+bool V8SecurityFeature::isAllowedToParseJavaScript(v8::Isolate* isolate) const {
+  TRI_GET_GLOBALS();
+  if (v8g != nullptr && v8g->_securityContext.isInternal()) {
+    // internal security contexts are allowed to parse ans compile js code
+    return true;
+  }
+
+  return _allowParseJS;
 }

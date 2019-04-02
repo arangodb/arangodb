@@ -175,9 +175,9 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
                                    "not allowed to read files in this path");
   }
 
-  if (!v8security->isAllowedToExecuteJavaScript(isolate)) {
+  if (!v8security->isAllowedToParseJavaScript(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute JavaScript code");
+                                   "not allowed to parse JavaScript code");
   }
 
   size_t length;
@@ -283,9 +283,9 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path, bool
   LOG_TOPIC("65c8d", TRACE, arangodb::Logger::FIXME)
       << "loading JavaScript directory: '" << path << "'";
 
-  if (!v8security->isAllowedToExecuteJavaScript(isolate)) {
+  if (!v8security->isAllowedToParseJavaScript(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute JavaScript code");
+                                   "not allowed to parse JavaScript code");
   }
 
   std::vector<std::string> files = TRI_FilesDirectory(path);
@@ -440,10 +440,9 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  // TODO REVIEW - should we check here? does compiling alone reveal information
-  if (!v8security->isAllowedToExecuteJavaScript(isolate)) {
+  if (!v8security->isAllowedToParseJavaScript(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute JavaScript code");
+                                   "not allowed to parse JavaScript code");
   }
 
   if (args.Length() > 1) {
@@ -518,13 +517,10 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  // TODO is compilation alone dangerous? could it reveal
-  // information about other parts?
-  // //allowed to execute
-  // if (!v8security->isAllowedToExecuteJavaScript(isolate)) {
-  //   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-  //                                  "not allowed to execute JavaScript code");
-  // }
+  if (!v8security->isAllowedToParseJavaScript(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to parse JavaScript code");
+  }
 
   // extract arguments
   if (args.Length() != 1) {
@@ -4135,7 +4131,10 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
 
-  // TODO read
+  if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to read files in this path");
+  }
 
   std::vector<std::string> arguments;
 
