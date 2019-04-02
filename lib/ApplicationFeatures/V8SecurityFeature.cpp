@@ -48,7 +48,7 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
   options->addSection("javascript", "Configure the Javascript engine");
 
   options->addOption(
-      "--javascript.execute-binaries",
+      "--javascript.allow-external-process-control",
       "allow execution of external binaries. default set to false",
       new BooleanParameter(&_allowExecutionOfBinaries));
 

@@ -2028,7 +2028,7 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  //TODO execute
+  // TODO execute
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
@@ -2518,7 +2518,7 @@ static void JS_MoveFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToAccessPath(isolate, source , FSAccessType::WRITE)) {
+  if (!v8security->isAllowedToAccessPath(isolate, source, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to modify files in this path");
   }
@@ -2573,7 +2573,6 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(
         "cannot copy source file into destination directory");
   }
-
 
   V8SecurityFeature* v8security =
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
@@ -4089,8 +4088,9 @@ static void JS_GetExternalSpawned(v8::FunctionCallbackInfo<v8::Value> const& arg
   TRI_ASSERT(v8security != nullptr);
 
   if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute or modify state of external binaries");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external binaries");
   }
 
   v8::Handle<v8::Array> spawnedProcesses =
@@ -4128,8 +4128,9 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_ASSERT(v8security != nullptr);
 
   if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute or modify state of external binaries");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external binaries");
   }
 
   TRI_Utf8ValueNFC name(isolate, args[0]);
@@ -4138,7 +4139,7 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
 
-  //TODO read
+  // TODO read
 
   std::vector<std::string> arguments;
 
@@ -4208,8 +4209,9 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(v8security != nullptr);
 
   if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute or modify state of external binaries");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external binaries");
   }
 
   ExternalId pid;
@@ -4272,8 +4274,9 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
   TRI_ASSERT(v8security != nullptr);
 
   if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute or modify state of external binaries");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external binaries");
   }
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
@@ -4355,8 +4358,9 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(v8security != nullptr);
 
   if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute or modify state of external binaries");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external binaries");
   }
 
   int signal = SIGTERM;
@@ -4412,10 +4416,10 @@ static void JS_SuspendExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_ASSERT(v8security != nullptr);
 
   if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute or modify state of external binaries");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external binaries");
   }
-
 
   ExternalId pid;
 
@@ -4452,8 +4456,9 @@ static void JS_ContinueExternal(v8::FunctionCallbackInfo<v8::Value> const& args)
   TRI_ASSERT(v8security != nullptr);
 
   if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute or modify state of external binaries");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external binaries");
   }
 
   ExternalId pid;
@@ -5363,6 +5368,8 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_CONTINUE_EXTERNAL"),
                                JS_ContinueExternal);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_STATUS_EXTERNAL"), JS_StatusExternal);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_LOAD"), JS_Load);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_LOG"), JS_Log);
   TRI_AddGlobalFunctionVocbase(isolate,
@@ -5408,8 +5415,6 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate, "SYS_SLEEP"), JS_Sleep);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_SPRINTF"), JS_SPrintF);
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_STATUS_EXTERNAL"), JS_StatusExternal);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_TEST_PORT"), JS_TestPort);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_TIME"), JS_Time);
