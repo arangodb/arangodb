@@ -339,8 +339,6 @@ class Index {
   // give index a hint about the expected size
   virtual Result sizeHint(transaction::Methods& trx, size_t size);
 
-  virtual bool hasBatchInsert() const;
-
   virtual bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
                                        arangodb::aql::AstNode const*,
                                        arangodb::aql::Variable const*, size_t,

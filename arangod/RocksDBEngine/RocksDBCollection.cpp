@@ -788,13 +788,12 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
 Result RocksDBCollection::read(transaction::Methods* trx,
                                arangodb::velocypack::StringRef const& key,
                                ManagedDocumentResult& result, bool /*lock*/) {
-  Result res;
   LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key);
   if (!documentId.isSet()) {
-    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
   // found
-  return res.reset(lookupDocumentVPack(documentId, trx, result, /*withCache*/true));
+  return lookupDocumentVPack(documentId, trx, result, /*withCache*/true);
 }
 
 // read using a token!

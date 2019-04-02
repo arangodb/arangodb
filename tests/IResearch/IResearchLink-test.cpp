@@ -235,7 +235,6 @@ SECTION("test_defaults") {
     CHECK((logicalCollection.get() == &(link->collection())));
     CHECK((link->fieldNames().empty()));
     CHECK((link->fields().empty()));
-    CHECK((true == link->hasBatchInsert()));
     CHECK((false == link->hasExpansion()));
     CHECK((false == link->hasSelectivityEstimate()));
     CHECK((false == link->implicitlyUnique()));
@@ -286,7 +285,6 @@ SECTION("test_defaults") {
     CHECK((logicalCollection.get() == &(link->collection())));
     CHECK((link->fieldNames().empty()));
     CHECK((link->fields().empty()));
-    CHECK((true == link->hasBatchInsert()));
     CHECK((false == link->hasExpansion()));
     CHECK((false == link->hasSelectivityEstimate()));
     CHECK((false == link->implicitlyUnique()));

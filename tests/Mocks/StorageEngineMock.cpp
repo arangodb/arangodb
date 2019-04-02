@@ -169,8 +169,6 @@ class EdgeIndexMock final : public arangodb::Index {
 
   size_t memory() const override { return sizeof(EdgeIndexMock); }
 
-  bool hasBatchInsert() const override { return false; }
-
   void load() override {}
   void unload() override {}
   void afterTruncate(TRI_voc_tick_t) override {

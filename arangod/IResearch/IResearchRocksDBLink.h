@@ -53,10 +53,6 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
   //////////////////////////////////////////////////////////////////////////////
   static arangodb::IndexTypeFactory const& factory();
 
-  virtual bool hasBatchInsert() const override {
-    return IResearchLink::hasBatchInsert();
-  }
-
   virtual bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();
   }

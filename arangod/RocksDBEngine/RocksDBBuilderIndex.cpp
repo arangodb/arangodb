@@ -70,7 +70,8 @@ struct BuilderTrx : public arangodb::transaction::Methods {
 
 struct BuilderCookie : public arangodb::TransactionState::Cookie {
   // do not track removed documents twice
-  arangodb::HashSet<LocalDocumentId::BaseType> tracked;
+  arangodb::HashSet<LocalDocumentId::BaseType> trackedInserts;
+  arangodb::HashSet<LocalDocumentId::BaseType> trackedRemovals;
 };
 }  // namespace
 
@@ -113,8 +114,8 @@ Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
   }
 
   // do not track document more than once
-  if (ctx->tracked.find(documentId.id()) == ctx->tracked.end()) {
-    ctx->tracked.insert(documentId.id());
+  if (ctx->trackedInserts.find(documentId.id()) == ctx->trackedInserts.end()) {
+    ctx->trackedInserts.insert(documentId.id());
     RocksDBLogValue val = RocksDBLogValue::TrackedDocumentInsert(documentId, slice);
     mthd->PutLogData(val.slice());
   }
@@ -138,8 +139,8 @@ Result RocksDBBuilderIndex::remove(transaction::Methods& trx, RocksDBMethods* mt
   }
 
   // do not track document more than once
-  if (ctx->tracked.find(documentId.id()) == ctx->tracked.end()) {
-    ctx->tracked.insert(documentId.id());
+  if (ctx->trackedRemovals.find(documentId.id()) == ctx->trackedRemovals.end()) {
+    ctx->trackedRemovals.insert(documentId.id());
     RocksDBLogValue val = RocksDBLogValue::TrackedDocumentRemove(documentId, slice);
     mthd->PutLogData(val.slice());
   }
@@ -258,7 +259,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
   }
 
   // if an error occured drop() will be called
-  LOG_TOPIC("dfa3b", DEBUG, Logger::ENGINES)
+  LOG_TOPIC("dfa3b", ERR, Logger::ENGINES)
       << "SNAPSHOT CAPTURED " << numDocsWritten << " " << res.errorMessage();
 
   return res;
@@ -297,6 +298,9 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
   bool Continue() override {
     if (application_features::ApplicationServer::isStopping()) {
       tmpRes.reset(TRI_ERROR_SHUTTING_DOWN);
+    }
+    if (tmpRes.fail()) {
+      LOG_DEVEL << tmpRes.errorMessage();
     }
     return tmpRes.ok();
   }
@@ -367,15 +371,15 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
     return rocksdb::Status();
   }
 
-  rocksdb::Status SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
-    incTick();
-    if (column_family_id == RocksDBColumnFamily::definitions()->GetID()) {
-      _lastObjectID = 0;
-    } else if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
-      _lastObjectID = RocksDBKey::objectId(key);
-    }
-    return rocksdb::Status();
-  }
+//  rocksdb::Status SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
+//    incTick();
+//    if (column_family_id == RocksDBColumnFamily::definitions()->GetID()) {
+//      _lastObjectID = 0;
+//    } else if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+//      _lastObjectID = RocksDBKey::objectId(key);
+//    }
+//    return rocksdb::Status();
+//  }
 
   rocksdb::Status DeleteRangeCF(uint32_t column_family_id, const rocksdb::Slice& begin_key,
                                 const rocksdb::Slice& end_key) override {
@@ -508,7 +512,7 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
     }
   }
 
-  LOG_TOPIC("5796c", DEBUG, Logger::ENGINES) << "WAL REPLAYED insertions: " << replay.numInserted
+  LOG_TOPIC("5796c", ERR, Logger::ENGINES) << "WAL REPLAYED insertions: " << replay.numInserted
                                     << "; deletions: " << replay.numRemoved
                                     << "; lastScannedTick " << lastScannedTick;
 
@@ -554,6 +558,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   });
 
   locker.unlock();
+  // Step 1. Capture with snapshot
   if (internal->unique()) {
     const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
     // unique index. we need to keep track of all our changes because we need to
@@ -566,7 +571,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
     res = ::fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods, false>(*internal, batch, snap);
   }
-
+  
   if (res.fail()) {
     return res;
   }
@@ -575,6 +580,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   rootDB->ReleaseSnapshot(snap);
   snap = nullptr;
 
+  // Step 2. Scan the WAL for documents without lock
   int maxCatchups = 3;
   rocksdb::SequenceNumber lastScanned = 0;
   uint64_t numScanned = 0;
@@ -599,7 +605,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     if (res.fail()) {
       return res;
     }
-
+    
     scanFrom = lastScanned;
   } while (maxCatchups-- > 0 && numScanned > 5000);
 
@@ -607,6 +613,8 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     return res.reset(TRI_ERROR_LOCK_TIMEOUT);
   }
 
+  // Step 3. Scan the WAL for documents with a lock
+  
   scanFrom = lastScanned;
   if (internal->unique()) {
     const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
