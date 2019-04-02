@@ -287,7 +287,7 @@ class ClusterInfo {
    * @param  body  Builder to fill with dump
    * @return       Operation's result
    */
-  arangodb::Result agencyReplan(std::shared_ptr<VPackBuilder> body);
+  arangodb::Result agencyReplan(VPackSlice const plan);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief flush the caches (used for testing only)

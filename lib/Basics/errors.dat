@@ -513,5 +513,4 @@ ERROR_FAILED_TO_UPLOAD_BACKUP, 7004, "failed to upload hot backup set to remote 
 ERROR_FAILED_TO_DOWNLOAD_BACKUP, 7005, "failed to download hot backup set from remote source", "Failed to downloadload hot backup set from remote source"
 ERROR_NO_SUCH_HOT_BACKUP, 7006, "no such hot backup set can be found, "Cannot find a hot backup set with this Id"
 ERROR_REMOTE_REPOSITORY_CONFIG_BAD, 7007, "remote hotback repository configuration error", "The configuration given for upload or download operation to/from remote hotback repositories is wrong."
-ERROR_REMOTE_REPOSITORY_CONFIG_BAD,7006,"remote hotback repository configuration error","The configuration given for upload or download operation to/from remote hotback repositories is wrong."
 
