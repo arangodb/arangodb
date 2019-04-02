@@ -204,7 +204,10 @@ size_t arangodb::traverser::Traverser::getAndResetReadDocuments() {
 }
 
 size_t arangodb::traverser::Traverser::getAndResetHttpRequests() {
-  return _enumerator->getAndResetHttpRequests();
+  if (_enumerator != nullptr) {
+    return _enumerator->getAndResetHttpRequests();
+  }
+  return 0;
 }
 
 void arangodb::traverser::Traverser::allowOptimizedNeighbors() {

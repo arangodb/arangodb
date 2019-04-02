@@ -114,7 +114,9 @@ void ClusterTraverser::fetchVertices() {
   fetchVerticesFromEngines(_dbname, _engines, _verticesToFetch, _vertices,
                            *(lease.get()));
   _verticesToFetch.clear();
-  _enumerator->incHttpRequests(_engines->size()); 
+  if (_enumerator != nullptr) {
+    _enumerator->incHttpRequests(_engines->size()); 
+  }
 }
 
 aql::AqlValue ClusterTraverser::fetchVertexData(arangodb::velocypack::StringRef idString) {
@@ -158,7 +160,9 @@ void ClusterTraverser::destroyEngines() {
         "/_db/" + arangodb::basics::StringUtils::urlEncode(_trx->vocbase().name()) +
         "/_internal/traverser/");
 
-    _enumerator->incHttpRequests(_engines->size()); 
+    if (_enumerator != nullptr) {
+      _enumerator->incHttpRequests(_engines->size());
+    } 
     for (auto const& it : *_engines) {
       arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
       std::unordered_map<std::string, std::string> headers;
