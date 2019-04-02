@@ -31,7 +31,6 @@
 #include "v8-collection.h"
 
 using namespace arangodb;
-using namespace arangodb::basics;
 
 /// @brief check if a name belongs to a collection
 bool EqualCollection(CollectionNameResolver const* resolver, std::string const& collectionName,
@@ -61,66 +60,66 @@ bool EqualCollection(CollectionNameResolver const* resolver, std::string const& 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wraps a LogicalCollection
-/// Note that if collection is a local collection, then the object will never
-/// be freed. If it is not a local collection (coordinator case), then delete
-/// will be called when the V8 object is garbage collected.
-////////////////////////////////////////////////////////////////////////////////
-v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
-                                      std::shared_ptr<arangodb::LogicalCollection> const& collection) {
-  v8::EscapableHandleScope scope(isolate);
-
-  TRI_GET_GLOBALS();
-  TRI_GET_GLOBAL(VocbaseColTempl, v8::ObjectTemplate);
-  v8::Handle<v8::Object> result = VocbaseColTempl->NewInstance();
-
-  if (!result.IsEmpty()) {
-    auto* ptr = collection.get();
-    auto itr = v8g->JSDatasources.emplace(
-        std::piecewise_construct, std::forward_as_tuple(collection.get()),
-        std::forward_as_tuple(isolate, collection,
-                              [ptr]() -> void {  // FIXME TODO find a way to move this callback
-                                                 // code into DataSourcePersistent
-                                TRI_ASSERT(!ptr->vocbase().isDangling());
-                                ptr->vocbase().release();  // decrease the reference-counter for
-                                                           // the database
-                              }));
-    auto& entry = itr.first->second;
-
-    if (itr.second) {  // FIXME TODO find a way to move this code into
-                       // DataSourcePersistent
-      TRI_ASSERT(!ptr->vocbase().isDangling());
-      ptr->vocbase().forceUse();  // increase the reference-counter for the database
-    }
-
-    result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_VOCBASE_COL_TYPE));
-    result->SetInternalField(SLOT_CLASS, entry.get());
-    result->SetInternalField(SLOT_EXTERNAL, entry.get());
-
-    TRI_GET_GLOBAL_STRING(_IdKey);
-    TRI_GET_GLOBAL_STRING(_DbNameKey);
-    TRI_GET_GLOBAL_STRING(VersionKeyHidden);
-    result
-        ->DefineOwnProperty(TRI_IGETC, _IdKey,
-                            TRI_V8UInt64String<TRI_voc_cid_t>(isolate,
-                                                              collection->id()),
-                            v8::ReadOnly)
-        .FromMaybe(true);  // Ignoring result
-    result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, collection->vocbase().name()));
-    result
-        ->DefineOwnProperty(TRI_IGETC, VersionKeyHidden,
-                            v8::Integer::NewFromUnsigned(isolate, 5), v8::DontEnum)
-        .FromMaybe(false);  // ignore return value
-  }
-
-  return scope.Escape<v8::Object>(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief unwrap a LogicalCollection wrapped via WrapCollection(...)
 /// @return collection or nullptr on failure
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::LogicalCollection* UnwrapCollection(v8::Isolate* isolate,
                                               v8::Local<v8::Object> const& holder) {
   return TRI_UnwrapClass<arangodb::LogicalCollection>(holder, WRP_VOCBASE_COL_TYPE, TRI_IGETC);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps a LogicalCollection
+////////////////////////////////////////////////////////////////////////////////
+v8::Handle<v8::Object> WrapCollection( // wrap collection
+    v8::Isolate* isolate, // isolate
+    std::shared_ptr<arangodb::LogicalCollection> const& collection // collection
+) {
+  v8::EscapableHandleScope scope(isolate);
+  TRI_GET_GLOBALS();
+  TRI_GET_GLOBAL(VocbaseColTempl, v8::ObjectTemplate);
+  v8::Handle<v8::Object> result = VocbaseColTempl->NewInstance();
+
+  if (result.IsEmpty()) {
+    return scope.Escape<v8::Object>(result);
+  }
+
+  auto value = std::shared_ptr<void>( // persistent value
+    collection.get(), // value
+    [collection](void*)->void { // ensure collection shared_ptr is not deallocated
+      TRI_ASSERT(!collection->vocbase().isDangling());
+      collection->vocbase().release(); // decrease the reference-counter for the database
+    }
+  );
+  auto itr = TRI_v8_global_t::SharedPtrPersistent::emplace(*isolate, value);
+  auto& entry = itr.first;
+
+  TRI_ASSERT(!collection->vocbase().isDangling());
+  collection->vocbase().forceUse(); // increase the reference-counter for the database (will be decremented by 'value' distructor above, valid for both new and existing mappings)
+
+  result->SetInternalField(// required for TRI_UnwrapClass(...)
+    SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_VOCBASE_COL_TYPE) // args
+  );
+  result->SetInternalField(SLOT_CLASS, entry.get());
+
+  TRI_GET_GLOBAL_STRING(_IdKey);
+  TRI_GET_GLOBAL_STRING(_DbNameKey);
+  TRI_GET_GLOBAL_STRING(VersionKeyHidden);
+  result->DefineOwnProperty( // define own property
+    TRI_IGETC, // context
+    _IdKey, // key
+    TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->id()), // value
+    v8::ReadOnly // attributes
+  ).FromMaybe(false); // Ignore result...
+  result->Set( // set value
+    _DbNameKey, TRI_V8_STD_STRING(isolate, collection->vocbase().name()) // args
+  );
+  result->DefineOwnProperty( // define own property
+    TRI_IGETC, // context
+    VersionKeyHidden, // key
+    v8::Integer::NewFromUnsigned(isolate, 5), // value
+    v8::DontEnum // attributes
+  ).FromMaybe(false);  // ignore return value
+
+  return scope.Escape<v8::Object>(result);
 }

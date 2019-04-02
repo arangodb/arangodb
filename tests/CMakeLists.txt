@@ -62,10 +62,12 @@ set(IRESEARCH_TESTS_SOURCES
   IResearch/RestHandlerMock.cpp
   IResearch/IResearchViewNode-test.cpp
   IResearch/VelocyPackHelper-test.cpp
+  RestHandler/RestAnalyzerHandler-test.cpp
   RestHandler/RestUsersHandler-test.cpp
   RestHandler/RestViewHandler-test.cpp
   RestServer/FlushFeature-test.cpp
   Utils/CollectionNameResolver-test.cpp
+  V8Server/v8-analyzers-test.cpp
   V8Server/v8-users-test.cpp
   V8Server/v8-views-test.cpp
   VocBase/LogicalDataSource-test.cpp
