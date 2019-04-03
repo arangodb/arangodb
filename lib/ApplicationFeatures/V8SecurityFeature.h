@@ -49,6 +49,10 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   /// execute external binaries
   bool isAllowedToExecuteExternalBinaries(v8::Isolate* isolate) const;
 
+  /// @brief tests if in the current security context it is allowed to
+  /// execute external binaries
+  bool isAllowedToAccessHardenedFunctions(v8::Isolate* isolate) const;
+
   /// @brief tests if in the current security context it is allowed to define
   /// additional HTTP REST actions
   /// must only be called in arangod!
@@ -79,6 +83,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
  private:
   bool _allowParseJS;
   bool _allowExecutionOfBinaries;
+  bool _denyHardened;
 
   // All the following options have white and black lists.
   // The white-list will take precedence over the black list
