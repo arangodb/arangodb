@@ -374,15 +374,14 @@ function testSuite() {
       tryIsDirectoryAllowed(topLevelAllowed, true);
       tryIsDirectoryAllowed(subLevelAllowed, true);
     },
-    testCreateDirectory : function() {
+    testCreateRemoveDirectory : function() {
       tryCreateDirectoryForbidden('/etc/abc');
       tryCreateDirectoryForbidden('/var/log/busted');
       tryCreateDirectoryForbidden(fs.join(topLevelForbiddenFile, "forbidden"));
 
       tryCreateDirectoryAllowed(fs.join(topLevelAllowed, "allowed_create_dir"));
       tryCreateDirectoryAllowed(fs.join(subLevelAllowed, "allowed_create_dir"));
-    },
-    testRemoveDirectory : function() {
+
       tryRemoveDirectoryForbidden('/etc/abc');
       tryRemoveDirectoryForbidden('/var/log/busted');
       tryRemoveDirectoryForbidden(fs.join(topLevelForbiddenFile, "forbidden"));
@@ -390,15 +389,14 @@ function testSuite() {
       tryRemoveDirectoryAllowed(fs.join(topLevelAllowed, "allowed_create_dir"));
       tryRemoveDirectoryAllowed(fs.join(subLevelAllowed, "allowed_create_dir"));
     },
-    testCreateDirectoryRecursive : function() {
+    testCreateRemoveDirectoryRecursive : function() {
       tryCreateDirectoryRecursiveForbidden('/etc/cde/fdg');
       tryCreateDirectoryRecursiveForbidden('/var/log/with/sub/dir');
       tryCreateDirectoryRecursiveForbidden(fs.join(topLevelForbiddenFile, "forbidden", 'sub', 'directory'));
 
       tryCreateDirectoryRecursiveAllowed(fs.join(topLevelAllowed, 'allowed_create_recursive_dir', 'directory'));
       tryCreateDirectoryRecursiveAllowed(fs.join(subLevelAllowed, 'allowed_create_recursive_dir', 'directory'));
-    },
-    testRemoveDirectoryRecursive : function() {
+
       tryRemoveDirectoryRecursiveForbidden('/etc/cde/fdg');
       tryRemoveDirectoryRecursiveForbidden('/var/log/with/sub/dir');
       tryRemoveDirectoryRecursiveForbidden(fs.join(topLevelForbiddenFile, "forbidden", 'sub', 'directory'));
