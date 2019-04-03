@@ -81,9 +81,9 @@ arangodb::Result getUptime(arangodb::httpclient::SimpleHttpClient& client, doubl
   std::string const url = "/_admin/statistics";
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::GET, url, nullptr, 0));
-  auto check = ::checkHttpResponse(client, response);
-  if (check.fail()) {
-    return check;
+  result = ::checkHttpResponse(client, response);
+  if (result.fail()) {
+    return result;
   }
 
   // extract vpack body from response
@@ -94,11 +94,26 @@ arangodb::Result getUptime(arangodb::httpclient::SimpleHttpClient& client, doubl
     result.reset(::ErrorMalformedJsonResponse);
     return result;
   }
+
   VPackSlice const resBody = parsedBody->slice();
+  if (!resBody.isObject()) {
+    result.reset(TRI_ERROR_INTERNAL, "expected reponse to be an object");
+    return result;
+  }
   TRI_ASSERT(resBody.isObject());
+
   VPackSlice const serverObject = resBody.get("server");
+  if (!serverObject.isObject()) {
+    result.reset(TRI_ERROR_INTERNAL, "expected 'server' to be an object");
+    return result;
+  }
   TRI_ASSERT(serverObject.isObject());
+
   VPackSlice const uptimeSlice = serverObject.get("uptime");
+  if (!uptimeSlice.isNumber()) {
+    result.reset(TRI_ERROR_INTERNAL, "expected 'server.uptime' to be numeric");
+    return result;
+  }
   TRI_ASSERT(uptimeSlice.isNumber());
   uptime = uptimeSlice.getNumericValue<double>();
 
@@ -137,8 +152,13 @@ arangodb::Result waitForRestart(arangodb::ClientManager& clientManager,
         }
         // server still down, or still up prior to restart; fall through, wait, retry
       }
+    } catch (arangodb::basics::Exception const& ex) {
+      return {ex.code(), ex.what()};
+    } catch (std::exception const& ex) {
+      return {TRI_ERROR_INTERNAL, std::string("Caught exception: ") + ex.what()};
     } catch (...) {
-    }  // ignore errors here
+      return {TRI_ERROR_INTERNAL, "Caught unknown exception."};
+    }
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
@@ -157,9 +177,9 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
   std::string const url = "/_admin/hotbackup/list";
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::POST, url, nullptr, 0));
-  auto check = ::checkHttpResponse(client, response);
-  if (check.fail()) {
-    return check;
+  result = ::checkHttpResponse(client, response);
+  if (result.fail()) {
+    return result;
   }
 
   // extract vpack body from response
@@ -170,10 +190,27 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
     result.reset(::ErrorMalformedJsonResponse);
     return result;
   }
+
   VPackSlice const resBody = parsedBody->slice();
+  if (!resBody.isObject()) {
+    result.reset(TRI_ERROR_INTERNAL, "expected response to be an object");
+    return result;
+  }
+  TRI_ASSERT(resBody.isObject());
+
   VPackSlice const resultObject = resBody.get("result");
+  if (!resultObject.isObject()) {
+    result.reset(TRI_ERROR_INTERNAL, "expected 'result' to be an object");
+    return result;
+  }
   TRI_ASSERT(resultObject.isObject());
+
   VPackSlice const backups = resultObject.get("hotbackups");
+  if (!backups.isArray()) {
+    result.reset(TRI_ERROR_INTERNAL,
+                 "expected 'result.hotbackups' to be an array");
+    return result;
+  }
   TRI_ASSERT(backups.isArray());
 
   if (backups.isEmptyArray()) {
@@ -184,7 +221,7 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
         << "The following backups are available:";
     for (auto const& backup : VPackArrayIterator(backups)) {
       TRI_ASSERT(backup.isString());
-      LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << " - '" << backup.copyString() << "'";
+      LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << " - " << backup.copyString();
     }
   }
 
@@ -208,9 +245,9 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
   std::string const body = bodyBuilder.slice().toJson();
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::POST, url, body.c_str(), body.size()));
-  auto check = ::checkHttpResponse(client, response);
-  if (check.fail()) {
-    return check;
+  result = ::checkHttpResponse(client, response);
+  if (result.fail()) {
+    return result;
   }
 
   // extract vpack body from response
@@ -222,11 +259,33 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
     return result;
   }
   VPackSlice const resBody = parsedBody->slice();
+  if (!resBody.isObject()) {
+    result.reset(TRI_ERROR_INTERNAL, "expected response to be an object");
+    return result;
+  }
+  TRI_ASSERT(resBody.isObject());
+
   VPackSlice const resultObject = resBody.get("result");
+  if (!resultObject.isObject()) {
+    result.reset(TRI_ERROR_INTERNAL, "expected 'result'' to be an object");
+    return result;
+  }
   TRI_ASSERT(resultObject.isObject());
+
   VPackSlice const identifier = resultObject.get("directory");
+  if (!identifier.isString()) {
+    result.reset(TRI_ERROR_INTERNAL,
+                 "expected 'result.directory' to be a string");
+    return result;
+  }
   TRI_ASSERT(identifier.isString());
+
   VPackSlice const forced = resultObject.get("forced");
+  if (!forced.isBoolean()) {
+    result.reset(TRI_ERROR_INTERNAL,
+                 "expected 'result.forced'' to be an boolean");
+    return result;
+  }
   TRI_ASSERT(forced.isBoolean());
 
   if (forced.getBoolean()) {
@@ -245,6 +304,14 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
                                 arangodb::ClientManager& clientManager) {
   arangodb::Result result;
 
+  double originalUptime = 0.0;
+  if (options.maxWaitForRestart > 0.0) {
+    result = ::getUptime(client, originalUptime);
+    if (result.fail()) {
+      return result;
+    }
+  }
+
   std::string const url = "/_admin/hotbackup/restore";
   VPackBuilder bodyBuilder;
   {
@@ -255,9 +322,9 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
   std::string const body = bodyBuilder.slice().toJson();
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::POST, url, body.c_str(), body.size()));
-  auto check = ::checkHttpResponse(client, response);
-  if (check.fail()) {
-    return check;
+  result = ::checkHttpResponse(client, response);
+  if (result.fail()) {
+    return result;
   }
 
   // extract vpack body from response
@@ -271,22 +338,29 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
 
   if (options.saveCurrent) {
     VPackSlice const resBody = parsedBody->slice();
+    if (!resBody.isObject()) {
+      result.reset(TRI_ERROR_INTERNAL, "expected response to be an object");
+      return result;
+    }
+    TRI_ASSERT(resBody.isObject());
+
     VPackSlice const resultObject = resBody.get("result");
+    if (!resultObject.isObject()) {
+      result.reset(TRI_ERROR_INTERNAL, "expected 'result' to be an object");
+      return result;
+    }
     TRI_ASSERT(resultObject.isObject());
+
     VPackSlice const previous = resultObject.get("previous");
+    if (!previous.isString()) {
+      result.reset(TRI_ERROR_INTERNAL, "expected previous to be a string");
+      return result;
+    }
     TRI_ASSERT(previous.isString());
 
     LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
         << "current state was saved as backup with identifier '"
         << previous.copyString() << "'";
-  }
-
-  double originalUptime = 0.0;
-  if (options.maxWaitForRestart > 0.0) {
-    result = ::getUptime(client, originalUptime);
-    if (result.fail()) {
-      return result;
-    }
   }
 
   LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
@@ -313,9 +387,9 @@ arangodb::Result executeDelete(arangodb::httpclient::SimpleHttpClient& client,
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::DELETE_REQ, url, body.c_str(),
                      body.size()));
-  auto check = ::checkHttpResponse(client, response);
-  if (check.fail()) {
-    return check;
+  result = ::checkHttpResponse(client, response);
+  if (result.fail()) {
+    return result;
   }
 
   // extract vpack body from response
@@ -353,12 +427,7 @@ std::string BackupFeature::operationList(std::string const& separator) {
   std::vector<std::string> operations(::Operations.begin(), ::Operations.end());
   std::sort(operations.begin(), operations.end());
 
-  std::string list = operations.front();
-  for (size_t i = 1; i < operations.size(); i++) {
-    list.append(separator);
-    list.append(operations[i]);
-  }
-  return list;
+  return basics::StringUtils::join(operations, separator);
 }
 
 void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -434,7 +503,7 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   } else {
     LOG_TOPIC(FATAL, Logger::BACKUP)
         << "expected exactly one operation, got '"
-        << basics::StringUtils::join(positionals, ",") << "'";
+        << basics::StringUtils::join(positionals, ", ") << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -447,11 +516,11 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
   if (_options.operation == ::OperationCreate) {
     if (!_options.label.empty()) {
-      std::regex re = std::regex("^([a-zA-Z0-9\\-_]+)$", std::regex::ECMAScript);
+      std::regex re = std::regex("^([a-zA-Z0-9\\.\\-_]+)$", std::regex::ECMAScript);
       if (!std::regex_match(_options.label, re)) {
         LOG_TOPIC(FATAL, Logger::BACKUP)
-            << "--label value may only contain numbers, letters, dashes, and "
-               "underscores";
+            << "--label value may only contain numbers, letters, periods, "
+               "dashes, and underscores";
         FATAL_ERROR_EXIT();
       }
     }
