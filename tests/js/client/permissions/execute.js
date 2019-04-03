@@ -30,7 +30,8 @@
 
 if (getOptions === true) {
   return {
-    'javascript.allow-external-process-control': false
+    'javascript.allow-external-process-control': false,
+    'javascript.harden': true
   };
 }
 
@@ -44,8 +45,11 @@ const statusExternal = internal.statusExternal;
 const getExternalSpawned = internal.getExternalSpawned;
 const suspendExternal = internal.suspendExternal;
 const continueExternal = internal.continueExternal;
+const processStatistics = internal.processStatistics;
+const getPid = internal.getPid;
 
 const arangodb = require("@arangodb");
+
 function testSuite() {
   return {
     testExternalProcesses : function() {
@@ -78,6 +82,20 @@ function testSuite() {
       }
       try {
         let rv = getExternalSpawned();
+        print(rv);
+        fail();
+      } catch (err) {
+        assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
+      }
+      try {
+        let rv = processStatistics();
+        print(rv);
+        fail();
+      } catch (err) {
+        assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
+      }
+      try {
+        let rv = getPid();
         print(rv);
         fail();
       } catch (err) {
