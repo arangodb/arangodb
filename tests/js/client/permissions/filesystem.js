@@ -167,6 +167,20 @@ function testSuite() {
     assertTrue(rc, 'Expected ' + fn + ' to be stat-eable');
   }
 
+  function tryFileSizeForbidden(fn) {
+    try {
+      let rc = fs.size(fn);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'stat-access to ' + fn + ' wasn\'t forbidden');
+    }
+  }
+  function tryFileSizeAllowed(fn) {
+    let rc = fs.size(fn);
+    assertTrue(rc, 'Expected ' + fn + ' to be stat-eable');
+  }
+
   return {
     testReadFile : function() {
       tryReadForbidden('/etc/passwd');
@@ -208,7 +222,7 @@ function testSuite() {
       tryChmodForbidden('/etc/passwd');
       tryChmodForbidden('/var/log/mail.log');
       tryChmodForbidden(topLevelForbiddenFile);
-      // N/A tryReadForbidden(subLevelForbiddenFile);
+      // N/A tryChmodForbidden(subLevelForbiddenFile);
 
       tryChmodAllowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryChmodAllowed(subLevelAllowedFile, 'this file is allowed.\n');
@@ -217,10 +231,19 @@ function testSuite() {
       tryExistsForbidden('/etc/passwd');
       tryExistsForbidden('/var/log/mail.log');
       tryExistsForbidden(topLevelForbiddenFile);
-      // N/A tryReadForbidden(subLevelForbiddenFile);
+      // N/A tryExistsForbidden(subLevelForbiddenFile);
 
       tryExistsAllowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryExistsAllowed(subLevelAllowedFile, 'this file is allowed.\n');
+    },
+    testFileSize : function() {
+      tryFileSizeForbidden('/etc/passwd');
+      tryFileSizeForbidden('/var/log/mail.log');
+      tryFileSizeForbidden(topLevelForbiddenFile);
+      // N/A tryFileSizeForbidden(subLevelForbiddenFile);
+
+      tryFileSizeAllowed(topLevelAllowedFile, 'this file is allowed.\n');
+      tryFileSizeAllowed(subLevelAllowedFile, 'this file is allowed.\n');
     }
   };
 }
