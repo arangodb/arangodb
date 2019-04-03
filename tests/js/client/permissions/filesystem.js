@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global fail, getOptions, assertTrue, assertEqual, assertNotEqual */
+/* global fail, getOptions, assertTrue, assertEqual, assertNotEqual, assertUndefined */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief teardown for dump/reload tests
