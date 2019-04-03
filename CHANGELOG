@@ -1,6 +1,9 @@
 v3.3.23 (XXXX-XX-XX)
 --------------------
 
+* fixed internal issue #2946: create graph autocomplete was not working under
+  certain circumstances.
+
 * don't attempt to remove non-existing WAL files, because such attempt will
   trigger unnecessary error log messages in the RocksDB library
 
