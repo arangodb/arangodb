@@ -731,20 +731,20 @@ int MMFilesCollection::close() {
       std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
-    if ((++tries % 10) == 0) {
+    if ((++tries % 50) == 0) {
       if (hasDocumentDitch) {
-        LOG_TOPIC("51984", WARN, Logger::ENGINES)
+        LOG_TOPIC("51984", INFO, Logger::ENGINES)
             << "waiting for cleanup of document ditches for collection '"
             << _logicalCollection.name() << "'. has other: " << hasOtherDitch;
       } else {
-        LOG_TOPIC("16847", WARN, Logger::ENGINES)
+        LOG_TOPIC("16847", INFO, Logger::ENGINES)
             << "waiting for cleanup of ditches for collection '"
             << _logicalCollection.name() << "'";
       }
     }
 
-    if (tries == 60 && !hasOtherDitch) {
-      // give it up after a minute - this will close the collection at all cost
+    if (tries == 10 * 50 && !hasOtherDitch) {
+      // give it up after 10 seconds - this will close the collection at all cost
       break;
     }
   }
