@@ -44,7 +44,8 @@ SortedCollectExecutor::CollectGroup::CollectGroup(bool count, Infos& infos)
     : groupLength(0),
       count(count),
       infos(infos),
-      _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
+      _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _shouldDeleteBuilderBuffer(true) {
   for (auto const& aggName : infos.getAggregateTypes()) {
     aggregators.emplace_back(Aggregator::fromTypeString(infos.getTransaction(), aggName));
   }
