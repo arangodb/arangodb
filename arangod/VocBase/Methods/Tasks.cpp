@@ -373,7 +373,10 @@ void Task::toVelocyPack(VPackBuilder& builder) const {
 }
 
 void Task::work(ExecContext const* exec) {
-  JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createTaskContext(_allowUseDatabase);
+  JavaScriptSecurityContext securityContext =
+      _allowUseDatabase
+          ? JavaScriptSecurityContext::createInternalContext() // internal context that may access internal data
+          : JavaScriptSecurityContext::createTaskContext(false /*_allowUseDatabase*/); // task context that has no access to dbs
   V8ContextGuard guard(&(_dbGuard->database()), securityContext);
 
   // now execute the function within this context

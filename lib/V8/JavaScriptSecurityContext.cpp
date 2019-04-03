@@ -33,16 +33,20 @@ bool JavaScriptSecurityContext::canDefineHttpAction() const {
   return _type == Type::Internal;
 }
 
-bool JavaScriptSecurityContext::canExecuteExternalBinaries() const {
-  return _type == Type::Internal;
-}
-
 bool JavaScriptSecurityContext::canReadFs() const {
   return _type == Type::Internal;
 }
 
 bool JavaScriptSecurityContext::canWriteFs() const {
   return _type == Type::Internal;
+}
+
+bool JavaScriptSecurityContext::canExecuteExternalBinaries() const {
+  return _type == Type::Internal;
+}
+
+bool JavaScriptSecurityContext::canParseJs() const {
+  return _type == Type::Internal || _type == Type::AdminScript;
 }
 
 /*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createRestrictedContext() {
