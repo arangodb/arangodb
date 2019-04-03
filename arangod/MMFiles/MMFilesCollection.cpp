@@ -2540,6 +2540,9 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector,
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
+      if (_logicalCollection.vocbase().isDropped()) {
+        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+      }
       std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
       if (waitTime < 32) {
         waitTime *= 2;
@@ -2657,6 +2660,9 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector,
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
+      if (_logicalCollection.vocbase().isDropped()) {
+        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+      }
       std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
       if (waitTime < 32) {
         waitTime *= 2;

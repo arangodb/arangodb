@@ -1262,6 +1262,8 @@ void StorageEngineMock::getDatabases(arangodb::velocypack::Builder& result) {
   result.add(system.slice());
   result.close();
 }
+  
+void StorageEngineMock::cleanupReplicationContexts() {}
 
 arangodb::velocypack::Builder StorageEngineMock::getReplicationApplierConfiguration(
     TRI_vocbase_t& vocbase,
