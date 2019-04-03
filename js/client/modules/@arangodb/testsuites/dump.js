@@ -240,15 +240,16 @@ class DumpRestoreHelper {
 
   createHotBackup() {
     this.print("creating backup");
-    let rc = hb.create("testHotBackup");
+    let cmds = {
+      "label": "testHotBackup"
+    };
+    this.results.createHotBackup = pu.run.arangoBackup(this.options, this.instanceInfo, "create", cmds, this.instanceInfo.rootDir, true);
     this.print("done creating backup");
-    return rc;
+    return this.results.createHotBackup.status;
   }
 
   restoreHotBackup() {
     this.print("restoring backup - start");
-    let originalUptime = this.getUptime();
-    let originalUptimeKeys = Object.keys(originalUptime);
     let list = this.listHotBackup();
     let backupName;
     list.forEach(function (name, i) {
@@ -258,54 +259,16 @@ class DumpRestoreHelper {
     });
     if (backupName === undefined) {
       this.print("didn't find a backup matching our pattern!");
+      this.results.restoreHotBackup = { status: false };
       return false;
     }
     this.print("restoring backup");
-    let rc = hb.restore(backupName);
-    this.print("done restoring backup; waiting for server to come back up");
-
-    
-    let i = 0;
-    while (i < 100) {
-      i++;
-      let currentUptime = this.getUptime();
-      let keys = Object.keys(currentUptime);
-      if (keys.length !== originalUptimeKeys ) {
-        try {
-          arango.reconnect(this.instanceInfo.endpoint, '_system', 'root', '');
-        }
-        catch(x) {
-          this.print(".");
-          
-          sleep(1.0);
-          continue;
-        }
-      }
-      let newer = true;
-      keys.forEach(key => {
-        if (!originalUptime.hasOwnProperty(key)) {
-          newer = false;
-        }
-        if (originalUptime[key] < currentUptime[key]) {
-          newer = false;
-        }
-      });
-      
-      if (newer) {
-        try {
-          arango.reconnect(this.instanceInfo.endpoint, '_system', 'root', '');
-          this.print("reconnected");
-          return true;
-        }
-        catch(x) {
-          sleep(1.0);
-          this.print(",");
-          continue;
-        }
-      }
-      sleep(1.0);
-    }
-    throw ("Arangod didn't come back up in the expected timeframe!");
+    let cmds = {
+      "identifier": backupName,
+      "max-wait-for-restart": 100.0
+    };
+    this.results.restoreHotBackup = pu.run.arangoBackup(this.options, this.instanceInfo, "restore", cmds, this.instanceInfo.rootDir, true);
+    this.print("done restoring backup");
   }
 
   listHotBackup() {
