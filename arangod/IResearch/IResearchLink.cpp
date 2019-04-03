@@ -815,7 +815,7 @@ arangodb::Result IResearchLink::init(
       }
     }
 
-    auto logicalView = engine->getView(vocbase.name(), viewId); // valid to call ClusterInfo (initialized in ClusterFeature::prepare()) even from Databasefeature::start()
+    auto logicalView = ci->getView(vocbase.name(), viewId); // valid to call ClusterInfo (initialized in ClusterFeature::prepare()) even from Databasefeature::start()
 
     // if there is no logicalView present yet then skip this step
     if (logicalView) {
