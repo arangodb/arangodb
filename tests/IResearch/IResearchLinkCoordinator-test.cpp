@@ -337,7 +337,6 @@ SECTION("test_create_drop") {
     CHECK((updatedCollection0.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
-    CHECK((true == index->hasBatchInsert()));
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
@@ -445,7 +444,6 @@ SECTION("test_create_drop") {
     CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
-    CHECK((true == index->hasBatchInsert()));
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
