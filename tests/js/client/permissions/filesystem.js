@@ -224,6 +224,20 @@ function testSuite() {
     assertEqual(rc.length, expectCount, 'Expected ' + dn + ' to contain ' + expectCount + " files.");
   }
 
+  function tryListTreeForbidden(dn) {
+    try {
+      let rc = fs.listTree(dn);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'ListTree-access to ' + dn + ' wasn\'t forbidden');
+    }
+  }
+  function tryListTreeAllowed(dn, expectCount) {
+    let rc = fs.listTree(dn);
+    assertEqual(rc.length, expectCount, 'Expected ' + dn + ' to contain ' + expectCount + " files.");
+  }
+
   return {
     testReadFile : function() {
       tryReadForbidden('/etc/passwd');
@@ -324,6 +338,19 @@ function testSuite() {
 
       tryListFileAllowed(topLevelAllowed, 2);
       tryListFileAllowed(subLevelAllowed, 2);
+    },
+    testListTree : function() {
+      tryListTreeForbidden('/etc/X11');
+      tryListTreeForbidden('/var/log/');
+      tryListTreeForbidden(topLevelForbidden);
+      tryListTreeForbidden(topLevelForbiddenFile);
+      // N/A tryFileSizeForbidden(subLevelForbiddenFile);
+
+      tryListTreeAllowed(topLevelAllowedFile, 1);
+      tryListTreeAllowed(subLevelAllowedFile, 1);
+
+      tryListTreeAllowed(topLevelAllowed, 3);
+      tryListTreeAllowed(subLevelAllowed, 3);
     }
   };
 }
