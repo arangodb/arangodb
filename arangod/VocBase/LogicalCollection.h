@@ -315,13 +315,11 @@ class LogicalCollection : public LogicalDataSource {
 
   Result update(transaction::Methods*, velocypack::Slice,
                 ManagedDocumentResult& result, OperationOptions&, TRI_voc_tick_t&,
-                bool lock, TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                std::function<Result(void)> callbackDuringLock);
+                bool lock, TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
 
   Result replace(transaction::Methods*, velocypack::Slice,
                  ManagedDocumentResult& result, OperationOptions&, TRI_voc_tick_t&,
-                 bool lock, TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                 std::function<Result(void)> callbackDuringLock);
+                 bool lock, TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
