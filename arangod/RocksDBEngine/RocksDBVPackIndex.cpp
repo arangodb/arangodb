@@ -874,8 +874,10 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
       }
     }
   } else {
+    // non-unique index contain the unique objectID written exactly once
     for (size_t i = 0; i < count; ++i) {
-      s = mthds->Delete(_cf, elements[i]);
+      s = mthds->SingleDelete(_cf, elements[i]);
+      
       if (!s.ok()) {
         res.reset(rocksutils::convertStatus(s, rocksutils::index));
       }
