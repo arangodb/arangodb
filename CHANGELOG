@@ -175,6 +175,8 @@ v3.4.5 (2019-03-27)
 * wait for statistics collections to be created before running resilience
   tests
 
+* fix ttl values in agency when key overwritten with no ttl
+
 v3.4.4 (2019-03-12)
 -------------------
 
