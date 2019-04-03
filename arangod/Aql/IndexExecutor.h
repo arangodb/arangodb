@@ -219,10 +219,15 @@ class IndexExecutor {
   bool getIndexesExhausted() { return _indexesExhausted; }
 
   bool isLastIndex() { return _isLastIndex; }
+  void setIsLastIndex(bool flag) { _isLastIndex = flag; }
 
   void setCurrentIndex(size_t pos) { _currentIndex = pos; }
-  void decrCurrentIndex() { _currentIndex--; }
-  void incrCurrentIndex() { _currentIndex++; }
+  void decrCurrentIndex() {
+    _currentIndex--;
+  }
+  void incrCurrentIndex() {
+    _currentIndex++;
+  }
   size_t getCurrentIndex() const noexcept { return _currentIndex; }
 
  private:

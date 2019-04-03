@@ -77,10 +77,6 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
   RegisterId getCollectRegister() const noexcept { return _collectRegister; }
 
  private:
-  // This is exactly the value in the parent member ExecutorInfo::_inRegs,
-  // respectively getInputRegisters().
-  RegisterId _inputRegister;
-
   /// @brief aggregate types
   std::vector<std::string> _aggregateTypes;
 
