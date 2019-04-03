@@ -275,6 +275,11 @@ void CursorRepository::release(Cursor* cursor) {
   delete cursor;
 }
 
+size_t CursorRepository::count() {
+  MUTEX_LOCKER(mutexLocker, _lock);
+  return _cursors.size();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the repository contains a used cursor
 ////////////////////////////////////////////////////////////////////////////////

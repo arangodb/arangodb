@@ -375,6 +375,17 @@ Store& Node::store() { return *(root()._store); }
 
 Store const& Node::store() const { return *(root()._store); }
 
+Store* Node::getStore() {
+  Node* par = _parent;
+  Node* tmp = this;
+  while (par != nullptr) {
+    tmp = par;
+    par = par->_parent;
+  }
+  return tmp->_store;  // Can be nullptr if we are not in a Node that belongs
+                       // to a store.
+}
+
 // velocypack value type of this node
 ValueType Node::valueType() const { return slice().type(); }
 
@@ -396,11 +407,13 @@ TimePoint const& Node::timeToLive() const {
 
 // remove time to live entry for this node
 bool Node::removeTimeToLive() {
-  if (_store != nullptr) {
-    _store->removeTTL(uri());
-    if (_ttl != std::chrono::system_clock::time_point()) {
-      _ttl = std::chrono::system_clock::time_point();
-    }
+  Store* s = getStore();  // We could be in a Node that belongs to a store,
+                          // or in one that doesn't.
+  if (s != nullptr) {
+    s->removeTTL(uri());
+  }
+  if (_ttl != std::chrono::system_clock::time_point()) {
+    _ttl = std::chrono::system_clock::time_point();
   }
   return true;
 }
