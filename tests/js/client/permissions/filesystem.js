@@ -195,6 +195,20 @@ function testSuite() {
     assertEqual(rc, isDirectory, 'Expected ' + fn + ' to be a ' + isDirectory ? "directory.":"file.");
   }
 
+  function tryIsFileForbidden(fn) {
+    try {
+      let rc = fs.isFile(fn);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'isFile-access to ' + fn + ' wasn\'t forbidden');
+    }
+  }
+  function tryIsFileAllowed(fn, isFile) {
+    let rc = fs.isFile(fn);
+    assertEqual(rc, isFile, 'Expected ' + fn + ' to be a ' + isFile ? "directory.":"file.");
+  }
+
   return {
     testReadFile : function() {
       tryReadForbidden('/etc/passwd');
@@ -270,6 +284,18 @@ function testSuite() {
 
       tryIsDirectoryAllowed(topLevelAllowed, true);
       tryIsDirectoryAllowed(subLevelAllowed, true);
+    },
+    testIsFile : function() {
+      tryIsFileForbidden('/etc/passwd');
+      tryIsFileForbidden('/var/log/mail.log');
+      tryIsFileForbidden(topLevelForbiddenFile);
+      // N/A tryFileSizeForbidden(subLevelForbiddenFile);
+
+      tryIsFileAllowed(topLevelAllowedFile, true);
+      tryIsFileAllowed(subLevelAllowedFile, true);
+
+      tryIsFileAllowed(topLevelAllowed, false);
+      tryIsFileAllowed(subLevelAllowed, false);
     }
   };
 }
