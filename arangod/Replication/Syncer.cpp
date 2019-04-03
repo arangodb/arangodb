@@ -793,7 +793,7 @@ void Syncer::createIndexInternal(VPackSlice const& idxDef, LogicalCollection& co
     }
   }
 
-  if (idx = nullptr) {
+  if (idx == nullptr) {
     bool created = false;
     idx = physical->createIndex(idxDef, /*restore*/ true, created);
   }
