@@ -358,11 +358,11 @@
     "ERROR_HOT_BACKUP_INTERNAL"    : { "code" :  7001, "message" : " \"internal hot backup error\"" },
     "ERROR_HOT_RESTORE_INTERNAL"   : { "code" :  7002, "message" : " \"internal hot restore error\"" },
     "ERROR_BACKUP_TOPOLOGY"        : { "code" :  7003, "message" : " \"backup does not match this topology\"" },
-    "ERROR_NO_SPACE_LEFT_ON_DEVICE" : { "code" :  7003, "message" : " \"no space left on device\"" },
-    "ERROR_FAILED_TO_UPLOAD_BACKUP" : { "code" :  7004, "message" : " \"failed to upload hot backup set to remote target\"" },
-    "ERROR_FAILED_TO_DOWNLOAD_BACKUP" : { "code" :  7005, "message" : " \"failed to download hot backup set from remote source\"" },
-    "ERROR_NO_SUCH_HOT_BACKUP"     : { "code" :  7006, "message" : " \"no such hot backup set can be found" },
-    "ERROR_REMOTE_REPOSITORY_CONFIG_BAD" : { "code" :  7007, "message" : " \"remote hotback repository configuration error\"" }
+    "ERROR_NO_SPACE_LEFT_ON_DEVICE" : { "code" :  7004, "message" : " \"no space left on device\"" },
+    "ERROR_FAILED_TO_UPLOAD_BACKUP" : { "code" :  7005, "message" : " \"failed to upload hot backup set to remote target\"" },
+    "ERROR_FAILED_TO_DOWNLOAD_BACKUP" : { "code" :  7006, "message" : " \"failed to download hot backup set from remote source\"" },
+    "ERROR_NO_SUCH_HOT_BACKUP"     : { "code" :  7007, "message" : " \"no such hot backup set can be found" },
+    "ERROR_REMOTE_REPOSITORY_CONFIG_BAD" : { "code" :  7008, "message" : " \"remote hotback repository configuration error\"" }
   };
 
   // For compatibility with <= 3.3
