@@ -3263,8 +3263,6 @@ arangodb::Result lockDBServerTransactions(
 arangodb::Result hotBackupDBServers(
   std::string const& backupId, std::vector<ServerID> dbServers,
   VPackSlice agencyDump) {
-  
-
 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -3331,10 +3329,76 @@ arangodb::Result hotBackupDBServers(
   
 }
                                     
+arangodb::Result removeLocalBackups(
+  std::string const& backupId, std::vector<ServerID> const& dbServers) {
 
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return arangodb::Result(TRI_ERROR_SHUTTING_DOWN, "Shutting down");
+  }
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder b(&builder);
+    builder.add("id", VPackValue(backupId));
+  }
+  auto body = std::make_shared<std::string>(builder.toJson());
+  
+  std::string const url = "/_admin/hotbackup/delete";
+  std::vector<ClusterCommRequest> requests;
+  
+  for (auto const& dbServer : dbServers) {
+    requests.emplace_back("server:" + dbServer, RequestType::POST, url, body);
+  }
+
+  // Perform the requests
+  size_t nrDone = 0;
+  cc->performRequests(
+    requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
+
+  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Deleting backup " << backupId;
+
+  // Now listen to the results:
+  for (auto const& req : requests) {
+    
+    auto res = req.result;
+    int commError = handleGeneralCommErrors(&res);
+    if (commError != TRI_ERROR_NO_ERROR) {
+      return arangodb::Result(
+        commError, std::string("Communication error while deleting backup")
+        + backupId + " on " + req.destination);
+    }
+    TRI_ASSERT(res.answer != nullptr);
+    auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
+    VPackSlice resSlice = resBody->slice();
+    if (!resSlice.isObject()) {
+      // Response has invalid format
+      return arangodb::Result(
+        TRI_ERROR_HTTP_CORRUPTED_JSON,
+        std::string("result to take snapshot on ") + req.destination + " not an object");
+    }
+
+    if (!resSlice.hasKey("result") ||
+        !resSlice.get("result").isBoolean() || !resSlice.get("result").getBoolean()) {
+      LOG_TOPIC(ERR, Logger::HOTBACKUP)
+        << "DB server " << req.destination << "is missing backup " << backupId;
+      return arangodb::Result(
+        TRI_ERROR_FILE_NOT_FOUND,
+        std::string("no backup with id ") + backupId + " on server " + req.destination);
+    }
+
+  }
+
+  LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
+    << "Have located backup. Replaying plan snapshot. Requesting restore " << backupId;
+
+  return arangodb::Result();
+
+}
 
 arangodb::Result hotBackupCoordinator(
-  HotBackupMode const& mode, uint64_t const& wait) {
+  HotBackupMode const& mode, uint64_t const& timeout) {
 
   /*
     1. Create UUID for this entire attempt
@@ -3350,67 +3414,74 @@ arangodb::Result hotBackupCoordinator(
 
   using namespace std::chrono;
 
-  // backup's UUID
+  // 1. backup's UUID
   std::string const backupId = to_string(boost::uuids::random_generator()());
-
-  // Record when we need to bail out
-  if (wait > 60) {
-    LOG_TOPIC(INFO, Logger::HOTBACKUP) <<
-      "Potentially hazardous long hot backup timeout " << wait << " s";
-  }
-  auto end = steady_clock::now() + seconds(wait);
+  auto end = steady_clock::now() + seconds(timeout);
 
   // Cluster info instance for agency operations
   ClusterInfo* ci = ClusterInfo::instance();
 
-  // Go to backup mode for 5 minutes if and only if not already in
+  // Go to backup mode for *timeout* if and only if not already in
   // backup mode. Otherwise we cannot know, why backup mode was activated
   // We specifically want to make sure that no other backup is going on.
-  auto hlRes = ci->agencyHotBackupLock(backupId, wait);
-  if (!hlRes.ok()) {
-    return hlRes; // Failed to go to backup mode 
+  auto result = ci->agencyHotBackupLock(backupId, timeout);
+  if (!result.ok()) {
+    // Failed to go to backup mode
+    result.reset(
+      TRI_ERROR_HOT_BACKUP_INTERNAL,
+      std::string("agency lock operation resulted in ") + result.errorMessage());
+    LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
+    return result;
   }
 
   if (end < steady_clock::now()) {
     LOG_TOPIC(INFO, Logger::HOTBACKUP)
-      << "Hot backup didn't get to locking phase in within timeout " << wait
+      << "hot backup didn't get to locking phase in within timeout " << timeout
       << "s. Unlocking hot backups in agency.";
     auto hlRes = ci->agencyHotBackupUnlock(backupId);
     return arangodb::Result(
-      TRI_ERROR_CLUSTER_TIMEOUT, "Hot bckup timeout before locking phase");
+      TRI_ERROR_CLUSTER_TIMEOUT, "hot backup timeout before locking phase");
   }
 
   // acquire agency dump
   auto agency = std::make_shared<VPackBuilder>();
-  arangodb::Result dumpRes = ci->agencyDump(agency);
-  if (!dumpRes.ok()) {
-    LOG_TOPIC(ERR, Logger::HOTBACKUP)
-      << "Failed to acquire agency dump: " << dumpRes.errorMessage();
-    return arangodb::Result(
-      TRI_ERROR_CLUSTER_TIMEOUT,
-      std::string("Failed to acquire agency dump: ") + dumpRes.errorMessage());
+  result = ci->agencyDump(agency);
+  if (!result.ok()) {
+    ci->agencyHotBackupUnlock(backupId);
+    result.reset(
+      TRI_ERROR_HOT_BACKUP_INTERNAL,
+      std::string ("failed to acquire agency dump: ") + result.errorMessage());
+    LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
+    return result;
   }
 
   // Call lock on all database servers 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
-    return TRI_ERROR_SHUTTING_DOWN;
+    return Result(TRI_ERROR_SHUTTING_DOWN, "server is shutting down");
   }
   std::vector<ServerID> dbServers = ci->getCurrentDBServers();
 
-  auto result = lockDBServerTransactions(backupId, dbServers, end);
+  result = lockDBServerTransactions(backupId, dbServers, end);
   if (!result.ok()) {
-
     ci->agencyHotBackupUnlock(backupId);
+    result.reset(
+      TRI_ERROR_HOT_BACKUP_INTERNAL,
+      std::string ("failed to acquire global transaction log on all db servers: ") + result.errorMessage());
+    LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
     return result;
-
   }
 
   result = hotBackupDBServers(backupId, dbServers, agency->slice());
   if (!result.ok()) {
-    LOG_TOPIC(ERR, Logger::HOTBACKUP) <<
-      "failed to do hot backups on all db servers: " << result.errorMessage();
+    ci->agencyHotBackupUnlock(backupId);
+    result.reset(
+      TRI_ERROR_HOT_BACKUP_INTERNAL,
+      std::string ("failed to hot backup on all db servers: ") + result.errorMessage());
+    LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
+    removeLocalBackups(backupId, dbServers);
+    return result;
   }
 
   ci->agencyHotBackupUnlock(backupId);
@@ -3419,3 +3490,7 @@ arangodb::Result hotBackupCoordinator(
 }
 
 }  // namespace arangodb
+
+
+
+
