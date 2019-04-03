@@ -310,17 +310,17 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<ShortestPathExecutor>::shut
 }
 
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor>::shutdown() {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor>::shutdown(int errorCode) {
   ExecutionState state;
   Result subqueryResult;
   // shutdown is repeatable
-  std::tie(state, subqueryResult) = this->executor().shutdown();
+  std::tie(state, subqueryResult) = this->executor().shutdown(errorCode);
   if (state == ExecutionState::WAITING) {
     return {ExecutionState::WAITING, subqueryResult};
   }
   Result result;
 
-  std::tie(state, result) = ExecutionBlock::shutdown();
+  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
   if (state == ExecutionState::WAITING) {
     return {state, result};
   }
