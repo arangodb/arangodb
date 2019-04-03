@@ -410,7 +410,14 @@ void DatabaseFeature::stop() {
       continue;
     }
 
-    LOG_TOPIC(WARN, Logger::FIXME) << "shutting down database " << vocbase->name() << ": " << (void*) vocbase << ", cursors: " << vocbase->cursorRepository()->count() << ", keys: " << vocbase->collectionKeys()->count() << ", queries: " << vocbase->queryList()->count();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // i am here for debugging only. 
+    LOG_TOPIC(DEBUG, Logger::FIXME) 
+        << "shutting down database " << vocbase->name() << ": " << (void*) vocbase 
+        << ", cursors: " << vocbase->cursorRepository()->count() 
+        << ", keys: " << vocbase->collectionKeys()->count() 
+        << ", queries: " << vocbase->queryList()->count();
+#endif
     vocbase->processCollections(
         [](LogicalCollection* collection) {
           // no one else must modify the collection's status while we are in here
@@ -418,8 +425,12 @@ void DatabaseFeature::stop() {
               [collection]() { collection->close(); });
         },
         true);
-    
-    LOG_TOPIC(WARN, Logger::FIXME) << "shutting down database " << vocbase->name() << ": " << (void*) vocbase << " successful";
+   
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // i am here for debugging only. 
+    LOG_TOPIC(DEBUG, Logger::FIXME) 
+        << "shutting down database " << vocbase->name() << ": " << (void*) vocbase << " successful";
+#endif
   }
 }
 
