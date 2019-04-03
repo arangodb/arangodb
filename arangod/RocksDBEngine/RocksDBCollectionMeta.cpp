@@ -26,7 +26,6 @@
 #include "Basics/WriteLocker.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
-#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/KeyGenerator.h"
@@ -203,7 +202,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
   rocksdb::SequenceNumber seq = applyAdjustments(maxCommitSeq, didWork);
   if (didWork) {
     appliedSeq = std::min(appliedSeq, seq);
-  } else {  // maxCommitSeq is == appliedSeq without any blockers
+  } else {  // maxCommitSeq is == UINT64_MAX without any blockers
     appliedSeq = std::min(appliedSeq, maxCommitSeq);
   }
 
@@ -282,7 +281,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
 
       LOG_TOPIC(TRACE, Logger::ENGINES)
           << "serialized estimate for index '" << idx->objectId()
-          << "' committed through seq " << maxCommitSeq;
+          << "' valid through seq " << seq;
 
       key.constructIndexEstimateValue(idx->objectId());
       rocksdb::Slice value(output);
