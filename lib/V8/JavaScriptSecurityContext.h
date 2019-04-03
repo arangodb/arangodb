@@ -68,6 +68,10 @@ class JavaScriptSecurityContext {
   /// binaries is allowed.
   bool canExecuteExternalBinaries() const;
 
+  /// @brief whether or not parsing and compiling of JavaScript is allowed
+  /// binaries is allowed.
+  bool canParseJs() const;
+
   /// @brief create a security context that is most restricted
   static JavaScriptSecurityContext createRestrictedContext();
 

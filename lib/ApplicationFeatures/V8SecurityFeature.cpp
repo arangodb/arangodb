@@ -349,7 +349,7 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string 
 
 bool V8SecurityFeature::isAllowedToParseJavaScript(v8::Isolate* isolate) const {
   TRI_GET_GLOBALS();
-  if (v8g != nullptr && v8g->_securityContext.isInternal()) {
+  if (v8g != nullptr && v8g->_securityContext.canParseJs()) {
     // internal security contexts are allowed to parse ans compile js code
     return true;
   }
