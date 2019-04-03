@@ -77,7 +77,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
   AqlItemBlockManager itemBlockManager{&monitor};
 
   WHEN("only copying from source to target") {
-    auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
+    auto outputBlock = std::make_unique<AqlItemBlock>(itemBlockManager, 3, 3);
     ExecutorInfos executorInfos{{}, {}, 3, 3, {}, {0, 1, 2}};
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
@@ -91,7 +91,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
       {
         // Make sure this data is cleared before the assertions
         auto inputBlock =
-            buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
+            buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
                                      {{{4}, {5}, {6}}},
                                      {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
 
@@ -124,7 +124,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
         // Make sure this data is cleared before the assertions
         // Every of these entries has a size > 16 uint_8
         auto inputBlock = buildBlock<3>(
-            &monitor,
+            itemBlockManager,
             {{{{"\"aaaaaaaaaaaaaaaaaaaa\""}, {"\"bbbbbbbbbbbbbbbbbbbb\""}, {"\"cccccccccccccccccccc\""}}},
              {{{"\"dddddddddddddddddddd\""}, {"\"eeeeeeeeeeeeeeeeeeee\""}, {"\"ffffffffffffffffffff\""}}},
              {{{"\"gggggggggggggggggggg\""}, {"\"hhhhhhhhhhhhhhhhhhhh\""}, {"\"iiiiiiiiiiiiiiiiiiii\""}}}});
@@ -162,7 +162,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
   }
 
   WHEN("only copying from source to target but multiplying rows") {
-    auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 9, 3);
+    auto outputBlock = std::make_unique<AqlItemBlock>(itemBlockManager, 9, 3);
     ExecutorInfos executorInfos{{}, {}, 3, 3, {}, {0, 1, 2}};
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
@@ -176,7 +176,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
       {
         // Make sure this data is cleared before the assertions
         auto inputBlock =
-            buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
+            buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
                                      {{{4}, {5}, {6}}},
                                      {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
 
@@ -214,7 +214,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
   }
 
   WHEN("dropping a register from source while writing to target") {
-    auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
+    auto outputBlock = std::make_unique<AqlItemBlock>(itemBlockManager, 3, 3);
     ExecutorInfos executorInfos{{}, {}, 3, 3, {1}, {0, 2}};
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
@@ -228,7 +228,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
       {
         // Make sure this data is cleared before the assertions
         auto inputBlock =
-            buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
+            buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
                                      {{{4}, {5}, {6}}},
                                      {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
 
@@ -281,7 +281,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
       nrInputRegisters = 3;
       nrOutputRegisters = 5;
     }
-    auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 3, 5);
+    auto outputBlock = std::make_unique<AqlItemBlock>(itemBlockManager, 3, 5);
     ExecutorInfos executorInfos{inputRegisters, outputRegisters, nrInputRegisters,
                                 nrOutputRegisters, *registersToClear, *registersToKeep};
     auto blockShell =
@@ -292,7 +292,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
                             registersToKeep, executorInfos.registersToClear());
     {
       // Make sure this data is cleared before the assertions
-      auto inputBlock = buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
+      auto inputBlock = buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
                                                  {{{4}, {5}, {6}}},
                                                  {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
 

@@ -56,7 +56,7 @@ class AqlItemBlockManager {
     returnBlock(b);
   }
 
-  ResourceMonitor* resourceMonitor() const { return _resourceMonitor; }
+  TEST_VIRTUAL ResourceMonitor* resourceMonitor() const noexcept { return _resourceMonitor; }
 
  private:
   ResourceMonitor* _resourceMonitor;

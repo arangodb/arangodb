@@ -264,6 +264,7 @@ SET(ARANGOD_SOURCES
   Aql/ReturnExecutor.cpp
   Aql/ScatterExecutor.cpp
   Aql/Scopes.cpp
+  Aql/SharedAqlItemBlockPtr.cpp
   Aql/SharedQueryState.cpp
   Aql/ShortStringStorage.cpp
   Aql/ShortestPathExecutor.cpp

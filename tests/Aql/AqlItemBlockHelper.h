@@ -74,7 +74,7 @@ using MatrixBuilder = std::vector<RowBuilder<columns>>;
 
 template <::arangodb::aql::RegisterId columns>
 std::unique_ptr<::arangodb::aql::AqlItemBlock> buildBlock(
-    ::arangodb::aql::ResourceMonitor* monitor, MatrixBuilder<columns>&& matrix);
+    ::arangodb::aql::AqlItemBlockManager& manager, MatrixBuilder<columns>&& matrix);
 
 
 }  // namespace aql
@@ -102,8 +102,8 @@ class EntryToAqlValueVisitor : public boost::static_visitor<AqlValue> {
 };
 
 template <RegisterId columns>
-std::unique_ptr<AqlItemBlock> buildBlock(ResourceMonitor* monitor, MatrixBuilder<columns>&& matrix) {
-  auto block = std::make_unique<AqlItemBlock>(monitor, matrix.size(), columns);
+std::unique_ptr<AqlItemBlock> buildBlock(AqlItemBlockManager& manager, MatrixBuilder<columns>&& matrix) {
+  auto block = std::make_unique<AqlItemBlock>(manager, matrix.size(), columns);
 
   for (size_t row = 0; row < matrix.size(); row++) {
     for (RegisterId col = 0; col < columns; col++) {

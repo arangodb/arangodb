@@ -55,7 +55,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
 
   GIVEN("there are no rows upstream") {
     EnumerateListExecutorInfos infos(0, 1, 1, 2, {}, {0});
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
+    auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, 2);
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     VPackBuilder input;
@@ -103,7 +103,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
 
   GIVEN("there is one row in the upstream") {
     EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, {0, 1, 2, 3});
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
+    auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, 5);
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     auto input = VPackParser::fromJson("[ [1, 2, 3, [true, true, true]] ]");
@@ -194,7 +194,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
 
   GIVEN("there is one empty array row in the upstream") {
     EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, {0, 1, 2, 3});
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
+    auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, 5);
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     auto input = VPackParser::fromJson("[ [1, 2, 3, [] ] ]");
@@ -227,7 +227,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
 
   GIVEN("there are rows in the upstream") {
     EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, {0, 1, 2, 3});
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
+    auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, 5);
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     auto input = VPackParser::fromJson(

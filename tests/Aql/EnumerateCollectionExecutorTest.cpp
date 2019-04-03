@@ -114,7 +114,7 @@ SCENARIO("EnumerateCollectionExecutor",
                                            &trx, coveringIndexAttributePositions,
                                            useRawPointers, random);
 
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
+    auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, 2);
     auto outputBlockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     VPackBuilder input;

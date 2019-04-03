@@ -36,9 +36,8 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the block
-AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, size_t nrItems, RegisterId nrRegs)
-    : _nrItems(nrItems), _nrRegs(nrRegs), _resourceMonitor(resourceMonitor) {
-  TRI_ASSERT(resourceMonitor != nullptr);
+AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, RegisterId nrRegs)
+    : _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager) {
   TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
 
   if (nrRegs > 0) {
@@ -58,10 +57,8 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, size_t nrItems, Reg
 }
 
 /// @brief create the block from VelocyPack, note that this can throw
-AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const slice)
-    : _nrItems(0), _nrRegs(0), _resourceMonitor(resourceMonitor) {
-  TRI_ASSERT(resourceMonitor != nullptr);
-
+AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, VPackSlice const slice)
+    : _nrItems(0), _nrRegs(0), _manager(manager) {
   int64_t nrItems = VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
   if (nrItems <= 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
@@ -388,7 +385,7 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
   std::unordered_set<AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
-  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
+  auto res = std::make_unique<AqlItemBlock>(_manager, to - from, _nrRegs);
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
@@ -428,7 +425,7 @@ AqlItemBlock* AqlItemBlock::slice(size_t row, std::unordered_set<RegisterId> con
 
   std::unordered_set<AqlValue> cache;
 
-  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, 1, newNrRegs);
+  auto res = std::make_unique<AqlItemBlock>(_manager, 1, newNrRegs);
 
   for (RegisterId col = 0; col < _nrRegs; col++) {
     if (registers.find(col) == registers.end()) {
@@ -471,7 +468,7 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen,
   std::unordered_set<AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
-  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
+  auto res = std::make_unique<AqlItemBlock>(_manager, to - from, _nrRegs);
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
@@ -512,7 +509,7 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen,
 AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from, size_t to) {
   TRI_ASSERT(from < to && to <= chosen.size());
 
-  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
+  auto res = std::make_unique<AqlItemBlock>(_manager, to - from, _nrRegs);
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
@@ -534,15 +531,15 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from
 }
 
 /// @brief concatenate multiple blocks
-AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
+AqlItemBlock* AqlItemBlock::concatenate(AqlItemBlockManager& manager,
                                         BlockCollector* collector) {
-  return concatenate(resourceMonitor, collector->_blocks);
+  return concatenate(manager, collector->_blocks);
 }
 
 /// @brief concatenate multiple blocks, note that the new block now owns all
 /// AqlValue pointers in the old blocks, therefore, the latter are all
 /// set to nullptr, just to be sure.
-AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
+AqlItemBlock* AqlItemBlock::concatenate(AqlItemBlockManager& manager,
                                         std::vector<AqlItemBlock*> const& blocks) {
   TRI_ASSERT(!blocks.empty());
 
@@ -560,7 +557,7 @@ AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
   TRI_ASSERT(totalSize > 0);
   TRI_ASSERT(nrRegs > 0);
 
-  auto res = std::make_unique<AqlItemBlock>(resourceMonitor, totalSize, nrRegs);
+  auto res = std::make_unique<AqlItemBlock>(manager, totalSize, nrRegs);
 
   size_t pos = 0;
   for (auto& it : blocks) {

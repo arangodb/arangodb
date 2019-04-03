@@ -181,6 +181,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                         "testVocbase");
   arangodb::aql::ResourceMonitor resMon;
+  arangodb::aql::AqlItemBlockManager itemBlockManager{&resMon};
 
   // getSome
   {
@@ -192,7 +193,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
 
     query.prepare(arangodb::QueryRegistryFeature::registry());
 
-    arangodb::aql::AqlItemBlock data(&resMon, 100, 4);
+    arangodb::aql::AqlItemBlock data(itemBlockManager, 100, 4);
 
     // build simple chain
     // Singleton <- MockBlock
@@ -245,7 +246,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
 
     query.prepare(arangodb::QueryRegistryFeature::registry());
 
-    arangodb::aql::AqlItemBlock data(&resMon, 100, 4);
+    arangodb::aql::AqlItemBlock data(itemBlockManager, 100, 4);
 
     // build simple chain
     // Singleton <- MockBlock
@@ -294,7 +295,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
 
     query.prepare(arangodb::QueryRegistryFeature::registry());
 
-    arangodb::aql::AqlItemBlock data(&resMon, 100, 4);
+    arangodb::aql::AqlItemBlock data(itemBlockManager, 100, 4);
 
     // build simple chain
     // Singleton <- MockBlock
@@ -342,6 +343,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                         "testVocbase");
   arangodb::aql::ResourceMonitor resMon;
+  arangodb::aql::AqlItemBlockManager itemBlockManager{&resMon};
 
   // getSome
   {
@@ -361,14 +363,14 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor<arangodb::aql::ConstFetcher>> rootBlock(
         query.engine(), &rootNode, std::move(infos));
 
-    arangodb::aql::AqlItemBlock data0(&resMon, 2, 2);
+    arangodb::aql::AqlItemBlock data0(itemBlockManager, 2, 2);
     ExecutionNodeMock node0;
     ExecutionBlockMock block0(data0, *query.engine(), node0);
     block0.addDependency(&rootBlock);
     arangodb::aql::InputAqlItemRow input{arangodb::aql::CreateInvalidInputRowHint{}};
     rootBlock.initializeCursor(input);
 
-    arangodb::aql::AqlItemBlock data1(&resMon, 100, 4);
+    arangodb::aql::AqlItemBlock data1(itemBlockManager, 100, 4);
     ExecutionNodeMock node1;
     ExecutionBlockMock block1(data1, *query.engine(), node1);
     block1.addDependency(&block0);
@@ -428,12 +430,12 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     arangodb::aql::InputAqlItemRow input{arangodb::aql::CreateInvalidInputRowHint{}};
     rootBlock.initializeCursor(input);
 
-    arangodb::aql::AqlItemBlock data0(&resMon, 2, 2);
+    arangodb::aql::AqlItemBlock data0(itemBlockManager, 2, 2);
     ExecutionNodeMock node0;
     ExecutionBlockMock block0(data0, *query.engine(), node0);
     block0.addDependency(&rootBlock);
 
-    arangodb::aql::AqlItemBlock data1(&resMon, 100, 4);
+    arangodb::aql::AqlItemBlock data1(itemBlockManager, 100, 4);
     ExecutionNodeMock node1;
     ExecutionBlockMock block1(data1, *query.engine(), node1);
     block1.addDependency(&block0);
@@ -491,12 +493,12 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     arangodb::aql::InputAqlItemRow input{arangodb::aql::CreateInvalidInputRowHint{}};
     rootBlock.initializeCursor(input);
 
-    arangodb::aql::AqlItemBlock data0(&resMon, 2, 2);
+    arangodb::aql::AqlItemBlock data0(itemBlockManager, 2, 2);
     ExecutionNodeMock node0;
     ExecutionBlockMock block0(data0, *query.engine(), node0);
     block0.addDependency(&rootBlock);
 
-    arangodb::aql::AqlItemBlock data1(&resMon, 100, 4);
+    arangodb::aql::AqlItemBlock data1(itemBlockManager, 100, 4);
     ExecutionNodeMock node1;
     ExecutionBlockMock block1(data1, *query.engine(), node1);
     block1.addDependency(&block0);

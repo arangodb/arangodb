@@ -47,7 +47,7 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
 
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager(&monitor);
-  auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
+  auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, 1);
   auto outputRegisters = make_shared_unordered_set();
   auto registersToClear = make_shared_unordered_set();
   auto registersToKeep = make_shared_unordered_set();

@@ -84,7 +84,7 @@ AqlItemBlock* BlockCollector::steal() {
     // only got a single result. return it as it is
     result = _blocks[0];
   } else {
-    result = AqlItemBlock::concatenate(_blockManager->resourceMonitor(), this);
+    result = AqlItemBlock::concatenate(*_blockManager, this);
     for (auto& it : _blocks) {
       it->eraseAll();
       _blockManager->returnBlock(it);

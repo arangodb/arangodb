@@ -215,7 +215,7 @@ static void TestExecutor(ShortestPathExecutorInfos& infos,
                          std::vector<std::pair<std::string, std::string>> const& resultPaths) {
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor};
-  auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 4);
+  auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, 4);
 
   NoStats stats{};
   ExecutionState state = ExecutionState::HASMORE;

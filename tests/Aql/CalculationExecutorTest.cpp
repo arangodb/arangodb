@@ -97,7 +97,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
   );
 
   GIVEN("there are no rows upstream") {
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
+    auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, 2);
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     VPackBuilder input;
@@ -145,7 +145,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
   }  // GIVEN
 
   GIVEN("there are rows in the upstream") {
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
+    auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, 2);
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
 

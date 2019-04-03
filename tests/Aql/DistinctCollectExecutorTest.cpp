@@ -74,7 +74,7 @@ SCENARIO("DistinctCollectExecutor",
                                        std::move(writeableOutputRegisters),
                                        std::move(groupRegisters), trx);
 
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
+    auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, 2);
     auto outputBlockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     VPackBuilder input;
@@ -137,7 +137,7 @@ SCENARIO("DistinctCollectExecutor",
                                        std::move(writeableOutputRegisters),
                                        std::move(groupRegisters), trx);
 
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, nrOutputRegister);
+    auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, nrOutputRegister);
     auto outputBlockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     NoStats stats{};
@@ -243,7 +243,7 @@ SCENARIO("DistinctCollectExecutor",
                                        std::move(writeableOutputRegisters),
                                        std::move(groupRegisters), trx);
 
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, nrOutputRegister);
+    auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, nrOutputRegister);
     auto outputBlockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     NoStats stats{};

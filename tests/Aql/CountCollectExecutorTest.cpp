@@ -49,7 +49,7 @@ SCENARIO("CountCollectExecutor", "[AQL][EXECUTOR][COUNTCOLLECTEXECUTOR]") {
 
   RegisterId nrOutputReg = 2;
 
-  auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, nrOutputReg);
+  auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, nrOutputReg);
   auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
       std::initializer_list<RegisterId>{1});
   auto blockShell =

@@ -47,7 +47,7 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
 
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager(&monitor);
-  auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
+  auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, 1);
   auto registersToKeep = make_shared_unordered_set();
   auto blockShell =
       std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));

@@ -112,7 +112,7 @@ ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
       state = ExecutionState::DONE;
     }
     if (responseBody.hasKey("data")) {
-      auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(),
+      auto r = std::make_unique<AqlItemBlock>(_engine->itemBlockManager(),
                                               responseBody);
       return {state, std::move(r)};
     }

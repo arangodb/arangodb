@@ -64,7 +64,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
 
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor};
-  auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
+  auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, 1);
 
   // Mock of the Transaction
   // Enough for this test, will only be passed through and accessed

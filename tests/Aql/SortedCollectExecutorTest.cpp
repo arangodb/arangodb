@@ -89,7 +89,7 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
                                      std::move(aggregateTypes), std::move(variables),
                                      std::move(aggregateRegisters), trx, count);
 
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
+    auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, 2);
     auto outputBlockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     VPackBuilder input;
@@ -166,7 +166,7 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
                                      std::move(aggregateTypes), std::move(variables),
                                      std::move(aggregateRegisters), trx, count);
 
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, nrOutputRegister);
+    auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, nrOutputRegister);
     auto outputBlockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     NoStats stats{};
@@ -422,7 +422,7 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
                                      std::move(aggregateTypes), std::move(variables),
                                      std::move(aggregateRegisters), trx, count);
 
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, nrOutputRegister);
+    auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, nrOutputRegister);
     auto outputBlockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     NoStats stats{};
@@ -515,7 +515,7 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
                                      std::move(aggregateTypes), std::move(variables),
                                      std::move(aggregateRegisters), trx, count);
 
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, nrOutputRegister);
+    auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, nrOutputRegister);
     auto outputBlockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     NoStats stats{};
@@ -623,7 +623,7 @@ SCENARIO("SortedCollectExecutor", "[AQL][EXECUTOR][SORTEDCOLLECTEXECUTOR]") {
                                      std::move(aggregateTypes), std::move(variables),
                                      std::move(aggregateRegisters), trx, count);
 
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, nrOutputRegister);
+    auto block = std::make_unique<AqlItemBlock>(itemBlockManager, 1000, nrOutputRegister);
     auto outputBlockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     NoStats stats{};

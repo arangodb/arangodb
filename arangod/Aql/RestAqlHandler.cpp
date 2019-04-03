@@ -796,7 +796,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
           }
           res = tmpRes.second;
         } else {
-          auto items = std::make_unique<AqlItemBlock>(query->resourceMonitor(),
+          auto items = std::make_unique<AqlItemBlock>(query->engine()->itemBlockManager(),
                                                       querySlice.get("items"));
           auto tmpRes = query->engine()->initializeCursor(std::move(items), pos);
           if (tmpRes.first == ExecutionState::WAITING) {

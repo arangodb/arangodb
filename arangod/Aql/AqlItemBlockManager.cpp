@@ -64,7 +64,7 @@ AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrReg
   }
 
   if (block == nullptr) {
-    block = new AqlItemBlock(_resourceMonitor, nrItems, nrRegs);
+    block = new AqlItemBlock(*this, nrItems, nrRegs);
     // LOG_TOPIC("eb998", TRACE, arangodb::Logger::FIXME) << "created AqlItemBlock with
     // dimensions " << block->size() << " x " << block->getNrRegs();
   }
