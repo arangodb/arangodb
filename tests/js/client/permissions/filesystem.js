@@ -63,6 +63,7 @@ if (getOptions === true) {
       '/var/lib/.*', // that for sure!
       '/var/log/.*', // that for sure!
       '/etc/passwd', // if not this, what else?
+      '/etc/.*',
       topLevelForbidden + '.*',
       // N/A  subLevelForbidden + '.*'
     ],
@@ -206,7 +207,21 @@ function testSuite() {
   }
   function tryIsFileAllowed(fn, isFile) {
     let rc = fs.isFile(fn);
-    assertEqual(rc, isFile, 'Expected ' + fn + ' to be a ' + isFile ? "directory.":"file.");
+    assertEqual(rc, isFile, 'Expected ' + fn + ' to be a ' + isFile ? "file.":"directory.");
+  }
+
+  function tryListFileForbidden(dn) {
+    try {
+      let rc = fs.list(dn);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'ListFile-access to ' + dn + ' wasn\'t forbidden');
+    }
+  }
+  function tryListFileAllowed(dn, expectCount) {
+    let rc = fs.list(dn);
+    assertEqual(rc.length, expectCount, 'Expected ' + dn + ' to contain ' + expectCount + " files.");
   }
 
   return {
@@ -296,6 +311,19 @@ function testSuite() {
 
       tryIsFileAllowed(topLevelAllowed, false);
       tryIsFileAllowed(subLevelAllowed, false);
+    },
+    testListFile : function() {
+      tryListFileForbidden('/etc/X11');
+      tryListFileForbidden('/var/log/');
+      tryListFileForbidden(topLevelForbidden);
+      tryListFileForbidden(topLevelForbiddenFile);
+      // N/A tryFileSizeForbidden(subLevelForbiddenFile);
+
+      tryListFileAllowed(topLevelAllowedFile, 0);
+      tryListFileAllowed(subLevelAllowedFile, 0);
+
+      tryListFileAllowed(topLevelAllowed, 2);
+      tryListFileAllowed(subLevelAllowed, 2);
     }
   };
 }
