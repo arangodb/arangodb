@@ -41,6 +41,8 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
@@ -206,6 +208,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   std::vector<arangodb::velocypack::Builder> insertedDocs;
+  std::shared_ptr<arangodb::LogicalCollection> collection0;
+  std::shared_ptr<arangodb::LogicalCollection> collection1;
   arangodb::LogicalView* view;
 
   // create collection0
@@ -213,6 +217,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
     auto collection = vocbase.createCollection(createJson->slice());
     REQUIRE((nullptr != collection));
+    collection0 = collection;
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
       arangodb::velocypack::Parser::fromJson("{ \"seq\": -6, \"value\": null }"),
@@ -246,6 +251,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
     auto collection = vocbase.createCollection(createJson->slice());
     REQUIRE((nullptr != collection));
+    collection1 = collection;
 
     irs::utf8_path resource;
     resource/=irs::string_ref(IResearch_test_resource_dir);
@@ -294,7 +300,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));
-    CHECK(impl->commit().ok());
+    CHECK((arangodb::iresearch::IResearchLinkHelper::find(*collection0, *view)->commit().ok()));
+    CHECK((arangodb::iresearch::IResearchLinkHelper::find(*collection1, *view)->commit().ok()));
   }
 
   // d.value > false && d.value <= true

@@ -118,6 +118,7 @@ bool BreadthFirstEnumerator::next() {
     std::unique_ptr<EdgeCursor> cursor(
         _opts->nextCursor(nextVertex, _currentDepth));
     if (cursor != nullptr) {
+      incHttpRequests(cursor->httpRequests());
       bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
       bool didInsert = false;
 
@@ -180,6 +181,7 @@ bool BreadthFirstEnumerator::next() {
   // entry. We compute the path to it.
   return true;
 }
+
 arangodb::aql::AqlValue BreadthFirstEnumerator::lastVertexToAqlValue() {
   return vertexToAqlValue(_lastReturned);
 }
@@ -308,7 +310,7 @@ bool BreadthFirstEnumerator::shouldPrune() {
     aql::AqlValue vertex, edge;
     aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
     {
-      auto *evaluator = _opts->getPruneEvaluator();
+      auto* evaluator = _opts->getPruneEvaluator();
       if (evaluator->needsVertex()) {
         // Note: vertexToAqlValue() copies the original vertex into the AqlValue.
         // This could be avoided with a function that just returns the slice,

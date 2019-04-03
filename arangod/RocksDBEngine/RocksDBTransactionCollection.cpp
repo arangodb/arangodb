@@ -163,6 +163,14 @@ void RocksDBTransactionCollection::unuse(int nestingLevel) {
 }
 
 void RocksDBTransactionCollection::release() {
+  // questionable, but seems to work
+  if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
+      _transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+    TRI_ASSERT(!_usageLocked);
+    _collection = nullptr;
+    return;
+  }
+
   if (isLocked()) {
     // unlock our own r/w locks
     doUnlock(_accessType, 0);
@@ -178,7 +186,6 @@ void RocksDBTransactionCollection::release() {
       _transaction->vocbase().releaseCollection(_collection.get());
       _usageLocked = false;
     }
-
     _collection = nullptr;
   } else {
     TRI_ASSERT(!_usageLocked);

@@ -51,7 +51,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
-#include "Utils/CollectionGuard.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
@@ -367,6 +366,14 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
       if (other->id() == idx->id() || other->name() == idx->name()) {
         // definition shares an identifier with an existing index with a
         // different definition
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        VPackBuilder builder;
+        other->toVelocyPack(builder, static_cast<std::underlying_type<Index::Serialize>::type>(
+                                         Index::Serialize::Basics));
+        LOG_TOPIC("29d1c", WARN, Logger::ENGINES)
+            << "attempted to create index '" << info.toJson()
+            << "' but found conflicting index '" << builder.slice().toJson() << "'";
+#endif
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
                                        "duplicate value for `" + 
                                            arangodb::StaticStrings::IndexId +
@@ -768,7 +775,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
   }
 
   // document found, but revisionId may not have been present in the primary
-  // index this can happen for "older" collections
+  // index. this can happen for "older" collections
   TRI_ASSERT(documentId.isSet());
 
   // now look up the revision id in the actual document data
@@ -904,9 +911,13 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
                                  ManagedDocumentResult& mdr, OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool,
                                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                                 arangodb::velocypack::Slice const key,
                                  std::function<Result(void)> callbackDuringLock) {
   resultMarkerTick = 0;
+  
+  VPackSlice key = newSlice.get(StaticStrings::KeyString);
+  if (key.isNone()) {
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
 
   LocalDocumentId const documentId = LocalDocumentId::create();
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());

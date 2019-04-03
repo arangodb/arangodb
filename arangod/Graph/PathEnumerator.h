@@ -80,7 +80,13 @@ class PathEnumerator {
   //////////////////////////////////////////////////////////////////////////////
 
   EnumeratedPath _enumeratedPath;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Number of HTTP requests made
+  //////////////////////////////////////////////////////////////////////////////
 
+  size_t _httpRequests;
+  
  public:
   PathEnumerator(Traverser* traverser, std::string const& startVertex,
                  TraverserOptions* opts);
@@ -98,6 +104,15 @@ class PathEnumerator {
   virtual aql::AqlValue lastVertexToAqlValue() = 0;
   virtual aql::AqlValue lastEdgeToAqlValue() = 0;
   virtual aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&) = 0;
+  
+  /// @brief return number of HTTP requests made, and reset it to 0
+  size_t getAndResetHttpRequests() { 
+    size_t value = _httpRequests;
+    _httpRequests = 0;
+    return value;
+  }
+  
+  void incHttpRequests(size_t requests) { _httpRequests += requests; }
 };
 
 class DepthFirstEnumerator final : public PathEnumerator {

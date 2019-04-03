@@ -26,6 +26,7 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/WakeupQueryCallback.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/RecursiveLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
@@ -390,7 +391,14 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
 
   // Make sure to cover against the race that this
   // Request is fullfilled before the register has taken place
-  MUTEX_LOCKER(locker, _communicationMutex);
+  // @note the only reason for not using recursive mutext always is due to the
+  //       concern that there might be recursive calls in production
+  #ifdef ARANGODB_USE_CATCH_TESTS
+    RECURSIVE_MUTEX_LOCKER(_communicationMutex, _communicationMutexOwner);
+  #else
+    MUTEX_LOCKER(locker, _communicationMutex);
+  #endif
+
   // We can only track one request at a time.
   // So assert there is no other request in flight!
   TRI_ASSERT(_lastTicketId == 0);
@@ -405,7 +413,14 @@ bool ExecutionBlockImpl<RemoteExecutor>::handleAsyncResult(ClusterCommResult* re
   // So we cannot have the response being produced while sending the request.
   // Make sure to cover against the race that this
   // Request is fullfilled before the register has taken place
-  MUTEX_LOCKER(locker, _communicationMutex);
+  // @note the only reason for not using recursive mutext always is due to the
+  //       concern that there might be recursive calls in production
+  #ifdef ARANGODB_USE_CATCH_TESTS
+    RECURSIVE_MUTEX_LOCKER(_communicationMutex, _communicationMutexOwner);
+  #else
+    MUTEX_LOCKER(locker, _communicationMutex);
+  #endif
+
   if (_lastTicketId == result->operationID) {
     // TODO Handle exceptions thrown while we are in this code
     // Query will not be woken up again.

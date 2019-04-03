@@ -159,6 +159,12 @@ void DatabaseManagerThread::run() {
               TRI_RemoveDirectory(path.c_str());
             }
           }
+  
+          auto queryRegistry = QueryRegistryFeature::registry();
+          if (queryRegistry != nullptr) {
+            // destroy all items in the QueryRegistry for this database
+            queryRegistry->destroy(database->name());
+          }
 
           try {
             engine->dropDatabase(*database);
@@ -396,10 +402,12 @@ void DatabaseFeature::stop() {
   p.maxResultsSize = 0;
   p.includeSystem = false;
   p.showBindVars = false;
-
   
   arangodb::aql::QueryCache::instance()->properties(p);
   arangodb::aql::QueryCache::instance()->invalidate();
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->cleanupReplicationContexts();
 
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
