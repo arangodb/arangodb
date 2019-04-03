@@ -43,6 +43,7 @@
 #include "V8/V8LineEditor.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -152,6 +153,11 @@ void V8ShellFeature::start() {
 
   v8::Isolate::Scope isolate_scope(_isolate);
   v8::HandleScope handle_scope(_isolate);
+
+  auto* isolate = _isolate;
+  TRI_GET_GLOBALS();
+  v8g = TRI_CreateV8Globals(isolate);
+  v8g->_securityContext = arangodb::JavaScriptSecurityContext::createAdminScriptContext();
 
   // create the global template
   v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(_isolate);
