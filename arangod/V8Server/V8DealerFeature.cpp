@@ -27,6 +27,7 @@
 
 #include "Actions/actions.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/FileUtils.h"
@@ -183,6 +184,11 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   ProgramOptions::ProcessingResult const& result = options->processingResult();
 
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
   // DBServer and Agent don't need JS. Agent role handled in AgencyFeature
   if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_DBSERVER &&
       (!result.touched("console") ||
@@ -215,6 +221,8 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
+  v8security->addToInternalReadWhiteList(_startupDirectory.c_str());
+
   ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
 
   // try to append the current version name to the startup directory,
@@ -243,6 +251,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       // version-specific js path exists!
       it = versionedPath;
     }
+    v8security->addToInternalReadWhiteList(it.c_str());
   }
 
   // check whether app-path was specified
@@ -255,6 +264,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // Tests if this path is either a directory (ok) or does not exist (we create
   // it in ::start) If it is something else this will throw an error.
   ctx->normalizePath(_appPath, "javascript.app-path", false);
+  v8security->addToInternalReadWhiteList(_appPath.c_str());
 
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
@@ -1171,7 +1181,7 @@ void V8DealerFeature::applyContextUpdate(V8Context* context) {
       // oops
       continue;
     }
-    
+
     JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createInternalContext();
 
     context->lockAndEnter();
@@ -1480,7 +1490,7 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
   if (!vocbase->use()) {
     return false;
   }
-    
+
   JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createInternalContext();
 
   context->lockAndEnter();
@@ -1580,9 +1590,9 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   delete context;
 }
 
-V8ContextGuard::V8ContextGuard(TRI_vocbase_t* vocbase, 
+V8ContextGuard::V8ContextGuard(TRI_vocbase_t* vocbase,
                                JavaScriptSecurityContext const& securityContext)
-    : _isolate(nullptr), 
+    : _isolate(nullptr),
       _context(nullptr) {
   _context = V8DealerFeature::DEALER->enterContext(vocbase, securityContext);
   if (_context == nullptr) {
@@ -1602,10 +1612,10 @@ V8ContextGuard::~V8ContextGuard() {
 }
 
 V8ConditionalContextGuard::V8ConditionalContextGuard(Result& res, v8::Isolate*& isolate,
-                                                     TRI_vocbase_t* vocbase, 
+                                                     TRI_vocbase_t* vocbase,
                                                      JavaScriptSecurityContext const& securityContext)
-    : _isolate(isolate), 
-      _context(nullptr), 
+    : _isolate(isolate),
+      _context(nullptr),
       _active(isolate ? false : true) {
   if (_active) {
     if (!vocbase) {

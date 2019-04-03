@@ -84,7 +84,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   bool _denyHardened;
 
   std::string _readWhiteList;
-  std::vector<std::string> _readWhiteListVec;
+  std::unordered_set<std::string> _readWhiteListSet;
   std::regex _readWhiteListRegex;
 
 

@@ -107,13 +107,24 @@ void convertToRe(std::vector<std::string>& files, std::string& target_re) {
     std::string last = std::move(files.back());
     files.pop_back();
 
-    while (!files.empty()) {
-      ss << files.back() << "|";
-      files.pop_back();
+    for (auto const& f : files) {
+      ss << f << "|";
     }
-
     ss << last;
+    target_re = ss.str();
+  }
+};
 
+void convertToRe(std::unordered_set<std::string>& files, std::string& target_re) {
+  if (!files.empty()) {
+    std::stringstream ss;
+    std::string last = std::move(*files.begin());
+    files.erase(files.begin());
+
+    for (auto const& f : files) {
+      ss << f << "|";
+    }
+    ss << last;
     target_re = ss.str();
   }
 };
@@ -147,13 +158,14 @@ void V8SecurityFeature::addToInternalReadWhiteList(char const* item) {
   // This function is not efficient and we would not need the _readWhiteList
   // to be persistent. But the persistence will help in debugging and
   // there are only a few items expected.
-  TRI_ASSERT(_readWhiteListVec.size() < 3);
+  TRI_ASSERT(_readWhiteListSet.size() < 3);
   auto path = std::string(item) + "*";
-  _readWhiteListVec.push_back(std::move(path));
+  _readWhiteListSet.emplace(std::move(path));
   _readWhiteList.clear();
-  convertToRe(_readWhiteListVec, _readWhiteList);
+  convertToRe(_readWhiteListSet, _readWhiteList);
   _readWhiteListRegex =
       std::regex(_readWhiteList, std::regex::nosubs | std::regex::ECMAScript);
+  LOG_TOPIC("de5db6", DEBUG, Logger::FIXME) << _readWhiteList;
 }
 
 void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
