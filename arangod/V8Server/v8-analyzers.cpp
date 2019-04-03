@@ -654,46 +654,46 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 namespace arangodb {
 namespace iresearch {
 
-void TRI_InitV8Analyzers(
-    v8::Handle<v8::Context> context, // v8 context
-    TRI_vocbase_t& vocbase, // vocbase
-    TRI_v8_global_t& v8g, // v8 globals
-    v8::Isolate& isolate, // v8 isolate
-    v8::Handle<v8::ObjectTemplate> ArangoDBNS // v8 handler root
-) {
+void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate) {
   // 'analyzers' feature functions
   {
-    auto fnTemplate = v8::FunctionTemplate::New(&isolate);
+    auto fnTemplate = v8::FunctionTemplate::New(isolate);
 
-    fnTemplate->SetClassName(TRI_V8_ASCII_STRING(&isolate, "ArangoAnalyzersCtor"));
+    fnTemplate->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoAnalyzersCtor"));
 
     auto objTemplate = fnTemplate->InstanceTemplate();
 
     objTemplate->SetInternalFieldCount(0);
-    TRI_AddMethodVocbase(&isolate, objTemplate, TRI_V8_ASCII_STRING(&isolate, "analyzer"), JS_Get);
-    TRI_AddMethodVocbase(&isolate, objTemplate, TRI_V8_ASCII_STRING(&isolate, "remove"), JS_Remove);
-    TRI_AddMethodVocbase(&isolate, objTemplate, TRI_V8_ASCII_STRING(&isolate, "save"), JS_Create);
-    TRI_AddMethodVocbase(&isolate, objTemplate, TRI_V8_ASCII_STRING(&isolate, "toArray"), JS_List);
+    TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "analyzer"), JS_Get);
+    TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "remove"), JS_Remove);
+    TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "save"), JS_Create);
+    TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "toArray"), JS_List);
 
-    v8g.IResearchAnalyzersTempl.Reset(&isolate, objTemplate);
+    v8g.IResearchAnalyzersTempl.Reset(isolate, objTemplate);
+
+    auto instance = objTemplate->NewInstance();
+
+    // register the global object accessable via JavaScipt
+    if (!instance.IsEmpty()) {
+      TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ArangoAnalyzers"), instance);
+    }
   }
 
   // individual analyzer functions
   {
-    auto fnTemplate = v8::FunctionTemplate::New(&isolate);
+    auto fnTemplate = v8::FunctionTemplate::New(isolate);
 
-    fnTemplate->SetClassName(TRI_V8_ASCII_STRING(&isolate, "ArangoAnalyzer"));
+    fnTemplate->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoAnalyzer"));
 
     auto objTemplate = fnTemplate->InstanceTemplate();
 
     objTemplate->SetInternalFieldCount(2); // SLOT_CLASS_TYPE + SLOT_CLASS
-    TRI_AddMethodVocbase(&isolate, objTemplate, TRI_V8_ASCII_STRING(&isolate, "features"), JS_AnalyzerFeatures);
-    TRI_AddMethodVocbase(&isolate, objTemplate, TRI_V8_ASCII_STRING(&isolate, "name"), JS_AnalyzerName);
-    TRI_AddMethodVocbase(&isolate, objTemplate, TRI_V8_ASCII_STRING(&isolate, "properties"), JS_AnalyzerProperties);
-    TRI_AddMethodVocbase(&isolate, objTemplate, TRI_V8_ASCII_STRING(&isolate, "type"), JS_AnalyzerType);
+    TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "features"), JS_AnalyzerFeatures);
+    TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "name"), JS_AnalyzerName);
+    TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "properties"), JS_AnalyzerProperties);
+    TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "type"), JS_AnalyzerType);
 
-    v8g.IResearchAnalyzerTempl.Reset(&isolate, objTemplate);
-    TRI_AddGlobalFunctionVocbase(&isolate, TRI_V8_ASCII_STRING(&isolate, "ArangoAnalyzer"), fnTemplate->GetFunction());
+    v8g.IResearchAnalyzerTempl.Reset(isolate, objTemplate);
   }
 }
 

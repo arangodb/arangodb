@@ -203,8 +203,7 @@ SECTION("test_accessors") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)->NewInstance();
     auto fn_name = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "name"));
@@ -244,8 +243,7 @@ SECTION("test_accessors") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)->NewInstance();
     auto fn_name = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "name"));
@@ -290,8 +288,7 @@ SECTION("test_accessors") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)->NewInstance();
     auto fn_type = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "type"));
@@ -331,8 +328,7 @@ SECTION("test_accessors") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)->NewInstance();
     auto fn_type = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "type"));
@@ -377,8 +373,7 @@ SECTION("test_accessors") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)->NewInstance();
     auto fn_properties = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "properties"));
@@ -417,8 +412,7 @@ SECTION("test_accessors") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)->NewInstance();
     auto fn_properties = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "properties"));
@@ -463,8 +457,7 @@ SECTION("test_accessors") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)->NewInstance();
     auto fn_features = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "features"));
@@ -505,8 +498,7 @@ SECTION("test_accessors") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)->NewInstance();
     auto fn_features = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "features"));
@@ -590,8 +582,7 @@ SECTION("test_create") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_create = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
@@ -634,8 +625,7 @@ SECTION("test_create") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_create = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
@@ -681,8 +671,7 @@ SECTION("test_create") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_create = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
@@ -729,8 +718,7 @@ SECTION("test_create") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_create = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
@@ -777,8 +765,7 @@ SECTION("test_create") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_create = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
@@ -827,8 +814,7 @@ SECTION("test_create") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_create = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
@@ -875,8 +861,7 @@ SECTION("test_create") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_create = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
@@ -964,8 +949,7 @@ SECTION("test_get") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_get = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
@@ -1008,8 +992,7 @@ SECTION("test_get") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_get = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
@@ -1054,8 +1037,7 @@ SECTION("test_get") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_get = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
@@ -1094,8 +1076,7 @@ SECTION("test_get") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_get = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
@@ -1140,8 +1121,7 @@ SECTION("test_get") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_get = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
@@ -1186,8 +1166,7 @@ SECTION("test_get") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_get = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
@@ -1226,8 +1205,7 @@ SECTION("test_get") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_get = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
@@ -1272,8 +1250,7 @@ SECTION("test_get") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_get = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
@@ -1312,8 +1289,7 @@ SECTION("test_get") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_get = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
@@ -1403,8 +1379,7 @@ SECTION("test_list") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_list = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
@@ -1456,8 +1431,7 @@ SECTION("test_list") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_list = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
@@ -1507,8 +1481,7 @@ SECTION("test_list") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_list = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
@@ -1562,8 +1535,7 @@ SECTION("test_list") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_list = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
@@ -1616,8 +1588,7 @@ SECTION("test_list") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_list = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
@@ -1670,8 +1641,7 @@ SECTION("test_list") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_list = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
@@ -1762,8 +1732,7 @@ SECTION("test_remove") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_remove = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
@@ -1806,8 +1775,7 @@ SECTION("test_remove") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_remove = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
@@ -1852,8 +1820,7 @@ SECTION("test_remove") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_remove = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
@@ -1900,8 +1867,7 @@ SECTION("test_remove") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_remove = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
@@ -1951,8 +1917,7 @@ SECTION("test_remove") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_remove = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
@@ -1996,8 +1961,7 @@ SECTION("test_remove") {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    arangodb::iresearch::TRI_InitV8Analyzers(context, vocbase, *v8g, *isolate, arangoDBNS);
+    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
     auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)->NewInstance();
     auto fn_remove = v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));

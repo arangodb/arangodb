@@ -692,8 +692,9 @@ static void JS_TypeViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_V8_TRY_CATCH_END
 }
 
-void TRI_InitV8Views(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
-                     TRI_v8_global_t* v8g, v8::Isolate* isolate,
+void TRI_InitV8Views( // init views
+    TRI_v8_global_t& v8g, // V8 globals
+    v8::Isolate* isolate, // V8 isolate
                      v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
   TRI_AddMethodVocbase(isolate, ArangoDBNS,
                        TRI_V8_ASCII_STRING(isolate, "_createView"), JS_CreateViewVocbase);
@@ -720,7 +721,7 @@ void TRI_InitV8Views(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "rename"), JS_RenameViewVocbase);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "type"), JS_TypeViewVocbase);
 
-  v8g->VocbaseViewTempl.Reset(isolate, rt);
+  v8g.VocbaseViewTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ArangoView"),
                                ft->GetFunction());

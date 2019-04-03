@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAnalyzerHandler.h"
+#include "Basics/StringUtils.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/VelocyPackHelper.h"
@@ -269,15 +270,17 @@ arangodb::RestStatus RestAnalyzerHandler::execute() {
   switch (_request->requestType()) {
    case arangodb::rest::RequestType::DELETE_REQ:
     if (suffixes.size() == 1) {
+      auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
+
       if (!sysVocbase) {
-        removeAnalyzer(*analyzers, suffixes[0]); // verbatim (assume already normalized)
+        removeAnalyzer(*analyzers, name); // verbatim (assume already normalized)
 
         return arangodb::RestStatus::DONE;
       }
 
       removeAnalyzer( // remove
         *analyzers, // feature
-        IResearchAnalyzerFeature::normalize(suffixes[0], _vocbase, *sysVocbase) // normalize
+        IResearchAnalyzerFeature::normalize(name, _vocbase, *sysVocbase) // normalize
       );
 
       return arangodb::RestStatus::DONE;
@@ -298,15 +301,17 @@ arangodb::RestStatus RestAnalyzerHandler::execute() {
     }
 
     if (suffixes.size() == 1) {
+      auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
+
       if (!sysVocbase) {
-        getAnalyzer(*analyzers, suffixes[0]);
+        getAnalyzer(*analyzers, name);
 
         return arangodb::RestStatus::DONE;
       }
 
       getAnalyzer( // get
         *analyzers, // feature
-        IResearchAnalyzerFeature::normalize(suffixes[0], _vocbase, *sysVocbase) // normalize
+        IResearchAnalyzerFeature::normalize(name, _vocbase, *sysVocbase) // normalize
       );
 
       return arangodb::RestStatus::DONE;

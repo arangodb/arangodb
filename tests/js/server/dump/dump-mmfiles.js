@@ -30,6 +30,7 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
+var analyzers = require("@arangodb/analyzers");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -46,6 +47,7 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

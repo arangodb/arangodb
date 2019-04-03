@@ -938,7 +938,7 @@ SECTION("test_writeCustomizedValues") {
     std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
     std::unordered_set<std::string> expectedOverrides = { "default", "all", "some", "none" };
     std::set<std::pair<std::string, std::string>> expectedAnalyzers = {
-      { "empty", "en" },
+      { "testVocbase::empty", "en" },
       { "identity", "" },
     };
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -1011,7 +1011,7 @@ SECTION("test_writeCustomizedValues") {
             true == tmpSlice.isArray()
             && 1 == tmpSlice.length()
             && tmpSlice.at(0).isObject()
-            && tmpSlice.at(0).get("name").isString() && std::string("empty") == tmpSlice.at(0).get("name").copyString()
+            && tmpSlice.at(0).get("name").isString() && std::string("testVocbase::empty") == tmpSlice.at(0).get("name").copyString()
             && tmpSlice.at(0).get("type").isString() && std::string("empty") == tmpSlice.at(0).get("type").copyString()
             && tmpSlice.at(0).get("properties").isString() && std::string("en") == tmpSlice.at(0).get("properties").copyString()
             && tmpSlice.at(0).get("features").isArray() && 1 == tmpSlice.at(0).get("features").length()
