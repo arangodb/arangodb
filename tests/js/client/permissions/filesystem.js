@@ -77,6 +77,7 @@ if (getOptions === true) {
 var jsunity = require('jsunity');
 var env = require('process').env;
 var arangodb = require("@arangodb");
+const base64Encode = require('internal').base64Encode;
 function testSuite() {
   function tryReadForbidden(fn) {
     try {
@@ -91,7 +92,23 @@ function testSuite() {
     let content = fs.read(fn);
     assertEqual(content,
                 expectedContent,
-                'Expected ' + fn + 'to contain "' + expectedContent + '" but it contained: "' + content + '"!');
+                'Expected ' + fn + ' to contain "' + expectedContent + '" but it contained: "' + content + '"!');
+  }
+  function tryRead64Forbidden(fn) {
+    try {
+      fs.read64(fn);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'access to ' + fn + ' wasn\'t forbidden');
+    }
+  }
+  function tryRead64Allowed(fn, expectedContentPlain) {
+    let expectedContent = base64Encode(expectedContentPlain);
+    let content = fs.read64(fn);
+    assertEqual(content,
+                expectedContent,
+                'Expected ' + fn + ' to contain "' + expectedContent + '" but it contained: "' + content + '"!');
   }
   function tryWriteForbidden(fn) {
     try {
@@ -117,6 +134,16 @@ function testSuite() {
 
       tryReadAllowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryReadAllowed(subLevelAllowedFile, 'this file is allowed.\n');
+    },
+    testRead64File : function() {
+
+      tryRead64Forbidden('/etc/passwd');
+      tryRead64Forbidden('/var/log/mail.log');
+      tryRead64Forbidden(topLevelForbiddenFile);
+      // N/A tryReadForbidden(subLevelForbiddenFile);
+
+      tryRead64Allowed(topLevelAllowedFile, 'this file is allowed.\n');
+      tryRead64Allowed(subLevelAllowedFile, 'this file is allowed.\n');
     },
     testWriteFile : function() {
       tryWriteForbidden('/var/log/mail.log');
