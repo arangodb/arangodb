@@ -196,6 +196,21 @@ function testSuite() {
     assertEqual(rc, isDirectory, 'Expected ' + fn + ' to be a ' + isDirectory ? "directory.":"file.");
   }
 
+  function tryCreateDirectoryForbidden(fn) {
+    try {
+      let rc = fs.makeDirectory(fn);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'createDirectory creation of ' + fn + ' wasn\'t forbidden');
+    }
+  }
+  function tryCreateDirectoryAllowed(fn) {
+    let rc = fs.makeDirectory(fn);
+    assertUndefined(rc, 'Expected ' + fn + ' to become a directory.');
+    tryIsDirectoryAllowed(fn, true);
+  }
+
   function tryIsFileForbidden(fn) {
     try {
       let rc = fs.isFile(fn);
@@ -314,6 +329,14 @@ function testSuite() {
       tryIsDirectoryAllowed(topLevelAllowed, true);
       tryIsDirectoryAllowed(subLevelAllowed, true);
     },
+    testCreateDirectory : function() {
+      tryCreateDirectoryForbidden('/etc/abc');
+      tryCreateDirectoryForbidden('/var/log/busted');
+      tryCreateDirectoryForbidden(fs.join(topLevelForbiddenFile, "forbidden"));
+
+      tryCreateDirectoryAllowed(fs.join(topLevelAllowed, "allowed_create_dir"));
+      tryCreateDirectoryAllowed(fs.join(subLevelAllowed, "allowed_create_dir"));
+    },
     testIsFile : function() {
       tryIsFileForbidden('/etc/passwd');
       tryIsFileForbidden('/var/log/mail.log');
@@ -336,8 +359,8 @@ function testSuite() {
       tryListFileAllowed(topLevelAllowedFile, 0);
       tryListFileAllowed(subLevelAllowedFile, 0);
 
-      tryListFileAllowed(topLevelAllowed, 2);
-      tryListFileAllowed(subLevelAllowed, 2);
+      tryListFileAllowed(topLevelAllowed, 3);
+      tryListFileAllowed(subLevelAllowed, 3);
     },
     testListTree : function() {
       tryListTreeForbidden('/etc/X11');
@@ -349,8 +372,8 @@ function testSuite() {
       tryListTreeAllowed(topLevelAllowedFile, 1);
       tryListTreeAllowed(subLevelAllowedFile, 1);
 
-      tryListTreeAllowed(topLevelAllowed, 3);
-      tryListTreeAllowed(subLevelAllowed, 3);
+      tryListTreeAllowed(topLevelAllowed, 4);
+      tryListTreeAllowed(subLevelAllowed, 4);
     }
   };
 }
