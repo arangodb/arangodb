@@ -23,6 +23,7 @@
 
 #include "RestVersionHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
@@ -44,19 +45,33 @@ RestVersionHandler::RestVersionHandler(GeneralRequest* request, GeneralResponse*
 
 RestStatus RestVersionHandler::execute() {
   VPackBuilder result;
+
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  bool hardened = !v8security->isAllowedToAccessHardenedFunctions(nullptr);
+  bool allowInfo = !hardened /*|| jwt?!*/ ;
+
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
-  result.add("version", VPackValue(ARANGODB_VERSION));
+  if(allowInfo){
+    result.add("version", VPackValue(ARANGODB_VERSION));
+  }
 
+  if(allowInfo){
 #ifdef USE_ENTERPRISE
   result.add("license", VPackValue("enterprise"));
 #else
   result.add("license", VPackValue("community"));
 #endif
+  }
 
   bool found;
   std::string const& detailsStr = _request->value("details", found);
 
+  found = found && hardened;
   if (found && StringUtils::boolean(detailsStr)) {
     result.add("details", VPackValue(VPackValueType::Object));
 
