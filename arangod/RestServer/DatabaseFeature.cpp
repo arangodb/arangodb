@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
@@ -49,6 +50,7 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
@@ -408,6 +410,14 @@ void DatabaseFeature::stop() {
       continue;
     }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // i am here for debugging only. 
+    LOG_TOPIC(DEBUG, Logger::FIXME) 
+        << "shutting down database " << vocbase->name() << ": " << (void*) vocbase 
+        << ", cursors: " << vocbase->cursorRepository()->count() 
+        << ", keys: " << vocbase->collectionKeys()->count() 
+        << ", queries: " << vocbase->queryList()->count();
+#endif
     vocbase->processCollections(
         [](LogicalCollection* collection) {
           // no one else must modify the collection's status while we are in here
@@ -415,6 +425,12 @@ void DatabaseFeature::stop() {
               [collection]() { collection->close(); });
         },
         true);
+   
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // i am here for debugging only. 
+    LOG_TOPIC(DEBUG, Logger::FIXME) 
+        << "shutting down database " << vocbase->name() << ": " << (void*) vocbase << " successful";
+#endif
   }
 }
 
