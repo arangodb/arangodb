@@ -75,7 +75,7 @@ arangodb::Result writeSettings(rocksdb::WriteBatch& batch, VPackBuilder& b, uint
   b.close();
 
   VPackSlice slice = b.slice();
-  LOG_TOPIC(TRACE, Logger::ENGINES) << "writing settings: " << slice.toJson();
+  LOG_TOPIC(DEBUG, Logger::ENGINES) << "writing settings: " << slice.toJson();
 
   RocksDBKey key;
   key.constructSettingsValue(RocksDBSettingsType::ServerTick);

@@ -98,7 +98,7 @@ struct RocksDBCollectionMeta final {
   void removeBlocker(uint64_t trxId);
 
   /// @brief returns the largest safe seq to squash updates against
-  rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber current) const;
+  rocksdb::SequenceNumber committableSeq() const;
 
   /// @brief get the current count
   DocCount currentCount();
