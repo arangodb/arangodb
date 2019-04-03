@@ -37,6 +37,7 @@ const request = require("@arangodb/request");
 const cluster = require("@arangodb/cluster");
 const supervisionState = cluster.supervisionState;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const waitForStatisticsCollections = require('@arangodb/cluster').waitForStatisticsCollections;
 
 function getDBServers() {
   var tmp = global.ArangoClusterInfo.getDBServers();
@@ -1079,6 +1080,8 @@ function MovingShardsWithViewSuite (options) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
+
+waitForStatisticsCollections();
 
 jsunity.run(function MovingShardsWithViewSuite_nodata() {
   let derivedSuite = {};
