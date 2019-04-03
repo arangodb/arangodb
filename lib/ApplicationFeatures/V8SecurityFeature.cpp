@@ -39,7 +39,9 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "V8Security"), _allowExecutionOfBinaries(false), _denyHardened(false) {
+    : ApplicationFeature(server, "V8Security"),
+      _allowExecutionOfBinaries(false),
+      _denyHardened(false) {
   setOptional(false);
   startsAfter("V8Platform");
 }
@@ -52,10 +54,10 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
       "allow execution of external binaries. default set to false",
       new BooleanParameter(&_allowExecutionOfBinaries));
 
-  options->addOption(
-      "--javascript.harden",
-      "denies information like process id. This is used to harden the installation. The default is false",
-      new BooleanParameter(&_denyHardened));
+  options->addOption("--javascript.harden",
+                     "denies information like process id. This is used to "
+                     "harden the installation. The default is false",
+                     new BooleanParameter(&_denyHardened));
 
   options->addOption("--javascript.startup-options-white-list",
                      "startup options whose names match this regular "
@@ -141,8 +143,21 @@ bool checkBlackAndWhiteList(std::string const& value, bool hasWhiteList,
 }
 }  // namespace
 
+void V8SecurityFeature::addToInternalReadWhiteList(char const* item) {
+  // This function is not efficient and we would not need the _readWhiteList
+  // to be persistent. But the persistence will help in debugging and
+  // there are only a few items expected.
+  TRI_ASSERT(_readWhiteListVec.size() < 3);
+  auto path = std::string(item) + "*";
+  _readWhiteListVec.push_back(std::move(path));
+  _readWhiteList.clear();
+  convertToRe(_readWhiteListVec, _readWhiteList);
+  _readWhiteListRegex =
+      std::regex(_readWhiteList, std::regex::nosubs | std::regex::ECMAScript);
+}
+
 void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  // check if the regexes compile properly
+  // check if the regular expressions compile properly
 
   // startup options
   convertToRe(_startupOptionsWhiteListVec, _startupOptionsWhiteList);
@@ -272,7 +287,7 @@ bool V8SecurityFeature::isAllowedToExecuteExternalBinaries(v8::Isolate* isolate)
   TRI_GET_GLOBALS();
   // v8g may be a nullptr when we are in arangosh
   if (v8g != nullptr) {
-   return _allowExecutionOfBinaries || v8g->_securityContext.canExecuteExternalBinaries();
+    return _allowExecutionOfBinaries || v8g->_securityContext.canExecuteExternalBinaries();
   }
   return _allowExecutionOfBinaries;
 }
@@ -345,6 +360,11 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string 
     if (absPath) {
       path = std::string(absPath.get());
     }
+  }
+
+  if (access == FSAccessType::READ && std::regex_search(path, _readWhiteListRegex)) {
+    // even in restricted contexts we may read module paths
+    return true;
   }
 
   return checkBlackAndWhiteList(path, !_filesWhiteList.empty(), _filesWhiteListRegex,

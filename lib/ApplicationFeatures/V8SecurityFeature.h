@@ -77,9 +77,16 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   bool isAllowedToAccessPath(v8::Isolate* isolate, std::string path, FSAccessType access) const;
   bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, FSAccessType access) const;
 
+  void addToInternalReadWhiteList(char const* item);
+
  private:
   bool _allowExecutionOfBinaries;
   bool _denyHardened;
+
+  std::string _readWhiteList;
+  std::vector<std::string> _readWhiteListVec;
+  std::regex _readWhiteListRegex;
+
 
   // All the following options have white and black lists.
   // The white-list will take precedence over the black list
