@@ -211,6 +211,21 @@ function testSuite() {
     tryIsDirectoryAllowed(fn, true);
   }
 
+  function tryCreateDirectoryRecursiveForbidden(fn) {
+    try {
+      let rc = fs.makeDirectoryRecursive(fn);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'createDirectory creation of ' + fn + ' wasn\'t forbidden');
+    }
+  }
+  function tryCreateDirectoryRecursiveAllowed(fn) {
+    let rc = fs.makeDirectoryRecursive(fn);
+    assertUndefined(rc, 'Expected ' + fn + ' to become a directory.');
+    tryIsDirectoryAllowed(fn, true);
+  }
+
   function tryIsFileForbidden(fn) {
     try {
       let rc = fs.isFile(fn);
@@ -337,6 +352,14 @@ function testSuite() {
       tryCreateDirectoryAllowed(fs.join(topLevelAllowed, "allowed_create_dir"));
       tryCreateDirectoryAllowed(fs.join(subLevelAllowed, "allowed_create_dir"));
     },
+    testCreateDirectoryRecursive : function() {
+      tryCreateDirectoryRecursiveForbidden('/etc/cde/fdg');
+      tryCreateDirectoryRecursiveForbidden('/var/log/with/sub/dir');
+      tryCreateDirectoryRecursiveForbidden(fs.join(topLevelForbiddenFile, "forbidden", 'sub', 'directory'));
+
+      tryCreateDirectoryRecursiveAllowed(fs.join(topLevelAllowed, 'allowed_create_recursive_dir', 'directory'));
+      tryCreateDirectoryRecursiveAllowed(fs.join(subLevelAllowed, 'allowed_create_recursive_dir', 'directory'));
+    },
     testIsFile : function() {
       tryIsFileForbidden('/etc/passwd');
       tryIsFileForbidden('/var/log/mail.log');
@@ -359,8 +382,8 @@ function testSuite() {
       tryListFileAllowed(topLevelAllowedFile, 0);
       tryListFileAllowed(subLevelAllowedFile, 0);
 
-      tryListFileAllowed(topLevelAllowed, 3);
-      tryListFileAllowed(subLevelAllowed, 3);
+      tryListFileAllowed(topLevelAllowed, 4);
+      tryListFileAllowed(subLevelAllowed, 4);
     },
     testListTree : function() {
       tryListTreeForbidden('/etc/X11');
@@ -372,8 +395,8 @@ function testSuite() {
       tryListTreeAllowed(topLevelAllowedFile, 1);
       tryListTreeAllowed(subLevelAllowedFile, 1);
 
-      tryListTreeAllowed(topLevelAllowed, 4);
-      tryListTreeAllowed(subLevelAllowed, 4);
+      tryListTreeAllowed(topLevelAllowed, 6);
+      tryListTreeAllowed(subLevelAllowed, 6);
     }
   };
 }
