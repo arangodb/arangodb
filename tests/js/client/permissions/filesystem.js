@@ -181,6 +181,20 @@ function testSuite() {
     assertTrue(rc, 'Expected ' + fn + ' to be stat-eable');
   }
 
+  function tryIsDirectoryForbidden(fn) {
+    try {
+      let rc = fs.isDirectory(fn);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'isDirectory-access to ' + fn + ' wasn\'t forbidden');
+    }
+  }
+  function tryIsDirectoryAllowed(fn, isDirectory) {
+    let rc = fs.isDirectory(fn);
+    assertEqual(rc, isDirectory, 'Expected ' + fn + ' to be a ' + isDirectory ? "directory.":"file.");
+  }
+
   return {
     testReadFile : function() {
       tryReadForbidden('/etc/passwd');
@@ -224,8 +238,8 @@ function testSuite() {
       tryChmodForbidden(topLevelForbiddenFile);
       // N/A tryChmodForbidden(subLevelForbiddenFile);
 
-      tryChmodAllowed(topLevelAllowedFile, 'this file is allowed.\n');
-      tryChmodAllowed(subLevelAllowedFile, 'this file is allowed.\n');
+      tryChmodAllowed(topLevelAllowedFile);
+      tryChmodAllowed(subLevelAllowedFile);
     },
     testExists : function() {
       tryExistsForbidden('/etc/passwd');
@@ -233,8 +247,8 @@ function testSuite() {
       tryExistsForbidden(topLevelForbiddenFile);
       // N/A tryExistsForbidden(subLevelForbiddenFile);
 
-      tryExistsAllowed(topLevelAllowedFile, 'this file is allowed.\n');
-      tryExistsAllowed(subLevelAllowedFile, 'this file is allowed.\n');
+      tryExistsAllowed(topLevelAllowedFile);
+      tryExistsAllowed(subLevelAllowedFile);
     },
     testFileSize : function() {
       tryFileSizeForbidden('/etc/passwd');
@@ -242,8 +256,20 @@ function testSuite() {
       tryFileSizeForbidden(topLevelForbiddenFile);
       // N/A tryFileSizeForbidden(subLevelForbiddenFile);
 
-      tryFileSizeAllowed(topLevelAllowedFile, 'this file is allowed.\n');
-      tryFileSizeAllowed(subLevelAllowedFile, 'this file is allowed.\n');
+      tryFileSizeAllowed(topLevelAllowedFile);
+      tryFileSizeAllowed(subLevelAllowedFile);
+    },
+    testIsDirectory : function() {
+      tryIsDirectoryForbidden('/etc/passwd');
+      tryIsDirectoryForbidden('/var/log/mail.log');
+      tryIsDirectoryForbidden(topLevelForbiddenFile);
+      // N/A tryFileSizeForbidden(subLevelForbiddenFile);
+
+      tryIsDirectoryAllowed(topLevelAllowedFile, false);
+      tryIsDirectoryAllowed(subLevelAllowedFile, false);
+
+      tryIsDirectoryAllowed(topLevelAllowed, true);
+      tryIsDirectoryAllowed(subLevelAllowed, true);
     }
   };
 }
