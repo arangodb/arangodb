@@ -80,6 +80,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     // register a protector (intentionally empty)
     auto data = std::make_unique<ClusterTransactionData>();
     TransactionManagerFeature::manager()->registerTransaction(_id, std::move(data));
+    setRegistered();
 
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
