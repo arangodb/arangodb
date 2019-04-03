@@ -289,7 +289,7 @@ void MMFilesCollectorThread::run() {
       if (!isStopping() && !engine->isCompactionDisabled()) {
         // don't collect additional logfiles in case we want to shut down
         bool worked;
-        int res = this->collectLogfiles(worked);
+        int res = collectLogfiles(worked);
 
         if (res == TRI_ERROR_NO_ERROR) {
           hasWorked |= worked;
@@ -300,17 +300,11 @@ void MMFilesCollectorThread::run() {
 
       // step 2: update master pointers
       bool worked;
-      int res = this->processQueuedOperations(worked);
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        hasWorked |= worked;
-      } else if (res == TRI_ERROR_ARANGO_FILESYSTEM_FULL) {
-        doDelay = true;
-      }
-    } catch (arangodb::basics::Exception const& ex) {
-      int res = ex.code();
+      processQueuedOperations(worked);
+      hasWorked |= worked;
+    } catch (std::exception const& ex) {
       LOG_TOPIC("943ec", ERR, Logger::COLLECTOR)
-          << "got unexpected error in collectorThread::run: " << TRI_errno_string(res);
+          << "got unexpected error in collectorThread::run: " << ex.what();
     } catch (...) {
       LOG_TOPIC("f9ec6", ERR, Logger::COLLECTOR)
           << "got unspecific error in collectorThread::run";
@@ -401,7 +395,7 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
   try {
     int res = collect(logfile);
     LOG_TOPIC("917e7", TRACE, Logger::COLLECTOR)
-        << "collected logfile: " << logfile->id() << ". result: " << res;
+        << "collected logfile: " << logfile->id() << ". result: " << TRI_errno_string(res);
 
     if (res == TRI_ERROR_NO_ERROR) {
       // reset collector status
@@ -425,7 +419,7 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
     int res = ex.code();
 
     LOG_TOPIC("9d55c", DEBUG, Logger::COLLECTOR) << "collecting logfile " << logfile->id()
-                                        << " failed: " << TRI_errno_string(res);
+                                        << " failed: " << ex.what();
 
     return res;
   } catch (...) {
@@ -438,25 +432,25 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
 }
 
 /// @brief step 2: process all still-queued collection operations
-int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
+void MMFilesCollectorThread::processQueuedOperations(bool& worked) {
   MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
 
   // always init result variable
   worked = false;
 
   TRI_IF_FAILURE("CollectorThreadProcessQueuedOperations") {
-    return TRI_ERROR_NO_ERROR;
+    return;
   }
 
   if (engine->isCompactionDisabled()) {
-    return TRI_ERROR_NO_ERROR;
+    return;
   }
 
   {
     MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
     if (_operationsQueueInUse || _operationsQueue.empty()) {
       // nothing to do
-      return TRI_ERROR_NO_ERROR;
+      return;
     }
 
     // this flag indicates that no one else must write to the queue
@@ -483,7 +477,7 @@ int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
       int res = TRI_ERROR_INTERNAL;
 
       try {
-        res = processCollectionOperations((*it2));
+        res = processCollectionOperations((*it2).get());
       } catch (arangodb::basics::Exception const& ex) {
         res = ex.code();
         LOG_TOPIC("00a20", TRACE, Logger::COLLECTOR)
@@ -537,9 +531,6 @@ int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
 
         _numPendingOperations -= numOperations;
 
-        // delete the object
-        delete (*it2);
-
         // delete the element from the vector while iterating over the vector
         it2 = operations.erase(it2);
 
@@ -552,8 +543,6 @@ int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
 
     // next collection
   }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 void MMFilesCollectorThread::clearQueuedOperations() {
@@ -595,8 +584,7 @@ void MMFilesCollectorThread::clearQueuedOperations() {
           _numPendingOperations -= cache->operations->size();
           _logfileManager->decreaseCollectQueueSize(cache->logfile);
 
-          delete cache;
-          cache = nullptr;
+          cache.reset();
         } catch (...) {
           // ignore things like collection not found, database not found etc.
           // on shutdown
@@ -604,7 +592,7 @@ void MMFilesCollectorThread::clearQueuedOperations() {
 
         // finally remove all the nullptrs from the vector
         operations.erase(std::remove_if(operations.begin(), operations.end(),
-                                        [](MMFilesCollectorCache* cache) {
+                                        [](std::unique_ptr<MMFilesCollectorCache> const& cache) {
                                           return cache == nullptr;
                                         }),
                          operations.end());
@@ -1008,7 +996,7 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
         << ", number of bytes transferred: " << numBytesTransferred;
 
     if (res == TRI_ERROR_NO_ERROR && !cache->operations->empty()) {
-      queueOperations(logfile, cache);
+      queueOperations(logfile, std::move(cache));
     }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
@@ -1028,8 +1016,8 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
 }
 
 /// @brief insert the collect operations into a per-collection queue
-int MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfile,
-                                            std::unique_ptr<MMFilesCollectorCache>& cache) {
+void MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfile,
+                                             std::unique_ptr<MMFilesCollectorCache> cache) {
   TRI_ASSERT(cache != nullptr);
 
   TRI_voc_cid_t cid = cache->collectionId;
@@ -1042,19 +1030,11 @@ int MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfile
     {
       MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
 
+      // it is only safe to access the queue if this flag is not set
       if (!_operationsQueueInUse) {
-        // it is only safe to access the queue if this flag is not set
-        auto it = _operationsQueue.find(cid);
-        if (it == _operationsQueue.end()) {
-          _operationsQueue.emplace(cid,
-                                   std::vector<MMFilesCollectorCache*>({cache.get()}));
-          _logfileManager->increaseCollectQueueSize(logfile);
-        } else {
-          (*it).second.push_back(cache.get());
-          _logfileManager->increaseCollectQueueSize(logfile);
-        }
+        _operationsQueue[cid].emplace_back(std::move(cache));
         // now _operationsQueue is responsible for managing the cache entry
-        cache.release();
+        _logfileManager->increaseCollectQueueSize(logfile);
 
         // exit the loop
         break;
@@ -1077,8 +1057,6 @@ int MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfile
   }
 
   _numPendingOperations += numOperations;
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief update a collection's datafile information

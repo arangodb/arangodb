@@ -37,7 +37,10 @@ using TraverserOptions = arangodb::traverser::TraverserOptions;
 
 PathEnumerator::PathEnumerator(Traverser* traverser, std::string const& startVertex,
                                TraverserOptions* opts)
-    : _traverser(traverser), _isFirst(true), _opts(opts) {
+    : _traverser(traverser), 
+      _isFirst(true), 
+      _opts(opts),
+      _httpRequests(0) {
   arangodb::velocypack::StringRef svId =
       _opts->cache()->persistString(arangodb::velocypack::StringRef(startVertex));
   // Guarantee that this vertex _id does not run away
@@ -74,6 +77,7 @@ bool DepthFirstEnumerator::next() {
                                           _enumeratedPath.vertices.back()),
                                       _enumeratedPath.edges.size());
       if (cursor != nullptr) {
+        incHttpRequests(cursor->httpRequests());
         _edgeCursors.emplace(cursor);
       }
     } else {

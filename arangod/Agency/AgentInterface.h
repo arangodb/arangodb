@@ -43,8 +43,7 @@ class AgentInterface {
   };
 
   /// @brief Attempt write
-  virtual write_ret_t write(query_t const&,
-                            WriteMode const& mode = WriteMode()) = 0;  /// @brief Attempt write
+  virtual write_ret_t write(query_t const&, WriteMode const& mode = WriteMode()) = 0;
 
   /// @brief Attempt write
   virtual trans_ret_t transient(query_t const&) = 0;

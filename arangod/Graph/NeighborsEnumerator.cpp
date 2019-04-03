@@ -107,7 +107,10 @@ bool NeighborsEnumerator::next() {
 
         std::unique_ptr<arangodb::graph::EdgeCursor> cursor(
             _opts->nextCursor(nextVertex, _searchDepth));
-        cursor->readAll(callback);
+        if (cursor != nullptr) {
+          incHttpRequests(cursor->httpRequests());
+          cursor->readAll(callback);
+        }
       }
       if (_currentDepth.empty()) {
         // Nothing found. Cannot do anything more.
