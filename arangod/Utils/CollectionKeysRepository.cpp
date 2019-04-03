@@ -199,6 +199,11 @@ bool CollectionKeysRepository::containsUsed() {
   return false;
 }
 
+size_t CollectionKeysRepository::count() {
+  MUTEX_LOCKER(mutexLocker, _lock);
+  return _keys.size();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run a garbage collection on the data
 ////////////////////////////////////////////////////////////////////////////////
