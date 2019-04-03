@@ -1,3 +1,10 @@
+v3.4.6 (2019-XX-XX)
+-------------------
+
+* fixed internal issue #2946: create graph autocomplete was not working under
+  certain circumstances.
+
+
 v3.4.5 (2019-03-27)
 -------------------
 
