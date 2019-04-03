@@ -175,11 +175,6 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
                                    "not allowed to read files in this path");
   }
 
-  if (!v8security->isAllowedToParseJavaScript(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to parse JavaScript code");
-  }
-
   size_t length;
   char* content = TRI_SlurpFile(filename, &length);
 
@@ -280,13 +275,9 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path, bool
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
+
   LOG_TOPIC("65c8d", TRACE, arangodb::Logger::FIXME)
       << "loading JavaScript directory: '" << path << "'";
-
-  if (!v8security->isAllowedToParseJavaScript(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to parse JavaScript code");
-  }
 
   std::vector<std::string> files = TRI_FilesDirectory(path);
 
@@ -440,11 +431,6 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToParseJavaScript(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to parse JavaScript code");
-  }
-
   if (args.Length() > 1) {
     filename = args[1];
   } else {
@@ -516,11 +502,6 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
-
-  if (!v8security->isAllowedToParseJavaScript(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to parse JavaScript code");
-  }
 
   // extract arguments
   if (args.Length() != 1) {
@@ -1113,17 +1094,6 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
-
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
-
-  if (!v8security->isAllowedToParseJavaScript(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to parse JavaScript code");
-  }
 
   // extract arguments
   if (args.Length() != 3) {
@@ -2029,11 +1999,6 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
-
-  if (!v8security->isAllowedToParseJavaScript(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to parse JavaScript code");
-  }
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
