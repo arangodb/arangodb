@@ -83,7 +83,7 @@ function iResearchFeatureAqlTestSuite () {
       // force server-side V8 garbage collection
       if (db._connection !== undefined) { // client test
         let url = require('internal').arango.getEndpoint().replace('tcp', 'http');
-        url += '/_admin/execute?returnAsJSON=true'
+        url += '/_admin/execute?returnAsJSON=true';
         let options = require('@arangodb/process-utils').makeAuthorizationHeaders({
           username: 'root',
           password: ''

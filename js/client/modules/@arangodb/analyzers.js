@@ -23,6 +23,7 @@
 
 const internal = require('internal');
 const arangosh = require('@arangodb/arangosh');
+const errors = require('@arangodb').errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoAnalyzer instance
@@ -34,19 +35,19 @@ function ArangoAnalyzer(data) {
 
 ArangoAnalyzer.prototype.features = function() {
   return this._data['features'];
-}
+};
 
 ArangoAnalyzer.prototype.name = function() {
   return this._data['name'];
-}
+};
 
 ArangoAnalyzer.prototype.properties = function() {
   return this._data['properties'];
-}
+};
 
 ArangoAnalyzer.prototype.type = function() {
   return this._data['type'];
-}
+};
 
 ArangoAnalyzer.prototype._help = function () {
   var help = arangosh.createHelpHeadline('ArangoAnalyzers help') +
@@ -87,27 +88,27 @@ var _baseurl = function(suffix) {
 
 exports.analyzer = function(name) {
   var db = internal.db;
-  var url = _baseurl(name)
+  var url = _baseurl(name);
   var result = db._connection.GET(url);
 
   if (result.hasOwnProperty('error')
      && result.hasOwnProperty('error')
-     && require('@arangodb').ERROR_ARANGO_DOCUMENT_NOT_FOUND == result.errorNum) {
+     && errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code === result.errorNum) {
     return null;
   }
 
   arangosh.checkRequestResult(result);
 
   return new ArangoAnalyzer(result);
-}
+};
 
 exports.remove = function(name) {
   var db = internal.db;
-  var url = _baseurl(name)
+  var url = _baseurl(name);
   var result = db._connection.DELETE(url);
 
   return arangosh.checkRequestResult(result);
-}
+};
 
 exports.save = function(name, type, properties, features) {
   var body = {};
@@ -133,7 +134,7 @@ exports.save = function(name, type, properties, features) {
   var result = db._connection.POST(url, body);
 
   return arangosh.checkRequestResult(result);
-}
+};
 
 exports.toArray = function() {
   var db = internal.db;
@@ -144,9 +145,9 @@ exports.toArray = function() {
 
   var list = [];
 
-  for (i = 0; i < result.result.length; ++i) {
+  for (var i = 0; i < result.result.length; ++i) {
     list.push(new ArangoAnalyzer(result.result[i]));
   }
 
   return list;
-}
+};
