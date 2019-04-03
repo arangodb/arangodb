@@ -153,6 +153,20 @@ function testSuite() {
     assertTrue(rc, 'Expected ' + fn + ' to be writeable');
   }
 
+  function tryExistsForbidden(fn) {
+    try {
+      let rc = fs.exists(fn);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'stat-access to ' + fn + ' wasn\'t forbidden');
+    }
+  }
+  function tryExistsAllowed(fn) {
+    let rc = fs.exists(fn);
+    assertTrue(rc, 'Expected ' + fn + ' to be stat-eable');
+  }
+
   return {
     testReadFile : function() {
       tryReadForbidden('/etc/passwd');
@@ -198,6 +212,15 @@ function testSuite() {
 
       tryChmodAllowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryChmodAllowed(subLevelAllowedFile, 'this file is allowed.\n');
+    },
+    testExists : function() {
+      tryExistsForbidden('/etc/passwd');
+      tryExistsForbidden('/var/log/mail.log');
+      tryExistsForbidden(topLevelForbiddenFile);
+      // N/A tryReadForbidden(subLevelForbiddenFile);
+
+      tryExistsAllowed(topLevelAllowedFile, 'this file is allowed.\n');
+      tryExistsAllowed(subLevelAllowedFile, 'this file is allowed.\n');
     }
   };
 }
