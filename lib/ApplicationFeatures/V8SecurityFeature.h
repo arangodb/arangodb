@@ -77,11 +77,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   bool isAllowedToAccessPath(v8::Isolate* isolate, std::string path, FSAccessType access) const;
   bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, FSAccessType access) const;
 
-  /// @brief tests if pasing and compiling of .js-files and snippets is allowed
-  bool isAllowedToParseJavaScript(v8::Isolate* isolate) const;
-
  private:
-  bool _allowParseJS;
   bool _allowExecutionOfBinaries;
   bool _denyHardened;
 
