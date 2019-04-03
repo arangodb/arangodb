@@ -43,7 +43,7 @@ Returns true if the *path* points to a file.
 
 tests if path is a directory
 `fs.isDirectory(path)`
-
+c
 Returns true if the *path* points to a directory.
 
 
@@ -113,7 +113,10 @@ absolute path to the same location is returned.
 
 
 sets file permissions of specified files (non windows only)
-`fs.exists(path)`
+`fs.chmod(path, mode)`
+
+where `mode` is a string with a leading zero matching the `OCTAL-MODE` as explained
+in *nix `man chmod`.
 
 Returns true on success.
 
