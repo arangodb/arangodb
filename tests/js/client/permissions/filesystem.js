@@ -127,7 +127,7 @@ function testSuite() {
   }
   function tryWriteForbidden(fn) {
     try {
-      let rc = fs.write(fn, "1212 this is just a test");
+      let rc = fs.write(fn, '1212 this is just a test');
       fail();
     }
     catch (err) {
@@ -135,7 +135,21 @@ function testSuite() {
     }
   }
   function tryWriteAllowed(fn) {
-    let rc = fs.write(fn, "1212 this is just a test");
+    let rc = fs.write(fn, '1212 this is just a test');
+    assertTrue(rc, 'Expected ' + fn + ' to be chmodable');
+  }
+
+  function tryChmodForbidden(fn) {
+    try {
+      let rc = fs.chmod(fn, '0755');
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'chmod access to ' + fn + ' wasn\'t forbidden');
+    }
+  }
+  function tryChmodAllowed(fn) {
+    let rc = fs.chmod(fn, '0755');
     assertTrue(rc, 'Expected ' + fn + ' to be writeable');
   }
 
@@ -175,6 +189,15 @@ function testSuite() {
       tryWriteAllowed(topLevelAllowedWriteFile);
       tryWriteAllowed(subLevelAllowedWriteFile);
 
+    },
+    testChmod : function() {
+      tryChmodForbidden('/etc/passwd');
+      tryChmodForbidden('/var/log/mail.log');
+      tryChmodForbidden(topLevelForbiddenFile);
+      // N/A tryReadForbidden(subLevelForbiddenFile);
+
+      tryChmodAllowed(topLevelAllowedFile, 'this file is allowed.\n');
+      tryChmodAllowed(subLevelAllowedFile, 'this file is allowed.\n');
     }
   };
 }
