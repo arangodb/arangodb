@@ -94,6 +94,21 @@ function testSuite() {
                 expectedContent,
                 'Expected ' + fn + ' to contain "' + expectedContent + '" but it contained: "' + content + '"!');
   }
+  function tryReadBufferForbidden(fn) {
+    try {
+      fs.readBuffer(fn);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'access to ' + fn + ' wasn\'t forbidden');
+    }
+  }
+  function tryReadBufferAllowed(fn, expectedContent) {
+    let content = fs.readBuffer(fn);
+    assertEqual(content.toString(),
+                expectedContent,
+                'Expected ' + fn + ' to contain "' + expectedContent + '" but it contained: "' + content + '"!');
+  }
   function tryRead64Forbidden(fn) {
     try {
       fs.read64(fn);
@@ -126,7 +141,6 @@ function testSuite() {
 
   return {
     testReadFile : function() {
-
       tryReadForbidden('/etc/passwd');
       tryReadForbidden('/var/log/mail.log');
       tryReadForbidden(topLevelForbiddenFile);
@@ -134,6 +148,15 @@ function testSuite() {
 
       tryReadAllowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryReadAllowed(subLevelAllowedFile, 'this file is allowed.\n');
+    },
+    testReadBuffer : function() {
+      tryReadBufferForbidden('/etc/passwd');
+      tryReadBufferForbidden('/var/log/mail.log');
+      tryReadBufferForbidden(topLevelForbiddenFile);
+      // N/A tryReadForbidden(subLevelForbiddenFile);
+
+      tryReadBufferAllowed(topLevelAllowedFile, 'this file is allowed.\n');
+      tryReadBufferAllowed(subLevelAllowedFile, 'this file is allowed.\n');
     },
     testRead64File : function() {
 
