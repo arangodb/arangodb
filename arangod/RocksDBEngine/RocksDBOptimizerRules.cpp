@@ -230,6 +230,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
               std::move(condition), opts);
           plan->registerNode(inode);
           plan->replaceNode(n, inode);
+          // copy over specialization data from smart-joins rule
+          inode->setPrototype(en->prototypeCollection(), en->prototypeOutVariable());
           n = inode;
           // need to update e, because it is used later
           e = dynamic_cast<DocumentProducingNode*>(n);

@@ -51,6 +51,8 @@ class EdgeCursor {
   virtual bool next(std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)> const& callback) = 0;
 
   virtual void readAll(std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)> const& callback) = 0;
+
+  virtual size_t httpRequests() const = 0;
 };
 
 }  // namespace graph
