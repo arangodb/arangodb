@@ -108,12 +108,6 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     arangodb::auth::Level const& level // access level
   );
 
-  // FIXME TODO remove
-  std::pair<AnalyzerPool::ptr, bool> emplace(
-      irs::string_ref const& name, irs::string_ref const& type,
-      irs::string_ref const& properties,
-      irs::flags const& features = irs::flags::empty_instance()) noexcept;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief emplace an analyzer as per the specified parameters
   /// @param result the result of the successful emplacement (out-param)
@@ -203,9 +197,8 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   /// @param vocbase only visit analysers for this vocbase (nullptr == all)
   /// @return visitation compleated fully
   //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<bool(irs::string_ref const& analyzer, irs::string_ref const& type, irs::string_ref const& properties, irs::flags const& features)> VisitorType;
   bool visit( // visit analyzers
-    VisitorType const& visitor, // visitor
+    std::function<bool(AnalyzerPool::ptr const& analyzer)> const& visitor, // visitor
     TRI_vocbase_t const* vocbase = nullptr // analyzers for vocbase
   ) const;
 
@@ -280,8 +273,6 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   arangodb::Result loadAnalyzers( // load analyzers
       irs::string_ref const& database = irs::string_ref::NIL // database to load
   );
-
-  bool loadConfiguration();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief store the definition for the speicifed pool in the corresponding

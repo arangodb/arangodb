@@ -111,7 +111,7 @@ class RocksDBTransactionState final : public TransactionState {
     TRI_ASSERT(_rocksMethods);
     return _rocksMethods.get();
   }
-
+  
   /// @brief Rocksdb sequence number of snapshot. Works while trx
   ///        has either a snapshot or a transaction
   rocksdb::SequenceNumber sequenceNumber() const;

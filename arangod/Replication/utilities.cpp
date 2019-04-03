@@ -569,9 +569,14 @@ Result buildHttpError(httpclient::SimpleHttpResult* response,
 
   if (response == nullptr || !response->isComplete()) {
     std::string errorMsg;
-    connection.lease([&errorMsg](httpclient::SimpleHttpClient* client) {
+    connection.lease([&errorMsg, &response](httpclient::SimpleHttpClient* client) {
       errorMsg = client->getErrorMessage();
     });
+    if (errorMsg.empty() && response != nullptr) {
+      errorMsg = "HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) +
+                 ": " + response->getHttpReturnMessage() + " - " +
+                response->getBody().toString();
+    } 
     return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
                   std::string("could not connect to master at ") +
                       connection.endpoint() + " for URL " + url + ": " + errorMsg);

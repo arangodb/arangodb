@@ -45,6 +45,14 @@ void Optimizer::disableRule(int rule) {
   it->second.enabled = false;
 }
 
+bool Optimizer::isDisabled(int rule) const {
+  auto it = _rules.find(rule);
+  if (it == _rules.end()) {
+    return true;
+  }
+  return !it->second.enabled;
+}
+
 bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
   return (_runOnlyRequiredRules ||
           (_newPlans.size() + _plans.size() + extraPlans >= _maxNumberOfPlans));

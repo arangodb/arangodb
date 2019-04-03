@@ -159,7 +159,7 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   // check operation result
   if (!result.ok()) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
-        (isIndex || (isUpdate && _info._replaceIndex) || (isUpdate && _info._replaceIndex) ||
+        (isIndex || (isUpdate && _info._replaceIndex) || 
          (isRemove && _info._replaceIndex) || (isReplace && _info._replaceIndex))) {
       // document not there is not an error in this situation.
       // FOR ... FILTER ... REMOVE wouldn't invoke REMOVE in first place, so
