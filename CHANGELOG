@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed internal issue #2946: Create graph autocomplete was not working under
+  certain circumstances.
+
 * don't create per-database system collection `_frontend` automatically.
   This collection is only needed by the web UI, and it can be created lazily 
   when needed.
