@@ -41,6 +41,9 @@ const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const killExternal = internal.killExternal;
 const statusExternal = internal.statusExternal;
+const getExternalSpawned = internal.getExternalSpawned;
+const suspendExternal = internal.suspendExternal;
+const continueExternal = internal.continueExternal;
 
 const arangodb = require("@arangodb");
 function testSuite() {
@@ -68,6 +71,27 @@ function testSuite() {
       }
       try {
         let rv = killExternal(env['PID']);
+        print(rv);
+        fail();
+      } catch (err) {
+        assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
+      }
+      try {
+        let rv = getExternalSpawned();
+        print(rv);
+        fail();
+      } catch (err) {
+        assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
+      }
+      try {
+        let rv = suspendExternal(env['PID']);
+        print(rv);
+        fail();
+      } catch (err) {
+        assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
+      }
+      try {
+        let rv = continueExternal(env['PID']);
         print(rv);
         fail();
       } catch (err) {
