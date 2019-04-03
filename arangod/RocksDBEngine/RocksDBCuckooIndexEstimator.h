@@ -258,7 +258,8 @@ class RocksDBCuckooIndexEstimator {
       // Sorry we need a consistent state, so we have to read-lock
       READ_LOCKER(locker, _lock);
 
-      /// appliedSeq might be 0 if we did not applie any operations
+      /// committedSeq() might be 0 if we did not apply any operations;
+      /// same with appliedSeq
       appliedSeq = std::max(appliedSeq, this->committedSeq());
       TRI_ASSERT(appliedSeq != std::numeric_limits<rocksdb::SequenceNumber>::max());
       rocksutils::uint64ToPersistent(serialized, appliedSeq);
@@ -524,7 +525,6 @@ class RocksDBCuckooIndexEstimator {
   /// @brief call with output from committableSeq(current), and before serialize
   rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq) {
     rocksdb::SequenceNumber appliedSeq = 0;
-    bool appliedSomething = false;
     Result res = basics::catchVoidToResult([&]() -> void {
       std::vector<Key> inserts;
       std::vector<Key> removals;
@@ -575,7 +575,6 @@ class RocksDBCuckooIndexEstimator {
         }
 
         if (foundTruncate) {
-          appliedSomething = true;
           clear();  // clear estimates
         }
 
@@ -589,7 +588,6 @@ class RocksDBCuckooIndexEstimator {
           for (auto const& key : inserts) {
             insert(key);
           }
-          appliedSomething = true;
           inserts.clear();
         }
 
@@ -598,14 +596,10 @@ class RocksDBCuckooIndexEstimator {
           for (auto const& key : removals) {
             remove(key);
           }
-          appliedSomething = true;
           removals.clear();
         }
       }  // </while(true)>
     });
-    if (!appliedSomething) {
-      appliedSeq = commitSeq;
-    }
     return appliedSeq;
   }
 

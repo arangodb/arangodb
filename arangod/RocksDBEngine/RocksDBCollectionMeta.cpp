@@ -204,7 +204,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
   rocksdb::SequenceNumber seq = applyAdjustments(maxCommitSeq, didWork);
   if (didWork) {
     appliedSeq = std::min(appliedSeq, seq);
-  } else {  // maxCommitSeq is == UINT64_MAX without any blockers
+  } else {  // maxCommitSeq is == appliedSeq without any blockers
     appliedSeq = std::min(appliedSeq, maxCommitSeq);
   }
 
@@ -275,13 +275,15 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
       output.clear();
 
       seq = est->serialize(output, maxCommitSeq);
-      // calculate retention sequence number
-      appliedSeq = std::min(appliedSeq, seq);
+      if (seq > 0) {
+        // calculate retention sequence number
+        appliedSeq = std::min(appliedSeq, seq);
+      }
       TRI_ASSERT(output.size() > sizeof(uint64_t));
 
       LOG_TOPIC(TRACE, Logger::ENGINES)
           << "serialized estimate for index '" << idx->objectId()
-          << "' valid through seq " << seq;
+          << "' committed through seq " << maxCommitSeq;
 
       key.constructIndexEstimateValue(idx->objectId());
       rocksdb::Slice value(output);
