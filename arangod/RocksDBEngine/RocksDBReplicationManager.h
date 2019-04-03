@@ -55,7 +55,7 @@ class RocksDBReplicationManager {
   /// there are active contexts
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* createContext(double ttl, TRI_server_id_t serverId);
+  RocksDBReplicationContext* createContext(double ttl, std::string const& clientId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a context by id

@@ -70,7 +70,8 @@ arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* res
 
 namespace arangodb {
 
-ClientManager::ClientManager(LogTopic& topic) : _topic{topic} {}
+ClientManager::ClientManager(LogTopic& topic) : 
+    _topic{topic} {}
 
 ClientManager::~ClientManager() {}
 

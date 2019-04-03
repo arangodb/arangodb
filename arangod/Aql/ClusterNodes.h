@@ -31,6 +31,7 @@
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"

@@ -80,7 +80,7 @@ void RocksDBBackgroundThread::run() {
       bool force = isStopping();
       _engine->replicationManager()->garbageCollect(force);
 
-      TRI_voc_tick_t minTick = rocksutils::latestSequenceNumber();
+      uint64_t minTick = rocksutils::latestSequenceNumber();
       auto cmTick = _engine->settingsManager()->earliestSeqNeeded();
 
       if (cmTick < minTick) {
@@ -89,12 +89,9 @@ void RocksDBBackgroundThread::run() {
 
       if (DatabaseFeature::DATABASE != nullptr) {
         DatabaseFeature::DATABASE->enumerateDatabases([&minTick](TRI_vocbase_t& vocbase) -> void {
-          auto clients = vocbase.getReplicationClients();
-          for (auto c : clients) {
-            if (std::get<3>(c) < minTick) {
-              minTick = std::get<3>(c);
-            }
-          }
+          // lowestServedValue will return the lowest of the lastServedTick values stored,
+          // or UINT64_MAX if no clients are registered
+          minTick = std::min(minTick, vocbase.replicationClients().lowestServedValue());
         });
       }
 

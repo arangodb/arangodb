@@ -43,6 +43,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Function.h"
 #include "AqlHelper.h"
+#include "Basics/StringUtils.h"
 #include "ExpressionFilter.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchCommon.h"

@@ -26,6 +26,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"

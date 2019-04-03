@@ -216,7 +216,7 @@ void DatabaseManagerThread::run() {
               vocbase->cursorRepository()->garbageCollect(force);
             } catch (...) {
             }
-            vocbase->garbageCollectReplicationClients(TRI_microtime());
+            vocbase->replicationClients().garbageCollect(TRI_microtime());
           }
         }
       }

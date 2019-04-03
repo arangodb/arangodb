@@ -24,7 +24,6 @@
 #include "DumpFeature.h"
 
 #include <chrono>
-#include <iostream>
 #include <thread>
 
 #include <velocypack/Builder.h>
@@ -57,7 +56,7 @@ namespace {
 
 /// @brief fake client id we will send to the server. the server keeps
 /// track of all connected clients
-static uint64_t clientId = 0;
+static std::string clientId;
 
 /// @brief name of the feature to report to application server
 constexpr auto FeatureName = "Dump";
@@ -168,8 +167,8 @@ std::pair<arangodb::Result, uint64_t> startBatch(arangodb::httpclient::SimpleHtt
   using arangodb::basics::VelocyPackHelper;
   using arangodb::basics::StringUtils::uint64;
 
-  std::string url = "/_api/replication/batch?serverId=" + std::to_string(clientId);
-  std::string const body = "{\"ttl\":300}";
+  std::string url = "/_api/replication/batch?serverId=" + clientId;
+  std::string const body = "{\"ttl\":600}";
   std::string urlExt;
   if (!DBserver.empty()) {
     url += "&DBserver=" + DBserver;
@@ -206,8 +205,8 @@ void extendBatch(arangodb::httpclient::SimpleHttpClient& client,
   TRI_ASSERT(batchId > 0);
 
   std::string url = "/_api/replication/batch/" + itoa(batchId) +
-                    "?serverId=" + std::to_string(clientId);
-  std::string const body = "{\"ttl\":300}";
+                    "?serverId=" + clientId;
+  std::string const body = "{\"ttl\":600}";
   if (!DBserver.empty()) {
     url += "&DBserver=" + DBserver;
   }
@@ -224,7 +223,7 @@ void endBatch(arangodb::httpclient::SimpleHttpClient& client,
   TRI_ASSERT(batchId > 0);
 
   std::string url = "/_api/replication/batch/" + itoa(batchId) +
-                    "?serverId=" + std::to_string(clientId);
+                    "?serverId=" + clientId;
   if (!DBserver.empty()) {
     url += "&DBserver=" + DBserver;
   }
@@ -1064,8 +1063,11 @@ void DumpFeature::start() {
 
   _exitCode = EXIT_SUCCESS;
 
-  // generate a fake client id that we sent to the server
-  ::clientId = RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL));
+  // generate a fake client id that we send to the server
+  // TODO: convert this into a proper string "arangodump-<numeric id>"
+  // in the future, if we are sure the server is an ArangoDB 3.5 or
+  // higher
+  ::clientId = std::to_string(RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL)));
 
   double const start = TRI_microtime();
 

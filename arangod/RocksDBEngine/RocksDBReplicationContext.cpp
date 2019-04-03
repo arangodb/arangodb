@@ -66,15 +66,20 @@ TRI_voc_cid_t normalizeIdentifier(TRI_vocbase_t& vocbase, std::string const& ide
 
 }  // namespace
 
-RocksDBReplicationContext::RocksDBReplicationContext(double ttl, TRI_server_id_t serverId)
-    : _serverId{serverId},
+RocksDBReplicationContext::RocksDBReplicationContext(double ttl, std::string const& clientId)
+    : _clientId{clientId},
       _id{TRI_NewTickServer()},
       _snapshotTick{0},
       _snapshot{nullptr},
       _ttl{ttl > 0.0 ? ttl : replutils::BatchInfo::DefaultTimeout},
       _expires{TRI_microtime() + _ttl},
       _isDeleted{false},
-      _users{1} {}
+      _users{1} {
+  if (_clientId.empty() || _clientId == "none") {
+    _clientId = std::to_string(_id);
+  }
+  TRI_ASSERT(_ttl > 0.0);
+}
 
 RocksDBReplicationContext::~RocksDBReplicationContext() {
   MUTEX_LOCKER(guard, _contextLock);
@@ -227,7 +232,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
     // database-specific inventory
     vocbase.inventory(result, tick, nameFilter);
   }
-  vocbase.updateReplicationClient(replicationClientId(), _snapshotTick, _ttl);
+  vocbase.replicationClients().track(replicationClientId(), _snapshotTick, _ttl);
 
   return Result();
 }
@@ -726,7 +731,8 @@ void RocksDBReplicationContext::use(double ttl) {
   TRI_ASSERT(!_isDeleted);
 
   ++_users;
-  ttl = std::max(std::max(_ttl, ttl), replutils::BatchInfo::DefaultTimeout);
+  ttl = std::max(_ttl, ttl);
+  TRI_ASSERT(ttl > 0.0);
   _expires = TRI_microtime() + ttl;
 
   // make sure the WAL files are not deleted
@@ -735,32 +741,32 @@ void RocksDBReplicationContext::use(double ttl) {
     dbs.emplace(&pair.second->vocbase);
   }
   for (TRI_vocbase_t* vocbase : dbs) {
-    vocbase->updateReplicationClient(replicationClientId(), _snapshotTick, ttl);
+    vocbase->replicationClients().track(replicationClientId(), _snapshotTick, ttl);
   }
 }
 
 void RocksDBReplicationContext::release() {
   MUTEX_LOCKER(locker, _contextLock);
   TRI_ASSERT(_users > 0);
-  double ttl = std::max(_ttl, replutils::BatchInfo::DefaultTimeout);
-  _expires = TRI_microtime() + ttl;
+  TRI_ASSERT(_ttl > 0.0);
+  _expires = TRI_microtime() + _ttl;
   --_users;
 
-  TRI_ASSERT(_ttl > 0);
   // make sure the WAL files are not deleted immediately
   std::set<TRI_vocbase_t*> dbs;
   for (auto& pair : _iterators) {
     dbs.emplace(&pair.second->vocbase);
   }
   for (TRI_vocbase_t* vocbase : dbs) {
-    vocbase->updateReplicationClient(replicationClientId(), _snapshotTick, ttl);
+    vocbase->replicationClients().track(replicationClientId(), _snapshotTick, _ttl);
   }
 }
 
 /// extend without using the context
 void RocksDBReplicationContext::extendLifetime(double ttl) {
   MUTEX_LOCKER(locker, _contextLock);
-  ttl = std::max(std::max(_ttl, ttl), replutils::BatchInfo::DefaultTimeout);
+  ttl = std::max(_ttl, ttl);
+  TRI_ASSERT(ttl > 0.0);
   _expires = TRI_microtime() + ttl;
 }
 
@@ -921,7 +927,7 @@ RocksDBReplicationContext::CollectionIterator* RocksDBReplicationContext::getCol
     // for initial synchronization. the inventory request and collection
     // dump requests will all happen after the batch creation, so the
     // current tick value here is good
-    cIter->vocbase.updateReplicationClient(replicationClientId(), _snapshotTick, _ttl);
+    cIter->vocbase.replicationClients().track(replicationClientId(), _snapshotTick, _ttl);
   }
 
   return cIter;
@@ -931,7 +937,7 @@ void RocksDBReplicationContext::releaseDumpIterator(CollectionIterator* it) {
   if (it) {
     TRI_ASSERT(it->isUsed());
     if (!it->hasMore()) {
-      it->vocbase.updateReplicationClient(replicationClientId(), _snapshotTick, _ttl);
+      it->vocbase.replicationClients().track(replicationClientId(), _snapshotTick, _ttl);
       MUTEX_LOCKER(locker, _contextLock);
       _iterators.erase(it->logical->id());
     } else {  // Context::release() will update the replication client

@@ -23,7 +23,7 @@
 
 #include "v8-replication.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseInitialSyncer.h"

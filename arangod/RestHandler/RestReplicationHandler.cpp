@@ -2310,7 +2310,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
-  double ttl = VelocyPackHelper::getNumericValue(ttlSlice, 0.0);
+  double ttl = VelocyPackHelper::getNumericValue(ttlSlice, QueryRegistry::defaultReadLockTimeout);
 
   if (col->getStatusLocked() != TRI_VOC_COL_STATUS_LOADED) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
