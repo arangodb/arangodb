@@ -1138,6 +1138,9 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     timeout *= 2;
   }
 
+  if ((toShutdown.length > 0) && (options.cluster === true)) {
+    dumpAgency(instanceInfo, options);
+  }
   var shutdownTime = internal.time();
   while (toShutdown.length > 0) {
     toShutdown = toShutdown.filter(arangod => {
