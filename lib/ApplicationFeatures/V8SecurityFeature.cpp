@@ -367,6 +367,12 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string 
                                               FSAccessType access) const {
   // check security context first
   TRI_GET_GLOBALS();
+
+  if (v8g == nullptr) {
+    TRI_ASSERT(false);
+    return false;
+  };
+
   auto& sec = v8g->_securityContext;
   if ((access == FSAccessType::READ && sec.canReadFs()) ||
       (access == FSAccessType::WRITE && sec.canWriteFs())) {
