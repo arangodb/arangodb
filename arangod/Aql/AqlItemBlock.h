@@ -307,7 +307,7 @@ class AqlItemBlock {
     return _nrRegs * _nrItems;
   }
 
-  inline size_t capacity() const { return _data.capacity(); }
+  inline size_t capacity() const noexcept { return _data.capacity(); }
 
   /// @brief shrink the block to the specified number of rows
   /// the superfluous rows are cleaned
