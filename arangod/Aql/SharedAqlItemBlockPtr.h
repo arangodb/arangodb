@@ -30,21 +30,25 @@ namespace aql {
 
 class SharedAqlItemBlockPtr {
  public:
-  // TODO add as many noexcepts as possible
-  inline explicit SharedAqlItemBlockPtr(AqlItemBlock* aqlItemBlock);
-  // NOLINTNEXTLINE(google-explicit-constructor) allow implicit cast from nullptr
-  inline SharedAqlItemBlockPtr(std::nullptr_t);
-  inline SharedAqlItemBlockPtr();
+  inline explicit SharedAqlItemBlockPtr(AqlItemBlock* aqlItemBlock) noexcept;
 
-  inline ~SharedAqlItemBlockPtr();
+  // allow implicit cast from nullptr:
+  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
+  inline SharedAqlItemBlockPtr(std::nullptr_t) noexcept;
 
-  inline SharedAqlItemBlockPtr(SharedAqlItemBlockPtr const& other);
+  inline SharedAqlItemBlockPtr() noexcept;
+
+  inline ~SharedAqlItemBlockPtr() noexcept;
+
+  inline SharedAqlItemBlockPtr(SharedAqlItemBlockPtr const& other) noexcept;
 
   inline SharedAqlItemBlockPtr(SharedAqlItemBlockPtr&& other) noexcept;
 
-  inline SharedAqlItemBlockPtr& operator=(SharedAqlItemBlockPtr const& other);
+  inline SharedAqlItemBlockPtr& operator=(SharedAqlItemBlockPtr const& other) noexcept;
 
   inline SharedAqlItemBlockPtr& operator=(SharedAqlItemBlockPtr&& other) noexcept;
+
+  inline SharedAqlItemBlockPtr& operator=(std::nullptr_t) noexcept;
 
   inline AqlItemBlock& operator*() noexcept;
   inline AqlItemBlock* operator->() noexcept;
@@ -75,22 +79,22 @@ class SharedAqlItemBlockPtr {
   AqlItemBlock* _aqlItemBlock;
 };
 
-arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(arangodb::aql::AqlItemBlock* aqlItemBlock)
+arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(arangodb::aql::AqlItemBlock* aqlItemBlock) noexcept
     : _aqlItemBlock(aqlItemBlock) {
   incrRefCount();
 }
 
-arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(std::nullptr_t)
+arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(std::nullptr_t) noexcept
     : _aqlItemBlock(nullptr) {}
 
-arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr()
+arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr() noexcept
     : _aqlItemBlock(nullptr) {}
 
-SharedAqlItemBlockPtr::~SharedAqlItemBlockPtr() {
+SharedAqlItemBlockPtr::~SharedAqlItemBlockPtr() noexcept {
   decrRefCount();
 }
 
-SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(SharedAqlItemBlockPtr const& other)
+SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(SharedAqlItemBlockPtr const& other) noexcept
     : _aqlItemBlock(other._aqlItemBlock) {
   incrRefCount();
 }
@@ -100,7 +104,7 @@ SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(SharedAqlItemBlockPtr&& other) noex
   other._aqlItemBlock = nullptr;
 }
 
-SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(SharedAqlItemBlockPtr const& other) {
+SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(SharedAqlItemBlockPtr const& other) noexcept {
   decrRefCount();
   _aqlItemBlock = other._aqlItemBlock;
   incrRefCount();
@@ -111,6 +115,12 @@ SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(SharedAqlItemBlockPtr&& 
   decrRefCount();
   _aqlItemBlock = other._aqlItemBlock;
   other._aqlItemBlock = nullptr;
+  return *this;
+}
+
+SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(std::nullptr_t) noexcept {
+  decrRefCount();
+  _aqlItemBlock = nullptr;
   return *this;
 }
 
