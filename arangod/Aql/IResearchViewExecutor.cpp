@@ -51,8 +51,6 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::iresearch;
 
-typedef std::vector<arangodb::LocalDocumentId> pks_t;
-
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     ExecutorInfos&& infos, std::shared_ptr<const IResearchView::Snapshot> reader,
     RegisterId firstOutputRegister, RegisterId numScoreRegisters, Query& query,
@@ -144,7 +142,12 @@ IResearchViewExecutor<ordered>::IResearchViewExecutor(IResearchViewExecutor::Fet
       _execCtx(*infos.getQuery().trx(), _ctx),
       _inflight(0),
       _hasMore(true),  // has more data initially
-      _isInitialized(false) {
+      _isInitialized(false),
+      _pkReader(),
+      _itr(),
+      _readerOffset(0),
+      _scr(nullptr),
+      _scrVal() {
   TRI_ASSERT(infos.getQuery().trx() != nullptr);
 
   TRI_ASSERT(ordered == (infos.getNumScoreRegisters() != 0));
@@ -257,24 +260,13 @@ bool readPK(irs::doc_iterator& it, irs::columnstore_reader::values_reader_f cons
 template <bool ordered>
 bool IResearchViewExecutor<ordered>::writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
   LocalDocumentId const& documentId = _indexReadBuffer.getId(bufferEntry);
-  TRI_voc_cid_t const& cid = _indexReadBuffer.getCid();
-
   TRI_ASSERT(documentId.isSet());
 
-  Query& query = infos().getQuery();
-  auto collection = lookupCollection(*query.trx(), cid, query);
-
-  if (!collection) {
-    std::stringstream msg;
-    msg << "failed to find collection while reading document from "
-           "arangosearch view, cid '"
-        << cid << "'";
-    query.registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
-    return false;
-  }
+  std::shared_ptr<arangodb::LogicalCollection> const& collection = _indexReadBuffer.getCollection();
+  TRI_ASSERT(collection != nullptr);
 
   // read document from underlying storage engine, if we got an id
-  if (collection->readDocumentWithCallback(query.trx(), documentId, ctx.callback)) {
+  if (collection->readDocumentWithCallback(infos().getQuery().trx(), documentId, ctx.callback)) {
     // in the ordered case we have to write scores as well as a document
     if /* constexpr */ (ordered) {
       // scorer register are placed consecutively after the document output register
@@ -353,8 +345,28 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
         continue;
       }
 
-      // CID is constant until the next resetIterator()
-      _indexReadBuffer.setCidAndReset(_reader->cid(_readerOffset));
+      // CID is constant until the next resetIterator(). Save the corresponding
+      // collection so we don't have to look it up every time.
+
+      TRI_voc_cid_t const cid = _reader->cid(_readerOffset);
+      Query& query = infos().getQuery();
+      std::shared_ptr<arangodb::LogicalCollection> collection =
+          lookupCollection(*query.trx(), cid, query);
+
+      if (!collection) {
+        std::stringstream msg;
+        msg << "failed to find collection while reading document from "
+               "arangosearch view, cid '"
+            << cid << "'";
+        query.registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
+
+        // We don't have a collection, skip the current reader.
+        ++_readerOffset;
+        _itr.reset();
+        continue;
+      }
+
+      _indexReadBuffer.setCollectionAndReset(std::move(collection));
     }
 
     TRI_ASSERT(_pkReader);
@@ -376,7 +388,7 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
     }
 
     // The CID must stay the same for all documents in the buffer
-    TRI_ASSERT(_indexReadBuffer.getCid() == _reader->cid(_readerOffset));
+    TRI_ASSERT(_indexReadBuffer.getCollection()->id() == _reader->cid(_readerOffset));
 
     _indexReadBuffer.pushDocument(documentId);
 
@@ -555,29 +567,6 @@ void IResearchViewExecutor<ordered>::reset() {
 
     _isInitialized = true;
   }
-}
-
-template <bool ordered>
-bool IResearchViewExecutor<ordered>::readDocument(
-    LogicalCollection const& collection, irs::doc_id_t const docId,
-    irs::columnstore_reader::values_reader_f const& pkValues,
-    IndexIterator::DocumentCallback const& callback) {
-  TRI_ASSERT(pkValues);
-
-  arangodb::LocalDocumentId docPk;
-  irs::bytes_ref tmpRef;
-
-  if (!pkValues(docId, tmpRef) ||
-      !arangodb::iresearch::DocumentPrimaryKey::read(docPk, tmpRef)) {
-    LOG_TOPIC("6442f", WARN, arangodb::iresearch::TOPIC)
-        << "failed to read document primary key while reading document from "
-           "arangosearch view, doc_id '"
-        << docId << "'";
-
-    return false;  // not a valid document reference
-  }
-
-  return collection.readDocumentWithCallback(infos().getQuery().trx(), docPk, callback);
 }
 
 template <bool ordered>
