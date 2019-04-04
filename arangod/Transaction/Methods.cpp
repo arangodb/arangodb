@@ -1861,16 +1861,16 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     if (!options.silent) {
       TRI_ASSERT(!options.returnNew || !docResult.empty());
       TRI_ASSERT(docResult.revisionId() != 0);
-
-      arangodb::velocypack::StringRef keyString(transaction::helpers::extractKeyFromDocument(
-          VPackSlice(docResult.vpack())));
-
+      
+      arangodb::velocypack::StringRef keyString;
       bool showReplaced = false;
       if (options.returnOld && prevDocResult.revisionId() != 0) {
         showReplaced = true;
         TRI_ASSERT(!prevDocResult.empty());
+        keyString = transaction::helpers::extractKeyFromDocument(VPackSlice(prevDocResult.vpack()));
+      } else {
+        keyString = transaction::helpers::extractKeyFromDocument(VPackSlice(docResult.vpack()));
       }
-
       buildDocumentIdentity(collection, resultBuilder, cid, keyString,
                             docResult.revisionId(), prevDocResult.revisionId(),
                             showReplaced ? &prevDocResult : nullptr,
