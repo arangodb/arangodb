@@ -392,12 +392,12 @@ bool IndexExecutor::advanceCursor() {
     if (!_infos.isAscending()) {
       decrCurrentIndex();
       if (_currentIndex == 0) {
-   //     setIsLastIndex(true);
+        setIsLastIndex(true);
       }
     } else {
       incrCurrentIndex();
       if (_infos.getIndexes().size() - 1 == _currentIndex) {
- //       setIsLastIndex(true);
+        setIsLastIndex(true);
       }
     }
 
@@ -463,7 +463,6 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
         } else {
           // only check for duplicates
           if (_alreadyReturned.find(token.id()) != _alreadyReturned.end()) {
-            LOG_DEVEL << "returned ";
             // Document found, skip
             return;
           }
