@@ -453,8 +453,8 @@ Result ClusterCollection::insert(arangodb::transaction::Methods*,
                                  arangodb::velocypack::Slice const,
                                  arangodb::ManagedDocumentResult&,
                                  OperationOptions&, TRI_voc_tick_t&, bool,
-                                 TRI_voc_tick_t&, KeyLockInfo* /*keyLock*/,
-                                 std::function<Result(void)> const&) {
+                                 KeyLockInfo* /*keyLock*/,
+                                 std::function<void()> const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -462,7 +462,7 @@ Result ClusterCollection::update(arangodb::transaction::Methods* trx,
                                  arangodb::velocypack::Slice const newSlice,
                                  ManagedDocumentResult& mdr, OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool,
-                                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) {
+                                 ManagedDocumentResult& previous) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -470,15 +470,14 @@ Result ClusterCollection::replace(transaction::Methods* trx,
                                   arangodb::velocypack::Slice const newSlice,
                                   ManagedDocumentResult& mdr, OperationOptions& options,
                                   TRI_voc_tick_t& resultMarkerTick, bool,
-                                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) {
+                                  ManagedDocumentResult& previous) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 Result ClusterCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
                                  ManagedDocumentResult& previous, OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                 TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
-                                 KeyLockInfo* /*keyLock*/, std::function<Result(void)> const& /*callbackDuringLock*/
+                                 KeyLockInfo* /*keyLock*/, std::function<void()> const& /*callbackDuringLock*/
 ) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

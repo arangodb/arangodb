@@ -1748,16 +1748,14 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
-  std::function<Result(void)> updateFollowers = nullptr;
+  std::function<void()> updateFollowers;
 
   if (needsToGetFollowersUnderLock) {
     FollowerInfo const& followerInfo = *collection->followers();
 
-    updateFollowers = [&followerInfo, &followers]() -> Result {
+    updateFollowers = [&followerInfo, &followers]() {
       TRI_ASSERT(followers == nullptr);
       followers = followerInfo.get();
-
-      return Result{};
     };
   } else if (_state->isDBServer()) {
     TRI_ASSERT(followers == nullptr);
@@ -1808,7 +1806,8 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
   }
 
   VPackBuilder resultBuilder;
-  ManagedDocumentResult documentResult;
+  ManagedDocumentResult docResult;
+  ManagedDocumentResult prevDocResult;  // return OLD (with override option)
   TRI_voc_tick_t maxTick = 0;
 
   auto workForOneDocument = [&](VPackSlice const value) -> Result {
@@ -1823,8 +1822,8 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     }
 
     TRI_voc_tick_t resultMarkerTick = 0;
-    TRI_voc_rid_t revisionId = 0;
-    documentResult.clear();
+    docResult.clear();
+    prevDocResult.clear();
 
     // insert with overwrite may NOT be a single document operation, as we
     // possibly need to do two separate operations (insert and replace).
@@ -1832,11 +1831,8 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
 
     TRI_ASSERT(needsLock == !isLocked(collection, AccessMode::Type::WRITE));
     Result res =
-        collection->insert(this, value, documentResult, options, resultMarkerTick,
-                           needsLock, revisionId, &keyLockInfo, updateFollowers);
-
-    TRI_voc_rid_t previousRevisionId = 0;
-    ManagedDocumentResult previousDocumentResult;  // return OLD
+        collection->insert(this, value, docResult, options, resultMarkerTick,
+                           needsLock, &keyLockInfo, updateFollowers);
 
     if (options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
       // RepSert Case - unique_constraint violated -> maxTick has not changed ->
@@ -1847,15 +1843,9 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
       TRI_ASSERT(!needsLock);
       TRI_ASSERT(!needsToGetFollowersUnderLock);
       TRI_ASSERT(updateFollowers == nullptr);
-      res = collection->replace(this, value, documentResult, options,
-                                resultMarkerTick, false, previousRevisionId,
-                                previousDocumentResult);
-      if (res.ok() && !options.silent) {
-        // If we are silent, then revisionId will not be looked at further
-        // down. In the silent case, documentResult is empty, so nobody
-        // must actually look at it!
-        revisionId = TRI_ExtractRevisionId(VPackSlice(documentResult.vpack()));
-      }
+      res = collection->replace(this, value, docResult, options,
+                                resultMarkerTick, /*lock*/false, prevDocResult);
+      TRI_ASSERT(res.fail() || prevDocResult.revisionId() != 0);
     }
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
@@ -1869,21 +1859,22 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     }
 
     if (!options.silent) {
-      TRI_ASSERT(!documentResult.empty());
+      TRI_ASSERT(!options.returnNew || !docResult.empty());
+      TRI_ASSERT(docResult.revisionId() != 0);
 
       arangodb::velocypack::StringRef keyString(transaction::helpers::extractKeyFromDocument(
-          VPackSlice(documentResult.vpack())));
+          VPackSlice(docResult.vpack())));
 
       bool showReplaced = false;
-      if (options.returnOld && previousRevisionId) {
+      if (options.returnOld && prevDocResult.revisionId() != 0) {
         showReplaced = true;
-        TRI_ASSERT(!previousDocumentResult.empty());
+        TRI_ASSERT(!prevDocResult.empty());
       }
 
       buildDocumentIdentity(collection, resultBuilder, cid, keyString,
-                            revisionId, previousRevisionId,
-                            showReplaced ? &previousDocumentResult : nullptr,
-                            options.returnNew ? &documentResult : nullptr);
+                            docResult.revisionId(), prevDocResult.revisionId(),
+                            showReplaced ? &prevDocResult : nullptr,
+                            options.returnNew ? &docResult : nullptr);
     }
     return Result();
   };
@@ -2103,6 +2094,7 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
       // just check if they're empty.
       if (needsToGetFollowersUnderLock || !followers->empty()) {
         options.silent = false;
+        options.returnNew = true;
       }
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
@@ -2144,7 +2136,6 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
       return res;
     }
 
-    TRI_voc_rid_t actualRevision = 0;
     TRI_voc_tick_t resultMarkerTick = 0;
     result.clear();
     previous.clear();
@@ -2155,10 +2146,10 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
 
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       res = collection->replace(this, newVal, result, options, resultMarkerTick,
-                                false, actualRevision, previous);
+                                /*lock*/false, previous);
     } else {
       res = collection->update(this, newVal, result, options, resultMarkerTick,
-                               false, actualRevision, previous);
+                               /*lock*/false, previous);
     }
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
@@ -2167,20 +2158,23 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
+        TRI_ASSERT(previous.revisionId() != 0);
         arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
-        buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision,
+        buildDocumentIdentity(collection, resultBuilder, cid, key, previous.revisionId(),
                               0, options.returnOld ? &previous : nullptr, nullptr);
       }
       return res;
     }
 
     if (!options.silent) {
-      TRI_ASSERT(!previous.empty());
-      TRI_ASSERT(!result.empty());
+      TRI_ASSERT(!options.returnOld || !previous.empty());
+      TRI_ASSERT(!options.returnNew || !result.empty());
+      TRI_ASSERT(result.revisionId() != 0 && previous.revisionId() != 0);
+
       arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
       buildDocumentIdentity(collection, resultBuilder, cid, key,
-                            TRI_ExtractRevisionId(VPackSlice(result.vpack())),
-                            actualRevision, options.returnOld ? &previous : nullptr,
+                            result.revisionId(), previous.revisionId(),
+                            options.returnOld ? &previous : nullptr,
                             options.returnNew ? &result : nullptr);
     }
 
@@ -2338,16 +2332,14 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
-  std::function<Result(void)> updateFollowers = nullptr;
+  std::function<void()> updateFollowers = nullptr;
 
   if (needsToGetFollowersUnderLock) {
     auto const& followerInfo = *collection->followers();
 
-    updateFollowers = [&followerInfo, &followers]() -> Result {
+    updateFollowers = [&followerInfo, &followers]() {
       TRI_ASSERT(followers == nullptr);
       followers = followerInfo.get();
-
-      return Result{};
     };
   } else if (_state->isDBServer()) {
     TRI_ASSERT(followers == nullptr);
@@ -2402,7 +2394,6 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
   TRI_voc_tick_t maxTick = 0;
 
   auto workForOneDocument = [&](VPackSlice value, bool isBabies) -> Result {
-    TRI_voc_rid_t actualRevision = 0;
     transaction::BuilderLeaser builder(this);
     arangodb::velocypack::StringRef key;
     if (value.isString()) {
@@ -2429,7 +2420,7 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
     TRI_ASSERT(needsLock == !isLocked(collection, AccessMode::Type::WRITE));
 
     auto res = collection->remove(*this, value, options, resultMarkerTick, needsLock,
-                                  actualRevision, previous, &keyLockInfo, updateFollowers);
+                                  previous, &keyLockInfo, updateFollowers);
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
@@ -2437,19 +2428,21 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
-        buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision,
+        TRI_ASSERT(previous.revisionId() != 0);
+        buildDocumentIdentity(collection, resultBuilder, cid, key, previous.revisionId(),
                               0, options.returnOld ? &previous : nullptr, nullptr);
       }
       return res;
     }
 
-    TRI_ASSERT(!previous.empty());
     if (!options.silent) {
-      buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision,
+      TRI_ASSERT(!options.returnOld || !previous.empty());
+      TRI_ASSERT(previous.revisionId() != 0);
+      buildDocumentIdentity(collection, resultBuilder, cid, key, previous.revisionId(),
                             0, options.returnOld ? &previous : nullptr, nullptr);
     }
 
-    return Result();
+    return res;
   };
 
   Result res;

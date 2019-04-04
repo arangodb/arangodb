@@ -940,21 +940,21 @@ Result LogicalCollection::compact() {
 Result LogicalCollection::insert(transaction::Methods* trx, VPackSlice const slice,
                                  ManagedDocumentResult& result, OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                 TRI_voc_rid_t& revisionId, KeyLockInfo* keyLockInfo,
-                                 std::function<Result(void)> callbackDuringLock) {
+                                 KeyLockInfo* keyLockInfo,
+                                 std::function<void()> const& cbDuringLock) {
   TRI_IF_FAILURE("LogicalCollection::insert") {
     return Result(TRI_ERROR_DEBUG);
   }
   resultMarkerTick = 0;
   return getPhysical()->insert(trx, slice, result, options, resultMarkerTick, lock,
-                               revisionId, keyLockInfo, std::move(callbackDuringLock));
+                               keyLockInfo, cbDuringLock);
 }
 
 /// @brief updates a document or edge in a collection
 Result LogicalCollection::update(transaction::Methods* trx, VPackSlice const newSlice,
                                  ManagedDocumentResult& result, OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) {
+                                 ManagedDocumentResult& previous) {
   TRI_IF_FAILURE("LogicalCollection::update") {
     return Result(TRI_ERROR_DEBUG);
   }
@@ -964,16 +964,15 @@ Result LogicalCollection::update(transaction::Methods* trx, VPackSlice const new
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  prevRev = 0;
   return getPhysical()->update(trx, newSlice, result, options, resultMarkerTick, lock,
-                               prevRev, previous);
+                               previous);
 }
 
 /// @brief replaces a document or edge in a collection
 Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice const newSlice,
                                   ManagedDocumentResult& result, OperationOptions& options,
                                   TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) {
+                                  ManagedDocumentResult& previous) {
   TRI_IF_FAILURE("LogicalCollection::replace") {
     return Result(TRI_ERROR_DEBUG);
   }
@@ -982,25 +981,21 @@ Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice const ne
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  prevRev = 0;
   return getPhysical()->replace(trx, newSlice, result, options, resultMarkerTick, lock,
-                                prevRev, previous);
+                                previous);
 }
 
 /// @brief removes a document or edge
 Result LogicalCollection::remove(transaction::Methods& trx, velocypack::Slice const slice,
                                  OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                                 bool lock, TRI_voc_rid_t& prevRev,
-                                 ManagedDocumentResult& previous, KeyLockInfo* keyLockInfo,
-                                 std::function<Result(void)> callbackDuringLock) {
+                                 bool lock, ManagedDocumentResult& previous, KeyLockInfo* keyLockInfo,
+                                 std::function<void()> const& cbDuringLock) {
   TRI_IF_FAILURE("LogicalCollection::remove") {
     return Result(TRI_ERROR_DEBUG);
   }
   resultMarkerTick = 0;
-  TRI_voc_rid_t revisionId = 0;
   return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick,
-                               lock, prevRev, revisionId, keyLockInfo,
-                               std::move(callbackDuringLock));
+                               lock, keyLockInfo, cbDuringLock);
 }
 
 bool LogicalCollection::readDocument(transaction::Methods* trx, LocalDocumentId const& token,
