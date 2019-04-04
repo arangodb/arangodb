@@ -76,8 +76,6 @@ class IndexExecutorInfos : public ExecutorInfos {
   std::vector<size_t> const& getCoveringIndexAttributePositions() {
     return _coveringIndexAttributePositions;
   }
-  std::vector<std::vector<Variable const*>> getInVars() { return _inVars; }
-  std::vector<std::vector<RegisterId>> getInRegs() { return _inRegs; }
   bool getProduceResult() { return _produceResult; }
   bool getUseRawDocumentPointers() { return _useRawDocumentPointers; }
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() {
@@ -216,19 +214,20 @@ class IndexExecutor {
   inline arangodb::OperationCursor* getCursor(size_t pos) {
     return _cursors[pos].get();
   }
-  std::vector<std::unique_ptr<OperationCursor>>& getCursors() {
-    return _cursors;
-  }
 
   void setIndexesExhausted(bool flag) { _indexesExhausted = flag; }
   bool getIndexesExhausted() { return _indexesExhausted; }
 
-  void setLastIndex(bool flag) { _isLastIndex = flag; }
   bool isLastIndex() { return _isLastIndex; }
+  void setIsLastIndex(bool flag) { _isLastIndex = flag; }
 
   void setCurrentIndex(size_t pos) { _currentIndex = pos; }
-  void decrCurrentIndex() { _currentIndex--; }
-  void incrCurrentIndex() { _currentIndex++; }
+  void decrCurrentIndex() {
+    _currentIndex--;
+  }
+  void incrCurrentIndex() {
+    _currentIndex++;
+  }
   size_t getCurrentIndex() const noexcept { return _currentIndex; }
 
  private:

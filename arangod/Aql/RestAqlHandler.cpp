@@ -813,7 +813,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         ExecutionState state;
         Result res;
         std::tie(state, res) =
-            query->engine()->shutdown(errorCode);  // pass errorCode to shutdown
+            query->engine()->shutdown(errorCode);
         if (state == ExecutionState::WAITING) {
           return RestStatus::WAITING;
         }
