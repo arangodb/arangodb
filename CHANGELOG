@@ -1,6 +1,8 @@
 devel
 -----
 
+* updated bundled version of jemalloc memory allocator to 5.1.0.
+
 * don't create per-database system collection `_frontend` automatically.
   This collection is only needed by the web UI, and it can be created lazily 
   when needed.
