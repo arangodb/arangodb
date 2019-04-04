@@ -52,7 +52,7 @@ namespace aql {
 
 SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
   // ExecutionState state
-  std::unique_ptr<AqlItemBlock> result;
+  SharedAqlItemBlockPtr result;
 
   // Mock of the ExecutionEngine
   fakeit::Mock<ExecutionEngine> mockEngine;
@@ -78,10 +78,9 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
   QueryOptions& lqueryOptions = mockQueryOptions.get();
   ProfileLevel profile = ProfileLevel(PROFILE_LEVEL_NONE);
 
-  fakeit::When(Method(mockBlockManager, requestBlock))
-      .AlwaysDo([&](size_t nrItems, RegisterId nrRegs) -> AqlItemBlock* {
-        return new AqlItemBlock(itemBlockManager, nrItems, nrRegs);
-      });
+  fakeit::When(Method(mockBlockManager, requestBlock)).AlwaysDo([&](size_t nrItems, RegisterId nrRegs) -> SharedAqlItemBlockPtr {
+    return SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, nrItems, nrRegs)};
+  });
 
   fakeit::When(Method(mockEngine, itemBlockManager)).AlwaysReturn(itemBlockManager);
   fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
@@ -107,11 +106,11 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
     VPackBuilder input;
     BlockFetcherMock<false> blockFetcherMock{monitor, 0};
 
-    std::unique_ptr<AqlItemBlock> block = nullptr;
+    SharedAqlItemBlockPtr block = nullptr;
 
     WHEN("the executor does wait, using getSome") {
-      std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;
-      std::unique_ptr<AqlItemBlock> block = buildBlock<1>(itemBlockManager, {{42}});
+      std::deque<SharedAqlItemBlockPtr> blockDeque;
+      SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
       blockDeque.push_back(std::move(block));
 
       WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
@@ -134,8 +133,8 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
     }
 
     WHEN("the executor does wait, using skipSome") {
-      std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;
-      std::unique_ptr<AqlItemBlock> block = buildBlock<1>(itemBlockManager, {{42}});
+      std::deque<SharedAqlItemBlockPtr> blockDeque;
+      SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
       blockDeque.push_back(std::move(block));
 
       WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
@@ -165,19 +164,19 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
     VPackBuilder input;
     BlockFetcherMock<false> blockFetcherMock{monitor, 0};
 
-    std::unique_ptr<AqlItemBlock> block = nullptr;
+    SharedAqlItemBlockPtr block = nullptr;
 
     WHEN("the executor does wait - using getSome - one block") {
       // we are checking multiple input blocks
       // we are only fetching 1 row each (atMost = 1)
       // after a DONE is returned, it must stay done!
 
-      std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;
-      std::unique_ptr<AqlItemBlock> blocka = buildBlock<1>(itemBlockManager, {{42}});
-      std::unique_ptr<AqlItemBlock> blockb = buildBlock<1>(itemBlockManager, {{42}});
-      std::unique_ptr<AqlItemBlock> blockc = buildBlock<1>(itemBlockManager, {{42}});
-      std::unique_ptr<AqlItemBlock> blockd = buildBlock<1>(itemBlockManager, {{42}});
-      std::unique_ptr<AqlItemBlock> blocke = buildBlock<1>(itemBlockManager, {{42}});
+      std::deque<SharedAqlItemBlockPtr> blockDeque;
+      SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, {{42}});
+      SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, {{42}});
+      SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, {{42}});
+      SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, {{42}});
+      SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, {{42}});
       blockDeque.push_back(std::move(blocka));
       blockDeque.push_back(std::move(blockb));
       blockDeque.push_back(std::move(blockc));
@@ -235,12 +234,12 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
     WHEN("the executor does wait - using getSome - multiple blocks") {
       // as test above, BUT with a higher atMost value.
 
-      std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;
-      std::unique_ptr<AqlItemBlock> blocka = buildBlock<1>(itemBlockManager, {{42}});
-      std::unique_ptr<AqlItemBlock> blockb = buildBlock<1>(itemBlockManager, {{42}});
-      std::unique_ptr<AqlItemBlock> blockc = buildBlock<1>(itemBlockManager, {{42}});
-      std::unique_ptr<AqlItemBlock> blockd = buildBlock<1>(itemBlockManager, {{42}});
-      std::unique_ptr<AqlItemBlock> blocke = buildBlock<1>(itemBlockManager, {{42}});
+      std::deque<SharedAqlItemBlockPtr> blockDeque;
+      SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, {{42}});
+      SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, {{42}});
+      SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, {{42}});
+      SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, {{42}});
+      SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, {{42}});
       blockDeque.push_back(std::move(blocka));
       blockDeque.push_back(std::move(blockb));
       blockDeque.push_back(std::move(blockc));
@@ -293,12 +292,12 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
       // we are only fetching 1 row each (atMost = 1)
       // after a DONE is returned, it must stay done!
 
-      std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;
-      std::unique_ptr<AqlItemBlock> blocka = buildBlock<1>(itemBlockManager, {{42}});
-      std::unique_ptr<AqlItemBlock> blockb = buildBlock<1>(itemBlockManager, {{42}});
-      std::unique_ptr<AqlItemBlock> blockc = buildBlock<1>(itemBlockManager, {{42}});
-      std::unique_ptr<AqlItemBlock> blockd = buildBlock<1>(itemBlockManager, {{42}});
-      std::unique_ptr<AqlItemBlock> blocke = buildBlock<1>(itemBlockManager, {{42}});
+      std::deque<SharedAqlItemBlockPtr> blockDeque;
+      SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, {{42}});
+      SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, {{42}});
+      SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, {{42}});
+      SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, {{42}});
+      SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, {{42}});
       blockDeque.push_back(std::move(blocka));
       blockDeque.push_back(std::move(blockb));
       blockDeque.push_back(std::move(blockc));
@@ -363,8 +362,8 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
     BlockFetcherMock<false> blockFetcherMock{monitor, 0};
 
     WHEN("the executor does wait, using getSome") {
-      std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;
-      std::unique_ptr<AqlItemBlock> block = buildBlock<1>(itemBlockManager, {{42}});
+      std::deque<SharedAqlItemBlockPtr> blockDeque;
+      SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
       blockDeque.push_back(std::move(block));
 
       WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};

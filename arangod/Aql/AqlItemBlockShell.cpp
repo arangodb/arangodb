@@ -32,10 +32,3 @@ AqlItemBlockShell::AqlItemBlockShell(AqlItemBlockManager& manager,
   // one AqlItemBlock. _block may never be null!
   TRI_ASSERT(_block != nullptr);
 }
-
-void AqlItemBlockShell::forRowInBlock(std::function<void(InputAqlItemRow&&)> callback) {
-    TRI_ASSERT(_block);
-    for (std::size_t index = 0; index < block().size(); ++index) {
-      callback(InputAqlItemRow{ shared_from_this(), index});
-    }
-}

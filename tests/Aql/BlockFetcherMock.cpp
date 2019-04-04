@@ -52,7 +52,7 @@ BlockFetcherMock<passBlocksThrough>::BlockFetcherMock(arangodb::aql::ResourceMon
       _itemBlockManager(&_monitor) {}
 
 template <bool passBlocksThrough>
-std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
+std::pair<ExecutionState, SharedAqlItemBlockPtr>
 // NOLINTNEXTLINE google-default-arguments
 BlockFetcherMock<passBlocksThrough>::fetchBlock(size_t) {
   _numFetchBlockCalls++;
@@ -61,12 +61,12 @@ BlockFetcherMock<passBlocksThrough>::fetchBlock(size_t) {
     return {ExecutionState::DONE, nullptr};
   }
 
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> returnValue =
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> returnValue =
       std::move(_itemsToReturn.front());
   _itemsToReturn.pop();
 
   if (returnValue.second != nullptr) {
-    auto blockPtr = reinterpret_cast<AqlItemBlockPtr>(&returnValue.second->block());
+    auto blockPtr = reinterpret_cast<AqlItemBlockPtr>(returnValue.second.get());
     bool didInsert;
     std::tie(std::ignore, didInsert) = _fetchedBlocks.insert(blockPtr);
     // BlockFetcherMock<passBlocksThrough>::fetchBlock() should not return the same block twice:
@@ -82,16 +82,16 @@ BlockFetcherMock<passBlocksThrough>::fetchBlock(size_t) {
 
 template <bool passBlocksThrough>
 BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::shouldReturn(
-    ExecutionState state, std::unique_ptr<AqlItemBlock> block) {
+    ExecutionState state, SharedAqlItemBlockPtr const& block) {
   // Should only be called once on each instance
   TRI_ASSERT(_itemsToReturn.empty());
 
-  return andThenReturn(state, std::move(block));
+  return andThenReturn(state, block);
 }
 
 template <bool passBlocksThrough>
 BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::shouldReturn(
-    std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> firstReturnValue) {
+    std::pair<ExecutionState, SharedAqlItemBlockPtr> firstReturnValue) {
   // Should only be called once on each instance
   TRI_ASSERT(_itemsToReturn.empty());
 
@@ -100,7 +100,7 @@ BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::should
 
 template <bool passBlocksThrough>
 BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::shouldReturn(
-    std::vector<std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>> firstReturnValues) {
+    std::vector<std::pair<ExecutionState, SharedAqlItemBlockPtr>> firstReturnValues) {
   // Should only be called once on each instance
   TRI_ASSERT(_itemsToReturn.empty());
 
@@ -109,7 +109,7 @@ BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::should
 
 template <bool passBlocksThrough>
 BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::andThenReturn(
-    ExecutionState state, std::unique_ptr<AqlItemBlock> block) {
+    ExecutionState state, SharedAqlItemBlockPtr const& block) {
   auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
   // add all registers as input
   /* Note: without the `this->` in the following line, I'm getting this error:
@@ -121,16 +121,12 @@ BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::andThe
   for (RegisterId i = 0; i < this->getNrInputRegisters(); i++) {
     inputRegisters->emplace(i);
   }
-  std::shared_ptr<AqlItemBlockShell> blockShell;
-  if (block != nullptr) {
-    blockShell = std::make_shared<AqlItemBlockShell>(_itemBlockManager, std::move(block));
-  }
-  return andThenReturn({state, std::move(blockShell)});
+  return andThenReturn({state, block});
 }
 
 template <bool passBlocksThrough>
 BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::andThenReturn(
-    std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> additionalReturnValue) {
+    std::pair<ExecutionState, SharedAqlItemBlockPtr> additionalReturnValue) {
   _itemsToReturn.push(std::move(additionalReturnValue));
 
   return *this;
@@ -138,7 +134,7 @@ BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::andThe
 
 template <bool passBlocksThrough>
 BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::andThenReturn(
-    std::vector<std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>> additionalReturnValues) {
+    std::vector<std::pair<ExecutionState, SharedAqlItemBlockPtr>> additionalReturnValues) {
   for (auto& it : additionalReturnValues) {
     andThenReturn(std::move(it));
   }
@@ -171,7 +167,7 @@ MultiBlockFetcherMock<passBlocksThrough>::MultiBlockFetcherMock(
 }
 
 template <bool passBlocksThrough>
-std::pair<arangodb::aql::ExecutionState, std::shared_ptr<arangodb::aql::AqlItemBlockShell>>
+std::pair<arangodb::aql::ExecutionState, SharedAqlItemBlockPtr>
 MultiBlockFetcherMock<passBlocksThrough>::fetchBlockForDependency(size_t dependency,
                                                                   size_t atMost) {
   return getDependencyMock(dependency).fetchBlock(atMost);

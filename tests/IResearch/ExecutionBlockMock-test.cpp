@@ -214,7 +214,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     {
       auto pair = block.getSome(10);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      REQUIRE(nullptr != pair.second);
+      REQUIRE(pair.second != nullptr);
       CHECK(10 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -223,7 +223,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     {
       auto pair = block.getSome(100);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      REQUIRE(nullptr != pair.second);
+      REQUIRE(pair.second != nullptr);
       CHECK(90 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -232,7 +232,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     {
       auto pair = block.getSome(1);
       CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
-      CHECK(nullptr == pair.second);
+      CHECK(pair.second == nullptr);
     }
   }
 
@@ -266,7 +266,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     {
       auto pair = block.getSome(10);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      REQUIRE(nullptr != pair.second);
+      REQUIRE(pair.second != nullptr);
       CHECK(10 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -281,7 +281,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     {
       auto pair = block.getSome(1);
       CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
-      CHECK(nullptr == pair.second);
+      CHECK(pair.second == nullptr);
     }
   }
 
@@ -322,7 +322,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     {
       auto pair = block.getSome(10);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      REQUIRE(nullptr != pair.second);
+      REQUIRE(pair.second != nullptr);
       CHECK(10 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -331,7 +331,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     {
       auto pair = block.getSome(1);
       CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
-      CHECK(nullptr == pair.second);
+      CHECK(pair.second == nullptr);
     }
   }
 }
@@ -379,7 +379,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(10);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      REQUIRE(nullptr != pair.second);
+      REQUIRE(pair.second != nullptr);
       CHECK(10 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -388,7 +388,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(100);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      REQUIRE(nullptr != pair.second);
+      REQUIRE(pair.second != nullptr);
       CHECK(90 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -397,7 +397,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(100);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      REQUIRE(nullptr != pair.second);
+      REQUIRE(pair.second != nullptr);
       CHECK(100 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -406,7 +406,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(1);
       CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
-      CHECK(nullptr == pair.second);
+      CHECK(pair.second == nullptr);
     }
   }
 
@@ -444,7 +444,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(10);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      REQUIRE(nullptr != pair.second);
+      REQUIRE(pair.second != nullptr);
       CHECK(10 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -460,7 +460,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(100);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      REQUIRE(nullptr != pair.second);
+      REQUIRE(pair.second != nullptr);
       CHECK(100 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -469,7 +469,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(1);
       CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
-      CHECK(nullptr == pair.second);
+      CHECK(pair.second == nullptr);
     }
   }
 
@@ -514,7 +514,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(10);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      REQUIRE(nullptr != pair.second);
+      REQUIRE(pair.second != nullptr);
       CHECK(10 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -523,7 +523,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(100);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      REQUIRE(nullptr != pair.second);
+      REQUIRE(pair.second != nullptr);
       CHECK(100 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -532,7 +532,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(1);
       CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
-      CHECK(nullptr == pair.second);
+      CHECK(pair.second == nullptr);
     }
   }
 }

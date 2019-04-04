@@ -64,10 +64,10 @@ struct Collections {
     bool const _responsibleForTrx;
   };
 
-  typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> const& FuncCallback;
-  typedef std::function<void(velocypack::Slice const&)> const& DocCallback;
+  typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
+  typedef std::function<void(velocypack::Slice const&)> DocCallback;
 
-  static void enumerate(TRI_vocbase_t* vocbase, FuncCallback);
+  static void enumerate(TRI_vocbase_t* vocbase, FuncCallback const&);
 
   /// @brief lookup a collection in vocbase or clusterinfo.
   static arangodb::Result lookup( // find collection
@@ -109,7 +109,8 @@ struct Collections {
   static Result revisionId(Context& ctxt, TRI_voc_rid_t& rid);
 
   /// @brief Helper implementation similar to ArangoCollection.all() in v8
-  static arangodb::Result all(TRI_vocbase_t& vocbase, std::string const& cname, DocCallback cb);
+  static arangodb::Result all(TRI_vocbase_t& vocbase, std::string const& cname,
+                              DocCallback const& cb);
 };
 #ifdef USE_ENTERPRISE
 Result ULColCoordinatorEnterprise(std::string const& databaseName,

@@ -49,8 +49,8 @@ ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
   _usesDefaultSharding = collection->usesDefaultSharding();
 }
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<DistributeExecutor>::traceGetSomeEnd(
-    ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
+std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<DistributeExecutor>::traceGetSomeEnd(
+    ExecutionState state, SharedAqlItemBlockPtr result) {
   ExecutionBlock::traceGetSomeEnd(result.get(), state);
   return {state, std::move(result)};
 }
@@ -76,18 +76,18 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<DistributeExecutor>::initia
 }
 
 /// @brief getSomeForShard
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<DistributeExecutor>::getSomeForShard(
+std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<DistributeExecutor>::getSomeForShard(
     size_t atMost, std::string const& shardId) {
   traceGetSomeBegin(atMost);
   auto result = getSomeForShardWithoutTrace(atMost, shardId);
   return traceGetSomeEnd(result.first, std::move(result.second));
 }
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<DistributeExecutor>::getSomeForShardWithoutTrace(
+std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<DistributeExecutor>::getSomeForShardWithoutTrace(
     size_t atMost, std::string const& shardId) {
   // NOTE: We do not need to retain these, the getOrSkipSome is required to!
   size_t skipped = 0;
-  std::unique_ptr<AqlItemBlock> result = nullptr;
+  SharedAqlItemBlockPtr result = nullptr;
   auto out = getOrSkipSomeForShard(atMost, false, result, skipped, shardId);
   if (out.first == ExecutionState::WAITING) {
     return {out.first, nullptr};
@@ -110,7 +110,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::skipSo
     size_t atMost, std::string const& shardId) {
   // NOTE: We do not need to retain these, the getOrSkipSome is required to!
   size_t skipped = 0;
-  std::unique_ptr<AqlItemBlock> result = nullptr;
+  SharedAqlItemBlockPtr result = nullptr;
   auto out = getOrSkipSomeForShard(atMost, true, result, skipped, shardId);
   if (out.first == ExecutionState::WAITING) {
     return {out.first, 0};
@@ -124,7 +124,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::skipSo
 
 /// @brief getOrSkipSomeForShard
 std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<DistributeExecutor>::getOrSkipSomeForShard(
-    size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
+    size_t atMost, bool skipping, SharedAqlItemBlockPtr& result,
     size_t& skipped, std::string const& shardId) {
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
@@ -175,7 +175,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<DistributeExecuto
       }
     }
 
-    std::unique_ptr<AqlItemBlock> more(_buffer[n]->slice(chosen, 0, chosen.size()));
+    SharedAqlItemBlockPtr more(_buffer[n]->slice(chosen, 0, chosen.size()));
     collector.add(std::move(more));
 
     chosen.clear();
@@ -183,7 +183,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<DistributeExecuto
 
   // Skipping was handle before
   TRI_ASSERT(!skipping);
-  result.reset(collector.steal());
+  result = collector.steal();
 
   // _buffer is left intact, deleted and cleared at shutdown
 

@@ -283,35 +283,8 @@ void ExecutionBlock::traceSkipSomeEnd(size_t skipped, ExecutionState state) {
   }
 }
 
-/// @brief getSome, gets some more items, semantic is as follows: not
-/// more than atMost items may be delivered. The method tries to
-/// return a block of at most atMost items, however, it may return
-/// less (for example if there are not enough items to come). However,
-/// if it returns an actual block, it must contain at least one item.
-/// getSome() also takes care of tracing and clearing registers; don't do it
-/// in getOrSkipSome() implementations.
-// TODO Blocks overriding getSome (and skipSome) instead of getOrSkipSome should
-//      still not have to call traceGetSomeBegin/~End and clearRegisters on
-//      their own. This can be solved by adding one level of indirection via a
-//      method _getSome(), which by default only calls
-//      getSomeWithoutRegisterClearout() and which can be overridden instead.
-//      Or maybe overriding getSomeWithoutRegisterClearout() instead is better.
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlock::getSome(size_t atMost) {
-  traceGetSomeBegin(atMost);
-
-  auto res = getSomeWithoutRegisterClearout(atMost);
-  if (res.first == ExecutionState::WAITING) {
-    traceGetSomeEnd(nullptr, res.first);
-    return {ExecutionState::WAITING, nullptr};
-  }
-
-  clearRegisters(res.second.get());
-  traceGetSomeEnd(res.second.get(), res.first);
-  return res;
-}
-
 /// @brief request an AqlItemBlock from the memory manager
-AqlItemBlock* ExecutionBlock::requestBlock(size_t nrItems, RegisterId nrRegs) {
+SharedAqlItemBlockPtr ExecutionBlock::requestBlock(size_t nrItems, RegisterId nrRegs) {
   return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
 }
 
@@ -362,7 +335,7 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst
 std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
   throwIfKilled();  // check if we were aborted
 
-  auto res = _dependencies[0]->getSome(atMost);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> res = _dependencies[0]->getSome(atMost);
   if (res.first == ExecutionState::WAITING) {
     return {res.first, false};
   }
@@ -375,42 +348,10 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
 
   if (res.second != nullptr) {
     _buffer.emplace_back(res.second.get());
-    res.second.release();
     return {res.first, true};
   }
 
   return {res.first, false};
-}
-
-/// @brief getSomeWithoutRegisterClearout, same as above, however, this
-/// is the actual worker which does not clear out registers at the end
-/// the idea is that somebody who wants to call the generic functionality
-/// in a derived class but wants to modify the results before the register
-/// cleanup can use this method, internal use only
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
-  TRI_ASSERT(atMost > 0);
-
-  std::unique_ptr<AqlItemBlock> result;
-  ExecutionState state;
-  Result res;
-
-  {
-    AqlItemBlock* resultPtr = nullptr;
-    size_t skipped = 0;
-    std::tie(state, res) = getOrSkipSome(atMost, false, resultPtr, skipped);
-    result.reset(resultPtr);
-  }
-
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(result == nullptr);
-    return {ExecutionState::WAITING, nullptr};
-  }
-
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return {state, std::move(result)};
 }
 
 void ExecutionBlock::clearRegisters(AqlItemBlock* result) {
@@ -418,27 +359,6 @@ void ExecutionBlock::clearRegisters(AqlItemBlock* result) {
   if (result != nullptr) {
     result->clearRegisters(getPlanNode()->_regsToClear);
   }
-}
-
-std::pair<ExecutionState, size_t> ExecutionBlock::skipSome(size_t atMost) {
-  traceSkipSomeBegin(atMost);
-  size_t skipped = 0;
-  AqlItemBlock* result = nullptr;
-  auto res = getOrSkipSome(atMost, true, result, skipped);
-  TRI_ASSERT(result == nullptr);
-
-  if (res.first == ExecutionState::WAITING) {
-    TRI_ASSERT(skipped == 0);
-    traceSkipSomeEnd(skipped, ExecutionState::WAITING);
-    return {ExecutionState::WAITING, skipped};
-  }
-
-  if (res.second.fail()) {
-    THROW_ARANGO_EXCEPTION(res.second);
-  }
-
-  traceSkipSomeEnd(skipped, res.first);
-  return {res.first, skipped};
 }
 
 ExecutionBlock::BufferState ExecutionBlock::getBlockIfNeeded(size_t atMost) {
@@ -491,114 +411,6 @@ AqlItemBlock* ExecutionBlock::advanceCursor(size_t numInputRowsConsumed,
   }
 
   return nullptr;
-}
-
-std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
-    size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped_) {
-  TRI_ASSERT(result == nullptr && skipped_ == 0);
-
-  // if _buffer.size() is > 0 then _pos points to a valid place . . .
-
-  auto processRows = [this](size_t atMost, bool skipping) -> std::pair<size_t, bool> {
-    AqlItemBlock* cur = _buffer.front();
-    TRI_ASSERT(cur != nullptr);
-
-    size_t rowsProcessed = 0;
-    bool keepFrontBlock = false;
-
-    if (cur->size() - _pos > atMost) {
-      // The current block is too large for atMost:
-      if (!skipping) {
-        std::unique_ptr<AqlItemBlock> more(cur->slice(_pos, _pos + atMost));
-
-        TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-
-        _collector.add(std::move(more));
-      }
-      rowsProcessed = atMost;
-    } else if (_pos > 0) {
-      // The current block fits into our result, but it is already
-      // half-eaten:
-      if (!skipping) {
-        std::unique_ptr<AqlItemBlock> more(cur->slice(_pos, cur->size()));
-
-        TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-
-        _collector.add(std::move(more));
-      }
-      rowsProcessed = cur->size() - _pos;
-    } else {
-      // The current block fits into our result and is fresh:
-      if (!skipping) {
-        // if any of the following statements throw, then cur is not lost,
-        // as it is still contained in _buffer
-        TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        _collector.add(cur);
-        // claim ownership of cur
-        keepFrontBlock = true;
-      }
-      rowsProcessed = cur->size();
-    }
-
-    // Number of input and output rows is always equal here
-    return {rowsProcessed, keepFrontBlock};
-  };
-
-  while (ExecutionBlock::getHasMoreState() != ExecutionState::DONE && _skipped < atMost) {
-    if (skipping && _buffer.empty()) {
-      // Skip upstream directly if possible
-      ExecutionState state;
-      size_t numActuallySkipped;
-      std::tie(state, numActuallySkipped) = _dependencies[0]->skipSome(atMost);
-      if (state == ExecutionState::WAITING) {
-        TRI_ASSERT(numActuallySkipped == 0);
-        return {state, TRI_ERROR_NO_ERROR};
-      }
-      _upstreamState = state;
-      _skipped += numActuallySkipped;
-
-      break;
-    }
-
-    BufferState bufferState = getBlockIfNeeded(atMost - _skipped);
-    if (bufferState == BufferState::WAITING) {
-      TRI_ASSERT(skipped_ == 0);
-      TRI_ASSERT(result == nullptr);
-      return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
-    }
-    if (bufferState == BufferState::NO_MORE_BLOCKS) {
-      break;
-    }
-
-    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS ||
-               bufferState == BufferState::HAS_NEW_BLOCK);
-    TRI_ASSERT(!_buffer.empty());
-
-    size_t rowsProcessed;
-    bool keepFrontBlock;
-    std::tie(rowsProcessed, keepFrontBlock) = processRows(atMost - _skipped, skipping);
-    // number of input rows consumed and output rows created is equal here
-    AqlItemBlock* removedBlock = advanceCursor(rowsProcessed, rowsProcessed);
-    if (!keepFrontBlock) {
-      returnBlockUnlessNull(removedBlock);
-    }
-  }
-
-  TRI_ASSERT(result == nullptr);
-
-  if (!skipping) {
-    result = _collector.steal();
-  }
-  skipped_ = _skipped;
-  _skipped = 0;
-
-  return {ExecutionBlock::getHasMoreState(), TRI_ERROR_NO_ERROR};
 }
 
 ExecutionState ExecutionBlock::getHasMoreState() {

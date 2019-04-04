@@ -151,8 +151,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * Then we can also get rid of the stealBlock methods in OutputAqlItemRow,
    * OutputAqlItemBlockShell and AqlItemBlockShell. No more invalid block
    * access!
+   * NOTE TO SELF: Solving this TODO right now!
    */
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override;
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
 
   /**
    * @brief Like get some, but lines are skipped and not returned.
@@ -189,8 +190,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
    *        arguments compatible to getSome's return type.
    */
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> traceGetSomeEnd(
-      ExecutionState state, std::unique_ptr<AqlItemBlock> result);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> traceGetSomeEnd(ExecutionState state,
+                                                                   SharedAqlItemBlockPtr result);
 
   /**
    * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
@@ -201,7 +202,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   /**
    * @brief Inner getSome() part, without the tracing calls.
    */
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutTrace(size_t atMost);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
 
   /**
    * @brief Allocates a new AqlItemBlock and returns it in a shell, with the
@@ -216,10 +217,10 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    *        nullptr. This Happens only if upstream is WAITING, or respectively,
    *        if it is DONE and did not return a new block.
    */
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> requestWrappedBlock(
-      size_t nrItems, RegisterId nrRegs);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> requestWrappedBlock(size_t nrItems,
+                                                                       RegisterId nrRegs);
 
-  std::unique_ptr<OutputAqlItemRow> createOutputRow(std::shared_ptr<AqlItemBlockShell>& newBlock) const;
+  std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock) const;
 
   Query const& getQuery() const { return _query; }
 

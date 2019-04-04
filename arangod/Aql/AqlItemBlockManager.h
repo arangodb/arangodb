@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H 1
 
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 
@@ -45,7 +46,10 @@ class AqlItemBlockManager {
 
  public:
   /// @brief request a block with the specified size
-  TEST_VIRTUAL AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
+  TEST_VIRTUAL SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterId nrRegs);
+
+  /// @brief request a block and initialize it from the slice
+  TEST_VIRTUAL SharedAqlItemBlockPtr requestAndInitBlock(velocypack::Slice slice);
 
   /// @brief return a block to the manager
   TEST_VIRTUAL void returnBlock(AqlItemBlock*& block) noexcept;

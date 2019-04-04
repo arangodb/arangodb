@@ -41,6 +41,7 @@ class Methods;
 namespace aql {
 class InputAqlItemRow;
 class ExecutionEngine;
+class SharedAqlItemBlockPtr;
 
 class ExecutionBlock {
  public:
@@ -49,7 +50,7 @@ class ExecutionBlock {
   virtual ~ExecutionBlock();
 
   ExecutionBlock(ExecutionBlock const&) = delete;
-  ExecutionBlock operator=(ExecutionBlock const&) = delete;
+  ExecutionBlock& operator=(ExecutionBlock const&) = delete;
 
  public:
   /// @brief batch size value
@@ -99,7 +100,7 @@ class ExecutionBlock {
   /// if it returns an actual block, it must contain at least one item.
   /// getSome() also takes care of tracing and clearing registers; don't do it
   /// in getOrSkipSome() implementations.
-  virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost);
+  virtual std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) = 0;
 
   void traceGetSomeBegin(size_t atMost);
   void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state);
@@ -112,7 +113,7 @@ class ExecutionBlock {
   /// skip a block of at most atMost items, however, it may skip
   /// less (for example if there are not enough items to come). The number of
   /// elements skipped is returned.
-  virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost);
+  virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost) = 0;
 
   ExecutionNode const* getPlanNode() const { return _exeNode; }
 
@@ -134,7 +135,7 @@ class ExecutionBlock {
 
  protected:
   /// @brief request an AqlItemBlock from the memory manager
-  AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
+  SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterId nrRegs);
 
   /// @brief return an AqlItemBlock to the memory manager
   void returnBlock(AqlItemBlock*& block) noexcept;
@@ -156,25 +157,9 @@ class ExecutionBlock {
   /// the dependent node is exhausted.
   std::pair<ExecutionState, bool> getBlock(size_t atMost);
 
-  /// @brief getSomeWithoutRegisterClearout, same as above, however, this
-  /// is the actual worker which does not clear out registers at the end
-  /// the idea is that somebody who wants to call the generic functionality
-  /// in a derived class but wants to modify the results before the register
-  /// cleanup can use this method, internal use only
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutRegisterClearout(size_t atMost);
-
   /// @brief clearRegisters, clears out registers holding values that are no
   /// longer needed by later nodes
   void clearRegisters(AqlItemBlock* result);
-
-  /// @brief generic method to get or skip some
-  /// Does neither do tracing (traceGetSomeBegin/~End), nor call
-  /// clearRegisters() - both is done in getSome(), which calls this via
-  /// getSomeWithoutRegisterClearout(). The same must hold for all overriding
-  /// implementations.
-  virtual std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
-                                                          AqlItemBlock*& result,
-                                                          size_t& skipped);
 
   /// @brief Returns the success return start of this block.
   ///        Can either be HASMORE or DONE.

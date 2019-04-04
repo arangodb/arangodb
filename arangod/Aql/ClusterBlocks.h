@@ -27,6 +27,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/SortRegister.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterComm.h"
@@ -66,7 +67,7 @@ class BlockWithClients : public ExecutionBlock {
   std::pair<ExecutionState, Result> shutdown(int) override;
 
   /// @brief getSome: shouldn't be used, use skipSomeForShard
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final {
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override final {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -78,7 +79,7 @@ class BlockWithClients : public ExecutionBlock {
   }
 
   /// @brief getSomeForShard
-  virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShard(
+  virtual std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(
       size_t atMost, std::string const& shardId) = 0;
 
   /// @brief skipSomeForShard

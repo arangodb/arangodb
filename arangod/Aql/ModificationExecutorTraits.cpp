@@ -32,6 +32,7 @@
 
 #include <algorithm>
 
+#include "AqlItemBlockUtils.h"
 #include "velocypack/Collection.h"
 #include "velocypack/velocypack-aliases.h"
 
@@ -162,7 +163,8 @@ void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
   try {
     if (opRes.slice().isArray()) {
       for (auto doc : VPackArrayIterator(opRes.slice())) {
-        if (doc.isObject() && doc.hasKey(StaticStrings::ErrorNum) && doc.get(StaticStrings::ErrorNum).getInt() == code) {
+        if (doc.isObject() && doc.hasKey(StaticStrings::ErrorNum) &&
+            doc.get(StaticStrings::ErrorNum).getInt() == code) {
           VPackSlice s = doc.get(StaticStrings::ErrorMessage);
           if (s.isString()) {
             message = s.copyString();
@@ -190,8 +192,8 @@ bool Insert::doModifications(ModificationExecutorInfos& info, ModificationStats&
   _tmpBuilder.openArray();
 
   RegisterId const inReg = info._input1RegisterId;
-  TRI_ASSERT(_block);
-  _block->forRowInBlock([this, inReg, &info](InputAqlItemRow&& row) {
+  TRI_ASSERT(_block != nullptr);
+  itemBlock::forRowInBlock(_block, [this, inReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
         !info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
@@ -205,7 +207,7 @@ bool Insert::doModifications(ModificationExecutorInfos& info, ModificationStats&
     }
   });
 
-  TRI_ASSERT(_operations.size() == _block->block().size());
+  TRI_ASSERT(_operations.size() == _block->size());
 
   _tmpBuilder.close();
   auto toInsert = _tmpBuilder.slice();
@@ -220,7 +222,8 @@ bool Insert::doModifications(ModificationExecutorInfos& info, ModificationStats&
 
   // execute insert
   TRI_ASSERT(info._trx);
-  auto operationResult = info._trx->insert(info._aqlCollection->name(), toInsert, info._options);
+  auto operationResult =
+      info._trx->insert(info._aqlCollection->name(), toInsert, info._options);
   setOperationResult(std::move(operationResult));
 
   // handle statisitcs
@@ -249,10 +252,9 @@ bool Insert::doModifications(ModificationExecutorInfos& info, ModificationStats&
 }
 
 bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output) {
-  TRI_ASSERT(_block);
-  TRI_ASSERT(_block->hasBlock());
+  TRI_ASSERT(_block != nullptr);
 
-  std::size_t blockSize = _block->block().size();
+  std::size_t blockSize = _block->size();
   TRI_ASSERT(_blockIndex < blockSize);
 
   // ignore-skip values
@@ -317,9 +319,9 @@ bool Remove::doModifications(ModificationExecutorInfos& info, ModificationStats&
   std::string rev;
 
   RegisterId const inReg = info._input1RegisterId;
-  TRI_ASSERT(_block);
-  _block->forRowInBlock([this, &stats, &errorCode, &key, &rev, trx, inReg,
-                         &info](InputAqlItemRow&& row) {
+  TRI_ASSERT(_block != nullptr);
+  itemBlock::forRowInBlock(_block, [this, &stats, &errorCode, &key, &rev, trx,
+                                    inReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
 
     if (!info._consultAqlWriteFilter ||
@@ -361,7 +363,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info, ModificationStats&
     }
   });
 
-  TRI_ASSERT(_operations.size() == _block->block().size());
+  TRI_ASSERT(_operations.size() == _block->size());
 
   _tmpBuilder.close();
   auto toRemove = _tmpBuilder.slice();
@@ -372,7 +374,8 @@ bool Remove::doModifications(ModificationExecutorInfos& info, ModificationStats&
   }
 
   TRI_ASSERT(info._trx);
-  auto operationResult = info._trx->remove(info._aqlCollection->name(), toRemove, info._options);
+  auto operationResult =
+      info._trx->remove(info._aqlCollection->name(), toRemove, info._options);
   setOperationResult(std::move(operationResult));
 
   handleBabyStats(stats, info, _operationResult, toRemove.length(),
@@ -398,10 +401,9 @@ bool Remove::doModifications(ModificationExecutorInfos& info, ModificationStats&
 }
 
 bool Remove::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output) {
-  TRI_ASSERT(_block);
-  TRI_ASSERT(_block->hasBlock());
+  TRI_ASSERT(_block != nullptr);
 
-  std::size_t blockSize = _block->block().size();
+  std::size_t blockSize = _block->size();
   TRI_ASSERT(_last_not_skip <= blockSize);
   TRI_ASSERT(_blockIndex < blockSize);
 
@@ -458,8 +460,9 @@ bool Upsert::doModifications(ModificationExecutorInfos& info, ModificationStats&
   RegisterId const insertReg = info._input2RegisterId;
   RegisterId const updateReg = info._input3RegisterId;
 
-  _block->forRowInBlock([this, &stats, &errorCode, &errorMessage, &key, trx, inDocReg,
-                         insertReg, updateReg, &info](InputAqlItemRow&& row) {
+  itemBlock::forRowInBlock(_block, [this, &stats, &errorCode, &errorMessage,
+                                    &key, trx, inDocReg, insertReg, updateReg,
+                                    &info](InputAqlItemRow&& row) {
     errorMessage.clear();
     errorCode = TRI_ERROR_NO_ERROR;
     auto const& inVal = row.getValue(inDocReg);
@@ -521,7 +524,7 @@ bool Upsert::doModifications(ModificationExecutorInfos& info, ModificationStats&
     }
   });
 
-  TRI_ASSERT(_operations.size() == _block->block().size());
+  TRI_ASSERT(_operations.size() == _block->size());
 
   _insertBuilder.close();
   _updateBuilder.close();
@@ -533,7 +536,7 @@ bool Upsert::doModifications(ModificationExecutorInfos& info, ModificationStats&
     _justCopy = true;
     return _last_not_skip != std::numeric_limits<decltype(_last_not_skip)>::max();
   }
-  
+
   OperationOptions const& options = info._options;
 
   TRI_ASSERT(info._trx);
@@ -580,10 +583,9 @@ bool Upsert::doModifications(ModificationExecutorInfos& info, ModificationStats&
 }
 
 bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output) {
-  TRI_ASSERT(_block);
-  TRI_ASSERT(_block->hasBlock());
+  TRI_ASSERT(_block != nullptr);
 
-  std::size_t blockSize = _block->block().size();
+  std::size_t blockSize = _block->size();
   TRI_ASSERT(_last_not_skip <= blockSize);
   TRI_ASSERT(_blockIndex < blockSize);
 
@@ -655,9 +657,9 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
   RegisterId const keyReg = info._input2RegisterId;
   bool const hasKeyVariable = keyReg != ExecutionNode::MaxRegisterId;
 
-  _block->forRowInBlock([this, &options, &stats, &errorCode, &errorMessage,
-                         &key, &rev, trx, inDocReg, keyReg, hasKeyVariable,
-                         &info](InputAqlItemRow&& row) {
+  itemBlock::forRowInBlock(_block, [this, &options, &stats, &errorCode,
+                                    &errorMessage, &key, &rev, trx, inDocReg, keyReg,
+                                    hasKeyVariable, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inDocReg);
     errorCode = TRI_ERROR_NO_ERROR;
     errorMessage.clear();
@@ -716,7 +718,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
     }
   });
 
-  TRI_ASSERT(_operations.size() == _block->block().size());
+  TRI_ASSERT(_operations.size() == _block->size());
 
   _updateOrReplaceBuilder.close();
   auto toUpdateOrReplace = _updateOrReplaceBuilder.slice();
@@ -758,10 +760,9 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
 template <typename ModType>
 bool UpdateReplace<ModType>::doOutput(ModificationExecutorInfos& info,
                                       OutputAqlItemRow& output) {
-  TRI_ASSERT(_block);
-  TRI_ASSERT(_block->hasBlock());
+  TRI_ASSERT(_block != nullptr);
 
-  std::size_t blockSize = _block->block().size();
+  std::size_t blockSize = _block->size();
   TRI_ASSERT(_last_not_skip <= blockSize);
   TRI_ASSERT(_blockIndex < blockSize);
   TRI_ASSERT(_operationResultArraySlice.isArray());

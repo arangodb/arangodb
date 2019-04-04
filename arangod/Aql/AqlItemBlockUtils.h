@@ -20,23 +20,31 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SharedAqlItemBlockPtr.h"
+#ifndef ARANGOD_AQL_AQLITEMBLOCKUTILS_H
+#define ARANGOD_AQL_AQLITEMBLOCKUTILS_H
 
-#include "Aql/AqlItemBlockManager.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb {
+namespace aql {
+class AqlItemBlockManager;
+class BlockCollector;
+class InputAqlItemRow;
 
-void SharedAqlItemBlockPtr::decrRefCount() noexcept {
-  if (_aqlItemBlock != nullptr) {
-    _aqlItemBlock->decrRefCount();
-    if (_aqlItemBlock->getRefCount() == 0) {
-      itemBlockManager().returnBlock(_aqlItemBlock);
-      TRI_ASSERT(_aqlItemBlock == nullptr);
-    }
-  }
-}
+namespace itemBlock {
 
-AqlItemBlockManager& SharedAqlItemBlockPtr::itemBlockManager() const noexcept {
-  return _aqlItemBlock->aqlItemBlockManager();
-}
+/// @brief concatenate multiple blocks, note that the new block now owns all
+/// AqlValue pointers in the old blocks, therefore, the latter are all
+/// set to nullptr, just to be sure.
+SharedAqlItemBlockPtr concatenate(AqlItemBlockManager&,
+                                  std::vector<SharedAqlItemBlockPtr>& blocks);
+
+void forRowInBlock(SharedAqlItemBlockPtr const& block,
+                   std::function<void(InputAqlItemRow&&)> const& callback);
+
+}  // namespace itemBlock
+
+}  // namespace aql
+}  // namespace arangodb
+
+#endif  // ARANGOD_AQL_AQLITEMBLOCKUTILS_H

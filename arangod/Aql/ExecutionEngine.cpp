@@ -446,13 +446,11 @@ struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(
-    std::unique_ptr<AqlItemBlock>&& items, size_t pos) {
+std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(SharedAqlItemBlockPtr&& items,
+                                                                    size_t pos) {
   InputAqlItemRow inputRow{CreateInvalidInputRowHint{}};
   if (items != nullptr) {
-    auto shell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager(), std::move(items));
-    inputRow = InputAqlItemRow{std::move(shell), pos};
+    inputRow = InputAqlItemRow{std::move(items), pos};
   }
   auto res = _root->initializeCursor(inputRow);
   if (res.first == ExecutionState::WAITING) {
@@ -462,7 +460,7 @@ std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(
   return res;
 }
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionEngine::getSome(size_t atMost) {
+std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t atMost) {
   if (!_initializeCursorCalled) {
     auto res = initializeCursor(nullptr, 0);
     if (res.first == ExecutionState::WAITING) {

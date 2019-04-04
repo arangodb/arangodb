@@ -68,8 +68,7 @@ class ExecutionEngine {
   TEST_VIRTUAL Query* getQuery() const { return _query; }
 
   /// @brief initializeCursor, could be called multiple times
-  std::pair<ExecutionState, Result> initializeCursor(std::unique_ptr<AqlItemBlock>&& items,
-                                                     size_t pos);
+  std::pair<ExecutionState, Result> initializeCursor(SharedAqlItemBlockPtr&& items, size_t pos);
 
   /// @brief shutdown, will be called exactly once for the whole query, blocking
   /// variant
@@ -80,7 +79,7 @@ class ExecutionEngine {
   std::pair<ExecutionState, Result> shutdown(int errorCode);
 
   /// @brief getSome
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost);
 
   /// @brief skipSome
   std::pair<ExecutionState, size_t> skipSome(size_t atMost);

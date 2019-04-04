@@ -47,12 +47,12 @@ class AqlItemMatrix {
   /**
    * @brief Add this block of rows into the Matrix
    *
-   * @param blockShell Block of rows to append in the matrix
+   * @param blockPtr Block of rows to append in the matrix
    */
-  void addBlock(std::shared_ptr<AqlItemBlockShell> blockShell) {
-    TRI_ASSERT(blockShell->block().getNrRegs() == getNrRegisters());
-    size_t blockSize = blockShell->block().size();
-    _blocks.emplace_back(_size, std::move(blockShell));
+  void addBlock(SharedAqlItemBlockPtr blockPtr) {
+    TRI_ASSERT(blockPtr->getNrRegs() == getNrRegisters());
+    size_t blockSize = blockPtr->size();
+    _blocks.emplace_back(_size, std::move(blockPtr));
     _size += blockSize;
   }
 
@@ -123,7 +123,7 @@ class AqlItemMatrix {
         maxIndex = mostLikelyIndex;
 
         mostLikelyIndex = minIndex + (mostLikelyIndex - minIndex) / 2;
-      } else if (index >= candidate.first + candidate.second->block().size()) {
+      } else if (index >= candidate.first + candidate.second->size()) {
         minIndex = mostLikelyIndex;
         // This block ends before the requested index, go right.
         // Assert that there is a right to go to. This could only go wrong if
@@ -164,13 +164,13 @@ class AqlItemMatrix {
 
   inline size_t numberOfBlocks() const { return _blocks.size(); }
 
-  inline std::shared_ptr<AqlItemBlockShell> getBlock(size_t index) {
+  inline SharedAqlItemBlockPtr getBlock(size_t index) {
     TRI_ASSERT(index < numberOfBlocks());
     return _blocks.at(index).second;
   }
 
  private:
-  std::vector<std::pair<size_t, std::shared_ptr<AqlItemBlockShell>>> _blocks;
+  std::vector<std::pair<size_t, SharedAqlItemBlockPtr>> _blocks;
 
   size_t _size;
 

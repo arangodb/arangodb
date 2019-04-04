@@ -24,7 +24,6 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_H
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_H 1
 
-#include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Range.h"
 #include "Aql/ResourceUsage.h"
@@ -35,7 +34,9 @@
 
 namespace arangodb {
 namespace aql {
+class AqlItemBlockManager;
 class BlockCollector;
+class SharedAqlItemBlockPtr;
 
 // an <AqlItemBlock> is a <nrItems>x<nrRegs> vector of <AqlValue>s (not
 // pointers). The size of an <AqlItemBlock> is the number of items.
@@ -68,20 +69,18 @@ class AqlItemBlock {
   /// @brief create the block
   AqlItemBlock(AqlItemBlockManager&, size_t nrItems, RegisterId nrRegs);
 
-  AqlItemBlock(AqlItemBlockManager&, arangodb::velocypack::Slice);
-
   /// @brief destroy the block
   ~AqlItemBlock() {
     destroy();
     decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * _nrRegs);
   }
 
+  void initFromSlice(arangodb::velocypack::Slice);
+
  private:
   void destroy() noexcept;
 
-  inline ResourceMonitor& resourceMonitor() noexcept {
-    return *_manager.resourceMonitor();
-  }
+  ResourceMonitor& resourceMonitor() noexcept;
 
   inline void increaseMemoryUsage(size_t value) {
     resourceMonitor().increaseMemoryUsage(value);
@@ -341,14 +340,6 @@ class AqlItemBlock {
   /// after this operation, because it is unclear, when the values
   /// to which our AqlValues point will vanish.
   AqlItemBlock* steal(std::vector<size_t> const& chosen, size_t from, size_t to);
-
-  /// @brief concatenate multiple blocks from a collector
-  static AqlItemBlock* concatenate(AqlItemBlockManager&, BlockCollector* collector);
-
-  /// @brief concatenate multiple blocks, note that the new block now owns all
-  /// AqlValue pointers in the old blocks, therefore, the latter are all
-  /// set to nullptr, just to be sure.
-  static AqlItemBlock* concatenate(AqlItemBlockManager&, std::vector<AqlItemBlock*> const& blocks);
 
   /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor

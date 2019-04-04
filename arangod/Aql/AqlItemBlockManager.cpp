@@ -22,9 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlockManager.h"
+
 #include "Aql/AqlItemBlock.h"
+#include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb::aql;
+
+using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the manager
 AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor) 
@@ -36,7 +40,7 @@ AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor)
 AqlItemBlockManager::~AqlItemBlockManager() = default;
 
 /// @brief request a block with the specified size
-AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrRegs) {
+SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrRegs) {
   // LOG_TOPIC("47298", TRACE, arangodb::Logger::FIXME) << "requesting AqlItemBlock of "
   // << nrItems << " x " << nrRegs;
   size_t const targetSize = nrItems * nrRegs;
@@ -73,12 +77,14 @@ AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrReg
   TRI_ASSERT(block->size() == nrItems);
   TRI_ASSERT(block->getNrRegs() == nrRegs);
   TRI_ASSERT(block->numEntries() == targetSize);
-  return block;
+
+  return SharedAqlItemBlockPtr{block};
 }
 
 /// @brief return a block to the manager
 void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
   TRI_ASSERT(block != nullptr);
+  TRI_ASSERT(block->getRefCount() == 0);
 
   // LOG_TOPIC("93865", TRACE, arangodb::Logger::FIXME) << "returning AqlItemBlock of
   // dimensions " << block->size() << " x " << block->getNrRegs();
@@ -98,6 +104,19 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
     delete block;
   }
   block = nullptr;
+}
+
+SharedAqlItemBlockPtr AqlItemBlockManager::requestAndInitBlock(arangodb::velocypack::Slice slice) {
+  auto nrItems = VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
+  auto nrRegs = VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
+  if (nrItems <= 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
+  }
+
+  SharedAqlItemBlockPtr block = requestBlock(static_cast<size_t>(nrItems), nrRegs);
+  block->initFromSlice(slice);
+
+  return block;
 }
 
 AqlItemBlockManager::Bucket::Bucket() : numItems(0) {

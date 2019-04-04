@@ -67,7 +67,7 @@ ModificationExecutor<Modifier, FetcherType>::produceRow(OutputAqlItemRow& output
   // TODO - fix / improve prefetching if possible
   while (!this->_prepared && (this->_fetcher.upstreamState() !=
                               ExecutionState::DONE /*|| this->_fetcher._prefetched */)) {
-    std::shared_ptr<AqlItemBlockShell> block;
+    SharedAqlItemBlockPtr block;
 
     std::tie(state, block) = this->_fetcher.fetchBlockForModificationExecutor(
         _modifier._defaultBlockSize);  // Upsert must use blocksize of one!
@@ -76,11 +76,11 @@ ModificationExecutor<Modifier, FetcherType>::produceRow(OutputAqlItemRow& output
     _modifier._block = block;
 
     if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(!_modifier._block);
+      TRI_ASSERT(_modifier._block == nullptr);
       return {state, std::move(stats)};
     }
 
-    if (!_modifier._block) {
+    if (_modifier._block == nullptr) {
       TRI_ASSERT(state == ExecutionState::DONE);
       return {state, std::move(stats)};
     }
@@ -89,8 +89,7 @@ ModificationExecutor<Modifier, FetcherType>::produceRow(OutputAqlItemRow& output
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    TRI_ASSERT(_modifier._block);
-    TRI_ASSERT(_modifier._block->hasBlock());
+    TRI_ASSERT(_modifier._block != nullptr);
 
     // prepares modifier for single row output
     this->_prepared = _modifier.doModifications(this->_infos, stats);
@@ -101,8 +100,7 @@ ModificationExecutor<Modifier, FetcherType>::produceRow(OutputAqlItemRow& output
   }
 
   if (this->_prepared) {
-    TRI_ASSERT(_modifier._block);
-    TRI_ASSERT(_modifier._block->hasBlock());
+    TRI_ASSERT(_modifier._block != nullptr);
 
     // Produces the output
     bool thisBlockHasMore = _modifier.doOutput(this->_infos, output);

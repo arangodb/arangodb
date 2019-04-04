@@ -60,7 +60,7 @@ class InputAqlItemRow {
 
   InputAqlItemRow(
       // cppcheck-suppress passedByValue
-      std::shared_ptr<AqlItemBlockShell> blockShell, size_t baseIndex)
+      SharedAqlItemBlockPtr blockShell, size_t baseIndex)
       : _blockShell(std::move(blockShell)), _baseIndex(baseIndex) {
     TRI_ASSERT(_blockShell != nullptr);
   }
@@ -115,14 +115,14 @@ class InputAqlItemRow {
 
   inline bool isFirstRowInBlock() const noexcept {
     TRI_ASSERT(isInitialized());
-    TRI_ASSERT(blockShell().hasBlock());
+    TRI_ASSERT(blockShell() != nullptr);
     TRI_ASSERT(_baseIndex < block().size());
     return _baseIndex == 0;
   }
 
   inline bool isLastRowInBlock() const noexcept {
     TRI_ASSERT(isInitialized());
-    TRI_ASSERT(blockShell().hasBlock());
+    TRI_ASSERT(blockShell() != nullptr);
     TRI_ASSERT(_baseIndex < block().size());
     return _baseIndex + 1 == block().size();
   }
@@ -134,15 +134,15 @@ class InputAqlItemRow {
   /**
    * @brief Compare the underlying block. Only for assertions.
    */
-  bool internalBlockIs(AqlItemBlockShell const& other) const;
+  bool internalBlockIs(SharedAqlItemBlockPtr const& other) const;
 #endif
 
   /**
    * @brief Clone a new ItemBlock from this row
    */
-  std::unique_ptr<AqlItemBlock> cloneToBlock(AqlItemBlockManager& manager,
-                                             std::unordered_set<RegisterId> const& registers,
-                                             size_t newNrRegs) const;
+  SharedAqlItemBlockPtr cloneToBlock(AqlItemBlockManager& manager,
+                                     std::unordered_set<RegisterId> const& registers,
+                                     size_t newNrRegs) const;
 
   /// @brief toVelocyPack, transfer a single AqlItemRow to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
@@ -150,23 +150,31 @@ class InputAqlItemRow {
   void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
 
  private:
-  inline AqlItemBlockShell& blockShell() {
+  inline SharedAqlItemBlockPtr& blockShell() {
     TRI_ASSERT(_blockShell != nullptr);
-    return *_blockShell;
+    return _blockShell;
   }
 
-  inline AqlItemBlockShell const& blockShell() const {
+  inline SharedAqlItemBlockPtr const& blockShell() const {
     TRI_ASSERT(_blockShell != nullptr);
-    return *_blockShell;
+    return _blockShell;
   }
-  inline AqlItemBlock& block() { return blockShell().block(); }
-  inline AqlItemBlock const& block() const { return blockShell().block(); }
+
+  inline AqlItemBlock& block() {
+    TRI_ASSERT(blockShell() != nullptr);
+    return *blockShell();
+  }
+
+  inline AqlItemBlock const& block() const {
+    TRI_ASSERT(blockShell() != nullptr);
+    return *blockShell();
+  }
 
  private:
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  std::shared_ptr<AqlItemBlockShell> _blockShell;
+  SharedAqlItemBlockPtr _blockShell;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.

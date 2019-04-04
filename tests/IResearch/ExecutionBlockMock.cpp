@@ -85,7 +85,7 @@ std::pair<arangodb::aql::ExecutionState, arangodb::Result> ExecutionBlockMock::i
   return res;
 }
 
-std::pair<arangodb::aql::ExecutionState, std::unique_ptr<arangodb::aql::AqlItemBlock>>
+std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>
 ExecutionBlockMock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
 
@@ -97,7 +97,7 @@ ExecutionBlockMock::getSome(size_t atMost) {
 
   bool needMore;
   arangodb::aql::AqlItemBlock* cur = nullptr;
-  std::unique_ptr<arangodb::aql::AqlItemBlock> res;
+  arangodb::aql::SharedAqlItemBlockPtr res;
 
   do {
     needMore = false;
@@ -152,7 +152,7 @@ ExecutionBlockMock::getSome(size_t atMost) {
   }
 
   _pos_in_data = to;
-  TRI_ASSERT(res);
+  TRI_ASSERT(res != nullptr);
 
   if (res->size() < atMost) {
     // The collection did not have enough results
