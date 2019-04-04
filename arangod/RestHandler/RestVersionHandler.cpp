@@ -28,6 +28,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
+#include "Utils/ExecContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -52,49 +53,49 @@ RestStatus RestVersionHandler::execute() {
   TRI_ASSERT(v8security != nullptr);
 
   bool hardened = !v8security->isAllowedToAccessHardenedFunctions(nullptr);
-  bool allowInfo = !hardened /*|| jwt?!*/ ;
+  bool allowInfo = !hardened;  // allow access if harden flag was not given
+
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec == nullptr || exec->isAdminUser()) {
+    // also allow access if there is not authentication
+    // enabled or when the user is an administrator
+    allowInfo = true;
+  }
 
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
-  if(allowInfo){
+
+  if (allowInfo) {
     result.add("version", VPackValue(ARANGODB_VERSION));
-  }
-
-  if(allowInfo){
 #ifdef USE_ENTERPRISE
-  result.add("license", VPackValue("enterprise"));
+    result.add("license", VPackValue("enterprise"));
 #else
-  result.add("license", VPackValue("community"));
+    result.add("license", VPackValue("community"));
 #endif
-  }
 
-  bool found;
-  std::string const& detailsStr = _request->value("details", found);
+    bool found;
+    std::string const& detailsStr = _request->value("details", found);
+    if (found && StringUtils::boolean(detailsStr)) {
+      result.add("details", VPackValue(VPackValueType::Object));
+      Version::getVPack(result);
 
-  found = found && hardened;
-  if (found && StringUtils::boolean(detailsStr)) {
-    result.add("details", VPackValue(VPackValueType::Object));
-
-    Version::getVPack(result);
-
-    if (application_features::ApplicationServer::server != nullptr) {
-      auto server = application_features::ApplicationServer::server->getFeature<ServerFeature>(
-          "Server");
-      result.add("mode", VPackValue(server->operationModeString()));
-      auto serverState = ServerState::instance();
-      if (serverState != nullptr) {
-        result.add("role", VPackValue(ServerState::roleToString(serverState->getRole())));
+      if (application_features::ApplicationServer::server != nullptr) {
+        auto server = application_features::ApplicationServer::server->getFeature<ServerFeature>(
+            "Server");
+        result.add("mode", VPackValue(server->operationModeString()));
+        auto serverState = ServerState::instance();
+        if (serverState != nullptr) {
+          result.add("role", VPackValue(ServerState::roleToString(serverState->getRole())));
+        }
       }
-    }
 
-    std::string host = ServerState::instance()->getHost();
-
-    if (!host.empty()) {
-      result.add("host", VPackValue(host));
-    }
-
-    result.close();
-  }
+      std::string host = ServerState::instance()->getHost();
+      if (!host.empty()) {
+        result.add("host", VPackValue(host));
+      }
+      result.close();
+    }  // found
+  }    // allowInfo
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
