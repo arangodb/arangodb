@@ -327,6 +327,28 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
+  if (bodySlice.hasKey("allowed_paths")) {
+    VPackSlice const paths = bodySlice.get("allowed_paths");
+    if (!paths.isArray()) {
+      LOG_TOPIC("89898", TRACE, arangodb::Logger::AUTHENTICATION)
+        << "allowed_paths must be an array";
+      return auth::TokenCache::Entry::Unauthenticated();
+    }
+    if (paths.length() == 0) {
+      LOG_TOPIC("89893", TRACE, arangodb::Logger::AUTHENTICATION)
+        << "allowed_paths may not be empty";
+      return auth::TokenCache::Entry::Unauthenticated();
+    }
+    for (auto const& path : VPackArrayIterator(paths)) {
+      if (!path.isString()) {
+        LOG_TOPIC("89891", TRACE, arangodb::Logger::AUTHENTICATION)
+          << "allowed_paths may only contain strings";
+      return auth::TokenCache::Entry::Unauthenticated();
+      }
+      authResult._allowedPaths.push_back(path.copyString());
+    }
+  }
+
   // mop: optional exp (cluster currently uses non expiring jwts)
   if (bodySlice.hasKey("exp")) {
     VPackSlice const expSlice = bodySlice.get("exp");
