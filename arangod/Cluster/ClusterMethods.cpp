@@ -2869,24 +2869,21 @@ arangodb::Result matchBackupServers(VPackSlice const agencyDump,
   std::copy(dbServers.begin(), dbServers.end(),
             std::inserter(localCopy, localCopy.end()));
 
-  // Record all direct matching names in pair and the rest empty
+  // Skip all direct matching names in pair and remove them from localCopy
   std::unordered_set<std::string>::iterator it; 
   for (auto const& planned : VPackArrayIterator(planServers)) {
     auto const plannedStr = planned.copyString();
     if ((it = std::find(localCopy.begin(), localCopy.end(), plannedStr)) != localCopy.end()) {
-      match.emplace(*it, *it);
       localCopy.erase(it);
     } else {
       match.emplace(plannedStr, std::string());
     }
   }
 
-  // Record all remaining
+  // match all remaining
   auto it2 = localCopy.begin();
   for (auto& m : match) {
-    if (m.second.empty()) {
-      m.second = *it2++;
-    }
+    m.second = *it2++;
   }
 
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "DB server matches: " << match;
@@ -3132,13 +3129,17 @@ arangodb::Result findLocalBackup(
         + " failed on db server " + req.destination + "not an object");
     }
 
-    if (!resSlice.hasKey("result") ||
-        !resSlice.get("result").isBoolean() || !resSlice.get("result").getBoolean()) {
+    if (!resSlice.hasKey("result") || !resSlice.get("result").isBoolean() ||
+      !resSlice.get("result").getBoolean()) {
       LOG_TOPIC(ERR, Logger::HOTBACKUP)
         << "DB server " << req.destination << "is missing backup " << backupId;
       return arangodb::Result(
         TRI_ERROR_FILE_NOT_FOUND,
         std::string("no backup with id ") + backupId + " on server " + req.destination);
+    }
+
+    if (resSlice.hasKey("agency")) {
+      plan.add(resSlice.get("agency"));
     }
 
   }

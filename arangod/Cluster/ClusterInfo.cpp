@@ -3580,6 +3580,7 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoi
   return ret;
 }
 
+
 arangodb::Result ClusterInfo::getShardServers(ShardID const& shardId,
                                               std::vector<ServerID>& servers) {
   READ_LOCKER(readLocker, _planProt.lock);
@@ -3598,11 +3599,11 @@ arangodb::Result ClusterInfo::getShardServers(ShardID const& shardId,
 
 arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 
-  AgencyCommResult dump = _agency.dump();
+  AgencyCommResult dump = _agency.getValues("arango/Plan");
 
   if (!dump.successful()) {
-    LOG_TOPIC(ERR, Logger::CLUSTER) << "failed to acquire agency dump: "
-                                    << dump.errorMessage();
+    LOG_TOPIC(ERR, Logger::CLUSTER)
+      << "failed to acquire agency dump: " << dump.errorMessage();
     return Result(dump.errorCode(),dump.errorMessage());
   }
 
@@ -3614,13 +3615,22 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 
 arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
 
-  AgencyCommResult res = _agency.setValue("arango/Plan", plan, 120);
-  if (!res.successful()) {
-    return arangodb::Result(
-      TRI_ERROR_HOT_BACKUP_INTERNAL,
-      std::string("Failed to replace plan in agency: ") + res.errorMessage());
-  }
+  // Apply only Collections and DBServers
+  AgencyWriteTransaction planTransaction(
+    std::vector<AgencyOperation>
+    {AgencyOperation("arango/Plan/Collections", AgencyValueOperationType::SET,
+                     plan.get("Collections")),
+     AgencyOperation("arango/Plan/Databases", AgencyValueOperationType::SET,
+                     plan.get("Databases"))});
 
+  AgencyCommResult r = _agency.sendTransactionWithFailover(planTransaction);
+  if (!r.successful()) {
+    arangodb::Result result (
+      TRI_ERROR_HOT_BACKUP_INTERNAL,
+      std::string("Error reporting to agency: _statusCode: ") + std::to_string(r.errorCode()));
+    return result;
+  }
+  
   return arangodb::Result();
   
 }
@@ -3706,7 +3716,6 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
   READ_LOCKER(readLocker, _planProt.lock);
 
   // Try to establish hot backup lock in agency
-  auto casTimeout = std::chrono::steady_clock::now() + std::chrono::seconds(60);
   auto result = _agency.casValue(backupURL, lock.slice(), false, 60.0, 1.0);
   if (!result.successful()) {
     LOG_TOPIC(ERR, Logger::HOTBACKUP)
