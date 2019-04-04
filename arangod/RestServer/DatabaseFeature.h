@@ -181,6 +181,11 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   /// maintains a global counter that is increased on every modification
   /// (addition, removal, change) of database objects
   VersionTracker _versionTracker;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // i am here for debugging only.
+  static TRI_vocbase_t* CURRENT_VOCBASE;
+#endif
 };
 
 }  // namespace arangodb

@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
@@ -49,6 +50,7 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
@@ -66,6 +68,11 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // i am here for debugging only.
+TRI_vocbase_t* DatabaseFeature::CURRENT_VOCBASE = nullptr;
+#endif
 
 DatabaseFeature* DatabaseFeature::DATABASE = nullptr;
 
@@ -391,6 +398,11 @@ void DatabaseFeature::beginShutdown() {
 }
 
 void DatabaseFeature::stop() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // i am here for debugging only.
+  static TRI_vocbase_t* currentVocbase = nullptr;
+#endif
+
   stopAppliers();
   MUTEX_LOCKER(mutexLocker, _databasesMutex);
   
@@ -408,6 +420,20 @@ void DatabaseFeature::stop() {
       continue;
     }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // i am here for debugging only.
+    currentVocbase = vocbase;
+    CURRENT_VOCBASE = vocbase;
+    static size_t currentCursorCount = currentVocbase->cursorRepository()->count();
+    static size_t currentKeysCount = currentVocbase->collectionKeys()->count();
+    static size_t currentQueriesCount = currentVocbase->queryList()->count();
+     
+    LOG_TOPIC(DEBUG, Logger::FIXME) 
+        << "shutting down database " << currentVocbase->name() << ": " << (void*) currentVocbase
+        << ", cursors: " << currentCursorCount
+        << ", keys: " << currentKeysCount
+        << ", queries: " << currentQueriesCount;
+#endif
     vocbase->processCollections(
         [](LogicalCollection* collection) {
           // no one else must modify the collection's status while we are in here
@@ -415,6 +441,12 @@ void DatabaseFeature::stop() {
               [collection]() { collection->close(); });
         },
         true);
+   
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // i am here for debugging only. 
+    LOG_TOPIC(DEBUG, Logger::FIXME) 
+        << "shutting down database " << currentVocbase->name() << ": " << (void*) currentVocbase << " successful";
+#endif
   }
 }
 

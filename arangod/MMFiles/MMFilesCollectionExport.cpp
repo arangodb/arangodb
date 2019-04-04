@@ -91,54 +91,54 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
       std::this_thread::sleep_for(std::chrono::microseconds(SleepTime));
     }
   }
+  
+  auto guard = scopeGuard([this]() {
+    // delete guard right now as we're about to return
+    // if we would continue holding the guard's collection lock and return,
+    // and the export object gets later freed in a different thread, then all
+    // would be lost. so we'll release the lock here and rely on the cleanup
+    // thread not unloading the collection (as we've acquired a document ditch
+    // for the collection already - this will prevent unloading of the
+    // collection's datafiles etc.)
+    _guard.reset();
+  });
 
-  {
-    auto ctx = transaction::StandaloneContext::Create(_collection->vocbase());
-    SingleCollectionTransaction trx(ctx, _name, AccessMode::Type::READ);
+  auto ctx = transaction::StandaloneContext::Create(_collection->vocbase());
+  SingleCollectionTransaction trx(ctx, _name, AccessMode::Type::READ);
 
-    // already locked by guard above
-    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+  // already locked by guard above
+  trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
-    Result res = trx.begin();
+  Result res = trx.begin();
 
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    size_t maxDocuments =
-        _collection->numberDocuments(&trx, transaction::CountType::Normal);
-
-    if (limit > 0 && limit < maxDocuments) {
-      maxDocuments = limit;
-    } else {
-      limit = maxDocuments;
-    }
-
-    _vpack.reserve(maxDocuments);
-
-    MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(_collection);
-    ManagedDocumentResult mmdr;
-    trx.invokeOnAllElements(_collection->name(), [this, &limit, &trx, &mmdr,
-                                                  mmColl](LocalDocumentId const& token) {
-      if (limit == 0) {
-        return false;
-      }
-      if (mmColl->readDocumentConditional(&trx, token, 0, mmdr)) {
-        _vpack.emplace_back(mmdr.vpack());
-        --limit;
-      }
-      return true;
-    });
-
-    trx.finish(res.errorNumber());
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
-  // delete guard right now as we're about to return
-  // if we would continue holding the guard's collection lock and return,
-  // and the export object gets later freed in a different thread, then all
-  // would be lost. so we'll release the lock here and rely on the cleanup
-  // thread not unloading the collection (as we've acquired a document ditch
-  // for the collection already - this will prevent unloading of the
-  // collection's datafiles etc.)
-  _guard.reset();
+  size_t maxDocuments =
+      _collection->numberDocuments(&trx, transaction::CountType::Normal);
+
+  if (limit > 0 && limit < maxDocuments) {
+    maxDocuments = limit;
+  } else {
+    limit = maxDocuments;
+  }
+
+  _vpack.reserve(maxDocuments);
+
+  MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(_collection);
+  ManagedDocumentResult mmdr;
+  trx.invokeOnAllElements(_collection->name(), [this, &limit, &trx, &mmdr,
+                                                mmColl](LocalDocumentId const& token) {
+    if (limit == 0) {
+      return false;
+    }
+    if (mmColl->readDocumentConditional(&trx, token, 0, mmdr)) {
+      _vpack.emplace_back(mmdr.vpack());
+      --limit;
+    }
+    return true;
+  });
+
+  trx.finish(res.errorNumber());
 }
