@@ -40,6 +40,7 @@ using namespace arangodb::options;
 
 V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "V8Security"),
+      _disableFoxx(false),
       _allowExecutionOfBinaries(false),
       _denyHardened(false) {
   setOptional(false);
@@ -47,6 +48,13 @@ V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& se
 }
 
 void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addSection("foxx", "Configure Foxx");
+
+  options->addOption(
+      "--foxx.disable",
+      "disables foxx",
+      new BooleanParameter(&_disableFoxx));
+
   options->addSection("javascript", "Configure the Javascript engine");
 
   options->addOption(
@@ -302,6 +310,10 @@ bool V8SecurityFeature::isAllowedToExecuteExternalBinaries(v8::Isolate* isolate)
     return _allowExecutionOfBinaries || v8g->_securityContext.canExecuteExternalBinaries();
   }
   return _allowExecutionOfBinaries;
+}
+
+bool V8SecurityFeature::denyFoxx(v8::Isolate* isolate) const {
+  return !_disableFoxx;
 }
 
 bool V8SecurityFeature::isAllowedToAccessHardenedFunctions(v8::Isolate* isolate) const {
