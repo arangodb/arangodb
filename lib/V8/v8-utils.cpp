@@ -2644,6 +2644,49 @@ static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JS_CopyFile
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_LinkFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract two arguments
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("linkFile(<target>, <linkpath>)");
+  }
+
+  std::string target = TRI_ObjectToString(isolate, args[0]);
+  std::string linkpath = TRI_ObjectToString(isolate, args[1]);
+
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToAccessPath(isolate, target, FSAccessType::READ)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to read files in this path");
+  }
+
+  if (!v8security->isAllowedToAccessPath(isolate, linkpath, FSAccessType::WRITE)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to modify files in this path");
+  }
+
+  std::string systemErrorStr;
+  
+  if (!TRI_CreateSymbolicLink(target, linkpath, systemErrorStr)) {
+    std::string errMsg = "cannot create a symlink from [" + target + "] to [" +
+                         linkpath + " ] : " + systemErrorStr;
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, errMsg);
+  }
+
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reads from stdin
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5300,6 +5343,8 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       isolate, TRI_V8_ASCII_STRING(isolate, "FS_COPY_RECURSIVE"), JS_CopyRecursive);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "FS_COPY_FILE"), JS_CopyFile);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "FS_LINK_FILE"), JS_LinkFile);
 
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "FS_MTIME"), JS_MTime);
   TRI_AddGlobalFunctionVocbase(isolate,
