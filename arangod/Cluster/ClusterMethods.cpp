@@ -3038,14 +3038,43 @@ arangodb::Result restoreOnDBServers(
 
 
 arangodb::Result applyDBServerMatchesToPlan(
-  VPackSlice const plan, std::unordered_map<ServerID,ServerID> matches,
+  VPackSlice const plan, std::unordered_map<ServerID,ServerID> const& matches,
   VPackBuilder& newPlan) {
 
-  VPackCollection::visitRecursive(
-    plan, VPackCollection::PostOrder,
-    [](VPackSlice const& key, VPackSlice const& value) -> bool {
-      return true;
-    });
+  std::function<void(
+    VPackSlice const, std::unordered_map<ServerID,ServerID> const&)> replaceDBServer;
+  replaceDBServer = [&newPlan, &replaceDBServer](
+    VPackSlice const s, std::unordered_map<ServerID,ServerID> const& matches) {
+    if (s.isObject()) {
+      VPackObjectBuilder o(&newPlan);
+      for (auto const& it : VPackObjectIterator(s)) {
+        newPlan.add(it.key);
+        replaceDBServer(it.value, matches);
+      }
+    } else if (s.isArray()) {
+      VPackArrayBuilder a(&newPlan);
+      for (auto const& it : VPackArrayIterator(s)) {
+        replaceDBServer(it, matches);
+      }
+    } else {
+      if (s.isString()) {
+        bool replaced = false;
+        for (auto const& match : matches) {
+          if(s.isEqualString(match.first)) {
+            replaced = true;
+            newPlan.add(VPackValue(match.second));
+          }
+        }
+        if (!replaced) {
+          newPlan.add(s);
+        }
+      }
+    }
+
+  };
+
+  replaceDBServer(plan, matches);
+  
   return arangodb::Result();
 }
 
@@ -3160,11 +3189,14 @@ arangodb::Result hotRestoreCoordinator(std::string const& backupId) {
     return result;
   }
 
-  // Apply matched servers to create new plan
+  // Apply matched servers to create new plan, if any matches to be done,
+  // else just take 
   VPackBuilder newPlan;
-  result = applyDBServerMatchesToPlan(plan.slice(), matches, newPlan);
-  if (!result.ok()) {
-    return result;
+  if (!matches.empty()) {
+    result = applyDBServerMatchesToPlan(plan.slice(), matches, newPlan);
+    if (!result.ok()) {
+      return result;
+    }
   }
 
   // Pause maintenance feature everywhere, fail, if not succeeded everywhere 
@@ -3174,7 +3206,8 @@ arangodb::Result hotRestoreCoordinator(std::string const& backupId) {
   }
 
   // Enact new plan upon the agency
-  result = ci->agencyReplan(newPlan.slice());
+  result = (matches.empty()) ?
+    ci->agencyReplan(plan.slice()): ci->agencyReplan(newPlan.slice());
   if (!result.ok()) {
     result = controlMaintenanceFeature("proceed", backupId, dbServers);
     return result;
