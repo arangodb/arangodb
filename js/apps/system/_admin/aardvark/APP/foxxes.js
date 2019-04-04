@@ -76,6 +76,9 @@ foxxRouter.use(installer)
 `);
 
 installer.use(function (req, res, next) {
+  if (internal.lockDownFoxx()) {
+    res.throw(errors.ERROR_FORBIDDEN, "not allowed to install services when server is started with --foxx.lock-down true");
+  }
   const mount = decodeURIComponent(req.queryParams.mount);
   const upgrade = req.queryParams.upgrade;
   const replace = req.queryParams.replace;
@@ -208,6 +211,10 @@ installer.put('/raw', function (req) {
 `);
 
 foxxRouter.delete('/', function (req, res) {
+  print("hello foxx " + internal.lockDownFoxx());
+  if (internal.lockDownFoxx()) {
+    res.throw(errors.ERROR_FORBIDDEN, "not allowed to uninstall services when server is started with --foxx.lock-down true")
+  }
   const mount = decodeURIComponent(req.queryParams.mount);
   const runTeardown = req.queryParams.teardown;
   const service = FoxxManager.uninstall(mount, {
@@ -259,6 +266,9 @@ foxxRouter.get('/thumbnail', function (req, res) {
 `);
 
 foxxRouter.get('/config', function (req, res) {
+  if (internal.lockDownFoxx()) {
+    res.throw(errors.ERROR_FORBIDDEN, "not allowed to configure services when server is started with --foxx.lock-down true")
+  }
   const mount = decodeURIComponent(req.queryParams.mount);
   const service = FoxxManager.lookupService(mount);
   res.json(service.getConfiguration());
@@ -290,6 +300,9 @@ foxxRouter.get('/deps', function (req, res) {
 `);
 
 foxxRouter.patch('/config', function (req, res) {
+  if (internal.lockDownFoxx()) {
+    res.throw(errors.ERROR_FORBIDDEN, "not allowed to configure services when server is started with --foxx.lock-down true")
+  }
   const mount = decodeURIComponent(req.queryParams.mount);
   const configuration = req.body;
   const service = FoxxManager.lookupService(mount);
