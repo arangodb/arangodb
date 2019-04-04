@@ -100,7 +100,7 @@ struct IResearchQueryExistsSetup {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required by IResearchFilterFactory::extractAnalyzerFromArg(...)
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required by IResearchFilterFactory::extractAnalyzerFromArg(...) and IResearchAnalyzerFeature
     features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ViewTypesFeature(server), true);
     features.emplace_back(new arangodb::AuthenticationFeature(server), true);
@@ -109,7 +109,6 @@ struct IResearchQueryExistsSetup {
     features.emplace_back(new arangodb::ShardingFeature(server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::AqlFeature(server), true);
     features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);

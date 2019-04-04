@@ -22,20 +22,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchViewOptimizerRules.h"
+
 #include "Aql/ClusterNodes.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Function.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Aql/WalkerWorker.h"
-#include "AqlHelper.h"
 #include "Cluster/ServerState.h"
-#include "IResearchFilterFactory.h"
-#include "IResearchOrderFactory.h"
-#include "IResearchViewNode.h"
+#include "IResearch/AqlHelper.h"
+#include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchOrderFactory.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 

@@ -232,7 +232,7 @@ struct AqlValueTraits {
 ////////////////////////////////////////////////////////////////////////////////
 struct QueryContext {
   transaction::Methods* trx;
-  aql::ExecutionPlan* plan;
+  aql::ExecutionPlan const* plan;
   aql::Ast* ast;
   aql::ExpressionContext* ctx;
   aql::Variable const* ref;
