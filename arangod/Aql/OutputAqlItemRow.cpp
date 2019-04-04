@@ -34,12 +34,12 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 OutputAqlItemRow::OutputAqlItemRow(
-    SharedAqlItemBlockPtr blockShell,
+    SharedAqlItemBlockPtr block,
     std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
     std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
     CopyRowBehaviour copyRowBehaviour)
-    : _blockPtr(std::move(blockShell)),
+    : _block(std::move(block)),
       _baseIndex(0),
       _lastBaseIndex(0),
       _inputRowCopied(false),
@@ -54,7 +54,7 @@ OutputAqlItemRow::OutputAqlItemRow(
       _setBaseIndexNotUsed(true)
 #endif
 {
-  TRI_ASSERT(_blockPtr != nullptr);
+  TRI_ASSERT(_block != nullptr);
 }
 
 void OutputAqlItemRow::doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing) {
@@ -98,7 +98,7 @@ void OutputAqlItemRow::doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMi
 
 SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
   // Release our hold on the block now
-  SharedAqlItemBlockPtr block = std::move(_blockPtr);
+  SharedAqlItemBlockPtr block = std::move(_block);
   if (numRowsWritten() == 0) {
     // blocks may not be empty
     block = nullptr;

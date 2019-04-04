@@ -195,17 +195,17 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
 
   /**
-   * @brief Allocates a new AqlItemBlock and returns it in a shell, with the
-   *        specified number of rows (nrItems) and columns (nrRegs).
+   * @brief Allocates a new AqlItemBlock and returns it, with the specified
+   *        number of rows (nrItems) and columns (nrRegs).
    *        In case the Executor supports pass-through of blocks (i.e. reuse the
    *        input blocks as output blocks), it returns such an input block. In
    *        this case, the number of columns must still match - this has to be
    *        guaranteed by register planning.
    *        The state will be HASMORE if and only if it returns an actual block,
    *        which it always will in the non-pass-through case (modulo
-   *        exceptions). If it is WAITING or DONE, the return shell is always a
-   *        nullptr. This Happens only if upstream is WAITING, or respectively,
-   *        if it is DONE and did not return a new block.
+   *        exceptions). If it is WAITING or DONE, the returned block is always
+   *        a nullptr. This happens only if upstream is WAITING, or
+   *        respectively, if it is DONE and did not return a new block.
    */
   std::pair<ExecutionState, SharedAqlItemBlockPtr> requestWrappedBlock(size_t nrItems,
                                                                        RegisterId nrRegs);

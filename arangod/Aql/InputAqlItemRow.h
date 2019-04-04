@@ -56,13 +56,13 @@ class InputAqlItemRow {
  public:
   // The default constructor contains an invalid item row
   explicit InputAqlItemRow(CreateInvalidInputRowHint)
-      : _blockShell(nullptr), _baseIndex(0) {}
+      : _block(nullptr), _baseIndex(0) {}
 
   InputAqlItemRow(
       // cppcheck-suppress passedByValue
-      SharedAqlItemBlockPtr blockShell, size_t baseIndex)
-      : _blockShell(std::move(blockShell)), _baseIndex(baseIndex) {
-    TRI_ASSERT(_blockShell != nullptr);
+      SharedAqlItemBlockPtr block, size_t baseIndex)
+      : _block(std::move(block)), _baseIndex(baseIndex) {
+    TRI_ASSERT(_block != nullptr);
   }
 
   /**
@@ -101,7 +101,7 @@ class InputAqlItemRow {
 
   bool operator==(InputAqlItemRow const& other) const noexcept {
     TRI_ASSERT(isInitialized());
-    return this->_blockShell == other._blockShell && this->_baseIndex == other._baseIndex;
+    return this->_block == other._block && this->_baseIndex == other._baseIndex;
   }
 
   bool operator!=(InputAqlItemRow const& other) const noexcept {
@@ -109,20 +109,18 @@ class InputAqlItemRow {
     return !(*this == other);
   }
 
-  bool isInitialized() const noexcept { return _blockShell != nullptr; }
+  bool isInitialized() const noexcept { return _block != nullptr; }
 
   explicit operator bool() const noexcept { return isInitialized(); }
 
   inline bool isFirstRowInBlock() const noexcept {
     TRI_ASSERT(isInitialized());
-    TRI_ASSERT(blockShell() != nullptr);
     TRI_ASSERT(_baseIndex < block().size());
     return _baseIndex == 0;
   }
 
   inline bool isLastRowInBlock() const noexcept {
     TRI_ASSERT(isInitialized());
-    TRI_ASSERT(blockShell() != nullptr);
     TRI_ASSERT(_baseIndex < block().size());
     return _baseIndex + 1 == block().size();
   }
@@ -150,31 +148,22 @@ class InputAqlItemRow {
   void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
 
  private:
-  inline SharedAqlItemBlockPtr& blockShell() {
-    TRI_ASSERT(_blockShell != nullptr);
-    return _blockShell;
-  }
-
-  inline SharedAqlItemBlockPtr const& blockShell() const {
-    TRI_ASSERT(_blockShell != nullptr);
-    return _blockShell;
-  }
 
   inline AqlItemBlock& block() {
-    TRI_ASSERT(blockShell() != nullptr);
-    return *blockShell();
+    TRI_ASSERT(_block != nullptr);
+    return *_block;
   }
 
   inline AqlItemBlock const& block() const {
-    TRI_ASSERT(blockShell() != nullptr);
-    return *blockShell();
+    TRI_ASSERT(_block != nullptr);
+    return *_block;
   }
 
  private:
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  SharedAqlItemBlockPtr _blockShell;
+  SharedAqlItemBlockPtr _block;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.
@@ -183,6 +172,6 @@ class InputAqlItemRow {
 };
 
 }  // namespace aql
-
 }  // namespace arangodb
+
 #endif

@@ -38,7 +38,6 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-class AqlItemBlockShell;
 template <bool>
 class BlockFetcher;
 

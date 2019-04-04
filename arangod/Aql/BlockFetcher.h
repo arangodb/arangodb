@@ -44,8 +44,7 @@ template <bool allowBlockPassthrough>
 class BlockFetcher {
  public:
   /**
-   * @brief Interface to fetch AqlItemBlocks from upstream with getSome that
-   *        wraps them into InputAqlItemBlockShells.
+   * @brief Interface to fetch AqlItemBlocks from upstream with getSome.
    * @param dependencies Dependencies of the current ExecutionBlock. Must
    *                     contain EXACTLY ONE element. Otherwise, BlockFetcher
    *                     may be instantiated, but never used. It is allowed to
@@ -73,8 +72,8 @@ class BlockFetcher {
         _itemBlockManager(itemBlockManager),
         _inputRegisters(std::move(inputRegisters)),
         _nrInputRegisters(nrInputRegisters),
-        _blockShellQueue(),
-        _blockShellPassThroughQueue(),
+        _blockQueue(),
+        _blockPassThroughQueue(),
         _currentDependency(0) {}
 
   TEST_VIRTUAL ~BlockFetcher() = default;
@@ -86,7 +85,7 @@ class BlockFetcher {
 
   // This fetches a block from the given dependency.
   // NOTE: It is not allowed to be used in conjunction with prefetching
-  // of blocks and will work around the blockShellQueue
+  // of blocks and will work around the blockQueue
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
   TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(
@@ -100,8 +99,8 @@ class BlockFetcher {
   }
 
   // Tries to fetch a block from upstream and push it, wrapped, onto
-  // _blockShellQueue. If it succeeds, it returns HASMORE (the returned state
-  // regards the _blockShellQueue). If it doesn't it's either because
+  // _blockQueue. If it succeeds, it returns HASMORE (the returned state
+  // regards the _blockQueue). If it doesn't it's either because
   //  - upstream returned WAITING - then so does prefetchBlock().
   //  - or upstream returned a nullptr with DONE - then so does prefetchBlock().
   ExecutionState prefetchBlock(size_t atMost = ExecutionBlock::DefaultBatchSize());
@@ -139,9 +138,9 @@ class BlockFetcher {
   AqlItemBlockManager& _itemBlockManager;
   std::shared_ptr<std::unordered_set<RegisterId> const> const _inputRegisters;
   RegisterId const _nrInputRegisters;
-  std::queue<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockShellQueue;
+  std::queue<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockQueue;
   // only used in case of allowBlockPassthrough:
-  std::queue<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockShellPassThroughQueue;
+  std::queue<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockPassThroughQueue;
   // only modified in case of multiple dependencies + Passthrough otherwise always 0
   size_t _currentDependency;
 };

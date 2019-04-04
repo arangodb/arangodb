@@ -62,10 +62,10 @@ ExecutionState BlockFetcher<passBlocksThrough>::prefetchBlock(size_t atMost) {
     }
   }
   if /* constexpr */ (passBlocksThrough) {
-    // Reposit blockShell for pass-through executors.
-    _blockShellPassThroughQueue.push({state, block});
+    // Reposit block for pass-through executors.
+    _blockPassThroughQueue.push({state, block});
   }
-  _blockShellQueue.push({state, std::move(block)});
+  _blockQueue.push({state, std::move(block)});
 
   return ExecutionState::HASMORE;
 }
@@ -74,9 +74,9 @@ template <bool passBlocksThrough>
 std::pair<ExecutionState, SharedAqlItemBlockPtr>
 // NOLINTNEXTLINE google-default-arguments
 BlockFetcher<passBlocksThrough>::fetchBlock(size_t atMost) {
-  if (_blockShellQueue.empty()) {
+  if (_blockQueue.empty()) {
     ExecutionState state = prefetchBlock(atMost);
-    // prefetchBlock returns HASMORE iff it pushed a block onto _blockShellQueue.
+    // prefetchBlock returns HASMORE iff it pushed a block onto _blockQueue.
     // If it didn't, it got either WAITING from upstream, or DONE + nullptr.
     if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
       return {state, nullptr};
@@ -84,14 +84,14 @@ BlockFetcher<passBlocksThrough>::fetchBlock(size_t atMost) {
     TRI_ASSERT(state == ExecutionState::HASMORE);
   }
 
-  TRI_ASSERT(!_blockShellQueue.empty());
+  TRI_ASSERT(!_blockQueue.empty());
 
   ExecutionState state;
-  SharedAqlItemBlockPtr blockShell;
-  std::tie(state, blockShell) = _blockShellQueue.front();
-  _blockShellQueue.pop();
+  SharedAqlItemBlockPtr block;
+  std::tie(state, block) = _blockQueue.front();
+  _blockQueue.pop();
 
-  return {state, std::move(blockShell)};
+  return {state, std::move(block)};
 }
 
 template <bool passBlocksThrough>
@@ -131,9 +131,9 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr>
 BlockFetcher<allowBlockPassthrough>::fetchBlockForPassthrough(size_t atMost) {
   TRI_ASSERT(allowBlockPassthrough);  // TODO check this with enable_if in the header already
 
-  if (_blockShellPassThroughQueue.empty()) {
+  if (_blockPassThroughQueue.empty()) {
     ExecutionState state = prefetchBlock(atMost);
-    // prefetchBlock returns HASMORE iff it pushed a block onto _blockShellPassThroughQueue.
+    // prefetchBlock returns HASMORE iff it pushed a block onto _blockPassThroughQueue.
     // If it didn't, it got either WAITING from upstream, or DONE + nullptr.
     if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
       return {state, nullptr};
@@ -141,14 +141,14 @@ BlockFetcher<allowBlockPassthrough>::fetchBlockForPassthrough(size_t atMost) {
     TRI_ASSERT(state == ExecutionState::HASMORE);
   }
 
-  TRI_ASSERT(!_blockShellPassThroughQueue.empty());
+  TRI_ASSERT(!_blockPassThroughQueue.empty());
 
   ExecutionState state;
-  SharedAqlItemBlockPtr blockShell;
-  std::tie(state, blockShell) = _blockShellPassThroughQueue.front();
-  _blockShellPassThroughQueue.pop();
+  SharedAqlItemBlockPtr block;
+  std::tie(state, block) = _blockPassThroughQueue.front();
+  _blockPassThroughQueue.pop();
 
-  return {state, std::move(blockShell)};
+  return {state, std::move(block)};
 }
 
 template class ::arangodb::aql::BlockFetcher<true>;

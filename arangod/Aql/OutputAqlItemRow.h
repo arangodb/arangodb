@@ -47,7 +47,7 @@ class OutputAqlItemRow {
   // TODO Implement this behaviour via a template parameter instead?
   enum class CopyRowBehaviour { CopyInputRows, DoNotCopyInputRows };
 
-  explicit OutputAqlItemRow(SharedAqlItemBlockPtr blockShell,
+  explicit OutputAqlItemRow(SharedAqlItemBlockPtr block,
                             std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
@@ -139,7 +139,7 @@ class OutputAqlItemRow {
     if (_doNotCopyInputRow) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(sourceRow.isInitialized());
-      TRI_ASSERT(sourceRow.internalBlockIs(blockShell()));
+      TRI_ASSERT(sourceRow.internalBlockIs(_block));
 #endif
       _inputRowCopied = true;
       _lastSourceRow = sourceRow;
@@ -240,8 +240,6 @@ class OutputAqlItemRow {
   }
 
  private:
-  inline SharedAqlItemBlockPtr& blockShell() { return _blockPtr; }
-  inline SharedAqlItemBlockPtr const& blockShell() const { return _blockPtr; }
 
   std::unordered_set<RegisterId> const& outputRegisters() const {
     return *_outputRegisters;
@@ -263,7 +261,7 @@ class OutputAqlItemRow {
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  SharedAqlItemBlockPtr _blockPtr;
+  SharedAqlItemBlockPtr _block;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.
@@ -311,8 +309,15 @@ class OutputAqlItemRow {
     return _numValuesWritten == numRegistersToWrite();
   }
 
-  inline AqlItemBlock const& block() const { return *blockShell(); }
-  inline AqlItemBlock& block() { return *blockShell(); }
+  inline AqlItemBlock const& block() const {
+    TRI_ASSERT(_block != nullptr);
+    return *_block;
+  }
+
+  inline AqlItemBlock& block() {
+    TRI_ASSERT(_block != nullptr);
+    return *_block;
+  }
 
   void doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing);
 };

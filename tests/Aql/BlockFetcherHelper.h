@@ -69,7 +69,7 @@ class SingleRowFetcherHelper
       size_t atMost = ::arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
   uint64_t nrCalled() { return _nrCalled; }
 
-  ::arangodb::aql::SharedAqlItemBlockPtr getItemBlockShell() {
+  ::arangodb::aql::SharedAqlItemBlockPtr getItemBlock() {
     return _itemBlock;
   }
 

@@ -127,7 +127,7 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
 
             THEN("the executor should return the rows") {
               if (passBlocksThrough) {
-                block = fetcher.getItemBlockShell();
+                block = fetcher.getItemBlock();
               }
               OutputAqlItemRow row(std::move(block), outputRegisters,
                                    registersToKeep, infos.registersToClear());
@@ -172,7 +172,7 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
 
             THEN("the executor should return the rows") {
               if (passBlocksThrough) {
-                block = fetcher.getItemBlockShell();
+                block = fetcher.getItemBlock();
               }
               OutputAqlItemRow row{std::move(block), outputRegisters,
                                    registersToKeep, infos.registersToClear()};
