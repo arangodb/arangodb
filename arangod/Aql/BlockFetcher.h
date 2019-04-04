@@ -24,7 +24,6 @@
 #define ARANGOD_AQL_BLOCK_FETCHER_H
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"

@@ -25,7 +25,7 @@
 
 #include "InputAqlItemRow.h"
 
-#include "Aql/AqlItemBlockShell.h"
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
 
 #include <utility>

@@ -27,7 +27,7 @@
 #define ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H 1
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 

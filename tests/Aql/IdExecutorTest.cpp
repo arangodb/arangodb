@@ -24,7 +24,6 @@
 #include "catch.hpp"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"

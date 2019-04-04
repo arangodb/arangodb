@@ -169,7 +169,6 @@ SET(ARANGOD_SOURCES
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
-  Aql/AqlItemBlockShell.cpp
   Aql/AqlItemBlockUtils.cpp
   Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp

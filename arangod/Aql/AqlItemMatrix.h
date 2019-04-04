@@ -25,7 +25,6 @@
 
 #include <lib/Logger/Logger.h>
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/types.h"

@@ -27,7 +27,6 @@
 #include "catch.hpp"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/InputAqlItemRow.h"
