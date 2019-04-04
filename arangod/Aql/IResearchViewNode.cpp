@@ -1056,6 +1056,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     writableOutputRegisters->emplace(reg);
   }
   TRI_ASSERT(writableOutputRegisters->size() == 1 + numScoreRegisters);
+  TRI_ASSERT(writableOutputRegisters->begin() != writableOutputRegisters->end());
   TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->begin(),
                                                       writableOutputRegisters->end()));
   aql::ExecutorInfos infos = createRegisterInfos(calcInputRegs(), std::move(writableOutputRegisters));
