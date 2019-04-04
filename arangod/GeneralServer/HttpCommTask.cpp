@@ -797,7 +797,7 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* req) {
       if (authMethod != AuthenticationMethod::NONE) {
         _authToken = _auth->tokenCache().checkAuthentication(authMethod, auth);
         req->setAuthenticated(_authToken.authenticated());
-        req->setUser(std::move(_authToken._username));
+        req->setUser(_authToken._username); // do copy here, so that we do not invalidate the member
       }
 
       if (req->authenticated() || !_auth->isActive()) {

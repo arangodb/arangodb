@@ -330,13 +330,18 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
   if (bodySlice.hasKey("allowed_paths")) {
     VPackSlice const paths = bodySlice.get("allowed_paths");
     if (!paths.isArray()) {
-      LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
+      LOG_TOPIC("89898", TRACE, arangodb::Logger::AUTHENTICATION)
         << "allowed_paths must be an array";
+      return auth::TokenCache::Entry::Unauthenticated();
+    }
+    if (paths.length() == 0) {
+      LOG_TOPIC("89893", TRACE, arangodb::Logger::AUTHENTICATION)
+        << "allowed_paths may not be empty";
       return auth::TokenCache::Entry::Unauthenticated();
     }
     for (auto const& path : VPackArrayIterator(paths)) {
       if (!path.isString()) {
-        LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
+        LOG_TOPIC("89891", TRACE, arangodb::Logger::AUTHENTICATION)
         << "allowed_paths may only contain strings";
       return auth::TokenCache::Entry::Unauthenticated();
       }
