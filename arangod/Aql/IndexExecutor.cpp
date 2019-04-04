@@ -182,19 +182,19 @@ IndexExecutor::~IndexExecutor() = default;
 /// @brief order a cursor for the index at the specified position
 arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
   TRI_ASSERT(_infos.getIndexes().size() > currentIndex);
-  
+
   OperationCursor* cursor = getCursor(currentIndex);
   if (cursor == nullptr) {
     // first create an empty cursor object if none is there yet
-    cursor = resetCursor(currentIndex, std::make_unique<OperationCursor>()); 
+    cursor = resetCursor(currentIndex, std::make_unique<OperationCursor>());
   }
-  
+
   TRI_ASSERT(cursor != nullptr);
-  
-  IndexIterator* iterator = cursor->indexIterator(); 
-  
+
+  IndexIterator* iterator = cursor->indexIterator();
+
   AstNode const* conditionNode = nullptr;
-  if ((iterator == nullptr || !_infos.getNonConstExpressions().empty()) && 
+  if ((iterator == nullptr || !_infos.getNonConstExpressions().empty()) &&
       _infos.getCondition() != nullptr) {
     TRI_ASSERT(_infos.getIndexes().size() == _infos.getCondition()->numMembers());
     TRI_ASSERT(_infos.getCondition()->numMembers() > currentIndex);
@@ -207,10 +207,9 @@ arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
     resetCursor(currentIndex);
   } else if (iterator == nullptr || !iterator->canRearm()) {
     // inject a new index iterator into the existing cursor
-    cursor->rearm(
-                _infos.getTrxPtr()->indexScanForCondition(
-                    _infos.getIndexes()[currentIndex], conditionNode,
-                    _infos.getOutVariable(), _infos.getOptions()));
+    cursor->rearm(_infos.getTrxPtr()->indexScanForCondition(_infos.getIndexes()[currentIndex], conditionNode,
+                                                            _infos.getOutVariable(),
+                                                            _infos.getOptions()));
   } else {
     // try to rearm an existing iterator
     if (iterator->rearm(conditionNode, _infos.getOutVariable(), _infos.getOptions())) {
@@ -218,10 +217,11 @@ arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
       resetCursor(currentIndex);
     } else {
       // iterator does not support the condition
-      cursor->rearm(std::make_unique<EmptyIndexIterator>(iterator->collection(), _infos.getTrxPtr()));
+      cursor->rearm(std::make_unique<EmptyIndexIterator>(iterator->collection(),
+                                                         _infos.getTrxPtr()));
     }
   }
-    
+
   return cursor;
 }
 
@@ -391,8 +391,14 @@ bool IndexExecutor::advanceCursor() {
   while (!getCursor()->hasMore()) {
     if (!_infos.isAscending()) {
       decrCurrentIndex();
+      if (_currentIndex == 0) {
+        setIsLastIndex(true);
+      }
     } else {
       incrCurrentIndex();
+      if (_infos.getIndexes().size() - 1 == _currentIndex) {
+        setIsLastIndex(true);
+      }
     }
 
     if (getCurrentIndex() < _infos.getIndexes().size()) {

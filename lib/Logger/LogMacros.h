@@ -67,25 +67,28 @@
 #define ARANGO_INTERNAL_LOG_HELPER(id)                        \
   ::arangodb::Logger::LINE(__LINE__)                          \
   << ::arangodb::Logger::FILE(__FILE__)                       \
-  << ::arangodb::Logger::FUNCTION(__FUNCTION__)               \
-  << ( ::arangodb::Logger::getShowIds() ? "[" id "] " : "" ))
+  << ::arangodb::Logger::FUNCTION(__FUNCTION__)               
 
 #define LOG_TOPIC(id, level, logger)                                        \
   !::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (logger))   \
     ? (void)nullptr                                                         \
     : ::arangodb::LogVoidify() & (::arangodb::LoggerStream()                \
-      << (::arangodb::LogLevel::level) << (logger)                          \
+      << (::arangodb::LogLevel::level)                                      \
+      << ( ::arangodb::Logger::getShowIds() ? "[" id "] " : "" ))           \
+      << (logger)                                                           \
       << ARANGO_INTERNAL_LOG_HELPER(id)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic given that a condition is true
 ////////////////////////////////////////////////////////////////////////////////
 
-#define LOG_TOPIC_IF(id, level, logger, cond)                                       \
-  !(arangodb::Logger::isEnabled((arangodb::LogLevel::level), (logger)) && (cond))   \
-    ? (void)nullptr                                                                 \
-    : ::arangodb::LogVoidify() & (arangodb::LoggerStream()                          \
-      << (arangodb::LogLevel::level) << (logger)                                    \
+#define LOG_TOPIC_IF(id, level, logger, cond)                                           \
+  !(::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (logger)) && (cond))   \
+    ? (void)nullptr                                                                     \
+    : ::arangodb::LogVoidify() & (::arangodb::LoggerStream()                            \
+      << (::arangodb::LogLevel::level)                                                  \
+      << ( ::arangodb::Logger::getShowIds() ? "[" id "] " : "" ))                       \
+      << (logger)                                                                       \
       << ARANGO_INTERNAL_LOG_HELPER(id)
 
 ////////////////////////////////////////////////////////////////////////////////
