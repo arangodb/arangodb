@@ -254,6 +254,8 @@ documents in a single collection at once can be controlled by the startup option
 HTTP API extensions
 -------------------
 
+### Extended index API
+
 The HTTP API for creating indexes at POST `/_api/index` has been extended two-fold:
 
 * to create a TTL (time-to-live) index, it is now possible to specify a value of `ttl`
@@ -262,6 +264,20 @@ The HTTP API for creating indexes at POST `/_api/index` has been extended two-fo
   based on the documents' index attribute value.
 
 * to create an index in background, the attribute `inBackground` can be set to `true`.
+
+### API for querying the responsible shard
+
+The HTTP API for collections has got an additional route for retrieving the responsible
+shard for a document at PUT `/_api/collection/<name>/responsibleShard`.
+
+When calling this route, the request body is supposed to contain the document for which
+the responsible shard should be determined. The response will contain an attribute `shardId`
+containing the ID of the shard that is responsible for that document.
+
+It does not matter if the document actually exists or not, as the shard responsibility 
+is determined from the document's attribute values only. 
+
+Please note that this API is only meaningful and available on a cluster coordinator.
 
 
 Web interface
@@ -390,13 +406,17 @@ them as well.
 
 ### Fewer system collections
 
-The system collections `_routing` and `_modules` are not created anymore for new
-new databases, as both are only needed for legacy functionality.
+The system collections `_frontend`, `_modules` and `_routing` are not created 
+anymore for new databases by default. 
 
+`_modules` and `_routing` are both are only needed for legacy functionality.
 Existing `_routing` collections will not be touched as they may contain user-defined
 entries, and will continue to work.
 
 Existing `_modules` collections will also remain functional.
+
+The `_frontend` collection may still be required for actions triggered by the
+web interface, but it will automatically be created lazily if needed.
 
 ### Named indices
 
