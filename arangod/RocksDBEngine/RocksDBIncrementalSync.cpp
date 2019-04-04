@@ -521,7 +521,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
 
         Result res = physical->replace(trx, it, mdr, options, resultTick, false,
-                                       prevRev, previous, nullptr);
+                                       prevRev, previous);
         if (res.fail()) {
           if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
               res.errorMessage() > keySlice.copyString()) {
@@ -532,7 +532,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
               return res;
             }
             res = physical->replace(trx, it, mdr, options, resultTick, false,
-                                    prevRev, previous, nullptr);
+                                    prevRev, previous);
             if (res.fail()) {
               return res;
             }
