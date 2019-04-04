@@ -122,7 +122,7 @@ class SingleBlockFetcher {
   }
 
   InputAqlItemRow accessRow(std::size_t index) {
-    TRI_ASSERT(_currentBlock);
+    TRI_ASSERT(_currentBlock != nullptr);
     TRI_ASSERT(index < _currentBlock->size());
     return InputAqlItemRow{_currentBlock, index};
   }
