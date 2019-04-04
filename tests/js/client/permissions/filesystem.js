@@ -363,7 +363,30 @@ function testSuite() {
     assertEqual(rc.length, expectCount, 'Expected ' + dn + ' to contain ' + expectCount + " files.");
   }
 
+  function tryGetTempFileForbidden(dn) {
+    try {
+      let rc = fs.getTempFile(dn, true);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Temfile-access to ' + dn + ' wasn\'t forbidden');
+    }
+  }
+  function tryGetTempFileAllowed(dn) {
+    let tfn = fs.getTempFile(dn, true);
+    assertTrue(fs.isFile(tfn));
+    fs.remove(tfn);
+  }
+ 
   return {
+    testGetTempFile : function() {
+      tryGetTempFileForbidden('/etc/');
+      tryGetTempFileForbidden('/var/log/');
+      tryGetTempFileForbidden(topLevelForbidden);
+      
+      tryGetTempFileAllowed(topLevelAllowed);
+      tryGetTempFileAllowed(subLevelAllowed);
+    },
     testReadFile : function() {
       tryReadForbidden('/etc/passwd');
       tryReadForbidden('/var/log/mail.log');
