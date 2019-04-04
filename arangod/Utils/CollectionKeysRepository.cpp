@@ -70,11 +70,6 @@ CollectionKeysRepository::~CollectionKeysRepository() {
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
-
-    for (auto it : _keys) {
-      delete it.second;
-    }
-
     _keys.clear();
   }
 }
@@ -83,9 +78,9 @@ CollectionKeysRepository::~CollectionKeysRepository() {
 /// @brief stores collection keys in the repository
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectionKeysRepository::store(arangodb::CollectionKeys* keys) {
+void CollectionKeysRepository::store(std::unique_ptr<arangodb::CollectionKeys> keys) {
   MUTEX_LOCKER(mutexLocker, _lock);
-  _keys.emplace(keys->id(), keys);
+  _keys.emplace(keys->id(), std::move(keys));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,7 +88,7 @@ void CollectionKeysRepository::store(arangodb::CollectionKeys* keys) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CollectionKeysRepository::remove(CollectionKeysId id) {
-  arangodb::CollectionKeys* collectionKeys = nullptr;
+  std::unique_ptr<arangodb::CollectionKeys> owner;
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
@@ -105,26 +100,28 @@ bool CollectionKeysRepository::remove(CollectionKeysId id) {
       return false;
     }
 
-    collectionKeys = (*it).second;
-
-    if (collectionKeys->isDeleted()) {
+    if ((*it).second->isDeleted()) {
       // already deleted
       return false;
     }
 
-    if (collectionKeys->isUsed()) {
+    if ((*it).second->isUsed()) {
       // keys are in use by someone else. now mark as deleted
-      collectionKeys->deleted();
+      (*it).second->deleted();
       return true;
     }
 
     // keys are not in use by someone else
+    // move ownership for item to our local variable
+    owner = std::move((*it).second);
+    // clear entry from map
     _keys.erase(it);
   }
 
-  TRI_ASSERT(collectionKeys != nullptr);
+  // when we leave this scope, this will fire the dtor of the
+  // entry, outside the lock
+  TRI_ASSERT(owner != nullptr);
 
-  delete collectionKeys;
   return true;
 }
 
@@ -147,14 +144,13 @@ CollectionKeys* CollectionKeysRepository::find(CollectionKeysId id) {
       return nullptr;
     }
 
-    collectionKeys = (*it).second;
-
-    if (collectionKeys->isDeleted()) {
+    if ((*it).second->isDeleted()) {
       // already deleted
       return nullptr;
     }
 
-    collectionKeys->use();
+    (*it).second->use();
+    collectionKeys = (*it).second.get();
   }
 
   return collectionKeys;
@@ -165,6 +161,8 @@ CollectionKeys* CollectionKeysRepository::find(CollectionKeysId id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectionKeysRepository::release(CollectionKeys* collectionKeys) {
+  std::unique_ptr<CollectionKeys> owner;
+
   {
     MUTEX_LOCKER(mutexLocker, _lock);
 
@@ -175,12 +173,17 @@ void CollectionKeysRepository::release(CollectionKeys* collectionKeys) {
       return;
     }
 
-    // remove from the list
-    _keys.erase(collectionKeys->id());
+    // remove from the list and take ownership
+    auto it = _keys.find(collectionKeys->id());
+
+    if (it != _keys.end()) {
+      owner = std::move((*it).second);
+      _keys.erase(it);
+    }
   }
 
-  // and free the keys
-  delete collectionKeys;
+  // when we get here, the dtor of the entry will be called,
+  // outside the lock
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,7 +193,7 @@ void CollectionKeysRepository::release(CollectionKeys* collectionKeys) {
 bool CollectionKeysRepository::containsUsed() {
   MUTEX_LOCKER(mutexLocker, _lock);
 
-  for (auto it : _keys) {
+  for (auto const& it : _keys) {
     if (it.second->isUsed()) {
       return true;
     }
@@ -199,12 +202,17 @@ bool CollectionKeysRepository::containsUsed() {
   return false;
 }
 
+size_t CollectionKeysRepository::count() {
+  MUTEX_LOCKER(mutexLocker, _lock);
+  return _keys.size();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run a garbage collection on the data
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CollectionKeysRepository::garbageCollect(bool force) {
-  std::vector<arangodb::CollectionKeys*> found;
+  std::vector<std::unique_ptr<arangodb::CollectionKeys>> found;
   found.reserve(MaxCollectCount);
 
   auto const now = TRI_microtime();
@@ -213,7 +221,7 @@ bool CollectionKeysRepository::garbageCollect(bool force) {
     MUTEX_LOCKER(mutexLocker, _lock);
 
     for (auto it = _keys.begin(); it != _keys.end(); /* no hoisting */) {
-      auto collectionKeys = (*it).second;
+      auto& collectionKeys = (*it).second;
 
       if (collectionKeys->isUsed()) {
         // must not destroy anything currently in use
@@ -227,12 +235,13 @@ bool CollectionKeysRepository::garbageCollect(bool force) {
 
       if (collectionKeys->isDeleted()) {
         try {
-          found.emplace_back(collectionKeys);
-          it = _keys.erase(it);
+          found.emplace_back(std::move(collectionKeys));
         } catch (...) {
           // stop iteration
           break;
         }
+          
+        it = _keys.erase(it);
 
         if (!force && found.size() >= MaxCollectCount) {
           break;
@@ -243,10 +252,7 @@ bool CollectionKeysRepository::garbageCollect(bool force) {
     }
   }
 
-  // remove keys outside the lock
-  for (auto it : found) {
-    delete it;
-  }
-
+  // when we get here, all instances in found will be destroyed
+  // outside the lock
   return (!found.empty());
 }

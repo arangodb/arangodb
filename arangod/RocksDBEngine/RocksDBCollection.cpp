@@ -822,7 +822,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                                  arangodb::ManagedDocumentResult& mdr,
                                  OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                                  bool, TRI_voc_tick_t& revisionId, KeyLockInfo* /*keyLockInfo*/,
-                                 std::function<Result(void)> callbackDuringLock) {
+                                 std::function<Result(void)> const& callbackDuringLock) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -910,8 +910,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
                                  arangodb::velocypack::Slice const newSlice,
                                  ManagedDocumentResult& mdr, OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool /*lock*/,
-                                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                                 std::function<Result(void)> callbackDuringLock) {
+                                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) {
   resultMarkerTick = 0;
   
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
@@ -1003,11 +1002,6 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
     auto result = state->addOperation(_logicalCollection.id(), revisionId,
                                       TRI_VOC_DOCUMENT_OPERATION_UPDATE,
                                       hasPerformedIntermediateCommit);
-
-    if (result.ok() && callbackDuringLock != nullptr) {
-      result = callbackDuringLock();
-    }
-
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
     }
@@ -1022,8 +1016,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                                   arangodb::velocypack::Slice const newSlice,
                                   ManagedDocumentResult& mdr, OperationOptions& options,
                                   TRI_voc_tick_t& resultMarkerTick, bool,
-                                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                                  std::function<Result(void)> callbackDuringLock) {
+                                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) {
   resultMarkerTick = 0;
 
   // get the previous revision
@@ -1108,10 +1101,6 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                                       TRI_VOC_DOCUMENT_OPERATION_REPLACE,
                                       hasPerformedIntermediateCommit);
 
-    if (result.ok() && callbackDuringLock != nullptr) {
-      result = callbackDuringLock();
-    }
-
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
     }
@@ -1127,7 +1116,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
                                  TRI_voc_tick_t& resultMarkerTick, bool /*lock*/,
                                  TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
                                  KeyLockInfo* /*keyLockInfo*/,
-                                 std::function<Result(void)> callbackDuringLock) {
+                                 std::function<Result(void)> const& callbackDuringLock) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
