@@ -118,16 +118,9 @@ class StringRef {
     return operator[](index);
   }
   
-  size_t find(char c) const {
-    char const* p =
-        static_cast<char const*>(memchr(static_cast<void const*>(_data), c, _length));
-
-    if (p == nullptr) {
-      return std::string::npos;
-    }
-
-    return (p - _data);
-  }
+  size_t find(char c) const;
+  
+  size_t rfind(char c) const;
 
   int compare(std::string const& other) const noexcept {
     int res = memcmp(_data, other.data(), (std::min)(_length, other.size()));
@@ -193,7 +186,7 @@ class StringRef {
 
 std::ostream& operator<<(std::ostream& stream, StringRef const& ref);
 }
-}
+} 
 
 
 inline bool operator==(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
