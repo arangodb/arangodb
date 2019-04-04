@@ -28,7 +28,9 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-const fs = require("fs");
+const fs = require('fs');
+const internal = require('internal');
+
 const rootDir = fs.join(fs.getTempPath(),  'permissions');
 const testresults = fs.join(rootDir, 'testresult.json'); // where we want to put our results ;-)
 const topLevelForbidden = fs.join(rootDir, 'forbidden');
@@ -59,7 +61,9 @@ const subLevelAllowedReadJSONFile = fs.join(subLevelAllowed, 'allowed_json.txt')
 // N/A const subLevelForbiddenReadJSONFile = fs.join(subLevelForbidden, 'forbidden_json.txt');
 
 const CSV = 'a,b\n1,2\n3,4\n';
-const JSONText = '{a: true, b:false, c: "abc"}';
+const CSVParsed = [['a', 'b'], ['1', '2'], ['3', '4']];
+const JSONText = '{"a": true, "b":false, "c": "abc"}\n{"a": true, "b":false, "c": "abc"}';
+const JSONParsed = { "a" : true, "b" : false, "c" : "abc"};
 
 if (getOptions === true) {
   // N/A fs.makeDirectoryRecursive(subLevelForbidden);
@@ -149,22 +153,28 @@ function testSuite() {
   }
   function tryReadCSVForbidden(fn) {
     try {
-      fs.processCsvFile(fn);
+      internal.processCsvFile(fn, function (raw_row, index) {
+      });
       fail();
     }
     catch (err) {
       assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'access to ' + fn + ' wasn\'t forbidden');
     }
   }
-  function tryReadCSVAllowed(fn, expectedContentPlain) {
-    let content = fs.processCsvFile(fn);
-    assertEqual(content,
-                expectedContent,
-                'Expected ' + fn + ' to contain "' + expectedContent + '" but it contained: "' + content + '"!');
+  function tryReadCSVAllowed(fn) {
+    let CSVContent = [];
+    let content = internal.processCsvFile(fn, function (raw_row, index) {
+      CSVContent.push(raw_row);
+    });
+    
+    assertEqual(CSVContent,
+                CSVParsed,
+                'Expected ' + fn + ' to contain "' + CSVParsed + '" but it contained: "' + CSVContent + '"!');
   }
   function tryReadJSONForbidden(fn) {
     try {
-      fs.processJsonFile(fn);
+      internal.processJsonFile(fn, function (raw_row, index) {
+      });
       fail();
     }
     catch (err) {
@@ -172,10 +182,14 @@ function testSuite() {
     }
   }
   function tryReadJSONAllowed(fn, expectedContentPlain) {
-    let content = fs.processJsonFile(fn);
-    assertEqual(content,
-                expectedContent,
-                'Expected ' + fn + ' to contain "' + expectedContent + '" but it contained: "' + content + '"!');
+    let count = 0;
+    let content = internal.processJsonFile(fn, function (raw_row, index) {
+      assertEqual(raw_row,
+                  JSONParsed,
+                  'Expected ' + fn + ' to contain "' + JSONParsed + '" but it contained: "' + raw_row + '"!');
+      count ++;
+    });
+    assertEqual(count, 2);
   }
   function tryWriteForbidden(fn) {
     try {
