@@ -69,6 +69,11 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // i am here for debugging only.
+TRI_vocbase_t* DatabaseFeature::CURRENT_VOCBASE = nullptr;
+#endif
+
 DatabaseFeature* DatabaseFeature::DATABASE = nullptr;
 
 /// @brief database manager thread main loop
@@ -395,6 +400,11 @@ void DatabaseFeature::beginShutdown() {
 }
 
 void DatabaseFeature::stop() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // i am here for debugging only.
+  static TRI_vocbase_t* currentVocbase = nullptr;
+#endif
+
   stopAppliers();
 
   // turn off query cache and flush it
@@ -423,12 +433,18 @@ void DatabaseFeature::stop() {
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // i am here for debugging only. 
+    // i am here for debugging only.
+    currentVocbase = vocbase;
+    CURRENT_VOCBASE = vocbase;
+    static size_t currentCursorCount = currentVocbase->cursorRepository()->count();
+    static size_t currentKeysCount = currentVocbase->collectionKeys()->count();
+    static size_t currentQueriesCount = currentVocbase->queryList()->count();
+    
     LOG_TOPIC("840a4", DEBUG, Logger::FIXME) 
-        << "shutting down database " << vocbase->name() << ": " << (void*) vocbase 
-        << ", cursors: " << vocbase->cursorRepository()->count() 
-        << ", keys: " << vocbase->collectionKeys()->count() 
-        << ", queries: " << vocbase->queryList()->count();
+        << "shutting down database " << currentVocbase->name() << ": " << (void*) currentVocbase
+        << ", cursors: " << currentCursorCount
+        << ", keys: " << currentKeysCount
+        << ", queries: " << currentQueriesCount;
 #endif
     vocbase->processCollections(
         [](LogicalCollection* collection) {
@@ -442,7 +458,7 @@ void DatabaseFeature::stop() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // i am here for debugging only. 
     LOG_TOPIC("4b2b7", DEBUG, Logger::FIXME) 
-        << "shutting down database " << vocbase->name() << ": " << (void*) vocbase << " successful";
+        << "shutting down database " << currentVocbase->name() << ": " << (void*) currentVocbase << " successful";
 #endif
   }
   
