@@ -110,10 +110,6 @@ class QueryRegistry {
    */
   void setNoLockHeaders(ExecutionEngine* engine) const;
   
- public:
-  /// @brief default timeout for holding read-locks on a collection
-  static constexpr double defaultReadLockTimeout = 900;
-
  private:
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo {

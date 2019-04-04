@@ -118,18 +118,11 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
     double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", replutils::BatchInfo::DefaultTimeout);
 
-    int res = _manager->extendLifetime(id, ttl);
+    std::string clientId;
+    int res = _manager->extendLifetime(id, clientId, ttl);
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(GeneralResponse::responseCode(res), res);
       return;
-    }
-
-    // add client
-    bool found;
-    std::string clientId = _request->value("serverId", found);
-    if (clientId.empty() || clientId == "none") {
-      // use context id as a fallback
-      clientId = std::to_string(id);
     }
 
     // last tick value in context should not have changed compared to the
