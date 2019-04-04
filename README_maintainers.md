@@ -797,3 +797,24 @@ for `mocha`) match the versions required by the updated module and delete any
 duplicated nested dependencies if necessary (e.g. `mocha/node_modules/glob`)
 to make sure the global (mocked) version is used instead.
 
+Changing the FrontEnd
+=====================
+
+Change to `js/apps/system/_admin/aardvark/APP/` and open
+`manifest.json`. Then apply the following change:
+
+```
+     "/app.js": {
+     -      "path": "frontend/build/app.min.js",
+     -      "gzip": true
+     +      "path": "frontend/build/app.js",
+     +      "gzip": false
+          },
+```
+
+Then run `grunt`, `grunt deploy` and `grunt watch`. This
+should make every change in the code available after a
+reload for the browser.
+
+Note: You might need to do the same for other files. Usually
+the change for `app` should suffice.
