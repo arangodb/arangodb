@@ -528,6 +528,8 @@ function splitBuckets (options, cases) {
 
   let result = [];
 
+  cases.sort();
+
   for (let i = s % m; i < cases.length; i = i + r) {
     result.push(cases[i]);
   }

@@ -838,7 +838,6 @@ function dumpAgency(instanceInfo, options) {
     let agencyReply = download(arangod.url + path, method === 'POST' ? '[["/"]]' : '', opts);
     if (agencyReply.code === 200) {
       let agencyValue = JSON.parse(agencyReply.body);
-      print(JSON.stringify(agencyValue));
       fs.write(fs.join(options.testOutputDirectory, fn + '_' + arangod.pid + ".json"), JSON.stringify(agencyValue, null, 2));
     }
     else {
@@ -1152,6 +1151,9 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     timeout *= 2;
   }
 
+  if ((toShutdown.length > 0) && (options.cluster === true)) {
+    dumpAgency(instanceInfo, options);
+  }
   var shutdownTime = internal.time();
   while (toShutdown.length > 0) {
     toShutdown = toShutdown.filter(arangod => {
