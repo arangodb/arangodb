@@ -342,7 +342,7 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
     for (auto const& path : VPackArrayIterator(paths)) {
       if (!path.isString()) {
         LOG_TOPIC("89891", TRACE, arangodb::Logger::AUTHENTICATION)
-        << "allowed_paths may only contain strings";
+          << "allowed_paths may only contain strings";
       return auth::TokenCache::Entry::Unauthenticated();
       }
       authResult._allowedPaths.push_back(path.copyString());
