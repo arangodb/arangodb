@@ -731,9 +731,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             tempBuilder.add(VPackValue(docKey));
 
             ManagedDocumentResult previous;
-            TRI_voc_rid_t resultMarkerTick;
             auto r = physical->remove(trx, tempBuilder.slice(), previous,
-                                      options, /*lock*/false);
+                                      options, /*lock*/false, nullptr, nullptr);
 
             if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
               // ignore not found, we remove conflicting docs ahead of time
