@@ -275,7 +275,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
 }
 
 /// @brief shutdown, will be called exactly once for the whole query
-std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown() {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(int errorCode) {
   if (!_hasTriggeredShutdown) {
     // Make sure to cover against the race that the request
     // in flight is not overtaking in the drop phase here.
@@ -352,7 +352,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown()
   // For every call we simply forward via HTTP
   VPackBuilder bodyBuilder;
   bodyBuilder.openObject();
-  bodyBuilder.add("code", VPackValue(TRI_ERROR_NO_ERROR));
+  bodyBuilder.add("code", VPackValue(errorCode));
   bodyBuilder.close();
 
   auto bodyString = std::make_shared<std::string const>(bodyBuilder.slice().toJson());

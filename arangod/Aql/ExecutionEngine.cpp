@@ -491,7 +491,7 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept {
       sharedState->setContinueCallback();
 
       while (state == ExecutionState::WAITING) {
-        std::tie(state, res) = shutdown();
+        std::tie(state, res) = shutdown(errorCode);
         if (state == ExecutionState::WAITING) {
           sharedState->waitForAsyncResponse();
         }
@@ -504,11 +504,11 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept {
 }
 
 /// @brief shutdown, will be called exactly once for the whole query
-std::pair<ExecutionState, Result> ExecutionEngine::shutdown() {
+std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
   ExecutionState state = ExecutionState::DONE;
   Result res;
   if (_root != nullptr && !_wasShutdown) {
-    std::tie(state, res) = _root->shutdown();
+    std::tie(state, res) = _root->shutdown(errorCode);
     if (state == ExecutionState::WAITING) {
       return {state, res};
     }

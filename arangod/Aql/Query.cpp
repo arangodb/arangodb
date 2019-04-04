@@ -1401,7 +1401,7 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
   if (_engine != nullptr) {
     try {
       ExecutionState state;
-      std::tie(state, std::ignore) = _engine->shutdown();
+      std::tie(state, std::ignore) = _engine->shutdown(errorCode);
       if (state == ExecutionState::WAITING) {
         return state;
       }

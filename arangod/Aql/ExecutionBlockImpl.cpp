@@ -247,8 +247,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
 }
 
 template <class Executor>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown() {
-  return ExecutionBlock::shutdown();
+std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int errorCode) {
+  return ExecutionBlock::shutdown(errorCode);
 }
 
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
@@ -286,27 +286,27 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
 }
 
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<TraversalExecutor>::shutdown() {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<TraversalExecutor>::shutdown(int errorCode) {
   ExecutionState state;
   Result result;
 
-  std::tie(state, result) = ExecutionBlock::shutdown();
+  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
   if (state == ExecutionState::WAITING) {
     return {state, result};
   }
-  return this->executor().shutdown();
+  return this->executor().shutdown(errorCode);
 }
 
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<ShortestPathExecutor>::shutdown() {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<ShortestPathExecutor>::shutdown(int errorCode) {
   ExecutionState state;
   Result result;
 
-  std::tie(state, result) = ExecutionBlock::shutdown();
+  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
   if (state == ExecutionState::WAITING) {
     return {state, result};
   }
-  return this->executor().shutdown();
+  return this->executor().shutdown(errorCode);
 }
 
 template <>

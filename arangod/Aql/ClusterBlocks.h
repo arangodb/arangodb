@@ -63,7 +63,7 @@ class BlockWithClients : public ExecutionBlock {
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   /// @brief shutdown
-  std::pair<ExecutionState, Result> shutdown() override;
+  std::pair<ExecutionState, Result> shutdown(int) override;
 
   /// @brief getSome: shouldn't be used, use skipSomeForShard
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final {

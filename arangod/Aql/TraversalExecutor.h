@@ -127,7 +127,7 @@ class TraversalExecutor {
    *
    * @return ExecutionState and no error.
    */
-  std::pair<ExecutionState, Result> shutdown();
+  std::pair<ExecutionState, Result> shutdown(int errorCode);
 
   /**
    * @brief produce the next Row of Aql Values.

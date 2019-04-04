@@ -76,11 +76,11 @@ std::pair<ExecutionState, Result> BlockWithClients::initializeCursor(InputAqlIte
 }
 
 /// @brief shutdown
-std::pair<ExecutionState, Result> BlockWithClients::shutdown() {
+std::pair<ExecutionState, Result> BlockWithClients::shutdown(int errorCode) {
   if (_wasShutdown) {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
-  auto res = ExecutionBlock::shutdown();
+  auto res = ExecutionBlock::shutdown(errorCode);
   if (res.first == ExecutionState::WAITING) {
     return res;
   }
