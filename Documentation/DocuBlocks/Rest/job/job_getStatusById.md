@@ -54,7 +54,7 @@ Querying the status of a pending job:
   var url = "/_api/transaction";
   var body = {
     collections: {
-      read : [ "_frontend" ]
+      read : [ "_aqlfunctions" ]
     },
     action: "function () {require('internal').sleep(15.0);}"
   };
