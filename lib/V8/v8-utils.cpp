@@ -2891,7 +2891,7 @@ static void JS_LockDownFoxx(v8::FunctionCallbackInfo<v8::Value> const& args) {
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
-  TRI_V8_RETURN_BOOL(v8security->denyFoxx(isolate));
+  TRI_V8_RETURN_BOOL(v8security->lockDownFoxx(isolate));
 
   TRI_V8_TRY_CATCH_END
 }

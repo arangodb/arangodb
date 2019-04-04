@@ -89,6 +89,11 @@
     },
 
     render: function () {
+      if(frontendConfig.lockDownFoxx){
+        $(this.el).html("<div>The server was started with `--foxx.lock-down true`. Therefore you are not allowed to install services!</div>");
+        return;
+      }
+
       // if repo not fetched yet, wait
       $(this.el).html(this.template.render({
         services: this.collection
