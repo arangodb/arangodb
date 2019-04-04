@@ -359,7 +359,7 @@ foxxRouter.patch('/devel', function (req, res) {
 `);
 
 router.get('/fishbowl', function (req, res) {
-  if(!internal.lockDownFoxx){
+  if(!internal.lockDownFoxx()){
     try {
       store.update();
     } catch (e) {
