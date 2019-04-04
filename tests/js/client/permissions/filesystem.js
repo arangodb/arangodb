@@ -48,6 +48,19 @@ const topLevelForbiddenWriteFile = fs.join(topLevelForbidden, 'forbidden_write.t
 const subLevelAllowedWriteFile = fs.join(subLevelAllowed, 'allowed_write.txt');
 // N/A const subLevelForbiddenWriteFile = fs.join(subLevelForbidden, 'forbidden_write.txt');
 
+const topLevelAllowedReadCSVFile = fs.join(topLevelAllowed, 'allowed_csv.txt');
+const topLevelForbiddenReadCSVFile = fs.join(topLevelForbidden, 'forbidden_csv.txt');
+const subLevelAllowedReadCSVFile = fs.join(subLevelAllowed, 'allowed_csv.txt');
+// N/A const subLevelForbiddenReadCSVFile = fs.join(subLevelForbidden, 'forbidden_csv.txt');
+
+const topLevelAllowedReadJSONFile = fs.join(topLevelAllowed, 'allowed_json.txt');
+const topLevelForbiddenReadJSONFile = fs.join(topLevelForbidden, 'forbidden_json.txt');
+const subLevelAllowedReadJSONFile = fs.join(subLevelAllowed, 'allowed_json.txt');
+// N/A const subLevelForbiddenReadJSONFile = fs.join(subLevelForbidden, 'forbidden_json.txt');
+
+const CSV = 'a,b\n1,2\n3,4\n';
+const JSONText = '{a: true, b:false, c: "abc"}';
+
 if (getOptions === true) {
   // N/A fs.makeDirectoryRecursive(subLevelForbidden);
   fs.makeDirectoryRecursive(topLevelAllowed);
@@ -56,6 +69,14 @@ if (getOptions === true) {
   fs.write(topLevelForbiddenFile, 'forbidden fruits are tasty!\n');
   fs.write(subLevelAllowedFile, 'this file is allowed.\n');
    // N/A fs.write(subLevelForbiddenFile, 'forbidden fruits are tasty!\n');
+
+  fs.write(topLevelAllowedReadCSVFile, CSV);
+  fs.write(topLevelForbiddenReadCSVFile, CSV);
+  fs.write(subLevelAllowedReadCSVFile, CSV);
+
+  fs.write(topLevelAllowedReadJSONFile, JSONText);
+  fs.write(topLevelForbiddenReadJSONFile, JSONText);
+  fs.write(subLevelAllowedReadJSONFile, JSONText);
 
   return {
     'temp.path': fs.getTempPath(),     // Adjust the temp-path to match our current temp path
@@ -122,6 +143,36 @@ function testSuite() {
   function tryRead64Allowed(fn, expectedContentPlain) {
     let expectedContent = base64Encode(expectedContentPlain);
     let content = fs.read64(fn);
+    assertEqual(content,
+                expectedContent,
+                'Expected ' + fn + ' to contain "' + expectedContent + '" but it contained: "' + content + '"!');
+  }
+  function tryReadCSVForbidden(fn) {
+    try {
+      fs.processCsvFile(fn);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'access to ' + fn + ' wasn\'t forbidden');
+    }
+  }
+  function tryReadCSVAllowed(fn, expectedContentPlain) {
+    let content = fs.processCsvFile(fn);
+    assertEqual(content,
+                expectedContent,
+                'Expected ' + fn + ' to contain "' + expectedContent + '" but it contained: "' + content + '"!');
+  }
+  function tryReadJSONForbidden(fn) {
+    try {
+      fs.processJsonFile(fn);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'access to ' + fn + ' wasn\'t forbidden');
+    }
+  }
+  function tryReadJSONAllowed(fn, expectedContentPlain) {
+    let content = fs.processJsonFile(fn);
     assertEqual(content,
                 expectedContent,
                 'Expected ' + fn + ' to contain "' + expectedContent + '" but it contained: "' + content + '"!');
@@ -327,6 +378,24 @@ function testSuite() {
       tryRead64Allowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryRead64Allowed(subLevelAllowedFile, 'this file is allowed.\n');
     },
+    testReadCSVFile : function() {
+      tryReadCSVForbidden('/etc/passwd');
+      tryReadCSVForbidden('/var/log/mail.log');
+      tryReadCSVForbidden(topLevelForbiddenReadCSVFile);
+      // N/A tryReadCSVForbidden(subLevelForbiddenReadCSVFile);
+
+      tryReadCSVAllowed(topLevelAllowedReadCSVFile, CSV);
+      tryReadCSVAllowed(subLevelAllowedReadCSVFile, CSV);
+    },
+    testReadJSONFile : function() {
+      tryReadJSONForbidden('/etc/passwd');
+      tryReadJSONForbidden('/var/log/mail.log');
+      tryReadJSONForbidden(topLevelForbiddenReadJSONFile);
+      // N/A tryReadJSONForbidden(subLevelForbiddenReadJSONFile);
+
+      tryReadJSONAllowed(topLevelAllowedReadJSONFile, JSONText);
+      tryReadJSONAllowed(subLevelAllowedReadJSONFile, JSONText);
+    },
     testWriteFile : function() {
       tryWriteForbidden('/var/log/mail.log');
       tryWriteForbidden(topLevelForbiddenWriteFile);
@@ -426,8 +495,8 @@ function testSuite() {
       tryListFileAllowed(topLevelAllowedFile, 0);
       tryListFileAllowed(subLevelAllowedFile, 0);
 
-      tryListFileAllowed(topLevelAllowed, 3);
-      tryListFileAllowed(subLevelAllowed, 3);
+      tryListFileAllowed(topLevelAllowed, 5);
+      tryListFileAllowed(subLevelAllowed, 5);
     },
     testListTree : function() {
       tryListTreeForbidden('/etc/X11');
@@ -439,8 +508,8 @@ function testSuite() {
       tryListTreeAllowed(topLevelAllowedFile, 1);
       tryListTreeAllowed(subLevelAllowedFile, 1);
 
-      tryListTreeAllowed(topLevelAllowed, 4);
-      tryListTreeAllowed(subLevelAllowed, 4);
+      tryListTreeAllowed(topLevelAllowed, 6);
+      tryListTreeAllowed(subLevelAllowed, 6);
     }
   };
 }
