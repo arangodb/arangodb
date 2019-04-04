@@ -586,8 +586,7 @@ void PhysicalCollectionMock::getPropertiesVPack(arangodb::velocypack::Builder&) 
 arangodb::Result PhysicalCollectionMock::insert(
     arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
     arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
-    TRI_voc_tick_t& resultMarkerTick, bool lock,
-    arangodb::KeyLockInfo* /*keyLockInfo*/,
+    bool lock, arangodb::KeyLockInfo* /*keyLockInfo*/,
     std::function<void()> const& callbackDuringLock) {
   TRI_ASSERT(callbackDuringLock == nullptr);  // not implemented
   before();
@@ -813,7 +812,7 @@ bool PhysicalCollectionMock::readDocumentWithCallback(
 arangodb::Result PhysicalCollectionMock::remove(
     arangodb::transaction::Methods& trx, arangodb::velocypack::Slice slice,
     arangodb::ManagedDocumentResult& previous, arangodb::OperationOptions& options,
-    TRI_voc_tick_t& resultMarkerTick, bool lock, arangodb::KeyLockInfo* /*keyLockInfo*/,
+    bool lock, arangodb::KeyLockInfo* /*keyLockInfo*/,
     std::function<void()> const& callbackDuringLock) {
   TRI_ASSERT(callbackDuringLock == nullptr);  // not implemented
   before();
@@ -844,11 +843,11 @@ arangodb::Result PhysicalCollectionMock::remove(
 arangodb::Result PhysicalCollectionMock::replace(
     arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
     arangodb::ManagedDocumentResult& result,
-    arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+    arangodb::OperationOptions& options,
     bool lock, arangodb::ManagedDocumentResult& previous) {
   before();
 
-  return update(trx, newSlice, result, options, resultMarkerTick, lock, previous);
+  return update(trx, newSlice, result, options, lock, previous);
 }
 
 TRI_voc_rid_t PhysicalCollectionMock::revision(arangodb::transaction::Methods*) const {
@@ -876,8 +875,7 @@ arangodb::Result PhysicalCollectionMock::compact() {
 arangodb::Result PhysicalCollectionMock::update(
     arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
     arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
-    TRI_voc_tick_t& resultMarkerTick, bool lock,
-    arangodb::ManagedDocumentResult& previous) {
+    bool lock, arangodb::ManagedDocumentResult& previous) {
   auto key = newSlice.get(arangodb::StaticStrings::KeyString);
   if (key.isNone()) {
     return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -900,8 +898,7 @@ arangodb::Result PhysicalCollectionMock::update(
         previous.setUnmanaged(doc.data());
         TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(doc.slice()));
 
-        return insert(trx, newSlice, result, options, resultMarkerTick, lock,
-                      nullptr, nullptr);
+        return insert(trx, newSlice, result, options, lock, nullptr, nullptr);
       }
 
       arangodb::velocypack::Builder builder;
@@ -925,8 +922,7 @@ arangodb::Result PhysicalCollectionMock::update(
       previous.setUnmanaged(doc.data());
       TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(doc.slice()));
 
-      return insert(trx, builder.slice(), result, options, resultMarkerTick,
-                    lock, nullptr, nullptr);
+      return insert(trx, builder.slice(), result, options, lock, nullptr, nullptr);
     }
   }
 

@@ -2832,7 +2832,7 @@ LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions
 
 Result MMFilesCollection::insert(arangodb::transaction::Methods* trx, VPackSlice const slice,
                                  arangodb::ManagedDocumentResult& resultMdr,
-                                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                                 OperationOptions& options,
                                  bool lock, KeyLockInfo* keyLockInfo,
                                  std::function<void()> const& callbackDuringLock) {
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
@@ -2981,17 +2981,14 @@ Result MMFilesCollection::insert(arangodb::transaction::Methods* trx, VPackSlice
       resultMdr.setManaged(doc.begin());
       TRI_ASSERT(resultMdr.revisionId() == revisionId);
     } else if (!options.silent) {   //  need to pass up revision and key
-      transaction::BuilderLeaser builder2(trx);
-      builder2->openObject(/*unindexed*/true);
-      builder2->add(StaticStrings::KeyString, transaction::helpers::extractKeyFromDocument(doc));
-      builder2->close();
-      resultMdr.setManaged()->assign(reinterpret_cast<char const*>(builder2->start()),
-                                     builder2->size());
+      transaction::BuilderLeaser keyBuilder(trx);
+      keyBuilder->openObject(/*unindexed*/true);
+      keyBuilder->add(StaticStrings::KeyString, transaction::helpers::extractKeyFromDocument(doc));
+      keyBuilder->close();
+      resultMdr.setManaged()->assign(reinterpret_cast<char const*>(keyBuilder->start()),
+                                     keyBuilder->size());
       resultMdr.revisionId(revisionId);
     }
-    
-    // store the tick that was used for writing the document
-    resultMarkerTick = operation.tick();
   }
 
   return res;
@@ -3389,7 +3386,7 @@ Result MMFilesCollection::insertDocument(arangodb::transaction::Methods& trx,
 
 Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
                                  VPackSlice const newSlice, ManagedDocumentResult& resultMdr,
-                                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                                 OperationOptions& options,
                                  bool lock, ManagedDocumentResult& previousMdr) {
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
   if (key.isNone()) {
@@ -3520,11 +3517,6 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
     } else {  //  need to pass revId manually
       resultMdr.revisionId(revisionId);
     }
-
-    if (options.waitForSync) {
-      // store the tick that was used for writing the new document
-      resultMarkerTick = operation.tick();
-    }
   }
 
   return res;
@@ -3532,8 +3524,7 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
 
 Result MMFilesCollection::replace(transaction::Methods* trx, VPackSlice const newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
-                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                  ManagedDocumentResult& previousMdr) {
+                                  bool lock, ManagedDocumentResult& previousMdr) {
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
@@ -3651,11 +3642,6 @@ Result MMFilesCollection::replace(transaction::Methods* trx, VPackSlice const ne
     } else {  //  need to pass revId manually
       resultMdr.revisionId(revisionId);
     }
-
-    if (options.waitForSync) {
-      // store the tick that was used for writing the new document
-      resultMarkerTick = operation.tick();
-    }
   }
 
   return res;
@@ -3663,8 +3649,7 @@ Result MMFilesCollection::replace(transaction::Methods* trx, VPackSlice const ne
 
 Result MMFilesCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
                                  ManagedDocumentResult& previousMdr, OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                 KeyLockInfo* keyLockInfo,
+                                 bool lock, KeyLockInfo* keyLockInfo,
                                  std::function<void()> const& callbackDuringLock) {
   
   LocalDocumentId const documentId = LocalDocumentId::create();
@@ -3798,9 +3783,6 @@ Result MMFilesCollection::remove(transaction::Methods& trx, velocypack::Slice sl
 
   if (res.fail()) {
     operation.revert(&trx);
-  } else {
-    // store the tick that was used for removing the document
-    resultMarkerTick = operation.tick();
   }
   return res;
 }

@@ -166,39 +166,36 @@ class PhysicalCollection {
                                         IndexIterator::DocumentCallback const& cb) const = 0;
   /**
    * @brief Perform document insert, may generate a '_key' value
-   * If (options.returnNew == false && !options.silent) result must
-   * just contain the key value and not a valid document
+   * If (options.returnNew == false && !options.silent) result might
+   * just contain an object with the '_key' field
    * @param callbackDuringLock Called immediately after a successful insert.
    *        If the insert wasn't successful, it isn't called. May be nullptr.
    */
   virtual Result insert(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice newSlice,
                         arangodb::ManagedDocumentResult& result,
-                        OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                        OperationOptions& options,
                         bool lock, KeyLockInfo* keyLockInfo,
                         std::function<void()> const& cbDuringLock) = 0;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                arangodb::ManagedDocumentResult& result, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock) {
-    return insert(trx, newSlice, result, options, resultMarkerTick, lock, nullptr, nullptr);
+                arangodb::ManagedDocumentResult& result, OperationOptions& options, bool lock) {
+    return insert(trx, newSlice, result, options, lock, nullptr, nullptr);
   }
 
   virtual Result update(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice newSlice,
                         ManagedDocumentResult& result, OperationOptions& options,
-                        TRI_voc_tick_t& resultMarkerTick, bool lock,
-                        ManagedDocumentResult& previous) = 0;
+                        bool lock, ManagedDocumentResult& previous) = 0;
 
   virtual Result replace(arangodb::transaction::Methods* trx,
                          arangodb::velocypack::Slice newSlice,
                          ManagedDocumentResult& result, OperationOptions& options,
-                         TRI_voc_tick_t& resultMarkerTick, bool lock,
-                         ManagedDocumentResult& previous) = 0;
+                         bool lock, ManagedDocumentResult& previous) = 0;
 
   virtual Result remove(transaction::Methods& trx, velocypack::Slice slice,
                         ManagedDocumentResult& previous, OperationOptions& options,
-                        TRI_voc_tick_t& resultMarkerTick, bool lock, KeyLockInfo* keyLockInfo,
+                        bool lock, KeyLockInfo* keyLockInfo,
                         std::function<void()> const& cbDuringLock) = 0;
 
  protected:

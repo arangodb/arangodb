@@ -833,12 +833,9 @@ bool RocksDBCollection::readDocumentWithCallback(transaction::Methods* trx,
 Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                                  arangodb::velocypack::Slice const slice,
                                  arangodb::ManagedDocumentResult& resultMdr,
-                                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                                 OperationOptions& options,
                                  bool /*lock*/, KeyLockInfo* /*keyLockInfo*/,
                                  std::function<void()> const& cbDuringLock) {
-  // store the tick that was used for writing the document
-  // note that we don't need it for this engine
-  resultMarkerTick = 0;
   
   bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
@@ -896,12 +893,12 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       resultMdr.setManaged(newSlice.begin());
       TRI_ASSERT(resultMdr.revisionId() == revisionId);
     } else if(!options.silent) {  //  need to pass revId manually
-      transaction::BuilderLeaser builder2(trx);
-      builder2->openObject(/*unindexed*/true);
-      builder2->add(StaticStrings::KeyString, transaction::helpers::extractKeyFromDocument(newSlice));
-      builder2->close();
-      resultMdr.setManaged()->assign(reinterpret_cast<char const*>(builder2->start()),
-                                     builder2->size());
+      transaction::BuilderLeaser keyBuilder(trx);
+      keyBuilder->openObject(/*unindexed*/true);
+      keyBuilder->add(StaticStrings::KeyString, transaction::helpers::extractKeyFromDocument(newSlice));
+      keyBuilder->close();
+      resultMdr.setManaged()->assign(reinterpret_cast<char const*>(keyBuilder->start()),
+                                     keyBuilder->size());
       resultMdr.revisionId(revisionId);
     }
     
@@ -923,9 +920,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
                                  arangodb::velocypack::Slice const newSlice,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick, bool /*lock*/,
-                                 ManagedDocumentResult& previousMdr) {
-  resultMarkerTick = 0;
+                                 bool /*lock*/, ManagedDocumentResult& previousMdr) {
   
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
   if (keySlice.isNone()) {
@@ -1035,9 +1030,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 Result RocksDBCollection::replace(transaction::Methods* trx,
                                   arangodb::velocypack::Slice const newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
-                                  TRI_voc_tick_t& resultMarkerTick, bool,
-                                  ManagedDocumentResult& previousMdr) {
-  resultMarkerTick = 0;
+                                  bool /*lock*/, ManagedDocumentResult& previousMdr) {
   
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
   if (keySlice.isNone()) {
@@ -1137,12 +1130,8 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 
 Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
                                  ManagedDocumentResult& previousMdr, OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick, bool /*lock*/,
-                                 KeyLockInfo* /*keyLockInfo*/,
+                                 bool /*lock*/, KeyLockInfo* /*keyLockInfo*/,
                                  std::function<void()> const& cbDuringLock) {
-  // store the tick that was used for writing the document
-  // note that we don't need it for this engine
-  resultMarkerTick = 0;
 
   VPackSlice keySlice;
   if (slice.isString()) {

@@ -33,6 +33,8 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesTransactionCollection.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -56,7 +58,8 @@ MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t& vocbase, TRI_voc
     : TransactionState(vocbase, tid, options),
       _rocksTransaction(nullptr),
       _beginWritten(false),
-      _hasOperations(false) {}
+      _hasOperations(false),
+      _lastWrittenOperationTick(0) {}
 
 /// @brief free a transaction container
 MMFilesTransactionState::~MMFilesTransactionState() {
@@ -285,7 +288,8 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
       }
     }
 
-    operation.setTick(slotInfo.tick);
+    _lastWrittenOperationTick = slotInfo.tick;
+
     fid = slotInfo.logfileId;
     position = slotInfo.mem;
   } else {
@@ -469,6 +473,9 @@ int MMFilesTransactionState::writeAbortMarker() {
 /// @brief write WAL commit marker
 int MMFilesTransactionState::writeCommitMarker() {
   if (!needWriteMarker(false)) {
+    if (isSingleOperation() && _lastWrittenOperationTick > 0) {
+      EngineSelectorFeature::ENGINE->waitForSyncTick(_lastWrittenOperationTick);
+    }
     return TRI_ERROR_NO_ERROR;
   }
 

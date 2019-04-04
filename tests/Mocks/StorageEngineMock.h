@@ -63,7 +63,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
       arangodb::transaction::Methods* trx,
       arangodb::velocypack::Slice const newSlice,
       arangodb::ManagedDocumentResult& result,
-      arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+      arangodb::OperationOptions& options,
       bool lock, arangodb::KeyLockInfo* /*keyLockInfo*/,
       std::function<void()> const& callbackDuringLock) override;
   virtual void invokeOnAllElements(arangodb::transaction::Methods* trx, std::function<bool(arangodb::LocalDocumentId const&)> callback) override;
@@ -85,7 +85,6 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
     arangodb::velocypack::Slice slice,
     arangodb::ManagedDocumentResult& previous,
     arangodb::OperationOptions& options,
-    TRI_voc_tick_t& resultMarkerTick,
     bool lock,
     arangodb::KeyLockInfo* /*keyLockInfo*/,
     std::function<void()> const& callbackDuringLock
@@ -94,7 +93,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
       arangodb::transaction::Methods* trx,
       arangodb::velocypack::Slice const newSlice,
       arangodb::ManagedDocumentResult& result,
-      arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+      arangodb::OperationOptions& options,
       bool lock, arangodb::ManagedDocumentResult& previous) override;
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   virtual void setPath(std::string const&) override;
@@ -107,7 +106,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
       arangodb::transaction::Methods* trx,
       arangodb::velocypack::Slice const newSlice,
       arangodb::ManagedDocumentResult& result,
-      arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+      arangodb::OperationOptions& options,
       bool lock, arangodb::ManagedDocumentResult& previous) override;
   virtual void load() override {}
   virtual void unload() override {}

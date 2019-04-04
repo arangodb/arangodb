@@ -297,8 +297,8 @@ class LogicalCollection : public LogicalDataSource {
   // convenience function for downwards-compatibility
   Result insert(transaction::Methods* trx, velocypack::Slice const slice,
                 ManagedDocumentResult& result, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock) {
-    return insert(trx, slice, result, options, resultMarkerTick, lock, nullptr, nullptr);
+                bool lock) {
+    return insert(trx, slice, result, options, lock, nullptr, nullptr);
   }
 
   /**
@@ -308,19 +308,18 @@ class LogicalCollection : public LogicalDataSource {
    */
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
                 ManagedDocumentResult& result, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock,
-                KeyLockInfo* keyLockInfo, std::function<void()> const& cbDuringLock);
+                bool lock, KeyLockInfo* keyLockInfo, std::function<void()> const& cbDuringLock);
 
   Result update(transaction::Methods*, velocypack::Slice newSlice,
-                ManagedDocumentResult& result, OperationOptions&, TRI_voc_tick_t&,
+                ManagedDocumentResult& result, OperationOptions&,
                 bool lock, ManagedDocumentResult& previousMdr);
 
   Result replace(transaction::Methods*, velocypack::Slice newSlice,
-                 ManagedDocumentResult& result, OperationOptions&, TRI_voc_tick_t&,
+                 ManagedDocumentResult& result, OperationOptions&,
                  bool lock, ManagedDocumentResult& previousMdr);
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                OperationOptions& options,
                 bool lock, ManagedDocumentResult& previousMdr,
                 KeyLockInfo* keyLockInfo, std::function<void()> const& cbDuringLock);
 

@@ -1808,7 +1808,6 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
   VPackBuilder resultBuilder;
   ManagedDocumentResult docResult;
   ManagedDocumentResult prevDocResult;  // return OLD (with override option)
-  TRI_voc_tick_t maxTick = 0;
 
   auto workForOneDocument = [&](VPackSlice const value) -> Result {
     if (!value.isObject()) {
@@ -1821,7 +1820,6 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
       return Result(r);
     }
 
-    TRI_voc_tick_t resultMarkerTick = 0;
     docResult.clear();
     prevDocResult.clear();
 
@@ -1831,25 +1829,21 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
 
     TRI_ASSERT(needsLock == !isLocked(collection, AccessMode::Type::WRITE));
     Result res =
-        collection->insert(this, value, docResult, options, resultMarkerTick,
+        collection->insert(this, value, docResult, options,
                            needsLock, &keyLockInfo, updateFollowers);
 
+    bool didReplace = false;
     if (options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-      // RepSert Case - unique_constraint violated -> maxTick has not changed ->
-      // try replace
-      resultMarkerTick = 0;
+      // RepSert Case - unique_constraint violated ->  try replace
       // If we're overwriting, we already have a lock. Therefore we also don't
       // need to get the followers under the lock.
       TRI_ASSERT(!needsLock);
       TRI_ASSERT(!needsToGetFollowersUnderLock);
       TRI_ASSERT(updateFollowers == nullptr);
       res = collection->replace(this, value, docResult, options,
-                                resultMarkerTick, /*lock*/false, prevDocResult);
+                                /*lock*/false, prevDocResult);
       TRI_ASSERT(res.fail() || prevDocResult.revisionId() != 0);
-    }
-
-    if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
-      maxTick = resultMarkerTick;
+      didReplace = true;
     }
 
     if (res.fail()) {
@@ -1859,18 +1853,18 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     }
 
     if (!options.silent) {
+      const bool showReplaced = (options.returnOld && didReplace);
       TRI_ASSERT(!options.returnNew || !docResult.empty());
-      TRI_ASSERT(docResult.revisionId() != 0);
-      
+      TRI_ASSERT(!showReplaced || !prevDocResult.empty());
+
       arangodb::velocypack::StringRef keyString;
-      bool showReplaced = false;
-      if (options.returnOld && prevDocResult.revisionId() != 0) {
-        showReplaced = true;
-        TRI_ASSERT(!prevDocResult.empty());
-        keyString = transaction::helpers::extractKeyFromDocument(VPackSlice(prevDocResult.vpack()));
+      if (didReplace) { // docResult may be empty, but replace requires '_key' in value
+        keyString = value.get(StaticStrings::KeyString);
+        TRI_ASSERT(!keyString.empty());
       } else {
         keyString = transaction::helpers::extractKeyFromDocument(VPackSlice(docResult.vpack()));
       }
+      
       buildDocumentIdentity(collection, resultBuilder, cid, keyString,
                             docResult.revisionId(), prevDocResult.revisionId(),
                             showReplaced ? &prevDocResult : nullptr,
@@ -1910,11 +1904,6 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     if (!res.ok()) {
       return OperationResult{std::move(res), options};
     }
-  }
-
-  // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
-  if (res.ok() && options.waitForSync && maxTick > 0 && isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   if (options.silent) {
@@ -2122,12 +2111,11 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
   TRI_ASSERT(needsLock == lockResult.is(TRI_ERROR_LOCKED));
 
   VPackBuilder resultBuilder;  // building the complete result
-  TRI_voc_tick_t maxTick = 0;
   ManagedDocumentResult previous;
   ManagedDocumentResult result;
 
   // lambda //////////////
-  auto workForOneDocument = [this, &operation, &options, &maxTick, &collection,
+  auto workForOneDocument = [this, &operation, &options, &collection,
                              &resultBuilder, &cid, &previous,
                              &result](VPackSlice const newVal, bool isBabies) -> Result {
     Result res;
@@ -2136,7 +2124,6 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
       return res;
     }
 
-    TRI_voc_tick_t resultMarkerTick = 0;
     result.clear();
     previous.clear();
 
@@ -2145,15 +2132,11 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
     TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
 
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
-      res = collection->replace(this, newVal, result, options, resultMarkerTick,
+      res = collection->replace(this, newVal, result, options,
                                 /*lock*/false, previous);
     } else {
-      res = collection->update(this, newVal, result, options, resultMarkerTick,
+      res = collection->update(this, newVal, result, options,
                                /*lock*/false, previous);
-    }
-
-    if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
-      maxTick = resultMarkerTick;
     }
 
     if (res.fail()) {
@@ -2226,11 +2209,6 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
     if (!res.ok()) {
       return OperationResult{std::move(res), options};
     }
-  }
-
-  // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
-  if (res.ok() && options.waitForSync && maxTick > 0 && isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   if (options.silent) {
@@ -2391,7 +2369,6 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
 
   VPackBuilder resultBuilder;
   ManagedDocumentResult previous;
-  TRI_voc_tick_t maxTick = 0;
 
   auto workForOneDocument = [&](VPackSlice value, bool isBabies) -> Result {
     transaction::BuilderLeaser builder(this);
@@ -2414,17 +2391,12 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
       return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
     }
 
-    TRI_voc_tick_t resultMarkerTick = 0;
     previous.clear();
 
     TRI_ASSERT(needsLock == !isLocked(collection, AccessMode::Type::WRITE));
 
-    auto res = collection->remove(*this, value, options, resultMarkerTick, needsLock,
+    auto res = collection->remove(*this, value, options, needsLock,
                                   previous, &keyLockInfo, updateFollowers);
-
-    if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
-      maxTick = resultMarkerTick;
-    }
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
@@ -2477,11 +2449,6 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
     if (!res.ok()) {
       return OperationResult{std::move(res), options};
     }
-  }
-
-  // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
-  if (res.ok() && options.waitForSync && maxTick > 0 && isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   if (options.silent) {

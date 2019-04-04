@@ -1247,7 +1247,7 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
       CHECK((trx.begin().ok()));
 
       auto json = arangodb::velocypack::Parser::fromJson("{}");
-      auto const res = collection0->insert(&trx, json->slice(), mmdoc, opt, tick, false);
+      auto const res = collection0->insert(&trx, json->slice(), mmdoc, opt, false);
       CHECK(res.ok());
 
       CHECK((trx.commit().ok()));

@@ -302,24 +302,21 @@ class MMFilesCollection final : public PhysicalCollection {
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& resultMdr,
-                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                OperationOptions& options,
                 bool lock, KeyLockInfo* keyLockInfo,
                 std::function<void()> const& callbackDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 ManagedDocumentResult& resultMdr, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock,
-                ManagedDocumentResult& previousMdr) override;
+                bool lock, ManagedDocumentResult& previousMdr) override;
 
   Result replace(transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                  ManagedDocumentResult& resultMdr, OperationOptions& options,
-                 TRI_voc_tick_t& resultMarkerTick, bool lock,
-                 ManagedDocumentResult& previousMdr) override;
+                 bool lock, ManagedDocumentResult& previousMdr) override;
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
                 ManagedDocumentResult& previousMdr, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock,
-                KeyLockInfo* keyLockInfo,
+                bool lock, KeyLockInfo* keyLockInfo,
                 std::function<void()> const& callbackDuringLock) override;
 
   Result rollbackOperation(transaction::Methods& trx, TRI_voc_document_operation_e type,
