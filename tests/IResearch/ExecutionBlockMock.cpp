@@ -130,7 +130,7 @@ ExecutionBlockMock::getSome(size_t atMost) {
 
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
-        returnBlock(cur);
+        cur = nullptr;
         _pos = 0;
       }
     }

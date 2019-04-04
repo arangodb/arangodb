@@ -133,25 +133,15 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    *
    * @return A pair with the following properties:
    *         ExecutionState:
-   *           WAITING => IO going on, immediatly return to caller.
+   *           WAITING => IO going on, immediately return to caller.
    *           DONE => No more to expect from Upstream, if you are done with
    *                   this row return DONE to caller.
    *           HASMORE => There is potentially more from above, call again if
    *                      you need more input.
    *         AqlItemBlock:
    *           A matrix of result rows.
-   *           Guaranteed to be non nullptr in HASMORE cas, maybe a nullptr in
-
-   *           DONE. Is a nullptr in WAITING
-   *
-   * TODO When there are no more other blocks using getSome, we should replace
-   * the returned std::unique_ptr<AqlItemBlock> with a shared ptr to an
-   * AqlItemBlockShell, or a shared ptr to an AqlItemBlock with a custom deleter
-   * (like in the AqlItemBlockShell).
-   * Then we can also get rid of the stealBlock methods in OutputAqlItemRow,
-   * OutputAqlItemBlockShell and AqlItemBlockShell. No more invalid block
-   * access!
-   * NOTE TO SELF: Solving this TODO right now!
+   *           Guaranteed to be non nullptr in the HASMORE case, maybe a nullptr
+   *           in DONE. Is a nullptr in WAITING.
    */
   std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
 

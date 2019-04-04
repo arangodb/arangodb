@@ -35,7 +35,7 @@ using namespace arangodb::aql;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other) const {
-  return &blockShell() == &other;
+  return blockShell() == other;
 }
 #endif
 

@@ -226,21 +226,7 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
 
 template <bool passBlocksThrough>
 bool SingleRowFetcher<passBlocksThrough>::indexIsValid() const {
-  // TODO Hopefully we can get rid of this distinction later. When there are no
-  // more old blocks, we can replace the old getSome interface easily,
-  // specifically replace std::unique_ptr<AqlItemBlock> with a shared_ptr
-  // with a custom deleter (like AqlItemBlockShell), or a shared_ptr to an
-  // AqlItemBlockShell. Then we will never lose the block.
-  // NOTE TO SELF: Solve this TODO now!
-  if /* constexpr */ (passBlocksThrough) {
-    return _currentBlock != nullptr && _rowIndex < _currentBlock->size();
-  } else {
-    // The current block must never be invalid.
-    TRI_ASSERT(_currentBlock != nullptr);
-    // TODO remove the _currentBlock != nullptr check below.
-    //  Or does the assert has to be removed?
-    return _currentBlock != nullptr && _rowIndex < _currentBlock->size();
-  }
+  return _currentBlock != nullptr && _rowIndex < _currentBlock->size();
 }
 
 }  // namespace aql

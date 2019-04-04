@@ -207,9 +207,6 @@ class MultiDependencySingleRowFetcher {
   RegisterId getNrInputRegisters() const;
 
   bool indexIsValid(DependencyInfo const& info) const {
-    // The current block must never become invalid (i.e. !hasBlock()), unless
-    // it's passed through and therefore the output block steals it.
-    TRI_ASSERT(info._currentBlock != nullptr);  // TODO does this have to be removed?
     return info._currentBlock != nullptr && info._rowIndex < info._currentBlock->size();
   }
 
