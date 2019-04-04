@@ -90,8 +90,7 @@
 
     render: function () {
       if(frontendConfig.lockDownFoxx){
-        $(this.el).html(
-        "<html>Installing services is not allowed due to server configuration!</html>");
+        $(this.el).html("<div>The server was started with `--foxx.lock-down true`. Therefore you are not allowed to install services!</div>");
         return;
       }
 
