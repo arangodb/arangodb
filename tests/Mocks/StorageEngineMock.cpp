@@ -169,8 +169,6 @@ class EdgeIndexMock final : public arangodb::Index {
 
   size_t memory() const override { return sizeof(EdgeIndexMock); }
 
-  bool hasBatchInsert() const override { return false; }
-
   void load() override {}
   void unload() override {}
   void afterTruncate(TRI_voc_tick_t) override {
@@ -590,7 +588,7 @@ arangodb::Result PhysicalCollectionMock::insert(
     arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_tick_t& revisionId,
     arangodb::KeyLockInfo* /*keyLockInfo*/,
-    std::function<arangodb::Result(void)> callbackDuringLock) {
+    std::function<arangodb::Result(void)> const& callbackDuringLock) {
   TRI_ASSERT(callbackDuringLock == nullptr);  // not implemented
   before();
 
@@ -816,7 +814,7 @@ arangodb::Result PhysicalCollectionMock::remove(
     arangodb::ManagedDocumentResult& previous, arangodb::OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
     TRI_voc_rid_t& revisionId, arangodb::KeyLockInfo* /*keyLockInfo*/,
-    std::function<arangodb::Result(void)> callbackDuringLock) {
+    std::function<arangodb::Result(void)> const& callbackDuringLock) {
   TRI_ASSERT(callbackDuringLock == nullptr);  // not implemented
   before();
 
@@ -849,12 +847,11 @@ arangodb::Result PhysicalCollectionMock::replace(
     arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
     arangodb::ManagedDocumentResult& result,
     arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-    bool lock, TRI_voc_rid_t& prevRev, arangodb::ManagedDocumentResult& previous,
-    std::function<arangodb::Result(void)> callbackDuringLock) {
+    bool lock, TRI_voc_rid_t& prevRev, arangodb::ManagedDocumentResult& previous) {
   before();
 
   return update(trx, newSlice, result, options, resultMarkerTick, lock, prevRev,
-                previous,callbackDuringLock);
+                previous);
 }
 
 TRI_voc_rid_t PhysicalCollectionMock::revision(arangodb::transaction::Methods*) const {
@@ -883,14 +880,12 @@ arangodb::Result PhysicalCollectionMock::update(
     arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
     arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-    arangodb::ManagedDocumentResult& previous,
-    std::function<arangodb::Result(void)> callbackDuringLock) {
+    arangodb::ManagedDocumentResult& previous) {
   auto key = newSlice.get(arangodb::StaticStrings::KeyString);
   if (key.isNone()) {
     return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
-  TRI_ASSERT(callbackDuringLock == nullptr);  // not implemented
   before();
 
   for (size_t i = documents.size(); i; --i) {

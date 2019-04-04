@@ -131,7 +131,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 /*static*/ arangodb::Result methods::Collections::lookup( // find collection
     TRI_vocbase_t const& vocbase, // vocbase to search
     std::string const& name, // collection name
-    FuncCallback const& func // invoke on found collection
+    FuncCallback func // invoke on found collection
 ) {
   if (name.empty()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -209,7 +209,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     arangodb::velocypack::Slice const& properties, // collection properties
     bool createWaitsForSyncReplication, // replication wait flag
     bool enforceReplicationFactor, // replication factor flag
-    FuncCallback const& func // invoke on collection creation
+    FuncCallback func // invoke on collection creation
 ) {
   if (name.empty()) {
     return TRI_ERROR_ARANGO_ILLEGAL_NAME;

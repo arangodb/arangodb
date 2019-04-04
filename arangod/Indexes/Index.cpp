@@ -628,9 +628,6 @@ Result Index::sizeHint(transaction::Methods& trx, size_t size) {
   return Result();  // do nothing
 }
 
-/// @brief default implementation for hasBatchInsert
-bool Index::hasBatchInsert() const { return false; }
-
 /// @brief default implementation for supportsFilterCondition
 bool Index::supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const&,
                                     arangodb::aql::AstNode const*,

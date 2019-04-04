@@ -1002,7 +1002,7 @@ std::string ClusterComm::createCommunicatorDestination(std::string const& endpoi
   }
   httpEndpoint.append(path);
 
-  return std::move(httpEndpoint);
+  return httpEndpoint;
 }
 
 std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(

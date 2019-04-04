@@ -287,9 +287,6 @@ class Query {
   ///        warnings. If there are none it will not modify the builder
   void addWarningsToVelocyPack(arangodb::velocypack::Builder&) const;
 
-  /// @brief get a description of the query's current state
-  std::string getStateString() const;
-
   /// @brief look up a graph in the _graphs collection
   graph::Graph const* lookupGraphByName(std::string const& name);
 
