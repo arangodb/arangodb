@@ -76,12 +76,12 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   /// calling JavaScript code
   bool isAllowedToAccessPath(v8::Isolate* isolate, std::string path, FSAccessType access) const;
   bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, FSAccessType access) const;
-  bool denyFoxx(v8::Isolate* isolate) const;
+  bool lockDownFoxx(v8::Isolate* isolate) const;
 
   void addToInternalReadWhiteList(char const* item);
 
  private:
-  bool _disableFoxx;
+  bool _lockDownFoxx;
   bool _allowExecutionOfBinaries;
   bool _denyHardened;
 

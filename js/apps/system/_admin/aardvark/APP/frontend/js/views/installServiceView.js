@@ -89,6 +89,12 @@
     },
 
     render: function () {
+      if(frontendConfig.lockDownFoxx){
+        $(this.el).html(
+        "<html>Installing services is not allowed due to server configuration!</html>");
+        return;
+      }
+
       // if repo not fetched yet, wait
       $(this.el).html(this.template.render({
         services: this.collection
