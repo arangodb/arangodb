@@ -75,7 +75,6 @@ static uint64_t getSerialNumber() {
   return temp;
 } // getSerialNumber
 
-
 //
 // @brief static function to pick proper operation object and then have it
 //        parse parameters
@@ -101,7 +100,6 @@ std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
     } else if (0 == suffixes[0].compare("lock")) {
       operation.reset((isCoord ? toHotBackup(new RocksDBHotBackupLockCoord(body))
                        : toHotBackup(new RocksDBHotBackupLock(body))));
-
     }
 #if USE_ENTERPRISE
     else if (0 == suffixes[0].compare("upload")) {
@@ -576,8 +574,6 @@ void RocksDBHotBackupCreate::executeDelete() {
 
 } // RocksDBHotBackupCreate::executeDelete
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief RocksDBHotBackupRestore
 ///        POST:  Initiate restore of rocksdb snapshot in place of working directory
@@ -928,8 +924,6 @@ struct LockCleaner {
   uint64_t _lockSerialNumber;
 };
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief RocksDBHotBackupLock
 ///        POST:  Initiate lock on transactions within rocksdb
@@ -940,10 +934,8 @@ RocksDBHotBackupLock::RocksDBHotBackupLock(const VPackSlice body)
 {
 }
 
-
 RocksDBHotBackupLock::~RocksDBHotBackupLock() {
 }
-
 
 void RocksDBHotBackupLock::parseParameters(rest::RequestType const type) {
 
@@ -973,7 +965,6 @@ void RocksDBHotBackupLock::parseParameters(rest::RequestType const type) {
   return;
 
 } // RocksDBHotBackupLock::parseParameters
-
 
 void RocksDBHotBackupLock::execute() {
   MUTEX_LOCKER (mLock, serialNumberMutex);
@@ -1017,6 +1008,5 @@ void RocksDBHotBackupLock::execute() {
   return;
 
 } // RocksDBHotBackupLock::execute
-
 
 } // namespace arangodb

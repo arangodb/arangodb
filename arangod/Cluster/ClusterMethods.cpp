@@ -23,6 +23,7 @@
 
 #include "ClusterMethods.h"
 
+#include "Agency/TimeString.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
@@ -2761,6 +2762,12 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
 
   hotBackups.clear();
 
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // shutdown, leave here
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
+
   VPackBuilder builder;
   {
     VPackObjectBuilder b(&builder);
@@ -2776,12 +2783,46 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
   }
 
   // Perform the requests
-  //size_t done = 0;
+  size_t done = 0;
+  cc->performRequests(
+    requests, CL_DEFAULT_TIMEOUT, done, Logger::COMMUNICATION, false);
   
-  //hotBackups = listFiles(std::string const& directory);
+  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Getting list of local backups";
 
+  // Now listen to the results:
+  for (auto const& req : requests) {
+
+    auto res = req.result;
+    int commError = handleGeneralCommErrors(&res);
+    if (commError != TRI_ERROR_NO_ERROR) {
+      return arangodb::Result(
+        commError,
+        std::string("Communication error while getting listt of backups from ")
+        + req.destination);
+    }
+    TRI_ASSERT(res.answer != nullptr);
+    auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
+    VPackSlice resSlice = resBody->slice();
+    if (!resSlice.isObject()) {
+      // Response has invalid format
+      return arangodb::Result(
+        TRI_ERROR_HTTP_CORRUPTED_JSON,
+        std::string("result to list request to ") + req.destination + "not an object");
+    }
+
+    if (!resSlice.hasKey("server") || !resSlice.hasKey("hotbackups")
+        || !resSlice.get("hotbackups").isArray()) {
+      return arangodb::Result(
+        TRI_ERROR_HOT_BACKUP_INTERNAL,
+        std::string("invalid response from ") + req.destination);
+    }
+
+    for (auto const id : VPackArrayIterator(resSlice.get("hotbackups"))) {
+      hotBackups.push_back(id.copyString());
+    }
+  }
+  
   return arangodb::Result();
-
 }
 
 /**
@@ -2886,7 +2927,8 @@ arangodb::Result controlMaintenanceFeature(
   cc->performRequests(
     requests, CL_DEFAULT_TIMEOUT, done, Logger::COMMUNICATION, false);
   
-  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Inquiring about backup " << backupId;
+  LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
+    << "Attempting to stop maintenance features for hot backup id " << backupId;
   VPackBuilder plan;
 
   // Now listen to the results:
@@ -2903,42 +2945,27 @@ arangodb::Result controlMaintenanceFeature(
     TRI_ASSERT(res.answer != nullptr);
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice resSlice = resBody->slice();
-    if (!resSlice.isObject()) {
+    if (!resSlice.isString()) {
       // Response has invalid format
       return arangodb::Result(
         TRI_ERROR_HTTP_CORRUPTED_JSON,
-        std::string("result to list request to ") + req.destination + "not an object");
+        std::string("result of stop request to maintenance feature on ")
+        + req.destination + " not a string");
     }
 
-    if (!resSlice.hasKey("result") ||
-        !resSlice.get("result").isBoolean() || !resSlice.get("result").getBoolean()) {
-      LOG_TOPIC(ERR, Logger::HOTBACKUP)
-        << "DB server " << req.destination << "is missing backup " << backupId;
+    if (!resSlice.isEqualString("OK")) {
       return arangodb::Result(
-        TRI_ERROR_FILE_NOT_FOUND,
-        std::string("no backup with id ") + backupId + " on server " + req.destination);
-    }
-
-    if (resSlice.hasKey("agency-dump")) {
-      LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
-        << "Received agency dump for " << backupId << " from " << req.destination;
-      LOG_TOPIC(TRACE, Logger::HOTBACKUP) << resSlice.get("agency-dump");
-      plan.add(resSlice.get("agency-dump").get("Plan"));
+        TRI_ERROR_HOT_BACKUP_INTERNAL,
+        std::string("failed to stop maintenance feature for ")
+        + backupId + " on server " + req.destination);
     }
 
   }
 
   return arangodb::Result();
-  
 
 }
 
-arangodb::Result replayAgency(VPackSlice const plan) {
-
-  
-  
-  return arangodb::Result();
-}
 
 
 arangodb::Result restoreOnDBServers(
@@ -2969,7 +2996,7 @@ arangodb::Result restoreOnDBServers(
   cc->performRequests(
     requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
 
-  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Inquiring about backup " << backupId;
+  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Restoring backup " << backupId;
 
   // Now listen to the results:
   for (auto const& req : requests) {
@@ -2988,21 +3015,22 @@ arangodb::Result restoreOnDBServers(
       // Response has invalid format
       return arangodb::Result(
         TRI_ERROR_HTTP_CORRUPTED_JSON,
-        std::string("result to list request to ") + req.destination + "not an object");
+        std::string("result to restore request ") + req.destination + "not an object");
     }
 
-    if (!resSlice.hasKey("result") ||
-        !resSlice.get("result").isBoolean() || !resSlice.get("result").getBoolean()) {
-      LOG_TOPIC(ERR, Logger::HOTBACKUP)
-        << "DB server " << req.destination << "is missing backup " << backupId;
+    if (!resSlice.hasKey("previous") || !resSlice.get("previous").isString()) {
       return arangodb::Result(
-        TRI_ERROR_FILE_NOT_FOUND,
-        std::string("no backup with id ") + backupId + " on server " + req.destination);
+        TRI_ERROR_HOT_RESTORE_INTERNAL,
+        std::string("failed to restore ") + backupId + " on server " + req.destination);
     }
+
+    LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
+      << "Failsafe name " << resSlice.get("previous").copyString()
+      << " from db server " << req.destination;
 
   }
 
-  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Restored successfully"; 
+  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Restored " << backupId << " successfully"; 
 
   return arangodb::Result();
 
@@ -3023,7 +3051,8 @@ arangodb::Result applyDBServerMatchesToPlan(
 
 
 arangodb::Result findLocalBackup(
-  std::string const& backupId, std::vector<ServerID> const& dbServers, VPackBuilder& plan) {
+  std::string const& backupId, std::vector<ServerID> const& dbServers,
+  VPackBuilder& plan) {
 
   // Make sure all db servers have the backup with backup Id
   auto cc = ClusterComm::instance();
@@ -3032,14 +3061,13 @@ arangodb::Result findLocalBackup(
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN, "Shutting down");
   }
 
-
   VPackBuilder builder;
   {
     VPackObjectBuilder o(&builder);
     builder.add("id", VPackValue(backupId));
   }
   
-  std::string const url = "/_admin/hotbackup/find";
+  std::string const url = "/_admin/hotbackup/list";
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>(builder.toJson());
   for (auto const& dbServer : dbServers) {
@@ -3061,7 +3089,8 @@ arangodb::Result findLocalBackup(
     if (commError != TRI_ERROR_NO_ERROR) {
       // oh-oh cluster is in a bad state
       return arangodb::Result(
-        commError, std::string("Communication error list backups on ") + req.destination);
+        commError, std::string("Communication error while search for backup ") +
+        backupId + " on db server " + req.destination);
     }
     TRI_ASSERT(res.answer != nullptr);
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
@@ -3070,7 +3099,8 @@ arangodb::Result findLocalBackup(
       // Response has invalid format
       return arangodb::Result(
         TRI_ERROR_HTTP_CORRUPTED_JSON,
-        std::string("result to list request to ") + req.destination + "not an object");
+        std::string("result to find backup ") + backupId
+        + " failed on db server " + req.destination + "not an object");
     }
 
     if (!resSlice.hasKey("result") ||
@@ -3178,7 +3208,7 @@ arangodb::Result lockDBServerTransactions(
   VPackBuilder lock;
   {
     VPackObjectBuilder o(&lock);
-    lock.add("backupId", VPackValue(backupId));
+    lock.add("id", VPackValue(backupId));
   }
   auto body = std::make_shared<std::string const>(lock.toJson());
   auto cc = ClusterComm::instance();
@@ -3214,9 +3244,9 @@ arangodb::Result lockDBServerTransactions(
         VPackSlice slc = wrBody->slice();
         // Sanity check
         if (slc.isObject()
-            && slc.hasKey("backupId") && slc.get("backupId").isString()
+            && slc.hasKey("id") && slc.get("id").isString()
             && slc.hasKey("locked")   && slc.get("locked").isBoolean()) {
-          std::string otherBackupId = slc.get("backupId").copyString();
+          std::string otherBackupId = slc.get("id").copyString();
           bool locked = (slc.get("locked").getBool());
           if (backupId != otherBackupId) {
             std::stringstream s;
@@ -3264,6 +3294,9 @@ arangodb::Result hotBackupDBServers(
   std::string const& backupId, std::vector<ServerID> dbServers,
   VPackSlice agencyDump) {
 
+  std::string const timeStamp =
+    timepointToString(std::chrono::system_clock::now());
+
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
@@ -3275,6 +3308,7 @@ arangodb::Result hotBackupDBServers(
     VPackObjectBuilder b(&builder);
     builder.add("id", VPackValue(backupId));
     builder.add("agency-dump", agencyDump);
+    builder.add("timeStamp", VPackValue(timeStamp));
   }
   auto body = std::make_shared<std::string>(builder.toJson());
   
@@ -3328,7 +3362,11 @@ arangodb::Result hotBackupDBServers(
   return arangodb::Result();
   
 }
-                                    
+
+
+/**
+ * @brief delete all backups with backupId from the db servers
+ */
 arangodb::Result removeLocalBackups(
   std::string const& backupId, std::vector<ServerID> const& dbServers) {
 
@@ -3353,9 +3391,9 @@ arangodb::Result removeLocalBackups(
   }
 
   // Perform the requests
-  size_t nrDone = 0;
+  size_t done = 0;
   cc->performRequests(
-    requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
+    requests, CL_DEFAULT_TIMEOUT, done, Logger::COMMUNICATION, false);
 
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Deleting backup " << backupId;
 
