@@ -1006,6 +1006,10 @@ void V8ShellFeature::initGlobals() {
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
   ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
 
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+
   // try to append the current version name to the startup directory,
   // so instead of "/path/to/js" we will get "/path/to/js/3.4.0"
   std::string const versionAppendix =
@@ -1021,6 +1025,7 @@ void V8ShellFeature::initGlobals() {
     // version-specific js path exists!
     _startupDirectory = versionedPath;
   }
+  v8security->addToInternalReadWhiteList(_startupDirectory.c_str());
 
   for (auto& it : _moduleDirectories) {
     versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
@@ -1032,6 +1037,7 @@ void V8ShellFeature::initGlobals() {
       // version-specific js path exists!
       it = versionedPath;
     }
+    v8security->addToInternalReadWhiteList(it.c_str()); //expand
   }
 
   LOG_TOPIC("930d9", DEBUG, Logger::V8)
