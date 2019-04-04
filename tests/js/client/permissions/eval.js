@@ -34,7 +34,6 @@ if (getOptions === true) {
   fs.write(testFile, `print('hello world')`);
   return {
     'temp.path': fs.getTempPath(),     // Adjust the temp-path to match our current temp path
-    'javascript.allow-eval-js': false
   };
 }
 
