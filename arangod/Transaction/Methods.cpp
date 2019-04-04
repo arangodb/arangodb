@@ -2083,7 +2083,6 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
       // just check if they're empty.
       if (needsToGetFollowersUnderLock || !followers->empty()) {
         options.silent = false;
-        options.returnNew = true;
       }
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
@@ -3325,7 +3324,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
                                     std::shared_ptr<const std::vector<std::string>> const& followers,
                                     OperationOptions const& options, VPackSlice const value,
                                     TRI_voc_document_operation_e const operation,
-                                    VPackBuilder& resultBuilder) {
+                                    VPackBuilder const& resultBuilder) {
   TRI_ASSERT(followers != nullptr);
 
   Result res;

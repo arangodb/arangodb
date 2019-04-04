@@ -473,7 +473,8 @@ int MMFilesTransactionState::writeAbortMarker() {
 /// @brief write WAL commit marker
 int MMFilesTransactionState::writeCommitMarker() {
   if (!needWriteMarker(false)) {
-    if (isSingleOperation() && _lastWrittenOperationTick > 0) {
+    if (_options.waitForSync && _lastWrittenOperationTick > 0 &&
+        isSingleOperation()) { // we do the waitForSync in the end
       EngineSelectorFeature::ENGINE->waitForSyncTick(_lastWrittenOperationTick);
     }
     return TRI_ERROR_NO_ERROR;
