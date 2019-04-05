@@ -21,23 +21,14 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_ANALYZERS_H
-#define ARANGOD_V8_SERVER_V8_ANALYZERS_H 1
-
-#include <v8.h>
-
-struct TRI_v8_global_t; // forward declaration
-struct TRI_vocbase_t; // forward declaration
-
-namespace arangodb {
-namespace iresearch {
+const internal = require('internal');
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add analyzer related handlers to 'ArangoDBNS'
+/// @brief exported members and functions
 ////////////////////////////////////////////////////////////////////////////////
-void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate);
 
-} // iresearch
-} // arangodb
-
-#endif
+var ArangoAnalyzers = internal.ArangoAnalyzers;
+exports.analyzer = ArangoAnalyzers.analyzer;
+exports.remove = ArangoAnalyzers.remove;
+exports.save = ArangoAnalyzers.save;
+exports.toArray = ArangoAnalyzers.toArray;
