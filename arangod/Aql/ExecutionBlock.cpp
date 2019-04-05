@@ -68,7 +68,6 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _profile(engine->getQuery()->queryOptions().getProfileLevel()),
       _getSomeBegin(0.0),
       _upstreamState(ExecutionState::HASMORE),
-      _skipped(0),
       _collector(&engine->itemBlockManager()) {
   TRI_ASSERT(_trx != nullptr);
 
@@ -112,7 +111,6 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(Inp
   _done = false;
   _upstreamState = ExecutionState::HASMORE;
   _pos = 0;
-  _skipped = 0;
   _collector.clear();
 
   TRI_ASSERT(getHasMoreState() == ExecutionState::HASMORE);
@@ -264,13 +262,6 @@ void ExecutionBlock::returnBlock(AqlItemBlock*& block) noexcept {
   _engine->itemBlockManager().returnBlock(block);
 }
 
-/// @brief return an AqlItemBlock to the memory manager, but ignore nullptr
-void ExecutionBlock::returnBlockUnlessNull(AqlItemBlock*& block) noexcept {
-  if (block != nullptr) {
-    _engine->itemBlockManager().returnBlock(block);
-  }
-}
-
 /// @brief copy register data from one block (src) into another (dst)
 /// register values are cloned
 void ExecutionBlock::inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst,
@@ -326,202 +317,11 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
   return {res.first, false};
 }
 
-/// @brief getSomeWithoutRegisterClearout, same as above, however, this
-/// is the actual worker which does not clear out registers at the end
-/// the idea is that somebody who wants to call the generic functionality
-/// in a derived class but wants to modify the results before the register
-/// cleanup can use this method, internal use only
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
-  TRI_ASSERT(atMost > 0);
-
-  std::unique_ptr<AqlItemBlock> result;
-  ExecutionState state;
-  Result res;
-
-  {
-    AqlItemBlock* resultPtr = nullptr;
-    size_t skipped = 0;
-    std::tie(state, res) = getOrSkipSome(atMost, false, resultPtr, skipped);
-    result.reset(resultPtr);
-  }
-
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(result == nullptr);
-    return {ExecutionState::WAITING, nullptr};
-  }
-
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return {state, std::move(result)};
-}
-
 void ExecutionBlock::clearRegisters(AqlItemBlock* result) {
   // Clear out registers not needed later on:
   if (result != nullptr) {
     result->clearRegisters(getPlanNode()->_regsToClear);
   }
-}
-
-ExecutionBlock::BufferState ExecutionBlock::getBlockIfNeeded(size_t atMost) {
-  if (!_buffer.empty()) {
-    return BufferState::HAS_BLOCKS;
-  }
-
-  // _pos must be reset to 0 during both initialize and after removing an item
-  // from _buffer, so if the buffer is empty, it must always be 0
-  TRI_ASSERT(_pos == 0);
-
-  if (_upstreamState == ExecutionState::DONE) {
-    return BufferState::NO_MORE_BLOCKS;
-  }
-
-  ExecutionState state;
-  bool blockAppended;
-  std::tie(state, blockAppended) = getBlock(atMost);
-
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(!blockAppended);
-    return BufferState::WAITING;
-  }
-
-  // !blockAppended => DONE
-  TRI_ASSERT(blockAppended || state == ExecutionState::DONE);
-
-  if (blockAppended) {
-    return BufferState::HAS_NEW_BLOCK;
-  }
-
-  return BufferState::NO_MORE_BLOCKS;
-}
-
-// TODO should better be split in two methods advanceInputCursor and
-// advanceOutputCursor.
-AqlItemBlock* ExecutionBlock::advanceCursor(size_t numInputRowsConsumed,
-                                            size_t numOutputRowsCreated) {
-  AqlItemBlock* cur = _buffer.front();
-  TRI_ASSERT(cur != nullptr);
-
-  _skipped += numOutputRowsCreated;
-  _pos += numInputRowsConsumed;
-
-  if (_pos >= cur->size()) {
-    _buffer.pop_front();
-    _pos = 0;
-
-    return cur;
-  }
-
-  return nullptr;
-}
-
-std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
-    size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped_) {
-  TRI_ASSERT(result == nullptr && skipped_ == 0);
-
-  // if _buffer.size() is > 0 then _pos points to a valid place . . .
-
-  auto processRows = [this](size_t atMost, bool skipping) -> std::pair<size_t, bool> {
-    AqlItemBlock* cur = _buffer.front();
-    TRI_ASSERT(cur != nullptr);
-
-    size_t rowsProcessed = 0;
-    bool keepFrontBlock = false;
-
-    if (cur->size() - _pos > atMost) {
-      // The current block is too large for atMost:
-      if (!skipping) {
-        std::unique_ptr<AqlItemBlock> more(cur->slice(_pos, _pos + atMost));
-
-        TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-
-        _collector.add(std::move(more));
-      }
-      rowsProcessed = atMost;
-    } else if (_pos > 0) {
-      // The current block fits into our result, but it is already
-      // half-eaten:
-      if (!skipping) {
-        std::unique_ptr<AqlItemBlock> more(cur->slice(_pos, cur->size()));
-
-        TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-
-        _collector.add(std::move(more));
-      }
-      rowsProcessed = cur->size() - _pos;
-    } else {
-      // The current block fits into our result and is fresh:
-      if (!skipping) {
-        // if any of the following statements throw, then cur is not lost,
-        // as it is still contained in _buffer
-        TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        _collector.add(cur);
-        // claim ownership of cur
-        keepFrontBlock = true;
-      }
-      rowsProcessed = cur->size();
-    }
-
-    // Number of input and output rows is always equal here
-    return {rowsProcessed, keepFrontBlock};
-  };
-
-  while (ExecutionBlock::getHasMoreState() != ExecutionState::DONE && _skipped < atMost) {
-    if (skipping && _buffer.empty()) {
-      // Skip upstream directly if possible
-      ExecutionState state;
-      size_t numActuallySkipped;
-      std::tie(state, numActuallySkipped) = _dependencies[0]->skipSome(atMost);
-      if (state == ExecutionState::WAITING) {
-        TRI_ASSERT(numActuallySkipped == 0);
-        return {state, TRI_ERROR_NO_ERROR};
-      }
-      _upstreamState = state;
-      _skipped += numActuallySkipped;
-
-      break;
-    }
-
-    BufferState bufferState = getBlockIfNeeded(atMost - _skipped);
-    if (bufferState == BufferState::WAITING) {
-      TRI_ASSERT(skipped_ == 0);
-      TRI_ASSERT(result == nullptr);
-      return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
-    }
-    if (bufferState == BufferState::NO_MORE_BLOCKS) {
-      break;
-    }
-
-    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS ||
-               bufferState == BufferState::HAS_NEW_BLOCK);
-    TRI_ASSERT(!_buffer.empty());
-
-    size_t rowsProcessed;
-    bool keepFrontBlock;
-    std::tie(rowsProcessed, keepFrontBlock) = processRows(atMost - _skipped, skipping);
-    // number of input rows consumed and output rows created is equal here
-    AqlItemBlock* removedBlock = advanceCursor(rowsProcessed, rowsProcessed);
-    if (!keepFrontBlock) {
-      returnBlockUnlessNull(removedBlock);
-    }
-  }
-
-  TRI_ASSERT(result == nullptr);
-
-  if (!skipping) {
-    result = _collector.steal();
-  }
-  skipped_ = _skipped;
-  _skipped = 0;
-
-  return {ExecutionBlock::getHasMoreState(), TRI_ERROR_NO_ERROR};
 }
 
 ExecutionState ExecutionBlock::getHasMoreState() {

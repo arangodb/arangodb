@@ -126,9 +126,6 @@ class ExecutionBlock {
   /// @brief return an AqlItemBlock to the memory manager
   void returnBlock(AqlItemBlock*& block) noexcept;
 
-  /// @brief return an AqlItemBlock to the memory manager, but ignore nullptr
-  void returnBlockUnlessNull(AqlItemBlock*& block) noexcept;
-
   /// @brief copy register data from one block (src) into another (dst)
   /// register values are cloned
   void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t row) {
@@ -143,25 +140,10 @@ class ExecutionBlock {
   /// the dependent node is exhausted.
   std::pair<ExecutionState, bool> getBlock(size_t atMost);
 
-  /// @brief getSomeWithoutRegisterClearout, same as above, however, this
-  /// is the actual worker which does not clear out registers at the end
-  /// the idea is that somebody who wants to call the generic functionality
-  /// in a derived class but wants to modify the results before the register
-  /// cleanup can use this method, internal use only
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutRegisterClearout(size_t atMost);
-
   /// @brief clearRegisters, clears out registers holding values that are no
   /// longer needed by later nodes
   void clearRegisters(AqlItemBlock* result);
 
-  /// @brief generic method to get or skip some
-  /// Does neither do tracing (traceGetSomeBegin/~End), nor call
-  /// clearRegisters() - both is done in getSome(), which calls this via
-  /// getSomeWithoutRegisterClearout(). The same must hold for all overriding
-  /// implementations.
-  virtual std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
-                                                          AqlItemBlock*& result,
-                                                          size_t& skipped);
 
   /// @brief Returns the success return start of this block.
   ///        Can either be HASMORE or DONE.
@@ -178,13 +160,6 @@ class ExecutionBlock {
   /// - HAS_NEW_BLOCK: the buffer was empty before and a new block was added
   /// - WAITING: upstream returned WAITING, state is unchanged
   enum class BufferState { NO_MORE_BLOCKS, HAS_BLOCKS, HAS_NEW_BLOCK, WAITING };
-  BufferState getBlockIfNeeded(size_t atMost);
-
-  /// @brief Updates _skipped and _pos; removes the first item from the
-  /// buffer if necessary. If a block was removed it is returned, and nullptr
-  /// otherwise. The caller then owns the block (and therefore is responsible
-  /// for calling returnBlock()).
-  AqlItemBlock* advanceCursor(size_t numInputRowsConsumed, size_t numOutputRowsCreated);
 
  protected:
   /// @brief the execution engine
@@ -234,13 +209,6 @@ class ExecutionBlock {
   /// @brief the execution state of the dependency
   ///        used to determine HASMORE or DONE better
   ExecutionState _upstreamState;
-
-  /// @brief The number of skipped/processed rows in getOrSkipSome, used to keep
-  /// track of it despite WAITING interruptions. As
-  /// ExecutionBlock::getOrSkipSome is called directly in some overriden
-  /// implementations of ::getOrSkipSome, these implementations need their own
-  /// _skipped counter.
-  size_t _skipped;
 
   /// @brief Collects result blocks during ExecutionBlock::getOrSkipSome. Must
   /// be a member variable due to possible WAITING interruptions.
