@@ -161,7 +161,7 @@ void transaction::Context::returnString(std::string* str) {
   try {  // put string back into our vector of strings
     _strings.push_back(str);
   } catch (...) {
-    // no harm done. just wipe the builder
+    // no harm done. just wipe the string
     delete str;
   }
 }
