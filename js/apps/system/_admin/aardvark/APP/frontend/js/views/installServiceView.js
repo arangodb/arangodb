@@ -1,5 +1,5 @@
 /* jshint browser: true */
-/* global Backbone, $, window, arangoHelper, templateEngine, _ */
+/* global frontendConfig, Backbone, $, window, arangoHelper, templateEngine, _ */
 (function () {
   'use strict';
 
@@ -89,8 +89,8 @@
     },
 
     render: function () {
-      if(frontendConfig.lockDownFoxx){
-        $(this.el).html("<div>The server was started with `--foxx.lock-down true`. Therefore you are not allowed to install services!</div>");
+      if (frontendConfig.lockDownFoxx) {
+        $(this.el).html('<div>The server was started with `--foxx.lock-down true`. Therefore you are not allowed to install services!</div>');
         return;
       }
 
