@@ -211,9 +211,8 @@ installer.put('/raw', function (req) {
 `);
 
 foxxRouter.delete('/', function (req, res) {
-  print("hello foxx " + internal.lockDownFoxx());
   if (internal.lockDownFoxx()) {
-    res.throw(403, "not allowed to uninstall services when server is started with --foxx.lock-down true")
+    res.throw(403, "not allowed to uninstall services when server is started with --foxx.lock-down true");
   }
   const mount = decodeURIComponent(req.queryParams.mount);
   const runTeardown = req.queryParams.teardown;

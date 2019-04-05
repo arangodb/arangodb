@@ -370,23 +370,23 @@
 
   //arg1 can be a code or error object
   internal.throwArangoError = function (arg1, message, httpCode) {
-    let errorNum = undefined
+    let errorNum;
 
-    if(typeof arg1 == "object" && typeof arg1.code == "number"){
+    if (typeof arg1 === "object" && typeof arg1.code === "number") {
       errorNum = arg1.code;
       if(message === undefined && arg1.message) {
         message = arg1.message;
       }
-    } else if ( typeof arg1 == "number" ) {
-      errorNum = arg1
+    } else if ( typeof arg1 === "number" ) {
+      errorNum = arg1;
     } else {
-      errorNum = interal.errors.ERROR_INTERNAL.code
+      errorNum = internal.errors.ERROR_INTERNAL.code;
     }
 
     if (message === undefined) {
       message = "could not resolve errorMessage";
       for(var key in internal.errors) {
-        let attribute = internal.errors[key]
+        let attribute = internal.errors[key];
         if(attribute.code === errorNum){
           message = attribute.message;
           break;
