@@ -56,6 +56,7 @@
 #include "Random/RandomGenerator.h"
 #include "Random/UniformCharacter.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -2675,7 +2676,7 @@ static void JS_LinkFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string systemErrorStr;
-  
+
   if (!TRI_CreateSymbolicLink(target, linkpath, systemErrorStr)) {
     std::string errMsg = "cannot create a symlink from [" + target + "] to [" +
                          linkpath + " ] : " + systemErrorStr;
@@ -5263,6 +5264,25 @@ static void JS_IsEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert errror number to httpCode
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ErrorNumberToHttpCode(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1 || ! args[0]->IsNumber()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("errorNumberToHttpCode(<int>)");
+  }
+
+  auto num = TRI_ObjectToInt64(isolate, args[0]);
+  auto code = arangodb::GeneralResponse::responseCode(num);
+
+  using Type = typename std::underlying_type<arangodb::rest::ResponseCode>::type;
+  TRI_V8_RETURN_INTEGER(static_cast<Type>(code));
+  TRI_V8_TRY_CATCH_END
+}
+////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5491,6 +5511,8 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_IS_ENTERPRISE"), JS_IsEnterprise);
 
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_ERROR_NUMBER_TO_HTTP_CODE"), JS_ErrorNumberToHttpCode);
   // .............................................................................
   // create the global variables
   // .............................................................................

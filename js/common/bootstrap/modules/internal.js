@@ -76,6 +76,29 @@ global.DEFINE_MODULE('internal', (function () {
     return `${this.name} ${this.errorNum}: ${this.message}`;
   };
 
+  exports.ArangoError.prototype.bla = function (num, message, httpcode) {
+
+    if (message === undefined) {
+      message = "could not resolve error number";
+      for(key in exports.errors) {
+        if(exports.errors[key].code === num){
+          message = key.message;
+          break;
+        }
+      }
+    }
+
+    if (httpcode === undefined) {
+      httpcode = exports.errorNumberToHttpCode(num);
+    }
+
+    throw new ArangoError({
+      errorNum: num,
+      errorMessage: message,
+      code: httpcode
+    });
+  };
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief threadNumber
   // //////////////////////////////////////////////////////////////////////////////
@@ -194,6 +217,15 @@ global.DEFINE_MODULE('internal', (function () {
 
   if (exports.startupPath === '') {
     exports.startupPath = '.';
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief convert error number to http code
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_ERROR_NUMBER_TO_HTTP_CODE) {
+    exports.errorNumberToHttpCode = global.SYS_ERROR_NUMBER_TO_HTTP_CODE;
+    delete global.SYS_ERROR_NUMBER_TO_HTTP_CODE;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
