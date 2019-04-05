@@ -567,8 +567,8 @@ function _prepareService (serviceInfo, legacy = false) {
         _buildServiceFromFile(tempServicePath, tempBundlePath, serviceInfo);
       }
     } else {
-      // Foxx Store
-      const info = store.installationInfo(serviceInfo);
+      // Foxx Store 
+      const info = !require("internal").lockDownFoxx() && store.installationInfo(serviceInfo);  //disable foxx store
       if (!info) {
         throw new ArangoError({
           errorNum: errors.ERROR_SERVICE_SOURCE_NOT_FOUND.code,

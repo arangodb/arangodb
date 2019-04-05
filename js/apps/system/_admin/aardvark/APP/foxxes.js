@@ -123,7 +123,7 @@ installer.use(function (req, res, next) {
     configuration
   }, service.simpleJSON()));
 });
-
+if (!internal.lockDownFoxx()) {
 installer.put('/store', function (req) {
   req.body = `${req.body.name}:${req.body.version}`;
 })
@@ -135,6 +135,7 @@ installer.put('/store', function (req) {
 .description(dd`
   Downloads a Foxx from the store and installs it at the given mount.
 `);
+}
 
 installer.put('/git', function (req) {
   const baseUrl = process.env.FOXX_BASE_URL || 'https://github.com/';
@@ -370,22 +371,21 @@ foxxRouter.patch('/devel', function (req, res) {
   Used to toggle between production and development mode.
 `);
 
+if (!internal.lockDownFoxx()) {
 router.get('/fishbowl', function (req, res) {
-  if(!internal.lockDownFoxx()){
     try {
       store.update();
     } catch (e) {
       console.warn('Failed to update Foxx store from GitHub.');
     }
     res.json(store.availableJson());
-  } else {
     res.json([]);
-  }
 })
 .summary('List of all Foxx services submitted to the Foxx store.')
 .description(dd`
   This function contacts the fishbowl and reports which services are available for install.
 `);
+}
 
 router.post('/download/nonce', function (req, res) {
   const nonce = crypto.createNonce();
