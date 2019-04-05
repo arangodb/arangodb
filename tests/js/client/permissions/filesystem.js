@@ -247,10 +247,21 @@ function testSuite() {
     catch (err) {
       assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'stat-access to ' + fn + ' wasn\'t forbidden');
     }
+    try {
+      let rc = fs.mtime(fn);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'stat-access to ' + fn + ' wasn\'t forbidden');
+    }
   }
   function tryExistsAllowed(fn, exists) {
     let rc = fs.exists(fn);
     assertEqual(rc, exists, 'Expected ' + fn + ' to be stat-eable');
+    if (exists) {
+      rc = fs.mtime(fn);
+      assertTrue(rc > 0);
+    }
   }
 
   function tryFileSizeForbidden(fn) {
