@@ -46,10 +46,10 @@ global.DEFINE_MODULE('internal', (function () {
   } else {
     exports.ArangoError = function (error) {
       if (error !== undefined) {
-        this.error = error.error;
-        this.code = error.code;
-        this.errorNum = error.errorNum;
-        this.errorMessage = error.errorMessage;
+        this.error = error.error;                // bool -- is error or not
+        this.code = error.code;                  // int - http status code
+        this.errorNum = error.errorNum;          // int - internal arangodb error code
+        this.errorMessage = error.errorMessage;  // string - error message
       }
     };
 
