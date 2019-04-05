@@ -82,6 +82,7 @@ function prepareServiceRequestBody (req, res, next) {
   next();
 }
 
+if (!require("internal").lockDownFoxx()) {
 router.use((req, res, next) => {
   try {
     next();
@@ -441,3 +442,5 @@ router.use('/_local', localRouter);
 localRouter.post('/heal', (req, res) => {
   FoxxManager.heal();
 });
+
+} // if not foxx lock-down
