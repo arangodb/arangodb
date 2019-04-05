@@ -291,6 +291,14 @@ the
 specified filename.
 
 
+### LinkFile
+
+
+creates a symbolic link from a target in the place of linkpath.
+`fs.copyFile(target, linkpath)`
+
+in `linkpath` a symbolic link to `target` will be created.
+
 ### move
 
 
