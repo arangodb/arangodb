@@ -34,13 +34,17 @@ const internal = require('internal');
 const rootDir = fs.join(fs.getTempPath(),  'permissions');
 const testresults = fs.join(rootDir, 'testresult.json'); // where we want to put our results ;-)
 const topLevelForbidden = fs.join(rootDir, 'forbidden');
+const intoTopLevelForbidden = rootDir + '/allowed/into_forbidden.txt';
+
 const topLevelAllowed = fs.join(rootDir, 'allowed');
+const intoTopLevelAllowed = rootDir + '/forbidden/into_allowed.txt';
 
 const topLevelAllowedFile = fs.join(topLevelAllowed, 'allowed.txt');
 const topLevelForbiddenFile = fs.join(topLevelForbidden, 'forbidden.txt');
 
 // N/A const subLevelForbidden = fs.join(topLevelAllowed, 'forbidden');
 const subLevelAllowed = fs.join(topLevelForbidden, 'allowed');
+const intoSubLevelAllowed = topLevelForbidden + '/allowed/aoeu';
 
 const subLevelAllowedFile = fs.join(subLevelAllowed, 'allowed.txt');
 // N/A const subLevelForbiddenFile = fs.join(subLevelForbidden, 'forbidden.txt');
@@ -73,7 +77,9 @@ if (getOptions === true) {
   fs.write(topLevelForbiddenFile, 'forbidden fruits are tasty!\n');
   fs.write(subLevelAllowedFile, 'this file is allowed.\n');
    // N/A fs.write(subLevelForbiddenFile, 'forbidden fruits are tasty!\n');
-
+  fs.linkFile(topLevelForbiddenFile, intoTopLevelForbidden);
+  fs.linkFile(topLevelAllowedFile, intoTopLevelAllowed);
+  
   fs.write(topLevelAllowedReadCSVFile, CSV);
   fs.write(topLevelForbiddenReadCSVFile, CSV);
   fs.write(subLevelAllowedReadCSVFile, CSV);
@@ -377,7 +383,18 @@ function testSuite() {
     assertTrue(fs.isFile(tfn));
     fs.remove(tfn);
   }
- 
+
+  function tryMakeAbsoluteForbidden(fn) {
+    try {
+      let absolute = fs.makeAbsolute(fn);
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Absolute expansion to ' + fn + ' wasn\'t forbidden');
+    }
+  }
+  function tryMakeAbsoluteAllowed(fn) {
+    fs.makeAbsolute(fn);
+  }
   return {
     testGetTempFile : function() {
       tryGetTempFileForbidden('/etc/');
@@ -386,6 +403,14 @@ function testSuite() {
       
       tryGetTempFileAllowed(topLevelAllowed);
       tryGetTempFileAllowed(subLevelAllowed);
+    },
+    testMakeAbsolute : function() {
+      tryMakeAbsoluteForbidden(rootDir + '/../../../etc/passwd');
+      tryMakeAbsoluteForbidden(intoTopLevelForbidden);
+      // TODO: do we really want that?
+      tryMakeAbsoluteAllowed(intoTopLevelAllowed);
+      tryMakeAbsoluteAllowed(intoTopLevelAllowed);
+      tryMakeAbsoluteAllowed(intoSubLevelAllowed);
     },
     testReadFile : function() {
       tryReadForbidden('/etc/passwd');
@@ -532,7 +557,7 @@ function testSuite() {
       tryListFileAllowed(topLevelAllowedFile, 0);
       tryListFileAllowed(subLevelAllowedFile, 0);
 
-      tryListFileAllowed(topLevelAllowed, 5);
+      tryListFileAllowed(topLevelAllowed, 6);
       tryListFileAllowed(subLevelAllowed, 5);
     },
     testListTree : function() {
@@ -545,7 +570,7 @@ function testSuite() {
       tryListTreeAllowed(topLevelAllowedFile, 1);
       tryListTreeAllowed(subLevelAllowedFile, 1);
 
-      tryListTreeAllowed(topLevelAllowed, 6);
+      tryListTreeAllowed(topLevelAllowed, 7);
       tryListTreeAllowed(subLevelAllowed, 6);
     }
   };
