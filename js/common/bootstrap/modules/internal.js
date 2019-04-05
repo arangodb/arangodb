@@ -76,29 +76,6 @@ global.DEFINE_MODULE('internal', (function () {
     return `${this.name} ${this.errorNum}: ${this.message}`;
   };
 
-  exports.ArangoError.prototype.bla = function (num, message, httpcode) {
-
-    if (message === undefined) {
-      message = "could not resolve error number";
-      for(key in exports.errors) {
-        if(exports.errors[key].code === num){
-          message = key.message;
-          break;
-        }
-      }
-    }
-
-    if (httpcode === undefined) {
-      httpcode = exports.errorNumberToHttpCode(num);
-    }
-
-    throw new ArangoError({
-      errorNum: num,
-      errorMessage: message,
-      code: httpcode
-    });
-  };
-
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief threadNumber
   // //////////////////////////////////////////////////////////////////////////////
