@@ -430,8 +430,29 @@ function testSuite() {
     }
   }
   function tryMoveFileAllowed(sn, tn) {
-    fs.move(sn, tn);
+    try {
+      fs.move(sn, tn);
+    } catch (err) {
+      assertFail("failed to move " + sn + " to " + tn + " - " + err.Message);
+    }
     tryExistsAllowed(sn, false);
+    tryExistsAllowed(tn, true);
+  }
+  function tryLinkFileForbidden(tn, sn) {
+    try {
+      let rc = fs.linkFile(tn, sn);
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Moving of ' + sn + ' to ' + tn + ' wasn\'t forbidden');
+    }
+  }
+  function tryLinkFileAllowed(sn, tn) {
+    try {
+      fs.linkFile(sn, tn);
+    } catch (err) {
+      assertFail("failed to Link " + sn + " into " + tn + " - " + err.Message);
+    }
+    tryExistsAllowed(sn, true);
     tryExistsAllowed(tn, true);
   }
 
@@ -613,14 +634,18 @@ function testSuite() {
       tryListTreeAllowed(topLevelAllowed, 8);
       tryListTreeAllowed(subLevelAllowed, 7);
     },
-    testCopyMoveFiles : function() {
+    testCopyMoveLinkFiles : function() {
       tryCopyFileForbidden('/etc/passwd', topLevelAllowed);
       tryCopyFileForbidden(topLevelAllowedWriteFile, topLevelForbidden);
+      tryLinkFileForbidden('/etc/passwd', topLevelAllowed);
+      tryLinkFileForbidden(topLevelAllowedWriteFile, topLevelForbidden);
       tryMoveFileForbidden('/etc/passwd', topLevelAllowed);
       tryMoveFileForbidden(topLevelAllowedWriteFile, topLevelForbidden);
 
       tryCopyFileAllowed(topLevelAllowedCopyFile, fs.join(topLevelAllowed, 'copy_1.txt'));
       tryCopyFileAllowed(subLevelAllowedCopyFile, fs.join(topLevelAllowed, 'copy_2.txt'));
+      tryLinkFileAllowed(topLevelAllowedCopyFile, fs.join(topLevelAllowed, 'link_1.txt'));
+      tryLinkFileAllowed(subLevelAllowedCopyFile, fs.join(topLevelAllowed, 'link_2.txt'));
       tryMoveFileAllowed(topLevelAllowedCopyFile, fs.join(topLevelAllowed, 'move_1.txt'));
       tryMoveFileAllowed(subLevelAllowedCopyFile, fs.join(topLevelAllowed, 'move_2.txt'));
     }
