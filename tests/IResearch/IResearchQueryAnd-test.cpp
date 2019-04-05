@@ -283,7 +283,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));
-    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
+    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 == 1 OPTIONS { waitForSync: true } RETURN d").result.errorNumber())); // commit
   }
 
   // field and missing field
@@ -294,8 +294,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d['same'] == 'xyz' AND d.invalid == 2 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -321,8 +321,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d['same'] == 'xyz' AND d.value == 100 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -348,8 +348,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH NOT (d['same'] == 'abc') AND d.value == 100 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -377,8 +377,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.same == 'xyz' AND ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -424,8 +424,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH NOT ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -471,8 +471,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(NOT PHRASE(d['duplicated'], 'z'), 'test_analyzer') AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -499,8 +499,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.same == 'xyz' AND STARTS_WITH(d['prefix'], 'abc') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -547,8 +547,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH NOT STARTS_WITH(d['prefix'], 'abc') AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -579,8 +579,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.same == 'xyz' AND EXISTS(d['prefix']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -623,8 +623,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH NOT EXISTS(d['prefix']) AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -646,8 +646,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') AND NOT (d.same == 'abc') AND EXISTS(d['prefix']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -671,8 +671,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH STARTS_WITH(d['prefix'], 'abc') AND NOT EXISTS(d.duplicated) AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -695,8 +695,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH STARTS_WITH(d['prefix'], 'abc') AND NOT EXISTS(d.duplicated) AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 2 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -718,8 +718,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.name) AND NOT STARTS_WITH(d['prefix'], 'abc') AND ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') AND NOT (d.same == 'abc') AND d.seq >= 23 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -741,8 +741,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.name) AND NOT STARTS_WITH(d['prefix'], 'abc') AND ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') AND NOT (d.same == 'abc') AND d.seq >= 23 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 

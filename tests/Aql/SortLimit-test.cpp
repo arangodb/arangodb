@@ -155,7 +155,7 @@ TEST_CASE("SortLimit", "[aql][sort-limit]") {
                                nullptr, options, arangodb::aql::PART_MAIN);
 
     auto result = query.explain();
-    VPackSlice nodes = result.result->slice().get("nodes");
+    VPackSlice nodes = result.queryResult->slice().get("nodes");
     CHECK(nodes.isArray());
 
     std::string strategy;
@@ -192,8 +192,8 @@ TEST_CASE("SortLimit", "[aql][sort-limit]") {
       }
     }
 
-    REQUIRE((TRI_ERROR_NO_ERROR == result.code));
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     REQUIRE(slice.isArray());
 
     if (slice.length() != expected.size()) {

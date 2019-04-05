@@ -260,7 +260,7 @@ TEST_CASE("IResearchQueryTestAggregate", "[iresearch][iresearch-query]") {
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));
-    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
+    CHECK((arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
   }
 
   // test grouping with counting
@@ -281,8 +281,8 @@ TEST_CASE("IResearchQueryTestAggregate", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value <= 100 COLLECT value = d.value WITH COUNT INTO size RETURN { 'value' : value, 'names' : size }"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator itr(slice);
@@ -318,8 +318,8 @@ TEST_CASE("IResearchQueryTestAggregate", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value <= 100 COLLECT value = d.value INTO name = d.name RETURN { 'value' : value, 'names' : name }"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator itr(slice);
@@ -365,8 +365,8 @@ TEST_CASE("IResearchQueryTestAggregate", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq < 7 COLLECT AGGREGATE sumSeq = SUM(d.seq) RETURN sumSeq"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator itr(slice);
@@ -382,8 +382,8 @@ TEST_CASE("IResearchQueryTestAggregate", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView COLLECT AGGREGATE sumSeq = SUM(d.seq) RETURN sumSeq"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator itr(slice);
@@ -399,8 +399,8 @@ TEST_CASE("IResearchQueryTestAggregate", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView COLLECT WITH COUNT INTO count RETURN count"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.queryResult->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator itr(slice);

@@ -165,14 +165,13 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 }
 
 RestStatus RestSimpleHandler::handleQueryResult() {
-  if (_queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (_queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (_queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
+  if (_queryResult.result.fail()) {
+    if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+        (_queryResult.result.is(TRI_ERROR_QUERY_KILLED && wasCanceled()))) {
       generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED),
                     TRI_ERROR_REQUEST_CANCELED);
     } else {
-      generateError(GeneralResponse::responseCode(_queryResult.code),
-                    _queryResult.code, _queryResult.details);
+      generateError(_queryResult.result);
     }
     return RestStatus::DONE;
   }
@@ -222,7 +221,7 @@ void RestSimpleHandler::handleQueryResultRemoveByKeys() {
   result.add(StaticStrings::Error, VPackValue(false));
   result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
   if (!_silent) {
-    result.add("old", _queryResult.result->slice());
+    result.add("old", _queryResult.queryResult->slice());
   }
   result.close();
 
@@ -239,7 +238,7 @@ void RestSimpleHandler::handleQueryResultLookupByKeys() {
     response()->setContentType(rest::ContentType::JSON);
     result.add(VPackValue("documents"));
 
-    result.addExternal(_queryResult.result->slice().begin());
+    result.addExternal(_queryResult.queryResult->slice().begin());
     result.add(StaticStrings::Error, VPackValue(false));
     result.add(StaticStrings::Code,
                VPackValue(static_cast<int>(_response->responseCode())));

@@ -313,7 +313,7 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
     }
 
     CHECK((trx.commit().ok()));
-    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
+    CHECK((arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
   }
 
   // -----------------------------------------------------------------------------
@@ -340,9 +340,9 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -383,9 +383,9 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       query,
       arangodb::velocypack::Parser::fromJson("{ \"collectionName\" : \"collection_1\" }")
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -426,9 +426,9 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       query,
       arangodb::velocypack::Parser::fromJson("{ \"collections\" : [ \"collection_1\" ] }")
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -468,9 +468,9 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -510,9 +510,9 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -553,9 +553,9 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -597,9 +597,9 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -627,9 +627,9 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -676,9 +676,9 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -722,7 +722,7 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // wrong collection id is specified
@@ -736,7 +736,7 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // wrong collection id as string is specified
@@ -750,7 +750,7 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // invalid option type
@@ -764,7 +764,7 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // invalid option type
@@ -778,7 +778,7 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // invalid option type
@@ -792,7 +792,7 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // invalid option type
@@ -806,7 +806,7 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // invalid options type
@@ -820,7 +820,7 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // invalid options type
@@ -834,7 +834,7 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // invalid options type
@@ -848,7 +848,7 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // collection which is not registered witht a view is specified
@@ -862,7 +862,7 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 }
 
@@ -983,7 +983,7 @@ TEST_CASE("IResearchQueryTestOptionsWaitForSync", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // wrong option type is specified
@@ -997,7 +997,7 @@ TEST_CASE("IResearchQueryTestOptionsWaitForSync", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // wrong option type is specified
@@ -1011,7 +1011,7 @@ TEST_CASE("IResearchQueryTestOptionsWaitForSync", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // wrong option type is specified
@@ -1025,7 +1025,7 @@ TEST_CASE("IResearchQueryTestOptionsWaitForSync", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // wrong option type is specified
@@ -1039,7 +1039,7 @@ TEST_CASE("IResearchQueryTestOptionsWaitForSync", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // don't sync
@@ -1058,9 +1058,9 @@ TEST_CASE("IResearchQueryTestOptionsWaitForSync", "[iresearch][iresearch-query]"
       vocbase,
       query
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1089,9 +1089,9 @@ TEST_CASE("IResearchQueryTestOptionsWaitForSync", "[iresearch][iresearch-query]"
       query,
       arangodb::velocypack::Parser::fromJson("{ \"doSync\" : true }")
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);

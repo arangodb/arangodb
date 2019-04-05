@@ -359,7 +359,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
     }
 
     CHECK((trx.commit().ok()));
-    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
+    CHECK((arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
   }
 
   {
@@ -387,9 +387,9 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -433,9 +433,9 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -472,7 +472,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
       "RETURN { d, 'score' : customscorer(d, (FOR j IN testView SEARCH j.name == 'A' SORT BM25(j) RETURN j)[0].seq) }";
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_INTERNAL == queryResult.code);
+    REQUIRE(queryResult.result.is(TRI_ERROR_INTERNAL));
   }
 
   // ensure scorers are deduplicated
@@ -558,9 +558,9 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
 
     // check execution
     auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -669,9 +669,9 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
 
     // check execution
     auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -780,9 +780,9 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
 
     // check execution
     auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -891,9 +891,9 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
 
     // check execution
     auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1002,9 +1002,9 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
 
     // check execution
     auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1111,9 +1111,9 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
 
     // check execution
     auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1233,9 +1233,9 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
 
     // check execution
     auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1516,9 +1516,9 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
 
     // check execution
     auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.queryResult->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);

@@ -306,12 +306,12 @@ bool assertRules(
 
   auto const res = query.explain();
 
-  if (res.result) {
-    auto const explanation = res.result->slice();
+  if (res.queryResult) {
+    auto const explanation = res.queryResult->slice();
 
     arangodb::velocypack::ArrayIterator rules(explanation.get("rules"));
 
-    for (auto const rule : rules) {
+    for (auto const& rule : rules) {
       auto const strRule = arangodb::iresearch::getStringRef(rule);
       expectedRules.erase(strRule);
     }
@@ -376,7 +376,7 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
 
   auto result = query.parse();
 
-  if (result.code != TRI_ERROR_NO_ERROR || !query.ast()) {
+  if (result.result.fail() || !query.ast()) {
     return nullptr;
   }
 
@@ -512,7 +512,7 @@ void assertExpressionFilter(
   );
 
   auto const parseResult = query.parse();
-  REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+  REQUIRE(parseResult.result.ok());
 
   auto* ast = query.ast();
   REQUIRE(ast);
@@ -645,7 +645,7 @@ void assertFilter(
   );
 
   auto const parseResult = query.parse();
-  REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+  REQUIRE(parseResult.result.ok());
 
   auto* ast = query.ast();
   REQUIRE(ast);
@@ -761,7 +761,7 @@ void assertFilterParseFail(
   );
 
   auto const parseResult = query.parse();
-  CHECK(TRI_ERROR_NO_ERROR != parseResult.code);
+  REQUIRE(parseResult.result.fail());
 }
 
 // -----------------------------------------------------------------------------

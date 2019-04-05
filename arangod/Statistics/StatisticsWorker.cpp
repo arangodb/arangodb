@@ -156,11 +156,11 @@ void StatisticsWorker::collectGarbage(std::string const& name, double start) con
 
   aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  VPackSlice keysToRemove = queryResult.result->slice();
+  VPackSlice keysToRemove = queryResult.queryResult->slice();
   OperationOptions opOptions;
 
   opOptions.ignoreRevs = true;
@@ -281,11 +281,11 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
 
   aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  return queryResult.result;
+  return queryResult.queryResult;
 }
 
 void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
@@ -314,11 +314,11 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
 
   aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  VPackSlice result = queryResult.result->slice();
+  VPackSlice result = queryResult.queryResult->slice();
   uint64_t count = result.length();
 
   builder.clear();

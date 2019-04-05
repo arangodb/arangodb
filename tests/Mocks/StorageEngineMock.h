@@ -129,7 +129,6 @@ class TransactionCollectionMock: public arangodb::TransactionCollection {
   virtual void freeOperations(arangodb::transaction::Methods* activeTrx, bool mustRollback) override;
   virtual bool hasOperations() const override;
   virtual void release() override;
-  virtual int updateUsage(arangodb::AccessMode::Type accessType, int nestingLevel) override;
   virtual void unuse(int nestingLevel) override;
   virtual int use(int nestingLevel) override;
  private:

@@ -38,20 +38,27 @@ struct QueryResultV8 : public QueryResult {
   QueryResultV8(QueryResultV8&& other) = default;
 
   QueryResultV8(QueryResult&& other)
-      : QueryResult(std::move(other)), result() {}
+      : QueryResult(std::move(other)) {}
 
-  QueryResultV8(int code, std::string const& details)
-      : QueryResult(code, details), result() {}
-
-  QueryResultV8() : QueryResult(TRI_ERROR_NO_ERROR) {}
-  explicit QueryResultV8(int code) : QueryResult(code, ""), result() {}
-
-  void set(int c, std::string const& d) {
-    QueryResult::set(c, d);
-    result.Clear();
+  QueryResultV8() : QueryResult() {}
+  
+  explicit QueryResultV8(Result const& res) 
+      : QueryResult(res) {}
+  
+  explicit QueryResultV8(Result&& res) 
+      : QueryResult(std::move(res)) {}
+  
+  void reset(Result const& result) {
+    QueryResult::reset(result);
+    queryResult.Clear();
   }
-
-  v8::Handle<v8::Array> result;
+  
+  void reset(Result&& result) {
+    QueryResult::reset(std::move(result));
+    queryResult.Clear();
+  }
+  
+  v8::Handle<v8::Array> queryResult;
 };
 }  // namespace aql
 }  // namespace arangodb

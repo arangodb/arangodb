@@ -119,7 +119,7 @@ QueryResult Parser::parseWithDetails() {
   QueryResult result;
   result.collectionNames = _query->collectionNames();
   result.bindParameters = _ast->bindParameters();
-  result.result = _ast->toVelocyPack(false);
+  result.queryResult = _ast->toVelocyPack(false);
 
   return result;
 }

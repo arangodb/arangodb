@@ -490,11 +490,11 @@ arangodb::Result visitAnalyzers( // visit analyzers
     auto* queryRegistry = arangodb::QueryRegistryFeature::registry();
     auto result = query.executeSync(queryRegistry);
 
-    if (TRI_ERROR_NO_ERROR != result.code) {
-      return arangodb::Result(result.code, result.details);
+    if (result.result.fail()) {
+      return result.result;
     }
 
-    auto slice = result.result->slice();
+    auto slice = result.queryResult->slice();
 
     if (!slice.isArray()) {
       return arangodb::Result( // result
