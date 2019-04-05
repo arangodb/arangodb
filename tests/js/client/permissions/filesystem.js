@@ -34,13 +34,16 @@ const internal = require('internal');
 const rootDir = fs.join(fs.getTempPath(),  'permissions');
 const testresults = fs.join(rootDir, 'testresult.json'); // where we want to put our results ;-)
 const topLevelForbidden = fs.join(rootDir, 'forbidden');
+const forbiddenZipFileName = fs.join(topLevelForbidden, 'forbidden.zip');
 const topLevelForbiddenRecursive = fs.join(rootDir, 'forbidden_recursive');
 const intoTopLevelForbidden = rootDir + '/allowed/into_forbidden.txt';
 
 const topLevelAllowed = fs.join(rootDir, 'allowed');
+const topLevelAllowedUnZip = fs.join(rootDir, 'allowed_unzip');
 const topLevelAllowedRecursive = fs.join(rootDir, 'allowed_recursive');
+const allowedZipFileName = fs.join(topLevelAllowedRecursive, 'allowed.zip');
 const intoTopLevelAllowed = rootDir + '/forbidden/into_allowed.txt';
-
+      
 const topLevelAllowedFile = fs.join(topLevelAllowed, 'allowed.txt');
 const topLevelForbiddenFile = fs.join(topLevelForbidden, 'forbidden.txt');
 
@@ -84,6 +87,7 @@ if (getOptions === true) {
   fs.makeDirectoryRecursive(subLevelAllowed);
   fs.makeDirectoryRecursive(topLevelAllowedRecursive);
   fs.makeDirectoryRecursive(topLevelForbiddenRecursive);
+  fs.makeDirectoryRecursive(topLevelAllowedUnZip);
   fs.write(topLevelAllowedFile, 'this file is allowed.\n');
   fs.write(topLevelForbiddenFile, 'forbidden fruits are tasty!\n');
   fs.write(subLevelAllowedFile, 'this file is allowed.\n');
@@ -524,6 +528,46 @@ function testSuite() {
     tryExistsAllowed(tn, true);
   }
 
+  function tryZipFileForbidden(zip, sn) {
+    try {
+      let rc = fs.zipFile(zip, sn, ['*']);
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Zipping of ' + zip + ' to ' + sn + ' wasn\'t forbidden: ' + err);
+    }
+  }
+  function tryZipFileAllowed(zip, sn) {
+    let files = [];
+    try {
+      files = fs.list(sn).filter(function (fn) {
+        if (fn === 'into_forbidden.txt') {
+          return false;
+        }
+        return fs.isFile(fs.join(sn, fn));
+      });
+      fs.zipFile(zip, sn, files);
+    } catch (err) {
+      assertTrue(false, "failed to Zip into " + zip + " these files:" + sn + "[ " + files + " ] - " + err);
+    }
+    tryExistsAllowed(zip, true);
+  }
+
+  function tryUnZipFileForbidden(zip, sn) {
+    try {
+      let rc = fs.unzipFile(zip, sn, undefined, true);
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Unzipping of ' + zip + ' to ' + sn + ' wasn\'t forbidden: ' + err);
+    }
+  }
+  function tryUnZipFileAllowed(zip, sn) {
+    try {
+      fs.unzipFile(zip, sn, false, true);
+    } catch (err) {
+      assertTrue(false, "failed to UnZip " + zip + " to " + sn + " - " + err);
+    }
+  }
+
   return {
     testGetTempFile : function() {
       tryGetTempFileForbidden('/etc/');
@@ -728,6 +772,18 @@ function testSuite() {
       tryRemoveFileAllowed(fs.join(topLevelAllowed, 'move_1.txt'));
       tryRemoveFileAllowed(fs.join(topLevelAllowed, 'move_2.txt'));
       tryCopyRecursiveFileAllowed(subLevelAllowed, fs.join(topLevelAllowedRecursive, 'sub', 'directory'));
+    },
+    testZip : function() {
+      tryZipFileForbidden(forbiddenZipFileName, topLevelAllowed);
+      tryZipFileForbidden(allowedZipFileName, '/etc/');
+      tryZipFileForbidden(allowedZipFileName, topLevelForbidden);
+
+      tryZipFileAllowed(allowedZipFileName, topLevelAllowed);
+
+      tryUnZipFileForbidden('/etc/nothere.zip', topLevelAllowed);
+      tryUnZipFileForbidden(allowedZipFileName, topLevelForbidden);
+      
+      tryUnZipFileAllowed(allowedZipFileName, topLevelAllowedUnZip);
     }
   };
 }
