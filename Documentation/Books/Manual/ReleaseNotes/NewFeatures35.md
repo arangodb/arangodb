@@ -411,7 +411,7 @@ them as well.
 The system collections `_frontend`, `_modules` and `_routing` are not created 
 anymore for new databases by default. 
 
-`_modules` and `_routing` are both are only needed for legacy functionality.
+`_modules` and `_routing` are only needed for legacy functionality.
 Existing `_routing` collections will not be touched as they may contain user-defined
 entries, and will continue to work.
 
