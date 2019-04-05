@@ -118,6 +118,9 @@ function resolveAppInfo (appInfo, refresh) {
   return {source: appInfo};
 }
 
+// disable foxx manager routes / foxx-cli on lockdown
+if(!require("internal").lockDownFoxx()){
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief sets up a Foxx service
 // //////////////////////////////////////////////////////////////////////////////
@@ -385,3 +388,5 @@ actions.defineHttp({
     }
   })
 });
+
+} // end - if not foxx lockdown
