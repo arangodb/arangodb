@@ -34,6 +34,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLink.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Transaction/Methods.h"
@@ -233,47 +234,65 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
   return arangodb::Result();
 }
 
-bool IResearchViewCoordinator::emplace(TRI_voc_cid_t cid, std::string const& key,
-                                       arangodb::velocypack::Slice const& value) {
-  LOG_TOPIC("d0b40", TRACE, arangodb::iresearch::TOPIC)
-      << "beginning IResearchViewCoordinator::emplace";
-  static const std::function<bool(irs::string_ref const& key)> acceptor =
-      [](irs::string_ref const& key) -> bool {
-    return key != arangodb::StaticStrings::IndexId &&
-           key != arangodb::StaticStrings::IndexType &&
-           key != StaticStrings::ViewIdField;  // ignored fields
+/*static*/ arangodb::ViewFactory const& IResearchViewCoordinator::factory() {
+  static const ViewFactory factory;
+
+  return factory;
+}
+
+arangodb::Result IResearchViewCoordinator::link(IResearchLink const& link) {
+  static const std::function<bool(irs::string_ref const& key)> acceptor = []( // acceptor
+    irs::string_ref const& key // key
+  ) -> bool {
+    return key != arangodb::StaticStrings::IndexId // ignore index id
+           && key != arangodb::StaticStrings::IndexType // ignore index type
+           && key != StaticStrings::ViewIdField; // ignore view id
   };
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
 
-  // strip internal keys (added in createLink(...)) from externally visible link
-  // definition
-  if (!mergeSliceSkipKeys(builder, value, acceptor)) {
-    LOG_TOPIC("fe9f7", WARN, iresearch::TOPIC)
-        << "failed to generate externally visible link definition while "
-           "emplacing "
-        << "link definition into arangosearch view '" << name()
-        << "' collection '" << cid << "'";
+  auto res = link.properties(builder, false); // generate user-visible definition, agency will not see links
 
-    return false;
+  if (!res.ok()) {
+    return res;
   }
 
   builder.close();
 
-  WriteMutex mutex(_mutex);
-  SCOPED_LOCK(mutex);  // '_collections' can be asynchronously read
+  auto cid = link.collection().id();
+  arangodb::velocypack::Builder sanitizedBuilder;
 
-  return _collections
-      .emplace(std::piecewise_construct, std::forward_as_tuple(cid),
-               std::forward_as_tuple(key, std::move(builder)))
-      .second;
-}
+  sanitizedBuilder.openObject();
 
-/*static*/ arangodb::ViewFactory const& IResearchViewCoordinator::factory() {
-  static const ViewFactory factory;
+  // strip internal keys (added in IResearchLink::properties(...)) from externally visible link definition
+  if (!mergeSliceSkipKeys(sanitizedBuilder, builder.slice(), acceptor)) {
+    return arangodb::Result( // result
+      TRI_ERROR_INTERNAL, // code
+      std::string("failed to generate externally visible link definition while emplacing collection '") + std::to_string(cid) + "' into arangosearch View '" + name() + "'"
+    );
+  }
 
-  return factory;
+  sanitizedBuilder.close();
+
+  WriteMutex mutex(_mutex); // '_collections' can be asynchronously read
+  SCOPED_LOCK(mutex);
+  auto entry = _collections.emplace( // emplace definition
+    std::piecewise_construct, // piecewise construct
+    std::forward_as_tuple(cid), // key
+    std::forward_as_tuple( // value
+      link.collection().name(), std::move(sanitizedBuilder) // args
+    )
+  );
+
+  if (!entry.second) {
+    return arangodb::Result( // result
+      TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, // code
+      std::string("duplicate entry while emplacing collection '") + std::to_string(cid) + "' into arangosearch View '" + name() + "'"
+    );
+  }
+
+  return arangodb::Result();
 }
 
 arangodb::Result IResearchViewCoordinator::renameImpl(std::string const& oldName) {

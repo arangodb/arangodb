@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
+var analyzers = require("@arangodb/analyzers");
 var ERRORS = require("@arangodb").errors;
 var deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
@@ -50,6 +51,7 @@ function IResearchAqlTestSuite(args) {
 
   return {
     setUp : function () {
+      analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", args);
 
