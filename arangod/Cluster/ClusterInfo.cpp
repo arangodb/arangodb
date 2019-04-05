@@ -3636,9 +3636,17 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
 }
 
 
+std::string const backupKey = "/arango/Target/HotBackup/";
+std::string const maintenanceKey = "/arango/Supervision/Maintenance";
+std::string const toDoKey = "/arango/Target/ToDo";
+std::string const pendingKey = "/arango/Target/ToDo";
+std::string const writeURL = "_api/agency/write";
 
 arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId) {
+  
+  
   return Result();
+  
 }
 
 arangodb::Result ClusterInfo::agencyHotBackupLock(
@@ -3647,19 +3655,6 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
   auto const endTime =
     std::chrono::steady_clock::now() + std::chrono::seconds(timeout);
   supervisionOff = false;
-
-  // 1. Create /arango/Target/HotBackup/UUID = 0 TTL 60,
-  //    If /arango/Target/HotBackup does not exist
-  //    Else report error
-  // 2. Wait For /arango/Target/HotBackup/UUID = 1
-  // 3. For 30 seconds. Send lock commands to all db servers timeout 2.
-  //    If lock obtained -> Send create
-  //    Else report error
-  std::string const backupKey = "/arango/Target/HotBackup/";
-  std::string const maintenanceKey = "/arango/Supervision/Maintenance";
-  std::string const toDoKey = "/arango/Target/ToDo";
-  std::string const pendingKey = "/arango/Target/ToDo";
-  std::string const writeURL = "_api/agency/write";
 
   VPackBuilder builder;
   { VPackArrayBuilder trxs(&builder);
