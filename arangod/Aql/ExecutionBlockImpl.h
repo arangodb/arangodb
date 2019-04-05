@@ -197,7 +197,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    *        arguments compatible to skipSome's return type.
    */
   std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
-
   /**
    * @brief Inner getSome() part, without the tracing calls.
    */

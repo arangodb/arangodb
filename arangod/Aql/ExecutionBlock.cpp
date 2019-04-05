@@ -254,33 +254,6 @@ void ExecutionBlock::traceSkipSomeEnd(size_t skipped, ExecutionState state) {
   }
 }
 
-/// @brief getSome, gets some more items, semantic is as follows: not
-/// more than atMost items may be delivered. The method tries to
-/// return a block of at most atMost items, however, it may return
-/// less (for example if there are not enough items to come). However,
-/// if it returns an actual block, it must contain at least one item.
-/// getSome() also takes care of tracing and clearing registers; don't do it
-/// in getOrSkipSome() implementations.
-// TODO Blocks overriding getSome (and skipSome) instead of getOrSkipSome should
-//      still not have to call traceGetSomeBegin/~End and clearRegisters on
-//      their own. This can be solved by adding one level of indirection via a
-//      method _getSome(), which by default only calls
-//      getSomeWithoutRegisterClearout() and which can be overridden instead.
-//      Or maybe overriding getSomeWithoutRegisterClearout() instead is better.
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlock::getSome(size_t atMost) {
-  traceGetSomeBegin(atMost);
-
-  auto res = getSomeWithoutRegisterClearout(atMost);
-  if (res.first == ExecutionState::WAITING) {
-    traceGetSomeEnd(nullptr, res.first);
-    return {ExecutionState::WAITING, nullptr};
-  }
-
-  clearRegisters(res.second.get());
-  traceGetSomeEnd(res.second.get(), res.first);
-  return res;
-}
-
 /// @brief request an AqlItemBlock from the memory manager
 AqlItemBlock* ExecutionBlock::requestBlock(size_t nrItems, RegisterId nrRegs) {
   return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
@@ -389,27 +362,6 @@ void ExecutionBlock::clearRegisters(AqlItemBlock* result) {
   if (result != nullptr) {
     result->clearRegisters(getPlanNode()->_regsToClear);
   }
-}
-
-std::pair<ExecutionState, size_t> ExecutionBlock::skipSome(size_t atMost) {
-  traceSkipSomeBegin(atMost);
-  size_t skipped = 0;
-  AqlItemBlock* result = nullptr;
-  auto res = getOrSkipSome(atMost, true, result, skipped);
-  TRI_ASSERT(result == nullptr);
-
-  if (res.first == ExecutionState::WAITING) {
-    TRI_ASSERT(skipped == 0);
-    traceSkipSomeEnd(skipped, ExecutionState::WAITING);
-    return {ExecutionState::WAITING, skipped};
-  }
-
-  if (res.second.fail()) {
-    THROW_ARANGO_EXCEPTION(res.second);
-  }
-
-  traceSkipSomeEnd(skipped, res.first);
-  return {res.first, skipped};
 }
 
 ExecutionBlock::BufferState ExecutionBlock::getBlockIfNeeded(size_t atMost) {
@@ -581,16 +533,4 @@ ExecutionState ExecutionBlock::getHasMoreState() {
     return ExecutionState::DONE;
   }
   return ExecutionState::HASMORE;
-}
-
-RegisterId ExecutionBlock::getNrInputRegisters() const {
-  ExecutionNode const* previousNode = getPlanNode()->getFirstDependency();
-  if (previousNode == nullptr) {
-    return 0;
-  }
-  TRI_ASSERT(previousNode != nullptr);
-  RegisterId const inputNrRegs =
-      previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
-
-  return inputNrRegs;
 }
