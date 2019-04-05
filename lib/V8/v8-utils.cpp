@@ -1882,6 +1882,14 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
+  if (!v8security->isAllowedToAccessPath(isolate, filename, FSAccessType::READ)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+                    TRI_ERROR_FORBIDDEN, "not allowed to read files in this path");
+  }
+  if (!v8security->isAllowedToAccessPath(isolate, dir, FSAccessType::READ)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+                    TRI_ERROR_FORBIDDEN, "not allowed to read files in this path");
+  }
   for (uint32_t i = 0; i < files->Length(); ++i) {
     v8::Handle<v8::Value> file = files->Get(i);
     if (file->IsString()) {
