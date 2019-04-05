@@ -34,9 +34,11 @@ const internal = require('internal');
 const rootDir = fs.join(fs.getTempPath(),  'permissions');
 const testresults = fs.join(rootDir, 'testresult.json'); // where we want to put our results ;-)
 const topLevelForbidden = fs.join(rootDir, 'forbidden');
+const topLevelForbiddenRecursive = fs.join(rootDir, 'forbidden_recursive');
 const intoTopLevelForbidden = rootDir + '/allowed/into_forbidden.txt';
 
 const topLevelAllowed = fs.join(rootDir, 'allowed');
+const topLevelAllowedRecursive = fs.join(rootDir, 'allowed_recursive');
 const intoTopLevelAllowed = rootDir + '/forbidden/into_allowed.txt';
 
 const topLevelAllowedFile = fs.join(topLevelAllowed, 'allowed.txt');
@@ -80,6 +82,8 @@ if (getOptions === true) {
   // N/A fs.makeDirectoryRecursive(subLevelForbidden);
   fs.makeDirectoryRecursive(topLevelAllowed);
   fs.makeDirectoryRecursive(subLevelAllowed);
+  fs.makeDirectoryRecursive(topLevelAllowedRecursive);
+  fs.makeDirectoryRecursive(topLevelForbiddenRecursive);
   fs.write(topLevelAllowedFile, 'this file is allowed.\n');
   fs.write(topLevelForbiddenFile, 'forbidden fruits are tasty!\n');
   fs.write(subLevelAllowedFile, 'this file is allowed.\n');
@@ -110,12 +114,14 @@ if (getOptions === true) {
       '/etc/passwd', // if not this, what else?
       '/etc/.*',
       topLevelForbidden + '.*',
+      topLevelForbiddenRecursive + '.*'
       // N/A  subLevelForbidden + '.*'
     ],
     'javascript.files-white-list': [
       testresults,
       topLevelAllowed + '.*',
-      subLevelAllowed + '.*'
+      subLevelAllowed + '.*',
+      topLevelAllowedRecursive + '.*'
     ]
   };
 }
@@ -428,7 +434,28 @@ function testSuite() {
     }
   }
   function tryCopyFileAllowed(sn, tn) {
-    fs.copyFile(sn, tn);
+    try {
+      fs.copyFile(sn, tn);
+    } catch (err) {
+      assertTrue(false, "failed to copy " + sn + " to " + tn + " - " + err);
+    }
+    tryExistsAllowed(sn, true);
+    tryExistsAllowed(tn, true);
+  }
+  function tryCopyRecursiveFileForbidden(sn, tn) {
+    try {
+      let absolute = fs.copyRecursive(sn, tn);
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'CopyRecursiveing of ' + sn + ' to ' + tn + ' wasn\'t forbidden: ' + err);
+    }
+  }
+  function tryCopyRecursiveFileAllowed(sn, tn) {
+    try {
+      fs.copyRecursive(sn, tn);
+    } catch (err) {
+      assertTrue(false, "failed to copy " + sn + " to " + tn + " - " + err);
+    }
     tryExistsAllowed(sn, true);
     tryExistsAllowed(tn, true);
   }
@@ -671,6 +698,9 @@ function testSuite() {
       tryRemoveFileForbidden('/etc/passwd');
       tryRemoveFileForbidden(topLevelForbiddenWriteFile);
 
+      tryCopyRecursiveFileForbidden('/etc/passwd', fs.join(topLevelAllowedRecursive, 'sub', 'directory'));
+      tryCopyRecursiveFileForbidden(subLevelAllowed, fs.join(topLevelForbiddenRecursive, 'sub', 'directory'));
+
       tryCopyFileAllowed(topLevelAllowedCopyFile, fs.join(topLevelAllowed, 'copy_1.txt'));
       tryCopyFileAllowed(subLevelAllowedCopyFile, fs.join(topLevelAllowed, 'copy_2.txt'));
       tryLinkFileAllowed(topLevelAllowedCopyFile, fs.join(topLevelAllowed, 'link_1.txt'));
@@ -679,6 +709,7 @@ function testSuite() {
       tryMoveFileAllowed(subLevelAllowedCopyFile, fs.join(topLevelAllowed, 'move_2.txt'));
       tryRemoveFileAllowed(fs.join(topLevelAllowed, 'move_1.txt'));
       tryRemoveFileAllowed(fs.join(topLevelAllowed, 'move_2.txt'));
+      tryCopyRecursiveFileAllowed(subLevelAllowed, fs.join(topLevelAllowedRecursive, 'sub', 'directory'));
     }
   };
 }
