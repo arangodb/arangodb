@@ -228,7 +228,21 @@ function testSuite() {
   }
   function tryWriteAllowed(fn) {
     let rc = fs.write(fn, '1212 this is just a test');
-    assertTrue(rc, 'Expected ' + fn + ' to be chmodable');
+    assertTrue(rc, 'Expected ' + fn + ' to be writeable');
+  }
+
+  function tryAppendForbidden(fn) {
+    try {
+      let rc = fs.append(fn, '1212 this is just a test');
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Append access to ' + fn + ' wasn\'t forbidden');
+    }
+  }
+  function tryAppendAllowed(fn) {
+    let rc = fs.append(fn, '1212 this is just a test');
+    assertTrue(rc, 'Expected ' + fn + ' to be appendeable');
   }
 
   function tryChmodForbidden(fn) {
@@ -242,7 +256,7 @@ function testSuite() {
   }
   function tryChmodAllowed(fn) {
     let rc = fs.chmod(fn, '0755');
-    assertTrue(rc, 'Expected ' + fn + ' to be writeable');
+    assertTrue(rc, 'Expected ' + fn + ' to be chmodable');
   }
 
   function tryExistsForbidden(fn) {
@@ -576,9 +590,13 @@ function testSuite() {
     testWriteFile : function() {
       tryWriteForbidden('/var/log/mail.log');
       tryWriteForbidden(topLevelForbiddenWriteFile);
+      tryAppendForbidden('/var/log/mail.log');
+      tryAppendForbidden(topLevelForbiddenWriteFile);
 
       tryWriteAllowed(topLevelAllowedWriteFile);
       tryWriteAllowed(subLevelAllowedWriteFile);
+      tryAppendAllowed(topLevelAllowedWriteFile);
+      tryAppendAllowed(subLevelAllowedWriteFile);
 
     },
     testChmod : function() {
