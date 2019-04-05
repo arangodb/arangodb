@@ -64,6 +64,13 @@ const topLevelForbiddenReadJSONFile = fs.join(topLevelForbidden, 'forbidden_json
 const subLevelAllowedReadJSONFile = fs.join(subLevelAllowed, 'allowed_json.txt');
 // N/A const subLevelForbiddenReadJSONFile = fs.join(subLevelForbidden, 'forbidden_json.txt');
 
+
+const topLevelAllowedCopyFile = fs.join(topLevelAllowed, 'allowed_copy.txt');
+const topLevelForbiddenCopyFile = fs.join(topLevelForbidden, 'forbidden_copy.txt');
+const subLevelAllowedCopyFile = fs.join(subLevelAllowed, 'allowed_copy.txt');
+// N/A const subLevelForbiddenCopyFile = fs.join(subLevelForbidden, 'forbidden_json.txt');
+
+
 const CSV = 'a,b\n1,2\n3,4\n';
 const CSVParsed = [['a', 'b'], ['1', '2'], ['3', '4']];
 const JSONText = '{"a": true, "b":false, "c": "abc"}\n{"a": true, "b":false, "c": "abc"}';
@@ -77,6 +84,13 @@ if (getOptions === true) {
   fs.write(topLevelForbiddenFile, 'forbidden fruits are tasty!\n');
   fs.write(subLevelAllowedFile, 'this file is allowed.\n');
    // N/A fs.write(subLevelForbiddenFile, 'forbidden fruits are tasty!\n');
+
+  fs.write(topLevelAllowedCopyFile, 'this file is allowed.\n');
+  fs.write(topLevelForbiddenCopyFile, 'forbidden fruits are tasty!\n');
+  fs.write(subLevelAllowedCopyFile, 'this file is allowed.\n');
+   // N/A fs.write(subLevelForbiddenFile, 'forbidden fruits are tasty!\n');
+
+
   fs.linkFile(topLevelForbiddenFile, intoTopLevelForbidden);
   fs.linkFile(topLevelAllowedFile, intoTopLevelAllowed);
   
@@ -234,9 +248,9 @@ function testSuite() {
       assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'stat-access to ' + fn + ' wasn\'t forbidden');
     }
   }
-  function tryExistsAllowed(fn) {
+  function tryExistsAllowed(fn, exists) {
     let rc = fs.exists(fn);
-    assertTrue(rc, 'Expected ' + fn + ' to be stat-eable');
+    assertEqual(rc, exists, 'Expected ' + fn + ' to be stat-eable');
   }
 
   function tryFileSizeForbidden(fn) {
@@ -359,8 +373,7 @@ function testSuite() {
     try {
       let rc = fs.listTree(dn);
       fail();
-    }
-    catch (err) {
+    } catch (err) {
       assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'ListTree-access to ' + dn + ' wasn\'t forbidden');
     }
   }
@@ -395,6 +408,33 @@ function testSuite() {
   function tryMakeAbsoluteAllowed(fn) {
     fs.makeAbsolute(fn);
   }
+  function tryCopyFileForbidden(sn, tn) {
+    try {
+      let absolute = fs.copyFile(sn, tn);
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Copying of ' + sn + ' to ' + tn + ' wasn\'t forbidden');
+    }
+  }
+  function tryCopyFileAllowed(sn, tn) {
+    fs.copyFile(sn, tn);
+    tryExistsAllowed(sn, true);
+    tryExistsAllowed(tn, true);
+  }
+  function tryMoveFileForbidden(sn, tn) {
+    try {
+      let rc = fs.move(sn, tn);
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Moving of ' + sn + ' to ' + tn + ' wasn\'t forbidden');
+    }
+  }
+  function tryMoveFileAllowed(sn, tn) {
+    fs.move(sn, tn);
+    tryExistsAllowed(sn, false);
+    tryExistsAllowed(tn, true);
+  }
+
   return {
     testGetTempFile : function() {
       tryGetTempFileForbidden('/etc/');
@@ -481,8 +521,8 @@ function testSuite() {
       tryExistsForbidden(topLevelForbiddenFile);
       // N/A tryExistsForbidden(subLevelForbiddenFile);
 
-      tryExistsAllowed(topLevelAllowedFile);
-      tryExistsAllowed(subLevelAllowedFile);
+      tryExistsAllowed(topLevelAllowedFile, true);
+      tryExistsAllowed(subLevelAllowedFile, true);
     },
     testFileSize : function() {
       tryFileSizeForbidden('/etc/passwd');
@@ -557,8 +597,8 @@ function testSuite() {
       tryListFileAllowed(topLevelAllowedFile, 0);
       tryListFileAllowed(subLevelAllowedFile, 0);
 
-      tryListFileAllowed(topLevelAllowed, 6);
-      tryListFileAllowed(subLevelAllowed, 5);
+      tryListFileAllowed(topLevelAllowed, 7);
+      tryListFileAllowed(subLevelAllowed, 6);
     },
     testListTree : function() {
       tryListTreeForbidden('/etc/X11');
@@ -570,8 +610,19 @@ function testSuite() {
       tryListTreeAllowed(topLevelAllowedFile, 1);
       tryListTreeAllowed(subLevelAllowedFile, 1);
 
-      tryListTreeAllowed(topLevelAllowed, 7);
-      tryListTreeAllowed(subLevelAllowed, 6);
+      tryListTreeAllowed(topLevelAllowed, 8);
+      tryListTreeAllowed(subLevelAllowed, 7);
+    },
+    testCopyMoveFiles : function() {
+      tryCopyFileForbidden('/etc/passwd', topLevelAllowed);
+      tryCopyFileForbidden(topLevelAllowedWriteFile, topLevelForbidden);
+      tryMoveFileForbidden('/etc/passwd', topLevelAllowed);
+      tryMoveFileForbidden(topLevelAllowedWriteFile, topLevelForbidden);
+
+      tryCopyFileAllowed(topLevelAllowedCopyFile, fs.join(topLevelAllowed, 'copy_1.txt'));
+      tryCopyFileAllowed(subLevelAllowedCopyFile, fs.join(topLevelAllowed, 'copy_2.txt'));
+      tryMoveFileAllowed(topLevelAllowedCopyFile, fs.join(topLevelAllowed, 'move_1.txt'));
+      tryMoveFileAllowed(subLevelAllowedCopyFile, fs.join(topLevelAllowed, 'move_2.txt'));
     }
   };
 }
