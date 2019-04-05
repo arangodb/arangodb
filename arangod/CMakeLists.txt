@@ -74,6 +74,8 @@ add_library(${LIB_ARANGO_IRESEARCH}
   IResearch/VelocyPackHelper.cpp IResearch/VelocyPackHelper.h
   IResearch/ExpressionFilter.cpp IResearch/ExpressionFilter.h
   IResearch/AqlHelper.cpp IResearch/AqlHelper.h
+  RestHandler/RestAnalyzerHandler.cpp RestHandler/RestAnalyzerHandler.h
+  V8Server/v8-analyzers.cpp V8Server/v8-analyzers.h
 )
 
 target_compile_definitions(${LIB_ARANGO_IRESEARCH}
@@ -196,7 +198,6 @@ SET(ARANGOD_SOURCES
   Aql/CountCollectExecutor.cpp
   Aql/DistinctCollectExecutor.cpp
   Aql/DistributeExecutor.cpp
-  Aql/DocumentProducingBlock.cpp
   Aql/DocumentProducingNode.cpp
   Aql/EngineInfoContainerCoordinator.cpp
   Aql/EngineInfoContainerDBServer.cpp

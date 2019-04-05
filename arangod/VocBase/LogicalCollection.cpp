@@ -954,8 +954,7 @@ Result LogicalCollection::insert(transaction::Methods* trx, VPackSlice const sli
 Result LogicalCollection::update(transaction::Methods* trx, VPackSlice const newSlice,
                                  ManagedDocumentResult& result, OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                                 std::function<Result(void)> callbackDuringLock) {
+                                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) {
   TRI_IF_FAILURE("LogicalCollection::update") {
     return Result(TRI_ERROR_DEBUG);
   }
@@ -967,15 +966,14 @@ Result LogicalCollection::update(transaction::Methods* trx, VPackSlice const new
 
   prevRev = 0;
   return getPhysical()->update(trx, newSlice, result, options, resultMarkerTick, lock,
-                               prevRev, previous, std::move(callbackDuringLock));
+                               prevRev, previous);
 }
 
 /// @brief replaces a document or edge in a collection
 Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice const newSlice,
                                   ManagedDocumentResult& result, OperationOptions& options,
                                   TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                                  std::function<Result(void)> callbackDuringLock) {
+                                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) {
   TRI_IF_FAILURE("LogicalCollection::replace") {
     return Result(TRI_ERROR_DEBUG);
   }
@@ -986,7 +984,7 @@ Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice const ne
 
   prevRev = 0;
   return getPhysical()->replace(trx, newSlice, result, options, resultMarkerTick, lock,
-                                prevRev, previous, std::move(callbackDuringLock));
+                                prevRev, previous);
 }
 
 /// @brief removes a document or edge

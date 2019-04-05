@@ -62,10 +62,6 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
   //////////////////////////////////////////////////////////////////////////////
   static arangodb::IndexTypeFactory const& factory();
 
-  virtual bool hasBatchInsert() const override {
-    return IResearchLink::hasBatchInsert();
-  }
-
   virtual bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();
   }

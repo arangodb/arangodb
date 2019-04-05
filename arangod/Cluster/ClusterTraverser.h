@@ -51,7 +51,7 @@ class ClusterTraverser final : public Traverser {
   ~ClusterTraverser() {}
 
   void setStartVertex(std::string const& id) override;
-
+  
  protected:
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
