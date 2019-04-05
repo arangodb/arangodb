@@ -2468,21 +2468,6 @@ static void JS_MoveFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string source = TRI_ObjectToString(isolate, args[0]);
   std::string destination = TRI_ObjectToString(isolate, args[1]);
 
-  bool const sourceIsDirectory = TRI_IsDirectory(source.c_str());
-  bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
-
-  if (sourceIsDirectory && destinationIsDirectory) {
-    // source is a directory, destination is a directory. this is unsupported
-    TRI_V8_THROW_EXCEPTION_PARAMETER(
-        "cannot move source directory into destination directory");
-  }
-
-  if (TRI_IsRegularFile(source.c_str()) && destinationIsDirectory) {
-    // source is a file, destination is a directory. this is unsupported
-    TRI_V8_THROW_EXCEPTION_PARAMETER(
-        "cannot move source file into destination directory");
-  }
-
   V8SecurityFeature* v8security =
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
@@ -2496,6 +2481,21 @@ static void JS_MoveFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!v8security->isAllowedToAccessPath(isolate, destination, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to modify files in this path");
+  }
+
+  bool const sourceIsDirectory = TRI_IsDirectory(source.c_str());
+  bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
+
+  if (sourceIsDirectory && destinationIsDirectory) {
+    // source is a directory, destination is a directory. this is unsupported
+    TRI_V8_THROW_EXCEPTION_PARAMETER(
+        "cannot move source directory into destination directory");
+  }
+
+  if (TRI_IsRegularFile(source.c_str()) && destinationIsDirectory) {
+    // source is a file, destination is a directory. this is unsupported
+    TRI_V8_THROW_EXCEPTION_PARAMETER(
+        "cannot move source file into destination directory");
   }
 
   std::string systemErrorStr;
