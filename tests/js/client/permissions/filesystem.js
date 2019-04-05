@@ -221,6 +221,19 @@ function testSuite() {
     });
     assertEqual(count, 2);
   }
+  function tryAdler32Forbidden(fn) {
+    try {
+      fs.adler32(fn);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'access to ' + fn + ' wasn\'t forbidden: ' + err);
+    }
+  }
+  function tryAdler32Allowed(fn, expectedContentPlain) {
+    let content = fs.adler32(fn);
+    assertTrue(content > 0);
+  }
   function tryWriteForbidden(fn) {
     try {
       let rc = fs.write(fn, '1212 this is just a test');
@@ -593,6 +606,14 @@ function testSuite() {
 
       tryReadAllowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryReadAllowed(subLevelAllowedFile, 'this file is allowed.\n');
+
+      tryAdler32Forbidden('/etc/passwd');
+      tryAdler32Forbidden('/var/log/mail.log');
+      tryAdler32Forbidden(topLevelForbiddenFile);
+      // N/A tryAdler32Forbidden(subLevelForbiddenFile);
+
+      tryAdler32Allowed(topLevelAllowedFile, 'this file is allowed.\n');
+      tryAdler32Allowed(subLevelAllowedFile, 'this file is allowed.\n');
     },
     testReadBuffer : function() {
       tryReadBufferForbidden('/etc/passwd');
