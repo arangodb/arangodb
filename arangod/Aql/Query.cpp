@@ -376,14 +376,21 @@ void Query::prepare(QueryRegistry* registry) {
 
       enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
-      int res = trx->addCollections(*_collections.collections());
+      Result res = trx->addCollections(*_collections.collections());
 
-      if (res == TRI_ERROR_NO_ERROR) {
+      if (res.ok()) {
         res = _trx->begin();
       }
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(res, buildErrorMessage(res));
+      if (res.fail()) {
+        if (!_queryString.empty() && _queryOptions.verboseErrors) {
+          std::string msg = res.errorMessage();
+          msg.append("\nwhile executing:\n");
+          _queryString.append(msg);
+          msg.push_back('\n');
+        }
+
+        THROW_ARANGO_EXCEPTION(res);
       }
 
       enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
@@ -521,6 +528,7 @@ ExecutionPlan* Query::preparePlan() {
     enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
     Result res = trx->addCollections(*_collections.collections());
+
     if (res.ok()) {
       res = _trx->begin();
     }
@@ -1355,19 +1363,6 @@ bool Query::canUseQueryCache() const {
   }
 
   return false;
-}
-
-/// @brief neatly format exception messages for the users
-std::string Query::buildErrorMessage(int errorCode) const {
-  std::string err(TRI_errno_string(errorCode));
-
-  if (!_queryString.empty() && _queryOptions.verboseErrors) {
-    err += "\nwhile executing:\n";
-    _queryString.append(err);
-    err += "\n";
-  }
-
-  return err;
 }
 
 /// @brief enter a new state

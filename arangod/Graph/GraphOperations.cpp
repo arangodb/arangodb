@@ -821,7 +821,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
 
       auto queryResult = query.executeSync(QueryRegistryFeature::registry());
       if (queryResult.code != TRI_ERROR_NO_ERROR) {
-        return OperationResult(queryResult.code);
+        return OperationResult(Result(queryResult.code, queryResult.details));
       }
     }
   }
