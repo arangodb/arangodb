@@ -34,9 +34,11 @@ const internal = require('internal');
 const rootDir = fs.join(fs.getTempPath(),  'permissions');
 const testresults = fs.join(rootDir, 'testresult.json'); // where we want to put our results ;-)
 const topLevelForbidden = fs.join(rootDir, 'forbidden');
+const topLevelForbiddenRecursive = fs.join(rootDir, 'forbidden_recursive');
 const intoTopLevelForbidden = rootDir + '/allowed/into_forbidden.txt';
 
 const topLevelAllowed = fs.join(rootDir, 'allowed');
+const topLevelAllowedRecursive = fs.join(rootDir, 'allowed_recursive');
 const intoTopLevelAllowed = rootDir + '/forbidden/into_allowed.txt';
 
 const topLevelAllowedFile = fs.join(topLevelAllowed, 'allowed.txt');
@@ -80,6 +82,8 @@ if (getOptions === true) {
   // N/A fs.makeDirectoryRecursive(subLevelForbidden);
   fs.makeDirectoryRecursive(topLevelAllowed);
   fs.makeDirectoryRecursive(subLevelAllowed);
+  fs.makeDirectoryRecursive(topLevelAllowedRecursive);
+  fs.makeDirectoryRecursive(topLevelForbiddenRecursive);
   fs.write(topLevelAllowedFile, 'this file is allowed.\n');
   fs.write(topLevelForbiddenFile, 'forbidden fruits are tasty!\n');
   fs.write(subLevelAllowedFile, 'this file is allowed.\n');
@@ -110,12 +114,14 @@ if (getOptions === true) {
       '/etc/passwd', // if not this, what else?
       '/etc/.*',
       topLevelForbidden + '.*',
+      topLevelForbiddenRecursive + '.*'
       // N/A  subLevelForbidden + '.*'
     ],
     'javascript.files-white-list': [
       testresults,
       topLevelAllowed + '.*',
-      subLevelAllowed + '.*'
+      subLevelAllowed + '.*',
+      topLevelAllowedRecursive + '.*'
     ]
   };
 }
@@ -222,7 +228,21 @@ function testSuite() {
   }
   function tryWriteAllowed(fn) {
     let rc = fs.write(fn, '1212 this is just a test');
-    assertTrue(rc, 'Expected ' + fn + ' to be chmodable');
+    assertTrue(rc, 'Expected ' + fn + ' to be writeable');
+  }
+
+  function tryAppendForbidden(fn) {
+    try {
+      let rc = fs.append(fn, '1212 this is just a test');
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Append access to ' + fn + ' wasn\'t forbidden');
+    }
+  }
+  function tryAppendAllowed(fn) {
+    let rc = fs.append(fn, '1212 this is just a test');
+    assertTrue(rc, 'Expected ' + fn + ' to be appendeable');
   }
 
   function tryChmodForbidden(fn) {
@@ -236,7 +256,7 @@ function testSuite() {
   }
   function tryChmodAllowed(fn) {
     let rc = fs.chmod(fn, '0755');
-    assertTrue(rc, 'Expected ' + fn + ' to be writeable');
+    assertTrue(rc, 'Expected ' + fn + ' to be chmodable');
   }
 
   function tryExistsForbidden(fn) {
@@ -247,10 +267,21 @@ function testSuite() {
     catch (err) {
       assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'stat-access to ' + fn + ' wasn\'t forbidden');
     }
+    try {
+      let rc = fs.mtime(fn);
+      fail();
+    }
+    catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'stat-access to ' + fn + ' wasn\'t forbidden');
+    }
   }
   function tryExistsAllowed(fn, exists) {
     let rc = fs.exists(fn);
     assertEqual(rc, exists, 'Expected ' + fn + ' to be stat-eable');
+    if (exists) {
+      rc = fs.mtime(fn);
+      assertTrue(rc > 0);
+    }
   }
 
   function tryFileSizeForbidden(fn) {
@@ -417,7 +448,28 @@ function testSuite() {
     }
   }
   function tryCopyFileAllowed(sn, tn) {
-    fs.copyFile(sn, tn);
+    try {
+      fs.copyFile(sn, tn);
+    } catch (err) {
+      assertTrue(false, "failed to copy " + sn + " to " + tn + " - " + err);
+    }
+    tryExistsAllowed(sn, true);
+    tryExistsAllowed(tn, true);
+  }
+  function tryCopyRecursiveFileForbidden(sn, tn) {
+    try {
+      let absolute = fs.copyRecursive(sn, tn);
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'CopyRecursiveing of ' + sn + ' to ' + tn + ' wasn\'t forbidden: ' + err);
+    }
+  }
+  function tryCopyRecursiveFileAllowed(sn, tn) {
+    try {
+      fs.copyRecursive(sn, tn);
+    } catch (err) {
+      assertTrue(false, "failed to copy " + sn + " to " + tn + " - " + err);
+    }
     tryExistsAllowed(sn, true);
     tryExistsAllowed(tn, true);
   }
@@ -430,8 +482,45 @@ function testSuite() {
     }
   }
   function tryMoveFileAllowed(sn, tn) {
-    fs.move(sn, tn);
+    try {
+      fs.move(sn, tn);
+    } catch (err) {
+      assertTrue(false, "failed to move " + sn + " to " + tn + " - " + err);
+    }
     tryExistsAllowed(sn, false);
+    tryExistsAllowed(tn, true);
+  }
+  function tryRemoveFileForbidden(fn) {
+    try {
+      let rc = fs.remove(fn);
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'removing of ' + fn + ' wasn\'t forbidden');
+    }
+  }
+  function tryRemoveFileAllowed(fn) {
+    try {
+      fs.remove(fn);
+    } catch (err) {
+      fail("failed to remove " + fn + " - " + err.Message);
+    }
+    tryExistsAllowed(fn, false);
+  }
+  function tryLinkFileForbidden(tn, sn) {
+    try {
+      let rc = fs.linkFile(tn, sn);
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Moving of ' + sn + ' to ' + tn + ' wasn\'t forbidden');
+    }
+  }
+  function tryLinkFileAllowed(sn, tn) {
+    try {
+      fs.linkFile(sn, tn);
+    } catch (err) {
+      assertTrue(false, "failed to Link " + sn + " into " + tn + " - " + err);
+    }
+    tryExistsAllowed(sn, true);
     tryExistsAllowed(tn, true);
   }
 
@@ -501,9 +590,13 @@ function testSuite() {
     testWriteFile : function() {
       tryWriteForbidden('/var/log/mail.log');
       tryWriteForbidden(topLevelForbiddenWriteFile);
+      tryAppendForbidden('/var/log/mail.log');
+      tryAppendForbidden(topLevelForbiddenWriteFile);
 
       tryWriteAllowed(topLevelAllowedWriteFile);
       tryWriteAllowed(subLevelAllowedWriteFile);
+      tryAppendAllowed(topLevelAllowedWriteFile);
+      tryAppendAllowed(subLevelAllowedWriteFile);
 
     },
     testChmod : function() {
@@ -613,16 +706,28 @@ function testSuite() {
       tryListTreeAllowed(topLevelAllowed, 8);
       tryListTreeAllowed(subLevelAllowed, 7);
     },
-    testCopyMoveFiles : function() {
+    testCopyReMoveLinkFiles : function() {
       tryCopyFileForbidden('/etc/passwd', topLevelAllowed);
       tryCopyFileForbidden(topLevelAllowedWriteFile, topLevelForbidden);
+      tryLinkFileForbidden('/etc/passwd', topLevelAllowed);
+      tryLinkFileForbidden(topLevelAllowedWriteFile, topLevelForbidden);
       tryMoveFileForbidden('/etc/passwd', topLevelAllowed);
       tryMoveFileForbidden(topLevelAllowedWriteFile, topLevelForbidden);
+      tryRemoveFileForbidden('/etc/passwd');
+      tryRemoveFileForbidden(topLevelForbiddenWriteFile);
+
+      tryCopyRecursiveFileForbidden('/etc/passwd', fs.join(topLevelAllowedRecursive, 'sub', 'directory'));
+      tryCopyRecursiveFileForbidden(subLevelAllowed, fs.join(topLevelForbiddenRecursive, 'sub', 'directory'));
 
       tryCopyFileAllowed(topLevelAllowedCopyFile, fs.join(topLevelAllowed, 'copy_1.txt'));
       tryCopyFileAllowed(subLevelAllowedCopyFile, fs.join(topLevelAllowed, 'copy_2.txt'));
+      tryLinkFileAllowed(topLevelAllowedCopyFile, fs.join(topLevelAllowed, 'link_1.txt'));
+      tryLinkFileAllowed(subLevelAllowedCopyFile, fs.join(topLevelAllowed, 'link_2.txt'));
       tryMoveFileAllowed(topLevelAllowedCopyFile, fs.join(topLevelAllowed, 'move_1.txt'));
       tryMoveFileAllowed(subLevelAllowedCopyFile, fs.join(topLevelAllowed, 'move_2.txt'));
+      tryRemoveFileAllowed(fs.join(topLevelAllowed, 'move_1.txt'));
+      tryRemoveFileAllowed(fs.join(topLevelAllowed, 'move_2.txt'));
+      tryCopyRecursiveFileAllowed(subLevelAllowed, fs.join(topLevelAllowedRecursive, 'sub', 'directory'));
     }
   };
 }
