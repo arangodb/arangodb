@@ -2836,7 +2836,6 @@ arangodb::Result matchBackupServers(VPackSlice const agencyDump,
                                     std::vector<ServerID> const& dbServers,
                                     std::unordered_map<std::string,std::string>& match) {
 
-  VPackSlice plan;
   std::vector<std::string> ap {"arango", "Plan", "DBServers"};
 
   if (!agencyDump.hasKey(ap)) {
@@ -3266,7 +3265,7 @@ arangodb::Result lockDBServerTransactions(
     }
 
     // not stopping && not timed out
-    uint64_t nLocks;
+    uint64_t nLocks = 0;
     while (cc != nullptr && lockWaitEnd < steady_clock::now()) {
 
       // Collect all call backs one after the other
@@ -3473,30 +3472,32 @@ arangodb::Result hotBackupCoordinator(
   HotBackupMode const& mode, uint64_t const& timeout) {
 
   /*
-    1. Create UUID for this entire attempt
-    2. Try to get unique hot backup lock in agency, triggers maintenance mode
-    if not successful: error
-    3. Get agency dump
-    if not successful: error
-    4. Get global lock on all database servers
-    if not successful: delete agency dump, error
-    5. Create backups on all dabatase servers
-    if not successful: delete all snapshots, agency dump
+    Suggestion for procedure for cluster hotbackup:
+    1. Check that ToDo and Pending are empty, if not, delay, back to 1.
+       Timeout for giving up.
+    2. Stop Supervision, remember if it was on or not.
+    3. Check that ToDo and Pending are empty, if not, start Supervision again,
+       back to 1.
+    4. Get Plan, will have no resigned leaders.
+    5. Stop Transactions, if this does not work in time, restore Supervision
+       and give up.
+    6. Take hotbackups everywhere, if any fails, all failed.
+    7. Resume Transactions.
+    8. Resume Supervision if it was on.
+    9. Keep Maintenance on dbservers on all the time.
   */
 
   using namespace std::chrono;
 
-  // 1. backup's UUID
   std::string const backupId = to_string(boost::uuids::random_generator()());
   auto end = steady_clock::now() + seconds(timeout);
-
-  // Cluster info instance for agency operations
   ClusterInfo* ci = ClusterInfo::instance();
 
-  // Go to backup mode for *timeout* if and only if not already in
+  // Go to backup mode for *timeoute* if and only if not already in
   // backup mode. Otherwise we cannot know, why backup mode was activated
   // We specifically want to make sure that no other backup is going on.
-  auto result = ci->agencyHotBackupLock(backupId, timeout);
+  bool supervisionOff = false;
+  auto result = ci->agencyHotBackupLock(backupId, timeout, supervisionOff);
   if (!result.ok()) {
     // Failed to go to backup mode
     result.reset(
