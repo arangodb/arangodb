@@ -44,10 +44,15 @@ void ManagedDocumentResult::setManaged(uint8_t const* vpack) {
   _revisionId = transaction::helpers::extractRevFromDocument(slice);
 }
 
+void ManagedDocumentResult::setRevisionId() noexcept {
+  TRI_ASSERT(!this->empty());
+  _revisionId = transaction::helpers::extractRevFromDocument(VPackSlice(this->vpack()));
+}
+
 void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder,
                                          bool allowExternals) const {
   TRI_ASSERT(!empty());
-  if (_vpack == nullptr) {
+  if (_vpack == nullptr) { // managed
     TRI_ASSERT(!_string.empty());
     builder.add(VPackSlice(_string.data()));
   } else {

@@ -796,9 +796,13 @@ Result RocksDBCollection::read(transaction::Methods* trx,
   std::string* buffer = result.setManaged();
   rocksdb::PinnableSlice ps(buffer);
   Result res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/true, /*fillCache*/true);
-  if (res.ok() && ps.IsPinned()) {
-    buffer->assign(ps.data(), ps.size());
-  } // else value is already assigned
+  if (res.ok()) {
+    if (ps.IsPinned()) {
+      buffer->assign(ps.data(), ps.size());
+    } // else value is already assigned
+    result.setRevisionId(); // extracts id from buffer
+  }
+  
   return res;
 }
 
@@ -899,7 +903,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       keyBuilder->close();
       resultMdr.setManaged()->assign(reinterpret_cast<char const*>(keyBuilder->start()),
                                      keyBuilder->size());
-      resultMdr.revisionId(revisionId);
+      resultMdr.setRevisionId(revisionId);
     }
     
     bool hasPerformedIntermediateCommit = false;
@@ -944,7 +948,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
   TRI_ASSERT(previousPS.size() > 0);
   VPackSlice const oldDoc(previousPS.data());
-  previousMdr.revisionId(transaction::helpers::extractRevFromDocument(oldDoc));
+  previousMdr.setRevisionId(transaction::helpers::extractRevFromDocument(oldDoc));
   TRI_ASSERT(previousMdr.revisionId() != 0);
 
   if (!options.ignoreRevs) {  // Check old revision:
@@ -1002,7 +1006,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
       resultMdr.setManaged(newDoc.begin());
       TRI_ASSERT(!resultMdr.empty());
     } else {  //  need to pass revId manually
-      resultMdr.revisionId(revisionId);
+      resultMdr.setRevisionId(revisionId);
     }
     if (options.returnOld) {
       if (previousPS.IsPinned()) { // value was not copied
@@ -1054,7 +1058,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   
   TRI_ASSERT(previousPS.size() > 0);
   VPackSlice const oldDoc(previousPS.data());
-  previousMdr.revisionId(transaction::helpers::extractRevFromDocument(oldDoc));
+  previousMdr.setRevisionId(transaction::helpers::extractRevFromDocument(oldDoc));
   TRI_ASSERT(previousMdr.revisionId() != 0);
 
   if (!options.ignoreRevs) {  // Check old revision:
@@ -1102,7 +1106,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
       resultMdr.setManaged(newDoc.begin());
       TRI_ASSERT(!resultMdr.empty());
     } else {  //  need to pass revId manually
-      resultMdr.revisionId(revisionId);
+      resultMdr.setRevisionId(revisionId);
     }
     if (options.returnOld) {
       if (previousPS.IsPinned()) { // value was not copied
@@ -1159,7 +1163,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   
   TRI_ASSERT(previousPS.size() > 0);
   VPackSlice const oldDoc(previousPS.data());
-  previousMdr.revisionId(transaction::helpers::extractRevFromDocument(oldDoc));
+  previousMdr.setRevisionId(transaction::helpers::extractRevFromDocument(oldDoc));
   TRI_ASSERT(previousMdr.revisionId() != 0);
 
   // Check old revision:

@@ -60,6 +60,7 @@ class ManagedDocumentResult {
   /// @brief copy in a valid document
   void setManaged(uint8_t const* vpack);
 
+  /// @brief access the internal buffer, revisionId must be set manually
   std::string* setManaged() noexcept {
     _string.clear();
     _vpack = nullptr;
@@ -68,7 +69,8 @@ class ManagedDocumentResult {
   }
 
   inline TRI_voc_rid_t revisionId() const noexcept { return _revisionId; }
-  void revisionId(TRI_voc_rid_t rid) noexcept { _revisionId = rid; }
+  void setRevisionId(TRI_voc_rid_t rid) noexcept { _revisionId = rid; }
+  void setRevisionId() noexcept;
 
   void clearData() noexcept {
     _string.clear();

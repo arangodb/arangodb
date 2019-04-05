@@ -2987,7 +2987,7 @@ Result MMFilesCollection::insert(arangodb::transaction::Methods* trx, VPackSlice
       keyBuilder->close();
       resultMdr.setManaged()->assign(reinterpret_cast<char const*>(keyBuilder->start()),
                                      keyBuilder->size());
-      resultMdr.revisionId(revisionId);
+      resultMdr.setRevisionId(revisionId);
     }
   }
 
@@ -3515,7 +3515,7 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
     if (options.returnNew) {
       resultMdr.setManaged(newDoc.begin());
     } else {  //  need to pass revId manually
-      resultMdr.revisionId(revisionId);
+      resultMdr.setRevisionId(revisionId);
     }
   }
 
@@ -3640,7 +3640,7 @@ Result MMFilesCollection::replace(transaction::Methods* trx, VPackSlice const ne
     if (options.returnNew) {
       resultMdr.setManaged(newDoc.begin());
     } else {  //  need to pass revId manually
-      resultMdr.revisionId(revisionId);
+      resultMdr.setRevisionId(revisionId);
     }
   }
 
