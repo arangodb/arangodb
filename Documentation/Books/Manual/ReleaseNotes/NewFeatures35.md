@@ -274,6 +274,8 @@ When calling this route, the request body is supposed to contain the document fo
 the responsible shard should be determined. The response will contain an attribute `shardId`
 containing the ID of the shard that is responsible for that document.
 
+A method `collection.getResponsibleShard(document)` was added to the JS API as well.
+
 It does not matter if the document actually exists or not, as the shard responsibility 
 is determined from the document's attribute values only. 
 
