@@ -116,15 +116,13 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
     _rocksReadOptions.prefix_same_as_start = true;  // should always be true
 
+    TRI_ASSERT(_readSnapshot == nullptr);
     if (isReadOnlyTransaction()) {
-      if (_readSnapshot == nullptr) {       // replication may donate a snapshot
-        _readSnapshot = db->GetSnapshot();  // must call ReleaseSnapshot later
-      }
+      _readSnapshot = db->GetSnapshot();  // must call ReleaseSnapshot later
       TRI_ASSERT(_readSnapshot != nullptr);
       _rocksReadOptions.snapshot = _readSnapshot;
       _rocksMethods.reset(new RocksDBReadOnlyMethods(this));
     } else {
-      TRI_ASSERT(_readSnapshot == nullptr);
       createTransaction();
       _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
       if (hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
@@ -226,6 +224,8 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
     _cacheTx = nullptr;
   }
   if (_readSnapshot != nullptr) {
+    TRI_ASSERT(isReadOnlyTransaction() ||
+               hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS));
     rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
     db->ReleaseSnapshot(_readSnapshot);  // calls delete
     _readSnapshot = nullptr;
@@ -273,6 +273,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       TRI_ASSERT(_numLogdata == (2 + _numRemoves));
     }
     ++_numCommits;
+    TRI_ASSERT(x > 0);
 #endif
 
     // prepare for commit on each collection, e.g. place blockers for estimators
@@ -355,17 +356,15 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
                _rocksTransaction->GetNumPuts() == 0 &&
                _rocksTransaction->GetNumDeletes() == 0);
     // this is most likely the fill index case
-    rocksdb::SequenceNumber seq = _rocksTransaction->GetSnapshot()->GetSequenceNumber();
+    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto& trxColl : _collections) {
       TRI_IF_FAILURE("RocksDBCommitCounts") { continue; }
       auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
-      rcoll->prepareCommit(id(), seq);
-      // We get here if we have filled indexes. So let us commit counts and
-      // any buffered index estimator updates
-      rcoll->commitCounts(id(), seq + 1);
+      TRI_ASSERT(!rcoll->hasOperations());
+      TRI_ASSERT(rcoll->stealTrackedOperations().empty());
     }
     // don't write anything if the transaction is empty
-    result = rocksutils::convertStatus(_rocksTransaction->Rollback());
+    #endif
   }
 
   return result;

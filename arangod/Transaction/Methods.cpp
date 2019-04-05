@@ -1849,7 +1849,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
       TRI_ASSERT(updateFollowers == nullptr);
       res = collection->replace(this, value, documentResult, options,
                                 resultMarkerTick, false, previousRevisionId,
-                                previousDocumentResult, nullptr);
+                                previousDocumentResult);
       if (res.ok() && !options.silent) {
         // If we are silent, then revisionId will not be looked at further
         // down. In the silent case, documentResult is empty, so nobody
@@ -2079,18 +2079,7 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
-  std::function<Result(void)> updateFollowers = nullptr;
-
-  if (needsToGetFollowersUnderLock) {
-    auto const& followerInfo = *collection->followers();
-
-    updateFollowers = [&followerInfo, &followers]() -> Result {
-      TRI_ASSERT(followers == nullptr);
-      followers = followerInfo.get();
-
-      return Result{};
-    };
-  } else if (_state->isDBServer()) {
+  if (_state->isDBServer()) {
     TRI_ASSERT(followers == nullptr);
     followers = collection->followers()->get();
   }
@@ -2166,10 +2155,10 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
 
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       res = collection->replace(this, newVal, result, options, resultMarkerTick,
-                                false, actualRevision, previous, nullptr);
+                                false, actualRevision, previous);
     } else {
       res = collection->update(this, newVal, result, options, resultMarkerTick,
-                               false, actualRevision, previous, nullptr);
+                               false, actualRevision, previous);
     }
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {

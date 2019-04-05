@@ -54,7 +54,6 @@ struct ModificationBase {
 
   std::size_t _defaultBlockSize = ExecutionBlock::DefaultBatchSize();
   velocypack::Builder _tmpBuilder;  // default
-  bool _prepared = false;
   std::size_t _blockIndex = 0;  // cursor to the current positon
   SharedAqlItemBlockPtr _block = nullptr;
 
@@ -70,7 +69,6 @@ struct ModificationBase {
     // MUST not reset _block
     _justCopy = false;
     _last_not_skip = std::numeric_limits<decltype(_last_not_skip)>::max();
-    _prepared = false;
     _blockIndex = 0;
 
     _tmpBuilder.clear();

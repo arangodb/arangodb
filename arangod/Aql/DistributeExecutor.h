@@ -102,8 +102,6 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlockWithClients {
 
   ExecutorInfos const& infos() const { return _infos; }
 
-  Query const& getQuery() const { return _query; }
-
  private:
   ExecutorInfos _infos;
 

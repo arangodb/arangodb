@@ -177,6 +177,7 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
         // we are done
         s.addFiltered(_traverser.getAndResetFilteredPaths());
         s.addScannedIndex(_traverser.getAndResetReadDocuments());
+        s.addHttpRequests(_traverser.getAndResetHttpRequests());
         return {_rowState, s};
       }
       std::tie(_rowState, _input) = _fetcher.fetchRow();
@@ -184,6 +185,7 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
         TRI_ASSERT(!_input.isInitialized());
         s.addFiltered(_traverser.getAndResetFilteredPaths());
         s.addScannedIndex(_traverser.getAndResetReadDocuments());
+        s.addHttpRequests(_traverser.getAndResetHttpRequests());
         return {_rowState, s};
       }
 
@@ -192,6 +194,7 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
         TRI_ASSERT(_rowState == ExecutionState::DONE);
         s.addFiltered(_traverser.getAndResetFilteredPaths());
         s.addScannedIndex(_traverser.getAndResetReadDocuments());
+        s.addHttpRequests(_traverser.getAndResetHttpRequests());
         return {_rowState, s};
       }
       if (!resetTraverser()) {
@@ -225,6 +228,7 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
       }
       s.addFiltered(_traverser.getAndResetFilteredPaths());
       s.addScannedIndex(_traverser.getAndResetReadDocuments());
+      s.addHttpRequests(_traverser.getAndResetHttpRequests());
       return {computeState(), s};
     }
   }

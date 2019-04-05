@@ -277,6 +277,14 @@ void Query::setExecutionTime() {
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
   }
 }
+    
+/// @brief increase number of HTTP requests. this is normally
+/// called during the setup of a query
+void Query::incHttpRequests(size_t requests) {
+  if (_engine != nullptr) {
+    _engine->_stats.requests += requests;
+  }
+}
 
 /// @brief register an error, with an optional parameter inserted into printf
 /// this also makes the query abort

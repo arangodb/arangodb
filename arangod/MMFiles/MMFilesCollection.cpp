@@ -731,20 +731,20 @@ int MMFilesCollection::close() {
       std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
-    if ((++tries % 10) == 0) {
+    if ((++tries % 50) == 0) {
       if (hasDocumentDitch) {
-        LOG_TOPIC("51984", WARN, Logger::ENGINES)
+        LOG_TOPIC("51984", INFO, Logger::ENGINES)
             << "waiting for cleanup of document ditches for collection '"
             << _logicalCollection.name() << "'. has other: " << hasOtherDitch;
       } else {
-        LOG_TOPIC("16847", WARN, Logger::ENGINES)
+        LOG_TOPIC("16847", INFO, Logger::ENGINES)
             << "waiting for cleanup of ditches for collection '"
             << _logicalCollection.name() << "'";
       }
     }
 
-    if (tries == 60 && !hasOtherDitch) {
-      // give it up after a minute - this will close the collection at all cost
+    if (tries == 10 * 50 && !hasOtherDitch) {
+      // give it up after 10 seconds - this will close the collection at all cost
       break;
     }
   }
@@ -2835,7 +2835,7 @@ Result MMFilesCollection::insert(arangodb::transaction::Methods* trx, VPackSlice
                                  OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
                                  TRI_voc_tick_t& revisionId, KeyLockInfo* keyLockInfo,
-                                 std::function<Result(void)> callbackDuringLock) {
+                                 std::function<Result(void)> const& callbackDuringLock) {
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
@@ -3378,8 +3378,7 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
                                  VPackSlice const newSlice, ManagedDocumentResult& result,
                                  OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                                  bool lock, TRI_voc_rid_t& prevRev,
-                                 ManagedDocumentResult& previous,
-                                 std::function<Result(void)> callbackDuringLock) {
+                                 ManagedDocumentResult& previous) {
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
   if (key.isNone()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -3491,10 +3490,6 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
 
     res = updateDocument(*trx, revisionId, oldDocumentId, oldDoc, documentId,
                          newDoc, operation, marker, options, options.waitForSync);
-
-    if (res.ok() && callbackDuringLock != nullptr) {
-      res = callbackDuringLock();
-    }
   } catch (basics::Exception const& ex) {
     res = Result(ex.code());
   } catch (std::bad_alloc const&) {
@@ -3522,8 +3517,7 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
 Result MMFilesCollection::replace(transaction::Methods* trx, VPackSlice const newSlice,
                                   ManagedDocumentResult& result, OperationOptions& options,
                                   TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                                  std::function<Result(void)> callbackDuringLock) {
+                                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) {
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
@@ -3623,10 +3617,6 @@ Result MMFilesCollection::replace(transaction::Methods* trx, VPackSlice const ne
 
     res = updateDocument(*trx, revisionId, oldDocumentId, oldDoc, documentId,
                          newDoc, operation, marker, options, options.waitForSync);
-
-    if (res.ok() && callbackDuringLock != nullptr) {
-      res = callbackDuringLock();
-    }
   } catch (basics::Exception const& ex) {
     res = Result(ex.code());
   } catch (std::bad_alloc const&) {
@@ -3656,7 +3646,7 @@ Result MMFilesCollection::remove(transaction::Methods& trx, velocypack::Slice sl
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
                                  TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
                                  KeyLockInfo* keyLockInfo,
-                                 std::function<Result(void)> callbackDuringLock) {
+                                 std::function<Result(void)> const& callbackDuringLock) {
   prevRev = 0;
 
   LocalDocumentId const documentId = LocalDocumentId::create();

@@ -85,7 +85,6 @@ class IdExecutor {
 
  private:
   Fetcher& _fetcher;
-  SharedAqlItemBlockPtr _inputRegisterValues;
 };
 }  // namespace aql
 }  // namespace arangodb

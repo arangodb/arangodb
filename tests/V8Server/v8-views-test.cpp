@@ -457,7 +457,6 @@ SECTION("test_auth") {
 
     arangoView->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate.get(), WRP_VOCBASE_VIEW_TYPE));
     arangoView->SetInternalField(SLOT_CLASS, v8::External::New(isolate.get(), logicalView.get()));
-    arangoView->SetInternalField(SLOT_EXTERNAL, v8::External::New(isolate.get(), logicalView.get()));
     std::vector<v8::Local<v8::Value>> args = {
     };
 
@@ -593,7 +592,6 @@ SECTION("test_auth") {
 
     arangoView->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate.get(), WRP_VOCBASE_VIEW_TYPE));
     arangoView->SetInternalField(SLOT_CLASS, v8::External::New(isolate.get(), logicalView.get()));
-    arangoView->SetInternalField(SLOT_EXTERNAL, v8::External::New(isolate.get(), logicalView.get()));
     std::vector<v8::Local<v8::Value>> args = {
       TRI_V8_ASCII_STRING(isolate.get(), "testView1"),
     };
@@ -771,7 +769,6 @@ SECTION("test_auth") {
 
     arangoView->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate.get(), WRP_VOCBASE_VIEW_TYPE));
     arangoView->SetInternalField(SLOT_CLASS, v8::External::New(isolate.get(), logicalView.get()));
-    arangoView->SetInternalField(SLOT_EXTERNAL, v8::External::New(isolate.get(), logicalView.get()));
     std::vector<v8::Local<v8::Value>> args = {
       TRI_VPackToV8(isolate.get(), arangodb::velocypack::Parser::fromJson("{ \"key\": \"value\" }")->slice()),
     };
@@ -1130,7 +1127,6 @@ SECTION("test_auth") {
 
     arangoView->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate.get(), WRP_VOCBASE_VIEW_TYPE));
     arangoView->SetInternalField(SLOT_CLASS, v8::External::New(isolate.get(), logicalView.get()));
-    arangoView->SetInternalField(SLOT_EXTERNAL, v8::External::New(isolate.get(), logicalView.get()));
     std::vector<v8::Local<v8::Value>> args = {
     };
 

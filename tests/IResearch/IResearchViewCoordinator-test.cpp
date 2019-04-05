@@ -1287,7 +1287,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -1334,7 +1333,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -1381,7 +1379,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -1516,7 +1513,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -1564,7 +1560,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -1853,7 +1848,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -1900,7 +1894,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -2051,7 +2044,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -2099,7 +2091,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -2147,7 +2138,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -2495,7 +2485,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -2542,7 +2531,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -2681,7 +2669,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -2810,7 +2797,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -3117,7 +3103,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -3165,7 +3150,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -3212,7 +3196,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -3505,7 +3488,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
         CHECK((updatedCollection.get() == &(index->collection())));
         CHECK((index->fieldNames().empty()));
         CHECK((index->fields().empty()));
-        CHECK((true == index->hasBatchInsert()));
         CHECK((false == index->hasExpansion()));
         CHECK((false == index->hasSelectivityEstimate()));
         CHECK((false == index->implicitlyUnique()));

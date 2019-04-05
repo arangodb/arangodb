@@ -132,7 +132,6 @@ class VstCommTask final : public GeneralCommTask {
   /// Is the current user authorized
   bool _authorized;
   rest::AuthenticationMethod _authMethod;
-  std::string _authenticatedUser;
   ProtocolVersion _protocolVersion;
   uint32_t _maxChunkSize;
 };

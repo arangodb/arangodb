@@ -699,10 +699,6 @@ arangodb::Result IResearchLink::drop() {
   return arangodb::Result();
 }
 
-bool IResearchLink::hasBatchInsert() const {
-  return true;
-}
-
 bool IResearchLink::hasSelectivityEstimate() const {
   return false; // selectivity can only be determined per query since multiple fields are indexed
 }
