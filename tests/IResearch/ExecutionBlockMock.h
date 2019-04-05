@@ -87,6 +87,8 @@ class ExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   std::pair<arangodb::aql::ExecutionState, std::unique_ptr<arangodb::aql::AqlItemBlock>> getSome(
       size_t atMost) override;
 
+  virtual std::pair<arangodb::aql::ExecutionState, arangodb::Result> shutdown(int errorCode) override;
+
   // skip between atLeast and atMost returns the number actually skipped . . .
   // will only return less than atLeast if there aren't atLeast many
   // things to skip overall.

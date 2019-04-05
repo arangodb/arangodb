@@ -166,6 +166,12 @@ ExecutionBlockMock::getSome(size_t atMost) {
   return {getHasMoreState(), std::move(res)};
 }
 
+std::pair<arangodb::aql::ExecutionState, arangodb::Result> ExecutionBlockMock::shutdown(int errorCode) {
+  arangodb::aql::ExecutionState state;
+  arangodb::Result res;
+  return std::make_pair(state, res);
+}
+
 std::pair<arangodb::aql::ExecutionState, size_t> ExecutionBlockMock::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
   if (_done) {

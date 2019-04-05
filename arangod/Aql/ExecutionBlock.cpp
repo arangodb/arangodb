@@ -84,17 +84,6 @@ ExecutionBlock::~ExecutionBlock() {
   }
 }
 
-/// @brief returns the register id for a variable id
-/// will return ExecutionNode::MaxRegisterId for an unknown variable
-RegisterId ExecutionBlock::getRegister(VariableId id) const {
-  auto it = _exeNode->getRegisterPlan()->varInfo.find(id);
-
-  if (it != _exeNode->getRegisterPlan()->varInfo.end()) {
-    return (*it).second.registerId;
-  }
-  return ExecutionNode::MaxRegisterId;
-}
-
 /// @brief whether or not the query was killed
 void ExecutionBlock::throwIfKilled() {
   if (_engine->getQuery()->killed()) {

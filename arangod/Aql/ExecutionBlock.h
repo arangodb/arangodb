@@ -49,18 +49,10 @@ class ExecutionBlock {
   virtual ~ExecutionBlock();
 
   ExecutionBlock(ExecutionBlock const&) = delete;
-  ExecutionBlock operator=(ExecutionBlock const&) = delete;
 
  public:
   /// @brief batch size value
   static constexpr inline size_t DefaultBatchSize() { return 1000; }
-
-  /// @brief returns the register id for a variable id
-  /// will return ExecutionNode::MaxRegisterId for an unknown variable
-  RegisterId getRegister(VariableId id) const;
-
-  /// @brief throw an exception if query was killed
-  void throwIfKilled();
 
   /// @brief add a dependency
   TEST_VIRTUAL void addDependency(ExecutionBlock* ep) {
@@ -82,10 +74,10 @@ class ExecutionBlock {
   ///    DESTRUCTOR
 
   /// @brief initializeCursor, could be called multiple times
-  virtual std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input);
+  virtual std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) = 0;
 
   /// @brief shutdown, will be called exactly once for the whole query
-  virtual std::pair<ExecutionState, Result> shutdown(int errorCode);
+  virtual std::pair<ExecutionState, Result> shutdown(int errorCode) = 0;
 
   /// @brief getSome, gets some more items, semantic is as follows: not
   /// more than atMost items may be delivered. The method tries to
@@ -94,20 +86,15 @@ class ExecutionBlock {
   /// if it returns an actual block, it must contain at least one item.
   /// getSome() also takes care of tracing and clearing registers; don't do it
   /// in getOrSkipSome() implementations.
-  virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost);
+  virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) = 0;
 
-  void traceGetSomeBegin(size_t atMost);
-  void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state);
-
-  void traceSkipSomeBegin(size_t atMost);
-  void traceSkipSomeEnd(size_t skipped, ExecutionState state);
 
   /// @brief skipSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to
   /// skip a block of at most atMost items, however, it may skip
   /// less (for example if there are not enough items to come). The number of
   /// elements skipped is returned.
-  virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost);
+  virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost) = 0;
 
   ExecutionNode const* getPlanNode() const { return _exeNode; }
 
@@ -124,6 +111,16 @@ class ExecutionBlock {
   }
 
   RegisterId getNrInputRegisters() const;
+
+ protected:
+  /// @brief throw an exception if query was killed
+  void throwIfKilled();
+
+  void traceGetSomeBegin(size_t atMost);
+  void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state);
+
+  void traceSkipSomeBegin(size_t atMost);
+  void traceSkipSomeEnd(size_t skipped, ExecutionState state);
 
  protected:
   /// @brief request an AqlItemBlock from the memory manager
