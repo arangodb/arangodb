@@ -2573,7 +2573,7 @@ OperationResult transaction::Methods::truncate(std::string const& collectionName
     result = truncateLocal(collectionName, optionsCopy);
   }
 
-  events::TruncateCollection(collectionName, result.errorNumber());
+  events::TruncateCollection(vocbase().name(), collectionName, result.errorNumber());
   return result;
 }
 

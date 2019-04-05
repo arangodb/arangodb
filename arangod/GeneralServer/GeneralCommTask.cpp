@@ -526,7 +526,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
   VocbaseContext* vc = static_cast<VocbaseContext*>(req.requestContext());
   TRI_ASSERT(vc != nullptr);
   if (vc->databaseAuthLevel() == auth::Level::NONE && !StringUtils::isPrefix(path, ApiUser)) {
-    events::NotAuthorized(&req);
+    events::NotAuthorized(req);
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
 

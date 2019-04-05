@@ -410,7 +410,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
   auto it = _dataSourceByName.find(name);
 
   if (it != _dataSourceByName.end()) {
-    events::CreateCollection(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
+    events::CreateCollection(this->name(), name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
 
@@ -424,7 +424,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
     // Let's try to persist it.
     collection->persistPhysicalCollection();
 
-    events::CreateCollection(name, TRI_ERROR_NO_ERROR);
+    events::CreateCollection(this->name(), name, TRI_ERROR_NO_ERROR);
 
     return collection;
   } catch (...) {
@@ -640,7 +640,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     TRI_ASSERT(!locker.isLocked());
 
     if (timeout >= 0.0 && TRI_microtime() > startTime + timeout) {
-      events::DropCollection(colName, TRI_ERROR_LOCK_TIMEOUT);
+      events::DropCollection(name(), colName, TRI_ERROR_LOCK_TIMEOUT);
       return TRI_ERROR_LOCK_TIMEOUT;
     }
 
@@ -686,11 +686,11 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
           engine->changeCollection(*this, *collection, doSync);
         } catch (arangodb::basics::Exception const& ex) {
           collection->deleted(false);
-          events::DropCollection(colName, ex.code());
+          events::DropCollection(name(), colName, ex.code());
           return ex.code();
         } catch (std::exception const&) {
           collection->deleted(false);
-          events::DropCollection(colName, TRI_ERROR_INTERNAL);
+          events::DropCollection(name(), colName, TRI_ERROR_INTERNAL);
           return TRI_ERROR_INTERNAL;
         }
       }
@@ -737,11 +737,11 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     }
     default: {
       // unknown status
-      events::DropCollection(colName, TRI_ERROR_INTERNAL);
+      events::DropCollection(name(), colName, TRI_ERROR_INTERNAL);
       return TRI_ERROR_INTERNAL;
     }
   }
-  events::DropCollection(colName, TRI_ERROR_NO_ERROR);
+  events::DropCollection(name(), colName, TRI_ERROR_NO_ERROR);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1517,7 +1517,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
   auto itr = _dataSourceByName.find(view->name());
 
   if (itr != _dataSourceByName.end()) {
-    events::CreateView(view->name(), TRI_ERROR_ARANGO_DUPLICATE_NAME);
+    events::CreateView(name(), view->name(), TRI_ERROR_ARANGO_DUPLICATE_NAME);
 
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
@@ -1537,7 +1537,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
     throw;
   }
 
-  events::CreateView(view->name(), TRI_ERROR_NO_ERROR);
+  events::CreateView(name(), view->name(), TRI_ERROR_NO_ERROR);
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -1624,7 +1624,7 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
   locker.unlock();
   writeLocker.unlock();
 
-  events::DropView(view->name(), TRI_ERROR_NO_ERROR);
+  events::DropView(name(), view->name(), TRI_ERROR_NO_ERROR);
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {

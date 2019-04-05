@@ -24,20 +24,21 @@
 
 namespace arangodb {
 namespace events {
-void UnknownAuthenticationMethod(GeneralRequest const*) {}
-void CredentialsMissing(GeneralRequest const*) {}
-void CredentialsBad(GeneralRequest const*, rest::AuthenticationMethod) {}
-void PasswordChangeRequired(GeneralRequest const*) {}
-void Authenticated(GeneralRequest const*, rest::AuthenticationMethod) {}
-void NotAuthorized(GeneralRequest const*) {}
-void CreateCollection(std::string const& name, int result) {}
-void DropCollection(std::string const& name, int result) {}
-void TruncateCollection(std::string const& name, int result) {}
+void UnknownAuthenticationMethod(GeneralRequest const&) {}
+void CredentialsMissing(GeneralRequest const&) {}
+void CredentialsBad(GeneralRequest const&, rest::AuthenticationMethod) {}
+void PasswordChangeRequired(GeneralRequest const&) {}
+void Authenticated(GeneralRequest const&, rest::AuthenticationMethod) {}
+void NotAuthorized(GeneralRequest const&) {}
+void CreateCollection(std::string const& db, std::string const& name, int result) {}
+void DropCollection(std::string const& db, std::string const& name, int result) {}
+void TruncateCollection(std::string const& db, std::string const& name, int result) {}
 void CreateDatabase(std::string const& name, int result) {}
 void DropDatabase(std::string const& name, int result) {}
-void CreateIndex(std::string const& col, VPackSlice const&) {}
-void DropIndex(std::string const& col, std::string const& idx, int result) {}
-void CreateView(std::string const& name, int result) {}
-void DropView(std::string const& name, int result) {}
+void CreateIndex(std::string const& db, std::string const& col, VPackSlice const&) {}
+void DropIndex(std::string const& db, std::string const& col,
+               std::string const& idx, int result) {}
+void CreateView(std::string const& db, std::string const& name, int result) {}
+void DropView(std::string const& db, std::string const& name, int result) {}
 }  // namespace events
 }  // namespace arangodb

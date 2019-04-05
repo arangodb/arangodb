@@ -410,7 +410,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
   }
 
   TRI_ASSERT(!indexDef.isNone());
-  events::CreateIndex(collection->name(), indexDef);
+  events::CreateIndex(collection->vocbase().name(), collection->name(), indexDef);
 
   // ensure an index, coordinator case
   if (ServerState::instance()->isCoordinator()) {
