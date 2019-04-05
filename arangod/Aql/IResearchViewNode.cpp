@@ -1041,7 +1041,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   // We have one output register for documents, which is always the first after
   // the input registers.
   aql::RegisterId const firstOutputRegister = getNrInputRegisters();
-  auto numScoreRegisters = static_cast<const aql::RegisterId>(_scorers.size());
+  auto numScoreRegisters = static_cast<aql::RegisterId>(_scorers.size());
 
   // We have one additional output register for each scorer, consecutively after
   // the output register for documents. These must of course fit in the
@@ -1056,6 +1056,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     writableOutputRegisters->emplace(reg);
   }
   TRI_ASSERT(writableOutputRegisters->size() == 1 + numScoreRegisters);
+  TRI_ASSERT(writableOutputRegisters->begin() != writableOutputRegisters->end());
   TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->begin(),
                                                       writableOutputRegisters->end()));
   aql::ExecutorInfos infos = createRegisterInfos(calcInputRegs(), std::move(writableOutputRegisters));

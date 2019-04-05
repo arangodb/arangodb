@@ -148,7 +148,7 @@ struct UpdateReplace : ModificationBase {
   bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 
   UpdateReplace() = delete;
-  UpdateReplace(MethodPtr method, std::string name)
+  UpdateReplace(MethodPtr method, std::string&& name)
       : _method(method), _name(std::move(name)) {}
 
   void reset() {
@@ -156,8 +156,8 @@ struct UpdateReplace : ModificationBase {
     _updateOrReplaceBuilder.clear();
   };
 
-  MethodPtr _method;
-  std::string _name;
+  MethodPtr const _method;
+  std::string const _name;
   VPackBuilder _updateOrReplaceBuilder;
 };
 
