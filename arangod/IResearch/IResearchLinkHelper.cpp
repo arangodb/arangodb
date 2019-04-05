@@ -60,7 +60,7 @@ arangodb::Result canUseAnalyzers( // validate
   auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
   for (auto& entry: meta._analyzers) {
-    if (!entry) {
+    if (!entry._pool) {
       continue; // skip invalid entries
     }
 
@@ -69,20 +69,20 @@ arangodb::Result canUseAnalyzers( // validate
     if (sysVocbase) {
       result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
         arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-          entry->name(), defaultVocbase, *sysVocbase // args
+          entry._pool->name(), defaultVocbase, *sysVocbase // args
         ), // analyzer
         arangodb::auth::Level::RO // auth level
       );
     } else {
       result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
-        entry->name(), arangodb::auth::Level::RO // args
+        entry._pool->name(), arangodb::auth::Level::RO // args
       );
     }
 
     if (!result) {
       return arangodb::Result( // result
         TRI_ERROR_FORBIDDEN, // code
-        std::string("read access is forbidden to arangosearch analyzer '") + entry->name() + "'"
+        std::string("read access is forbidden to arangosearch analyzer '") + entry._pool->name() + "'"
       );
     }
   }
@@ -234,8 +234,13 @@ arangodb::Result modifyLinks( // modify links
 
     normalized.openObject();
 
+    // @note: DBServerAgencySync::getLocalCollections(...) generates
+    //        'not-forPersistence' definitions that are then compared in
+    //        Maintenance.cpp:compareIndexes(...) via
+    //        arangodb::Index::Compare(...)
+    //        hence must use 'isCreation=false' for normalize(...) to match
     auto res = arangodb::iresearch::IResearchLinkHelper::normalize( // normalize to validate analyzer definitions
-      normalized, link, true, view.vocbase() // args
+      normalized, link, false, view.vocbase() // args
     );
 
     if (!res.ok()) {

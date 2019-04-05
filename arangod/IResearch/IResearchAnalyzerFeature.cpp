@@ -68,7 +68,7 @@ static char const ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars
 static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
 static std::string const FEATURE_NAME("IResearchAnalyzer");
 static irs::string_ref const IDENTITY_ANALYZER_NAME("identity");
-static auto const RELOAD_INTERVAL = std::chrono::minutes(60); // arbitrary value
+static auto const RELOAD_INTERVAL = std::chrono::seconds(60); // arbitrary value
 
 struct IdentityValue : irs::term_attribute {
   void value(irs::bytes_ref const& data) noexcept { value_ = data; }
@@ -275,24 +275,6 @@ bool equalAnalyzer(
   return type == pool.type() // same type
          && properties == pool.properties() // same properties
          && features == pool.features(); // same features
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a pointer to the system database or nullptr on error
-////////////////////////////////////////////////////////////////////////////////
-arangodb::SystemDatabaseFeature::ptr getSystemDatabase() {
-  auto* database =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
-
-  if (!database) {
-    LOG_TOPIC("f8c9f", WARN, arangodb::iresearch::TOPIC)
-        << "failure to find feature '" << arangodb::SystemDatabaseFeature::name()
-        << "' while getting the system database";
-
-    return nullptr;
-  }
-
-  return database->use();
 }
 
 std::string normalizedAnalyzerName(
@@ -1029,72 +1011,6 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
 
         analyzers.emplace(irs::make_hashed_ref(name, std::hash<irs::string_ref>()), pool);
       }
-
-      // register the text analyzers
-      {
-        // Note: ArangoDB strings coming from JavaScript user input are UTF-8
-        // encoded
-        static const std::vector<std::pair<irs::string_ref, irs::string_ref>> textAnalzyers = {
-            {"text_de",
-             "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] "
-             "}"},  // empty stop word list
-            {"text_en",
-             "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] "
-             "}"},  // empty stop word list
-            {"text_es",
-             "{ \"locale\": \"es.UTF-8\", \"ignored_words\": [ ] "
-             "}"},  // empty stop word list
-            {"text_fi",
-             "{ \"locale\": \"fi.UTF-8\", \"ignored_words\": [ ] "
-             "}"},  // empty stop word list
-            {"text_fr",
-             "{ \"locale\": \"fr.UTF-8\", \"ignored_words\": [ ] "
-             "}"},  // empty stop word list
-            {"text_it",
-             "{ \"locale\": \"it.UTF-8\", \"ignored_words\": [ ] "
-             "}"},  // empty stop word list
-            {"text_nl",
-             "{ \"locale\": \"nl.UTF-8\", \"ignored_words\": [ ] "
-             "}"},  // empty stop word list
-            {"text_no",
-             "{ \"locale\": \"no.UTF-8\", \"ignored_words\": [ ] "
-             "}"},  // empty stop word list
-            {"text_pt",
-             "{ \"locale\": \"pt.UTF-8\", \"ignored_words\": [ ] "
-             "}"},  // empty stop word list
-            {"text_ru",
-             "{ \"locale\": \"ru.UTF-8\", \"ignored_words\": [ ] "
-             "}"},  // empty stop word list
-            {"text_sv",
-             "{ \"locale\": \"sv.UTF-8\", \"ignored_words\": [ ] "
-             "}"},  // empty stop word list
-            {"text_zh",
-             "{ \"locale\": \"zh.UTF-8\", \"ignored_words\": [ ] "
-             "}"},  // empty stop word list
-        };
-        static const irs::flags extraFeatures = {irs::frequency::type(),
-                                                 irs::norm::type(),
-                                                 irs::position::type()};  // add norms + frequency/position for
-                                                                          // by_phrase
-        static const irs::string_ref type("text");
-
-        for (auto& entry : textAnalzyers) {
-          auto& name = entry.first;
-          auto& args = entry.second;
-          PTR_NAMED(AnalyzerPool, pool, name);
-
-          if (!pool || !pool->init(type, args, extraFeatures)) {
-            LOG_TOPIC("e25f5", WARN, arangodb::iresearch::TOPIC)
-                << "failure creating an arangosearch static analyzer instance "
-                   "for name '"
-                << name << "'";
-            throw irs::illegal_state();  // this should never happen, treat as
-                                         // an assertion failure
-          }
-
-          analyzers.emplace(irs::make_hashed_ref(name, std::hash<irs::string_ref>()), pool);
-        }
-      }
     }
   };
   static const Instance instance;
@@ -1704,9 +1620,8 @@ void IResearchAnalyzerFeature::start() {
              "IResearch functions";
     }
   }
-/*FIXME TODO disable until V8 handler is implemented for JavaScript tests
+
   registerUpgradeTasks(); // register tasks after UpgradeFeature::prepare() has finished
-*/
 
   auto res = loadAnalyzers();
 
@@ -1757,11 +1672,6 @@ arangodb::Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
 
   auto split = splitAnalyzerName(pool.name());
   auto* vocbase = dbFeature->useDatabase(split.first);
-
-  // FIXME TODO remove temporary workaround once emplace(...) and all tests are updated
-  if (split.first.null()) {
-    vocbase = getSystemDatabase().get();
-  }
 
   if (!vocbase) {
     return arangodb::Result( // result

@@ -65,6 +65,16 @@ enum class ValueStorage : uint32_t {
 /// @brief metadata describing how to process a field in a collection
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchLinkMeta {
+  struct Analyzer {
+    IResearchAnalyzerFeature::AnalyzerPool::ptr _pool;
+    std::string _shortName; // vocbase-dependent short analyzer name
+    Analyzer(); // identity analyzer
+    Analyzer( // constructor
+      IResearchAnalyzerFeature::AnalyzerPool::ptr const& pool, // pool
+      std::string&& shortName // short name (cached for use during insert(...))
+    ) noexcept: _pool(pool), _shortName(std::move(shortName)) {}
+    operator bool() const noexcept { return false == !_pool; }
+  };
   struct Mask {
     bool _analyzers;
     bool _fields;
@@ -74,7 +84,7 @@ struct IResearchLinkMeta {
     explicit Mask(bool mask = false) noexcept;
   };
 
-  typedef std::vector<IResearchAnalyzerFeature::AnalyzerPool::ptr> Analyzers;
+  typedef std::vector<Analyzer> Analyzers;
 
   // can't use IResearchLinkMeta as value type since it's incomplete type so far
   typedef UnorderedRefKeyMap<char, UniqueHeapInstance<IResearchLinkMeta>> Fields;
@@ -87,15 +97,14 @@ struct IResearchLinkMeta {
                              // (as opposed to without offset)
   ValueStorage _storeValues;  // how values should be stored inside the view
   // NOTE: if adding fields don't forget to modify the default constructor !!!
-  // NOTE: if adding fields don't forget to modify the copy assignment operator
-  // !!! NOTE: if adding fields don't forget to modify the move assignment
-  // operator !!! NOTE: if adding fields don't forget to modify the comparison
-  // operator !!! NOTE: if adding fields don't forget to modify
-  // IResearchLinkMeta::Mask !!! NOTE: if adding fields don't forget to modify
-  // IResearchLinkMeta::Mask constructor !!! NOTE: if adding fields don't forget
-  // to modify the init(...) function !!! NOTE: if adding fields don't forget to
-  // modify the json(...) function !!! NOTE: if adding fields don't forget to
-  // modify the memSize() function !!!
+  // NOTE: if adding fields don't forget to modify the copy assignment operator !!!
+  // NOTE: if adding fields don't forget to modify the move assignment operator !!!
+  // NOTE: if adding fields don't forget to modify the comparison operator !!!
+  // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask !!!
+  // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask constructor !!!
+  // NOTE: if adding fields don't forget to modify the init(...) function !!!
+  // NOTE: if adding fields don't forget to modify the json(...) function !!!
+  // NOTE: if adding fields don't forget to modify the memSize() function !!!
 
   IResearchLinkMeta();
   IResearchLinkMeta(IResearchLinkMeta const& other);
