@@ -444,7 +444,7 @@ function testSuite() {
     try {
       fs.move(sn, tn);
     } catch (err) {
-      assertFail("failed to move " + sn + " to " + tn + " - " + err.Message);
+      assertTrue(false, "failed to move " + sn + " to " + tn + " - " + err);
     }
     tryExistsAllowed(sn, false);
     tryExistsAllowed(tn, true);
@@ -461,7 +461,7 @@ function testSuite() {
     try {
       fs.remove(fn);
     } catch (err) {
-      assertFail("failed to remove " + fn + " - " + err.Message);
+      fail("failed to remove " + fn + " - " + err.Message);
     }
     tryExistsAllowed(fn, false);
   }
@@ -477,7 +477,7 @@ function testSuite() {
     try {
       fs.linkFile(sn, tn);
     } catch (err) {
-      assertFail("failed to Link " + sn + " into " + tn + " - " + err.Message);
+      assertTrue(false, "failed to Link " + sn + " into " + tn + " - " + err);
     }
     tryExistsAllowed(sn, true);
     tryExistsAllowed(tn, true);
@@ -669,7 +669,7 @@ function testSuite() {
       tryMoveFileForbidden('/etc/passwd', topLevelAllowed);
       tryMoveFileForbidden(topLevelAllowedWriteFile, topLevelForbidden);
       tryRemoveFileForbidden('/etc/passwd');
-      tryRemoveFileForbidden(topLevelAllowedWriteFile);
+      tryRemoveFileForbidden(topLevelForbiddenWriteFile);
 
       tryCopyFileAllowed(topLevelAllowedCopyFile, fs.join(topLevelAllowed, 'copy_1.txt'));
       tryCopyFileAllowed(subLevelAllowedCopyFile, fs.join(topLevelAllowed, 'copy_2.txt'));
@@ -677,8 +677,8 @@ function testSuite() {
       tryLinkFileAllowed(subLevelAllowedCopyFile, fs.join(topLevelAllowed, 'link_2.txt'));
       tryMoveFileAllowed(topLevelAllowedCopyFile, fs.join(topLevelAllowed, 'move_1.txt'));
       tryMoveFileAllowed(subLevelAllowedCopyFile, fs.join(topLevelAllowed, 'move_2.txt'));
-      tryMoveFileAllowed(fs.join(topLevelAllowed, 'move_1.txt'));
-      tryMoveFileAllowed(fs.join(topLevelAllowed, 'move_2.txt'));
+      tryRemoveFileAllowed(fs.join(topLevelAllowed, 'move_1.txt'));
+      tryRemoveFileAllowed(fs.join(topLevelAllowed, 'move_2.txt'));
     }
   };
 }
