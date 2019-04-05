@@ -32,6 +32,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Cluster/ClusterFeature.h"
@@ -51,7 +52,6 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
-#include "IResearch/IResearchViewNode.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"

@@ -24,10 +24,9 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H 1
 
-#include "IResearchOrderFactory.h"
-
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
+#include "IResearch/IResearchOrderFactory.h"
 
 namespace arangodb {
 
@@ -154,6 +153,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   std::unique_ptr<aql::ExecutionBlock> createBlock(
       aql::ExecutionEngine& engine,
       std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const override;
+
+  std::shared_ptr<std::unordered_set<aql::RegisterId>> calcInputRegs() const;
 
  private:
   /// @brief the database

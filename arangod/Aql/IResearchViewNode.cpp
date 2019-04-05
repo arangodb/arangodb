@@ -22,22 +22,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchViewNode.h"
+
 #include "Aql/Ast.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/IResearchViewExecutor.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
-#include "AqlHelper.h"
+#include "Aql/types.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
-#include "IResearchCommon.h"
-#include "IResearchView.h"
-#include "IResearchViewBlock.h"
-#include "IResearchViewCoordinator.h"
+#include "IResearch/AqlHelper.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewCoordinator.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -924,6 +926,26 @@ void IResearchViewNode::getVariablesUsedHere(arangodb::HashSet<aql::Variable con
   }
 }
 
+std::shared_ptr<std::unordered_set<aql::RegisterId>> IResearchViewNode::calcInputRegs() const {
+  std::shared_ptr<std::unordered_set<aql::RegisterId>> inputRegs =
+      std::make_shared<std::unordered_set<aql::RegisterId>>();
+
+  if (!::filterConditionIsEmpty(_filterCondition)) {
+    arangodb::HashSet<aql::Variable const*> vars;
+    aql::Ast::getReferencedVariables(_filterCondition, vars);
+
+    for (auto const& it : vars) {
+      aql::RegisterId reg = varToRegUnchecked(*it);
+      // The filter condition may refer to registers that are written here
+      if (reg < getNrInputRegisters()) {
+        inputRegs->emplace(reg);
+      }
+    }
+  }
+
+  return inputRegs;
+}
+
 void IResearchViewNode::filterCondition(aql::AstNode const* node) noexcept {
   _filterCondition = !node ? &ALL : node;
 }
@@ -1014,13 +1036,50 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   LOG_TOPIC("33853", TRACE, arangodb::iresearch::TOPIC)
       << "Finish getting snapshot for view '" << view.name() << "'";
 
-  if (_scorers.empty()) {
-    // unordered case
-    return std::make_unique<IResearchViewUnorderedBlock>(reader, engine, *this);
-  }
+  bool const ordered = !_scorers.empty();
 
-  // generic case
-  return std::make_unique<IResearchViewBlock>(reader, engine, *this);
+  // We have one output register for documents, which is always the first after
+  // the input registers.
+  aql::RegisterId const firstOutputRegister = getNrInputRegisters();
+  auto numScoreRegisters = static_cast<aql::RegisterId>(_scorers.size());
+
+  // We have one additional output register for each scorer, consecutively after
+  // the output register for documents. These must of course fit in the
+  // available registers. There may be unused registers reserved for later
+  // blocks.
+  TRI_ASSERT(getNrInputRegisters() + 1 + numScoreRegisters <= getNrOutputRegisters());
+  std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
+      aql::make_shared_unordered_set();
+  writableOutputRegisters->reserve(1 + numScoreRegisters);
+  for (aql::RegisterId reg = firstOutputRegister;
+       reg < firstOutputRegister + numScoreRegisters + 1; reg++) {
+    writableOutputRegisters->emplace(reg);
+  }
+  TRI_ASSERT(writableOutputRegisters->size() == 1 + numScoreRegisters);
+  TRI_ASSERT(writableOutputRegisters->begin() != writableOutputRegisters->end());
+  TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->begin(),
+                                                      writableOutputRegisters->end()));
+  aql::ExecutorInfos infos = createRegisterInfos(calcInputRegs(), std::move(writableOutputRegisters));
+
+  aql::IResearchViewExecutorInfos executorInfos{std::move(infos),
+                                                reader,
+                                                firstOutputRegister,
+                                                numScoreRegisters,
+                                                *engine.getQuery(),
+                                                scorers(),
+                                                *plan(),
+                                                outVariable(),
+                                                filterCondition(),
+                                                volatility(),
+                                                getRegisterPlan()->varInfo,
+                                                getDepth()};
+
+  if (!ordered) {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false>>>(
+        &engine, this, std::move(executorInfos));
+  }
+  return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true>>>(
+      &engine, this, std::move(executorInfos));
 }
 
 }  // namespace iresearch
