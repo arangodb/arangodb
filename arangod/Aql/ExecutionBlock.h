@@ -58,7 +58,6 @@ class ExecutionBlock {
   /// @brief returns the register id for a variable id
   /// will return ExecutionNode::MaxRegisterId for an unknown variable
   RegisterId getRegister(VariableId id) const;
-  RegisterId getRegister(Variable const* variable) const;
 
   /// @brief throw an exception if query was killed
   void throwIfKilled();
@@ -69,10 +68,6 @@ class ExecutionBlock {
     _dependencies.emplace_back(ep);
     _dependencyPos = _dependencies.end();
   }
-
-  /// @brief remove a dependency, returns true if the pointer was found and
-  /// removed, please note that this does not delete ep!
-  bool removeDependency(ExecutionBlock* ep);
 
   /// @brief Methods for execution
   /// Lifecycle is:
@@ -129,8 +124,6 @@ class ExecutionBlock {
   }
 
   RegisterId getNrInputRegisters() const;
-
-  RegisterId getNrOutputRegisters() const;
 
  protected:
   /// @brief request an AqlItemBlock from the memory manager

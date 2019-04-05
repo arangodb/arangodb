@@ -95,24 +95,6 @@ RegisterId ExecutionBlock::getRegister(VariableId id) const {
   return ExecutionNode::MaxRegisterId;
 }
 
-RegisterId ExecutionBlock::getRegister(Variable const* variable) const {
-  TRI_ASSERT(variable != nullptr);
-  return getRegister(variable->id);
-}
-
-bool ExecutionBlock::removeDependency(ExecutionBlock* ep) {
-  auto it = _dependencies.begin();
-  while (it != _dependencies.end()) {
-    if (*it == ep) {
-      _dependencies.erase(it);
-      _dependencyPos = _dependencies.end();
-      return true;
-    }
-    ++it;
-  }
-  return false;
-}
-
 /// @brief whether or not the query was killed
 void ExecutionBlock::throwIfKilled() {
   if (_engine->getQuery()->killed()) {
@@ -622,13 +604,4 @@ RegisterId ExecutionBlock::getNrInputRegisters() const {
       previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
 
   return inputNrRegs;
-}
-
-RegisterId ExecutionBlock::getNrOutputRegisters() const {
-  ExecutionNode const* planNode = getPlanNode();
-  TRI_ASSERT(planNode != nullptr);
-  RegisterId const outputNrRegs =
-      planNode->getRegisterPlan()->nrRegs[planNode->getDepth()];
-
-  return outputNrRegs;
 }
