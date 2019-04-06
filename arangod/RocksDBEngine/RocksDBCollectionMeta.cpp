@@ -140,7 +140,7 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
 
   decltype(_bufferedAdjs) swapper;
   {
-    std::lock_guard<std::mutex> guard(_countLock);
+    std::lock_guard<std::mutex> guard(_bufferLock);
     if (_stagedAdjs.empty()) {
       _stagedAdjs.swap(_bufferedAdjs);
     } else {
@@ -165,19 +165,20 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
     it = _stagedAdjs.erase(it);
     didWork = true;
   }
+  TRI_ASSERT(appliedSeq >= _count._committedSeq);
   _count._committedSeq = appliedSeq;
   return appliedSeq;
 }
 
 /// @brief get the current count
-RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::currentCount() {
+RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::loadCount() {
   bool didWork = false;
   const rocksdb::SequenceNumber commitSeq = committableSeq();
-  rocksdb::SequenceNumber seq = applyAdjustments(commitSeq, didWork);
-  if (didWork) {  // make sure serializeMeta has something to do
-    std::lock_guard<std::mutex> guard(_countLock);
-    _bufferedAdjs.emplace(seq, Adjustment{0, 0});
-  }
+  applyAdjustments(commitSeq, didWork);
+//  if (didWork) {  // make sure serializeMeta has something to do
+//    std::lock_guard<std::mutex> guard(_bufferLock);
+//    _bufferedAdjs.emplace(seq, Adjustment{0, 0});
+//  }
 
   return _count;
 }
@@ -186,7 +187,7 @@ RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::currentCount() {
 void RocksDBCollectionMeta::adjustNumberDocuments(rocksdb::SequenceNumber seq,
                                                   TRI_voc_rid_t revId, int64_t adj) {
   TRI_ASSERT(seq != 0 && (adj || revId));
-  std::lock_guard<std::mutex> guard(_countLock);
+  std::lock_guard<std::mutex> guard(_bufferLock);
   _bufferedAdjs.emplace(seq, Adjustment{revId, adj});
 }
 
@@ -363,16 +364,14 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
       continue;
     }
 
-    arangodb::velocypack::StringRef estimateInput(value.data() + sizeof(uint64_t), value.size() - sizeof(uint64_t));
-
-    uint64_t committedSeq = rocksutils::uint64FromPersistent(value.data());
+    arangodb::velocypack::StringRef estimateInput(value.data(), value.size());
     if (RocksDBCuckooIndexEstimator<uint64_t>::isFormatSupported(estimateInput)) {
-      TRI_ASSERT(committedSeq <= db->GetLatestSequenceNumber());
+      TRI_ASSERT(rocksutils::uint64FromPersistent(value.data()) <= db->GetLatestSequenceNumber());
 
-      auto est = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(committedSeq, estimateInput);
+      auto est = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(estimateInput);
       LOG_TOPIC("63f3b", DEBUG, Logger::ENGINES)
           << "found index estimator for objectId '" << idx->objectId() << "' committed seqNr '"
-          << committedSeq << "' with estimate " << est->computeEstimate();
+          << est->committedSeq() << "' with estimate " << est->computeEstimate();
 
       idx->setEstimator(std::move(est));
     } else {
@@ -384,6 +383,8 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
 
   return Result();
 }
+
+// static helper methods to modify collection meta entries in rocksdb
 
 /// @brief load collection
 /*static*/ RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::loadCollectionCount(

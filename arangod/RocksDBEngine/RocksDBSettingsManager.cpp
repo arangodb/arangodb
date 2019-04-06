@@ -158,6 +158,7 @@ Result RocksDBSettingsManager::sync(bool force) {
 
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
   auto dbfeature = arangodb::DatabaseFeature::DATABASE;
+  TRI_ASSERT(!engine->inRecovery()); // just don't
 
   bool didWork = false;
   auto mappings = engine->collectionMappings();

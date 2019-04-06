@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2018-2019, ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +21,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
+/// @author Michael Hackstein, Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
@@ -110,9 +109,8 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
 
     // We first have an uint64_t representing the length.
     // This has to be extracted BEFORE initialization.
-    arangodb::velocypack::StringRef ref(serialization.data() + 8, persLength);
-
-    RocksDBCuckooIndexEstimator<uint64_t> copy(seq, ref);
+    arangodb::velocypack::StringRef ref(serialization.data(), persLength + 8);
+    RocksDBCuckooIndexEstimator<uint64_t> copy(ref);
 
     // After serialization => deserialization
     // both estimates have to be identical

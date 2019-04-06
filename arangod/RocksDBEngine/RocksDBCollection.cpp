@@ -1505,7 +1505,7 @@ void RocksDBCollection::adjustNumberDocuments(TRI_voc_rid_t revId, int64_t adjus
 
 /// load the number of docs from storage, use careful
 void RocksDBCollection::loadInitialNumberDocuments() {
-  RocksDBCollectionMeta::DocCount count = _meta.currentCount();
+  RocksDBCollectionMeta::DocCount count = _meta.loadCount();
   TRI_ASSERT(count._added >= count._removed);
   _numberDocuments = count._added - count._removed;
   _revisionId = count._revisionId;
