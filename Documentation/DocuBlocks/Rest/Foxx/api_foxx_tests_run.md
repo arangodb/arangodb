@@ -45,6 +45,6 @@ matches this string.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Returned if the request was sucessful.
+Returned if the request was successful.
 
 @endDocuBlock
