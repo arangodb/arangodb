@@ -490,7 +490,7 @@ bool IResearchLinkMeta::init( // initialize meta
 
         std::string childErrorField;
 
-        if (!_fields[name]->init(value, errorField, defaultVocbase, subDefaults)) {
+        if (!_fields[name]->init(value, childErrorField, defaultVocbase, subDefaults)) {
           errorField = fieldName + "=>" + name + "=>" + childErrorField;
 
           return false;
@@ -537,7 +537,7 @@ bool IResearchLinkMeta::json( // append meta jSON
         }
 
         name = IResearchAnalyzerFeature::normalize( // normalize
-          entry->name(), *defaultVocbase, *sysVocbase, false // args
+          entry->name(), *defaultVocbase, *sysVocbase, writeAnalyzerDefinition // analyzer definitions should always have full names
         );
       } else {
         name = entry->name(); // verbatim (assume already normalized)

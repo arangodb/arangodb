@@ -246,7 +246,7 @@ void RestCollectionHandler::handleCommandGet() {
       skipGenerate = true;
       this->generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                           "expecting one of the resources 'checksum', 'count', "
-                          "'figures', 'properties', 'revision', 'shards'");
+                          "'figures', 'properties', 'responsibleShard', 'revision', 'shards'");
     }
   });
 
@@ -391,6 +391,19 @@ void RestCollectionHandler::handleCommandPut() {
         collectionRepresentation(builder, name, /*showProperties*/ false,
                                  /*showFigures*/ false, /*showCount*/ false,
                                  /*detailedCount*/ true);
+      }
+    } else if (sub == "responsibleShard") {
+      if (!ServerState::instance()->isCoordinator()) {
+        res.reset(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
+      } else {
+        std::string shardId;
+        res = coll->getResponsibleShard(body, false, shardId);
+
+        if (res.ok()) {
+          builder.openObject();
+          builder.add("shardId", VPackValue(shardId));
+          builder.close();
+        }
       }
     } else if (sub == "truncate") {
       {
