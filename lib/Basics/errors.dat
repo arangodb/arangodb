@@ -513,4 +513,5 @@ ERROR_FAILED_TO_UPLOAD_BACKUP, 7005, "failed to upload hot backup set to remote 
 ERROR_FAILED_TO_DOWNLOAD_BACKUP, 7006, "failed to download hot backup set from remote source", "Failed to downloadload hot backup set from remote source"
 ERROR_NO_SUCH_HOT_BACKUP, 7007, "no such hot backup set can be found, "Cannot find a hot backup set with this Id"
 ERROR_REMOTE_REPOSITORY_CONFIG_BAD, 7008, "remote hotback repository configuration error", "The configuration given for upload or download operation to/from remote hotback repositories is wrong."
-
+ERROR_LOCAL_LOCK_FAILED, 7009, "some db servers cannot be reached for transaction locks", "Some of the db servers cannot be reached for transaction locks."
+ERROR_LOCAL_LOCK_RETRY, 7010, "some db servers cannot be reached for transaction locks", "Some of the db servers cannot be reached for transaction locks.

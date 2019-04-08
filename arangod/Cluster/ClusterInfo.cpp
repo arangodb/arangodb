@@ -3745,11 +3745,13 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
     }
   }
 
-  // Try to establish hot backup lock in agency. Result will always be 412.
-  // Question is: How 412?
+  // Try to establish hot backup lock in agency.
   auto result =
     _agency.sendWithFailover(
       arangodb::rest::RequestType::POST, timeout, writeURL, builder.slice());
+
+  // *** ATTENTION ***: Result will always be 412.
+  // So we're going to fail, if we have an error OTHER THAN 412:
   if (!result.successful() &&
       result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
     return arangodb::Result(
@@ -3759,7 +3761,8 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
   auto rv = VPackParser::fromJson(result.bodyRef());
 
   if (!rv->slice().isObject() || !rv->slice().hasKey("results") ||
-      !rv->slice().get("results").isArray()) {
+      !rv->slice().get("results").isArray() ||
+      rv->slice().get("results").length() != 2) {
     return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_INTERNAL, "invalid agency result while acuiring backup lock" );    
   }
@@ -3772,7 +3775,9 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
     return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_INTERNAL,
       "preconditions failed while trying to acquire backup lock in the agency");
-  } else if (first > 0) {          // Supervision was on
+  }
+
+  if (first > 0) {          // Supervision was on
     supervisionOff = false;
   } else {
     supervisionOff = false;

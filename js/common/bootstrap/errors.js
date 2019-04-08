@@ -362,7 +362,9 @@
     "ERROR_FAILED_TO_UPLOAD_BACKUP" : { "code" :  7005, "message" : " \"failed to upload hot backup set to remote target\"" },
     "ERROR_FAILED_TO_DOWNLOAD_BACKUP" : { "code" :  7006, "message" : " \"failed to download hot backup set from remote source\"" },
     "ERROR_NO_SUCH_HOT_BACKUP"     : { "code" :  7007, "message" : " \"no such hot backup set can be found" },
-    "ERROR_REMOTE_REPOSITORY_CONFIG_BAD" : { "code" :  7008, "message" : " \"remote hotback repository configuration error\"" }
+    "ERROR_REMOTE_REPOSITORY_CONFIG_BAD" : { "code" :  7008, "message" : " \"remote hotback repository configuration error\"" },
+    "ERROR_LOCAL_LOCK_FAILED"      : { "code" :  7009, "message" : " \"some db servers cannot be reached for transaction locks\"" },
+    "ERROR_LOCAL_LOCK_RETRY"       : { "code" :  7010, "message" : " \"some db servers cannot be reached for transaction locks\"" }
   };
 
   // For compatibility with <= 3.3

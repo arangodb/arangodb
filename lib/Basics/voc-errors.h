@@ -1921,6 +1921,16 @@ constexpr int TRI_ERROR_NO_SUCH_HOT_BACKUP                                      
 /// hotback repositories is wrong."
 constexpr int TRI_ERROR_REMOTE_REPOSITORY_CONFIG_BAD                            =  7008;
 
+///  7009: ERROR_LOCAL_LOCK_FAILED
+/// " "some db servers cannot be reached for transaction locks""
+///  "Some of the db servers cannot be reached for transaction locks."
+constexpr int TRI_ERROR_LOCAL_LOCK_FAILED                                       =  7009;
+
+///  7010: ERROR_LOCAL_LOCK_RETRY
+/// " "some db servers cannot be reached for transaction locks""
+///  "Some of the db servers cannot be reached for transaction locks.
+constexpr int TRI_ERROR_LOCAL_LOCK_RETRY                                        =  7010;
+
 
 /// register all errors for ArangoDB
 void TRI_InitializeErrorMessages();
