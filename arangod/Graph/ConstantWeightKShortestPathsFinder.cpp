@@ -218,77 +218,83 @@ void ConstantWeightKShortestPathsFinder::reconstructPath(const Ball& left, const
   TRI_IF_FAILURE("TraversalOOMPath") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-
-  //  _options.fetchVerticesCoordinator(result._vertices);
 }
 
-bool ConstantWeightKShortestPathsFinder::getNextPath(arangodb::graph::ShortestPathResult& path) {
-  bool available = false;
-  Path kShortestPath, tmpPath, candidate;
+bool ConstantWeightKShortestPathsFinder::computeNextShortestPath(Path& result) {
   std::vector<VertexRef> forbiddenVertices;
   std::vector<Edge> forbiddenEdges;
   std::vector<Path> candidates;
+  Path tmpPath, candidate;
+  TRI_ASSERT(!_shortestPaths.empty());
+  auto& lastShortestPath = _shortestPaths.back();
+  bool available = false;
+
+  for (size_t i = 0; i < lastShortestPath.length() - 1; ++i) {
+    auto& spur = lastShortestPath._vertices.at(i);
+
+    forbiddenVertices.clear();
+    forbiddenEdges.clear();
+
+    // Must not use vertices on the prefix
+    for (size_t j = 0; j < i; ++j) {
+      forbiddenVertices.emplace_back(lastShortestPath._vertices[j]);
+    }
+
+    for (auto const& p : _shortestPaths) {
+      bool eq = true;
+      for (size_t e = 0; e < i; ++e) {
+        if (!p._edges.at(e).equals(lastShortestPath._edges.at(e))) {
+          eq = false;
+          break;
+        }
+      }
+      if (eq && (i < p._edges.size())) {
+        forbiddenEdges.emplace_back(p._edges.at(i));
+      }
+    }
+
+    if (computeShortestPath(spur, _end, forbiddenVertices, forbiddenEdges, tmpPath)) {
+      candidate.clear();
+      candidate.append(lastShortestPath, 0, i);
+      candidate.append(tmpPath, 0, tmpPath.length() - 1);
+      candidates.emplace_back(candidate);
+    }
+  }
+
+  if (!candidates.empty()) {
+    std::sort(candidates.begin(), candidates.end(), [](const Path& p1, const Path& p2) {
+      return p1._vertices.size() < p2._vertices.size();
+    });
+
+    auto const& p = candidates.front();
+    result.clear();
+    result.append(p, 0, p.length() - 1);
+    available = true;
+  }
+  return available;
+}
+
+bool ConstantWeightKShortestPathsFinder::getNextPath(arangodb::graph::ShortestPathResult& result) {
+  bool available = false;
+  Path kShortestPath;
 
   if (_shortestPaths.empty()) {
     available = computeShortestPath(_start, _end, {}, {}, kShortestPath);
   } else {
-    auto& lastShortestPath = _shortestPaths.back();
-
-    for (size_t i = 0; i < lastShortestPath.length() - 1; ++i) {
-      auto& spur = lastShortestPath._vertices.at(i);
-
-      forbiddenVertices.clear();
-      forbiddenEdges.clear();
-
-      // Must not use vertices on the prefix
-      for (size_t j = 0; j < i; ++j) {
-        forbiddenVertices.emplace_back(lastShortestPath._vertices[j]);
-      }
-
-      for (auto const& p : _shortestPaths) {
-        bool eq = true;
-        for (size_t e = 0; e < i; ++e) {
-          if (!p._edges.at(e).equals(lastShortestPath._edges.at(e))) {
-            eq = false;
-            break;
-          }
-        }
-        if (eq && (i < p._edges.size())) {
-          forbiddenEdges.emplace_back(p._edges.at(i));
-        }
-      }
-
-      if (computeShortestPath(spur, _end, forbiddenVertices, forbiddenEdges, tmpPath)) {
-        candidate.clear();
-        candidate.append(lastShortestPath, 0, i);
-        candidate.append(tmpPath, 0, tmpPath.length() - 1);
-        candidates.emplace_back(candidate);
-      }
-    }
-
-    if (!candidates.empty()) {
-      std::sort(candidates.begin(), candidates.end(), [](const Path& p1, const Path& p2) {
-        return p1._vertices.size() < p2._vertices.size();
-      });
-
-      auto const& p = candidates.front();
-      kShortestPath.clear();
-      kShortestPath.append(p, 0, p.length() - 1);
-      available = true;
-    }
+    available = computeNextShortestPath(kShortestPath);
   }
 
   if (available) {
     _shortestPaths.emplace_back(kShortestPath);
 
-    path.clear();
-    path._vertices = kShortestPath._vertices;
+    result.clear();
+    result._vertices = kShortestPath._vertices;
     // WHUPS. Fix.
     for (auto& e : kShortestPath._edges) {
-      path._edges.emplace_back(std::move(e));
+      result._edges.emplace_back(std::move(e));
     }
 
-    _options.fetchVerticesCoordinator(path._vertices);
+    _options.fetchVerticesCoordinator(result._vertices);
 
     TRI_IF_FAILURE("TraversalOOMPath") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
