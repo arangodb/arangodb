@@ -2213,6 +2213,16 @@ static void JS_LogLevel(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (v8security->isDeniedHardenedJavaScript(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to change logLevel");
+  }
+
   if (1 <= args.Length()) {
     if (args[0]->IsBoolean()) {
       auto levels = Logger::logLevelTopics();

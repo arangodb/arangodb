@@ -27,10 +27,12 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/StringUtils.h"
 #include "Logger/LogBuffer.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -42,11 +44,31 @@ RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request, GeneralRespons
 RestStatus RestAdminLogHandler::execute() {
   size_t const len = _request->suffixes().size();
 
+
   if (len == 0) {
     reportLogs();
   } else {
-    setLogLevel();
+    V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+    TRI_ASSERT(v8security != nullptr);
+
+    bool allowToChangeLogLevel = !v8security->isDeniedHardenedApi(nullptr);
+
+    ExecContext const* exec = ExecContext::CURRENT;
+    if (exec == nullptr || exec->isAdminUser()) {
+      // also allow access if there is not authentication
+      // enabled or when the user is an administrator
+      allowToChangeLogLevel = true;
+    }
+
+    if(allowToChangeLogLevel){
+      setLogLevel();
+    } else {
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    }
   }
+
   return RestStatus::DONE;
 }
 
