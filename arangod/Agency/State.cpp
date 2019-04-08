@@ -1567,14 +1567,31 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     THROW_ARANGO_EXCEPTION_MESSAGE(logQueryResult.code, logQueryResult.details);
   }
 
-  VPackSlice result = logQueryResult.result->slice();
+  VPackSlice result = logQueryResult.result->slice().resolveExternals();
   std::string firstIndex;
   uint64_t n = 0;
   
+  auto copyWithoutId = [&](VPackSlice slice, VPackBuilder& builder) {
+    // Need to remove custom attribute in _id:
+    { VPackObjectBuilder guard(&builder);
+      for (auto const& p : VPackObjectIterator(slice)) {
+        if (p.key.copyString() != "_id") {
+          builder.add(p.key);
+          builder.add(p.value);
+        }
+      }
+    }
+  };
+
   builder.add(VPackValue("log"));
   if (result.isArray()) {
     try {
-      builder.add(result.resolveExternals());
+      { VPackArrayBuilder guard(&builder);
+        for (auto const& e : VPackArrayIterator(result)) {
+          TRI_ASSERT(e.isObject());
+          copyWithoutId(e, builder);
+        }
+      }
       n = result.length();
       if (n > 0) {
         firstIndex = result[0].get("_key").copyString();
@@ -1599,13 +1616,14 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
       THROW_ARANGO_EXCEPTION_MESSAGE(compQueryResult.code, compQueryResult.details);
     }
     
-    result = compQueryResult.result->slice();
+    result = compQueryResult.result->slice().resolveExternals();
 
     if (result.isArray()) {
       if (result.length() > 0) {
         builder.add(VPackValue("compaction"));
         try {
-          builder.add(result[0].resolveExternals());
+          TRI_ASSERT(result[0].isObject());
+          copyWithoutId(result[0], builder);
         } catch (...) {
           VPackObjectBuilder a(&builder);
         }
