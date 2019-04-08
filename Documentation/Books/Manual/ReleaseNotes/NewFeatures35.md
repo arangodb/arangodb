@@ -274,6 +274,8 @@ When calling this route, the request body is supposed to contain the document fo
 the responsible shard should be determined. The response will contain an attribute `shardId`
 containing the ID of the shard that is responsible for that document.
 
+A method `collection.getResponsibleShard(document)` was added to the JS API as well.
+
 It does not matter if the document actually exists or not, as the shard responsibility 
 is determined from the document's attribute values only. 
 
@@ -409,7 +411,7 @@ them as well.
 The system collections `_frontend`, `_modules` and `_routing` are not created 
 anymore for new databases by default. 
 
-`_modules` and `_routing` are both are only needed for legacy functionality.
+`_modules` and `_routing` are only needed for legacy functionality.
 Existing `_routing` collections will not be touched as they may contain user-defined
 entries, and will continue to work.
 
