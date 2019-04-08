@@ -4,6 +4,10 @@ In this file we collect information about which tests are currently
 greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 
+- `tests/js/common/aql/aql-view-arangosearch-cluster.js`
+
+  taking too long
+
 - `./tests/js/server/resilience/moving-shards-with-arangosearch-view-cluster.js` always fails (and needs refactoring) due to changes from PR 7748 with
 
     [FAILED]  tests/js/server/resilience/moving-shards-with-arangosearch-view-cluster.js

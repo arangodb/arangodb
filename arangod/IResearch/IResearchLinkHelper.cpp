@@ -663,13 +663,14 @@ namespace iresearch {
     );
   }
 
-  return meta.json(normalized, isCreation) // 'isCreation' is set when forPersistence
-    ? arangodb::Result()
-    : arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("error generating arangosearch link normalized definition")
-      )
-    ;
+  if (!meta.json(normalized, isCreation, nullptr, &vocbase)) { // 'isCreation' is set when forPersistence
+    return arangodb::Result( // result
+      TRI_ERROR_BAD_PARAMETER, // code
+      "error generating arangosearch link normalized definition" // message
+    );
+  }
+
+  return arangodb::Result();
 }
 
 /*static*/ std::string const& IResearchLinkHelper::type() noexcept {
