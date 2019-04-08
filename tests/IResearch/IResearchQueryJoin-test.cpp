@@ -312,7 +312,7 @@ TEST_CASE("IResearchQueryTestJoinSubquery", "[iresearch][iresearch-query]") {
 
       arangodb::ManagedDocumentResult mmdr;
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-        auto const res = entities->insert(&trx, doc, mmdr, opt, tick, false);
+        auto const res = entities->insert(&trx, doc, mmdr, opt, false);
         CHECK(res.ok());
       }
     }
@@ -329,7 +329,7 @@ TEST_CASE("IResearchQueryTestJoinSubquery", "[iresearch][iresearch-query]") {
 
       arangodb::ManagedDocumentResult mmdr;
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-        auto const res = links->insert(&trx, doc, mmdr, opt, tick, false);
+        auto const res = links->insert(&trx, doc, mmdr, opt, false);
         CHECK(res.ok());
       }
     }
@@ -499,7 +499,7 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocsView.emplace_back();
-        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocsView.back(), opt, tick, false);
+        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocsView.back(), opt, false);
         CHECK(res.ok());
         ++i;
       }
@@ -519,7 +519,7 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocsCollection.emplace_back();
-        auto const res = logicalCollection3->insert(&trx, doc, insertedDocsCollection.back(), opt, tick, false);
+        auto const res = logicalCollection3->insert(&trx, doc, insertedDocsCollection.back(), opt, false);
         CHECK(res.ok());
       }
     }
@@ -649,7 +649,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocsView.emplace_back();
-        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocsView.back(), opt, tick, false);
+        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocsView.back(), opt, false);
         CHECK(res.ok());
         ++i;
       }
@@ -669,7 +669,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocsCollection.emplace_back();
-        auto const res = logicalCollection3->insert(&trx, doc, insertedDocsCollection.back(), opt, tick, false);
+        auto const res = logicalCollection3->insert(&trx, doc, insertedDocsCollection.back(), opt, false);
         CHECK(res.ok());
       }
     }

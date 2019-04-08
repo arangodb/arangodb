@@ -76,7 +76,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
 
-  LocalDocumentId lookupKey(transaction::Methods* trx, arangodb::velocypack::StringRef key) const;
+  LocalDocumentId lookupKey(transaction::Methods* trx,
+                            arangodb::velocypack::StringRef key) const;
 
   /// @brief reads a revision id from the primary index
   /// if the document does not exist, this function will return false
