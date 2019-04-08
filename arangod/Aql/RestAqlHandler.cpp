@@ -810,7 +810,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         closeGuard.cancel();
 
         // delete the query from the registry
-        _queryRegistry->destroy(&_vocbase, _qId, errorCode);
+        _queryRegistry->destroy(_vocbase.name(), _qId, errorCode, false);
         _qId = 0;
         answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
         answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));

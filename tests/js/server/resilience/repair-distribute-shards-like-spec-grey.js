@@ -27,6 +27,7 @@ const _ = require("lodash");
 const internal = require('internal');
 const wait = require('internal').wait;
 const request = require('@arangodb/request');
+const waitForStatisticsCollections = require('@arangodb/cluster').waitForStatisticsCollections;
 
 const colName = "repairDSLTestCollection";
 const protoColName = "repairDSLTestProtoCollection";
@@ -795,6 +796,7 @@ const distributeShardsLikeSuite = (options) => {
   };
 };
 
+waitForStatisticsCollections();
 
 describe('Collections with distributeShardsLike without data',
   distributeShardsLikeSuite({withData: false}));

@@ -33,6 +33,7 @@ const wait = require("internal").wait;
 const request = require('@arangodb/request');
 const endpointToURL = require("@arangodb/cluster").endpointToURL;
 const coordinatorName = "Coordinator0001";
+const waitForStatisticsCollections = require('@arangodb/cluster').waitForStatisticsCollections;
 
 let coordinator = instanceInfo.arangods.filter(arangod => {
   return arangod.role === 'coordinator';
@@ -41,6 +42,8 @@ let coordinator = instanceInfo.arangods.filter(arangod => {
 let dbServerCount = instanceInfo.arangods.filter(arangod => {
   return arangod.role === 'dbserver';
 }).length;
+
+waitForStatisticsCollections();
 
 describe('Shard distribution', function () {
 

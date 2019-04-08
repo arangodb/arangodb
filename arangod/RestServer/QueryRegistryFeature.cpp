@@ -174,6 +174,17 @@ void QueryRegistryFeature::prepare() {
 
 void QueryRegistryFeature::start() {}
 
+void QueryRegistryFeature::beginShutdown() {
+  TRI_ASSERT(_queryRegistry != nullptr);
+  _queryRegistry->disallowInserts();
+}
+
+void QueryRegistryFeature::stop() {
+  TRI_ASSERT(_queryRegistry != nullptr);
+  _queryRegistry->disallowInserts();
+  _queryRegistry->destroyAll();
+}
+
 void QueryRegistryFeature::unprepare() {
   // clear the query registery
   QUERY_REGISTRY.store(nullptr, std::memory_order_release);

@@ -195,6 +195,12 @@ class Node {
   /// @brief Get our container
   Store const& store() const;
 
+ private:  // FIXME: More should be private here, but this is a late
+           // addition, so we might as well get it right for this one.
+  /// @brief Get store if it exists:
+  Store* getStore();
+
+ public:
   /// @brief Create JSON representation of this node and below
   std::string toJson() const;
 

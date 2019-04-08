@@ -383,6 +383,9 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
 //////////////////////////////////////////////////////////////////////////////
 
 void RocksDBReplicationManager::beginShutdown() {
-  MUTEX_LOCKER(mutexLocker, _lock);
-  _isShuttingDown = true;
+  {
+    MUTEX_LOCKER(mutexLocker, _lock);
+    _isShuttingDown = true;
+  }
+  garbageCollect(false);
 }
