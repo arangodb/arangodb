@@ -780,7 +780,6 @@ void RocksDBEngine::stop() {
 
   // in case we missed the beginShutdown somehow, call it again
   replicationManager()->beginShutdown();
-
   replicationManager()->dropAll();
 
   if (_backgroundThread) {
@@ -1013,6 +1012,12 @@ int RocksDBEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builde
 
 std::string RocksDBEngine::versionFilename(TRI_voc_tick_t id) const {
   return _basePath + TRI_DIR_SEPARATOR_CHAR + "VERSION-" + std::to_string(id);
+}
+  
+void RocksDBEngine::cleanupReplicationContexts() {
+  if (_replicationManager != nullptr) {
+    _replicationManager->dropAll();
+  }
 }
 
 VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
