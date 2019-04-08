@@ -3771,7 +3771,7 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(
       { VPackObjectBuilder o(&builder);
         builder.add(VPackValue(backupKey + backupId));
         { VPackObjectBuilder oo(&builder);
-          builder.add("op", "delete"); }
+          builder.add("op", VPackValue("delete")); }
         if (!supervisionOff) {
           builder.add(maintenanceKey, VPackValue("off"));
         }
