@@ -802,7 +802,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
     THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  VPackSlice result = queryResult.queryResult->slice();
+  VPackSlice result = queryResult.data->slice();
 
   if (result.isArray()) {
     if (result.length() == 1) {
@@ -852,7 +852,7 @@ bool State::loadCompacted() {
     THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  VPackSlice result = queryResult.queryResult->slice();
+  VPackSlice result = queryResult.data->slice();
 
   MUTEX_LOCKER(logLock, _logLock);
 
@@ -894,7 +894,7 @@ bool State::loadOrPersistConfiguration() {
     THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  VPackSlice result = queryResult.queryResult->slice();
+  VPackSlice result = queryResult.data->slice();
 
   if (result.isArray() && result.length()) {  // We already have a persisted conf
 
@@ -1000,7 +1000,7 @@ bool State::loadRemaining() {
     THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  auto result = queryResult.queryResult->slice();
+  auto result = queryResult.data->slice();
 
   MUTEX_LOCKER(logLock, _logLock);
   if (result.isArray() && result.length() > 0) {
@@ -1401,13 +1401,13 @@ query_t State::allLogs() const {
   {
     VPackObjectBuilder(everything.get());
     try {
-      everything->add("compact", compqResult.queryResult->slice());
+      everything->add("compact", compqResult.data->slice());
     } catch (std::exception const&) {
       LOG_TOPIC("1face", ERR, Logger::AGENCY)
           << "Failed to assemble compaction part of everything package";
     }
     try {
-      everything->add("logs", logsqResult.queryResult->slice());
+      everything->add("logs", logsqResult.data->slice());
     } catch (std::exception const&) {
       LOG_TOPIC("fe816", ERR, Logger::AGENCY)
           << "Failed to assemble remaining part of everything package";
@@ -1485,7 +1485,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
     THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  VPackSlice result = queryResult.queryResult->slice();
+  VPackSlice result = queryResult.data->slice();
 
   Store store(nullptr);
   index = 0;
@@ -1512,7 +1512,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
     THROW_ARANGO_EXCEPTION(queryResult2.result);
   }
 
-  result = queryResult2.queryResult->slice();
+  result = queryResult2.data->slice();
 
   if (result.isArray() && result.length() > 0) {
     VPackBuilder b;
@@ -1581,7 +1581,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     THROW_ARANGO_EXCEPTION(logQueryResult.result);
   }
 
-  VPackSlice result = logQueryResult.queryResult->slice();
+  VPackSlice result = logQueryResult.data->slice();
   std::string firstIndex;
   uint64_t n = 0;
   
@@ -1613,7 +1613,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
       THROW_ARANGO_EXCEPTION(compQueryResult.result);
     }
     
-    result = compQueryResult.queryResult->slice();
+    result = compQueryResult.data->slice();
 
     if (result.isArray()) {
       if (result.length() > 0) {

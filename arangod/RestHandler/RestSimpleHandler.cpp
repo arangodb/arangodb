@@ -221,7 +221,7 @@ void RestSimpleHandler::handleQueryResultRemoveByKeys() {
   result.add(StaticStrings::Error, VPackValue(false));
   result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
   if (!_silent) {
-    result.add("old", _queryResult.queryResult->slice());
+    result.add("old", _queryResult.data->slice());
   }
   result.close();
 
@@ -238,7 +238,7 @@ void RestSimpleHandler::handleQueryResultLookupByKeys() {
     response()->setContentType(rest::ContentType::JSON);
     result.add(VPackValue("documents"));
 
-    result.addExternal(_queryResult.queryResult->slice().begin());
+    result.addExternal(_queryResult.data->slice().begin());
     result.add(StaticStrings::Error, VPackValue(false));
     result.add(StaticStrings::Code,
                VPackValue(static_cast<int>(_response->responseCode())));

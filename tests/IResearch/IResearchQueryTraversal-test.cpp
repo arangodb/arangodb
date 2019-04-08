@@ -340,7 +340,7 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
       "FOR d IN testViewEdge SEARCH d._from == 'testCollection0/6' RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(slice);
@@ -369,7 +369,7 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
       "FOR d IN testViewEdge SEARCH d._to == 'testCollection0/0' RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(slice);
@@ -401,7 +401,7 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
       "FOR v, e IN OUTBOUND SHORTEST_PATH 'testCollection0/6' TO 'testCollection0/5' edges FOR d IN testView SEARCH d.seq == v.seq SORT TFIDF(d) DESC, d.seq DESC, d._id RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(slice);
@@ -434,7 +434,7 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
       "FOR v, e, p IN 1..2 OUTBOUND 'testCollection0/0' edges FOR d IN testView SEARCH d.seq == v.seq SORT TFIDF(d) DESC, d.seq DESC RETURN v"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(slice);

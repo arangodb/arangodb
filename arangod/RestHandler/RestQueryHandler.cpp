@@ -337,7 +337,7 @@ bool RestQueryHandler::parseQuery() {
     }
     result.close();  // bindVars
 
-    result.add("ast", parseResult.queryResult->slice());
+    result.add("ast", parseResult.data->slice());
 
     if (parseResult.extra && parseResult.extra->slice().hasKey("warnings")) {
       result.add("warnings", parseResult.extra->slice().get("warnings"));

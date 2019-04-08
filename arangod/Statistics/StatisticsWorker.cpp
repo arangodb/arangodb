@@ -160,7 +160,7 @@ void StatisticsWorker::collectGarbage(std::string const& name, double start) con
     THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  VPackSlice keysToRemove = queryResult.queryResult->slice();
+  VPackSlice keysToRemove = queryResult.data->slice();
   OperationOptions opOptions;
 
   opOptions.ignoreRevs = true;
@@ -285,7 +285,7 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
     THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  return queryResult.queryResult;
+  return queryResult.data;
 }
 
 void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
@@ -318,7 +318,7 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  VPackSlice result = queryResult.queryResult->slice();
+  VPackSlice result = queryResult.data->slice();
   uint64_t count = result.length();
 
   builder.clear();

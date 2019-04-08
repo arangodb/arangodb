@@ -304,7 +304,6 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   // populate view with the data
   {
     arangodb::OperationOptions opt;
-    TRI_voc_tick_t tick;
 
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -389,7 +388,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -435,7 +434,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -560,7 +559,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -671,7 +670,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -782,7 +781,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -893,7 +892,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1004,7 +1003,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1113,7 +1112,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1235,7 +1234,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1518,7 +1517,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);

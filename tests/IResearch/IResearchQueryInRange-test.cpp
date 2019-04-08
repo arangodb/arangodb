@@ -314,7 +314,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH IN_RANGE(d.value, false, true, false, true) SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -338,7 +338,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH IN_RANGE(d.value, null, null, true, true) SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -361,7 +361,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH IN_RANGE(d.value, null, null, false, true) SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -385,7 +385,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'A', true, true) SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -408,7 +408,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH IN_RANGE(d.name, 'B', 'A', true, true) SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -436,7 +436,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'E', true, true) SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -463,7 +463,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'E', true, false) SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -490,7 +490,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'E', false, true) SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -516,7 +516,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'E', false, false) SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -539,7 +539,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH IN_RANGE(d.seq, 5, -1, true, true) SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -567,7 +567,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH IN_RANGE(d.seq, 1, 5, true, true) SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -597,7 +597,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH IN_RANGE(d.seq, -2, 5, false, true) SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -623,7 +623,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH IN_RANGE(d.seq, 1, 5, false, false) SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -650,7 +650,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH IN_RANGE(d.seq, 1, 5, true, false) SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -674,7 +674,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH IN_RANGE(d.value, 3, 4, false, false) SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -698,7 +698,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH IN_RANGE(d.value, -4, -3, false, false) SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 

@@ -596,7 +596,7 @@ void Constituent::run() {
       THROW_ARANGO_EXCEPTION(queryResult.result);
     }
 
-    VPackSlice result = queryResult.queryResult->slice();
+    VPackSlice result = queryResult.data->slice();
 
     if (result.isArray()) {
       for (auto const& i : VPackArrayIterator(result)) {

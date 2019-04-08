@@ -734,7 +734,7 @@ Result Collections::revisionId(Context& ctxt, TRI_voc_rid_t& rid) {
 
     Result res = queryResult.result;
     if (queryResult.result.ok()) {
-      VPackSlice array = queryResult.queryResult->slice();
+      VPackSlice array = queryResult.data->slice();
       for (VPackSlice doc : VPackArrayIterator(array)) {
         cb(doc.resolveExternal());
       }

@@ -287,7 +287,6 @@ TEST_CASE("IResearchQueryTestJoinSubquery", "[iresearch][iresearch-query]") {
   // populate views with the data
   {
     arangodb::OperationOptions opt;
-    TRI_voc_tick_t tick;
 
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -365,7 +364,7 @@ TEST_CASE("IResearchQueryTestJoinSubquery", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     auto expectedResult = expectedResultBuilder->slice();
@@ -470,7 +469,6 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
   // populate view with the data
   {
     arangodb::OperationOptions opt;
-    TRI_voc_tick_t tick;
 
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -620,7 +618,6 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   // populate view with the data
   {
     arangodb::OperationOptions opt;
-    TRI_voc_tick_t tick;
 
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -709,7 +706,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -756,7 +753,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -803,7 +800,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.is(TRI_ERROR_NOT_IMPLEMENTED)); // can't handle self-referenced variable now
 
-//    auto result = queryResult.queryResult->slice();
+//    auto result = queryResult.data->slice();
 //    CHECK(result.isArray());
 //
 //    arangodb::velocypack::ArrayIterator resultIt(result);
@@ -851,7 +848,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -900,7 +897,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -945,7 +942,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -991,7 +988,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1033,7 +1030,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1074,7 +1071,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1114,7 +1111,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1159,7 +1156,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1196,7 +1193,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1238,7 +1235,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1280,7 +1277,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1321,7 +1318,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1362,7 +1359,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1420,7 +1417,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1471,7 +1468,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1510,7 +1507,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1550,7 +1547,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1589,7 +1586,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1670,7 +1667,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1706,7 +1703,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1747,7 +1744,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1786,7 +1783,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1825,7 +1822,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);

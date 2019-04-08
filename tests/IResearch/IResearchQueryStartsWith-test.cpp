@@ -233,7 +233,6 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
   // populate view with the data
   {
     arangodb::OperationOptions opt;
-    TRI_voc_tick_t tick;
 
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -278,7 +277,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -294,7 +293,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -314,7 +313,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -345,7 +344,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -382,7 +381,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -415,7 +414,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -439,7 +438,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);

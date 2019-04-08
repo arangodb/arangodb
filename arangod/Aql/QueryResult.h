@@ -59,7 +59,7 @@ struct QueryResult {
   void reset(Result const& res) {
     result.reset(res);
     cached = false;
-    queryResult.reset();
+    data.reset();
     extra.reset();
     context.reset();
   }
@@ -67,7 +67,7 @@ struct QueryResult {
   void reset(Result&& res) {
     result.reset(std::move(res));
     cached = false;
-    queryResult.reset();
+    data.reset();
     extra.reset();
     context.reset();
   }
@@ -77,7 +77,7 @@ struct QueryResult {
   bool cached;
   std::unordered_set<std::string> bindParameters;
   std::vector<std::string> collectionNames;
-  std::shared_ptr<arangodb::velocypack::Builder> queryResult;
+  std::shared_ptr<arangodb::velocypack::Builder> data;
   std::shared_ptr<arangodb::velocypack::Builder> extra;
   std::shared_ptr<transaction::Context> context;
 };

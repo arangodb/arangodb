@@ -308,7 +308,7 @@ SECTION("test_analyzer") {
       nullptr
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 0, 1 };
     size_t i = 0;
@@ -331,7 +331,7 @@ SECTION("test_analyzer") {
       nullptr
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 0, 1 };
     size_t i = 0;
@@ -354,7 +354,7 @@ SECTION("test_analyzer") {
       nullptr
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 0, 1 };
     size_t i = 0;
@@ -376,7 +376,7 @@ SECTION("test_analyzer") {
       "FOR d IN testView SEARCH PHRASE(d.X, 'abc', 'test_B') SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 0 };
     size_t i = 0;
@@ -398,7 +398,7 @@ SECTION("test_analyzer") {
       "FOR d IN testView SEARCH analyzer(PHRASE(d.X, 'abc'), 'test_B') SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 0 };
     size_t i = 0;
@@ -420,7 +420,7 @@ SECTION("test_analyzer") {
       "FOR d IN testView SEARCH PHRASE(d.Y, 'def', 'test_A') SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 1 };
     size_t i = 0;
@@ -442,7 +442,7 @@ SECTION("test_analyzer") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.Y, 'def', 'test_A'), 'test_B') SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 1 };
     size_t i = 0;
@@ -464,7 +464,7 @@ SECTION("test_analyzer") {
       "FOR d IN testView SEARCH PHRASE(d.Y, 'def', 'test_A') SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 1 };
     size_t i = 0;
@@ -486,7 +486,7 @@ SECTION("test_analyzer") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.Y, 'def'), 'test_A') SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 1 };
     size_t i = 0;
@@ -628,7 +628,7 @@ SECTION("test_async_index") {
       nullptr
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9,
@@ -656,7 +656,7 @@ SECTION("test_async_index") {
       nullptr
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9,
@@ -684,7 +684,7 @@ SECTION("test_async_index") {
       nullptr
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9,
@@ -711,7 +711,7 @@ SECTION("test_async_index") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.same, 'xyz', 'test_B'), 'identity') SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -738,7 +738,7 @@ SECTION("test_async_index") {
       "FOR d IN testView SEARCH PHRASE(d.same, 'xyz', 'test_B') SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -765,7 +765,7 @@ SECTION("test_async_index") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.same, 'xyz'), 'test_B') SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -792,7 +792,7 @@ SECTION("test_async_index") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'abcd', 'test_A'), 'test_B') SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 4, 10, 20, 26, 30, 50
@@ -816,7 +816,7 @@ SECTION("test_async_index") {
       "FOR d IN testView SEARCH PHRASE(d.duplicated, 'abcd', 'test_A') SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 4, 10, 20, 26, 30, 50
@@ -840,7 +840,7 @@ SECTION("test_async_index") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'abcd'), 'test_A') SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 4, 10, 20, 26, 30, 50
@@ -913,7 +913,7 @@ SECTION("test_fields") {
       nullptr
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 0, 1 };
     size_t i = 0;
@@ -935,7 +935,7 @@ SECTION("test_fields") {
       "FOR d IN testView SEARCH d.Y == 'def' SORT d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 0 };
     size_t i = 0;

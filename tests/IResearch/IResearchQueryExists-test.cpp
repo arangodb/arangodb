@@ -296,7 +296,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.missing) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -318,7 +318,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['missing']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -340,7 +340,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.name, 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -362,7 +362,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['name'], 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -384,7 +384,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.name, 'boolean') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -406,7 +406,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['name'], 'boolean') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -428,7 +428,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.name, 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -450,7 +450,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['name'], 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -472,7 +472,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.name, 'null') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -494,7 +494,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['name'], 'null') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -516,7 +516,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.seq, 'string') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -538,7 +538,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['seq'], 'string') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -560,7 +560,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.seq, 'analyzer', 'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -582,7 +582,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d.seq, 'analyzer'), 'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -604,7 +604,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d['seq'], 'analyzer'), 'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -626,7 +626,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.value[2]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -648,7 +648,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['value'][2]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -670,7 +670,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.value.d) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -692,7 +692,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['value']['d']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -737,7 +737,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.value) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -782,7 +782,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['value']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -805,7 +805,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.value, 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -829,7 +829,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\" }")
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -854,7 +854,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     );
 
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -891,7 +891,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['value'], 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -914,7 +914,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.value, 'boolean') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -937,7 +937,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['value'], 'boolean') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -977,7 +977,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.value, 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1017,7 +1017,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['value'], 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1044,7 +1044,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['value'], 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 5 RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1067,7 +1067,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.value, 'null') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1090,7 +1090,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['value'], 'null') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1113,7 +1113,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.value, 'analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1136,7 +1136,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.value, 'analyzer', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1159,7 +1159,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d.value, 'analyzer'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1182,7 +1182,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d.value, 'string'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1205,7 +1205,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.value, 'string') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1228,7 +1228,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['value'], 'string') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1251,7 +1251,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.value, 'analyzer', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1274,7 +1274,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.value, 'analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1297,7 +1297,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d['value'], 'analyzer'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1320,7 +1320,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d['value'], 'analyzer'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1343,7 +1343,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['value'], 'analyzer', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1366,7 +1366,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.value[1]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1389,7 +1389,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['value'][1]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1412,7 +1412,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.value.b) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1435,7 +1435,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d['value']['b']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1554,7 +1554,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.missing) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1576,7 +1576,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['missing']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1598,7 +1598,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.name, 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1620,7 +1620,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['name'], 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1642,7 +1642,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.name, 'boolean') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1664,7 +1664,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['name'], 'boolean') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1686,7 +1686,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.name, 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1708,7 +1708,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['name'], 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1730,7 +1730,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.name, 'null') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1752,7 +1752,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['name'], 'null') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1774,7 +1774,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.seq, 'string') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1796,7 +1796,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['seq'], 'string') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1818,7 +1818,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.seq, 'analyzer', 'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1840,7 +1840,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d.seq, 'analyzer'), 'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1862,7 +1862,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d['seq'], 'analyzer'), 'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1884,7 +1884,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.value[2]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1906,7 +1906,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['value'][2]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1928,7 +1928,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.value.d) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1950,7 +1950,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['value']['d']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1989,7 +1989,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.value) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -2028,7 +2028,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['value']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -2048,7 +2048,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.value, 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2061,7 +2061,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\" }")
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2075,7 +2075,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
     );
 
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2098,7 +2098,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['value'], 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2110,7 +2110,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.value, 'boolean') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2122,7 +2122,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['value'], 'boolean') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2153,7 +2153,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.value, 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -2192,7 +2192,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['value'], 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -2219,7 +2219,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['value'], 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 5 RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -2239,7 +2239,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.value, 'null') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2251,7 +2251,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['value'], 'null') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2263,7 +2263,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.value, 'analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2275,7 +2275,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.value, 'analyzer', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2287,7 +2287,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d.value, 'analyzer'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2299,7 +2299,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d.value, 'string'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2311,7 +2311,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.value, 'string') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2323,7 +2323,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['value'], 'string') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2335,7 +2335,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.value, 'analyzer', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2347,7 +2347,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.value, 'analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2359,7 +2359,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d['value'], 'analyzer'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2371,7 +2371,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d['value'], 'analyzer'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2383,7 +2383,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['value'], 'analyzer', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2395,7 +2395,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.value[1]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2407,7 +2407,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['value'][1]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2419,7 +2419,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.value.b) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }
@@ -2431,7 +2431,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d['value']['b']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     CHECK(0 == slice.length());
   }

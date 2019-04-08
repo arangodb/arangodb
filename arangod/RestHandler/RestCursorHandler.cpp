@@ -231,7 +231,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
     THROW_ARANGO_EXCEPTION(_queryResult.result);
   }
 
-  VPackSlice qResult = _queryResult.queryResult->slice();
+  VPackSlice qResult = _queryResult.data->slice();
 
   if (qResult.isNone()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -301,7 +301,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
     // result is bigger than batchSize, and a cursor will be created
     CursorRepository* cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
-    TRI_ASSERT(_queryResult.queryResult.get() != nullptr);
+    TRI_ASSERT(_queryResult.data.get() != nullptr);
     // steal the query result, cursor will take over the ownership
     Cursor* cursor =
         cursors->createFromQueryResult(std::move(_queryResult), batchSize, ttl, count);

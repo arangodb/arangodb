@@ -282,7 +282,7 @@ TEST_CASE("IResearchQueryTestAggregate", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d.value <= 100 COLLECT value = d.value WITH COUNT INTO size RETURN { 'value' : value, 'names' : size }"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator itr(slice);
@@ -319,7 +319,7 @@ TEST_CASE("IResearchQueryTestAggregate", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d.value <= 100 COLLECT value = d.value INTO name = d.name RETURN { 'value' : value, 'names' : name }"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator itr(slice);
@@ -366,7 +366,7 @@ TEST_CASE("IResearchQueryTestAggregate", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d.seq < 7 COLLECT AGGREGATE sumSeq = SUM(d.seq) RETURN sumSeq"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator itr(slice);
@@ -383,7 +383,7 @@ TEST_CASE("IResearchQueryTestAggregate", "[iresearch][iresearch-query]") {
       "FOR d IN testView COLLECT AGGREGATE sumSeq = SUM(d.seq) RETURN sumSeq"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator itr(slice);
@@ -400,7 +400,7 @@ TEST_CASE("IResearchQueryTestAggregate", "[iresearch][iresearch-query]") {
       "FOR d IN testView COLLECT WITH COUNT INTO count RETURN count"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator itr(slice);

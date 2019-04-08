@@ -106,7 +106,7 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase, std::string cons
       return queryResult.result;
     }
 
-    VPackSlice countSlice = queryResult.queryResult->slice();
+    VPackSlice countSlice = queryResult.data->slice();
     if (!countSlice.isArray()) {
       return Result(TRI_ERROR_INTERNAL,
                     "bad query result for deleting AQL user functions");
@@ -172,7 +172,7 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
       return queryResult.result;
     }
 
-    VPackSlice countSlice = queryResult.queryResult->slice();
+    VPackSlice countSlice = queryResult.data->slice();
     if (!countSlice.isArray()) {
       return Result(TRI_ERROR_INTERNAL,
                     "bad query result for deleting AQL user functions");
@@ -364,7 +364,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
     return queryResult.result;
   }
 
-  auto usersFunctionsSlice = queryResult.queryResult->slice();
+  auto usersFunctionsSlice = queryResult.data->slice();
 
   if (!usersFunctionsSlice.isArray()) {
     return Result(TRI_ERROR_INTERNAL,

@@ -189,8 +189,8 @@ static void EdgesQuery(TRI_edge_direction_e direction,
       "FOR doc IN @@collection " + filter + " RETURN doc";
   auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
-  if (!queryResult.queryResult.IsEmpty()) {
-    TRI_V8_RETURN(queryResult.queryResult);
+  if (!queryResult.data.IsEmpty()) {
+    TRI_V8_RETURN(queryResult.data);
   }
 
   TRI_V8_RETURN_NULL();
@@ -425,8 +425,8 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  if (!queryResult.queryResult.IsEmpty()) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "documents"), queryResult.queryResult);
+  if (!queryResult.data.IsEmpty()) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "documents"), queryResult.data);
   }
 
   TRI_V8_RETURN(result);

@@ -50,15 +50,15 @@ struct QueryResultV8 : public QueryResult {
   
   void reset(Result const& result) {
     QueryResult::reset(result);
-    queryResult.Clear();
+    data.Clear();
   }
   
   void reset(Result&& result) {
     QueryResult::reset(std::move(result));
-    queryResult.Clear();
+    data.Clear();
   }
   
-  v8::Handle<v8::Array> queryResult;
+  v8::Handle<v8::Array> data;
 };
 }  // namespace aql
 }  // namespace arangodb

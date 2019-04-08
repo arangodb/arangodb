@@ -153,7 +153,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(aql::QueryRegistry* queryRegi
                                    "Error executing user query: " + queryResult.result.errorMessage());
   }
 
-  VPackSlice usersSlice = queryResult.queryResult->slice();
+  VPackSlice usersSlice = queryResult.data->slice();
 
   if (usersSlice.isNone()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -163,7 +163,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(aql::QueryRegistry* queryRegi
     return std::shared_ptr<VPackBuilder>();
   }
 
-  return queryResult.queryResult;
+  return queryResult.data;
 }
 
 /// Convert documents from _system/_users into the format used in

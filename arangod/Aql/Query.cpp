@@ -599,7 +599,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
               // create a mimimal context to build the result
               queryResult.context = transaction::StandaloneContext::Create(_vocbase);
               TRI_ASSERT(cacheEntry->_queryResult != nullptr);
-              queryResult.queryResult = cacheEntry->_queryResult;
+              queryResult.data = cacheEntry->_queryResult;
               queryResult.extra = cacheEntry->_stats;
               queryResult.cached = true;
 
@@ -704,7 +704,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
               );
         }
 
-        queryResult.queryResult = std::move(_resultBuilder);
+        queryResult.data = std::move(_resultBuilder);
         queryResult.context = _trx->transactionContext();
         _executionPhase = ExecutionPhase::FINALIZE;
       }
@@ -811,7 +811,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
               TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(),
                             queryResult.context->getVPackOptions());
           TRI_ASSERT(values->IsArray());
-          queryResult.queryResult = v8::Handle<v8::Array>::Cast(values);
+          queryResult.data = v8::Handle<v8::Array>::Cast(values);
           queryResult.extra = cacheEntry->_stats;
           queryResult.cached = true;
           return ExecutionState::DONE;
@@ -901,7 +901,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
       throw;
     }
 
-    queryResult.queryResult = resArray;
+    queryResult.data = resArray;
     queryResult.context = _trx->transactionContext();
 
     if (useQueryCache && _warnings.empty()) {
@@ -1079,9 +1079,9 @@ QueryResult Query::explain() {
     QueryResult result;
 
     if (_queryOptions.allPlans) {
-      result.queryResult = std::make_shared<VPackBuilder>();
+      result.data = std::make_shared<VPackBuilder>();
       {
-        VPackArrayBuilder guard(result.queryResult.get());
+        VPackArrayBuilder guard(result.data.get());
 
         auto const& plans = opt.getPlans();
         for (auto& it : plans) {
@@ -1090,7 +1090,7 @@ QueryResult Query::explain() {
 
           plan->findVarUsage();
           plan->planRegisters();
-          plan->toVelocyPack(*result.queryResult.get(), parser.ast(), _queryOptions.verbosePlans);
+          plan->toVelocyPack(*result.data.get(), parser.ast(), _queryOptions.verbosePlans);
         }
       }
       // cacheability not available here
@@ -1103,7 +1103,7 @@ QueryResult Query::explain() {
       bestPlan->findVarUsage();
       bestPlan->planRegisters();
 
-      result.queryResult = bestPlan->toVelocyPack(parser.ast(), _queryOptions.verbosePlans);
+      result.data = bestPlan->toVelocyPack(parser.ast(), _queryOptions.verbosePlans);
 
       // cacheability
       result.cached = (!_queryString.empty() && !_isModificationQuery &&

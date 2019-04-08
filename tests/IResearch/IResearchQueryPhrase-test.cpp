@@ -307,7 +307,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH PHRASE(d.missing, 'abc') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -329,7 +329,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH PHRASE(d['missing'], 'abc') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -351,7 +351,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH PHRASE(d.seq, '0') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -373,7 +373,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH PHRASE(d['seq'], '0') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -636,7 +636,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'z'), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -665,7 +665,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH PHRASE(d.duplicated, 'z', 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -694,7 +694,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH analyzer(PHRASE(d['duplicated'], 'z'), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -723,7 +723,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'v', 1, 'z'), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -752,7 +752,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH PHRASE(d.duplicated, 'v', 1, 'z', 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -781,7 +781,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d['duplicated'], 'v', 2, 'c'), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -810,7 +810,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d['duplicated'], 'v', 2, 'c', 'test_analyzer'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -832,7 +832,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'v', 0, 'z'), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -854,7 +854,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d['duplicated'], 'v', 1, 'c'), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -883,7 +883,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, [ 'z' ]), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -912,7 +912,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d['duplicated'], [ 'z' ]), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -941,7 +941,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, [ 'v', 1, 'z' ]), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -970,7 +970,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d['duplicated'], [ 'v', 2, 'c' ]), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -992,7 +992,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, [ 'v', 0, 'z' ]), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1014,7 +1014,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d['duplicated'], [ 'v', 1, 'c' ]), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1036,7 +1036,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH PHRASE(d['duplicated'], [ 'v', 1, 'c' ], 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -1058,7 +1058,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d['duplicated'], [ 'v', 1, 'c' ], 'test_analyzer'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 

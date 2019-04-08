@@ -294,7 +294,7 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d.value IN [ true ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -317,7 +317,7 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d['value'] IN [ true, false ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -342,7 +342,7 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d.value IN [ 123, 1234 ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -366,7 +366,7 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d.value IN [ 123, 1234 ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 2 RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -391,7 +391,7 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d['value'] IN [ 123, 1234 ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -414,7 +414,7 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d.value IN [ null ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -437,7 +437,7 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d['value'] IN [ null, null ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -484,7 +484,7 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d.value IN [ \"abc\", \"xyz\" ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -507,7 +507,7 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d['value'] IN [ \"abc\", \"xyz\" ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 

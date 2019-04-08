@@ -301,7 +301,7 @@ TEST_CASE("IResearchQueryTestTokens", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d.prefix IN TOKENS('def', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -323,7 +323,7 @@ TEST_CASE("IResearchQueryTestTokens", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d['prefix'] IN TOKENS('def', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -346,7 +346,7 @@ TEST_CASE("IResearchQueryTestTokens", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d.prefix IN TOKENS('ab,abcde,de', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -369,7 +369,7 @@ TEST_CASE("IResearchQueryTestTokens", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d['prefix'] IN TOKENS('ab,abcde,de', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -395,7 +395,7 @@ TEST_CASE("IResearchQueryTestTokens", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d.prefix IN TOKENS('z,xy,abcy,abcd,abc', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -421,7 +421,7 @@ TEST_CASE("IResearchQueryTestTokens", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d['prefix'] IN TOKENS('z,xy,abcy,abcd,abc', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 

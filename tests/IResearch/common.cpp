@@ -306,8 +306,8 @@ bool assertRules(
 
   auto const res = query.explain();
 
-  if (res.queryResult) {
-    auto const explanation = res.queryResult->slice();
+  if (res.data) {
+    auto const explanation = res.data->slice();
 
     arangodb::velocypack::ArrayIterator rules(explanation.get("rules"));
 

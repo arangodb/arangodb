@@ -118,9 +118,9 @@ void RestExplainHandler::explainQuery() {
   result.openObject();
 
   if (query.queryOptions().allPlans) {
-    result.add("plans", queryResult.queryResult->slice());
+    result.add("plans", queryResult.data->slice());
   } else {
-    result.add("plan", queryResult.queryResult->slice());
+    result.add("plan", queryResult.data->slice());
     result.add("cacheable", VPackValue(queryResult.cached));
   }
 

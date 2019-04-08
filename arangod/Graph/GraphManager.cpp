@@ -432,7 +432,7 @@ Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph
     return queryResult.result;
   }
 
-  VPackSlice graphsSlice = queryResult.queryResult->slice();
+  VPackSlice graphsSlice = queryResult.data->slice();
   if (graphsSlice.isNone()) {
     return {TRI_ERROR_OUT_OF_MEMORY};
   } else if (!graphsSlice.isArray()) {
@@ -607,7 +607,7 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
     return OperationResult(std::move(queryResult.result));
   }
 
-  VPackSlice graphsSlice = queryResult.queryResult->slice();
+  VPackSlice graphsSlice = queryResult.data->slice();
 
   if (graphsSlice.isNone()) {
     return OperationResult(TRI_ERROR_OUT_OF_MEMORY);

@@ -285,7 +285,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -305,7 +305,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -325,7 +325,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -345,7 +345,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -365,7 +365,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -398,7 +398,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -436,7 +436,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -474,7 +474,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -515,7 +515,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -556,7 +556,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -597,7 +597,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -637,7 +637,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -677,7 +677,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -717,7 +717,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -757,7 +757,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -797,7 +797,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -824,7 +824,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -844,7 +844,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -864,7 +864,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -884,7 +884,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -904,7 +904,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -935,7 +935,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -962,7 +962,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -993,7 +993,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1020,7 +1020,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1040,7 +1040,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1060,7 +1060,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1080,7 +1080,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1100,7 +1100,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1131,7 +1131,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1169,7 +1169,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1207,7 +1207,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1234,7 +1234,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1254,7 +1254,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1274,7 +1274,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1294,7 +1294,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1314,7 +1314,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1334,7 +1334,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1365,7 +1365,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1403,7 +1403,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1430,7 +1430,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1450,7 +1450,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1470,7 +1470,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1490,7 +1490,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1510,7 +1510,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1541,7 +1541,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1579,7 +1579,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1617,7 +1617,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1644,7 +1644,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1664,7 +1664,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1684,7 +1684,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1704,7 +1704,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1724,7 +1724,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1744,7 +1744,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1768,7 +1768,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1788,7 +1788,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1808,7 +1808,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1828,7 +1828,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1848,7 +1848,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1879,7 +1879,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1906,7 +1906,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1926,7 +1926,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1946,7 +1946,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1966,7 +1966,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1986,7 +1986,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2006,7 +2006,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2037,7 +2037,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2064,7 +2064,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2084,7 +2084,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2104,7 +2104,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2124,7 +2124,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2155,7 +2155,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2193,7 +2193,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2227,7 +2227,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2255,7 +2255,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2276,7 +2276,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2297,7 +2297,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2314,7 +2314,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2338,7 +2338,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2359,7 +2359,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2385,7 +2385,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH d.value IN false..true SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
     REQUIRE(queryResult.result.ok());
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2407,7 +2407,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
     );
     REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.queryResult->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);

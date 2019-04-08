@@ -494,7 +494,7 @@ arangodb::Result visitAnalyzers( // visit analyzers
       return result.result;
     }
 
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
 
     if (!slice.isArray()) {
       return arangodb::Result( // result

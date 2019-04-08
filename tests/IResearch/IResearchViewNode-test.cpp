@@ -1240,7 +1240,6 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
       std::vector<std::string> const EMPTY;
 
       arangodb::OperationOptions opt;
-      TRI_voc_tick_t tick;
       arangodb::ManagedDocumentResult mmdoc;
 
       arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),

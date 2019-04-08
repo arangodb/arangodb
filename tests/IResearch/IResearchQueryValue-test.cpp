@@ -310,7 +310,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH [ ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -370,7 +370,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH [ 'abc', 'def' ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -430,7 +430,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH [ 1 .. 42 ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -452,7 +452,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH false SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(queryResult.result.ok());
-    auto slice = queryResult.queryResult->slice();
+    auto slice = queryResult.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -512,7 +512,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH true SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(queryResult.result.ok());
-    auto slice = queryResult.queryResult->slice();
+    auto slice = queryResult.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -534,7 +534,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH 0 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(queryResult.result.ok());
-    auto slice = queryResult.queryResult->slice();
+    auto slice = queryResult.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -594,7 +594,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH 3.14 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(queryResult.result.ok());
-    auto slice = queryResult.queryResult->slice();
+    auto slice = queryResult.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -616,7 +616,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH null SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(queryResult.result.ok());
-    auto slice = queryResult.queryResult->slice();
+    auto slice = queryResult.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -639,7 +639,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Parser::fromJson("{ \"param\" : null }")
     );
     REQUIRE(queryResult.result.ok());
-    auto slice = queryResult.queryResult->slice();
+    auto slice = queryResult.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -662,7 +662,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Parser::fromJson("{ \"param\" : 1 }")
     );
     REQUIRE(queryResult.result.ok());
-    auto slice = queryResult.queryResult->slice();
+    auto slice = queryResult.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -722,7 +722,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH { } SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(queryResult.result.ok());
-    auto slice = queryResult.queryResult->slice();
+    auto slice = queryResult.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -782,7 +782,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH { 'a': 123, 'b': 'cde' } SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(queryResult.result.ok());
-    auto slice = queryResult.queryResult->slice();
+    auto slice = queryResult.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -804,7 +804,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH '' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(queryResult.result.ok());
-    auto slice = queryResult.queryResult->slice();
+    auto slice = queryResult.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -864,7 +864,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH 'abc' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(queryResult.result.ok());
-    auto slice = queryResult.queryResult->slice();
+    auto slice = queryResult.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -891,7 +891,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH 'abc' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 5 RETURN d"
     );
     REQUIRE(queryResult.result.ok());
-    auto slice = queryResult.queryResult->slice();
+    auto slice = queryResult.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -919,7 +919,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Parser::fromJson("{ \"param\" : \"abc\" }")
     );
     REQUIRE(queryResult.result.ok());
-    auto slice = queryResult.queryResult->slice();
+    auto slice = queryResult.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -980,7 +980,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Parser::fromJson("{ \"param\" : [] }")
     );
     REQUIRE(result.result.ok());
-    auto slice = result.queryResult->slice();
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
