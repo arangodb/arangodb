@@ -2310,6 +2310,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
+  // 0.0 means using the default timeout (whatever that is)
   double ttl = VelocyPackHelper::getNumericValue(ttlSlice, 0.0);
 
   if (col->getStatusLocked() != TRI_VOC_COL_STATUS_LOADED) {
