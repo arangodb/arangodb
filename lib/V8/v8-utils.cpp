@@ -2923,7 +2923,7 @@ static void JS_DisableFoxxStore(v8::FunctionCallbackInfo<v8::Value> const& args)
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
-  TRI_V8_RETURN_BOOL(v8security->disableFoxxApi(isolate));
+  TRI_V8_RETURN_BOOL(v8security->disableFoxxStore(isolate));
 
   TRI_V8_TRY_CATCH_END
 }

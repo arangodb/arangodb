@@ -62,9 +62,10 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
       "--foxx.disable-api",
       "FIXME disables foxx api",
       new BooleanParameter(&_disableFoxxApi));
+
   options->addOption(
       "--foxx.disable-store",
-      "FIXME disables foxx api",
+      "FIXME disables foxx store",
       new BooleanParameter(&_disableFoxxStore));
 
   options->addSection("javascript", "Configure the Javascript engine");
@@ -109,6 +110,7 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
   options->addOption("--javascript.files-black-list",
                      "paths to be added to files-black-list-expression",
                      new VectorParameter<StringParameter>(&_filesBlackListVec));
+
 }
 
 namespace {
@@ -324,7 +326,7 @@ bool V8SecurityFeature::disableFoxxApi(v8::Isolate* isolate) const {
 }
 
 bool V8SecurityFeature::disableFoxxStore(v8::Isolate* isolate) const {
-  return _disableFoxxApi;
+  return _disableFoxxStore;
 }
 
 bool V8SecurityFeature::isDeniedHardenedJavaScript(v8::Isolate* isolate) const {
