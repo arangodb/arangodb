@@ -68,6 +68,8 @@
 #include "V8/v8-helper.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+#include "V8Server/V8DealerFeature.h"
+#include "V8Server/v8-analyzers.h"
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-general-graph.h"
@@ -1846,12 +1848,13 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate, "ArangoDatabase"),
                                ft->GetFunction());
 
+  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate);
   TRI_InitV8Statistics(isolate, context);
 
   TRI_InitV8IndexArangoDB(isolate, ArangoNS);
 
   TRI_InitV8Collections(context, &vocbase, v8g, isolate, ArangoNS);
-  TRI_InitV8Views(context, &vocbase, v8g, isolate, ArangoNS);
+  TRI_InitV8Views(*v8g, isolate, ArangoNS);
   TRI_InitV8Users(context, &vocbase, v8g, isolate);
   TRI_InitV8GeneralGraph(context, &vocbase, v8g, isolate);
 

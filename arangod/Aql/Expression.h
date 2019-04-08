@@ -67,10 +67,10 @@ class Expression {
   Expression() = delete;
 
   /// @brief constructor, using an AST start node
-  Expression(ExecutionPlan* plan, Ast*, AstNode*);
+  Expression(ExecutionPlan const* plan, Ast*, AstNode*);
 
   /// @brief constructor, using VPack
-  Expression(ExecutionPlan* plan, Ast*, arangodb::velocypack::Slice const&);
+  Expression(ExecutionPlan const* plan, Ast*, arangodb::velocypack::Slice const&);
 
   ~Expression();
 
@@ -336,7 +336,7 @@ class Expression {
  private:
   /// @brief the query execution plan. note: this may be a nullptr for
   /// expressions created in the early optimization stage!
-  ExecutionPlan* _plan;
+  ExecutionPlan const* _plan;
 
   /// @brief the AST
   Ast* _ast;

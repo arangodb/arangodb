@@ -315,6 +315,10 @@ void Query::registerErrorCustom(int code, char const* details) {
   THROW_ARANGO_EXCEPTION_MESSAGE(code, errorMessage);
 }
 
+void Query::registerWarning(int code, std::string const& details) {
+  registerWarning(code, details.c_str());
+}
+
 /// @brief register a warning
 void Query::registerWarning(int code, char const* details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);

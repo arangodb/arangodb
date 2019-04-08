@@ -76,9 +76,6 @@ foxxRouter.use(installer)
 `);
 
 installer.use(function (req, res, next) {
-  if (internal.disableFoxxApi()) {
-    res.throw(403, "not allowed to install services when server is started with --foxx.lock-down true");
-  }
   const mount = decodeURIComponent(req.queryParams.mount);
   const upgrade = req.queryParams.upgrade;
   const replace = req.queryParams.replace;
@@ -123,7 +120,7 @@ installer.use(function (req, res, next) {
     configuration
   }, service.simpleJSON()));
 });
-if (!internal.disableFoxxApi()) {
+
 installer.put('/store', function (req) {
   req.body = `${req.body.name}:${req.body.version}`;
 })
@@ -135,7 +132,6 @@ installer.put('/store', function (req) {
 .description(dd`
   Downloads a Foxx from the store and installs it at the given mount.
 `);
-}
 
 installer.put('/git', function (req) {
   const baseUrl = process.env.FOXX_BASE_URL || 'https://github.com/';
@@ -212,9 +208,6 @@ installer.put('/raw', function (req) {
 `);
 
 foxxRouter.delete('/', function (req, res) {
-  if (internal.disableFoxxApi()) {
-    res.throw(403, "not allowed to uninstall services when server is started with --foxx.lock-down true");
-  }
   const mount = decodeURIComponent(req.queryParams.mount);
   const runTeardown = req.queryParams.teardown;
   const service = FoxxManager.uninstall(mount, {
@@ -266,9 +259,6 @@ foxxRouter.get('/thumbnail', function (req, res) {
 `);
 
 foxxRouter.get('/config', function (req, res) {
-  if (internal.disableFoxxApi()) {
-    res.throw(403, "not allowed to configure services when server is started with --foxx.lock-down true");
-  }
   const mount = decodeURIComponent(req.queryParams.mount);
   const service = FoxxManager.lookupService(mount);
   res.json(service.getConfiguration());
@@ -300,9 +290,6 @@ foxxRouter.get('/deps', function (req, res) {
 `);
 
 foxxRouter.patch('/config', function (req, res) {
-  if (internal.disableFoxxApi()) {
-    res.throw(403, "not allowed to configure services when server is started with --foxx.lock-down true");
-  }
   const mount = decodeURIComponent(req.queryParams.mount);
   const configuration = req.body;
   const service = FoxxManager.lookupService(mount);
@@ -371,21 +358,18 @@ foxxRouter.patch('/devel', function (req, res) {
   Used to toggle between production and development mode.
 `);
 
-if (!internal.disableFoxxApi()) {
 router.get('/fishbowl', function (req, res) {
-    try {
-      store.update();
-    } catch (e) {
-      console.warn('Failed to update Foxx store from GitHub.');
-    }
-    res.json(store.availableJson());
-    res.json([]);
+  try {
+    store.update();
+  } catch (e) {
+    console.warn('Failed to update Foxx store from GitHub.');
+  }
+  res.json(store.availableJson());
 })
 .summary('List of all Foxx services submitted to the Foxx store.')
 .description(dd`
   This function contacts the fishbowl and reports which services are available for install.
 `);
-}
 
 router.post('/download/nonce', function (req, res) {
   const nonce = crypto.createNonce();

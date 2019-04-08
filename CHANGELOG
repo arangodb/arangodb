@@ -36,6 +36,8 @@ devel
   will not be exposed to JavaScript actions. The matching will be performed
   in a case-sensitive way. 
 
+* updated bundled version of jemalloc memory allocator to 5.2.0.
+
 * don't create per-database system collection `_frontend` automatically.
   This collection is only needed by the web UI, and it can be created lazily 
   when needed.

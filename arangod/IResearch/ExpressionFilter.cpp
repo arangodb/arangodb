@@ -27,8 +27,6 @@
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
 
-#include "IResearch/IResearchViewBlock.h"
-
 #include "formats/empty_term_reader.hpp"
 #include "search/all_filter.hpp"
 #include "search/all_iterator.hpp"

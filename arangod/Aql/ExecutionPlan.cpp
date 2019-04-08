@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/IndexHint.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
@@ -47,7 +48,6 @@
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "VocBase/AccessMode.h"
-#include "IResearch/IResearchViewNode.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>

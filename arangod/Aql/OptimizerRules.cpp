@@ -34,6 +34,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Function.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
@@ -61,7 +62,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
 
-#include "IResearch/IResearchViewNode.h"
 
 #include <boost/optional.hpp>
 #include <tuple>
