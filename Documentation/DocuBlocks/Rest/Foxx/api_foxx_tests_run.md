@@ -38,6 +38,10 @@ Test reporter to use.
 @RESTQUERYPARAM{idiomatic,boolean,optional}
 Use the matching format for the reporter, regardless of the *Accept* header.
 
+@RESTQUERYPARAM{filter,string,optional}
+Only run tests where the full name (including full test suites and test case)
+matches this string.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
