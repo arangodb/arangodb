@@ -263,6 +263,9 @@ The HTTP API for creating indexes at POST `/_api/index` has been extended two-fo
 
 * to create an index in background, the attribute `inBackground` can be set to `true`.
 
+The HTTP API for running Foxx service tests now supports a `filter` attribute,
+which can be used to limit which test cases should be executed.
+
 
 Web interface
 -------------

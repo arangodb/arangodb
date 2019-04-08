@@ -1,6 +1,8 @@
 devel
 -----
 
+* added `filter` option to Foxx HTTP API for running tests.
+
 * updated bundled version of jemalloc memory allocator to 5.2.0.
 
 * don't create per-database system collection `_frontend` automatically.
