@@ -89,10 +89,16 @@
     },
 
     render: function () {
-      // if repo not fetched yet, wait
-      $(this.el).html(this.template.render({
-        services: this.collection
-      }));
+
+      if (frontendConfig.disableFoxxStore) {
+        $(this.el).html('<div>FoxxStore disabled due to server configuration (--foxx.disable-store true).</div>');
+        return this;
+      } else {
+        // if repo not fetched yet, wait
+        $(this.el).html(this.template.render({
+          services: this.collection
+        }));
+      }
 
       arangoHelper.buildServicesSubNav('Store');
       this.breadcrumb();
