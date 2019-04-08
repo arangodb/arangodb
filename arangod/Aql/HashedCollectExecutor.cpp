@@ -231,7 +231,7 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
   // produce output
   if (_currentGroup != _allGroups.end()) {
     writeCurrentGroupToOutput(output);
-    _currentGroup++;
+    ++_currentGroup;
   }
 
   ExecutionState state = _currentGroup != _allGroups.end() ? ExecutionState::HASMORE

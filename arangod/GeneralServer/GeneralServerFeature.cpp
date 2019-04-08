@@ -50,6 +50,7 @@
 #include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
 #include "RestHandler/RestAdminStatisticsHandler.h"
+#include "RestHandler/RestAnalyzerHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
 #include "RestHandler/RestAqlReloadHandler.h"
 #include "RestHandler/RestAqlUserFunctionsHandler.h"
@@ -326,6 +327,11 @@ void GeneralServerFeature::defineHandlers() {
   // ...........................................................................
   // /_api
   // ...........................................................................
+
+  _handlerFactory->addPrefixHandler( // add handler
+    RestVocbaseBaseHandler::ANALYZER_PATH, // base URL
+    RestHandlerCreator<iresearch::RestAnalyzerHandler>::createNoData // handler
+  );
 
   _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
                                     RestHandlerCreator<RestBatchHandler>::createNoData);

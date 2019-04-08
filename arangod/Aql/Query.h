@@ -213,7 +213,10 @@ class Query {
   void registerErrorCustom(int, char const*);
 
   /// @brief register a warning
-  virtual void registerWarning(int, char const* = nullptr);
+  TEST_VIRTUAL void registerWarning(int, char const* = nullptr);
+
+  /// @brief register a warning (convenience overload)
+  TEST_VIRTUAL void registerWarning(int code, std::string const& details);
 
   void prepare(QueryRegistry*);
 
