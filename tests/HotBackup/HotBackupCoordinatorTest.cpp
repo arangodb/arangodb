@@ -78,13 +78,107 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
       dbServers.push_back(i.key.copyString());
     }
     
-    std::cout << dbServers << std::endl;
-
-    arangodb::Result result = matchBackupServers(plan, dbServers, matches);
+    arangodb::Result res = matchBackupServers(plan, dbServers, matches);
     
-    std::cout << matches << std::endl;
-    //REQUIRE(value == "bogus");
-    //REQUIRE(res.ok());
+    REQUIRE(matches.size() == 0);
+    REQUIRE(res.ok());
+  }
+
+  SECTION("Test first db server new") {
+    std::shared_ptr<VPackBuilder> props;
+
+    std::vector<ServerID> dbServers;
+    std::unordered_map<ServerID,ServerID> matches;
+
+    for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
+      dbServers.push_back(i.key.copyString());
+    }
+
+    dbServers.front() = std::string("PRMR_")
+      + to_string(boost::uuids::random_generator()());
+    
+    arangodb::Result res = matchBackupServers(plan, dbServers, matches);
+    
+    REQUIRE(matches.size() == 1);
+    REQUIRE(res.ok());
+  }
+
+  SECTION("Test last db server new") {
+    std::shared_ptr<VPackBuilder> props;
+
+    std::vector<ServerID> dbServers;
+    std::unordered_map<ServerID,ServerID> matches;
+
+    for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
+      dbServers.push_back(i.key.copyString());
+    }
+
+    dbServers.back() = std::string("PRMR_")
+      + to_string(boost::uuids::random_generator()());
+    
+    arangodb::Result res = matchBackupServers(plan, dbServers, matches);
+    
+    REQUIRE(matches.size() == 1);
+    REQUIRE(res.ok());
+  }
+
+  SECTION("Test first and last db server new") {
+    std::shared_ptr<VPackBuilder> props;
+
+    std::vector<ServerID> dbServers;
+    std::unordered_map<ServerID,ServerID> matches;
+
+    for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
+      dbServers.push_back(i.key.copyString());
+    }
+
+    dbServers.front() = std::string("PRMR_")
+      + to_string(boost::uuids::random_generator()());
+    dbServers.back() = std::string("PRMR_")
+      + to_string(boost::uuids::random_generator()());
+    
+    arangodb::Result res = matchBackupServers(plan, dbServers, matches);
+    
+    REQUIRE(matches.size() == 2);
+    REQUIRE(res.ok());
+  }
+
+  SECTION("Test all db server new") {
+    std::shared_ptr<VPackBuilder> props;
+
+    std::vector<ServerID> dbServers;
+    std::unordered_map<ServerID,ServerID> matches;
+
+    for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
+      dbServers.push_back(i.key.copyString());
+    }
+
+    for (auto& i : dbServers) {
+      i = std::string("PRMR_") + to_string(boost::uuids::random_generator()());
+    }
+    
+    arangodb::Result res = matchBackupServers(plan, dbServers, matches);
+    
+    REQUIRE(matches.size() == 3);
+    REQUIRE(res.ok());
+  }
+
+  SECTION("Test all db server new") {
+    std::shared_ptr<VPackBuilder> props;
+
+    std::vector<ServerID> dbServers;
+    std::unordered_map<ServerID,ServerID> matches;
+
+    for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
+      dbServers.push_back(i.key.copyString());
+    }
+    dbServers.push_back(std::string("PRMR_")
+                        + to_string(boost::uuids::random_generator()()));
+    
+    arangodb::Result res = matchBackupServers(plan, dbServers, matches);
+    
+    REQUIRE(matches.size() == 3);
+    REQUIRE(res.ok());
   }
 
 }
