@@ -1588,8 +1588,9 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     try {
       { VPackArrayBuilder guard(&builder);
         for (auto const& e : VPackArrayIterator(result)) {
-          TRI_ASSERT(e.isObject());
-          copyWithoutId(e, builder);
+          VPackSlice ee = e.resolveExternals();
+          TRI_ASSERT(ee.isObject());
+          copyWithoutId(ee, builder);
         }
       }
       n = result.length();
@@ -1622,8 +1623,9 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
       if (result.length() > 0) {
         builder.add(VPackValue("compaction"));
         try {
-          TRI_ASSERT(result[0].isObject());
-          copyWithoutId(result[0], builder);
+          VPackSlice c = result[0].resolveExternals();
+          TRI_ASSERT(c.isObject());
+          copyWithoutId(c, builder);
         } catch (...) {
           VPackObjectBuilder a(&builder);
         }
