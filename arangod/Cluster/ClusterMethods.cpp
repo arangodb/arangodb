@@ -3511,7 +3511,7 @@ arangodb::Result hotBackupCoordinator(
     LOG_TOPIC(INFO, Logger::HOTBACKUP)
       << "hot backup didn't get to locking phase in within timeout " << timeout
       << "s. Unlocking hot backups in agency.";
-    auto hlRes = ci->agencyHotBackupUnlock(backupId);
+    auto hlRes = ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
     return arangodb::Result(
       TRI_ERROR_CLUSTER_TIMEOUT, "hot backup timeout before locking phase");
   }
@@ -3520,7 +3520,7 @@ arangodb::Result hotBackupCoordinator(
   auto agency = std::make_shared<VPackBuilder>();
   result = ci->agencyDump(agency);
   if (!result.ok()) {
-    ci->agencyHotBackupUnlock(backupId);
+    ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
     result.reset(
       TRI_ERROR_HOT_BACKUP_INTERNAL,
       std::string ("failed to acquire agency dump: ") + result.errorMessage());
@@ -3538,7 +3538,7 @@ arangodb::Result hotBackupCoordinator(
 
   result = lockDBServerTransactions(backupId, dbServers, end);
   if (!result.ok()) {
-    ci->agencyHotBackupUnlock(backupId);
+    ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
     result.reset(
       TRI_ERROR_HOT_BACKUP_INTERNAL,
       std::string ("failed to acquire global transaction log on all db servers: ") + result.errorMessage());
@@ -3548,7 +3548,7 @@ arangodb::Result hotBackupCoordinator(
 
   result = hotBackupDBServers(backupId, dbServers, agency->slice());
   if (!result.ok()) {
-    ci->agencyHotBackupUnlock(backupId);
+    ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
     result.reset(
       TRI_ERROR_HOT_BACKUP_INTERNAL,
       std::string ("failed to hot backup on all db servers: ") + result.errorMessage());
@@ -3557,7 +3557,7 @@ arangodb::Result hotBackupCoordinator(
     return result;
   }
 
-  ci->agencyHotBackupUnlock(backupId);
+  ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
   return arangodb::Result();
 
 }
