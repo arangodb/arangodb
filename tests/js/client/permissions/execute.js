@@ -99,6 +99,7 @@ function testSuite() {
         print(rv);
         fail();
       } catch (err) {
+        print(err)
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
       }
       try {

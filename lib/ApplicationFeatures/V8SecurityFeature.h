@@ -51,8 +51,8 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
 
   /// @brief tests if in the current security context it is allowed to
   /// execute external binaries
-  bool isDenyedHardenedJavaScript(v8::Isolate* isolate) const;
-  bool isDenyedHardenedApi(v8::Isolate* isolate) const;
+  bool isDeniedHardenedJavaScript(v8::Isolate* isolate) const;
+  bool isDeniedHardenedApi(v8::Isolate* isolate) const;
 
   /// @brief tests if in the current security context it is allowed to define
   /// additional HTTP REST actions

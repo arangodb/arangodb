@@ -30,10 +30,14 @@
 
 const fs = require("fs");
 const testFile = fs.join(fs.getTempPath(), "test.js");
+
 if (getOptions === true) {
   fs.write(testFile, `print('hello world')`);
   return {
     'temp.path': fs.getTempPath(),     // Adjust the temp-path to match our current temp path
+    'javascript.files-black-list': [
+      testFile
+    ]
   };
 }
 
@@ -51,12 +55,9 @@ function testSuite() {
       } catch (err) {
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
       }
-      try {
-        require("internal").parse(`print('hello world')`);
-        fail();
-      } catch (err) {
-        assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
-      }
+      // we can not forbid snippet evaluation.
+      // Access is file access based for now.
+      require("internal").parse(`print('hello world')`);
       try {
         require("internal").load(testFile);
         fail();

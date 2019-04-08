@@ -53,7 +53,7 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
   options->addSection("server", "Server features");
   options->addOption("--server.harden",
                      "harden api",
-                     new BooleanParameter(&_denyHardenedJavaScript));
+                     new BooleanParameter(&_denyHardenedApi));
 
 
   options->addSection("foxx", "Configure Foxx");
@@ -318,12 +318,12 @@ bool V8SecurityFeature::disableFoxxStore(v8::Isolate* isolate) const {
   return _disableFoxxApi;
 }
 
-bool V8SecurityFeature::isDenyedHardenedJavaScript(v8::Isolate* isolate) const {
-  return !_denyHardenedJavaScript;
+bool V8SecurityFeature::isDeniedHardenedJavaScript(v8::Isolate* isolate) const {
+  return _denyHardenedJavaScript;
 }
 
-bool V8SecurityFeature::isDenyedHardenedApi(v8::Isolate* isolate) const {
-  return !_denyHardenedApi;
+bool V8SecurityFeature::isDeniedHardenedApi(v8::Isolate* isolate) const {
+  return _denyHardenedApi;
 }
 
 bool V8SecurityFeature::isAllowedToDefineHttpAction(v8::Isolate* isolate) const {
