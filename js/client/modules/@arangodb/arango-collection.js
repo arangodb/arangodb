@@ -432,6 +432,23 @@ ArangoCollection.prototype.figures = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief gets the responsible shard for a specific value
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.getResponsibleShard = function (data) {
+  if (data === undefined || data === null) {
+    data = {};
+  } else if (typeof data === 'string' || typeof data === 'number') {
+    data = { _key: String(data) };
+  }
+  var requestResult = this._database._connection.PUT(this._baseurl('responsibleShard'), data);
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.shardId;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief gets the checksum of a collection
 // //////////////////////////////////////////////////////////////////////////////
 

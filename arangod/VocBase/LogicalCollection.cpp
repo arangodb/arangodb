@@ -183,7 +183,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   _sharding = std::make_unique<ShardingInfo>(info, this);
 
 #ifdef USE_ENTERPRISE
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::instance()->isCoordinator() ||
+      ServerState::instance()->isDBServer()) {
     if (!info.get(StaticStrings::SmartJoinAttribute).isNone() &&
         !hasSmartJoinAttribute()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
