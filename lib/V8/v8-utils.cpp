@@ -2834,7 +2834,7 @@ static void JS_ProcessStatistics(v8::FunctionCallbackInfo<v8::Value> const& args
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToAccessHardenedFunctions(isolate)) {
+  if (v8security->isDenyedHardenedJavaScript(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to provide this information");
   }
@@ -2877,7 +2877,7 @@ static void JS_GetPid(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToAccessHardenedFunctions(isolate)) {
+  if (!v8security->isDenyedHardenedJavaScript(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to provide this information");
   }
@@ -2892,7 +2892,7 @@ static void JS_GetPid(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_LockDownFoxx(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_DisableFoxxApi(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -2900,7 +2900,20 @@ static void JS_LockDownFoxx(v8::FunctionCallbackInfo<v8::Value> const& args) {
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
-  TRI_V8_RETURN_BOOL(v8security->lockDownFoxx(isolate));
+  TRI_V8_RETURN_BOOL(v8security->disableFoxxApi(isolate));
+
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_DisableFoxxStore(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+  TRI_V8_RETURN_BOOL(v8security->disableFoxxApi(isolate));
 
   TRI_V8_TRY_CATCH_END
 }
@@ -5473,7 +5486,9 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_GET_PID"), JS_GetPid);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_LOCK_DOWN_FOXX"), JS_LockDownFoxx);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_DISABLE_FOXX_API"), JS_DisableFoxxApi);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_DISABLE_FOXX_STORE"), JS_DisableFoxxStore);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_RAND"), JS_Rand);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_READ"), JS_Read);
   TRI_AddGlobalFunctionVocbase(isolate,

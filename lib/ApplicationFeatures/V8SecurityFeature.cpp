@@ -40,69 +40,67 @@ using namespace arangodb::options;
 
 V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "V8Security"),
-      _lockDownFoxx(false),
-      _allowExecutionOfBinaries(false),
-      _denyHardened(false) {
+      _disableFoxxApi(false),
+      _disableFoxxStore(false),
+      _denyHardenedApi(false),
+      _denyHardenedJavaScript(false),
+      _allowExecutionOfBinaries(false) {
   setOptional(false);
   startsAfter("V8Platform");
 }
 
 void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("foxx", "Configure Foxx");
+  options->addSection("server", "Server features");
+  options->addOption("--server.harden",
+                     "harden api",
+                     new BooleanParameter(&_denyHardenedJavaScript));
 
+
+  options->addSection("foxx", "Configure Foxx");
   options->addOption(
-      "--foxx.lock-down",
-      "disables foxx",
-      new BooleanParameter(&_lockDownFoxx));
+      "--foxx.disable-api",
+      "FIXME disables foxx api",
+      new BooleanParameter(&_disableFoxxApi));
+  options->addOption(
+      "--foxx.disable-store",
+      "FIXME disables foxx api",
+      new BooleanParameter(&_disableFoxxStore));
 
   options->addSection("javascript", "Configure the Javascript engine");
-
   options->addOption(
       "--javascript.allow-external-process-control",
       "allow execution of external binaries. default set to false",
       new BooleanParameter(&_allowExecutionOfBinaries));
-
   options->addOption("--javascript.harden",
-                     "denies information like process id. This is used to "
-                     "harden the installation. The default is false",
-                     new BooleanParameter(&_denyHardened));
-
+                     "harden LoadJavaScriptFile",
+                     new BooleanParameter(&_denyHardenedJavaScript));
   options->addOption("--javascript.startup-options-white-list",
                      "startup options whose names match this regular "
-                     "expression will not be exposed to JavaScript actions",
+                     "expression will be whitelisted and exposed to JavaScript",
                      new VectorParameter<StringParameter>(&_startupOptionsWhiteListVec));
-
   options->addOption("--javascript.startup-options-black-list",
                      "startup options whose names match this regular "
-                     "expression will not be exposed to JavaScript actions",
+                     "expression will not be exposed (if not whitelisted) to JavaScript actions",
                      new VectorParameter<StringParameter>(&_startupOptionsBlackListVec));
-
   options->addOption("--javascript.environment-variables-white-list",
-                     "environment variables whose names match this regular "
-                     "expression will not be exposed to JavaScript actions",
+                     "FIXME",
                      new VectorParameter<StringParameter>(&_environmentVariablesWhiteListVec));
-
   options->addOption("--javascript.environment-variables-black-list",
-                     "environment variables whose names match this regular "
-                     "expression will not be exposed to JavaScript actions",
+                     "FIXME",
                      new VectorParameter<StringParameter>(&_environmentVariablesBlackListVec));
-
   options->addOption(
       "--javascript.endpoints-white-list",
-      "endpoints that match this regular expression cannot be connected to via "
-      "internal.download() in JavaScript actions",
+      "FIXME",
+      //"endpoints that match this regular expression cannot be connected to via internal.download() in JavaScript actions",
       new VectorParameter<StringParameter>(&_endpointsWhiteListVec));
-
   options->addOption(
       "--javascript.endpoints-black-list",
-      "endpoints that match this regular expression cannot be connected to via "
-      "internal.download() in JavaScript actions",
+      "FIXME",
+      // "endpoints that match this regular expression cannot be connected to via " "internal.download() in JavaScript actions",
       new VectorParameter<StringParameter>(&_endpointsBlackListVec));
-
   options->addOption("--javascript.files-white-list",
                      "paths to be added to files-white-list-expression",
                      new VectorParameter<StringParameter>(&_filesWhiteListVec));
-
   options->addOption("--javascript.files-black-list",
                      "paths to be added to files-black-list-expression",
                      new VectorParameter<StringParameter>(&_filesBlackListVec));
@@ -312,12 +310,20 @@ bool V8SecurityFeature::isAllowedToExecuteExternalBinaries(v8::Isolate* isolate)
   return _allowExecutionOfBinaries;
 }
 
-bool V8SecurityFeature::lockDownFoxx(v8::Isolate* isolate) const {
-  return _lockDownFoxx;
+bool V8SecurityFeature::disableFoxxApi(v8::Isolate* isolate) const {
+  return _disableFoxxApi;
 }
 
-bool V8SecurityFeature::isAllowedToAccessHardenedFunctions(v8::Isolate* isolate) const {
-  return !_denyHardened;
+bool V8SecurityFeature::disableFoxxStore(v8::Isolate* isolate) const {
+  return _disableFoxxApi;
+}
+
+bool V8SecurityFeature::isDenyedHardenedJavaScript(v8::Isolate* isolate) const {
+  return !_denyHardenedJavaScript;
+}
+
+bool V8SecurityFeature::isDenyedHardenedApi(v8::Isolate* isolate) const {
+  return !_denyHardenedApi;
 }
 
 bool V8SecurityFeature::isAllowedToDefineHttpAction(v8::Isolate* isolate) const {

@@ -452,14 +452,23 @@ global.DEFINE_MODULE('internal', (function () {
     exports.getPid = global.SYS_GET_PID;
     delete global.SYS_GET_PID;
   }
-  
+
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief denyFoxx
+  // / @brief denyFoxx API
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_LOCK_DOWN_FOXX) {
-    exports.lockDownFoxx = global.SYS_LOCK_DOWN_FOXX;
-    delete global.SYS_LOCK_DOWN_FOXX;
+  if (global.SYS_DISABLE_FOXX_API) {
+    exports.disableFoxxApi = global.SYS_DISABLE_FOXX_API;
+    delete global.SYS_DISABLE_FOXX_API;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief denyFoxx Store
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_DISABLE_FOXX_STORE) {
+    exports.disableFoxxStore = global.SYS_DISABLE_FOXX_STORE;
+    delete global.SYS_DISABLE_FOXX_STORE;
   }
 
   // //////////////////////////////////////////////////////////////////////////////

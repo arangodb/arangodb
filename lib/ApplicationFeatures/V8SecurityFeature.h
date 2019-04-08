@@ -51,7 +51,8 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
 
   /// @brief tests if in the current security context it is allowed to
   /// execute external binaries
-  bool isAllowedToAccessHardenedFunctions(v8::Isolate* isolate) const;
+  bool isDenyedHardenedJavaScript(v8::Isolate* isolate) const;
+  bool isDenyedHardenedApi(v8::Isolate* isolate) const;
 
   /// @brief tests if in the current security context it is allowed to define
   /// additional HTTP REST actions
@@ -76,14 +77,17 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   /// calling JavaScript code
   bool isAllowedToAccessPath(v8::Isolate* isolate, std::string path, FSAccessType access) const;
   bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, FSAccessType access) const;
-  bool lockDownFoxx(v8::Isolate* isolate) const;
+  bool disableFoxxApi(v8::Isolate* isolate) const;
+  bool disableFoxxStore(v8::Isolate* isolate) const;
 
   void addToInternalReadWhiteList(char const* item);
 
  private:
-  bool _lockDownFoxx;
+  bool _disableFoxxApi;
+  bool _disableFoxxStore;
+  bool _denyHardenedApi;
+  bool _denyHardenedJavaScript;
   bool _allowExecutionOfBinaries;
-  bool _denyHardened;
 
   std::string _readWhiteList;
   std::unordered_set<std::string> _readWhiteListSet;

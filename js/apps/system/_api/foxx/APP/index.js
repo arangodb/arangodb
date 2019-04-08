@@ -82,7 +82,7 @@ function prepareServiceRequestBody (req, res, next) {
   next();
 }
 
-if (!require("internal").lockDownFoxx()) {
+if (!require("internal").disableFoxxApi()) {
 router.use((req, res, next) => {
   try {
     next();

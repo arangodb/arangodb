@@ -52,7 +52,7 @@ RestStatus RestVersionHandler::execute() {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  bool hardened = !v8security->isAllowedToAccessHardenedFunctions(nullptr);
+  bool hardened = v8security->isDenyedHardenedApi(nullptr);
   bool allowInfo = !hardened;  // allow access if harden flag was not given
 
   ExecContext const* exec = ExecContext::CURRENT;

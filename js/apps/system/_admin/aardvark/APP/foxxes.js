@@ -76,7 +76,7 @@ foxxRouter.use(installer)
 `);
 
 installer.use(function (req, res, next) {
-  if (internal.lockDownFoxx()) {
+  if (internal.disableFoxxApi()) {
     res.throw(403, "not allowed to install services when server is started with --foxx.lock-down true");
   }
   const mount = decodeURIComponent(req.queryParams.mount);
@@ -123,7 +123,7 @@ installer.use(function (req, res, next) {
     configuration
   }, service.simpleJSON()));
 });
-if (!internal.lockDownFoxx()) {
+if (!internal.disableFoxxApi()) {
 installer.put('/store', function (req) {
   req.body = `${req.body.name}:${req.body.version}`;
 })
@@ -212,7 +212,7 @@ installer.put('/raw', function (req) {
 `);
 
 foxxRouter.delete('/', function (req, res) {
-  if (internal.lockDownFoxx()) {
+  if (internal.disableFoxxApi()) {
     res.throw(403, "not allowed to uninstall services when server is started with --foxx.lock-down true");
   }
   const mount = decodeURIComponent(req.queryParams.mount);
@@ -266,7 +266,7 @@ foxxRouter.get('/thumbnail', function (req, res) {
 `);
 
 foxxRouter.get('/config', function (req, res) {
-  if (internal.lockDownFoxx()) {
+  if (internal.disableFoxxApi()) {
     res.throw(403, "not allowed to configure services when server is started with --foxx.lock-down true");
   }
   const mount = decodeURIComponent(req.queryParams.mount);
@@ -300,7 +300,7 @@ foxxRouter.get('/deps', function (req, res) {
 `);
 
 foxxRouter.patch('/config', function (req, res) {
-  if (internal.lockDownFoxx()) {
+  if (internal.disableFoxxApi()) {
     res.throw(403, "not allowed to configure services when server is started with --foxx.lock-down true");
   }
   const mount = decodeURIComponent(req.queryParams.mount);
@@ -371,7 +371,7 @@ foxxRouter.patch('/devel', function (req, res) {
   Used to toggle between production and development mode.
 `);
 
-if (!internal.lockDownFoxx()) {
+if (!internal.disableFoxxApi()) {
 router.get('/fishbowl', function (req, res) {
     try {
       store.update();
