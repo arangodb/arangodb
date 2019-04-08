@@ -147,74 +147,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
       TRI_UpdateTickServer(_maxTick);
       TRI_HybridLogicalClock(_maxHLC);
-
-//      auto dbfeature =
-//          ApplicationServer::getFeature<DatabaseFeature>("Database");
-//
-//      LOG_TOPIC("922bc", TRACE, Logger::ENGINES)
-//          << "finished WAL scan with " << _deltas.size() << " entries";
-//
-//      for (auto& pair : _deltas) {
-//        WBReader::Operations const& ops = pair.second;
-//        // now adjust the counter in collections which are already loaded
-//        auto dbColPair = rocksutils::mapObjectToCollection(pair.first);
-//        if (dbColPair.second == 0 && dbColPair.first == 0) {
-//          // collection with this objectID not known.Skip.
-//          continue;
-//        }
-//        auto vocbase = dbfeature->useDatabase(dbColPair.first);
-//        if (vocbase == nullptr) {
-//          continue;
-//        }
-//        TRI_DEFER(vocbase->release());
-//        auto coll = vocbase->lookupCollection(dbColPair.second);
-//        if (coll == nullptr) {
-//          continue;
-//        }
-//
-//        auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
-//        if (ops.mustTruncate) {  // first we must reset the counter
-//          rcoll->meta().countRefUnsafe()._added = 0;
-//          rcoll->meta().countRefUnsafe()._removed = 0;
-//        }
-//        rcoll->meta().countRefUnsafe()._added += ops.added;
-//        rcoll->meta().countRefUnsafe()._removed += ops.removed;
-//        if (ops.lastRevisionId) {
-//          rcoll->meta().countRefUnsafe()._revisionId = ops.lastRevisionId;
-//        }
-//        TRI_ASSERT(rcoll->meta().countRefUnsafe()._added >=
-//                   rcoll->meta().countRefUnsafe()._removed);
-//        rcoll->loadInitialNumberDocuments();
-//
-//        auto const& it = _generators.find(rcoll->objectId());
-//        if (it != _generators.end()) {
-//          std::string k(basics::StringUtils::itoa(it->second));
-//          coll->keyGenerator()->track(k.data(), k.size());
-//          _generators.erase(it);
-//        }
-//      }
-//      // make sure we collect all the other generators
-//      for (auto gen : _generators) {
-//        if (gen.second > 0) {
-//          auto dbColPair = rocksutils::mapObjectToCollection(gen.first);
-//          if (dbColPair.second == 0 && dbColPair.first == 0) {
-//            // collection with this objectID not known.Skip.
-//            continue;
-//          }
-//          auto vocbase = dbfeature->useDatabase(dbColPair.first);
-//          if (vocbase == nullptr) {
-//            continue;
-//          }
-//          TRI_DEFER(vocbase->release());
-//
-//          auto collection = vocbase->lookupCollection(dbColPair.second);
-//          if (collection == nullptr) {
-//            continue;
-//          }
-//          std::string k(basics::StringUtils::itoa(gen.second));
-//          collection->keyGenerator()->track(k.data(), k.size());
-//        }
-//      }
     });
     return rv;
   }
@@ -232,25 +164,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       _maxTick = tick;
     }
   }
-
-  /*void storeLastKeyValue(uint64_t objectId, uint64_t keyValue) {
-    if (keyValue == 0) {
-      return;
-    }
-
-    auto it = _generators.find(objectId);
-    if (it == _generators.end()) {
-      try {
-        _generators.emplace(objectId, keyValue);
-      } catch (...) {
-      }
-      return;
-    }
-
-    if (keyValue > (*it).second) {
-      (*it).second = keyValue;
-    }
-  }*/
 
   // find estimator for index
   RocksDBCollection* findCollection(uint64_t objectId) {
@@ -405,11 +318,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
             // We track estimates for this index
             idx->estimator()->insert(hash);
           }
-//          RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(idx->collection().getPhysical());
-//          if (rcoll->meta().countUnsafe()._committedSeq < _currentSequence) {
-//            // We track estimates for this index
-//            idx->estimator()->insert(hash);
-//          }
         }
       }
     }
@@ -559,19 +467,6 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     for (auto& helper : engine->recoveryHelpers()) {
       helper->prepare();
     }
-
-//    std::map<uint64_t, rocksdb::SequenceNumber> startSeqs;
-//    auto dbfeature = arangodb::DatabaseFeature::DATABASE;
-//    dbfeature->enumerateDatabases([&](TRI_vocbase_t& vocbase) {
-//      vocbase.processCollections(
-//          [&](LogicalCollection* coll) {
-//            RocksDBCollection* rcoll =
-//                static_cast<RocksDBCollection*>(coll->getPhysical());
-//            rocksdb::SequenceNumber seq = rcoll->meta().currentCount()._committedSeq;
-//            startSeqs.emplace(rcoll->objectId(), seq);
-//          },
-//          /*includeDeleted*/ false);
-//    });
 
     // Tell the WriteBatch reader the transaction markers to look for
     WBReader handler;
