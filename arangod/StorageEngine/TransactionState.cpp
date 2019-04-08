@@ -101,6 +101,8 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
                                        AccessMode::Type accessType,
                                        int nestingLevel, bool force) {
   LOG_TRX("ad6d0", TRACE, this, nestingLevel) << "adding collection " << cid;
+  
+  Result res;
 
   // upgrade transaction type if required
   if (nestingLevel == 0) {
@@ -125,7 +127,6 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
                       AccessMode::Type::READ < AccessMode::Type::WRITE &&
                       AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
                   "AccessMode::Type total order fail");
-    Result res;
     // we may need to recheck permissions here
     if (trxCollection->accessType() < accessType) {
       res.reset(checkCollectionPermission(cname, accessType));
@@ -142,20 +143,20 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
 
   if (nestingLevel > 0 && AccessMode::isWriteOrExclusive(accessType)) {
     // trying to write access a collection in an embedded transaction
-    return Result(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
-                  std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + cname + 
-                  " [" + AccessMode::typeString(accessType) + "]");
+    return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
+                     std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + cname + 
+                     " [" + AccessMode::typeString(accessType) + "]");
   }
 
   if (!AccessMode::isWriteOrExclusive(accessType) &&
       (isRunning() && !_options.allowImplicitCollections)) {
-    return Result(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
-                  std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + cname +
-                  " [" + AccessMode::typeString(accessType) + "]");
+    return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
+                     std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + cname +
+                     " [" + AccessMode::typeString(accessType) + "]");
   }
 
   // now check the permissions
-  Result res = checkCollectionPermission(cname, accessType);
+  res = checkCollectionPermission(cname, accessType);
 
   if (res.fail()) {
     return res;
