@@ -2851,14 +2851,14 @@ arangodb::Result matchBackupServers(VPackSlice const agencyDump,
   if (!planServers.isObject()) {
     return Result(
       TRI_ERROR_HOT_BACKUP_INTERNAL, "agency dump's arango.Plan.DBServers must be object");
+  }
   
-    if (dbServers.size() != planServers.length()) {
-      return Result(
-        TRI_ERROR_BACKUP_TOPOLOGY,
-        std::string("number of db servers in the backup (")
-        + std::to_string(planServers.length()) +
-        ") and in this cluster (" + std::to_string(dbServers.size()) + ") do not match");
-    }
+  if (dbServers.size() < planServers.length()) {
+    return Result(
+      TRI_ERROR_BACKUP_TOPOLOGY,
+      std::string("number of db servers in the backup (")
+      + std::to_string(planServers.length()) +
+      ") and in this cluster (" + std::to_string(dbServers.size()) + ") do not match");
   }
     
   // Clear match container

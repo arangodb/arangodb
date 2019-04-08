@@ -163,7 +163,7 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     REQUIRE(res.ok());
   }
 
-  SECTION("Test all db server new") {
+  SECTION("Test one more local server than in backup") {
     std::shared_ptr<VPackBuilder> props;
 
     std::vector<ServerID> dbServers;
@@ -177,8 +177,25 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     
     arangodb::Result res = matchBackupServers(plan, dbServers, matches);
     
-    REQUIRE(matches.size() == 3);
+    REQUIRE(matches.size() == 0);
     REQUIRE(res.ok());
+  }
+
+  SECTION("Test one less local server than in backup") {
+    std::shared_ptr<VPackBuilder> props;
+
+    std::vector<ServerID> dbServers;
+    std::unordered_map<ServerID,ServerID> matches;
+
+    for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
+      dbServers.push_back(i.key.copyString());
+    }
+    dbServers.pop_back();
+    
+    arangodb::Result res = matchBackupServers(plan, dbServers, matches);
+    
+    REQUIRE(matches.size() == 0);
+    REQUIRE(!res.ok());
   }
 
 }
