@@ -244,14 +244,14 @@ class RocksDBCuckooIndexEstimator {
    * @param  serialized String for output
    * @param  commitSeq  Above that are still uncommited operations
    */
-  void serialize(std::string& serialized, rocksdb::SequenceNumber commitSeq) {
+  void serialize(std::string& serialized, rocksdb::SequenceNumber maxCommitSeq) {
     // We always have to start with the commit seq, type and then the length
 
     // commit seq, above that is an uncommited operations
     //    rocksdb::SequenceNumber commitSeq = committableSeq();
     // must apply updates first to be valid, WAL needs to preserve
-    rocksdb::SequenceNumber appliedSeq = applyUpdates(commitSeq);
-    TRI_ASSERT(appliedSeq <= commitSeq);
+    rocksdb::SequenceNumber appliedSeq = applyUpdates(maxCommitSeq);
+    TRI_ASSERT(appliedSeq <= maxCommitSeq);
 
     {
       // Sorry we need a consistent state, so we have to read-lock

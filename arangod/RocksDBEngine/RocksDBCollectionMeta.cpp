@@ -269,7 +269,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
           << "beginning estimate serialization for index '" << idx->objectId() << "'";
       output.clear();
 
-      est->serialize(output, commitSeq);
+      est->serialize(output, maxCommitSeq);
 //      if (seq > 0) {
 //        // calculate retention sequence number
 //        appliedSeq = std::min(appliedSeq, seq);
@@ -278,7 +278,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
 
       LOG_TOPIC("6b761", TRACE, Logger::ENGINES)
           << "serialized estimate for index '" << idx->objectId()
-          << "' valid through seq " << commitSeq;
+          << "' valid through seq " << maxCommitSeq;
 
       key.constructIndexEstimateValue(idx->objectId());
       rocksdb::Slice value(output);
