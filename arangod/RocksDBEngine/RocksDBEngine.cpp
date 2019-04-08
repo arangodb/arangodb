@@ -97,11 +97,15 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <regex>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace arangodb {
+  
+std::regex const journalFileRegex("^\\d+\\.log$", std::regex::ECMAScript);
 
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
@@ -600,6 +604,32 @@ void RocksDBEngine::start() {
   cfFamilies.emplace_back("FulltextIndex", fixedPrefCF);    // 6
   // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
   //  Update max_write_buffer_number above if you change number of families used
+
+  // validate sizes of existing RocksDB journal files
+  // RocksDB may just crash when opening a logfile with an unexpected size
+  // this check doesn't prevent crashes, but at least gives the end user a
+  // hint about what is going wrong
+  if (!opts->_limitOpenFilesAtStartup &&
+      basics::FileUtils::isDirectory(_options.wal_dir)) {
+    try {
+      std::vector<std::string> journals = basics::FileUtils::listFiles(_options.wal_dir);
+      for (auto const& it : journals) {
+        if (!std::regex_match(it, journalFileRegex)) {
+          continue;
+        }
+        auto filename = basics::FileUtils::buildFilename(_options.wal_dir, it);
+        auto filesize = basics::FileUtils::size(filename);
+        
+        if (filesize < 16) {
+          // found a WAL logfile that is less than 16 bytes big... this looks suspicious
+          // and will likely crash RocksDB later on
+          LOG_TOPIC("a6d97", WARN, arangodb::Logger::FIXME) << "found suspicious filesize (" << filesize << " bytes) for RocksDB journal file '" << filename << "'. this will likely cause follow-up problems";
+        }
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("06a2a", WARN, arangodb::Logger::ROCKSDB) << "caught exception while trying to enumerate RocksDB journal files: " << ex.what();
+    }
+  }
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
   size_t const numberOfColumnFamilies = RocksDBColumnFamily::minNumberOfColumnFamilies;
