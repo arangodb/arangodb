@@ -3518,7 +3518,7 @@ arangodb::Result hotBackupCoordinator(
 
   // acquire agency dump
   auto agency = std::make_shared<VPackBuilder>();
-  result = ci->agencyDump(agency);
+  result = ci->agencyPlan(agency);
   if (!result.ok()) {
     ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
     result.reset(

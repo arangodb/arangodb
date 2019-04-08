@@ -3599,6 +3599,22 @@ arangodb::Result ClusterInfo::getShardServers(ShardID const& shardId,
 
 arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 
+  AgencyCommResult dump = _agency.dump();
+
+  if (!dump.successful()) {
+    LOG_TOPIC(ERR, Logger::CLUSTER)
+      << "failed to acquire agency dump: " << dump.errorMessage();
+    return Result(dump.errorCode(),dump.errorMessage());
+  }
+
+  body->add(dump.slice());
+  return Result();
+
+}
+
+
+arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
+
   AgencyCommResult dump = _agency.getValues("arango/Plan");
 
   if (!dump.successful()) {
@@ -3652,44 +3668,78 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
   supervisionOff = false;
 
   VPackBuilder builder;
-  { VPackArrayBuilder trxs(&builder);
-    { VPackArrayBuilder trx (&builder);
-      { VPackObjectBuilder o(&builder);
-        builder.add(backupKey + backupId, VPackValue(0));
-        builder.add(maintenanceKey, VPackValue("on"));
-      }}
-    { VPackObjectBuilder precs(&builder);
-      builder.add(VPackValue(backupKey));
-      { VPackObjectBuilder oe(&builder);
-        builder.add("oldEmpty", VPackValue(true)); } 
-      builder.add(VPackValue(pendingKey));
-      { VPackObjectBuilder oe(&builder);
-        builder.add("old", VPackSlice::emptyObjectSlice()); } 
-      builder.add(VPackValue(toDoKey));
-      { VPackObjectBuilder oe(&builder);
-        builder.add("old", VPackSlice::emptyObjectSlice()); } 
-      builder.add(VPackValue(maintenanceKey));
-      { VPackObjectBuilder old(&builder);
-        builder.add("oldEmpty", VPackValue(true)); } 
+  {
+    VPackArrayBuilder trxs(&builder);
+    {
+      VPackArrayBuilder trx (&builder);
+
+      // Operations
+      {
+        VPackObjectBuilder o(&builder);
+        builder.add(backupKey + backupId, VPackValue(0)); // Hot backup key
+        builder.add(maintenanceKey, VPackValue("on"));    // Turn off supervision
+      }
+
+      //Preconditions
+      {
+        VPackObjectBuilder precs(&builder);
+        builder.add(VPackValue(backupKey)); // Backup key empty
+        {
+          VPackObjectBuilder oe(&builder);
+          builder.add("oldEmpty", VPackValue(true));
+        }
+        builder.add(VPackValue(pendingKey)); // No jobs pending
+        {
+          VPackObjectBuilder oe(&builder);
+          builder.add("old", VPackSlice::emptyObjectSlice());
+        }
+        builder.add(VPackValue(toDoKey));  // No jobs to do
+        {
+          VPackObjectBuilder oe(&builder);
+          builder.add("old", VPackSlice::emptyObjectSlice());
+        }
+        builder.add(VPackValue(maintenanceKey)); // Supervision on
+        {
+          VPackObjectBuilder old(&builder);
+          builder.add("oldEmpty", VPackValue(true));
+        }
+      }
     }
-    { VPackArrayBuilder trx (&builder);
-      { VPackObjectBuilder o(&builder);
-        builder.add(backupKey + backupId, VPackValue(0));
-        builder.add(maintenanceKey, VPackValue("on"));
-      }}
-    { VPackObjectBuilder precs(&builder);
-      builder.add(VPackValue(backupKey));
-      { VPackObjectBuilder oe(&builder);
-        builder.add("oldEmpty", VPackValue(true)); } 
-      builder.add(VPackValue(pendingKey));
-      { VPackObjectBuilder oe(&builder);
-        builder.add("old", VPackSlice::emptyObjectSlice()); } 
-      builder.add(VPackValue(toDoKey));
-      { VPackObjectBuilder oe(&builder);
-        builder.add("old", VPackSlice::emptyObjectSlice()); } 
-      builder.add(VPackValue(maintenanceKey));
-      { VPackObjectBuilder old(&builder);
-        builder.add("old", VPackValue("on")); } 
+
+    {
+      VPackArrayBuilder trx (&builder);
+
+      // Operations
+      {
+        VPackObjectBuilder o(&builder);
+        builder.add(backupKey + backupId, VPackValue(0)); // Hot backup key
+        builder.add(maintenanceKey, VPackValue("on"));    // Turn off maintenance
+      }
+
+      // Prevonditions
+      {
+        VPackObjectBuilder precs(&builder);
+        builder.add(VPackValue(backupKey));               // Backup key empty
+        {
+          VPackObjectBuilder oe(&builder);
+          builder.add("oldEmpty", VPackValue(true));
+        }
+        builder.add(VPackValue(pendingKey));              // No jobs pending
+        {
+          VPackObjectBuilder oe(&builder);
+          builder.add("old", VPackSlice::emptyObjectSlice());
+        }
+        builder.add(VPackValue(toDoKey));                 // No jobs to do
+        {
+          VPackObjectBuilder oe(&builder);
+          builder.add("old", VPackSlice::emptyObjectSlice());
+        }
+        builder.add(VPackValue(maintenanceKey));          // Supervision off
+        {
+          VPackObjectBuilder old(&builder);
+          builder.add("old", VPackValue("on"));
+        }
+      }
     }
   }
 
@@ -3766,16 +3816,23 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(
     std::chrono::steady_clock::now() + std::chrono::seconds(timeout);
 
   VPackBuilder builder;
-  { VPackArrayBuilder trxs(&builder);
-    { VPackArrayBuilder trx (&builder);
-      { VPackObjectBuilder o(&builder);
-        builder.add(VPackValue(backupKey + backupId));
-        { VPackObjectBuilder oo(&builder);
-          builder.add("op", VPackValue("delete")); }
-        if (!supervisionOff) {
+  {
+    VPackArrayBuilder trxs(&builder);
+    {
+      VPackArrayBuilder trx (&builder);
+      {
+        VPackObjectBuilder o(&builder);
+        builder.add(VPackValue(backupKey + backupId)); // Remove backup key
+        {
+          VPackObjectBuilder oo(&builder);
+          builder.add("op", VPackValue("delete"));
+        }
+        if (!supervisionOff) {  // Turn supervision on, if it was on before
           builder.add(maintenanceKey, VPackValue("off"));
         }
-      }}}
+      }
+    }
+  }
 
   // Try to establish hot backup lock in agency. Result will always be 412.
   // Question is: How 412?
@@ -3796,7 +3853,6 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(
       TRI_ERROR_HOT_BACKUP_INTERNAL, "invalid agency result while releasing backup lock" );    
   }
   auto ar = rv->slice().get("results");
-
   uint64_t res = ar[0].getNumber<uint64_t>();
 
   double wait = 0.1;

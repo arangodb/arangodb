@@ -283,8 +283,15 @@ class ClusterInfo {
   arangodb::Result agencyDump(std::shared_ptr<VPackBuilder> body);
 
   /**
-   * @brief Agency dump including replicated log and compaction
-   * @param  body  Builder to fill with dump
+   * @brief Agency plan
+   * @param  body  Builder to fill with copy of plan
+   * @return       Operation's result
+   */
+  arangodb::Result agencyPlan(std::shared_ptr<VPackBuilder> body);
+
+  /**
+   * @brief Overwrite agency plan
+   * @param  plan  Plan to adapt to 
    * @return       Operation's result
    */
   arangodb::Result agencyReplan(VPackSlice const plan);
