@@ -262,42 +262,6 @@ void ExecutionBlock::returnBlock(AqlItemBlock*& block) noexcept {
   _engine->itemBlockManager().returnBlock(block);
 }
 
-/// @brief copy register data from one block (src) into another (dst)
-/// register values are cloned
-void ExecutionBlock::inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst,
-                                      size_t srcRow, size_t dstRow) {
-  TRI_ASSERT(src != nullptr);
-  RegisterId const n = src->getNrRegs();
-  auto planNode = getPlanNode();
-
-  for (RegisterId i = 0; i < n; i++) {
-    if (planNode->_regsToClear.find(i) != planNode->_regsToClear.end()) {
-      continue;
-    }
-
-    auto const& value = src->getValueReference(srcRow, i);
-
-    if (!value.isEmpty()) {
-      AqlValue a = value.clone();
-      AqlValueGuard guard(a, true);
-
-      TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-
-      dst->setValue(dstRow, i, a);
-      guard.steal();
-    }
-  }
-}
-
-void ExecutionBlock::clearRegisters(AqlItemBlock* result) {
-  // Clear out registers not needed later on:
-  if (result != nullptr) {
-    result->clearRegisters(getPlanNode()->_regsToClear);
-  }
-}
-
 ExecutionState ExecutionBlock::getHasMoreState() {
   if (_done) {
     return ExecutionState::DONE;

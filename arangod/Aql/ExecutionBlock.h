@@ -125,20 +125,6 @@ class ExecutionBlock {
   /// @brief return an AqlItemBlock to the memory manager
   void returnBlock(AqlItemBlock*& block) noexcept;
 
-  /// @brief copy register data from one block (src) into another (dst)
-  /// register values are cloned
-  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t row) {
-    return inheritRegisters(src, dst, row, 0);
-  }
-
-  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst,
-                        size_t srcRow, size_t dstRow);
-
-  /// @brief clearRegisters, clears out registers holding values that are no
-  /// longer needed by later nodes
-  void clearRegisters(AqlItemBlock* result);
-
-
   /// @brief Returns the success return start of this block.
   ///        Can either be HASMORE or DONE.
   ///        Guarantee is that if DONE is returned every subsequent call
