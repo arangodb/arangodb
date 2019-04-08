@@ -132,6 +132,7 @@ set(ARANGODB_TESTS_SOURCES
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
   Graph/ClusterTraverserCacheTest.cpp
+  Hotbackup/HotBackupCoordinatorTest.cpp
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp

@@ -288,7 +288,20 @@ arangodb::Result uploadHotBakupsOnCoordinator(std::string const& backupId);
  * @param backupId  BackupId to delete
  */
 arangodb::Result downloadHotBakupsOnCoordinator(std::string const& backupId);
-  
+
+
+/**
+ * @brief match backup servers
+ * @param  planDump   Dump of plan from backup
+ * @param  dbServers  This cluster's db servers
+ * @param  match      Matched db servers
+ * @return            Operation's success
+ */
+arangodb::Result matchBackupServers(
+  VPackSlice const planDump, std::vector<ServerID> const& dbServers,
+  std::unordered_map<std::string,std::string>& match);
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the active journals for the collection on all DBservers
 ////////////////////////////////////////////////////////////////////////////////

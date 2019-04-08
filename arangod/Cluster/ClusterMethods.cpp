@@ -2835,51 +2835,56 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
  */
 arangodb::Result matchBackupServers(VPackSlice const agencyDump,
                                     std::vector<ServerID> const& dbServers,
-                                    std::unordered_map<std::string,std::string>& match) {
+                                    std::unordered_map<ServerID,ServerID>& match) {
 
-  std::vector<std::string> ap {"arango", "Plan", "DBServers"};
+  std::vector<std::string> ap {"DBServers"};
 
+  LOG_DEVEL << __FILE__ << ":" <<__LINE__;
   if (!agencyDump.hasKey(ap)) {
     return Result(
-      TRI_ERROR_HOT_BACKUP_INTERNAL, "agency dump must contain key arango.Plan.DBServers");
+      TRI_ERROR_HOT_BACKUP_INTERNAL, "agency dump must contain key DBServers");
   }
   auto planServers = agencyDump.get(ap);
+  LOG_DEVEL << __FILE__ << ":" <<__LINE__;
 
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "matching db servers between snapshot: " <<
     planServers.toJson() << " and this cluster's db servers " << dbServers; 
 
+  LOG_DEVEL << __FILE__ << ":" <<__LINE__;
   if (!planServers.isObject()) {
     return Result(
       TRI_ERROR_HOT_BACKUP_INTERNAL, "agency dump's arango.Plan.DBServers must be object");
+  
+    if (dbServers.size() != planServers.length()) {
+      return Result(
+        TRI_ERROR_BACKUP_TOPOLOGY,
+        std::string("number of db servers in the backup (")
+        + std::to_string(planServers.length()) +
+        ") and in this cluster (" + std::to_string(dbServers.size()) + ") do not match");
+    }
   }
-
-  if (dbServers.size() != planServers.length()) {
-    return Result(
-      TRI_ERROR_BACKUP_TOPOLOGY,
-      std::string("number of db servers in the backup (")
-      + std::to_string(planServers.length()) +
-      ") and in this cluster (" + std::to_string(dbServers.size()) + ") do not match");
-  }
-
+    
   // Clear match container
   match.clear();
+  LOG_DEVEL << __FILE__ << ":" <<__LINE__;
 
   // Local copy of my servers
   std::unordered_set<std::string> localCopy;
   std::copy(dbServers.begin(), dbServers.end(),
             std::inserter(localCopy, localCopy.end()));
 
+  LOG_DEVEL << __FILE__ << ":" <<__LINE__;
   // Skip all direct matching names in pair and remove them from localCopy
   std::unordered_set<std::string>::iterator it; 
-  for (auto const& planned : VPackArrayIterator(planServers)) {
-    auto const plannedStr = planned.copyString();
+  for (auto const& planned : VPackObjectIterator(planServers)) {
+    auto const plannedStr = planned.key.copyString();
     if ((it = std::find(localCopy.begin(), localCopy.end(), plannedStr)) != localCopy.end()) {
       localCopy.erase(it);
     } else {
       match.emplace(plannedStr, std::string());
     }
   }
-
+  LOG_DEVEL << __FILE__ << ":" <<__LINE__;
   // match all remaining
   auto it2 = localCopy.begin();
   for (auto& m : match) {
@@ -2887,11 +2892,10 @@ arangodb::Result matchBackupServers(VPackSlice const agencyDump,
   }
 
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "DB server matches: " << match;
-
+  
   return arangodb::Result();
-
+  
 }
-
 
 arangodb::Result controlMaintenanceFeature(
   std::string const& command, std::string const& backupId,
