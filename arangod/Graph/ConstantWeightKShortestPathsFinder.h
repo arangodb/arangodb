@@ -43,11 +43,6 @@ namespace graph {
 
 struct ShortestPathOptions;
 
-// Class to find k shortest paths (with constant weight).
-// Given two vertices <start> and <end>, forms to balls around
-// <start> and <end> and expands them until they intersect in a
-// vertex
-//
 // Inherit from ShortestPathfinder to get destroyEngines and not copy it
 // again.
 // TODO: Traverser.h has destroyEngines as well (the code for the two functions
@@ -160,7 +155,8 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
                     arangodb::velocypack::Slice const& target,
                     arangodb::graph::ShortestPathResult& result,
                     std::function<void()> const& callback) {
-    TRI_ASSERT(true);
+    TRI_ASSERT(false);
+    return false;
   };
 
   //
@@ -177,6 +173,8 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
   bool computeShortestPath(const VertexRef& start, const VertexRef& end,
                            const std::vector<VertexRef>& forbiddenVertices,
                            const std::vector<Edge>& forbiddenEdges, Path& result);
+  bool computeNextShortestPath(Path& result);
+
   void reconstructPath(const Ball& left, const Ball& right,
                        const VertexRef& join, Path& result);
 
