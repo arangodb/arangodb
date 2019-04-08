@@ -24,6 +24,7 @@
 #include "V8Server/v8-voccursor.h"
 #include "Aql/QueryCursor.h"
 #include "Aql/QueryResult.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Transaction/Context.h"

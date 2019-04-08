@@ -300,12 +300,12 @@ TEST_CASE("IResearchQueryTestOptionsCollections", "[iresearch][iresearch-query]"
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         {
           insertedDocs.emplace_back();
-          auto const res = collections[0]->insert(&trx, doc, insertedDocs.back(), opt, tick, false);
+          auto const res = collections[0]->insert(&trx, doc, insertedDocs.back(), opt, false);
           CHECK(res.ok());
         }
         {
           insertedDocs.emplace_back();
-          auto const res = collections[1]->insert(&trx, doc, insertedDocs.back(), opt, tick, false);
+          auto const res = collections[1]->insert(&trx, doc, insertedDocs.back(), opt, false);
           CHECK(res.ok());
         }
         ++i;
@@ -959,7 +959,7 @@ TEST_CASE("IResearchQueryTestOptionsWaitForSync", "[iresearch][iresearch-query]"
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt, tick, false);
+        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt, false);
         CHECK(res.ok());
         ++i;
       }

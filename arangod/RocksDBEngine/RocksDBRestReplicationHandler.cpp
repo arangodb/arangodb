@@ -73,20 +73,14 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
                     "invalid JSON");
       return;
     }
-    double ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", 0);
     std::string patchCount =
         VelocyPackHelper::getStringValue(body, "patchCount", "");
 
-    bool found;
-    std::string const& value = _request->value("serverId", found);
-    TRI_server_id_t serverId = 0;
+    std::string const& clientId = _request->value("serverId");
 
-    if (found && !value.empty() && value != "none") {
-      serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-    }
-
-    // create transaction+snapshot, ttl will be 300 if `ttl == 0``
-    auto* ctx = _manager->createContext(ttl, serverId);
+    // create transaction+snapshot, ttl will be default if `ttl == 0``
+    double ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
+    auto* ctx = _manager->createContext(ttl, clientId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
 
     if (!patchCount.empty()) {
@@ -122,31 +116,19 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", replutils::BatchInfo::DefaultTimeout);
 
-    int res = _manager->extendLifetime(id, ttl);
+    std::string clientId;
+    int res = _manager->extendLifetime(id, clientId, ttl);
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(GeneralResponse::responseCode(res), res);
       return;
     }
 
-    // add client
-    bool found;
-    std::string const& value = _request->value("serverId", found);
-    if (!found) {
-      LOG_TOPIC("61e69", DEBUG, Logger::REPLICATION)
-          << "no serverId parameter found in request to " << _request->fullUrl();
-    }
-
-    TRI_server_id_t serverId = id;  // just use context id as fallback
-    if (!value.empty() && value != "none") {
-      serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-    }
-
     // last tick value in context should not have changed compared to the
     // initial tick value used in the context (it's only updated on bind()
     // call, which is only executed when a batch is initially created)
-    _vocbase.updateReplicationClient(serverId, ttl);
+    _vocbase.replicationClients().extend(clientId, ttl);
 
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
@@ -219,12 +201,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   }
 
   // add client
-  std::string const& value3 = _request->value("serverId", found);
-
-  TRI_server_id_t serverId = 0;
-  if (!found || (!value3.empty() && value3 != "none")) {
-    serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value3));
-  }
+  std::string const& clientId = _request->value("serverId");
 
   bool includeSystem = _request->parsedValue("includeSystem", true);
   uint64_t chunkSize = _request->parsedValue<uint64_t>("chunkSize", 1024 * 1024);
@@ -330,8 +307,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   // note a higher tick than the slave will have received, which may
   // lead to the master eventually deleting a WAL section that the
   // slave will still request later
-  _vocbase.updateReplicationClient(serverId, tickStart == 0 ? 0 : tickStart - 1,
-                                   replutils::BatchInfo::DefaultTimeout);
+  double ttl = _request->parsedValue("ttl", replutils::BatchInfo::DefaultTimeout);
+  _vocbase.replicationClients().track(clientId, tickStart == 0 ? 0 : tickStart - 1, ttl);
 }
 
 /// @brief run the command that determines which transactions were open at

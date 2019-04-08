@@ -112,12 +112,12 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
     _done = true;
 
-    rocksdb::PinnableSlice val;
+    rocksdb::PinnableSlice ps;
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
-    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &val);
+    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &ps);
 
     if (s.ok()) {
-      cb(RocksDBValue::documentId(val));
+      cb(RocksDBValue::documentId(ps));
     }
 
     // there is at most one element, so we are done now
@@ -134,12 +134,12 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
     _done = true;
 
-    rocksdb::PinnableSlice val;
+    rocksdb::PinnableSlice ps;
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
-    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &val);
+    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &ps);
 
     if (s.ok()) {
-      cb(LocalDocumentId(RocksDBValue::documentId(val)),
+      cb(LocalDocumentId(RocksDBValue::documentId(ps)),
         RocksDBKey::indexedVPack(_key.ref()));
     }
 

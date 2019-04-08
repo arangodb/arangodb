@@ -44,6 +44,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction_db.h>
@@ -894,6 +895,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
   options.fill_cache = EdgeIndexFillBlockCache;
   std::unique_ptr<rocksdb::Iterator> it(
       rocksutils::globalRocksDB()->NewIterator(options, _cf));
+  
+  ManagedDocumentResult mdr;
 
   size_t n = 0;
   cache::Cache* cc = _cache.get();
@@ -971,21 +974,20 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
     }
     if (needsInsert) {
       LocalDocumentId const docId =
-          RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue, key);
-      if (!rocksColl->readDocumentWithCallback(trx, docId, [&](LocalDocumentId const&, VPackSlice doc) {
-            builder.add(VPackValue(docId.id()));
-            VPackSlice toFrom =
-                _isFromIndex ? transaction::helpers::extractToFromDocument(doc)
-                             : transaction::helpers::extractFromFromDocument(doc);
-            TRI_ASSERT(toFrom.isString());
-            builder.add(toFrom);
-          })) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        // Data Inconsistency.
-        // We have a revision id without a document...
+      RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue, key);
+      if (!rocksColl->readDocument(trx, docId, mdr)) {
+        // Data Inconsistency. revision id without a document...
         TRI_ASSERT(false);
-#endif
+        continue;
       }
+      
+      builder.add(VPackValue(docId.id()));
+      VPackSlice doc(mdr.vpack());
+      VPackSlice toFrom =
+      _isFromIndex ? transaction::helpers::extractToFromDocument(doc)
+                   : transaction::helpers::extractFromFromDocument(doc);
+      TRI_ASSERT(toFrom.isString());
+      builder.add(toFrom);
     }
   }
 
