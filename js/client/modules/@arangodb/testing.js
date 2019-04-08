@@ -138,7 +138,7 @@ const optionsDefaults = {
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
-  'getSockStat': true,
+  'getSockStat': false,
   'arangosearch':true,
   'jsonReply': false,
   'loopEternal': false,
