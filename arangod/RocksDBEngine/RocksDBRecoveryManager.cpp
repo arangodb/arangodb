@@ -401,10 +401,15 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       if (hash != 0) {
         auto* idx = findIndex(RocksDBKey::objectId(key));
         if (idx && idx->estimator() != nullptr) {
-          if (idx->estimator()->committedSeq() < _currentSequence) {
+          if (idx->estimator()->appliedSeq() < _currentSequence) {
             // We track estimates for this index
             idx->estimator()->insert(hash);
           }
+//          RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(idx->collection().getPhysical());
+//          if (rcoll->meta().countUnsafe()._committedSeq < _currentSequence) {
+//            // We track estimates for this index
+//            idx->estimator()->insert(hash);
+//          }
         }
       }
     }
@@ -449,7 +454,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       if (hash != 0) {
         auto* idx = findIndex(RocksDBKey::objectId(key));
         if (idx && idx->estimator() != nullptr) {
-          if (idx->estimator()->committedSeq() < _currentSequence) {
+          if (idx->estimator()->appliedSeq() < _currentSequence) {
             // We track estimates for this index
             idx->estimator()->remove(hash);
           }
@@ -508,14 +513,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         cc._committedSeq = _currentSequence;
         cc._added = 0;
         cc._removed = 0;
-      }
-      
-      for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
-        RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-        RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
-//        TRI_ASSERT(!est || est->committedSeq() == 0 || est->committedSeq() >= _currentSequence);
-        if (est && est->committedSeq() < _currentSequence) {
-          est->clear();
+        
+        for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
+          RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
+          RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
+          if (est) {
+            est->clear();
+          }
         }
       }
     }

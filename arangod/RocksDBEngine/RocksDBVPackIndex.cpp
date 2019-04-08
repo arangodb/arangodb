@@ -1297,5 +1297,5 @@ void RocksDBVPackIndex::recalculateEstimates() {
     uint64_t hash = RocksDBVPackIndex::HashForKey(it->key());
     _estimator->insert(hash);
   }
-  _estimator->setCommitSeq(seq);
+  _estimator->setAppliedSeq(seq);
 }

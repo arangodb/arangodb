@@ -95,8 +95,8 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
     }
 
     uint64_t seq = 42;
-    uint64_t applied = est.serialize(serialization, 0);
-    CHECK(applied == 0);
+    est.setAppliedSeq(seq);
+    est.serialize(serialization, seq);
 
     // Test that the serialization first reports the correct length
     uint64_t length = serialization.size() - 8;  // don't count the seq
@@ -117,7 +117,7 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
     CHECK(est.nrUsed() == copy.nrUsed());
     CHECK(est.nrCuckood() == copy.nrCuckood());
     CHECK(est.computeEstimate() == copy.computeEstimate());
-    CHECK(seq == copy.committedSeq());
+    CHECK(seq == copy.appliedSeq());
 
     // Now let us remove the same elements in both
     bool coin = false;
@@ -157,22 +157,22 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
       est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
       // make sure we don't apply yet
-      auto actual = est.serialize(serialization, meta.committableSeq());
+      est.serialize(serialization, meta.committableSeq());
       serialization.clear();
-      REQUIRE(actual == expected);
+      REQUIRE(est.appliedSeq() == expected);
       REQUIRE((1.0 / std::max(1.0, static_cast<double>(iteration))) ==
               est.computeEstimate());
 
       meta.removeBlocker(iteration);
-
+      CHECK(meta.committableSeq() == UINT64_MAX);
+      
       // now make sure we apply it
-      actual = est.serialize(serialization, meta.committableSeq());
+      est.serialize(serialization, currentSeq);
       expected = currentSeq;
       serialization.clear();
-      REQUIRE(actual == expected);
+      REQUIRE(est.appliedSeq() == expected);
       REQUIRE((1.0 / std::max(1.0, static_cast<double>(iteration + 1))) ==
               est.computeEstimate());
-      REQUIRE(est.committedSeq() == expected);
     }
 
     // test basic removal buffering
@@ -188,23 +188,24 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
       est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
       // make sure we don't apply yet
-      auto actual = est.serialize(serialization, meta.committableSeq());
+      REQUIRE(meta.committableSeq() == expected + 1);
+      est.serialize(serialization, meta.committableSeq());
       serialization.clear();
-      REQUIRE(actual == expected);
+      REQUIRE(est.appliedSeq() == expected);
       REQUIRE((1.0 / std::max(1.0, static_cast<double>(10 - iteration))) ==
               est.computeEstimate());
 
       meta.removeBlocker(iteration);
 
       // now make sure we apply it
-      actual = est.serialize(serialization, meta.committableSeq());
+      est.serialize(serialization, meta.committableSeq());
       serialization.clear();
       expected = currentSeq;
-      REQUIRE(actual == expected);
+      REQUIRE(est.appliedSeq() == expected);
       REQUIRE(
           (1.0 / std::max(1.0, static_cast<double>(10 - (iteration + 1)))) ==
           est.computeEstimate());
-      REQUIRE(est.committedSeq() == expected);
+      REQUIRE(est.appliedSeq() == expected);
     }
   }
 
@@ -231,9 +232,9 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
       meta.removeBlocker(iteration - 1);
 
       // now make sure we applied last batch, but not this one
-      auto actual = est.serialize(serialization, meta.committableSeq());
+      est.serialize(serialization, meta.committableSeq());
       serialization.clear();
-      REQUIRE(actual == expected);
+      REQUIRE(est.appliedSeq() == expected);
       REQUIRE((1.0 / std::max(1.0, static_cast<double>(iteration))) ==
               est.computeEstimate());
     }
@@ -263,18 +264,18 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
       meta.removeBlocker(std::max(static_cast<size_t>(1), iteration));
 
       // now make sure we haven't applied anything
-      auto actual = est.serialize(serialization, meta.committableSeq());
+      est.serialize(serialization, meta.committableSeq());
       serialization.clear();
-      REQUIRE(actual == expected);
+      REQUIRE(est.appliedSeq() == expected);
       REQUIRE(1.0 == est.computeEstimate());
     }
 
     // now remove first blocker and make sure we apply everything
     meta.removeBlocker(0);
-    auto actual = est.serialize(serialization, meta.committableSeq());
+    est.serialize(serialization, meta.committableSeq());
     expected = currentSeq;
     serialization.clear();
-    REQUIRE(actual == expected);
+    REQUIRE(est.appliedSeq() == expected);
     REQUIRE(0.1 == est.computeEstimate());
   }
 

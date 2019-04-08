@@ -190,7 +190,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
   // write batch will be reset every x documents
   MethodsType batched(state, &batch);
 
-  auto commitLambda = [&](rocksdb::SequenceNumber seq) {
+  auto commitLambda = [&] {
     if (batch.GetWriteBatch()->Count() > 0) {
       s = rootDB->Write(wo, batch.GetWriteBatch());
       if (!s.ok()) {
@@ -213,7 +213,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
           ridx.estimator()->remove(hash);
         }
       } else {
-        ridx.estimator()->bufferUpdates(seq, std::move(it->second.inserts),
+        ridx.estimator()->bufferUpdates(0, std::move(it->second.inserts),
                                         std::move(it->second.removals));
       }
     }
@@ -234,7 +234,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
     numDocsWritten++;
 
     if (numDocsWritten % 200 == 0) {  // commit buffered writes
-      commitLambda(rootDB->GetLatestSequenceNumber());
+      commitLambda();
       if (res.fail()) {
         break;
       }
@@ -246,14 +246,14 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
   }
 
   if (res.ok()) {
-    commitLambda(rootDB->GetLatestSequenceNumber());
+    commitLambda();
   }
 
   if (res.ok()) {  // required so iresearch commits
     res = trx.commit();
 
     if (ridx.estimator() != nullptr) {
-      ridx.estimator()->setCommitSeq(rootDB->GetLatestSequenceNumber());
+      ridx.estimator()->setAppliedSeq(rootDB->GetLatestSequenceNumber());
     }
   }
 
@@ -502,10 +502,10 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
   if (res.ok()) {
     numScanned = replay.numInserted + replay.numRemoved;
     res = trx.commit();  // important for iresearch
-    
-    if (ridx.estimator() != nullptr) {
-      ridx.estimator()->setCommitSeq(rootDB->GetLatestSequenceNumber());
-    }
+//
+//    if (ridx.estimator() != nullptr) {
+//      ridx.estimator()->setCommitSeq(rootDB->GetLatestSequenceNumber());
+//    }
   }
 
   LOG_TOPIC("5796c", DEBUG, Logger::ENGINES) << "WAL REPLAYED insertions: " << replay.numInserted

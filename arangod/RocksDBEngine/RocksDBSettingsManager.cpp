@@ -181,7 +181,7 @@ Result RocksDBSettingsManager::sync(bool force) {
     TRI_DEFER(vocbase->releaseCollection(coll.get()));
 
     auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
-    rocksdb::SequenceNumber appliedSeq = minSeqNr;
+    rocksdb::SequenceNumber appliedSeq = maxSeqNr;
     Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder, appliedSeq);
     minSeqNr = std::min(minSeqNr, appliedSeq);
 

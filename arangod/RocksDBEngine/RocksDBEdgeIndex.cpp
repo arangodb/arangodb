@@ -1126,5 +1126,5 @@ void RocksDBEdgeIndex::recalculateEstimates() {
     uint64_t hash = RocksDBEdgeIndex::HashForKey(it->key());
     _estimator->insert(hash);
   }
-  _estimator->setCommitSeq(seq);
+  _estimator->setAppliedSeq(seq);
 }

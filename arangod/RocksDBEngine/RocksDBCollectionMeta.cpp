@@ -175,11 +175,6 @@ RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::loadCount() {
   bool didWork = false;
   const rocksdb::SequenceNumber commitSeq = committableSeq();
   applyAdjustments(commitSeq, didWork);
-//  if (didWork) {  // make sure serializeMeta has something to do
-//    std::lock_guard<std::mutex> guard(_bufferLock);
-//    _bufferedAdjs.emplace(seq, Adjustment{0, 0});
-//  }
-
   return _count;
 }
 
@@ -199,10 +194,11 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
   Result res;
 
   bool didWork = false;
+  // maxCommitSeq is == UINT64_MAX without any blockers
   const rocksdb::SequenceNumber maxCommitSeq = committableSeq();
-  rocksdb::SequenceNumber seq = applyAdjustments(maxCommitSeq, didWork);
+  rocksdb::SequenceNumber commitSeq = applyAdjustments(maxCommitSeq, didWork);
   if (didWork) {
-    appliedSeq = std::min(appliedSeq, seq);
+    appliedSeq = commitSeq;
   } else {  // maxCommitSeq is == UINT64_MAX without any blockers
     appliedSeq = std::min(appliedSeq, maxCommitSeq);
   }
@@ -273,16 +269,16 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
           << "beginning estimate serialization for index '" << idx->objectId() << "'";
       output.clear();
 
-      seq = est->serialize(output, maxCommitSeq);
-      if (seq > 0) {
-        // calculate retention sequence number
-        appliedSeq = std::min(appliedSeq, seq);
-      }
+      est->serialize(output, commitSeq);
+//      if (seq > 0) {
+//        // calculate retention sequence number
+//        appliedSeq = std::min(appliedSeq, seq);
+//      }
       TRI_ASSERT(output.size() > sizeof(uint64_t));
 
       LOG_TOPIC("6b761", TRACE, Logger::ENGINES)
           << "serialized estimate for index '" << idx->objectId()
-          << "' valid through seq " << seq;
+          << "' valid through seq " << commitSeq;
 
       key.constructIndexEstimateValue(idx->objectId());
       rocksdb::Slice value(output);
@@ -371,7 +367,7 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
       auto est = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(estimateInput);
       LOG_TOPIC("63f3b", DEBUG, Logger::ENGINES)
           << "found index estimator for objectId '" << idx->objectId() << "' committed seqNr '"
-          << est->committedSeq() << "' with estimate " << est->computeEstimate();
+          << est->appliedSeq() << "' with estimate " << est->computeEstimate();
 
       idx->setEstimator(std::move(est));
     } else {
