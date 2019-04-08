@@ -79,7 +79,7 @@ struct RocksDBCollectionMeta final {
    * @param  seq   The sequence number immediately prior to call
    * @return       May return error if we fail to allocate and place blocker
    */
-  Result placeBlocker(uint64_t trxId, rocksdb::SequenceNumber seq);
+  Result placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq);
 
   /**
    * @brief Removes an existing transaction blocker
@@ -91,7 +91,7 @@ struct RocksDBCollectionMeta final {
    * @param trxId Identifier for active transaction (should match input to
    *              earlier `placeBlocker` call)
    */
-  void removeBlocker(uint64_t trxId);
+  void removeBlocker(TRI_voc_tid_t trxId);
 
   /// @brief returns the largest safe seq to squash updates against
   rocksdb::SequenceNumber committableSeq() const;
@@ -134,8 +134,8 @@ public:
 
   mutable arangodb::basics::ReadWriteLock _blockerLock;
   /// @brief blocker identifies a transaction being committed
-  std::map<uint64_t, rocksdb::SequenceNumber> _blockers;
-  std::set<std::pair<rocksdb::SequenceNumber, uint64_t>> _blockersBySeq;
+  std::map<TRI_voc_tid_t, rocksdb::SequenceNumber> _blockers;
+  std::set<std::pair<rocksdb::SequenceNumber, TRI_voc_tid_t>> _blockersBySeq;
 
   DocCount _count;  /// @brief document count struct
 

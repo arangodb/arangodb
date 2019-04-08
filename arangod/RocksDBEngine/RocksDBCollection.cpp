@@ -452,11 +452,12 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 #if USE_PLAN_CACHE
     arangodb::aql::PlanCache::instance()->invalidate(_logicalCollection->vocbase());
 #endif
-    // make sure buffered updates are applied
-    if (inBackground) {
+    
+    // inBackground index might not recover selectivity estimate w/o sync
+    if (inBackground && !idx->unique() && idx->hasSelectivityEstimate()) {
       engine->settingsManager()->sync(false);
     }
-    
+
     // Step 6. persist in rocksdb
     if (!engine->inRecovery()) {  // write new collection marker
       auto builder =

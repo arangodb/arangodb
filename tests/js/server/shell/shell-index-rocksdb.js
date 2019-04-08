@@ -42,17 +42,17 @@ function backgroundIndexSuite() {
     }).length;
   };
   const waitForTasks = () => {
-    const time = require("internal").time;
+    const time = internal.time;
     const start = time();
     while (!tasksCompleted()) {
       if (time() - start > 300) { // wait for 5 minutes maximum
         fail("Timeout after 5 minutes");
       }
-      require("internal").wait(0.5, false);
+      internal.wait(0.5, false);
     }
-    require('internal').wal.flush(true, true);
+    internal.wal.flush(true, true);
     // wait an extra second for good measure
-    require("internal").wait(1.0, false);
+    internal.wait(1.0, false);
   };
 
   return {

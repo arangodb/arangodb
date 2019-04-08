@@ -189,7 +189,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
   RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();
   // write batch will be reset every x documents
   MethodsType batched(state, &batch);
-
+  
   auto commitLambda = [&] {
     if (batch.GetWriteBatch()->Count() > 0) {
       s = rootDB->Write(wo, batch.GetWriteBatch());
@@ -213,8 +213,9 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
           ridx.estimator()->remove(hash);
         }
       } else {
+        // since cuckoo estimator uses a map with seq as key we need to 
         ridx.estimator()->bufferUpdates(0, std::move(it->second.inserts),
-                                        std::move(it->second.removals));
+                                           std::move(it->second.removals));
       }
     }
   };

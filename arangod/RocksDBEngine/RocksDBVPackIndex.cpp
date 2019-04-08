@@ -37,6 +37,7 @@
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -710,12 +711,13 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
   }
 
   if (res.ok() && !_unique) {
-    auto state = RocksDBTransactionState::toState(&trx);
-
-    for (auto& it : hashes) {
+    auto* state = RocksDBTransactionState::toState(&trx);
+    auto* trxc = static_cast<RocksDBTransactionCollection*>(state->findCollection(_collection.id()));
+    TRI_ASSERT(trxc != nullptr);
+    for (uint64_t hash : hashes) {
       // The estimator is only useful if we are in a non-unique indexes
       TRI_ASSERT(!_unique);
-      state->trackIndexInsert(_collection.id(), id(), it);
+      trxc->trackIndexInsert(id(), hash);
     }
   } else if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
     // find conflicting document
@@ -885,12 +887,13 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
   }
 
   if (res.ok() && !_unique) {
-    auto state = RocksDBTransactionState::toState(&trx);
-
-    for (auto& it : hashes) {
+    auto* state = RocksDBTransactionState::toState(&trx);
+    auto* trxc = static_cast<RocksDBTransactionCollection*>(state->findCollection(_collection.id()));
+    TRI_ASSERT(trxc != nullptr);
+    for (uint64_t hash : hashes) {
       // The estimator is only useful if we are in a non-unique indexes
       TRI_ASSERT(!_unique);
-      state->trackIndexRemove(_collection.id(), id(), it);
+      trxc->trackIndexRemove(id(), hash);
     }
   } else if (res.fail()) {
     addErrorMsg(res);

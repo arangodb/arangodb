@@ -301,7 +301,7 @@ class RocksDBCuckooIndexEstimator {
 
       bool havePendingUpdates = !_insertBuffers.empty() || !_removalBuffers.empty() ||
                                 !_truncateBuffer.empty();
-      _needToPersist.store(havePendingUpdates);
+      _needToPersist.store(havePendingUpdates, std::memory_order_release);
     }
     
     _appliedSeq.store(appliedSeq, std::memory_order_release);
@@ -325,14 +325,14 @@ class RocksDBCuckooIndexEstimator {
       }
     }
 
-    _needToPersist.store(true);
+    _needToPersist.store(true, std::memory_order_release);
   }
 
   Result bufferTruncate(rocksdb::SequenceNumber seq) {
     Result res = basics::catchVoidToResult([&]() -> void {
       WRITE_LOCKER(locker, _lock);
       _truncateBuffer.emplace(seq);
-      _needToPersist.store(true);
+      _needToPersist.store(true, std::memory_order_release);
     });
     return res;
   }
@@ -403,7 +403,7 @@ class RocksDBCuckooIndexEstimator {
         slot.increase();
       }
       ++_nrTotal;
-      _needToPersist.store(true);
+      _needToPersist.store(true, std::memory_order_release);
     }
 
     return true;
@@ -435,7 +435,7 @@ class RocksDBCuckooIndexEstimator {
           slot.reset();
           --_nrUsed;
         }
-        _needToPersist.store(true);
+        _needToPersist.store(true, std::memory_order_release);
         return true;
       }
       // If we get here we assume that the element was once inserted, but
@@ -445,7 +445,7 @@ class RocksDBCuckooIndexEstimator {
         // not included in _nrTotal, just decrease here
         --_nrCuckood;
       }
-      _needToPersist.store(true);
+      _needToPersist.store(true, std::memory_order_release);
     }
     return false;
   }
@@ -462,8 +462,8 @@ class RocksDBCuckooIndexEstimator {
   uint64_t nrCuckood() const { return _nrCuckood; }
 
   bool needToPersist() const {
-    READ_LOCKER(locker, _lock);
-    return _needToPersist.load();
+//    READ_LOCKER(locker, _lock);
+    return _needToPersist.load(std::memory_order_acquire);
   }
 
   /**
@@ -483,19 +483,15 @@ class RocksDBCuckooIndexEstimator {
     TRI_ASSERT(!inserts.empty() || !removals.empty());
     Result res = basics::catchVoidToResult([&]() -> void {
       WRITE_LOCKER(locker, _lock);
-      bool foundSomething = false;
       if (!inserts.empty()) {
         _insertBuffers.emplace(seq, std::move(inserts));
-        foundSomething = true;
       }
       if (!removals.empty()) {
         _removalBuffers.emplace(seq, std::move(removals));
-        foundSomething = true;
       }
-      if (foundSomething) {
-        _needToPersist.store(true);
-        LOG_TOPIC("69002", TRACE, Logger::ENGINES) << "buffered updates with stamp " << seq;
-      }
+      
+      _needToPersist.store(true, std::memory_order_release);
+      LOG_TOPIC("69002", TRACE, Logger::ENGINES) << "buffered updates with stamp " << seq;
     });
     return res;
   }
@@ -927,8 +923,8 @@ class RocksDBCuckooIndexEstimator {
   std::atomic<rocksdb::SequenceNumber> _appliedSeq;
   std::atomic<bool> _needToPersist;
 
-  std::map<rocksdb::SequenceNumber, std::vector<Key>> _insertBuffers;
-  std::map<rocksdb::SequenceNumber, std::vector<Key>> _removalBuffers;
+  std::multimap<rocksdb::SequenceNumber, std::vector<Key>> _insertBuffers;
+  std::multimap<rocksdb::SequenceNumber, std::vector<Key>> _removalBuffers;
   std::set<rocksdb::SequenceNumber> _truncateBuffer;
 
   HashKey _hasherKey;        // Instance to compute the first hash function

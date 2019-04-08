@@ -83,7 +83,7 @@ RocksDBCollectionMeta::RocksDBCollectionMeta() : _count(0, 0, 0, 0) {}
  * @param  seq   The sequence number immediately prior to call
  * @return       May return error if we fail to allocate and place blocker
  */
-Result RocksDBCollectionMeta::placeBlocker(uint64_t trxId, rocksdb::SequenceNumber seq) {
+Result RocksDBCollectionMeta::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq) {
   return basics::catchToResult([&]() -> Result {
     Result res;
     WRITE_LOCKER(locker, _blockerLock);
@@ -110,7 +110,7 @@ Result RocksDBCollectionMeta::placeBlocker(uint64_t trxId, rocksdb::SequenceNumb
  * @param trxId Identifier for active transaction (should match input to
  *              earlier `placeBlocker` call)
  */
-void RocksDBCollectionMeta::removeBlocker(uint64_t trxId) {
+void RocksDBCollectionMeta::removeBlocker(TRI_voc_tid_t trxId) {
   WRITE_LOCKER(locker, _blockerLock);
   auto it = _blockers.find(trxId);
   if (ADB_LIKELY(_blockers.end() != it)) {
