@@ -511,6 +511,7 @@ class RocksDBCuckooIndexEstimator {
   /// only set when recalculating the index estimate
   void setAppliedSeq(rocksdb::SequenceNumber seq) {
     _appliedSeq.store(seq, std::memory_order_release);
+    _needToPersist.store(true, std::memory_order_release);
   }
 
  private:  // methods
@@ -543,7 +544,7 @@ class RocksDBCuckooIndexEstimator {
           if (!_insertBuffers.empty()) {
             auto it = _insertBuffers.begin();  // sorted ASC
             if (it->first <= commitSeq) {
-              if (it->first >= ignoreSeq) {
+              if (it->first > ignoreSeq) {
                 inserts = std::move(it->second);
                 TRI_ASSERT(!inserts.empty());
               }
@@ -556,7 +557,7 @@ class RocksDBCuckooIndexEstimator {
           if (!_removalBuffers.empty()) {
             auto it = _removalBuffers.begin();  // sorted ASC
             if (it->first <= commitSeq) {
-              if (it->first >= ignoreSeq) {
+              if (it->first > ignoreSeq) {
                 removals = std::move(it->second);
                 TRI_ASSERT(!removals.empty());
               }

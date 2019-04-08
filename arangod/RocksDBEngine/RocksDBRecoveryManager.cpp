@@ -416,18 +416,19 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         return rocksdb::Status();
       }
       
-      if (coll->meta().countUnsafe()._committedSeq < _currentSequence) {
+      if (coll->meta().countUnsafe()._committedSeq <= _currentSequence) {
         auto& cc = coll->meta().countUnsafe();
         cc._committedSeq = _currentSequence;
         cc._added = 0;
         cc._removed = 0;
-        
-        for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
-          RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-          RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
-          if (est) {
-            est->clear();
-          }
+      }
+      
+      for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
+        RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
+        RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
+        if (est && est->appliedSeq() <= _currentSequence) {
+          est->clear();
+          est->setAppliedSeq(_currentSequence);
         }
       }
     }
