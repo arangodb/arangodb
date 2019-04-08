@@ -3661,10 +3661,12 @@ std::vector<std::string> modepv = {"Supervision","State","Mode"};
 
 
 arangodb::Result ClusterInfo::agencyHotBackupLock(
-  std::string const& backupId, uint64_t const& timeout, bool& supervisionOff) {
+  std::string const& backupId, double const& timeout, bool& supervisionOff) {
+
+  using namespace std::chrono;
 
   auto const endTime =
-    std::chrono::steady_clock::now() + std::chrono::seconds(timeout);
+    steady_clock::now() + milliseconds(static_cast<uint64_t>(1.0e3*timeout));
   supervisionOff = false;
 
   VPackBuilder builder;
@@ -3747,7 +3749,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
   // Question is: How 412?
   auto result =
     _agency.sendWithFailover(
-      arangodb::rest::RequestType::POST, (double)timeout, writeURL, builder.slice());
+      arangodb::rest::RequestType::POST, timeout, writeURL, builder.slice());
   if (!result.successful() &&
       result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
     return arangodb::Result(
@@ -3810,10 +3812,12 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
 
 
 arangodb::Result ClusterInfo::agencyHotBackupUnlock(
-  std::string const& backupId, uint64_t const& timeout, const bool& supervisionOff) {
+  std::string const& backupId, double const& timeout, const bool& supervisionOff) {
 
+  using namespace std::chrono;
+  
   auto const endTime =
-    std::chrono::steady_clock::now() + std::chrono::seconds(timeout);
+    steady_clock::now() + milliseconds(static_cast<uint64_t>(1.0e3*timeout));
 
   VPackBuilder builder;
   {
@@ -3838,7 +3842,7 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(
   // Question is: How 412?
   auto result =
     _agency.sendWithFailover(
-      arangodb::rest::RequestType::POST, (double)timeout, writeURL, builder.slice());
+      arangodb::rest::RequestType::POST, timeout, writeURL, builder.slice());
   if (!result.successful() &&
       result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
     return arangodb::Result(

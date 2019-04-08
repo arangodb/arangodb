@@ -624,20 +624,20 @@ class ClusterInfo {
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds 
    *
-   * @param  timeout  Timeout to waitfor
+   * @param  timeout  Timeout to wait for in seconds
    * @return          Operation's result
    */
   arangodb::Result agencyHotBackupLock(
-    std::string const& uuid, uint64_t const& timeout, bool& supervisionOff);
+    std::string const& uuid, double const& timeout, bool& supervisionOff);
   
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds 
    *
-   * @param  timeout  Timeout to waitfor
+   * @param  timeout  Timeout to wait for in seconds
    * @return          Operation's result
    */
   arangodb::Result agencyHotBackupUnlock(
-    std::string const& uuid, uint64_t const& timeout, const bool& supervisionOff);
+    std::string const& uuid, double const& timeout, const bool& supervisionOff);
 
 private:
   void loadClusterId();

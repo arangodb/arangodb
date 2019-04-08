@@ -246,12 +246,49 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector,
 /// @brief create hotbackup on a coordinator
 //////////////////////////////////////////////////////////////////////////////
 
- enum HotBackupMode {CONSISTENT, DIRTY};
+enum HotBackupMode {CONSISTENT, DIRTY};
 
- arangodb::Result hotBackupCoordinator(HotBackupMode const&, uint64_t const&);
+/**
+ * @brief Create hot backup on coordinators
+ * @param mode    Backup mode: consistent, dirty
+ * @param timeout Wait for this attempt and bail out if not met
+ */
+arangodb::Result hotBackupCoordinator(
+  HotBackupMode const& mode, double const& timeout);
 
- arangodb::Result loadLocalBackup(HotBackupMode const&);
-
+/**
+ * @brief Restore specific hot backup on coordinators
+ * @param mode    Backup mode: consistent, dirty
+ * @param timeout Wait for this attempt and bail out if not met
+ */
+arangodb::Result hotRestoreCoordinator(std::string const& backupId);
+  
+/**
+ * @brief List all 
+ * @param mode    Backup mode: consistent, dirty
+ * @param timeout Wait for this attempt and bail out if not met
+ */
+arangodb::Result listHotBakupsOnCoordinator(
+  std::string const& backupId = std::string());
+  
+/**
+ * @brief Delete specific hot backup
+ * @param backupId  BackupId to delete
+ */
+arangodb::Result deleteHotBakupsOnCoordinator(std::string const& backupId);
+  
+/**
+ * @brief Delete specific hot backup
+ * @param backupId  BackupId to delete
+ */
+arangodb::Result uploadHotBakupsOnCoordinator(std::string const& backupId);
+  
+/**
+ * @brief Delete specific hot backup
+ * @param backupId  BackupId to delete
+ */
+arangodb::Result downloadHotBakupsOnCoordinator(std::string const& backupId);
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the active journals for the collection on all DBservers
 ////////////////////////////////////////////////////////////////////////////////

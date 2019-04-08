@@ -2785,7 +2785,7 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
   // Perform the requests
   size_t done = 0;
   cc->performRequests(
-    requests, CL_DEFAULT_TIMEOUT, done, Logger::COMMUNICATION, false);
+    requests, CL_DEFAULT_TIMEOUT, done, Logger::HOTBACKUP, false);
   
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Getting list of local backups";
 
@@ -2800,6 +2800,7 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
         std::string("Communication error while getting listt of backups from ")
         + req.destination);
     }
+    
     TRI_ASSERT(res.answer != nullptr);
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice resSlice = resBody->slice();
@@ -2921,7 +2922,7 @@ arangodb::Result controlMaintenanceFeature(
   // Perform the requests
   size_t done = 0;
   cc->performRequests(
-    requests, CL_DEFAULT_TIMEOUT, done, Logger::COMMUNICATION, false);
+    requests, CL_DEFAULT_TIMEOUT, done, Logger::HOTBACKUP, false);
   
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
     << "Attempting to stop maintenance features for hot backup id " << backupId;
@@ -2990,7 +2991,7 @@ arangodb::Result restoreOnDBServers(
   // Perform the requests
   size_t nrDone = 0;
   cc->performRequests(
-    requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
+    requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::HOTBACKUP, false);
 
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Restoring backup " << backupId;
 
@@ -3102,7 +3103,7 @@ arangodb::Result findLocalBackup(
   // Perform the requests
   size_t nrDone = 0;
   cc->performRequests(
-    requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
+    requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::HOTBACKUP, false);
 
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Inquiring about backup " << backupId;
 
@@ -3355,7 +3356,7 @@ arangodb::Result hotBackupDBServers(
   // Perform the requests
   size_t nrDone = 0;
   cc->performRequests(
-    requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
+    requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::HOTBACKUP, false);
 
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Inquiring about backup " << backupId;
 
@@ -3426,7 +3427,7 @@ arangodb::Result removeLocalBackups(
   // Perform the requests
   size_t done = 0;
   cc->performRequests(
-    requests, CL_DEFAULT_TIMEOUT, done, Logger::COMMUNICATION, false);
+    requests, CL_DEFAULT_TIMEOUT, done, Logger::HOTBACKUP, false);
 
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Deleting backup " << backupId;
 
@@ -3469,7 +3470,7 @@ arangodb::Result removeLocalBackups(
 }
 
 arangodb::Result hotBackupCoordinator(
-  HotBackupMode const& mode, uint64_t const& timeout) {
+  HotBackupMode const& mode, double const& timeout) {
 
   /*
     Suggestion for procedure for cluster hotbackup:
@@ -3490,7 +3491,7 @@ arangodb::Result hotBackupCoordinator(
   using namespace std::chrono;
 
   std::string const backupId = to_string(boost::uuids::random_generator()());
-  auto end = steady_clock::now() + seconds(timeout);
+  auto end = steady_clock::now() + milliseconds(static_cast<uint64_t>(1000*timeout));
   ClusterInfo* ci = ClusterInfo::instance();
 
   // Go to backup mode for *timeoute* if and only if not already in
