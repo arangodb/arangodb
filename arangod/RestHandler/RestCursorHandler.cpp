@@ -21,6 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RestCursorHandler.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
@@ -28,10 +29,10 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
-#include "RestCursorHandler.h"
 #include "Transaction/Context.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
+#include "Utils/Events.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
@@ -100,6 +101,29 @@ RestStatus RestCursorHandler::continueExecute() {
   // Other parts of the query cannot be paused
   TRI_ASSERT(false);
   return RestStatus::DONE;
+}
+
+void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
+  TRI_DEFER(RestVocbaseBaseHandler::shutdownExecute(isFinalized));
+  auto const type = _request->requestType();
+
+  // only trace create cursor requests
+  if (type != rest::RequestType::POST) {
+    return;
+  }
+
+  if (!_isValidForFinalize) {
+    // set by RestCursorHandler before
+    return;
+  }
+
+  try {
+    bool parseSuccess = true;
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+    VPackSlice body = parsedBody.get()->slice();
+    events::QueryDocument(*_request, _response.get(), body);
+  } catch (...) {
+  }
 }
 
 bool RestCursorHandler::cancel() {

@@ -26,6 +26,8 @@ namespace arangodb {
 namespace events {
 void UnknownAuthenticationMethod(GeneralRequest const&) {}
 void CredentialsMissing(GeneralRequest const&) {}
+void LoggedIn(GeneralRequest const&, std::string const& username) {}
+void CredentialsBad(GeneralRequest const&, std::string const& username) {}
 void CredentialsBad(GeneralRequest const&, rest::AuthenticationMethod) {}
 void PasswordChangeRequired(GeneralRequest const&) {}
 void Authenticated(GeneralRequest const&, rest::AuthenticationMethod) {}
@@ -40,5 +42,14 @@ void DropIndex(std::string const& db, std::string const& col,
                std::string const& idx, int result) {}
 void CreateView(std::string const& db, std::string const& name, int result) {}
 void DropView(std::string const& db, std::string const& name, int result) {}
+void CreateDocument(GeneralRequest const&, int) {}
+void DeleteDocument(GeneralRequest const&, int result) {}
+void ReadDocument(GeneralRequest const&, int result) {}
+void TestDocument(GeneralRequest const&, int result) {}
+void ReplaceDocument(GeneralRequest const&, int result) {}
+void ModifyDocument(GeneralRequest const&, int result) {}
+void IllegalDocumentOperation(GeneralRequest const&, int result) {}
+void QueryDocument(GeneralRequest const&, GeneralResponse const*, VPackSlice const&) {}
+
 }  // namespace events
 }  // namespace arangodb

@@ -64,10 +64,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_AQL; }
 
   virtual RestStatus continueExecute() override;
-
-#ifdef USE_ENTERPRISE
   void shutdownExecute(bool isFinalized) noexcept override;
-#endif
 
   bool cancel() override final;
 
