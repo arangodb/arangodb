@@ -2872,7 +2872,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
  public:
   explicit SortToIndexNode(ExecutionPlan* plan)
-      : _plan(plan), _sortNode(nullptr), _sorts(), _variableDefinitions(), _modified(false) {}
+      : _plan(plan), _sortNode(nullptr), _modified(false) {}
 
   bool handleEnumerateCollectionNode(EnumerateCollectionNode* enumerateCollectionNode) {
     if (_sortNode == nullptr) {
