@@ -108,6 +108,27 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::skipSomeF
   return {out.first, skipped};
 }
 
+std::pair<ExecutionState, bool> ExecutionBlockImpl<ScatterExecutor>::getBlock(size_t atMost) {
+  ExecutionBlock::throwIfKilled();  // check if we were aborted
+
+  auto res = getSome(atMost);
+  if (res.first == ExecutionState::WAITING) {
+    return {res.first, false};
+  }
+
+  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  _upstreamState = res.first;
+
+  if (res.second != nullptr) {
+    return {res.first, true};
+  }
+
+  return {res.first, false};
+}
+
 /// @brief getOrSkipSomeForShard
 std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<ScatterExecutor>::getOrSkipSomeForShard(
     size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,

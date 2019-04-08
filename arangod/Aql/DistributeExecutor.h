@@ -92,6 +92,8 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlockWithClients {
   /// _distBuffer.at(clientId).
   std::pair<ExecutionState, bool> getBlockForClient(size_t atMost, size_t clientId);
 
+  std::pair<ExecutionState, bool> getBlock(size_t atMost); // TODO: Move to Impl?
+
   /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
   /// attributes <shardKeys> of the register <id> to determine to which shard
   /// the row should be sent.
@@ -139,6 +141,10 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlockWithClients {
   bool _allowKeyConversionToObject;
 
   bool _createKeys;
+
+  /// @brief the execution state of the dependency
+  ///        used to determine HASMORE or DONE better
+  ExecutionState _upstreamState;
 };
 
 }  // namespace aql

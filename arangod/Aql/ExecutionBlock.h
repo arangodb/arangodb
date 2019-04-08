@@ -114,7 +114,6 @@ class ExecutionBlock {
   void traceSkipSomeBegin(size_t atMost);
   void traceSkipSomeEnd(size_t skipped, ExecutionState state);
 
- protected:
   /// @brief throw an exception if query was killed
   void throwIfKilled();
 
@@ -135,11 +134,6 @@ class ExecutionBlock {
   void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst,
                         size_t srcRow, size_t dstRow);
 
-  /// @brief the following is internal to pull one more block and append it to
-  /// our _buffer deque. Returns true if a new block was appended and false if
-  /// the dependent node is exhausted.
-  std::pair<ExecutionState, bool> getBlock(size_t atMost);
-
   /// @brief clearRegisters, clears out registers holding values that are no
   /// longer needed by later nodes
   void clearRegisters(AqlItemBlock* result);
@@ -152,14 +146,6 @@ class ExecutionBlock {
   ///        HASMORE is allowed to lie, so a next call to get/skipSome could
   ///        return no more results.
   virtual ExecutionState getHasMoreState();
-
-  /// @brief If the buffer is empty, calls getBlock(atMost). The return values
-  /// mean:
-  /// - NO_MORE_BLOCKS: the buffer is empty and the upstream is DONE
-  /// - HAS_BLOCKS: there is at least one block in the buffer
-  /// - HAS_NEW_BLOCK: the buffer was empty before and a new block was added
-  /// - WAITING: upstream returned WAITING, state is unchanged
-  enum class BufferState { NO_MORE_BLOCKS, HAS_BLOCKS, HAS_NEW_BLOCK, WAITING };
 
  protected:
   /// @brief the execution engine

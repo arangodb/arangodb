@@ -214,6 +214,27 @@ bool ExecutionBlockImpl<DistributeExecutor>::hasMoreForClientId(size_t clientId)
   return _upstreamState == ExecutionState::HASMORE;
 }
 
+std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlock(size_t atMost) {
+  ExecutionBlock::throwIfKilled();  // check if we were aborted
+
+  auto res = getSome(atMost);
+  if (res.first == ExecutionState::WAITING) {
+    return {res.first, false};
+  }
+
+  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  _upstreamState = res.first;
+
+  if (res.second != nullptr) {
+    return {res.first, true};
+  }
+
+  return {res.first, false};
+}
+
 /// @brief getBlockForClient: try to get atMost pairs into
 /// _distBuffer.at(clientId), this means we have to look at every row in the
 /// incoming blocks until they run out or we find enough rows for clientId. We
@@ -231,7 +252,7 @@ std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlock
 
   while (buf.size() < atMost) {
     if (_index == _buffer.size()) {
-      auto res = ExecutionBlock::getBlock(atMost);
+      auto res = getBlock(atMost);
       if (res.first == ExecutionState::WAITING) {
         return {res.first, false};
       }

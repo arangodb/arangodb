@@ -72,6 +72,8 @@ class ExecutionBlockImpl<ScatterExecutor> : public BlockWithClients {
   std::pair<ExecutionState, size_t> skipSomeForShardWithoutTrace(size_t atMost,
                                                                  std::string const& shardId);
 
+  std::pair<ExecutionState, bool> getBlock(size_t atMost);
+
   std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
       size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
       size_t& skipped, std::string const& shardId);

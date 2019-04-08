@@ -291,32 +291,6 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst
   }
 }
 
-/// @brief the following is internal to pull one more block and append it to
-/// our _buffer deque. Returns true if a new block was appended and false if
-/// the dependent node is exhausted.
-std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
-  throwIfKilled();  // check if we were aborted
-
-  auto res = _dependencies[0]->getSome(atMost);
-  if (res.first == ExecutionState::WAITING) {
-    return {res.first, false};
-  }
-
-  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  _upstreamState = res.first;
-
-  if (res.second != nullptr) {
-    _buffer.emplace_back(res.second.get());
-    res.second.release();
-    return {res.first, true};
-  }
-
-  return {res.first, false};
-}
-
 void ExecutionBlock::clearRegisters(AqlItemBlock* result) {
   // Clear out registers not needed later on:
   if (result != nullptr) {
