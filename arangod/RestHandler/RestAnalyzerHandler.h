@@ -31,7 +31,7 @@ namespace iresearch {
 
 class IResearchAnalyzerFeature; // forward declaration
 
-class RestAnalyzerHandler final: public RestVocbaseBaseHandler {
+class RestAnalyzerHandler: public RestVocbaseBaseHandler {
  public:
   // @note RestHandlerFactory::createHandler(...) passes raw pointers for
   //       request/response to RestHandlerCreator::createNoData(...)

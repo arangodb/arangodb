@@ -5,6 +5,8 @@ devel
   responsible shard for a given document. Note that this function is only available
   in a cluster coordinator.
 
+* updated bundled version of jemalloc memory allocator to 5.2.0.
+
 * don't create per-database system collection `_frontend` automatically.
   This collection is only needed by the web UI, and it can be created lazily 
   when needed.

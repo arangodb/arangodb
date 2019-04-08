@@ -31,11 +31,13 @@
 
 using namespace arangodb::velocypack;
 
-#ifdef _WIN32
 namespace {
 
-/// naive memrchr overlay for Windows, which doesn't implement it
-void* memrchr(void const* block, int c, size_t size) {
+void* memrchrSwitch(void const* block, int c, size_t size) {
+#ifdef __linux__
+  return const_cast<void*>(memrchr(block, c, size));
+#else
+/// naive memrchr overlay for Windows or other platforms, which don't implement it
   if (size) {
     unsigned char const* p = static_cast<unsigned char const*>(block);
 
@@ -46,10 +48,10 @@ void* memrchr(void const* block, int c, size_t size) {
     }
   }
   return nullptr;
+#endif
 }
 
 } // namespace
-#endif
   
 StringRef::StringRef(Slice slice) {
   VELOCYPACK_ASSERT(slice.isString());
@@ -80,7 +82,7 @@ size_t StringRef::find(char c) const {
   
 size_t StringRef::rfind(char c) const {
   char const* p =
-      static_cast<char const*>(memrchr(static_cast<void const*>(_data), c, _length));
+      static_cast<char const*>(::memrchrSwitch(static_cast<void const*>(_data), c, _length));
 
   if (p == nullptr) {
     return std::string::npos;

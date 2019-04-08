@@ -258,7 +258,7 @@ class RocksDBCuckooIndexEstimator {
       // Sorry we need a consistent state, so we have to read-lock
       READ_LOCKER(locker, _lock);
 
-      /// appliedSeq might be 0 if we did not applie any operations
+      /// appliedSeq might be 0 if we did not apply any operations
       appliedSeq = std::max(appliedSeq, this->committedSeq());
       TRI_ASSERT(appliedSeq != std::numeric_limits<rocksdb::SequenceNumber>::max());
       rocksutils::uint64ToPersistent(serialized, appliedSeq);

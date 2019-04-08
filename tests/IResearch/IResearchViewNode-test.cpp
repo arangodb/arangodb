@@ -24,7 +24,7 @@
 #include "catch.hpp"
 #include "common.h"
 
-#include "IResearch/IResearchViewNode.h"
+#include "Aql/IResearchViewNode.h"
 
 #include "../Mocks/StorageEngineMock.h"
 
@@ -38,6 +38,8 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/IResearchViewExecutor.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
@@ -49,8 +51,6 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
-#include "IResearch/IResearchViewBlock.h"
-#include "IResearch/IResearchViewNode.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
@@ -194,6 +194,7 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
 
     // no options
     {
+      arangodb::aql::SingletonNode singleton(query.plan(), 0);
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                   42,             // id
                                                   vocbase,        // database
@@ -203,6 +204,7 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
                                                   nullptr,  // no options
                                                   {}        // no sort condition
       );
+      node.addDependency(&singleton);
 
       CHECK(node.empty());                // view has no links
       CHECK(node.collections().empty());  // view has no links
@@ -224,8 +226,8 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
       CHECK(&outVariable == setHere[0]);
       CHECK(false == node.options().forceSync);
 
-      CHECK(0. == node.getCost().estimatedCost);    // no dependencies
-      CHECK(0 == node.getCost().estimatedNrItems);  // no dependencies
+      CHECK(2. == node.getCost().estimatedCost);    // dependency is a singleton
+      CHECK(1 == node.getCost().estimatedNrItems);  // dependency is a singleton
     }
 
     // with options
@@ -1271,6 +1273,7 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
 
     // no filter condition, no sort condition
     {
+      arangodb::aql::SingletonNode singleton(query.plan(), 0);
       arangodb::iresearch::IResearchViewNode node(*query.plan(),
                                                   42,           // id
                                                   vocbase,      // database
@@ -1280,6 +1283,13 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
                                                   nullptr,  // no options
                                                   {}        // no sort condition
       );
+      node.addDependency(&singleton);
+
+      // "Trust me, I'm an IT professional"
+      singleton.setVarUsageValid();
+      node.setVarUsageValid();
+
+      node.planRegisters(nullptr);
 
       std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> EMPTY;
 
@@ -1313,8 +1323,9 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
       {
         auto block = node.createBlock(engine, EMPTY);
         CHECK(nullptr != block);
-        CHECK(nullptr != dynamic_cast<arangodb::iresearch::IResearchViewUnorderedBlock*>(
-                             block.get()));
+        CHECK(nullptr !=
+              dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::IResearchViewExecutor<false>>*>(
+                  block.get()));
       }
     }
   }
