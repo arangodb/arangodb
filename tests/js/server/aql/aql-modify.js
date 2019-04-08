@@ -86,39 +86,6 @@ const validateDocsAreUpdated = function (docs, invalid, areUpdated) {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-
-function aqlInsertOptionsSuite () {
-
-  return {
-    setUp, tearDown,
-    testErrorMessageOnUniqueConstraintViolated : function () {
-      let q = `INSERT {"_key" : "paff"} INTO ${collectionName}`;
-      db._query(q);
-      assertEqual(2001, col.count());
-
-      // check generic message
-      try {
-        db._query(q);
-        fail();
-      } catch (err) {
-        assertEqual(err.errorNum, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
-      }
-
-      // check if we get details, when operation was not silent (retuning something)
-      q = `INSERT {"_key" : "paff"} INTO ${collectionName} RETURN NEW `;
-      try {
-        db._query(q);
-        fail();
-      } catch (err) {
-        assertEqual(err.errorNum, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
-        assertMatch(/conflicting key/, err.message);
-        assertMatch(/_key/, err.message);
-        assertMatch(/paff/, err.message);
-      }
-    }
-  };
-};
-
 function aqlUpdateOptionsSuite () {
 
   return {
@@ -1290,7 +1257,6 @@ function aqlUpsertOptionsSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(aqlInsertOptionsSuite);
 jsunity.run(aqlUpdateOptionsSuite);
 jsunity.run(aqlUpdateWithOptionsSuite);
 jsunity.run(aqlUpdateWithRevOptionsSuite);
