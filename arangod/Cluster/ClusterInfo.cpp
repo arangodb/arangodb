@@ -3852,9 +3852,17 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(
     return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_INTERNAL, "invalid agency result while releasing backup lock" );    
   }
-  auto ar = rv->slice().get("results");
-  uint64_t res = ar[0].getNumber<uint64_t>();
 
+  
+  auto ar = rv->slice().get("results");
+  uint64_t res = 0;
+  if (ar[0].isNumber()) {
+    res = ar[0].getNumber<uint64_t>();
+  } else { 
+    return arangodb::Result(
+      TRI_ERROR_HOT_BACKUP_INTERNAL, "invalid agency result while releasing backup lock" );    
+  }
+  
   double wait = 0.1;
   while (!application_features::ApplicationServer::isStopping() &&
          std::chrono::steady_clock::now() < endTime) {
