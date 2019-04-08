@@ -29,6 +29,8 @@
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
+
+#include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 
 namespace arangodb {
@@ -128,6 +130,14 @@ struct EdgeDocumentToken {
     return equalsLocal(other);
   }
 
+  size_t hash() const {
+    if (ServerState::instance()->isCoordinator()) {
+      auto vslice = arangodb::velocypack::Slice(value.vpack());
+      return vslice.hash();
+    }
+    return hash(_data.document.localDocumentId) ^ (_data.document.cid() << 1);
+  }
+
  private:
   /// Identifying information for an edge documents valid on one server
   /// only used on a dbserver or single server
@@ -171,6 +181,22 @@ struct EdgeDocumentToken {
 #endif
 };
 }  // namespace graph
-
 }  // namespace arangodb
+
+namespace std {
+template<>
+  struct hash<arangodb::graph::EdgeDocumentToken> {
+  size_t operator()(arangodb::graph::EdgeDocumentToken const& value) const noexcept {
+    return value.hash();
+  }
+};
+
+template <>
+  struct equal_to<arangodb::graph::EdgeDocumentToken> {
+  bool operator()(arangodb::graph::EdgeDocumentToken const& lhs,
+                  arangodb::graph::EdgeDocumentToken const& rhs) const noexcept {
+    return lhs.equals(rhs);
+  }
+};
+}
 #endif
