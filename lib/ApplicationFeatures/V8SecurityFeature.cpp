@@ -44,7 +44,8 @@ V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& se
       _disableFoxxStore(false),
       _denyHardenedApi(false),
       _denyHardenedJavaScript(false),
-      _allowExecutionOfBinaries(false) {
+      _allowExecutionOfBinaries(false),
+      _allowPortTesting(false) {
   setOptional(false);
   startsAfter("V8Platform");
 }
@@ -67,6 +68,10 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
       new BooleanParameter(&_disableFoxxStore));
 
   options->addSection("javascript", "Configure the Javascript engine");
+  options->addOption(
+      "--javascript.allow-port-testing",
+      "allow testing of ports",
+      new BooleanParameter(&_allowPortTesting));
   options->addOption(
       "--javascript.allow-external-process-control",
       "allow execution of external binaries. default set to false",
@@ -308,6 +313,10 @@ bool V8SecurityFeature::isAllowedToExecuteExternalBinaries(v8::Isolate* isolate)
     return _allowExecutionOfBinaries || v8g->_securityContext.canExecuteExternalBinaries();
   }
   return _allowExecutionOfBinaries;
+}
+
+bool V8SecurityFeature::isAllowedToTestPorts(v8::Isolate* isolate) const {
+  return _allowPortTesting;
 }
 
 bool V8SecurityFeature::disableFoxxApi(v8::Isolate* isolate) const {

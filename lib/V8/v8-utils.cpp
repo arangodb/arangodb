@@ -4570,6 +4570,17 @@ static void JS_TestPort(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("testPort(<address>)");
   }
 
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToTestPorts(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to test ports");
+  }
+
   std::string address = TRI_ObjectToString(isolate, args[0]);
   Endpoint* endpoint = Endpoint::serverFactory(address, 10, false);
   if (nullptr == endpoint) {

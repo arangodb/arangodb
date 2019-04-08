@@ -48,6 +48,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   /// @brief tests if in the current security context it is allowed to
   /// execute external binaries
   bool isAllowedToExecuteExternalBinaries(v8::Isolate* isolate) const;
+  bool isAllowedToTestPorts(v8::Isolate* isolate) const;
 
   /// @brief tests if in the current security context it is allowed to
   /// execute external binaries
@@ -88,6 +89,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   bool _denyHardenedApi;
   bool _denyHardenedJavaScript;
   bool _allowExecutionOfBinaries;
+  bool _allowPortTesting;
 
   std::string _readWhiteList;
   std::unordered_set<std::string> _readWhiteListSet;
