@@ -34,6 +34,7 @@
 namespace arangodb {
 class GeneralRequest;
 class GeneralResponse;
+struct OperationResult;
 
 namespace events {
 void UnknownAuthenticationMethod(GeneralRequest const&);
@@ -54,12 +55,16 @@ void DropIndex(std::string const& db, std::string const& col,
                std::string const& idx, int result);
 void CreateView(std::string const& db, std::string const& name, int result);
 void DropView(std::string const& db, std::string const& name, int result);
-void CreateDocument(GeneralRequest const&, int result);
-void DeleteDocument(GeneralRequest const&, int result);
-void ReadDocument(GeneralRequest const&, int result);
-void TestDocument(GeneralRequest const&, int result);
-void ReplaceDocument(GeneralRequest const&, int result);
-void ModifyDocument(GeneralRequest const&, int result);
+void CreateDocument(std::string const& db, std::string const& collection,
+                    VPackSlice const& document, int);
+void DeleteDocument(std::string const& db, std::string const& collection,
+                    VPackSlice const& document, int);
+void ReadDocument(std::string const& db, std::string const& collection,
+                  VPackSlice const& document, int);
+void ReplaceDocument(std::string const& db, std::string const& collection,
+                     VPackSlice const& document, int);
+void ModifyDocument(std::string const& db, std::string const& collection,
+                    VPackSlice const& document, int);
 void IllegalDocumentOperation(GeneralRequest const&, int result);
 void QueryDocument(GeneralRequest const&, GeneralResponse const*, VPackSlice const&);
 }  // namespace events

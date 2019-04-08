@@ -85,22 +85,11 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
 
     switch (type) {
       case rest::RequestType::DELETE_REQ:
-        events::DeleteDocument(*request, result);
-        break;
       case rest::RequestType::GET:
-        events::ReadDocument(*request, result);
-        break;
       case rest::RequestType::HEAD:
-        events::TestDocument(*request, result);
-        break;
       case rest::RequestType::POST:
-        events::CreateDocument(*request, result);
-        break;
       case rest::RequestType::PUT:
-        events::ReplaceDocument(*request, result);
-        break;
       case rest::RequestType::PATCH:
-        events::ModifyDocument(*request, result);
         break;
       default:
         events::IllegalDocumentOperation(*request, result);
