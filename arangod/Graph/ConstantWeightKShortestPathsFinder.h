@@ -147,7 +147,6 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
 
  public:
   explicit ConstantWeightKShortestPathsFinder(ShortestPathOptions& options);
-  explicit ConstantWeightKShortestPathsFinder(ShortestPathOptions& options, std::function<void()> *callback);
   ~ConstantWeightKShortestPathsFinder();
 
   // This is here because we inherit from ShortestPathFinder (to get the destroyEngines function)
@@ -170,6 +169,8 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
   bool getNextPath(arangodb::graph::ShortestPathResult& path);
   bool isPathAvailable(void) { return _pathAvailable; };
 
+  void setCallback(std::function<void()> const& callback) { _callback = callback; };
+
  private:
   bool computeShortestPath(const VertexRef& start, const VertexRef& end,
                            const std::unordered_set<VertexRef>& forbiddenVertices,
@@ -189,12 +190,7 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
                        const std::unordered_set<Edge>& forbiddenEdges, VertexRef& join);
 
  private:
-  std::function<void()> const * _callback;
-  inline void guardedCallback() {
-    if(_callback != nullptr) {
-      (*_callback)();
-    }
-  }
+  std::function<void()> _callback;
   bool _pathAvailable;
 
   VertexRef _start;

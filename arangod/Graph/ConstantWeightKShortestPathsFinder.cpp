@@ -44,11 +44,7 @@ using namespace arangodb::graph;
 
 //
 ConstantWeightKShortestPathsFinder::ConstantWeightKShortestPathsFinder(ShortestPathOptions& options)
-    : ShortestPathFinder(options), _callback(nullptr), _pathAvailable(false) {}
-
-ConstantWeightKShortestPathsFinder::ConstantWeightKShortestPathsFinder(
-    ShortestPathOptions& options, std::function<void()>* callback)
-    : ShortestPathFinder(options), _callback(callback), _pathAvailable(false) {}
+    : ShortestPathFinder(options), _pathAvailable(false) {}
 
 ConstantWeightKShortestPathsFinder::~ConstantWeightKShortestPathsFinder() {}
 
@@ -84,7 +80,7 @@ bool ConstantWeightKShortestPathsFinder::computeShortestPath(
   result.clear();
 
   while (!left._frontier.empty() && !right._frontier.empty() && !found) {
-    guardedCallback();
+    _callback();
 
     // Choose the smaller frontier to expand.
     if (left._frontier.size() < right._frontier.size()) {
