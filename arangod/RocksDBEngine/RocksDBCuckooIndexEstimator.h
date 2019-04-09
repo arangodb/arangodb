@@ -462,7 +462,6 @@ class RocksDBCuckooIndexEstimator {
   uint64_t nrCuckood() const { return _nrCuckood; }
 
   bool needToPersist() const {
-//    READ_LOCKER(locker, _lock);
     return _needToPersist.load(std::memory_order_acquire);
   }
 

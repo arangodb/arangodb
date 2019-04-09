@@ -503,10 +503,6 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
   if (res.ok()) {
     numScanned = replay.numInserted + replay.numRemoved;
     res = trx.commit();  // important for iresearch
-//
-//    if (ridx.estimator() != nullptr) {
-//      ridx.estimator()->setCommitSeq(rootDB->GetLatestSequenceNumber());
-//    }
   }
 
   LOG_TOPIC("5796c", DEBUG, Logger::ENGINES) << "WAL REPLAYED insertions: " << replay.numInserted

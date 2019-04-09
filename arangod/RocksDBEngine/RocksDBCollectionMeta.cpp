@@ -270,10 +270,6 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
       output.clear();
 
       est->serialize(output, maxCommitSeq);
-//      if (seq > 0) {
-//        // calculate retention sequence number
-//        appliedSeq = std::min(appliedSeq, seq);
-//      }
       TRI_ASSERT(output.size() > sizeof(uint64_t));
 
       LOG_TOPIC("6b761", TRACE, Logger::ENGINES)
