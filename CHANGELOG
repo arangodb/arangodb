@@ -7,6 +7,8 @@ v3.4.6 (XXXX-XX-XX)
 * improve test performance by doing the 0.1 delay between phase 1 and 2 only
   if phase 1 is slow
 
+* port back timestamp replication in agency from devel
+
 v3.4.5 (2019-03-27)
 -------------------
 
