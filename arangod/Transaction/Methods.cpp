@@ -1415,8 +1415,6 @@ OperationResult transaction::Methods::clusterResultModify(
       errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
       break;
     default: {
-      // will remain at TRI_ERROR_INTERNAL
-      TRI_ASSERT(errorCode == TRI_ERROR_INTERNAL);
     }
   }
   
