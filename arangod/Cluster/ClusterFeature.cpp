@@ -46,6 +46,7 @@ using namespace arangodb::options;
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Cluster"),
       _unregisterOnShutdown(false),
+      _resignLeadershipOnShutdown(false),
       _enableCluster(false),
       _requirePersistedId(false),
       _heartbeatThread(nullptr),
@@ -135,12 +136,18 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new BooleanParameter(&_createWaitsForSyncReplication),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption(
-      "--cluster.index-create-timeout",
-      "amount of time (in seconds) the coordinator will wait for an index to "
-      "be created before giving up",
-      new DoubleParameter(&_indexCreationTimeout),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+
+  options->addOption("--cluster.index-create-timeout",
+                     "amount of time (in seconds) the coordinator will wait "
+                     "for an index to be created before giving up",
+                     new DoubleParameter(&_indexCreationTimeout),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+
+  options->addOption("--cluster.resign-leadership-on-shutdown",
+                    "create resign leader ship job for this dbsever on shutdown",
+                    new BooleanParameter(&_resignLeadershipOnShutdown),
+                    arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -245,6 +252,12 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       FATAL_ERROR_EXIT();
     }
     ServerState::instance()->setRole(_requestedRole);
+  }
+
+  if (_resignLeadershipOnShutdown && !ss->isDBServer()) {
+    LOG_TOPIC(WARN, arangodb::Logger::CLUSTER) <<
+      "--cluster.resign-leadership-on-shutdown is ignored for non-dbservers";
+    _resignLeadershipOnShutdown = false;
   }
 }
 
@@ -439,7 +452,108 @@ void ClusterFeature::start() {
   ServerState::instance()->setState(ServerState::STATE_SERVING);
 }
 
-void ClusterFeature::beginShutdown() { ClusterComm::instance()->disable(); }
+void ClusterFeature::beginShutdown() {
+
+  if (_resignLeadershipOnShutdown) {
+
+    struct callback_data {
+      uint64_t _jobId;              // initialised before callback
+      bool _completed;              // populated by the callback
+      std::mutex _mutex;            // mutex used by callback and loop to sync access to callback_data
+      std::condition_variable _cv;  // signaled if callback has found something
+
+      callback_data(uint64_t jobId) : _jobId(jobId), _completed(false) {}
+    };
+
+    // create common shared memory with jobid
+    auto shared = std::make_shared<callback_data>(ClusterInfo::instance()->uniqid());
+
+    // copy jobId and serverId by value
+    auto jobCallback = [shared](VPackSlice const& result) -> bool {
+      std::unique_lock<std::mutex> lock(shared->_mutex);
+      shared->_completed = true;
+      shared->_cv.notify_one();
+      return false;
+    };
+
+    AgencyComm am;
+
+    // register agency callback
+    //  false, false -> we don't care about the value
+    auto callbackOnFailed = std::make_shared<AgencyCallback>(am, "Target/Failed/" + std::to_string(shared->_jobId), jobCallback, false, false);
+    auto callbackOnFinished = std::make_shared<AgencyCallback>(am, "Target/Finished/" + std::to_string(shared->_jobId), jobCallback, false, false);
+
+    _agencyCallbackRegistry->registerCallback(callbackOnFailed);
+    _agencyCallbackRegistry->registerCallback(callbackOnFinished);
+    auto cbGuard = scopeGuard([&] {
+      _agencyCallbackRegistry->unregisterCallback(callbackOnFailed);
+      _agencyCallbackRegistry->unregisterCallback(callbackOnFinished);
+    });
+
+    std::string serverId = ServerState::instance()->getId();
+    VPackBuilder jobDesc;
+    {
+      VPackObjectBuilder jobObj(&jobDesc);
+      jobDesc.add("type", VPackValue("resignLeadership"));
+      jobDesc.add("server", VPackValue(serverId));
+      jobDesc.add("jobId", VPackValue(shared->_jobId));
+      jobDesc.add("timeCreated", VPackValue(0));
+      jobDesc.add("creator", VPackValue(serverId));
+    }
+
+    LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) <<
+      "Starting resigning leadership of shards";
+    am.setValue("Target/ToDo/" + std::to_string(shared->_jobId), jobDesc.slice(), 10.0);
+
+    using clock = std::chrono::steady_clock;
+
+    auto startTime = clock::now();
+    auto timeout = std::chrono::seconds(120);
+
+    auto endtime = startTime + timeout;
+
+    auto checkAgencyPathExists = [&am](std::string const& path, uint64_t jobId) -> bool {
+      try {
+        AgencyCommResult result = am.getValues(path);
+        if (result.successful()) {
+          VPackSlice value = result.slice()[0].get(std::vector<std::string>{AgencyCommManager::path(), "Target", path, std::to_string(jobId)});
+          if (value.isObject()) {
+            return true;
+          }
+        }
+      } catch(...) {
+        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER) <<
+          "Exception when checking for job completion";
+      }
+
+      return false;
+    };
+
+    // we can not test for application_features::ApplicationServer::isRetryOK() because it is never okay in shutdown
+    while (clock::now() < endtime) {
+
+      bool completed = checkAgencyPathExists ("Failed", shared->_jobId)
+        || checkAgencyPathExists ("Finished", shared->_jobId);
+
+      if (completed) {
+        break;
+      }
+
+      std::unique_lock<std::mutex> lock(shared->_mutex);
+      shared->_cv.wait_for(lock, std::chrono::seconds(1));
+
+      if (shared->_completed) {
+        break ;
+      }
+    }
+
+    LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) <<
+      "Resigning leadership completed (finished, failed or timed out)";
+  }
+
+  // One can disable ClusterComm here as there is no outgoing traffic needed to resign leadership
+  ClusterComm::instance()->disable();
+}
 
 void ClusterFeature::stop() {
   if (_heartbeatThread != nullptr) {

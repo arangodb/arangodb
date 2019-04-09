@@ -65,8 +65,8 @@ JOB_STATUS ResignLeadership::status() {
     return _status;
   }
 
-  Node::Children& const todos = _snapshot.hasAsChildren(toDoPrefix).first;
-  Node::Children& const pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  auto const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  auto const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
   size_t found = 0;
 
   for (auto const& subJob : todos) {
