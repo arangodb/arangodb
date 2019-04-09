@@ -1682,9 +1682,10 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   return instanceInfo;
 }
 
-function reStartInstance(options, instanceInfo) {
+function reStartInstance(options, instanceInfo, moreArgs) {
   let launchInstance = function(options, oneInstanceInfo) {
     try {
+      Object.assign(oneInstanceInfo.args, moreArgs);
       oneInstanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(oneInstanceInfo.args), options).pid;
     } catch (x) {
       print(Date() + ' failed to run arangod - ' + JSON.stringify(x));

@@ -67,7 +67,7 @@ function permissions_server(options) {
     clonedOpts['server.jwt-secret'] = serverOptions['server.jwt-secret'];
   }
   pu.shutdownInstance(instanceInfo, clonedOpts, false);
-  pu.reStartInstance(options, instanceInfo);
+  pu.reStartInstance(options, instanceInfo, {'javascript.allow-port-testing':false });
   pu.shutdownInstance(instanceInfo, clonedOpts, false);
   return  { failed: 0 };
 }
