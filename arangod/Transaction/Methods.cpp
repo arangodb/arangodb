@@ -1659,7 +1659,9 @@ OperationResult transaction::Methods::insert(std::string const& collectionName,
     result = insertLocal(collectionName, value, optionsCopy);
   }
 
-  events::CreateDocument(vocbase().name(), collectionName, value, result.errorNumber());
+  events::CreateDocument(vocbase().name(), collectionName,
+                         ((result.ok() && options.returnNew) ? result.slice() : value),
+                         result.errorNumber());
   return result;
 }
 

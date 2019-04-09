@@ -66,6 +66,8 @@ void ReplaceDocument(std::string const& db, std::string const& collection,
 void ModifyDocument(std::string const& db, std::string const& collection,
                     VPackSlice const& document, int);
 void IllegalDocumentOperation(GeneralRequest const&, int result);
+void QueryDocument(std::string const& db, std::string const&, int code);
+void QueryDocument(std::string const& db, VPackSlice const&, int code);
 void QueryDocument(GeneralRequest const&, GeneralResponse const*, VPackSlice const&);
 }  // namespace events
 }  // namespace arangodb
