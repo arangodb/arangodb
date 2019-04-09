@@ -143,6 +143,10 @@ KShortestPathsExecutor::KShortestPathsExecutor(Fetcher& fetcher, Infos& infos)
   if (!_infos.useRegisterForInput(true)) {
     _targetBuilder.add(VPackValue(_infos.getInputValue(true)));
   }
+  _finder.setCallback([this]() {
+                        if (_finder.options().query()->killed()) {
+                          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+                        } });
 }
 
 KShortestPathsExecutor::~KShortestPathsExecutor() = default;
@@ -194,11 +198,6 @@ bool KShortestPathsExecutor::fetchPaths() {
     TRI_ASSERT(start.isString());
     TRI_ASSERT(end.isString());
   } while (!_finder.startKShortestPathsTraversal(start, end));
-  /* , *_path, [this]() {
-if (_finder.options().query()->killed()) {
-THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-}
-})); */
   return true;
 }
 
