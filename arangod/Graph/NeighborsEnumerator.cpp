@@ -153,15 +153,18 @@ void NeighborsEnumerator::swapLastAndCurrentDepth() {
 
 bool NeighborsEnumerator::shouldPrune(arangodb::StringRef v) {
   // Prune here
-  if (_opts->usesPrune()) {
-    auto* evaluator = _opts->getPruneEvaluator();
-    if (evaluator->needsVertex()) {
-      evaluator->injectVertex(_traverser->fetchVertexData(v).slice());
-    }
-    // We cannot support these two here
-    TRI_ASSERT(!evaluator->needsEdge());
-    TRI_ASSERT(!evaluator->needsPath());
-    return evaluator->evaluate();
+  if (!_opts->usesPrune()) {
+    return false;
   }
-  return false;
+  auto* evaluator = _opts->getPruneEvaluator();
+  aql::AqlValue val;
+  aql::AqlValueGuard guard{val, true};
+  if (evaluator->needsVertex()) {
+    val = _traverser->fetchVertexData(v);
+    evaluator->injectVertex(val.slice());
+  }
+  // We cannot support these two here
+  TRI_ASSERT(!evaluator->needsEdge());
+  TRI_ASSERT(!evaluator->needsPath());
+  return evaluator->evaluate();
 }
