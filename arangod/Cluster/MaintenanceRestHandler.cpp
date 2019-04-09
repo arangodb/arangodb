@@ -75,7 +75,7 @@ RestStatus MaintenanceRestHandler::execute() {
 
 RestStatus MaintenanceRestHandler::postAction() {
 
-  std::stringstream error;
+  std::stringstream es;
 
   std::shared_ptr<VPackBuilder> bptr;
   try {
@@ -83,7 +83,7 @@ RestStatus MaintenanceRestHandler::postAction() {
     bptr = _request->toVelocyPackBuilderPtr();
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "parsed post action " << bptr->toJson();
   } catch (std::exception const& e) {
-    error << "failed parsing post action "  << bptr->toJson() << " " << e.what();
+    es << "failed parsing post action "  << bptr->toJson() << " " << e.what();
     return RestStatus::DONE;
   }
 
@@ -98,7 +98,7 @@ RestStatus MaintenanceRestHandler::postAction() {
         if (body.hasKey("duration") && body.get("duration").isNumber()) {
           dur = std::chrono::seconds(body.get("duration").getNumber<int64_t>());
           if (dur.count() <= 0 || dur.count() > 300) {
-            error << "invalid mainenance pause duration: " << dur.count()
+            es << "invalid mainenance pause duration: " << dur.count()
                   << " seconds";
           }
           // Pause maintenance
@@ -111,22 +111,22 @@ RestStatus MaintenanceRestHandler::postAction() {
           << "Maintenance is prceeded "  << dur.count() << " seconds";
         ApplicationServer::getFeature<MaintenanceFeature>("Maintenance")->proceed();
       } else {
-        error << "invalid POST command";
+        es << "invalid POST command";
           }
     } else {
-      error << "invalid POST object";
+      es << "invalid POST object";
     }
   } else {
-    error << "invalid POST body";
+    es << "invalid POST body";
   }
 
-  if (error.str().empty()) {
+  if (es.str().empty()) {
     VPackBuilder ok;
     ok.add(VPackSlice("OK"));
     generateResult(rest::ResponseCode::OK, ok.slice());
   } else {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str(); 
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, error.str());
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << es.str(); 
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, es.str());
   }
 
   return RestStatus::DONE;
@@ -225,6 +225,8 @@ void MaintenanceRestHandler::getAction() {
   VPackBuilder builder;
   {
     VPackObjectBuilder o(&builder);
+    builder.add("status",
+                VPackValue(maintenance->isPaused() ? "paused" : "running"));
     builder.add(VPackValue("registry"));
     maintenance->toVelocyPack(builder);
     if (found && StringUtils::boolean(detailsStr)) {

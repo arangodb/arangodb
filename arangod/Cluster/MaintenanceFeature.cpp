@@ -408,50 +408,62 @@ std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
 std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<std::string> const& labels) {
   std::shared_ptr<Action> ret_ptr;
 
-  while (!isPaused() && !_isShuttingDown) {
-    // use priority queue for ready action (and purge any that are done waiting)
-    {
-      WRITE_LOCKER(wLock, _actionRegistryLock);
+  while (!_isShuttingDown) {
 
-      while (!_prioQueue.empty()) {
-        // If _prioQueue is empty, we have no ready job and simply loop in the
-        // outer loop.
-        auto const& top = _prioQueue.top();
-        if (top->getState() != maintenance::READY) {  // in case it is deleted
-          _prioQueue.pop();
-          continue;
+    if (!isPaused()) { 
+    
+      // use priority queue for ready action (and purge any that are done waiting)
+      {
+        WRITE_LOCKER(wLock, _actionRegistryLock);
+
+        while (!_prioQueue.empty()) {
+          // If _prioQueue is empty, we have no ready job and simply loop in the
+          // outer loop.
+          auto const& top = _prioQueue.top();
+          if (top->getState() != maintenance::READY) {  // in case it is deleted
+            _prioQueue.pop();
+            continue;
+          }
+          if (top->matches(labels)) {
+            ret_ptr = top;
+            _prioQueue.pop();
+            return ret_ptr;
+          }
+          // We are not interested, this can only mean that we are fast track
+          // and the top action is not. Therefore, the whole queue does not
+          // contain any fast track, so we can idle.
+          break;
         }
-        if (top->matches(labels)) {
-          ret_ptr = top;
-          _prioQueue.pop();
-          return ret_ptr;
-        }
-        // We are not interested, this can only mean that we are fast track
-        // and the top action is not. Therefore, the whole queue does not
-        // contain any fast track, so we can idle.
-        break;
-      }
  
-      // When we get here, there is currently nothing to do, so we might
-      // as well clean up those jobs in the _actionRegistry, which are
-      // in state DONE:
-      if (RandomGenerator::interval(uint32_t(10)) == 0) {
-        for (auto loop = _actionRegistry.begin(); _actionRegistry.end() != loop;) {
-          if ((*loop)->done()) {
-            loop = _actionRegistry.erase(loop);
-          } else {
-            ++loop;
-          }  // else
-        }    // for
-      }
-    }      // WRITE
+        // When we get here, there is currently nothing to do, so we might
+        // as well clean up those jobs in the _actionRegistry, which are
+        // in state DONE:
+        if (RandomGenerator::interval(uint32_t(10)) == 0) {
+          for (auto loop = _actionRegistry.begin(); _actionRegistry.end() != loop;) {
+            if ((*loop)->done()) {
+              loop = _actionRegistry.erase(loop);
+            } else {
+              ++loop;
+            }  // else
+          }    // for
+        }
+      }      // WRITE
 
-    // no pointer ... wait 0.1 seconds unless woken up
-    if (!isPaused() && !_isShuttingDown) {
-      CONDITION_LOCKER(cLock, _actionRegistryCond);
-      _actionRegistryCond.wait(std::chrono::milliseconds(100));
-    }  // if
+      // no pointer ... wait 0.1 seconds unless woken up
+      if (!_isShuttingDown) {
+        CONDITION_LOCKER(cLock, _actionRegistryCond);
+        _actionRegistryCond.wait(std::chrono::milliseconds(100));
+      }  // if
 
+    } else {
+
+      if (!_isShuttingDown) {
+        CONDITION_LOCKER(cLock, _actionRegistryCond);
+        _actionRegistryCond.wait(std::chrono::milliseconds(100));
+      }  // if
+
+    }
+    
   }  // while
 
   return ret_ptr;
