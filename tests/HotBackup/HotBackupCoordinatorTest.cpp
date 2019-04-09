@@ -82,7 +82,7 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     std::shared_ptr<VPackBuilder> props;
 
     std::vector<ServerID> dbServers;
-    std::unordered_map<ServerID,ServerID> matches;
+    std::map<ServerID,ServerID> matches;
 
     for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
       dbServers.push_back(i.key.copyString());
@@ -98,7 +98,7 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     std::shared_ptr<VPackBuilder> props;
 
     std::vector<ServerID> dbServers;
-    std::unordered_map<ServerID,ServerID> matches;
+    std::map<ServerID,ServerID> matches;
 
     for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
       dbServers.push_back(i.key.copyString());
@@ -117,7 +117,7 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     std::shared_ptr<VPackBuilder> props;
 
     std::vector<ServerID> dbServers;
-    std::unordered_map<ServerID,ServerID> matches;
+    std::map<ServerID,ServerID> matches;
 
     for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
       dbServers.push_back(i.key.copyString());
@@ -136,7 +136,7 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     std::shared_ptr<VPackBuilder> props;
 
     std::vector<ServerID> dbServers;
-    std::unordered_map<ServerID,ServerID> matches;
+    std::map<ServerID,ServerID> matches;
 
     for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
       dbServers.push_back(i.key.copyString());
@@ -157,7 +157,7 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     std::shared_ptr<VPackBuilder> props;
 
     std::vector<ServerID> dbServers;
-    std::unordered_map<ServerID,ServerID> matches;
+    std::map<ServerID,ServerID> matches;
 
     for (size_t i = 0; i < plan.get("DBServers").length(); ++i) {
       dbServers.push_back(std::string("PRMR_")
@@ -174,7 +174,7 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     std::shared_ptr<VPackBuilder> props;
 
     std::vector<ServerID> dbServers;
-    std::unordered_map<ServerID,ServerID> matches;
+    std::map<ServerID,ServerID> matches;
 
     for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
       dbServers.push_back(i.key.copyString());
@@ -192,7 +192,7 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     std::shared_ptr<VPackBuilder> props;
 
     std::vector<ServerID> dbServers;
-    std::unordered_map<ServerID,ServerID> matches;
+    std::map<ServerID,ServerID> matches;
 
     for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
       dbServers.push_back(i.key.copyString());
@@ -209,7 +209,7 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     std::shared_ptr<VPackBuilder> props;
 
     std::vector<ServerID> dbServers;
-    std::unordered_map<ServerID,ServerID> matches;
+    std::map<ServerID,ServerID> matches;
 
     for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
       dbServers.push_back(i.key.copyString());
@@ -237,7 +237,7 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     std::shared_ptr<VPackBuilder> props;
 
     std::vector<ServerID> dbServers;
-    std::unordered_map<ServerID,ServerID> matches;
+    std::map<ServerID,ServerID> matches;
 
     for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
       dbServers.push_back(i.key.copyString());
@@ -268,7 +268,7 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     std::shared_ptr<VPackBuilder> props;
 
     std::vector<ServerID> dbServers;
-    std::unordered_map<ServerID,ServerID> matches;
+    std::map<ServerID,ServerID> matches;
 
     for (size_t i = 0; i < plan.get("DBServers").length(); ++i) {
       dbServers.push_back(std::string("PRMR_")
@@ -296,7 +296,7 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     std::shared_ptr<VPackBuilder> props;
 
     std::vector<ServerID> dbServers;
-    std::unordered_map<ServerID,ServerID> matches;
+    std::map<ServerID,ServerID> matches;
 
     dbServers.push_back("PRMR_abcdefg");
     dbServers.push_back("1c0");

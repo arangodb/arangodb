@@ -3023,7 +3023,6 @@ arangodb::Result restoreOnDBServers(
     LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
       << "Failsafe name " << resSlice.get("previous").copyString()
       << " from db server " << req.destination;
-
   }
 
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Restored " << backupId << " successfully"; 

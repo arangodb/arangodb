@@ -299,7 +299,7 @@ arangodb::Result downloadHotBakupsOnCoordinator(std::string const& backupId);
  */
 arangodb::Result matchBackupServers(
   VPackSlice const planDump, std::vector<ServerID> const& dbServers,
-  std::unordered_map<std::string,std::string>& match);
+  std::map<std::string,std::string>& match);
 
 /**
  * @brief apply database server matches to plan
@@ -309,7 +309,7 @@ arangodb::Result matchBackupServers(
  * @return          Operation's result
  */
 arangodb::Result applyDBServerMatchesToPlan(
-  VPackSlice const plan, std::unordered_map<ServerID,ServerID> const& matches,
+  VPackSlice const plan, std::map<ServerID,ServerID> const& matches,
   VPackBuilder& newPlan);
 
 ////////////////////////////////////////////////////////////////////////////////
