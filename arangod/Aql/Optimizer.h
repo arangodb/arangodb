@@ -134,6 +134,8 @@ class Optimizer {
   void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const*, bool, int newLevel = 0);
 
   void disableRule(int rule);
+  
+  bool isDisabled(int rule) const;
 
   /// @brief getPlans, ownership of the plans remains with the optimizer
   RollingVector<PlanList::Entry>& getPlans() { return _plans.list; }

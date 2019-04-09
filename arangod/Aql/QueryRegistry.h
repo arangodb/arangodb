@@ -80,6 +80,10 @@ class QueryRegistry {
   /// safe to call if the current thread is currently using the query itself
   TEST_VIRTUAL void destroy(std::string const& vocbase, QueryId id, int errorCode, bool ignoreOpened);
 
+  /// @brief destroy all queries for the specified database. this can be used
+  /// when the database gets dropped  
+  void destroy(std::string const& vocbase);
+
   ResultT<bool> isQueryInUse(TRI_vocbase_t* vocbase, QueryId id);
 
   /// @brief expireQueries, this deletes all expired queries from the registry

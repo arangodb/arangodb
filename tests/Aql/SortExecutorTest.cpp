@@ -82,11 +82,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
   std::vector<SortRegister> sortRegisters;
   SortElement sl{&sortVar, true};
 
-#if 0  // #ifdef USE_IRESEARCH
-  SortRegister sortReg(0, sl, &compareAqlValues);
-#else
   SortRegister sortReg(0, sl);
-#endif
 
   sortRegisters.emplace_back(std::move(sortReg));
 

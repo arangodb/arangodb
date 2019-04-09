@@ -85,7 +85,8 @@ struct IResearchLinkSetup {
     arangodb::tests::init();
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(), arangodb::LogLevel::FATAL);
@@ -234,7 +235,6 @@ SECTION("test_defaults") {
     CHECK((logicalCollection.get() == &(link->collection())));
     CHECK((link->fieldNames().empty()));
     CHECK((link->fields().empty()));
-    CHECK((true == link->hasBatchInsert()));
     CHECK((false == link->hasExpansion()));
     CHECK((false == link->hasSelectivityEstimate()));
     CHECK((false == link->implicitlyUnique()));
@@ -285,7 +285,6 @@ SECTION("test_defaults") {
     CHECK((logicalCollection.get() == &(link->collection())));
     CHECK((link->fieldNames().empty()));
     CHECK((link->fields().empty()));
-    CHECK((true == link->hasBatchInsert()));
     CHECK((false == link->hasExpansion()));
     CHECK((false == link->hasSelectivityEstimate()));
     CHECK((false == link->implicitlyUnique()));

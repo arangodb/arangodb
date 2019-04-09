@@ -151,10 +151,10 @@ class PhysicalCollection {
                                     arangodb::velocypack::Slice const&) const = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-                      ManagedDocumentResult& result, bool) = 0;
+                      ManagedDocumentResult& result, bool lock) = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::Slice const& key,
-                      ManagedDocumentResult& result, bool) = 0;
+                      ManagedDocumentResult& result, bool lock) = 0;
 
   virtual bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                             ManagedDocumentResult& result) const = 0;
@@ -172,7 +172,7 @@ class PhysicalCollection {
                         arangodb::ManagedDocumentResult& result,
                         OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                         bool lock, TRI_voc_tick_t& revisionId, KeyLockInfo* keyLockInfo,
-                        std::function<Result(void)> callbackDuringLock) = 0;
+                        std::function<Result(void)> const& callbackDuringLock) = 0;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& result, OperationOptions& options,
@@ -186,21 +186,18 @@ class PhysicalCollection {
                         arangodb::velocypack::Slice newSlice,
                         ManagedDocumentResult& result, OperationOptions& options,
                         TRI_voc_tick_t& resultMarkerTick, bool lock,
-                        TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                        arangodb::velocypack::Slice key,
-                        std::function<Result(void)> callbackDuringLock) = 0;
+                        TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) = 0;
 
   virtual Result replace(transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                          ManagedDocumentResult& result, OperationOptions& options,
                          TRI_voc_tick_t& resultMarkerTick, bool lock,
-                         TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                         std::function<Result(void)> callbackDuringLock) = 0;
+                         TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) = 0;
 
   virtual Result remove(transaction::Methods& trx, velocypack::Slice slice,
                         ManagedDocumentResult& previous, OperationOptions& options,
                         TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
                         TRI_voc_rid_t& revisionId, KeyLockInfo* keyLockInfo,
-                        std::function<Result(void)> callbackDuringLock) = 0;
+                        std::function<Result(void)> const& callbackDuringLock) = 0;
 
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);

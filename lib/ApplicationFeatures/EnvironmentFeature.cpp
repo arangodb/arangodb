@@ -81,6 +81,14 @@ void EnvironmentFeature::prepare() {
     uint64_t v = basics::StringUtils::uint64(value);
 
     if (v == 2) {
+#ifdef ARANGODB_HAVE_JEMALLOC
+      LOG_TOPIC("fadc5", WARN, arangodb::Logger::MEMORY)
+          << "/proc/sys/vm/overcommit_memory is set to a value of 2. this setting has been found to be problematic";
+      LOG_TOPIC("d08d6", WARN, Logger::MEMORY)
+              << "execute 'sudo bash -c \"echo 0 > "
+              << "/proc/sys/vm/overcommit_memory\"'";
+#endif
+
       // from https://www.kernel.org/doc/Documentation/sysctl/vm.txt:
       //
       //   When this flag is 0, the kernel attempts to estimate the amount

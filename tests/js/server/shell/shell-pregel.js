@@ -43,9 +43,11 @@ var vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 function testAlgo(a, p) {
   var pid = pregel.start(a, graphName, p);
   var i = 10000;
+  let stats = pregel.status(pid);
+  console.debug("topic=pregel", "initial stats: " + JSON.stringify(stats));
   do {
-    internal.wait(0.2);
-    var stats = pregel.status(pid);
+    internal.wait(0.2, false);
+    stats = pregel.status(pid);
     if (stats.state !== "running") {
       assertEqual(stats.vertexCount, 11, stats);
       assertEqual(stats.edgeCount, 17, stats);
@@ -62,7 +64,10 @@ function testAlgo(a, p) {
                });
       break;
     }
-  } while(i-- >= 0);
+    if (i % 100 === 0) {
+      console.info("topic=pregel", "pregel stats: " + JSON.stringify(stats));
+    }
+  } while (i-- >= 0);
   if (i === 0) {
     assertTrue(false, "timeout in pregel execution");
   }
@@ -161,9 +166,11 @@ function basicTestSuite () {
     testPageRankAQLResult: function() {
       var pid = pregel.start("pagerank", graphName, {threshold:EPS / 10, store:false});
       var i = 10000;
+      let stats = pregel.status(pid);
+      console.debug("topic=pregel", "initial stats: " + JSON.stringify(stats));
       do {
-        internal.wait(0.2);
-        var stats = pregel.status(pid);
+        internal.wait(0.2, false);
+        stats = pregel.status(pid);
         if (stats.state !== "running") {
           assertEqual(stats.vertexCount, 11, stats);
           assertEqual(stats.edgeCount, 17, stats);
@@ -186,7 +193,10 @@ function basicTestSuite () {
           });
           break;
         }
-      } while(i-- >= 0);
+        if (i % 100 === 0) {
+          console.info("topic=pregel", "pregel stats: " + JSON.stringify(stats));
+        }
+      } while (i-- >= 0);
       if (i === 0) {
         assertTrue(false, "timeout in pregel execution");
       }
@@ -221,13 +231,18 @@ function exampleTestSuite () {
                                 ['female', 'male'], ['relation'], 
                                 {resultField: "closeness"});
       var i = 10000;
+      let stats = db._pregelStatus(key);
+      console.debug("topic=pregel", "initial stats: " + JSON.stringify(stats));
       do {
-        internal.wait(0.2);
-        var stats = db._pregelStatus(key);
+        internal.wait(0.2, false);
+        stats = db._pregelStatus(key);
         if (stats.state !== "running") {
           assertEqual(stats.vertexCount, 4, stats);
           assertEqual(stats.edgeCount, 4, stats);
           break;
+        }
+        if (i % 100 === 0) {
+          console.info("topic=pregel", "pregel stats: " + JSON.stringify(stats));
         }
       } while(i-- >= 0);
       if (i === 0) {

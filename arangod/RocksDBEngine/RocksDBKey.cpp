@@ -406,7 +406,7 @@ TRI_voc_cid_t RocksDBKey::viewId(char const* data, size_t size) {
 
 TRI_voc_cid_t RocksDBKey::objectId(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(size > sizeof(uint64_t));
+  TRI_ASSERT(size >= sizeof(uint64_t));
   return uint64FromPersistent(data);
 }
 

@@ -40,6 +40,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -594,18 +595,9 @@ OperationResult GraphOperations::createDocument(transaction::Methods* trx,
   options.waitForSync = waitForSync;
   options.returnNew = returnNew;
 
-  OperationResult result;
-  result = trx->insert(collectionName, document, options);
+  OperationResult result = trx->insert(collectionName, document, options);
+  result.result = trx->finish(result.result);
 
-  if (!result.ok()) {
-    trx->finish(result.result);
-    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-  }
-  Result res = trx->finish(result.result);
-
-  if (result.ok() && res.fail()) {
-    return OperationResult(res);
-  }
   return result;
 }
 
@@ -694,25 +686,21 @@ OperationResult GraphOperations::createEdge(const std::string& definitionName,
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
 
-  std::unique_ptr<transaction::Methods> trx(
-      new UserTransaction(ctx(), readCollections, writeCollections, {}, trxOptions));
+  UserTransaction trx(ctx(), readCollections, writeCollections, {}, trxOptions);
 
-  Result res = trx->begin();
+  Result res = trx.begin();
   if (!res.ok()) {
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
-  OperationResult resultFrom = trx->document(fromCollectionName, bF.slice(), options);
-  OperationResult resultTo = trx->document(toCollectionName, bT.slice(), options);
-
-  if (!resultFrom.ok()) {
-    trx->finish(resultFrom.result);
+  OperationResult resultFrom = trx.document(fromCollectionName, bF.slice(), options);
+  OperationResult resultTo = trx.document(toCollectionName, bT.slice(), options);
+    
+  if (!resultFrom.ok() || !resultTo.ok()) {
+    // actual result doesn't matter here
+    trx.finish(Result());
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
-  if (!resultTo.ok()) {
-    trx->finish(resultTo.result);
-    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-  }
-  return createDocument(trx.get(), definitionName, document, waitForSync, returnNew);
+  return createDocument(&trx, definitionName, document, waitForSync, returnNew);
 }
 
 OperationResult GraphOperations::updateVertex(const std::string& collectionName,
@@ -740,16 +728,15 @@ OperationResult GraphOperations::createVertex(const std::string& collectionName,
 
   std::vector<std::string> writeCollections;
   writeCollections.emplace_back(collectionName);
-  std::unique_ptr<transaction::Methods> trx(
-      new UserTransaction(ctx(), {}, writeCollections, {}, trxOptions));
+  UserTransaction trx(ctx(), {}, writeCollections, {}, trxOptions);
 
-  Result res = trx->begin();
+  Result res = trx.begin();
 
   if (!res.ok()) {
     return OperationResult(res);
   }
 
-  return createDocument(trx.get(), collectionName, document, waitForSync, returnNew);
+  return createDocument(&trx, collectionName, document, waitForSync, returnNew);
 }
 
 OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectionName,
@@ -783,8 +770,15 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
 
   trxCollections.emplace_back(collectionName);
 
+  CollectionNameResolver resolver {_vocbase};
   for (auto const& it : edgeCollections) {
     trxCollections.emplace_back(it);
+    auto col = resolver.getCollection(it);
+    if (col && col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
+      for (auto const& rn : col->realNames()) {
+        trxCollections.emplace_back(rn);
+      }
+    }
   }
   for (auto const& it : possibleEdgeCollections) {
     trxCollections.emplace_back(it);  // add to trx collections

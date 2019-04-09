@@ -71,58 +71,57 @@ arangodb::LogicalView* UnwrapView(v8::Isolate* isolate, v8::Local<v8::Object> co
   return TRI_UnwrapClass<arangodb::LogicalView>(holder, WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
 }
 
-}  // namespace
-
-using namespace arangodb;
-using namespace arangodb::basics;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a LogicalView
 ////////////////////////////////////////////////////////////////////////////////
-v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
-                                std::shared_ptr<arangodb::LogicalView> const& view) {
+v8::Handle<v8::Object> WrapView( // wrap view
+    v8::Isolate* isolate, // isolate
+    std::shared_ptr<arangodb::LogicalView> const& view // view
+) {
   v8::EscapableHandleScope scope(isolate);
-
   TRI_GET_GLOBALS();
   TRI_GET_GLOBAL(VocbaseViewTempl, v8::ObjectTemplate);
   v8::Handle<v8::Object> result = VocbaseViewTempl->NewInstance();
 
-  if (!result.IsEmpty()) {
-    auto* ptr = view.get();
-    auto itr = v8g->JSDatasources.emplace(
-        std::piecewise_construct, std::forward_as_tuple(view.get()),
-        std::forward_as_tuple(isolate, view,
-                              [ptr]() -> void {  // FIXME TODO find a way to move this callback
-                                                 // code into DataSourcePersistent
-                                TRI_ASSERT(!ptr->vocbase().isDangling());
-                                ptr->vocbase().release();  // decrease the reference-counter for
-                                                           // the database
-                              }));
-    auto& entry = itr.first->second;
-
-    if (itr.second) {  // FIXME TODO find a way to move this code into
-                       // DataSourcePersistent
-      TRI_ASSERT(!ptr->vocbase().isDangling());
-      ptr->vocbase().forceUse();  // increase the reference-counter for the database
-    }
-
-    result->SetInternalField(SLOT_CLASS_TYPE,
-                             v8::Integer::New(isolate, WRP_VOCBASE_VIEW_TYPE));
-    result->SetInternalField(SLOT_CLASS, entry.get());
-    result->SetInternalField(SLOT_EXTERNAL, entry.get());
-
-    TRI_GET_GLOBAL_STRING(_IdKey);
-    TRI_GET_GLOBAL_STRING(_DbNameKey);
-    result
-        ->DefineOwnProperty(TRI_IGETC, _IdKey,
-                            TRI_V8UInt64String<TRI_voc_cid_t>(isolate, view->id()),
-                            v8::ReadOnly)
-        .FromMaybe(false);  // Ignore result...
-    result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, view->vocbase().name()));
+  if (result.IsEmpty()) {
+    return scope.Escape<v8::Object>(result);
   }
+
+  auto value = std::shared_ptr<void>( // persistent value
+    view.get(), // value
+    [view](void*)->void { // ensure view shared_ptr is not deallocated
+      TRI_ASSERT(!view->vocbase().isDangling());
+      view->vocbase().release(); // decrease the reference-counter for the database
+    }
+  );
+  auto itr = TRI_v8_global_t::SharedPtrPersistent::emplace(*isolate, value);
+  auto& entry = itr.first;
+
+  TRI_ASSERT(!view->vocbase().isDangling());
+  view->vocbase().forceUse(); // increase the reference-counter for the database (will be decremented by 'value' distructor above, valid for both new and existing mappings)
+
+  result->SetInternalField(// required for TRI_UnwrapClass(...)
+    SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_VOCBASE_VIEW_TYPE) // args
+  );
+  result->SetInternalField(SLOT_CLASS, entry.get());
+
+  TRI_GET_GLOBAL_STRING(_IdKey);
+  TRI_GET_GLOBAL_STRING(_DbNameKey);
+  result->DefineOwnProperty( // define own property
+    TRI_IGETC, // context
+    _IdKey, // key
+    TRI_V8UInt64String<TRI_voc_cid_t>(isolate, view->id()), // value
+    v8::ReadOnly // attributes
+  ).FromMaybe(false); // Ignore result...
+  result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, view->vocbase().name()));
 
   return scope.Escape<v8::Object>(result);
 }
+
+}  // namespace
+
+using namespace arangodb;
+using namespace arangodb::basics;
 
 static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -693,8 +692,9 @@ static void JS_TypeViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_V8_TRY_CATCH_END
 }
 
-void TRI_InitV8Views(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
-                     TRI_v8_global_t* v8g, v8::Isolate* isolate,
+void TRI_InitV8Views( // init views
+    TRI_v8_global_t& v8g, // V8 globals
+    v8::Isolate* isolate, // V8 isolate
                      v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
   TRI_AddMethodVocbase(isolate, ArangoDBNS,
                        TRI_V8_ASCII_STRING(isolate, "_createView"), JS_CreateViewVocbase);
@@ -712,7 +712,7 @@ void TRI_InitV8Views(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoView"));
 
   rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(3);
+  rt->SetInternalFieldCount(2); // SLOT_CLASS_TYPE + SLOT_CLASS
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "drop"), JS_DropViewVocbaseObj);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "name"), JS_NameViewVocbase);
@@ -721,7 +721,7 @@ void TRI_InitV8Views(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "rename"), JS_RenameViewVocbase);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "type"), JS_TypeViewVocbase);
 
-  v8g->VocbaseViewTempl.Reset(isolate, rt);
+  v8g.VocbaseViewTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ArangoView"),
                                ft->GetFunction());

@@ -797,6 +797,10 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
   _readOptions.verify_checksums = false;
   _readOptions.fill_cache = false;
   _readOptions.prefix_same_as_start = true;
+  
+  _cTypeHandler.reset(transaction::Context::createCustomTypeHandler(vocbase, _resolver));
+  vpackOptions.customTypeHandler = _cTypeHandler.get();
+  setSorted(sorted);
 
   if (!vocbase.use()) {  // false if vobase was deleted
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -806,10 +810,6 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
   if (res != TRI_ERROR_NO_ERROR) {  // collection was deleted
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
-
-  _cTypeHandler.reset(transaction::Context::createCustomTypeHandler(vocbase, _resolver));
-  vpackOptions.customTypeHandler = _cTypeHandler.get();
-  setSorted(sorted);
 }
 
 RocksDBReplicationContext::CollectionIterator::~CollectionIterator() {

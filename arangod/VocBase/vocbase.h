@@ -346,13 +346,6 @@ struct TRI_vocbase_t {
   std::shared_ptr<arangodb::LogicalCollection> useCollection(std::string const& name,
                                                              TRI_vocbase_col_status_e&);
 
-  /// @brief locks a collection for usage by uuid
-  /// Note that this will READ lock the collection you have to release the
-  /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
-  /// when you are done with the collection.
-  std::shared_ptr<arangodb::LogicalCollection> useCollectionByUuid(std::string const& uuid,
-                                                                   TRI_vocbase_col_status_e&);
-
   /// @brief releases a collection from usage
   void releaseCollection(arangodb::LogicalCollection* collection);
 

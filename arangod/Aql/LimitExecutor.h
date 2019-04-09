@@ -56,7 +56,6 @@ class LimitExecutorInfos : public ExecutorInfos {
   LimitExecutorInfos(LimitExecutorInfos const&) = delete;
   ~LimitExecutorInfos() = default;
 
-  size_t getLimit() const noexcept { return _limit; };
   size_t getOffset() const noexcept { return _offset; };
   size_t getLimitPlusOffset() const noexcept { return _offset + _limit; };
   bool isFullCountEnabled() const noexcept { return _fullCount; };

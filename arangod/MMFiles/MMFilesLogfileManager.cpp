@@ -1462,7 +1462,7 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
   }
 
   LOG_TOPIC("dbee0", DEBUG, Logger::ENGINES) << "getCollectableLogfile: "
-                                    << "found no logfile to collect, minId:" << minId;
+                                    << "found no logfile to collect, minId: " << minId;
 
   return nullptr;
 }

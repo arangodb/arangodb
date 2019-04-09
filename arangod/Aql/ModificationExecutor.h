@@ -102,23 +102,23 @@ struct BoolWrapper {
 };
 
 struct ProducesResults : BoolWrapper {
-  explicit ProducesResults(bool b) : BoolWrapper(b){};
+  explicit ProducesResults(bool b) : BoolWrapper(b){}
 };
 struct ConsultAqlWriteFilter : BoolWrapper {
-  explicit ConsultAqlWriteFilter(bool b) : BoolWrapper(b){};
+  explicit ConsultAqlWriteFilter(bool b) : BoolWrapper(b){}
 };
 struct IgnoreErrors : BoolWrapper {
-  explicit IgnoreErrors(bool b) : BoolWrapper(b){};
+  explicit IgnoreErrors(bool b) : BoolWrapper(b){}
 };
 struct DoCount : BoolWrapper {
-  explicit DoCount(bool b) : BoolWrapper(b){};
+  explicit DoCount(bool b) : BoolWrapper(b){}
 };
 struct IsReplace : BoolWrapper {
-  explicit IsReplace(bool b) : BoolWrapper(b){};
+  explicit IsReplace(bool b) : BoolWrapper(b){}
 };
 
 struct IgnoreDocumentNotFound : BoolWrapper {
-  explicit IgnoreDocumentNotFound(bool b) : BoolWrapper(b){};
+  explicit IgnoreDocumentNotFound(bool b) : BoolWrapper(b){}
 };
 
 struct ModificationExecutorInfos : public ExecutorInfos {

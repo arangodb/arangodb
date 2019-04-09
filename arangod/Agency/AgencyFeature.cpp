@@ -35,6 +35,7 @@
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
+using namespace arangodb::rest;
 
 namespace arangodb {
 
@@ -123,12 +124,11 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new UInt64Parameter(&_maxAppendSize),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption(
-      "--agency.disaster-recovery-id",
-      "allows for specification of the id for this agent; dangerous option for "
-      "disaster recover only!",
-      new StringParameter(&_recoveryId),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+  options->addOption("--agency.disaster-recovery-id",
+                     "allows for specification of the id for this agent; "
+                     "dangerous option for disaster recover only!",
+                     new StringParameter(&_recoveryId),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

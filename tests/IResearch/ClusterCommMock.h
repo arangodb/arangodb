@@ -54,8 +54,8 @@ class ClusterCommMock: public arangodb::ClusterComm {
     );
   };
 
-  std::unordered_map<arangodb::OperationID, Request> _requests;
-  std::unordered_map<arangodb::OperationID, std::deque<arangodb::ClusterCommResult>> _responses;
+  std::vector<Request> _requests;
+  std::deque<arangodb::ClusterCommResult> _responses;
 
   ClusterCommMock();
 
@@ -78,11 +78,19 @@ class ClusterCommMock: public arangodb::ClusterComm {
      arangodb::ShardID const& shardID // "" = any shardId
   ) override;
 
-  arangodb::OperationID nextOperationId() const { return _operationId + 1; }
-
   static std::shared_ptr<ClusterCommMock> setInstance(
     ClusterCommMock& instance
   );
+
+  std::unique_ptr<arangodb::ClusterCommResult> syncRequest(
+    arangodb::CoordTransactionID const coordTransactionID,
+    std::string const& destination,
+    arangodb::rest::RequestType reqtype,
+    std::string const& path,
+    std::string const& body,
+    std::unordered_map<std::string, std::string> const& headerFields,
+    arangodb::ClusterCommTimeout timeout
+  ) override;
 
   arangodb::ClusterCommResult const wait(
      arangodb::CoordTransactionID const coordTransactionID, // 0 == any trxId
@@ -90,9 +98,6 @@ class ClusterCommMock: public arangodb::ClusterComm {
      arangodb::ShardID const& shardID, // "" = any shardId
      arangodb::ClusterCommTimeout timeout
   ) override;
-
- private:
-  arangodb::OperationID _operationId{};
 };
 
 #endif

@@ -71,9 +71,6 @@ class DistinctCollectExecutorInfos : public ExecutorInfos {
   /// @brief pairs, consisting of out register and in register
   std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
 
-  /// @brief input/output variables for the collection (out, in)
-  std::vector<std::pair<Variable const*, Variable const*>> _groupVariables;
-
   /// @brief the transaction for this query
   transaction::Methods* _trxPtr;
 };

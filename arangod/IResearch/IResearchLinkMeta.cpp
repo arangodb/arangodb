@@ -234,7 +234,7 @@ bool IResearchLinkMeta::init( // initialize meta
           auto analyzer = analyzers->get(name);
 
           if (!analyzer) {
-            errorField = fieldName + "=>" + std::string(name);
+            errorField = fieldName + "=>" + value.copyString(); // original (non-normalized) 'name' valie
 
             return false;
           }
@@ -305,7 +305,7 @@ bool IResearchLinkMeta::init( // initialize meta
           if (value.hasKey(subFieldName)) {
             auto subField = value.get(subFieldName);
 
-            if (!subField.isString()) {
+            if (!subField.isString() && !subField.isNull()) {
               errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName;
 
               return false;
@@ -335,7 +335,7 @@ bool IResearchLinkMeta::init( // initialize meta
                  ++subItr) {
               auto subValue = *subItr;
 
-              if (!subValue.isString()) {
+              if (!subValue.isString() && !subValue.isNull()) {
                 errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName + "=>[" + std::to_string(subItr.index()) +  + "]";
 
                 return false;
@@ -490,7 +490,7 @@ bool IResearchLinkMeta::init( // initialize meta
 
         std::string childErrorField;
 
-        if (!_fields[name]->init(value, errorField, defaultVocbase, subDefaults)) {
+        if (!_fields[name]->init(value, childErrorField, defaultVocbase, subDefaults)) {
           errorField = fieldName + "=>" + name + "=>" + childErrorField;
 
           return false;
@@ -537,7 +537,7 @@ bool IResearchLinkMeta::json( // append meta jSON
         }
 
         name = IResearchAnalyzerFeature::normalize( // normalize
-          entry->name(), *defaultVocbase, *sysVocbase, false // args
+          entry->name(), *defaultVocbase, *sysVocbase, writeAnalyzerDefinition // analyzer definitions should always have full names
         );
       } else {
         name = entry->name(); // verbatim (assume already normalized)
@@ -551,8 +551,8 @@ bool IResearchLinkMeta::json( // append meta jSON
 
       analyzersBuilder.openObject();
         analyzersBuilder.add("name", arangodb::velocypack::Value(name));
-        analyzersBuilder.add("type", toValuePair(entry->type()));
-        analyzersBuilder.add("properties", toValuePair(entry->properties()));
+        addStringRef(analyzersBuilder, "type", entry->type());
+        addStringRef(analyzersBuilder, "properties", entry->properties());
         analyzersBuilder.add(
           "features", // key
           arangodb::velocypack::Value(arangodb::velocypack::ValueType::Array) // value
@@ -560,7 +560,7 @@ bool IResearchLinkMeta::json( // append meta jSON
 
           for (auto& feature: entry->features()) {
             TRI_ASSERT(feature); // has to be non-nullptr
-            analyzersBuilder.add(toValuePair(feature->name()));
+            addStringRef(analyzersBuilder, feature->name());
           }
 
         analyzersBuilder.close();

@@ -562,18 +562,10 @@ RestStatus RestAgencyHandler::handleConfig() {
 RestStatus RestAgencyHandler::handleState() {
 
   VPackBuilder body;
-  body.add(VPackValue(VPackValueType::Array));
-  for (auto const& i : _agent->state().get()) {
-    body.add(VPackValue(VPackValueType::Object));
-    body.add("index", VPackValue(i.index));
-    body.add("term", VPackValue(i.term));
-    if (i.entry != nullptr) {
-      body.add("query", VPackSlice(i.entry->data()));
-    }
-    body.add("clientId", VPackValue(i.clientId));
-    body.close();
+  { 
+    VPackObjectBuilder o(&body);
+    _agent->readDB(body);
   }
-  body.close();
   generateResult(rest::ResponseCode::OK, body.slice());
   return RestStatus::DONE;
 }

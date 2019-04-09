@@ -1976,13 +1976,13 @@ void TRI_ExpireFoxxQueueDatabaseCache(TRI_vocbase_t* vocbase) {
 
     auto hash = GetKeySpace(vocbase, name);
     if (hash == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find keyspace");
     }
 
     result = hash->keySet(key, 0);
   }
   if (!result) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to set key");
   }
 }
 

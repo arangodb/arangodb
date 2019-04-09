@@ -70,6 +70,7 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/v8-analyzers.h"
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-general-graph.h"
@@ -1853,11 +1854,7 @@ static void JS_DecodeRev(v8::FunctionCallbackInfo<v8::Value> const& args) {
     time_t timeSeconds = timeMilli / 1000;
     uint64_t millis = timeMilli % 1000;
     struct tm date;
-#ifdef _WIN32
-    gmtime_s(&date, &timeSeconds);
-#else
-    gmtime_r(&timeSeconds, &date);
-#endif
+    TRI_gmtime(timeSeconds, &date);
     char buffer[32];
     strftime(buffer, 32, "%Y-%m-%dT%H:%M:%S.000Z", &date);
     buffer[20] = static_cast<char>(millis / 100) + '0';
@@ -2023,12 +2020,13 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate, "ArangoDatabase"),
                                ft->GetFunction());
 
+  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate);
   TRI_InitV8Statistics(isolate, context);
 
   TRI_InitV8IndexArangoDB(isolate, ArangoNS);
 
   TRI_InitV8Collections(context, &vocbase, v8g, isolate, ArangoNS);
-  TRI_InitV8Views(context, &vocbase, v8g, isolate, ArangoNS);
+  TRI_InitV8Views(*v8g, isolate, ArangoNS);
   TRI_InitV8Users(context, &vocbase, v8g, isolate);
   TRI_InitV8GeneralGraph(context, &vocbase, v8g, isolate);
 

@@ -341,18 +341,11 @@ int TransactionState::checkCollectionPermission(std::string const& cname,
 }
 
 /// @brief release collection locks for a transaction
-int TransactionState::releaseCollections() {
-  if (hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
-      hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
+void TransactionState::releaseCollections() {
   // process collections in reverse order
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
     (*it)->release();
   }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief clear the query cache for all collections that were modified by

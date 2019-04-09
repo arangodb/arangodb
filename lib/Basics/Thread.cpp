@@ -280,9 +280,9 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     _state.store(ThreadState::STOPPED);
     LOG_TOPIC("f5915", ERR, Logger::THREADS)
         << "could not start thread '" << _name << "': " << TRI_last_error();
+  } else {
+    _threadStructInitialized = true;
   }
-
-  _threadStructInitialized = true;
 
   releaseRef();
 

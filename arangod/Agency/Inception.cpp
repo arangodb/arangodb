@@ -97,7 +97,6 @@ void Inception::gossip() {
             continue;
           }
         }
-
         LOG_TOPIC("cc3fd", DEBUG, Logger::AGENCY)
             << "Sending gossip message 1: " << out->toJson() << " to peer " << p;
         if (this->isStopping() || _agent->isStopping() || cc == nullptr) {

@@ -110,3 +110,10 @@ output was renamed to `openssl-version-compile-time`.
 This change affects the output produced when starting one of the ArangoDB
 executables (e.g. arangod, arangosh) with the `--version` command. It also 
 changes the attribute name in the detailed response of the `/_api/version` REST API.
+
+### Overcommit settings
+
+On Linux, ArangoDB will now show a startup warning in case the kernel setting 
+`vm.overcommit_memory` is set to a value of 2 and the jemalloc memory allocator 
+is in use. This combination does not play well together, and may lead to the 
+kernel denying arangod's memory allocation requests in more cases than necessary.

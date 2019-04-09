@@ -39,6 +39,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/Function.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
 #include "Aql/LimitExecutor.h"
@@ -58,10 +59,6 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
-
-#ifdef USE_IRESEARCH
-#include "IResearch/IResearchViewNode.h"
-#endif
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -99,10 +96,8 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::SHORTEST_PATH), "ShortestPathNode"},
     {static_cast<int>(ExecutionNode::REMOTESINGLE),
      "SingleRemoteOperationNode"},
-#ifdef USE_IRESEARCH
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW),
      "EnumerateViewNode"},
-#endif
 };
 
 // FIXME -- this temporary function should be
@@ -329,10 +324,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new ShortestPathNode(plan, slice);
     case REMOTESINGLE:
       return new SingleRemoteOperationNode(plan, slice);
-#ifdef USE_IRESEARCH
     case ENUMERATE_IRESEARCH_VIEW:
       return new iresearch::IResearchViewNode(*plan, slice);
-#endif
     default: {
       // should not reach this point
       TRI_ASSERT(false);
@@ -621,9 +614,7 @@ ExecutionNode const* ExecutionNode::getLoop() const {
 
     if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
         type == ENUMERATE_LIST || type == SHORTEST_PATH
-#ifdef USE_IRESEARCH
         || type == ENUMERATE_IRESEARCH_VIEW
-#endif
     ) {
       return node;
     }
@@ -1062,7 +1053,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       break;
     }
 
-#ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       auto ep = ExecutionNode::castTo<iresearch::IResearchViewNode const*>(en);
       TRI_ASSERT(ep);
@@ -1070,7 +1060,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
       break;
     }
-#endif
 
     default: {
       // should not reach this point
@@ -1116,6 +1105,15 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
     }
     en->setRegsToClear(std::move(regsToClear));
   }
+}
+
+RegisterId ExecutionNode::varToRegUnchecked(Variable const& var) const {
+  std::unordered_map<VariableId, VarInfo> const& varInfo = getRegisterPlan()->varInfo;
+  auto const it = varInfo.find(var.id);
+  TRI_ASSERT(it != varInfo.end());
+  RegisterId const reg = it->second.registerId;
+
+  return reg;
 }
 
 /// @brief replace a dependency, returns true if the pointer was found and
@@ -1235,6 +1233,34 @@ RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
   RegisterId rv = it->second.registerId;
   TRI_ASSERT(rv < ExecutionNode::MaxRegisterId);
   return rv;
+}
+
+// This is the general case and will not work if e.g. there is no predecessor.
+ExecutorInfos ExecutionNode::createRegisterInfos(
+    std::shared_ptr<std::unordered_set<RegisterId>>&& readableInputRegisters,
+    std::shared_ptr<std::unordered_set<RegisterId>>&& writableOutputRegisters) const {
+  RegisterId const nrOutRegs = getNrOutputRegisters();
+  RegisterId const nrInRegs = getNrInputRegisters();
+
+  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
+  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+
+  return ExecutorInfos{std::move(readableInputRegisters),
+                       std::move(writableOutputRegisters),
+                       nrInRegs,
+                       nrOutRegs,
+                       std::move(regsToClear),
+                       std::move(regsToKeep)};
+}
+
+RegisterId ExecutionNode::getNrInputRegisters() const {
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  return getRegisterPlan()->nrRegs[previousNode->getDepth()];
+}
+
+RegisterId ExecutionNode::getNrOutputRegisters() const {
+  return getRegisterPlan()->nrRegs[getDepth()];
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -1732,9 +1758,7 @@ bool SubqueryNode::mayAccessCollections() {
   // if the subquery contains any of these nodes, it may access data from
   // a collection
   std::vector<ExecutionNode::NodeType> const types = {
-#ifdef USE_IRESEARCH
       ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
-#endif
       ExecutionNode::ENUMERATE_COLLECTION,
       ExecutionNode::INDEX,
       ExecutionNode::INSERT,

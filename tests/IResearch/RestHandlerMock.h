@@ -45,6 +45,7 @@ struct GeneralRequestMock: public arangodb::GeneralRequest {
   virtual arangodb::velocypack::StringRef rawPayload() const override;
   virtual arangodb::velocypack::Slice payload(arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults) override;
   virtual arangodb::Endpoint::TransportType transportType() override;
+  std::unordered_map<std::string, std::string>& values() { return _values; }
 };
 
 struct GeneralResponseMock: public arangodb::GeneralResponse {

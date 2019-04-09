@@ -152,7 +152,8 @@ struct IResearchViewSetup {
     arangodb::tests::init();
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::FATAL); // suppress ERROR recovery failure due to error from callback
@@ -1313,7 +1314,7 @@ SECTION("test_emplace_cid") {
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
 
-      CHECK((false == view->link(link->self())));
+      CHECK((false == view->link(link->self()).ok()));
       CHECK((!persisted)); // emplace() does not modify view meta if cid existed previously
     }
 
@@ -1369,7 +1370,7 @@ SECTION("test_emplace_cid") {
       } link(42, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      CHECK((true == view->link(asyncLinkPtr)));
+      CHECK((true == view->link(asyncLinkPtr).ok()));
       CHECK((persisted)); // emplace() modifies view meta if cid did not exist previously
     }
 
@@ -1428,7 +1429,7 @@ SECTION("test_emplace_cid") {
       } link(42, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      CHECK((true == view->link(asyncLinkPtr)));
+      CHECK((true == view->link(asyncLinkPtr).ok()));
       CHECK((!persisted)); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
     }
 
@@ -1483,7 +1484,7 @@ SECTION("test_emplace_cid") {
       } link(42, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      CHECK((false == view->link(asyncLinkPtr)));
+      CHECK((false == view->link(asyncLinkPtr).ok()));
     }
 
     // collection in view after
@@ -1541,7 +1542,7 @@ SECTION("test_emplace_cid") {
       } link(42, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      CHECK((true == view->link(asyncLinkPtr)));
+      CHECK((true == view->link(asyncLinkPtr).ok()));
       CHECK((!persisted)); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
     }
 

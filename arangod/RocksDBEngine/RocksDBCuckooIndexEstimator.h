@@ -216,7 +216,7 @@ class RocksDBCuckooIndexEstimator {
         LOG_TOPIC("bcd09", WARN, arangodb::Logger::ENGINES)
             << "unable to restore index estimates: invalid format found";
         // Do not construct from serialization, use other constructor instead
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to restore index estimates: invalid format found");
       }
     }
   }
@@ -258,7 +258,7 @@ class RocksDBCuckooIndexEstimator {
       // Sorry we need a consistent state, so we have to read-lock
       READ_LOCKER(locker, _lock);
 
-      /// appliedSeq might be 0 if we did not applie any operations
+      /// appliedSeq might be 0 if we did not apply any operations
       appliedSeq = std::max(appliedSeq, this->committedSeq());
       TRI_ASSERT(appliedSeq != std::numeric_limits<rocksdb::SequenceNumber>::max());
       rocksutils::uint64ToPersistent(serialized, appliedSeq);
@@ -809,7 +809,7 @@ class RocksDBCuckooIndexEstimator {
     current += sizeof(uint64_t);
 
     if (_size <= 256) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to unserialize index estimates");
     }
 
     _nrUsed = rocksutils::uint64FromPersistent(current);

@@ -581,10 +581,13 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     b.close();
     b.close();
 
-    // hack for singke serveronly on single server
+    // hack for single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
       TRI_ASSERT(vertexMap.size() == 1);
-      PregelFeature* feature = PregelFeature::instance();
+      std::shared_ptr<PregelFeature> feature = PregelFeature::instance();
+      if (!feature) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
       std::shared_ptr<IWorker> worker = feature->worker(_executionNumber);
 
       if (worker) {
@@ -596,8 +599,8 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
       auto created = AlgoRegistry::createWorker(_vocbaseGuard.database(), b.slice());
 
       TRI_ASSERT(created.get() != nullptr);
-      PregelFeature::instance()->addWorker(std::move(created), _executionNumber);
-      worker = PregelFeature::instance()->worker(_executionNumber);
+      feature->addWorker(std::move(created), _executionNumber);
+      worker = feature->worker(_executionNumber);
       TRI_ASSERT(worker);
       worker->setupWorker();
 
@@ -626,8 +629,13 @@ int Conductor::_finalizeWorkers() {
   if (_masterContext) {
     _masterContext->postApplication();
   }
+      
+  std::shared_ptr<PregelFeature> feature = PregelFeature::instance();
+  if (!feature) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
   // stop monitoring shards
-  RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
+  RecoveryManager* mngr = feature->recoveryManager();
   if (mngr) {
     mngr->stopMonitoring(this);
   }
@@ -687,16 +695,15 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder) {
 }
 
 VPackBuilder Conductor::toVelocyPack() const {
+  MUTEX_LOCKER(guard, _callbackMutex);
+
   VPackBuilder result;
   result.openObject();
   result.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
   result.add("gss", VPackValue(_globalSuperstep));
   result.add("totalRuntime", VPackValue(totalRuntimeSecs()));
   _aggregators->serializeValues(result);
-  {
-    MUTEX_LOCKER(guard, _callbackMutex);
-    _statistics.serializeValues(result);
-  }
+  _statistics.serializeValues(result);
   if (_state != ExecutionState::RUNNING) {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));

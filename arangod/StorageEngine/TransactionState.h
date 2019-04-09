@@ -224,14 +224,12 @@ class TransactionState {
   int checkCollectionPermission(std::string const& cname, AccessMode::Type) const;
 
   /// @brief release collection locks for a transaction
-  int releaseCollections();
+  void releaseCollections();
 
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
   void clearQueryCache();
   
-protected:
-
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
   TRI_voc_tid_t const _id;  /// @brief local trx id

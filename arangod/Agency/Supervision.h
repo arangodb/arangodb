@@ -133,8 +133,7 @@ class Supervision : public arangodb::CriticalThread {
   /// @brief Upgrade agency to supervision overhaul jobs
   void upgradeHealthRecords(VPackBuilder&);
 
-  /// @brief Check for orphaned index creations, which have been successfully
-  /// built
+  /// @brief Check for orphaned index creations, which have been successfully built
   void readyOrphanedIndexCreations();
 
   /// @brief Check for inconsistencies in replication factor vs dbs entries

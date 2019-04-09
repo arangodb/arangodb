@@ -872,7 +872,7 @@ void Supervision::run() {
           }
         }
       }
-      
+
       auto lapTime = std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::steady_clock::now() - lapStart).count();
       

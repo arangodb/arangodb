@@ -109,6 +109,8 @@ class ClusterEngine final : public StorageEngine {
     return std::string();  // no path to be returned here
   }
 
+  void cleanupReplicationContexts() override {}
+
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                          int& status) override;
   velocypack::Builder getReplicationApplierConfiguration(int& status) override;

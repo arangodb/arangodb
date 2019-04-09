@@ -36,16 +36,23 @@ void GreetingsFeature::prepare() {
   LOG_TOPIC("e52b0", INFO, arangodb::Logger::FIXME)
       << "" << rest::Version::getVerboseVersionString();
 
+  // building in maintainer mode or enabling catch test code will incur runtime overhead,
+  // so warn users about this
+  bool warn = false;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC("0458b", WARN, arangodb::Logger::FIXME)
-    << "==========================================================";
-  LOG_TOPIC("12670", WARN, arangodb::Logger::FIXME)
-    << "== This is a maintainer version intended for debugging. ==";
-  LOG_TOPIC("e7f25", WARN, arangodb::Logger::FIXME)
-    << "==           DO NOT USE IN PRODUCTION!                  ==";
-  LOG_TOPIC("bd666", WARN, arangodb::Logger::FIXME)
-    << "==========================================================";
+  warn = true;
+#else
+#ifdef ARANGODB_USE_CATCH_TESTS
+  warn = true;
 #endif
+#endif
+  if (warn) {
+    LOG_TOPIC("0458b", WARN, arangodb::Logger::FIXME)
+      << "This is a maintainer version intended for debugging. DO NOT USE IN PRODUCTION!";
+    LOG_TOPIC("bd666", WARN, arangodb::Logger::FIXME)
+      << "==============================================================================";
+
+  }
 }
 
 void GreetingsFeature::unprepare() {
