@@ -44,7 +44,11 @@ using namespace arangodb::graph;
 
 //
 ConstantWeightKShortestPathsFinder::ConstantWeightKShortestPathsFinder(ShortestPathOptions& options)
-    : ShortestPathFinder(options), _pathAvailable(false) {}
+    : ShortestPathFinder(options), _callback(nullptr), _pathAvailable(false) {}
+
+ConstantWeightKShortestPathsFinder::ConstantWeightKShortestPathsFinder(
+    ShortestPathOptions& options, std::function<void()>* callback)
+    : ShortestPathFinder(options), _callback(callback), _pathAvailable(false) {}
 
 ConstantWeightKShortestPathsFinder::~ConstantWeightKShortestPathsFinder() {}
 
@@ -56,7 +60,6 @@ bool ConstantWeightKShortestPathsFinder::startKShortestPathsTraversal(
   if (start == end) {
     return true;
   }
-
   _start = arangodb::velocypack::StringRef(start);
   _end = arangodb::velocypack::StringRef(end);
   _pathAvailable = true;
@@ -70,7 +73,8 @@ bool ConstantWeightKShortestPathsFinder::startKShortestPathsTraversal(
 }
 
 bool ConstantWeightKShortestPathsFinder::computeShortestPath(
-    const VertexRef& start, const VertexRef& end, const std::unordered_set<VertexRef>& forbiddenVertices,
+    const VertexRef& start, const VertexRef& end,
+    const std::unordered_set<VertexRef>& forbiddenVertices,
     const std::unordered_set<Edge>& forbiddenEdges, Path& result) {
   bool found = false;
   Ball left(start, FORWARD);
@@ -80,7 +84,7 @@ bool ConstantWeightKShortestPathsFinder::computeShortestPath(
   result.clear();
 
   while (!left._frontier.empty() && !right._frontier.empty() && !found) {
-    //    callback();
+    guardedCallback();
 
     // Choose the smaller frontier to expand.
     if (left._frontier.size() < right._frontier.size()) {
@@ -140,13 +144,12 @@ bool ConstantWeightKShortestPathsFinder::advanceFrontier(
   std::vector<graph::EdgeDocumentToken> edges;
   Frontier newFrontier;
 
-  // TODO: This is slow and has to be converted to hash tables.
   auto isEdgeForbidden = [forbiddenEdges](const Edge& e) -> bool {
-                           return forbiddenEdges.find(e) != forbiddenEdges.end();
-                         };
+    return forbiddenEdges.find(e) != forbiddenEdges.end();
+  };
   auto isVertexForbidden = [forbiddenVertices](const VertexRef& v) -> bool {
-                             return forbiddenVertices.find(v) != forbiddenVertices.end();
-                           };
+    return forbiddenVertices.find(v) != forbiddenVertices.end();
+  };
 
   for (auto& v : source._frontier) {
     neighbours.clear();
@@ -210,8 +213,8 @@ void ConstantWeightKShortestPathsFinder::reconstructPath(const Ball& left, const
 }
 
 bool ConstantWeightKShortestPathsFinder::computeNextShortestPath(Path& result) {
-  std::unordered_map<VertexRef> forbiddenVertices;
-  std::unordered_map<Edge> forbiddenEdges;
+  std::unordered_set<VertexRef> forbiddenVertices;
+  std::unordered_set<Edge> forbiddenEdges;
   std::vector<Path> candidates;
   Path tmpPath, candidate;
   TRI_ASSERT(!_shortestPaths.empty());
@@ -226,9 +229,11 @@ bool ConstantWeightKShortestPathsFinder::computeNextShortestPath(Path& result) {
 
     // Must not use vertices on the prefix
     for (size_t j = 0; j < i; ++j) {
-      forbiddenVertices.emplace_back(lastShortestPath._vertices[j]);
+      forbiddenVertices.emplace(lastShortestPath._vertices[j]);
     }
 
+    // TODO: This can be done more efficiently by storing shortest
+    //       paths in a prefix/postfix tree
     for (auto const& p : _shortestPaths) {
       bool eq = true;
       for (size_t e = 0; e < i; ++e) {
@@ -238,7 +243,7 @@ bool ConstantWeightKShortestPathsFinder::computeNextShortestPath(Path& result) {
         }
       }
       if (eq && (i < p._edges.size())) {
-        forbiddenEdges.emplace_back(p._edges.at(i));
+        forbiddenEdges.emplace(p._edges.at(i));
       }
     }
 
