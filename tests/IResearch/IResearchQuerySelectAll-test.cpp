@@ -247,14 +247,14 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       // insert into collection_1
       for (; i < insertedDocs.size()/2; ++i) {
         auto const doc = arangodb::velocypack::Parser::fromJson("{ \"key\": " + std::to_string(i) + "}");
-        auto const res = logicalCollection1->insert(&trx, doc->slice(), insertedDocs[i], opt, tick, false);
+        auto const res = logicalCollection1->insert(&trx, doc->slice(), insertedDocs[i], opt, false);
         CHECK(res.ok());
       }
 
       // insert into collection_2
       for (; i < insertedDocs.size(); ++i) {
         auto const doc = arangodb::velocypack::Parser::fromJson("{ \"key\": " + std::to_string(i) + "}");
-        auto const res = logicalCollection1->insert(&trx, doc->slice(), insertedDocs[i], opt, tick, false);
+        auto const res = logicalCollection1->insert(&trx, doc->slice(), insertedDocs[i], opt, false);
         CHECK(res.ok());
       }
 

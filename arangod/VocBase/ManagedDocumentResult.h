@@ -35,7 +35,7 @@ class Builder;
 
 class ManagedDocumentResult {
  public:
-  ManagedDocumentResult() : _vpack(nullptr), _managed(false) {}
+  ManagedDocumentResult() : _vpack(nullptr), _revisionId(0) {}
 
   ManagedDocumentResult(ManagedDocumentResult const& other) = default;
   ManagedDocumentResult& operator=(ManagedDocumentResult const& other) = default;
@@ -43,9 +43,7 @@ class ManagedDocumentResult {
   ManagedDocumentResult& operator=(ManagedDocumentResult&& other) noexcept {
     _string = std::move(other._string);
     _vpack = other._vpack;
-    _localDocumentId = other._localDocumentId;
-    _managed = other._managed;
-
+    _revisionId = other._revisionId;
     other.clear();
     return *this;
   }
@@ -53,51 +51,58 @@ class ManagedDocumentResult {
   ManagedDocumentResult(ManagedDocumentResult&& other) noexcept
       : _string(std::move(other._string)),
         _vpack(other._vpack),
-        _localDocumentId(other._localDocumentId),
-        _managed(other._managed) {
+        _revisionId(other._revisionId) {
     other.clear();
   }
 
-  void setUnmanaged(uint8_t const* vpack, LocalDocumentId const& documentId);
+  /// @brief store pointer to a valid document
+  void setUnmanaged(uint8_t const* vpack);
+  /// @brief copy in a valid document
+  void setManaged(uint8_t const* vpack);
 
-  void setManaged(uint8_t const* vpack, LocalDocumentId const& documentId);
-
-  std::string* setManaged(LocalDocumentId const& documentId) {
+  /// @brief access the internal buffer, revisionId must be set manually
+  std::string* setManaged() noexcept {
     _string.clear();
     _vpack = nullptr;
-    _localDocumentId = documentId;
-    _managed = true;
+    _revisionId = 0;
     return &_string;
   }
 
-  inline LocalDocumentId localDocumentId() const { return _localDocumentId; }
+  inline TRI_voc_rid_t revisionId() const noexcept { return _revisionId; }
+  void setRevisionId(TRI_voc_rid_t rid) noexcept { _revisionId = rid; }
+  void setRevisionId() noexcept;
 
-  void clear() noexcept {
+  void clearData() noexcept {
     _string.clear();
     _vpack = nullptr;
-    _localDocumentId.clear();
-    _managed = false;
   }
-
-  inline uint8_t const* vpack() const {
-    if (_managed) {
+  
+  void clear() noexcept {
+    clearData();
+    _revisionId = 0;
+  }
+  
+  inline uint8_t const* vpack() const noexcept {
+    if (_vpack == nullptr) {
       return reinterpret_cast<uint8_t const*>(_string.data());
     }
-    TRI_ASSERT(_vpack != nullptr);
     return _vpack;
   }
 
-  inline bool empty() const { return (!_managed && _vpack == nullptr); }
+  inline bool empty() const noexcept {
+    return (_vpack == nullptr && _string.empty());
+  }
 
-  inline bool canUseInExternal() const { return !_managed; }
+  inline bool canUseInExternal() const noexcept {
+    return _vpack != nullptr;
+  }
 
   void addToBuilder(velocypack::Builder& builder, bool allowExternals) const;
 
  private:
   std::string _string;
   uint8_t* _vpack;
-  LocalDocumentId _localDocumentId;
-  bool _managed;
+  TRI_voc_rid_t _revisionId;
 };
 
 }  // namespace arangodb

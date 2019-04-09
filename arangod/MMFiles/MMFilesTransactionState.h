@@ -96,10 +96,15 @@ class MMFilesTransactionState final : public TransactionState {
 
   /// @brief free all operations for a transaction
   void freeOperations(transaction::Methods* activeTrx);
+  
+ private:
 
   rocksdb::Transaction* _rocksTransaction;
   bool _beginWritten;
   bool _hasOperations;
+  
+  /// @brief tick of last added & written operation
+  TRI_voc_tick_t _lastWrittenOperationTick;
 };
 
 }  // namespace arangodb
