@@ -35,13 +35,7 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add analyzer related handlers to 'ArangoDBNS'
 ////////////////////////////////////////////////////////////////////////////////
-void TRI_InitV8Analyzers(
-  v8::Handle<v8::Context> context, // v8 context
-  TRI_vocbase_t& vocbase, // vocbase
-  TRI_v8_global_t& v8g, // v8 globals
-  v8::Isolate& isolate, // v8 isolate
-  v8::Handle<v8::ObjectTemplate> ArangoDBNS // v8 handler root
-);
+void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate);
 
 } // iresearch
 } // arangodb

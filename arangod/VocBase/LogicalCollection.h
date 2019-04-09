@@ -297,34 +297,31 @@ class LogicalCollection : public LogicalDataSource {
   // convenience function for downwards-compatibility
   Result insert(transaction::Methods* trx, velocypack::Slice const slice,
                 ManagedDocumentResult& result, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock) {
-    TRI_voc_rid_t unused;
-    return insert(trx, slice, result, options, resultMarkerTick, lock, unused,
-                  nullptr, nullptr);
+                bool lock) {
+    return insert(trx, slice, result, options, lock, nullptr, nullptr);
   }
 
   /**
-   * @param callbackDuringLock Called immediately after a successful insert. If
+   * @param cbDuringLock Called immediately after a successful insert. If
    * it returns a failure, the insert will be rolled back. If the insert wasn't
    * successful, it isn't called. May be nullptr.
    */
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
                 ManagedDocumentResult& result, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& revisionId,
-                KeyLockInfo* keyLockInfo, std::function<Result(void)> callbackDuringLock);
+                bool lock, KeyLockInfo* keyLockInfo, std::function<void()> const& cbDuringLock);
 
-  Result update(transaction::Methods*, velocypack::Slice,
-                ManagedDocumentResult& result, OperationOptions&, TRI_voc_tick_t&,
-                bool lock, TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
+  Result update(transaction::Methods*, velocypack::Slice newSlice,
+                ManagedDocumentResult& result, OperationOptions&,
+                bool lock, ManagedDocumentResult& previousMdr);
 
-  Result replace(transaction::Methods*, velocypack::Slice,
-                 ManagedDocumentResult& result, OperationOptions&, TRI_voc_tick_t&,
-                 bool lock, TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
+  Result replace(transaction::Methods*, velocypack::Slice newSlice,
+                 ManagedDocumentResult& result, OperationOptions&,
+                 bool lock, ManagedDocumentResult& previousMdr);
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                KeyLockInfo* keyLockInfo, std::function<Result(void)> callbackDuringLock);
+                OperationOptions& options,
+                bool lock, ManagedDocumentResult& previousMdr,
+                KeyLockInfo* keyLockInfo, std::function<void()> const& cbDuringLock);
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const;
