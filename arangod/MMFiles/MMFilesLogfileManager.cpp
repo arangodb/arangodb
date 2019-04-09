@@ -1458,7 +1458,7 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
   }
 
   LOG_TOPIC(DEBUG, Logger::ENGINES) << "getCollectableLogfile: "
-                                    << "found no logfile to collect, minId:" << minId;
+                                    << "found no logfile to collect, minId: " << minId;
 
   return nullptr;
 }

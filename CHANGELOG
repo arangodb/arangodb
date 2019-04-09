@@ -1,3 +1,10 @@
+v3.4.6 (XXXX-XX-XX)
+-------------------
+
+* fixed a crash (SIGSEGV) when opening a RocksDB database directory that
+  contained an empty (0 bytes filesize) journal file and encryption was in use.
+
+
 v3.4.5 (2019-03-27)
 -------------------
 
@@ -168,6 +175,14 @@ v3.4.5 (2019-03-27)
 
 * do not wait for replication after each job execution in Supervision
 
+* fix a blockage in MoveShard if a failover happens during the operation
+
+* check health of servers in Current before scheduling removeFollower jobs
+
+* wait for statistics collections to be created before running resilience
+  tests
+
+* fix ttl values in agency when key overwritten with no ttl
 
 v3.4.4 (2019-03-12)
 -------------------

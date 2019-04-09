@@ -35,6 +35,7 @@ const _ = require("lodash");
 const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
+const waitForStatisticsCollections = require('@arangodb/cluster').waitForStatisticsCollections;
 
 function getDBServers() {
   var tmp = global.ArangoClusterInfo.getDBServers();
@@ -870,6 +871,8 @@ function SynchronousReplicationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
+
+waitForStatisticsCollections();
 
 jsunity.run(SynchronousReplicationSuite);
 

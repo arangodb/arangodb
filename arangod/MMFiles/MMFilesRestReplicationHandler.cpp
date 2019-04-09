@@ -668,8 +668,7 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
   size_t const count = keys->count();
   auto keysRepository = _vocbase.collectionKeys();
 
-  keysRepository->store(keys.get());
-  keys.release();
+  keysRepository->store(std::move(keys));
 
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
@@ -720,38 +719,33 @@ void MMFilesRestReplicationHandler::handleCommandGetKeys() {
                   TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
+  
+  TRI_DEFER(collectionKeys->release());
 
-  try {
-    VPackBuilder b;
-    b.add(VPackValue(VPackValueType::Array));
+  VPackBuilder b;
+  b.add(VPackValue(VPackValueType::Array));
 
-    TRI_voc_tick_t max = static_cast<TRI_voc_tick_t>(collectionKeys->count());
+  TRI_voc_tick_t max = static_cast<TRI_voc_tick_t>(collectionKeys->count());
 
-    for (TRI_voc_tick_t from = 0; from < max; from += chunkSize) {
-      TRI_voc_tick_t to = from + chunkSize;
+  for (TRI_voc_tick_t from = 0; from < max; from += chunkSize) {
+    TRI_voc_tick_t to = from + chunkSize;
 
-      if (to > max) {
-        to = max;
-      }
-
-      auto result = collectionKeys->hashChunk(static_cast<size_t>(from),
-                                              static_cast<size_t>(to));
-
-      // Add a chunk
-      b.add(VPackValue(VPackValueType::Object));
-      b.add("low", VPackValue(std::get<0>(result)));
-      b.add("high", VPackValue(std::get<1>(result)));
-      b.add("hash", VPackValue(std::to_string(std::get<2>(result))));
-      b.close();
+    if (to > max) {
+      to = max;
     }
-    b.close();
 
-    collectionKeys->release();
-    generateResult(rest::ResponseCode::OK, b.slice());
-  } catch (...) {
-    collectionKeys->release();
-    throw;
+    auto result = collectionKeys->hashChunk(static_cast<size_t>(from),
+                                            static_cast<size_t>(to));
+
+    // Add a chunk
+    b.add(VPackValue(VPackValueType::Object));
+    b.add("low", VPackValue(std::get<0>(result)));
+    b.add("high", VPackValue(std::get<1>(result)));
+    b.add("hash", VPackValue(std::to_string(std::get<2>(result))));
+    b.close();
   }
+  b.close();
+  generateResult(rest::ResponseCode::OK, b.slice());
 }
 
 /// @brief returns date for a key range
@@ -828,39 +822,32 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
                   TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
+  
+  TRI_DEFER(collectionKeys->release());
 
-  try {
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    VPackBuilder resultBuilder(ctx->getVPackOptions());
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  VPackBuilder resultBuilder(ctx->getVPackOptions());
 
-    resultBuilder.openArray();
+  resultBuilder.openArray();
 
-    if (keys) {
-      collectionKeys->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize));
-    } else {
-      bool success = false;
-      VPackSlice parsedIds = this->parseVPackBody(success);
+  if (keys) {
+    collectionKeys->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize));
+  } else {
+    bool success = false;
+    VPackSlice parsedIds = this->parseVPackBody(success);
 
-      if (!success) {
-        // error already created
-        collectionKeys->release();
-        return;
-      }
-
-      collectionKeys->dumpDocs(resultBuilder, chunk, static_cast<size_t>(chunkSize),
-                               offsetInChunk, maxChunkSize, parsedIds);
+    if (!success) {
+      // error already created
+      return;
     }
 
-    resultBuilder.close();
-
-    collectionKeys->release();
-
-    generateResult(rest::ResponseCode::OK, resultBuilder.slice(), ctx);
-    return;
-  } catch (...) {
-    collectionKeys->release();
-    throw;
+    collectionKeys->dumpDocs(resultBuilder, chunk, static_cast<size_t>(chunkSize),
+                              offsetInChunk, maxChunkSize, parsedIds);
   }
+
+  resultBuilder.close();
+
+  generateResult(rest::ResponseCode::OK, resultBuilder.slice(), ctx);
 }
 
 void MMFilesRestReplicationHandler::handleCommandRemoveKeys() {

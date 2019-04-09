@@ -193,6 +193,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual void getCollectionInfo(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid, arangodb::velocypack::Builder& result, bool includeIndexes, TRI_voc_tick_t maxTick) override;
   virtual int getCollectionsAndIndexes(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result, bool wasCleanShutdown, bool isUpgrade) override;
   virtual void getDatabases(arangodb::velocypack::Builder& result) override;
+  virtual void cleanupReplicationContexts() override;
   virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase, int& result) override;
   virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(int& result) override;
   virtual int getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;

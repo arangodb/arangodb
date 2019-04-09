@@ -43,6 +43,11 @@ var slaveEndpoint = ARGUMENTS[0];
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
+let emit = function(msg) {
+  internal.print(msg);
+  console.log(msg);
+};
+
 function ReplicationSuite() {
   'use strict';
   var cn = "UnitTestsReplication";
@@ -225,16 +230,19 @@ function ReplicationSuite() {
 
           let insert = function() {
             let collection = pickCollection();
+            emit("insert " + db._name() + " " + collection.name());
             collection.insert({ value: Date.now() });
           };
           
           let insertOverwrite = function() {
             let collection = pickCollection();
+            emit("insertOverwrite " + db._name() + " " + collection.name());
             collection.insert({ _key: "test", value: Date.now() }, { overwrite: true });
           };
           
           let remove = function() {
             let collection = pickCollection();
+            emit("remove " + db._name() + " " + collection.name());
             if (collection.count() === 0) {
               let k = collection.insert({});
               collection.remove(k);
@@ -245,6 +253,7 @@ function ReplicationSuite() {
 
           let replace = function() {
             let collection = pickCollection();
+            emit("replace " + db._name() + " " + collection.name());
             if (collection.count() === 0) {
               let k = collection.insert({});
               collection.replace(k, { value2: Date.now() });
@@ -255,6 +264,7 @@ function ReplicationSuite() {
           
           let update = function() {
             let collection = pickCollection();
+            emit("update " + db._name() + " " + collection.name());
             if (collection.count() === 0) {
               let k = collection.insert({});
               collection.update(k, { value2: Date.now() });
@@ -265,11 +275,13 @@ function ReplicationSuite() {
           
           let insertEdge = function() {
             let collection = pickEdgeCollection();
+            emit("insertEdge " + " " + db._name() + " " + collection.name());
             collection.insert({ _from: "test/v1", _to: "test/v2", value: Date.now() });
           };
           
           let insertOrReplace = function() {
             let collection = pickCollection();
+            emit("insertOrReplace " + db._name() + " " + collection.name());
             db._executeTransaction({
               collections: { write: [collection.name()] },
               action: function(params) {
@@ -287,6 +299,7 @@ function ReplicationSuite() {
           
           let insertOrUpdate = function() {
             let collection = pickCollection();
+            emit("insertOrUpdate " + db._name() + " " + collection.name());
             db._executeTransaction({
               collections: { write: [collection.name()] },
               action: function(params) {
@@ -304,6 +317,7 @@ function ReplicationSuite() {
           
           let insertMulti = function() {
             let collection = pickCollection();
+            emit("insertMulti " + db._name() + " " + collection.name());
             db._executeTransaction({
               collections: { write: [collection.name()] },
               action: function(params) {
@@ -317,6 +331,7 @@ function ReplicationSuite() {
           
           let removeMulti = function() {
             let collection = pickCollection();
+            emit("removeMulti " + db._name() + " " + collection.name());
             db._executeTransaction({
               collections: { write: [collection.name()] },
               action: function(params) {
@@ -337,6 +352,7 @@ function ReplicationSuite() {
           
           let removeInsert = function() {
             let collection = pickCollection();
+            emit("removeInsert " + db._name() + " " + collection.name());
             db._executeTransaction({
               collections: { write: [collection.name()] },
               action: function(params) {
@@ -353,6 +369,7 @@ function ReplicationSuite() {
           
           let insertRemove = function() {
             let collection = pickCollection();
+            emit("insertRemove " + db._name() + " " + collection.name());
             db._executeTransaction({
               collections: { write: [collection.name()] },
               action: function(params) {
@@ -366,6 +383,7 @@ function ReplicationSuite() {
           
           let insertBatch = function() {
             let collection = pickCollection();
+            emit("insertBatch " + db._name() + " " + collection.name());
             db._executeTransaction({
               collections: { write: [collection.name()] },
               action: function(params) {
@@ -381,11 +399,13 @@ function ReplicationSuite() {
           
           let createCollection = function() {
             let name = "test" + internal.genRandomAlphaNumbers(16) + Date.now();
+            emit("createCollection " + db._name() + " " + name);
             return db._create(name);
           };
           
           let createEdgeCollection = function() {
             let name = "edge" + internal.genRandomAlphaNumbers(16) + Date.now();
+            emit("createEdgeCollection " + db._name() + " " + name);
             return db._createEdgeCollection(name);
           };
           
@@ -395,28 +415,33 @@ function ReplicationSuite() {
               // don't drop collections from our test database
               return false;
             }
+            emit("dropCollection " + db._name() + " " + collection.name());
             db._drop(collection.name());
           };
           
           let renameCollection = function() {
             let name = internal.genRandomAlphaNumbers(16) + Date.now();
             let collection = pickCollection();
+            emit("renameCollection " + db._name() + " " + collection.name() + " " + name);
             collection.rename("fuchs" + name);
           };
           
           let changeCollection = function() {
             let collection = pickCollection();
+            emit("changeCollection " + db._name() + " " + collection.name());
             collection.properties({ waitForSync: false });
           };
           
           let truncateCollection = function() {
             let collection = pickCollection();
+            emit("truncateCollection " + db._name() + " " + collection.name());
             collection.truncate();
           };
 
           let createIndex = function () {
             let name = internal.genRandomAlphaNumbers(16) + Date.now();
             let collection = pickCollection();
+            emit("createIndex " + db._name() + " " + collection.name());
             collection.ensureIndex({ 
               type: Math.random() >= 0.5 ? "hash" : "skiplist", 
               fields: [ name ],
@@ -428,6 +453,7 @@ function ReplicationSuite() {
             let collection = pickCollection();
             let indexes = collection.getIndexes();
             if (indexes.length > 1) {
+              emit("dropIndex " + db._name() + " " + collection.name());
               collection.dropIndex(indexes[1]);
             }
           };
@@ -435,6 +461,7 @@ function ReplicationSuite() {
           let createDatabase = function() {
             db._useDatabase('_system');
             let name = "test" + internal.genRandomAlphaNumbers(16) + Date.now();
+            emit("createDatabase " + db._name() + " " + name);
             return db._createDatabase(name);
           };
 
@@ -446,6 +473,7 @@ function ReplicationSuite() {
               return;
             }
             db._useDatabase('_system');
+            emit("dropDatabase " + db._name() + " " + name);
             db._dropDatabase(name);
           };
 
@@ -483,9 +511,12 @@ function ReplicationSuite() {
 
           db._useDatabase(cn);
           let total = "";
+          emit("leader collections in " + cn);
           db._collections().filter(function(c) { return c.name()[0] !== '_'; }).forEach(function(c) {
             total += c.name() + "-" + c.count() + "-" + collectionChecksum(c.name());
+            emit("- " + c.name() + " " + c.count());
             c.indexes().forEach(function(index) {
+              emit("  - " + index.type + " " + JSON.stringify(index.fields));
               delete index.selectivityEstimate;
               total += index.type + "-" + JSON.stringify(index.fields);
             });
@@ -496,9 +527,12 @@ function ReplicationSuite() {
         function(state) {
           db._useDatabase(cn);
           let total = "";
+          emit("follower collections in " + cn);
           db._collections().filter(function(c) { return c.name()[0] !== '_'; }).forEach(function(c) {
             total += c.name() + "-" + c.count() + "-" + collectionChecksum(c.name());
+            emit("- " + c.name() + " " + c.count());
             c.indexes().forEach(function(index) {
+              emit("  - " + index.type + " " + JSON.stringify(index.fields));
               delete index.selectivityEstimate;
               total += index.type + "-" + JSON.stringify(index.fields);
             });
