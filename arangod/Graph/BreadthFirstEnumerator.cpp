@@ -303,6 +303,7 @@ bool BreadthFirstEnumerator::shouldPrune() {
     transaction::BuilderLeaser builder(_opts->trx());
     if (evaluator->needsPath()) {
       aql::AqlValue val = pathToIndexToAqlValue(*builder.get(), _schreierIndex);
+      aql::AqlValueGuard guard(val, true);
       evaluator->injectPath(val.slice());
     }
     return evaluator->evaluate();
