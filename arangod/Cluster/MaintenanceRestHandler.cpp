@@ -122,7 +122,12 @@ RestStatus MaintenanceRestHandler::postAction() {
 
   if (es.str().empty()) {
     VPackBuilder ok;
-    ok.add(VPackSlice("OK"));
+    {
+      VPackObjectBuilder o(&ok);
+      ok.add("error", VPackValue(false));
+      ok.add("code", VPackValue(200));
+      ok.add("result", VPackValue(true));
+    }
     generateResult(rest::ResponseCode::OK, ok.slice());
   } else {
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << es.str(); 
