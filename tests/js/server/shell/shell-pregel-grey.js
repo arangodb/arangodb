@@ -189,7 +189,7 @@ function basicTestSuite () {
           results.forEach(function(d) {
             let v = vertices.document(d._key);
             assertTrue(v !== null);
-            assertTrue(Math.abs(v.pagerank - d.result) < EPS);
+            assertTrue(Math.abs(v.pagerank - d.result) < EPS,);
           });
           break;
         }

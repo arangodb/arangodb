@@ -95,7 +95,7 @@ void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
 }
 
 int Utils::resolveShard(WorkerConfig const* config, std::string const& collectionName,
-                        std::string const& shardKey, std::string const& vertexKey,
+                        std::string const& shardKey, VPackStringRef vertexKey,
                         std::string& responsibleShard) {
   if (ServerState::instance()->isRunningInCluster() == false) {
     responsibleShard = collectionName;
@@ -121,7 +121,7 @@ int Utils::resolveShard(WorkerConfig const* config, std::string const& collectio
 
   VPackBuilder partial;
   partial.openObject();
-  partial.add(shardKey, VPackValue(vertexKey));
+  partial.add(shardKey, VPackValuePair(vertexKey.data(), vertexKey.size(), VPackValueType::String));
   partial.close();
   //  LOG_TOPIC("00a5c", INFO, Logger::PREGEL) << "Partial doc: " << partial.toJson();
   return info->getResponsibleShard(partial.slice(), false, responsibleShard);

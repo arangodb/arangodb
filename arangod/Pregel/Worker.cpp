@@ -616,7 +616,9 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b) const {
   for (VertexEntry const* vertexEntry : it) {
     V* data = _graphStore->mutableVertexData(vertexEntry);
     b.openObject();
-    b.add(StaticStrings::KeyString, VPackValue(vertexEntry->key()));
+    b.add(StaticStrings::KeyString, VPackValuePair(vertexEntry->key().data(),
+                                                   vertexEntry->key().size(),
+                                                   VPackValueType::String));
     // bool store =
     _graphStore->graphFormat()->buildVertexDocument(b, data, sizeof(V));
     b.close();

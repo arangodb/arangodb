@@ -124,7 +124,7 @@ class Utils {
   static int64_t countDocuments(TRI_vocbase_t* vocbase, std::string const& collection);
 
   static int resolveShard(WorkerConfig const* config, std::string const& collectionName,
-                          std::string const& shardKey, std::string const& vertexKey,
+                          std::string const& shardKey, arangodb::velocypack::StringRef vertexKey,
                           std::string& responsibleShard);
 };
 }  // namespace pregel
