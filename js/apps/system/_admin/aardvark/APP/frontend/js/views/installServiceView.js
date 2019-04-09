@@ -1,5 +1,5 @@
 /* jshint browser: true */
-/* global Backbone, $, window, arangoHelper, templateEngine, _ */
+/* global frontendConfig, Backbone, $, window, arangoHelper, templateEngine, _ */
 (function () {
   'use strict';
 
@@ -89,7 +89,6 @@
     },
 
     render: function () {
-
       if (frontendConfig.disableFoxxStore) {
         $(this.el).html('<div>FoxxStore disabled due to server configuration (--foxx.disable-store true).</div>');
         return this;
