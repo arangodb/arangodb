@@ -59,13 +59,11 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
       "authentication will be unaffected.",
       new BooleanParameter(&_denyHardenedApi));
 
-
   options->addSection("foxx", "Configure Foxx");
   options->addOption("--foxx.disable-api", "disables Foxx management api",
                      new BooleanParameter(&_disableFoxxApi));
   options->addOption("--foxx.disable-store", "disables Foxx store in web-ui",
                      new BooleanParameter(&_disableFoxxStore));
-
 
   options->addSection("javascript", "Configure the Javascript engine");
   options->addOption("--javascript.allow-port-testing", "allow testing of ports",
@@ -91,22 +89,28 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
   options->addOption("--javascript.environment-variables-white-list",
                      "variables that will be accessible in JavaScript",
                      new VectorParameter<StringParameter>(&_environmentVariablesWhiteListVec));
-  options->addOption("--javascript.environment-variables-black-list",
-                     "variables that will be inaccessible in JavaScript if not white listed",
-                     new VectorParameter<StringParameter>(&_environmentVariablesBlackListVec));
+  options->addOption(
+      "--javascript.environment-variables-black-list",
+      "variables that will be inaccessible in JavaScript if not white listed",
+      new VectorParameter<StringParameter>(&_environmentVariablesBlackListVec));
 
   options->addOption("--javascript.endpoints-white-list",
-                     "endpoints that can be connected to via internal.download() in JavaScript actions",
+                     "endpoints that can be connected to via "
+                     "internal.download() in JavaScript actions",
                      new VectorParameter<StringParameter>(&_endpointsWhiteListVec));
-  options->addOption("--javascript.endpoints-black-list",
-                     "endpoints that cannot be connected to via internal.download() in JavaScript actions if not white listed",
-                     new VectorParameter<StringParameter>(&_endpointsBlackListVec));
+  options->addOption(
+      "--javascript.endpoints-black-list",
+      "endpoints that cannot be connected to via internal.download() in "
+      "JavaScript actions if not white listed",
+      new VectorParameter<StringParameter>(&_endpointsBlackListVec));
 
   options->addOption("--javascript.files-white-list",
-                     "paths that will be accessible from within JavaScript in restricted contexts",
+                     "paths that will be accessible from within JavaScript in "
+                     "restricted contexts",
                      new VectorParameter<StringParameter>(&_filesWhiteListVec));
   options->addOption("--javascript.files-black-list",
-                     "paths that will be inaccessible from within JavaScript in restricted contexts if not white listed",
+                     "paths that will be inaccessible from within JavaScript "
+                     "in restricted contexts if not white listed",
                      new VectorParameter<StringParameter>(&_filesBlackListVec));
 }
 
