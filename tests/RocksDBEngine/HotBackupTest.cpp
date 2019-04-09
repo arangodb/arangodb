@@ -114,8 +114,8 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
     VPackBuilder opBuilder;
     { VPackObjectBuilder a(&opBuilder);
       opBuilder.add("timeout", VPackValue(12345));
-      opBuilder.add("directory", VPackValue("2017-08-01T09:00:00Z"));
-      opBuilder.add("userString", VPackValue("first day"));
+      opBuilder.add("id", VPackValue("2017-08-01T09:00:00Z"));
+      opBuilder.add("label", VPackValue("first day"));
     }
 
     RocksDBHotBackupCreate testee(opBuilder.slice());
@@ -132,7 +132,7 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
     { VPackObjectBuilder a(&opBuilder);
       opBuilder.add("timeout", VPackValue("12345"));
       opBuilder.add("timestamp", VPackValue("2017-08-01T09:00:00Z"));   // needed for exception
-      opBuilder.add("userString", VPackValue("makes timeoutMS throw")); //  to happen
+      opBuilder.add("label", VPackValue("makes timeoutMS throw")); //  to happen
     }
 
     RocksDBHotBackupCreate testee(opBuilder.slice());
@@ -160,23 +160,23 @@ public:
       arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
     }
 
-    _directory = TRI_GetTempPath();
-    _directory += TRI_DIR_SEPARATOR_CHAR;
-    _directory += "arangotest-";
-    _directory += std::to_string(TRI_microtime());
-    _directory += std::to_string(arangodb::RandomGenerator::interval(UINT32_MAX));
+    _id = TRI_GetTempPath();
+    _id += TRI_DIR_SEPARATOR_CHAR;
+    _id += "arangotest-";
+    _id += std::to_string(TRI_microtime());
+    _id += std::to_string(arangodb::RandomGenerator::interval(UINT32_MAX));
 
-    TRI_CreateDirectory(_directory.c_str(), systemError, errorMessage);
+    TRI_CreateDirectory(_id.c_str(), systemError, errorMessage);
 
-    _directoryRestore = "SNGL-9231534b-e1aa-4eb6-881a-0b6c798c6677_2019-02-15T20.51.13Z";
+    _idRestore = "SNGL-9231534b-e1aa-4eb6-881a-0b6c798c6677_2019-02-15T20.51.13Z";
   }
 
   //RocksDBHotBackupRestoreTest(const VPackSlice body) : RocksDBHotBackup(body) {};
 
-  std::string getDatabasePath() override {return _directory;};
+  std::string getDatabasePath() override {return _id;};
 
-  std::string buildDirectoryPath(const std::string & time, const std::string & userString) override
-    {return RocksDBHotBackup::buildDirectoryPath(time, userString);};
+  std::string buildDirectoryPath(const std::string & time, const std::string & label) override
+    {return RocksDBHotBackup::buildDirectoryPath(time, label);};
 
   std::string getPersistedId() override
     {return "SNGL-9231534b-e1aa-4eb6-881a-0b6c798c6677";};
@@ -187,14 +187,14 @@ public:
 
   ~RocksDBHotBackupRestoreTest () {
     // let's be sure we delete the right stuff
-    TRI_ASSERT(_directory.length() > 10);
+    TRI_ASSERT(_id.length() > 10);
 
-    TRI_RemoveDirectory(_directory.c_str());
+    TRI_RemoveDirectory(_id.c_str());
   }
 
   StringBuffer* writeFile (const char* blob) {
     StringBuffer* filename = new StringBuffer(true);
-    filename->appendText(_directory);
+    filename->appendText(_id);
     filename->appendChar(TRI_DIR_SEPARATOR_CHAR);
     filename->appendText("tmp-");
     filename->appendInteger(++counter);
@@ -268,7 +268,7 @@ public:
     pathname += TRI_DIR_SEPARATOR_CHAR;
     pathname += "hotbackups";
     pathname += TRI_DIR_SEPARATOR_CHAR;
-    pathname += _directoryRestore;
+    pathname += _idRestore;
     retVal = TRI_CreateRecursiveDirectory(pathname.c_str(), systemError,
                                           systemErrorStr);
 
@@ -287,7 +287,7 @@ public:
 
   void startGlobalShutdown() override {};
 
-  std::string _directory;
+  std::string _id;
   bool _pauseRocksDBReturn;
   bool _restartRocksDBReturn;
   bool _holdTransactionsReturn;

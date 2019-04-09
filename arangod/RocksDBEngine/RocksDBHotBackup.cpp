@@ -138,15 +138,15 @@ RocksDBHotBackup::RocksDBHotBackup(VPackSlice body)
   return;
 }
 
-std::string RocksDBHotBackup::buildDirectoryPath(std::string const& timestamp, std::string const& userString) {
+std::string RocksDBHotBackup::buildDirectoryPath(std::string const& timestamp, std::string const& label) {
   std::string suffix = getPersistedId();
   suffix += "_";
   suffix += timestamp;
 
-  if (0 != userString.length()) {
+  if (0 != label.length()) {
     // limit directory name to 254 characters
     suffix += "_";
-    suffix.append(userString, 0, 254 - suffix.size());
+    suffix.append(label, 0, 254 - suffix.size());
   }
 
   // clean up directory name
@@ -419,12 +419,12 @@ void RocksDBHotBackupCreate::parseParameters(rest::RequestType type) {
   } else if (_isCreate) {
     getParamValue("timestamp", _timestamp, true);
   } else {
-    getParamValue("directory", _directory, true);
+    getParamValue("id", _id, true);
   } // else
 
   // remaining params are optional
   getParamValue("timeout", _timeoutSeconds, false);
-  getParamValue("userString", _userString, false);
+  getParamValue("label", _label, false);
   getParamValue("forceBackup", _forceBackup, false);
 
   //
@@ -479,7 +479,7 @@ void RocksDBHotBackupCreate::executeCreate() {
   // attempt iResearch flush
   // time remaining, or flag to continue anyway
 
-  std::string dirPathFinal = buildDirectoryPath(_timestamp, _userString);
+  std::string dirPathFinal = buildDirectoryPath(_timestamp, _label);
   std::string dirPathTemp = rebuildPath(dirCreatingString);
   bool flag = clearPath(dirCreatingString);
 
@@ -529,7 +529,7 @@ void RocksDBHotBackupCreate::executeCreate() {
     // velocypack loves to throw. wrap it.
     try {
       _result.add(VPackValue(VPackValueType::Object));
-      _result.add("directory", VPackValue(TRI_Basename(dirPathFinal.c_str())));
+      _result.add("id", VPackValue(TRI_Basename(dirPathFinal.c_str())));
       _result.add("forced", VPackValue(!gotLock));
       _result.close();
     } catch (...) {
@@ -557,7 +557,7 @@ void RocksDBHotBackupCreate::executeCreate() {
 void RocksDBHotBackupCreate::executeDelete() {
   std::string dirToDelete;
 
-  dirToDelete = rebuildPath(_directory);
+  dirToDelete = rebuildPath(_id);
   _success = clearPath(dirToDelete);
 
   // set response codes
@@ -596,7 +596,7 @@ void RocksDBHotBackupRestore::parseParameters(rest::RequestType type) {
   _timestampCurrent = timepointToString(std::chrono::system_clock::now());
 
   // full directory name of database image to restore (required)
-  getParamValue("directory", _directoryRestore, true);
+  getParamValue("id", _idRestore, true);
 
   // remaining params are optional
   getParamValue("saveCurrent", _saveCurrent, false);
@@ -712,7 +712,7 @@ void RocksDBHotBackupRestore::execute() {
       } else {
         // keep for now in FAILSAFE directory
         failsafeName = dirFailsafeString;
-        if (0 == failsafeName.compare(_directoryRestore)) {
+        if (0 == failsafeName.compare(_idRestore)) {
           failsafeName += ".1";
         } // if
         restoreFailsafePath = rebuildPath(failsafeName);
@@ -754,7 +754,7 @@ void RocksDBHotBackupRestore::execute() {
 ///        restoreDirOutput is created and passed to caller
 bool RocksDBHotBackupRestore::createRestoringDirectory(std::string& restoreDirOutput) {
   bool retFlag = true;
-  std::string errors, fullDirectoryRestore = rebuildPath(_directoryRestore);
+  std::string errors, fullDirectoryRestore = rebuildPath(_idRestore);
 
   try {
     // create path name (used here and returned)
@@ -869,7 +869,7 @@ void RocksDBHotBackupList::execute() {
   try {
     _result.add(VPackValue(VPackValueType::Object));
     _result.add("server", VPackValue(getPersistedId()));
-    _result.add("hotbackups", VPackValue(VPackValueType::Array));  // open
+    _result.add("backups", VPackValue(VPackValueType::Array));  // open
     for (auto const& dir : hotbackups) {
       _result.add(VPackValue(dir.c_str()));
     } // for

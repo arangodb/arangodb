@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterMethods.h"
@@ -2812,14 +2813,14 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
         std::string("result to list request to ") + req.destination + "not an object");
     }
 
-    if (!resSlice.hasKey("server") || !resSlice.hasKey("hotbackups")
-        || !resSlice.get("hotbackups").isArray()) {
+    if (!resSlice.hasKey("server") || !resSlice.hasKey("backups")
+        || !resSlice.get("backups").isArray()) {
       return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         std::string("invalid response from ") + req.destination);
     }
 
-    for (auto const id : VPackArrayIterator(resSlice.get("hotbackups"))) {
+    for (auto const id : VPackArrayIterator(resSlice.get("backups"))) {
       hotBackups.push_back(id.copyString());
     }
   }

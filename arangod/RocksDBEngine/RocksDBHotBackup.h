@@ -124,8 +124,8 @@ public:
   // @brief accessors to the parameters
   bool isCreate() const {return _isCreate;}
   const std::string & getTimestamp() const {return _timestamp;}
-  const std::string & getUserString() const {return _userString;}
-  const std::string & getDirectory() const {return _directory;}
+  const std::string & getUserString() const {return _label;}
+  const std::string & getDirectory() const {return _id;}
 protected:
   // @brief Execute the create operation
   void executeCreate();
@@ -136,8 +136,8 @@ protected:
   bool _isCreate;
   bool _forceBackup;
   std::string _timestamp;   // required for Create from Coordinator
-  std::string _userString;
-  std::string _directory;   // required for Delete
+  std::string _label;
+  std::string _id;   // required for Delete
 
 };// class RocksDBHotBackupCreate
 
@@ -160,7 +160,7 @@ public:
 
   // @brief accessors to the parameters
   std::string const& getTimestampCurrent() const {return _timestampCurrent;}
-  std::string const& getDirectoryRestore() const {return _directoryRestore;}
+  std::string const& getDirectoryRestore() const {return _idRestore;}
 
   bool createRestoringDirectory(std::string& nameOutput);
 
@@ -168,7 +168,7 @@ public:
 
   bool _saveCurrent;
   std::string _timestampCurrent;
-  std::string _directoryRestore;
+  std::string _idRestore;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The following wrapper routines simplify unit testing
