@@ -146,7 +146,7 @@ Result RocksDBSettingsManager::sync(bool force) {
 
   // fetch the seq number prior to any writes; this guarantees that we save
   // any subsequent updates in the WAL to replay if we crash in the middle
-  auto maxSeqNr = _db->GetLatestSequenceNumber();
+  auto const maxSeqNr = _db->GetLatestSequenceNumber();
   auto minSeqNr = maxSeqNr;
 
   rocksdb::TransactionOptions opts;

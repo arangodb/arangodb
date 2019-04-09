@@ -195,14 +195,10 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
 
   bool didWork = false;
   // maxCommitSeq is == UINT64_MAX without any blockers
-  const rocksdb::SequenceNumber maxCommitSeq = committableSeq();
-  rocksdb::SequenceNumber commitSeq = applyAdjustments(maxCommitSeq, didWork);
-  if (didWork) {
-    appliedSeq = commitSeq;
-  } else {  // maxCommitSeq is == UINT64_MAX without any blockers
-    appliedSeq = std::min(appliedSeq, maxCommitSeq);
-  }
+  const rocksdb::SequenceNumber maxCommitSeq = std::min(appliedSeq, committableSeq());
+  const rocksdb::SequenceNumber commitSeq = applyAdjustments(maxCommitSeq, didWork);
   TRI_ASSERT(commitSeq <= appliedSeq);
+  appliedSeq = commitSeq;
 
   RocksDBKey key;
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
