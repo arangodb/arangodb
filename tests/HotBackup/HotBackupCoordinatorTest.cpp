@@ -63,6 +63,16 @@ VPackBuilder parseToBuilder(char const* c) {
 std::string const PLAN_COL_PATH = "/Collections/";
 std::string const PLAN_DB_PATH = "/Databases/";
 
+int countSubstring(std::string const& str, std::string const& sub) {
+  if (sub.length() == 0) return 0;
+  int count = 0;
+  for (size_t offset = str.find(sub); offset != std::string::npos;
+       offset = str.find(sub, offset + sub.length())) {
+    ++count;
+  }
+  return count;
+}
+
 TEST_CASE("HotBackup", "[cluster][hotbackup]") {
   VPackBuilder pb = parseToBuilder(planFile);
   VPackSlice plan = pb.slice();
@@ -214,7 +224,66 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     
     VPackBuilder newPlan;
     res = applyDBServerMatchesToPlan(plan, matches, newPlan);
-    std::cout << newPlan.toJson() << std::endl;
+
+    for (auto const& m : matches) {
+      REQUIRE(countSubstring(newPlan.slice().get("Collections").toJson(), m.first) == 0);
+      REQUIRE(countSubstring(plan.get("Collections").toJson(), m.second) == 0);
+      REQUIRE(countSubstring(newPlan.slice().get("Collections").toJson(), m.second) ==
+        countSubstring(plan.get("Collections").toJson(), m.first));
+    }
+    
+  }
+
+  SECTION("Test effect of first and last db servers changed on new plan") {
+    std::shared_ptr<VPackBuilder> props;
+
+    std::vector<ServerID> dbServers;
+    std::unordered_map<ServerID,ServerID> matches;
+
+    for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
+      dbServers.push_back(i.key.copyString());
+    }
+    dbServers.front() = std::string("PRMR_")
+      + to_string(boost::uuids::random_generator()());
+    dbServers.back() = std::string("PRMR_")
+      + to_string(boost::uuids::random_generator()());
+    
+    arangodb::Result res = matchBackupServers(plan, dbServers, matches);
+    
+    VPackBuilder newPlan;
+    res = applyDBServerMatchesToPlan(plan, matches, newPlan);
+
+    for (auto const& m : matches) {
+      REQUIRE(countSubstring(newPlan.slice().get("Collections").toJson(), m.first) == 0);
+      REQUIRE(countSubstring(plan.get("Collections").toJson(), m.second) == 0);
+      REQUIRE(countSubstring(newPlan.slice().get("Collections").toJson(), m.second) ==
+        countSubstring(plan.get("Collections").toJson(), m.first));
+    }
+    
+  }
+
+  SECTION("Test effect of all db servers changed on new plan") {
+    std::shared_ptr<VPackBuilder> props;
+
+    std::vector<ServerID> dbServers;
+    std::unordered_map<ServerID,ServerID> matches;
+
+    for (size_t i = 0; i < plan.get("DBServers").length(); ++i) {
+      dbServers.push_back(std::string("PRMR_")
+                          + to_string(boost::uuids::random_generator()()));
+    }
+    
+    arangodb::Result res = matchBackupServers(plan, dbServers, matches);
+    
+    VPackBuilder newPlan;
+    res = applyDBServerMatchesToPlan(plan, matches, newPlan);
+
+    for (auto const& m : matches) {
+      REQUIRE(countSubstring(newPlan.slice().get("Collections").toJson(), m.first) == 0);
+      REQUIRE(countSubstring(plan.get("Collections").toJson(), m.second) == 0);
+      REQUIRE(countSubstring(newPlan.slice().get("Collections").toJson(), m.second) ==
+        countSubstring(plan.get("Collections").toJson(), m.first));
+    }
     
   }
 
