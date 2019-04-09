@@ -82,7 +82,7 @@ function aqlErrorMessagesSuite () {
         } catch (err) {
           assertEqual(err.errorNum, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, q);
           assertMatch(/conflicting key/, err.message, q);
-          assertMatch(/\[\"val\"\]/, err.message, q);
+          assertMatch(/'val'/, err.message, q);
         }
       };
       
@@ -108,7 +108,7 @@ function aqlErrorMessagesSuite () {
         } catch (err) {
           assertEqual(err.errorNum, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, q);
           assertMatch(/conflicting key/, err.message, q);
-          assertMatch(/\[\"val\"\]/, err.message, q);
+          assertMatch(/'val'/, err.message, q);
         }
       };
       
