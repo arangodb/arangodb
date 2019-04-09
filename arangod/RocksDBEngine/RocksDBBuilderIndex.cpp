@@ -214,7 +214,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
         }
       } else {
         // since cuckoo estimator uses a map with seq as key we need to 
-        ridx.estimator()->bufferUpdates(0, std::move(it->second.inserts),
+        ridx.estimator()->bufferUpdates(1, std::move(it->second.inserts),
                                            std::move(it->second.removals));
       }
     }

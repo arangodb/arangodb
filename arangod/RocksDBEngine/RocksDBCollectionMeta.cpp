@@ -152,7 +152,7 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
   }
 
   auto it = _stagedAdjs.begin();
-  while (it != _stagedAdjs.end() && it->first < commitSeq) {
+  while (it != _stagedAdjs.end() && it->first <= commitSeq) {
     appliedSeq = std::max(appliedSeq, it->first);
     if (it->second.adjustment > 0) {
       _count._added += it->second.adjustment;
@@ -202,6 +202,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
   } else {  // maxCommitSeq is == UINT64_MAX without any blockers
     appliedSeq = std::min(appliedSeq, maxCommitSeq);
   }
+  TRI_ASSERT(commitSeq <= appliedSeq);
 
   RocksDBKey key;
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
@@ -274,7 +275,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
 
       LOG_TOPIC("6b761", TRACE, Logger::ENGINES)
           << "serialized estimate for index '" << idx->objectId()
-          << "' valid through seq " << maxCommitSeq;
+          << "' valid through seq " << appliedSeq;
 
       key.constructIndexEstimateValue(idx->objectId());
       rocksdb::Slice value(output);
