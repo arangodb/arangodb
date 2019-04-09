@@ -193,17 +193,23 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     VPackObjectBuilder o(&rb);
 
+    auto startTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseOne";
     tmp = arangodb::maintenance::phaseOne(plan->slice(), local.slice(),
                                           serverId, *mfeature, rb);
+    auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne done";
 
-    // Give some asynchronous jobs created in phaseOne a chance to complete
-    // before we collect data for phaseTwo:
-    LOG_TOPIC("ef730", DEBUG, Logger::MAINTENANCE)
-      << "DBServerAgencySync::hesitating between phases 1 and 2 for 0.1s...";
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (endTimePhaseOne - startTimePhaseOne >
+        std::chrono::milliseconds(200)) {
+      // We take this as indication that many shards are in the system,
+      // in this case: give some asynchronous jobs created in phaseOne a
+      // chance to complete before we collect data for phaseTwo:
+      LOG_TOPIC("ef730", DEBUG, Logger::MAINTENANCE)
+        << "DBServerAgencySync::hesitating between phases 1 and 2 for 0.1s...";
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
 
     auto current = clusterInfo->getCurrent();
     if (current == nullptr) {
