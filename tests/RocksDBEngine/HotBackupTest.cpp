@@ -285,7 +285,7 @@ public:
     writeFile(pathname.c_str(), "000333.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash", "");
   } // createHotDirectory
 
-  void startGlobalShutdown() {};
+  void startGlobalShutdown() override {};
 
   std::string _directory;
   bool _pauseRocksDBReturn;

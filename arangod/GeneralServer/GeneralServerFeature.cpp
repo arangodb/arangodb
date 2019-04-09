@@ -492,7 +492,7 @@ void GeneralServerFeature::defineHandlers() {
                                       RestHandlerCreator<arangodb::RestRepairHandler>::createNoData);
   }
 
-  _handlerFactory->addPrefixHandler("/_admin/hotbackup",
+  _handlerFactory->addPrefixHandler("/_admin/backup",
                                     RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
 
   // ...........................................................................

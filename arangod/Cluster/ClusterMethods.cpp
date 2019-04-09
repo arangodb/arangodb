@@ -2756,7 +2756,7 @@ int fetchEdgesFromEngines(std::string const& dbname,
   return TRI_ERROR_NO_ERROR;
 }
 
-std::string const apiStr("/_api/backup/");
+std::string const apiStr("/_admin/backup/");
 
 arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
                                std::vector<std::string>& hotBackups) {
@@ -2980,7 +2980,7 @@ arangodb::Result restoreOnDBServers(
   }
   auto body = std::make_shared<std::string>(builder.toJson());
   
-  std::string const url = "/_admin/hotbackup/restore";
+  std::string const url = apiStr + "restore";
   std::vector<ClusterCommRequest> requests;
   
   for (auto const& dbServer : dbServers) {
@@ -3094,7 +3094,7 @@ arangodb::Result findLocalBackup(
     builder.add("id", VPackValue(backupId));
   }
   
-  std::string const url = "/_admin/hotbackup/list";
+  std::string const url = apiStr + "list";
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>(builder.toJson());
   for (auto const& dbServer : dbServers) {
@@ -3241,7 +3241,7 @@ arangodb::Result lockDBServerTransactions(
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN, "Shutting down");
   }
   
-  std::string const url = "/_admin/hotbackup/lock";
+  std::string const url = apiStr + "lock";
   
   std::unordered_map<std::string, std::string> headers;
   
@@ -3324,7 +3324,7 @@ arangodb::Result unlockDBServerTransactions(
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN, "Shutting down");
   }
   
-  std::string const url = "/_admin/hotbackup/unlock";
+  std::string const url = apiStr + "unlock";
   VPackBuilder lock;
   {
     VPackObjectBuilder o(&lock);
@@ -3374,7 +3374,7 @@ arangodb::Result hotBackupDBServers(
   }
   auto body = std::make_shared<std::string>(builder.toJson());
   
-  std::string const url = "/_admin/hotbackup/create";
+  std::string const url = apiStr + "create";
   std::vector<ClusterCommRequest> requests;
   
   for (auto const& dbServer : dbServers) {
@@ -3445,7 +3445,7 @@ arangodb::Result removeLocalBackups(
   }
   auto body = std::make_shared<std::string>(builder.toJson());
   
-  std::string const url = "/_admin/hotbackup/delete";
+  std::string const url = apiStr + "delete";
   std::vector<ClusterCommRequest> requests;
   
   for (auto const& dbServer : dbServers) {

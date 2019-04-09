@@ -64,7 +64,7 @@ public:
   std::string getRocksDBPath();
   unsigned getTimeout() const {return _timeoutSeconds;}
 
-  /// @brief Build "/user/database/path/hotbackups"
+  /// @brief Build "/user/database/path/backups"
   std::string rebuildPathPrefix();
 
   /// @brief Build rebuildPathPrefix() + "/" + suffix

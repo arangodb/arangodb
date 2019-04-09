@@ -173,7 +173,7 @@ std::string RocksDBHotBackup::buildDirectoryPath(std::string const& timestamp, s
 std::string RocksDBHotBackup::rebuildPathPrefix() {
   std::string ret_string = getDatabasePath();
   ret_string += TRI_DIR_SEPARATOR_CHAR;
-  ret_string += "hotbackups";
+  ret_string += "backups";
 
   // This prefix path must exist, ignore errors
   long sysError;
@@ -302,7 +302,6 @@ void RocksDBHotBackup::getParamValue(char const* key, unsigned& value, bool requ
 } // RocksDBHotBackup::getParamValue (unsigned)
 
 void RocksDBHotBackup::getParamValue(char const* key, VPackSlice& value, bool required) {
-  VPackSlice tempSlice;
 
   try {
     if (_body.isObject() && _body.hasKey(key)) {
@@ -471,7 +470,7 @@ static basics::FileUtils::TRI_copy_recursive_e linkShaFiles(std::string const & 
 } // linkShaFiles
 
 
-/// @brief /_admin/hotbackup/create with POST method comes here, initiates
+/// @brief /_admin/backup/create with POST method comes here, initiates
 ///       a rocksdb checkpoint
 void RocksDBHotBackupCreate::executeCreate() {
 
@@ -551,7 +550,7 @@ void RocksDBHotBackupCreate::executeCreate() {
 } // RocksDBHotBackupCreate::executeCreate
 
 
-/// @brief /_admin/hotbackup/create with DELETE method comes here, deletes
+/// @brief /_admin/backup/create with DELETE method comes here, deletes
 ///        a directory if it exists
 ///        NOTE: returns success if the requested directory does not exist
 ///              (was previously deleted)
