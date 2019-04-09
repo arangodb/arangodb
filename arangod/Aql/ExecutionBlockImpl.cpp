@@ -417,8 +417,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor>::shutdown
   }
   Result result;
 
-  // std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
-  std::tie(state, result) = this->shutdown(errorCode);
+  std::tie(state, result) = internalShutdown(errorCode);
   if (state == ExecutionState::WAITING) {
     return {state, result};
   }
