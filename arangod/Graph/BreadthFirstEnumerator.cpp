@@ -301,11 +301,12 @@ bool BreadthFirstEnumerator::shouldPrune() {
       evaluator->injectEdge(edgeToAqlValue(_schreierIndex).slice());
     }
     transaction::BuilderLeaser builder(_opts->trx());
-    if (evaluator->needsPath()) {
-      aql::AqlValue val = pathToIndexToAqlValue(*builder.get(), _schreierIndex);
-      aql::AqlValueGuard guard(val, true);
-      evaluator->injectPath(val.slice());
+    if (!evaluator->needsPath()) {
+      return evaluator->evaluate();
     }
+    aql::AqlValue val = pathToIndexToAqlValue(*builder.get(), _schreierIndex);
+    aql::AqlValueGuard guard(val, true);
+    evaluator->injectPath(val.slice());
     return evaluator->evaluate();
   }
   return false;

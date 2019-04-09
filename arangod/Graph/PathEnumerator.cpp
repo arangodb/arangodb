@@ -223,11 +223,12 @@ bool DepthFirstEnumerator::shouldPrune() {
       evaluator->injectEdge(lastEdgeToAqlValue().slice());
     }
     transaction::BuilderLeaser builder(_opts->trx());
-    if (evaluator->needsPath()) {
-      aql::AqlValue val = pathToAqlValue(*builder.get());
-      aql::AqlValueGuard guard(val, true);
-      evaluator->injectPath(val.slice());
+    if (!evaluator->needsPath()) {
+      return evaluator->evaluate();
     }
+    aql::AqlValue val = pathToAqlValue(*builder.get());
+    aql::AqlValueGuard guard(val, true);
+    evaluator->injectPath(val.slice());
     return evaluator->evaluate();
   }
   return false;
