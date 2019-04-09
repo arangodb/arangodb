@@ -2836,7 +2836,7 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
  */
 arangodb::Result matchBackupServers(VPackSlice const agencyDump,
                                     std::vector<ServerID> const& dbServers,
-                                    std::unordered_map<ServerID,ServerID>& match) {
+                                    std::map<ServerID,ServerID>& match) {
 
   std::vector<std::string> ap {"DBServers"};
 
@@ -3034,15 +3034,15 @@ arangodb::Result restoreOnDBServers(
 
 
 arangodb::Result applyDBServerMatchesToPlan(
-  VPackSlice const plan, std::unordered_map<ServerID,ServerID> const& matches,
+  VPackSlice const plan, std::map<ServerID,ServerID> const& matches,
   VPackBuilder& newPlan) {
 
   
   std::function<void(
-    VPackSlice const, std::unordered_map<ServerID,ServerID> const&)> replaceDBServer;
+    VPackSlice const, std::map<ServerID,ServerID> const&)> replaceDBServer;
   
   replaceDBServer = [&newPlan, &replaceDBServer](
-    VPackSlice const s, std::unordered_map<ServerID,ServerID> const& matches) {
+    VPackSlice const s, std::map<ServerID,ServerID> const& matches) {
     if (s.isObject()) {
       VPackObjectBuilder o(&newPlan);
       for (auto const& it : VPackObjectIterator(s)) {
@@ -3184,7 +3184,7 @@ arangodb::Result hotRestoreCoordinator(std::string const& backupId) {
   }
 
   // Match my db servers to those in the backups's agency dump
-  std::unordered_map<ServerID, ServerID> matches;
+  std::map<ServerID, ServerID> matches;
   result = matchBackupServers(plan.slice(), dbServers, matches);
   if (!result.ok()) {
     LOG_TOPIC(ERR, Logger::HOTBACKUP) << "failed to match db servers: " <<
