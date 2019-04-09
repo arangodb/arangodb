@@ -23,6 +23,7 @@
 
 #include "MMFilesExportCursor.h"
 #include "Aql/ExecutionState.h"
+#include "Basics/Exceptions.h"
 #include "MMFiles/MMFilesCollectionExport.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/vocbase.h"
