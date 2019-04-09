@@ -42,6 +42,8 @@
 
 #if USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackupEE.h"
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#include "Basics/OpenFilesTracker.h"
 #endif
 
 #include <rocksdb/utilities/checkpoint.h>
@@ -401,7 +403,7 @@ void RocksDBHotBackup::startGlobalShutdown() {
 ///        DELETE:  Remove an existing rocksdb checkpoint from local server
 ////////////////////////////////////////////////////////////////////////////////
 RocksDBHotBackupCreate::RocksDBHotBackupCreate(VPackSlice body)
-  : RocksDBHotBackup(body), _isCreate(true), _forceBackup(false) {}
+  : RocksDBHotBackup(body), _isCreate(true), _forceBackup(false), _agencyDump(VPackSlice::noneSlice()) {}
 
 
 void RocksDBHotBackupCreate::parseParameters(rest::RequestType type) {
@@ -419,6 +421,7 @@ void RocksDBHotBackupCreate::parseParameters(rest::RequestType type) {
     _timestamp = timepointToString(std::chrono::system_clock::now());
   } else if (_isCreate) {
     getParamValue("timestamp", _timestamp, true);
+    getParamValue("agency-dump", _agencyDump, false);
   } else {
     getParamValue("directory", _directory, true);
   } // else
@@ -520,6 +523,34 @@ void RocksDBHotBackupCreate::executeCreate() {
       retVal = TRI_RenameFile(dirPathTemp.c_str(), dirPathFinal.c_str(), &systemError, &errors);
       _success = (TRI_ERROR_NO_ERROR == retVal);
     } // if
+
+    // write encrypted agency dump if available
+    if (_success && !_agencyDump.isNone()) {
+      std::string agencyDumpFileName = dirPathFinal + TRI_DIR_SEPARATOR_CHAR + "agency.json";
+
+#ifdef USE_ENTERPRISE
+      auto encryptFeature = application_features::ApplicationServer::lookupFeature<EncryptionFeature>("Encryption");
+
+      if (encryptFeature != nullptr) {
+        int fd = TRI_TRACKED_CREATE_FILE(agencyDumpFileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
+                                     S_IRUSR | S_IWUSR | S_IRGRP);
+        if (fd != -1) {
+          TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+
+          std::string json = _agencyDump.toJson();
+          auto context = encryptFeature->beginEncryption(fd);
+
+          _success = encryptFeature->writeData(*context.get(), json.c_str(), json.size());
+        } else {
+          _success = false;
+        }
+      } else {
+        basics::FileUtils::spit(agencyDumpFileName, _agencyDump.toJson(), true);
+      }
+#else
+      basics::FileUtils::spit(agencyDumpFileName, _agencyDump.toJson(), true);
+#endif
+    }
   } // if
 
   // set response codes

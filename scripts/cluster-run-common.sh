@@ -23,6 +23,7 @@ function help() {
   echo "  --rr                    Run arangod with rr (true|false       default: false)"
   echo "  --cluster-init          Use cluster-init dir (default: false)"
   echo "  --auto-upgrade          Use for upgrade      (default: false)"
+  echo "  -e/--encryption-secret  Encryption at rest secret (string default: )"
   echo ""
   echo "EXAMPLES:"
   echo "  $0"
@@ -51,6 +52,7 @@ JWT_SECRET=""
 PORT_OFFSET=0
 SRC_DIR="."
 USE_RR="false"
+ENCRYPTION_SECRET=""
 
 parse_args(){
 while [[ -n "$1" ]]; do
@@ -93,6 +95,10 @@ while [[ -n "$1" ]]; do
       ;;
     -j|--jwt-secret)
       JWT_SECRET=${2}
+      shift
+      ;;
+    -e|--encryption-secret)
+      ENCRYPTION_SECRET=${2}
       shift
       ;;
     -q|--src-dir)

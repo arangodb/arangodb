@@ -138,6 +138,7 @@ protected:
   std::string _timestamp;   // required for Create from Coordinator
   std::string _userString;
   std::string _directory;   // required for Delete
+  VPackSlice _agencyDump;   // required for Create from Coordinator
 
 };// class RocksDBHotBackupCreate
 
