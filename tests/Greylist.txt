@@ -4,6 +4,10 @@ In this file we collect information about which tests are currently
 greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 
+- `tests/js/server/shell/shell-pregel-grey.js`
+
+  just hangs
+
 - `tests/js/common/aql/aql-view-arangosearch-cluster.js`
 
   taking too long
