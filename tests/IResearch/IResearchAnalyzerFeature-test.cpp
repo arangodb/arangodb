@@ -444,7 +444,6 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    feature.start();
     CHECK((true == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer0", "TestAnalyzer", "abc").ok()));
     CHECK((false == !result.first));
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer0");
@@ -456,7 +455,6 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    feature.start();
     CHECK((true == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer1", "TestAnalyzer", "abc", irs::flags{ irs::frequency::type() }).ok()));
     CHECK((false == !result.first));
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer1");
@@ -471,7 +469,6 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    feature.start();
     CHECK((true == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2", "TestAnalyzer", "abc").ok()));
     CHECK((false == !result.first));
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2");
@@ -485,7 +482,6 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    feature.start();
     CHECK((true == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2", "TestAnalyzer", "abc").ok()));
     CHECK((false == !result.first));
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2");
@@ -499,7 +495,6 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    feature.start();
     CHECK((true == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer3", "TestAnalyzer", "abc").ok()));
     CHECK((false == !result.first));
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer3");
@@ -513,7 +508,6 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    feature.start();
     CHECK((false == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer4", "TestAnalyzer", "").ok()));
     CHECK((true == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer4")));
   }
@@ -522,7 +516,6 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    feature.start();
     CHECK((false == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer5", "TestAnalyzer", irs::string_ref::NIL).ok()));
     CHECK((true == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer5")));
   }
@@ -531,24 +524,14 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    feature.start();
     CHECK((false == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer6", "invalid", irs::string_ref::NIL).ok()));
     CHECK((true == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer6")));
-  }
-
-  // add invalid (feature not started)
-  {
-    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    CHECK((false == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer7", "invalid", irs::string_ref::NIL).ok()));
-    CHECK((true == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer7")));
   }
 
   // add valid inRecovery (failure)
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    feature.start();
     auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
@@ -560,7 +543,6 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    feature.start();
     auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
@@ -572,7 +554,6 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    feature.start();
     auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
@@ -584,7 +565,6 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    feature.start();
     CHECK((true == feature.emplace(result, "identity", "identity", irs::string_ref::NIL, irs::flags{ irs::frequency::type(), irs::norm::type() }).ok()));
     CHECK((false == !result.first));
     auto pool = feature.get("identity");
@@ -592,74 +572,6 @@ SECTION("test_emplace") {
     CHECK((irs::flags({irs::norm::type(), irs::frequency::type() }) == pool->features()));
     auto analyzer = pool->get();
     CHECK((false == !analyzer));
-  }
-
-  // add static analyzer (feature not started)
-  {
-    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    CHECK((true == feature.emplace(result, "identity", "identity", irs::string_ref::NIL, irs::flags{ irs::frequency::type(), irs::norm::type() }).ok()));
-    CHECK((false == !result.first));
-    auto pool = feature.get("identity");
-    CHECK((false == !pool));
-    CHECK((irs::flags({irs::norm::type(), irs::frequency::type() }) == pool->features()));
-    auto analyzer = pool->get();
-    CHECK((false == !analyzer));
-  }
-}
-
-SECTION("test_ensure") {
-  {
-    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-
-    // ensure (not started)
-    {
-      auto pool = feature.ensure("test_analyzer");
-      REQUIRE((false == !pool));
-      CHECK((irs::flags::empty_instance() == pool->features()));
-      auto analyzer = pool->get();
-      CHECK((true == !analyzer));
-    }
-
-    // ensure static analyzer (not started)
-    {
-      auto pool = feature.ensure("identity");
-      REQUIRE((false == !pool));
-      CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == pool->features()));
-      auto analyzer = pool->get();
-      CHECK((false == !analyzer));
-    }
-  }
-
-  {
-    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-
-    feature.start();
-    feature.emplace(result, "test_analyzer", "TestAnalyzer", "abc");
-
-    // ensure valid (started)
-    {
-      auto pool = feature.get("test_analyzer");
-      REQUIRE((false == !pool));
-      CHECK((irs::flags() == pool->features()));
-      auto analyzer = pool.get();
-      CHECK((false == !analyzer));
-    }
-
-    // ensure invalid (started)
-    {
-      CHECK((true == !feature.get("invalid")));
-    }
-
-    // ensure static analyzer (started)
-    {
-      auto pool = feature.ensure("identity");
-      REQUIRE((false == !pool));
-      CHECK((irs::flags({irs::norm::type(), irs::frequency::type() }) == pool->features()));
-      auto analyzer = pool->get();
-      CHECK((false == !analyzer));
-    }
   }
 }
 
@@ -670,42 +582,12 @@ SECTION("test_get") {
   REQUIRE((false == !dbFeature));
 
   {
-    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-
-    feature.ensure("test_analyzer");
-
-    // get valid (not started)
-    {
-      auto pool = feature.get("test_analyzer");
-      REQUIRE((false == !pool));
-      CHECK((irs::flags::empty_instance() == pool->features()));
-      auto analyzer = pool->get();
-      CHECK((true == !analyzer));
-    }
-
-    // get invalid (not started)
-    {
-      CHECK((true == !feature.get("invalid")));
-    }
-
-    // get static analyzer (not started)
-    {
-      auto pool = feature.get("identity");
-      REQUIRE((false == !pool));
-      CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == pool->features()));
-      auto analyzer = pool->get();
-      CHECK((false == !analyzer));
-    }
-  }
-
-  {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
 
-    feature.start();
     REQUIRE((feature.emplace(result, "test_analyzer", "TestAnalyzer", "abc").ok()));
 
-    // get valid (started)
+    // get valid
     {
       auto pool = feature.get("test_analyzer");
       REQUIRE((false == !pool));
@@ -714,12 +596,12 @@ SECTION("test_get") {
       CHECK((false == !analyzer));
     }
 
-    // get invalid (started)
+    // get invalid
     {
       CHECK((true == !feature.get("invalid")));
     }
 
-    // get static analyzer (started)
+    // get static analyzer
     {
       auto pool = feature.get("identity");
       REQUIRE((false == !pool));
@@ -834,10 +716,7 @@ SECTION("test_identity") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
     CHECK((false == !feature.get("identity")));
-    auto pool = feature.ensure("identity");
-    CHECK((false == !pool));
-    feature.start();
-    pool = feature.get("identity");
+    auto pool = feature.get("identity");
     REQUIRE((false == !pool));
     CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == pool->features()));
     CHECK(("identity" == pool->name()));
@@ -1008,10 +887,7 @@ SECTION("test_static_analyzer_features") {
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
     for (auto& analyzerEntry : staticAnalyzers()) {
       CHECK((false == !feature.get(analyzerEntry.first)));
-      auto pool = feature.ensure(analyzerEntry.first);
-      CHECK((false == !pool));
-      feature.start();
-      pool = feature.get(analyzerEntry.first);
+      auto pool = feature.get(analyzerEntry.first);
       REQUIRE((false == !pool));
       CHECK(analyzerEntry.second.features == pool->features());
       CHECK(analyzerEntry.first == pool->name());
@@ -1056,20 +932,22 @@ SECTION("test_persistence") {
       trx.commit();
     }
 
-    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {};
+    std::map<std::string, std::pair<irs::string_ref, irs::string_ref>> expected = {};
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
 
-    feature.start();
+    feature.start(); // load persisted analyzers
 
-    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties, irs::flags const& features)->bool {
-      if (staticAnalyzers().find(name) != staticAnalyzers().end()) {
+    feature.visit([&expected](
+      arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
+    )->bool {
+      if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
         return true; // skip static analyzers
       }
 
-      auto itr = expected.find(name);
+      auto itr = expected.find(analyzer->name());
       CHECK((itr != expected.end()));
-      CHECK((itr->second.first == type));
-      CHECK((itr->second.second == properties));
+      CHECK((itr->second.first == analyzer->type()));
+      CHECK((itr->second.second == analyzer->properties()));
       expected.erase(itr);
       return true;
     });
@@ -1096,27 +974,7 @@ SECTION("test_persistence") {
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
     CHECK_THROWS((feature.start()));
   }
-/*FIXME TODO remove no longer possible
-  // read invalid configuration (static analyzers present)
-  {
-    {
-      std::string collection(ANALYZER_COLLECTION_NAME);
-      arangodb::OperationOptions options;
-      arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
-        collection,
-        arangodb::AccessMode::Type::WRITE
-      );
-      trx.begin();
-      trx.truncate(collection, options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"identity\", \"type\": \"identity\", \"properties\": \"abc\"}")->slice(), options);
-      trx.commit();
-    }
 
-    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    CHECK_THROWS((feature.start()));
-  }
-*/
   // read valid configuration (different parameter options)
   {
     {
@@ -1138,7 +996,7 @@ SECTION("test_persistence") {
       trx.commit();
     }
 
-    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+    std::map<std::string, std::pair<irs::string_ref, irs::string_ref>> expected = {
       { arangodb::StaticStrings::SystemDatabase + "::valid0", { "identity", irs::string_ref::NIL } },
       { arangodb::StaticStrings::SystemDatabase + "::valid2", { "identity", "abc" } },
       { arangodb::StaticStrings::SystemDatabase + "::valid4", { "identity", "[1,\"abc\"]" } },
@@ -1146,22 +1004,23 @@ SECTION("test_persistence") {
     };
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
 
-    feature.start();
-/*
-    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties, irs::flags const& features)->bool {
-      if (staticAnalyzers().find(name) != staticAnalyzers().end()) {
+    feature.start(); // load persisted analyzers
+
+    feature.visit([&expected](
+      arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
+    )->bool {
+      if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
         return true; // skip static analyzers
       }
 
-      auto itr = expected.find(name);
+      auto itr = expected.find(analyzer->name());
       CHECK((itr != expected.end()));
-      CHECK((itr->second.first == type));
-      CHECK((itr->second.second == properties));
+      CHECK((itr->second.first == analyzer->type()));
+      CHECK((itr->second.second == analyzer->properties()));
       expected.erase(itr);
       return true;
     });
     CHECK((expected.empty()));
-*/
   }
 
   // add new records
@@ -1183,34 +1042,35 @@ SECTION("test_persistence") {
     {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-      feature.start();
+
       CHECK((feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::valid", "identity", "abc").ok()));
       CHECK((result.first));
       CHECK((result.second));
     }
 
     {
-      std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+      std::map<std::string, std::pair<irs::string_ref, irs::string_ref>> expected = {
         { arangodb::StaticStrings::SystemDatabase + "::valid", { "identity", "abc" } },
       };
       arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
 
-      feature.start();
-/*
-      feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties, irs::flags const& features)->bool {
-        if (staticAnalyzers().find(name) != staticAnalyzers().end()) {
+      feature.start(); // load persisted analyzers
+
+      feature.visit([&expected](
+        arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
+      )->bool {
+        if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
           return true; // skip static analyzers
         }
 
-        auto itr = expected.find(name);
+        auto itr = expected.find(analyzer->name());
         CHECK((itr != expected.end()));
-        CHECK((itr->second.first == type));
-        CHECK((itr->second.second == properties));
+        CHECK((itr->second.first == analyzer->type()));
+        CHECK((itr->second.second == analyzer->properties()));
         expected.erase(itr);
         return true;
       });
       CHECK((expected.empty()));
-*/
     }
   }
 
@@ -1231,49 +1091,52 @@ SECTION("test_persistence") {
     }
 
     {
-      std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+      std::map<std::string, std::pair<irs::string_ref, irs::string_ref>> expected = {
         { "identity", { "identity", irs::string_ref::NIL } },
         { arangodb::StaticStrings::SystemDatabase + "::valid", { "identity", irs::string_ref::NIL } },
       };
       arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
 
-      feature.start();
-/*
-      feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties, irs::flags const& features)->bool {
+      feature.start(); // load persisted analyzers
+
+      feature.visit([&expected](
+        arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
+      )->bool {
         // FIXME TODO remove block
-        if (name != "identity" &&
-            staticAnalyzers().find(name) != staticAnalyzers().end()) {
+        if (analyzer->name() != "identity"
+            && staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
           return true; // skip static analyzers
         }
 
-        auto itr = expected.find(name);
+        auto itr = expected.find(analyzer->name());
         CHECK((itr != expected.end()));
-        CHECK((itr->second.first == type));
-        CHECK((itr->second.second == properties));
+        CHECK((itr->second.first == analyzer->type()));
+        CHECK((itr->second.second == analyzer->properties()));
         expected.erase(itr);
         return true;
       });
       CHECK((expected.empty()));
-*/
       CHECK((true == feature.remove(arangodb::StaticStrings::SystemDatabase + "::valid").ok()));
       CHECK((false == feature.remove("identity").ok()));
     }
 
     {
-      std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {};
+      std::map<std::string, std::pair<irs::string_ref, irs::string_ref>> expected = {};
       arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
 
-      feature.start();
+      feature.start(); // load persisted analyzers
 
-      feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties, irs::flags const& features)->bool {
-        if (staticAnalyzers().find(name) != staticAnalyzers().end()) {
+      feature.visit([&expected](
+        arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
+      )->bool {
+        if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
           return true; // skip static analyzers
         }
 
-        auto itr = expected.find(name);
+        auto itr = expected.find(analyzer->name());
         CHECK((itr != expected.end()));
-        CHECK((itr->second.first == type));
-        CHECK((itr->second.second == properties));
+        CHECK((itr->second.first == analyzer->type()));
+        CHECK((itr->second.second == analyzer->properties()));
         expected.erase(itr);
         return true;
       });
@@ -1890,55 +1753,19 @@ SECTION("test_start") {
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    feature.start();
+    feature.start(); // load persisted analyzers
     CHECK((nullptr == vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
 
     auto expected = staticAnalyzers();
 
-    feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties, irs::flags const& features)->bool {
-      auto itr = expected.find(name);
+    feature.visit([&expected, &feature](
+      arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
+    )->bool {
+      auto itr = expected.find(analyzer->name());
       CHECK((itr != expected.end()));
-      CHECK((itr->second.type == type));
-      CHECK((itr->second.properties == properties));
-      CHECK((itr->second.features.is_subset_of(feature.get(name)->features())));
-      expected.erase(itr);
-      return true;
-    });
-    CHECK((expected.empty()));
-  }
-
-  // test feature start load configuration (inRecovery, no configuration collection, uninitialized analyzers)
-  {
-    // ensure no configuration collection
-    {
-      auto collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
-
-      if (collection) {
-        vocbase->dropCollection(collection->id(), true, -1);
-      }
-
-      collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
-      CHECK((nullptr == collection));
-    }
-
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
-    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    CHECK((true == !feature.get("test_analyzer")));
-    CHECK((false == !feature.ensure("test_analyzer")));
-    feature.start();
-    CHECK((nullptr == vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
-
-    auto expected = staticAnalyzers();
-
-    expected.emplace(std::piecewise_construct, std::forward_as_tuple("test_analyzer"), std::forward_as_tuple(irs::string_ref::NIL, irs::string_ref::NIL));
-    feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties, irs::flags const& features)->bool {
-      auto itr = expected.find(name);
-      CHECK((itr != expected.end()));
-      CHECK((itr->second.type == type));
-      CHECK((itr->second.properties == properties));
-      CHECK((itr->second.features.is_subset_of(feature.get(name)->features())));
+      CHECK((itr->second.type == analyzer->type()));
+      CHECK((itr->second.properties == analyzer->properties()));
+      CHECK((itr->second.features.is_subset_of(feature.get(analyzer->name())->features())));
       expected.erase(itr);
       return true;
     });
@@ -1959,7 +1786,7 @@ SECTION("test_start") {
       CHECK((nullptr == collection));
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-      feature.start();
+
       CHECK((true == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer", "identity", "abc").ok()));
       CHECK((false == !result.first));
       collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
@@ -1970,70 +1797,25 @@ SECTION("test_start") {
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    feature.start();
+    feature.start(); // load persisted analyzers
     CHECK((nullptr != vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
 
     auto expected = staticAnalyzers();
-/*
-    expected.emplace(std::piecewise_construct, std::forward_as_tuple(arangodb::StaticStrings::SystemDatabase + "::test_analyzer"), std::forward_as_tuple("identity", "abc"));
-    feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties, irs::flags const& features)->bool {
-      auto itr = expected.find(name);
+    auto expectedAnalyzer = arangodb::StaticStrings::SystemDatabase + "::test_analyzer";
+
+    expected.emplace(std::piecewise_construct, std::forward_as_tuple(expectedAnalyzer), std::forward_as_tuple("identity", "abc"));
+    feature.visit([&expected, &feature](
+      arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
+    )->bool {
+      auto itr = expected.find(analyzer->name());
       CHECK((itr != expected.end()));
-      CHECK((itr->second.type == type));
-      CHECK((itr->second.properties == properties));
-      CHECK((itr->second.features.is_subset_of(feature.get(name)->features())));
+      CHECK((itr->second.type == analyzer->type()));
+      CHECK((itr->second.properties == analyzer->properties()));
+      CHECK((itr->second.features.is_subset_of(feature.get(analyzer->name())->features())));
       expected.erase(itr);
       return true;
     });
     CHECK((expected.empty()));
-*/
-  }
-
-  // FIXME TODO remove test since there is no more ensure()
-  // test feature start load configuration (inRecovery, with configuration collection, uninitialized analyzers)
-  {
-    // ensure there is an empty configuration collection
-    {
-      auto collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
-
-      if (collection) {
-        vocbase->dropCollection(collection->id(), true, -1);
-      }
-
-      collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
-      CHECK((nullptr == collection));
-      arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-      arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-      feature.start();
-      CHECK((true == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer", "identity", "abc").ok()));
-      CHECK((false == !result.first));
-      collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
-      CHECK((nullptr != collection));
-    }
-
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
-    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    CHECK((false == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer")));
-    CHECK((false == !feature.ensure(arangodb::StaticStrings::SystemDatabase + "::test_analyzer")));
-    feature.start();
-    CHECK((nullptr != vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
-
-    auto expected = staticAnalyzers();
-/*
-    expected.emplace(std::piecewise_construct, std::forward_as_tuple(arangodb::StaticStrings::SystemDatabase + "::test_analyzer"), std::forward_as_tuple("identity", "abc"));
-    feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties, irs::flags const& features)->bool {
-      auto itr = expected.find(name);
-      CHECK((itr != expected.end()));
-      CHECK((itr->second.type == type));
-      CHECK((itr->second.properties == properties));
-      CHECK((itr->second.features.is_subset_of(feature.get(name)->features())));
-      expected.erase(itr);
-      return true;
-    });
-    CHECK((expected.empty()));
-*/
   }
 
   // test feature start load configuration (no configuration collection)
@@ -2051,50 +1833,19 @@ SECTION("test_start") {
     }
 
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    feature.start();
+    feature.start(); // load persisted analyzers
     CHECK((nullptr == vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
 
     auto expected = staticAnalyzers();
 
-    feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties, irs::flags const& features)->bool {
-      auto itr = expected.find(name);
+    feature.visit([&expected, &feature](
+      arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
+    )->bool {
+      auto itr = expected.find(analyzer->name());
       CHECK((itr != expected.end()));
-      CHECK((itr->second.type == type));
-      CHECK((itr->second.properties == properties));
-      CHECK((itr->second.features.is_subset_of(feature.get(name)->features())));
-      expected.erase(itr);
-      return true;
-    });
-    CHECK((expected.empty()));
-  }
-
-  // test feature start load configuration (no configuration collection, static analyzers)
-  {
-    // ensure no configuration collection
-    {
-      auto collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
-
-      if (collection) {
-        vocbase->dropCollection(collection->id(), true, -1);
-      }
-
-      collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
-      CHECK((nullptr == collection));
-    }
-
-    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    CHECK((false == !feature.get("identity")));
-    feature.start();
-    CHECK((nullptr == vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
-
-    auto expected = staticAnalyzers();
-
-    feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties, irs::flags const& features)->bool {
-      auto itr = expected.find(name);
-      CHECK((itr != expected.end()));
-      CHECK((itr->second.type == type));
-      CHECK((itr->second.properties == properties));
-      CHECK((itr->second.features.is_subset_of(feature.get(name)->features())));
+      CHECK((itr->second.type == analyzer->type()));
+      CHECK((itr->second.properties == analyzer->properties()));
+      CHECK((itr->second.features.is_subset_of(feature.get(analyzer->name())->features())));
       expected.erase(itr);
       return true;
     });
@@ -2103,7 +1854,6 @@ SECTION("test_start") {
 
   // test feature start load configuration (with configuration collection)
   {
-
     // ensure there is an empty configuration collection
     {
       auto collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
@@ -2116,7 +1866,7 @@ SECTION("test_start") {
       CHECK((nullptr == collection));
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-      feature.start();
+
       CHECK((true == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer", "identity", "abc").ok()));
       CHECK((false == !result.first));
       collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
@@ -2124,67 +1874,25 @@ SECTION("test_start") {
     }
 
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    feature.start();
+    feature.start(); // load persisted analyzers
     CHECK((nullptr != vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
 
     auto expected = staticAnalyzers();
-/*
-    expected.emplace(std::piecewise_construct, std::forward_as_tuple(arangodb::StaticStrings::SystemDatabase + "::test_analyzer"), std::forward_as_tuple("identity", "abc"));
-    feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties, irs::flags const& features)->bool {
-      auto itr = expected.find(name);
+    auto expectedAnalyzer = arangodb::StaticStrings::SystemDatabase + "::test_analyzer";
+
+    expected.emplace(std::piecewise_construct, std::forward_as_tuple(expectedAnalyzer), std::forward_as_tuple("identity", "abc"));
+    feature.visit([&expected, &feature](
+      arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
+    )->bool {
+      auto itr = expected.find(analyzer->name());
       CHECK((itr != expected.end()));
-      CHECK((itr->second.type == type));
-      CHECK((itr->second.properties == properties));
-      CHECK((itr->second.features.is_subset_of(feature.get(name)->features())));
+      CHECK((itr->second.type == analyzer->type()));
+      CHECK((itr->second.properties == analyzer->properties()));
+      CHECK((itr->second.features.is_subset_of(feature.get(analyzer->name())->features())));
       expected.erase(itr);
       return true;
     });
     CHECK((expected.empty()));
-*/
-  }
-
-  // FIXME TODO remove test since there is no more ensure()
-  // test feature start load configuration (with configuration collection, uninitialized analyzers)
-  {
-    // ensure there is an empty configuration collection
-    {
-      auto collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
-
-      if (collection) {
-        vocbase->dropCollection(collection->id(), true, -1);
-      }
-
-      collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
-      CHECK((nullptr == collection));
-      arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-      arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-      feature.start();
-      CHECK((true == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer", "identity", "abc").ok()));
-      CHECK((false == !result.first));
-      collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
-      CHECK((nullptr != collection));
-    }
-
-    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    CHECK((false == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer")));
-    CHECK((false == !feature.ensure(arangodb::StaticStrings::SystemDatabase + "::test_analyzer")));
-    feature.start();
-    CHECK((nullptr != vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
-
-    auto expected = staticAnalyzers();
-/*
-    expected.emplace(std::piecewise_construct, std::forward_as_tuple(arangodb::StaticStrings::SystemDatabase + "::test_analyzer"), std::forward_as_tuple("identity", "abc"));
-    feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties, irs::flags const& features)->bool {
-      auto itr = expected.find(name);
-      CHECK((itr != expected.end()));
-      CHECK((itr->second.type == type));
-      CHECK((itr->second.properties == properties));
-      CHECK((itr->second.features.is_subset_of(feature.get(name)->features())));
-      expected.erase(itr);
-      return true;
-    });
-    CHECK((expected.empty()));
-*/
   }
 }
 
@@ -2237,12 +1945,12 @@ SECTION("test_tokens") {
     // AqlFunctionFeature::byName(..) throws exception instead of returning a nullptr
     CHECK_THROWS((functions->byName("TOKENS")));
 
-    feature.start();
+    feature.start(); // load AQL functions
     CHECK((nullptr != functions->byName("TOKENS")));
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-  analyzers->start();
+  analyzers->start(); // load AQL functions
   REQUIRE((true == analyzers->emplace(result, "test_analyzer", "TestAnalyzer", "abc").ok()));
   REQUIRE((false == !result.first));
 
@@ -3702,8 +3410,6 @@ SECTION("test_visit") {
   server.addFeature(new arangodb::SystemDatabaseFeature(server, &system)); // required for IResearchAnalyzerFeature::start()
   server.addFeature(new arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase(...)
 
-  feature.start();
-
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   CHECK((true == feature.emplace(result, "test_analyzer0", "TestAnalyzer", "abc0").ok()));
   CHECK((false == !result.first));
@@ -3720,17 +3426,14 @@ SECTION("test_visit") {
       { "test_analyzer2", "abc2", {} },
     };
     auto result = feature.visit([&expected](
-      irs::string_ref const& name,
-      irs::string_ref const& type,
-      irs::string_ref const& properties,
-      irs::flags const& features
+      arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
     )->bool {
-      if (staticAnalyzers().find(name) != staticAnalyzers().end()) {
+      if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
         return true; // skip static analyzers
       }
 
-      CHECK((type == "TestAnalyzer"));
-      CHECK((1 == expected.erase(ExpectedType(name, properties, features))));
+      CHECK((analyzer->type() == "TestAnalyzer"));
+      CHECK((1 == expected.erase(ExpectedType(analyzer->name(), analyzer->properties(), analyzer->features()))));
       return true;
     });
     CHECK((true == result));
@@ -3745,17 +3448,14 @@ SECTION("test_visit") {
       { "test_analyzer2", "abc2", {} },
     };
     auto result = feature.visit([&expected](
-      irs::string_ref const& name,
-      irs::string_ref const& type,
-      irs::string_ref const& properties,
-      irs::flags const& features
+      arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
     )->bool {
-      if (staticAnalyzers().find(name) != staticAnalyzers().end()) {
+      if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
         return true; // skip static analyzers
       }
 
-      CHECK((type == "TestAnalyzer"));
-      CHECK((1 == expected.erase(ExpectedType(name, properties, features))));
+      CHECK((analyzer->type() == "TestAnalyzer"));
+      CHECK((1 == expected.erase(ExpectedType(analyzer->name(), analyzer->properties(), analyzer->features()))));
       return false;
     });
     CHECK((false == result));
@@ -3785,17 +3485,14 @@ SECTION("test_visit") {
     std::set<ExpectedType> expected = {};
     auto result = feature.visit(
       [&expected](
-        irs::string_ref const& name,
-        irs::string_ref const& type,
-        irs::string_ref const& properties,
-        irs::flags const& features
+        arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
       )->bool {
-        if (staticAnalyzers().find(name) != staticAnalyzers().end()) {
+        if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
           return true; // skip static analyzers
         }
 
-        CHECK((type == "TestAnalyzer"));
-        CHECK((1 == expected.erase(ExpectedType(name, properties, features))));
+        CHECK((analyzer->type() == "TestAnalyzer"));
+        CHECK((1 == expected.erase(ExpectedType(analyzer->name(), analyzer->properties(), analyzer->features()))));
         return true;
       },
       vocbase0
@@ -3812,17 +3509,14 @@ SECTION("test_visit") {
     };
     auto result = feature.visit(
       [&expected](
-        irs::string_ref const& name,
-        irs::string_ref const& type,
-        irs::string_ref const& properties,
-        irs::flags const& features
+        arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
       )->bool {
-        if (staticAnalyzers().find(name) != staticAnalyzers().end()) {
+        if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
           return true; // skip static analyzers
         }
 
-        CHECK((type == "TestAnalyzer"));
-        CHECK((1 == expected.erase(ExpectedType(name, properties, features))));
+        CHECK((analyzer->type() == "TestAnalyzer"));
+        CHECK((1 == expected.erase(ExpectedType(analyzer->name(), analyzer->properties(), analyzer->features()))));
         return true;
       },
       vocbase2

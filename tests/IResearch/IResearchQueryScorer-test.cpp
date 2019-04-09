@@ -32,6 +32,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Cluster/ClusterFeature.h"
@@ -51,7 +52,6 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
-#include "IResearch/IResearchViewNode.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
@@ -333,7 +333,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocsView.emplace_back();
-        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocsView.back(), opt, tick, false);
+        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocsView.back(), opt, false);
         CHECK(res.ok());
         ++i;
       }
@@ -353,7 +353,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocsCollection.emplace_back();
-        auto const res = logicalCollection3->insert(&trx, doc, insertedDocsCollection.back(), opt, tick, false);
+        auto const res = logicalCollection3->insert(&trx, doc, insertedDocsCollection.back(), opt, false);
         CHECK(res.ok());
       }
     }

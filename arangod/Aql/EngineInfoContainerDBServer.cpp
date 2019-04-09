@@ -27,6 +27,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/GraphNode.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
@@ -44,7 +45,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-#include "IResearch/IResearchViewNode.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -1004,6 +1004,8 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
     ClusterTrxMethods::addAQLTransactionHeader(*trx, /*server*/ it.first, headers);
 
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
+
+    _query->incHttpRequests(1);
     auto res = cc->syncRequest(coordTransactionID, serverDest, RequestType::POST,
                                url, infoBuilder.toJson(), headers, SETUP_TIMEOUT);
 
@@ -1140,7 +1142,7 @@ void EngineInfoContainerDBServer::cleanupEngines(std::shared_ptr<ClusterComm> cc
       }
     }
   }
-
+  
   // Shutdown traverser engines
   url = "/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
         "/_internal/traverser/";
@@ -1152,6 +1154,8 @@ void EngineInfoContainerDBServer::cleanupEngines(std::shared_ptr<ClusterComm> cc
                             url + basics::StringUtils::itoa(engine.second), noBody);
     }
   }
+
+  _query->incHttpRequests(requests.size());
 
   cc->fireAndForgetRequests(requests);
   queryIds.clear();

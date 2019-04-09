@@ -34,6 +34,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Function.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
@@ -61,7 +62,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
 
-#include "IResearch/IResearchViewNode.h"
 
 #include <boost/optional.hpp>
 #include <tuple>
@@ -599,7 +599,7 @@ std::string getSingleShardId(arangodb::aql::ExecutionPlan const* plan,
   }
 
   // note for which shard keys we need to look for
-  auto shardKeys = collection->shardKeys();
+  auto shardKeys = collection->shardKeys(true);
   std::unordered_set<std::string> toFind;
   for (auto const& it : shardKeys) {
     if (it.find('.') != std::string::npos) {
@@ -1462,7 +1462,7 @@ class PropagateConstantAttributesHelper {
                   // don't remove a smart join attribute access!
                   return;
                 } else {
-                  std::vector<std::string> const& shardKeys = logical->shardKeys();
+                  std::vector<std::string> shardKeys = collection->shardKeys(true);
                   if (std::find(shardKeys.begin(), shardKeys.end(), nameAttribute->getString()) != shardKeys.end()) {
                     // don't remove equality lookups on shard keys, as this may prevent
                     // the restrict-to-single-shard rule from being applied later!
@@ -3463,6 +3463,7 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(Optimizer* opt,
 
 /// @brief optimize queries in the cluster so that the entire query gets pushed
 /// to a single server
+#if 0
 void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
                                                    std::unique_ptr<ExecutionPlan> plan,
                                                    OptimizerRule const* rule) {
@@ -3556,6 +3557,7 @@ void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
 
   opt->addPlan(std::move(plan), rule, wasModified);
 }
+#endif
 
 /// @brief scatter operations in cluster
 /// this rule inserts scatter, gather and remote nodes so operations on sharded
@@ -4810,7 +4812,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
               break;  // abort . . .
             }
             // check the remove node's collection is sharded over _key
-            std::vector<std::string> shardKeys = rn->collection()->shardKeys();
+            std::vector<std::string> shardKeys = rn->collection()->shardKeys(false);
             if (shardKeys.size() != 1 || shardKeys[0] != StaticStrings::KeyString) {
               break;  // abort . . .
             }
@@ -4831,7 +4833,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
             }
 
             // note for which shard keys we need to look for
-            auto shardKeys = rn->collection()->shardKeys();
+            auto shardKeys = rn->collection()->shardKeys(false);
             std::unordered_set<std::string> toFind;
             for (auto const& it : shardKeys) {
               toFind.emplace(it);

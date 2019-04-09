@@ -414,26 +414,27 @@ inline v8::Local<v8::String> TRI_ObjectToString(v8::Local<v8::Context> &context,
 /// @brief globals stored in the isolate
 struct TRI_v8_global_t {
   /// @brief wrapper around a v8::Persistent to hold a shared_ptr and cleanup
-  class DataSourcePersistent {
+  class SharedPtrPersistent {
    public:
-    DataSourcePersistent(v8::Isolate* isolate,
-                         std::shared_ptr<arangodb::LogicalDataSource> const& datasource,
-                         std::function<void()>&& cleanupCallback  // function to call at the end of the Persistent
-                                                                  // WeakCallbackInfo::Callback (to avoid linking
-                                                                  // against arangod)
+    SharedPtrPersistent( // constructor used ONLY by SharedPtrPersistent::emplace(...)
+      v8::Isolate& isolate, // isolate
+      std::shared_ptr<void> const& value // value
     );
-    DataSourcePersistent(DataSourcePersistent&&) = delete;
-    DataSourcePersistent(DataSourcePersistent const&) = delete;
-    ~DataSourcePersistent();
-    DataSourcePersistent& operator=(DataSourcePersistent&&) = delete;
-    DataSourcePersistent& operator=(DataSourcePersistent const&) = delete;
-    v8::Local<v8::External> get() const { return _persistent.Get(_isolate); }
+    SharedPtrPersistent(SharedPtrPersistent&&) = delete;
+    SharedPtrPersistent(SharedPtrPersistent const&) = delete;
+    ~SharedPtrPersistent();
+    SharedPtrPersistent& operator=(SharedPtrPersistent&&) = delete;
+    SharedPtrPersistent& operator=(SharedPtrPersistent const&) = delete;
+    static std::pair<SharedPtrPersistent&, bool> emplace( // emplace persistent shared pointer
+      v8::Isolate& isolate, // isolate
+      std::shared_ptr<void> const& value // value
+    );
+    v8::Local<v8::External> get() const { return _persistent.Get(&_isolate); }
 
    private:
-    std::function<void()> _cleanupCallback;
-    std::shared_ptr<arangodb::LogicalDataSource> _datasource;
-    v8::Isolate* _isolate;
+    v8::Isolate& _isolate;
     v8::Persistent<v8::External> _persistent;
+    std::shared_ptr<void> _value;
   };
 
   explicit TRI_v8_global_t(v8::Isolate*);
@@ -448,9 +449,6 @@ struct TRI_v8_global_t {
 
   /// @brief decrease the number of active externals
   inline void decreaseActiveExternals() { --_activeExternals; }
-
-  /// @brief datasource mapping for weak pointers
-  std::unordered_map<void*, DataSourcePersistent> JSDatasources;
 
   /// @brief agency template
   v8::Persistent<v8::ObjectTemplate> AgencyTempl;
@@ -503,6 +501,9 @@ struct TRI_v8_global_t {
 
   /// @brief stream query cursor templace
   v8::Persistent<v8::FunctionTemplate> StreamQueryCursorTempl;
+
+  v8::Persistent<v8::ObjectTemplate> IResearchAnalyzerTempl; // IResearch analyzer instance template
+  v8::Persistent<v8::ObjectTemplate> IResearchAnalyzersTempl; // IResearch analyzers feature template
 
   /// @brief "Buffer" constant
   v8::Persistent<v8::String> BufferConstant;
@@ -744,6 +745,12 @@ struct TRI_v8_global_t {
 
   /// @brief whether or not useDatabase() is allowed
   bool _allowUseDatabase;
+
+ private:
+  /// @brief shared pointer mapping for weak pointers, holds shared pointers so
+  ///        they don't get deallocated while in use by V8
+  /// @note used ONLY by the SharedPtrPersistent class
+  std::unordered_map<void*, SharedPtrPersistent> JSSharedPtrs;
 };
 
 /// @brief creates a global context

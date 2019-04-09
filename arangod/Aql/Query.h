@@ -115,6 +115,10 @@ class Query {
   /// @brief set the query to killed
   void kill();
 
+  /// @brief increase number of HTTP requests. this is normally
+  /// called during the setup of a query
+  void incHttpRequests(size_t requests);
+
   void setExecutionTime();
 
   QueryString const& queryString() const { return _queryString; }
@@ -209,7 +213,10 @@ class Query {
   void registerErrorCustom(int, char const*);
 
   /// @brief register a warning
-  virtual void registerWarning(int, char const* = nullptr);
+  TEST_VIRTUAL void registerWarning(int, char const* = nullptr);
+
+  /// @brief register a warning (convenience overload)
+  TEST_VIRTUAL void registerWarning(int code, std::string const& details);
 
   void prepare(QueryRegistry*);
 
@@ -282,9 +289,6 @@ class Query {
   ///        Will add a new entry { ..., warnings: <warnings>, } if there are
   ///        warnings. If there are none it will not modify the builder
   void addWarningsToVelocyPack(arangodb::velocypack::Builder&) const;
-
-  /// @brief get a description of the query's current state
-  std::string getStateString() const;
 
   /// @brief look up a graph in the _graphs collection
   graph::Graph const* lookupGraphByName(std::string const& name);

@@ -23,6 +23,7 @@
 
 #include "MMFilesExportCursor.h"
 #include "Aql/ExecutionState.h"
+#include "Basics/Exceptions.h"
 #include "MMFiles/MMFilesCollectionExport.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/vocbase.h"
@@ -36,15 +37,15 @@
 namespace arangodb {
 
 MMFilesExportCursor::MMFilesExportCursor(TRI_vocbase_t& vocbase, CursorId id,
-                                         arangodb::MMFilesCollectionExport* ex,
+                                         std::unique_ptr<arangodb::MMFilesCollectionExport> ex,
                                          size_t batchSize, double ttl, bool hasCount)
     : Cursor(id, batchSize, ttl, hasCount),
       _guard(vocbase),
-      _ex(ex),
+      _ex(std::move(ex)),
       _position(0),
-      _size(ex->_vpack.size()) {}
+      _size(_ex->_vpack.size()) {}
 
-MMFilesExportCursor::~MMFilesExportCursor() { delete _ex; }
+MMFilesExportCursor::~MMFilesExportCursor() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the cursor contains more data
@@ -79,6 +80,10 @@ std::pair<aql::ExecutionState, Result> MMFilesExportCursor::dump(VPackBuilder& b
 }
 
 Result MMFilesExportCursor::dumpSync(VPackBuilder& builder) {
+  if (_ex == nullptr) {
+    return Result(TRI_ERROR_CURSOR_NOT_FOUND);
+  }
+
   auto ctx = transaction::StandaloneContext::Create(_guard.database());
   VPackOptions const* oldOptions = builder.options;
 
@@ -135,8 +140,7 @@ Result MMFilesExportCursor::dumpSync(VPackBuilder& builder) {
 
     if (!hasNext()) {
       // mark the cursor as deleted
-      delete _ex;
-      _ex = nullptr;
+      _ex.reset();
       this->setDeleted();
     }
   } catch (arangodb::basics::Exception const& ex) {
@@ -148,7 +152,7 @@ Result MMFilesExportCursor::dumpSync(VPackBuilder& builder) {
                   "internal error during MMFilesExportCursor::dump");
   }
   builder.options = oldOptions;
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 std::shared_ptr<transaction::Context> MMFilesExportCursor::context() const {

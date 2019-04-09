@@ -853,7 +853,7 @@ arangodb::Result MoveShard::abort() {
       // Current preconditions for all shards
       doForAllShards(
         _snapshot, _database, shardsLikeMe,
-        [this, &trx](
+        [&trx](
           Slice plan, Slice current, std::string& planPath, std::string& curPath) {
           // Current still as is
           trx.add(curPath, current);
