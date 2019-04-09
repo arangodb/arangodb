@@ -171,8 +171,8 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
 
  private:
   bool computeShortestPath(const VertexRef& start, const VertexRef& end,
-                           const std::vector<VertexRef>& forbiddenVertices,
-                           const std::vector<Edge>& forbiddenEdges, Path& result);
+                           const std::unordered_set<VertexRef>& forbiddenVertices,
+                           const std::unordered_set<Edge>& forbiddenEdges, Path& result);
   bool computeNextShortestPath(Path& result);
 
   void reconstructPath(const Ball& left, const Ball& right,
@@ -184,8 +184,8 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
 
   // returns the number of paths found
   bool advanceFrontier(Ball& source, const Ball& target,
-                       const std::vector<VertexRef>& forbiddenVertices,
-                       const std::vector<Edge>& forbiddenEdges, VertexRef& join);
+                       const std::unordered_set<VertexRef>& forbiddenVertices,
+                       const std::unordered_set<Edge>& forbiddenEdges, VertexRef& join);
 
  private:
   bool _pathAvailable;
