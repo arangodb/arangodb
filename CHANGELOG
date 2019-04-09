@@ -2,22 +2,24 @@ devel
 -----
 
 * added options to make server more secure:
-   `--server.harden`: denies version and changing log levels via rest api
-   `--foxx.disable-api`: disables Foxx amangment api
-   `--foxx.disable-store`: disables Foxx UI
-   `--javascript.allow-port-testing`: enables internal.testPort()
-   `--javascript.allow-external-process-control`: enables external process control
-   `--javascript.harden`: disables getPid(), processStatistics() and logLevel()
-   `--javascript.startup-options-*`: control startup options visible in JavaScript
-   `--javascript.environment-variables-*`: control environment variables visible in JavaScript
-   `--javascript.endpoints-*`: control accessible endpoints in JavaScript
-   `--javascript.files-white-list`: control file access in JavaScript
+  `--server.harden`: denies version and changing log levels via rest api
+  `--foxx.disable-api`: disables Foxx amangment api
+  `--foxx.disable-store`: disables Foxx UI
+  `--javascript.allow-port-testing`: enables internal.testPort()
+  `--javascript.allow-external-process-control`: enables external process control
+  `--javascript.harden`: disables getPid(), processStatistics() and logLevel()
+  `--javascript.startup-options-*`: control startup options visible in JavaScript
+  `--javascript.environment-variables-*`: control environment variables visible in JavaScript
+  `--javascript.endpoints-*`: control accessible endpoints in JavaScript
+  `--javascript.files-white-list`: control file access in JavaScript
 
-   Note: There is a [detailed description of all options](https://github.com/arangodb-helper/arangodb/blob/master/Documentation/Books/Manual/Security/SecurityOptions.md).
+  Note: There is a [detailed description of all options](https://github.com/arangodb-helper/arangodb/blob/master/Documentation/Books/Manual/Security/SecurityOptions.md).
 
 * removed support for undocumented HTTP header `x-arango-v8-context`, which
   allowed controlling in which particular V8 context number a JavaScript-based
   action was executed. This header was only used internally for testing.
+
+* added `filter` option to Foxx HTTP API for running tests.
 
 * added function `db.<collection>.getResponsibleShard()` to find out which is the
   responsible shard for a given document. Note that this function is only available

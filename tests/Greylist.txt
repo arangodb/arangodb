@@ -4,6 +4,31 @@ In this file we collect information about which tests are currently
 greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 
+- `tests/js/server/resilience/moving-shards-cluster.js`
+
+  * Test "resilience"
+    [FAILED]  tests/js/server/resilience/moving-shards-cluster.js
+
+      "testCleanOutMultipleShards_data" failed: at assertion #3: assertTrue: (false) does not evaluate to true
+(Error
+    at assertTrue (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:66:19)
+    at Object.testCleanOutMultipleShards (tests/js/server/resilience/moving-shards-cluster.js:742:7)
+    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:515:23)
+    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:171:24)
+    at tests/js/server/resilience/moving-shards-cluster.js:818:9
+    at tests/js/server/resilience/moving-shards-cluster.js:826:3
+    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:248:12)
+    at eval (eval at callback (/work/ArangoDB/js/actions/_admin/app.js:82:18), <anonymous>:2:52)
+    at eval (eval at callback (/work/ArangoDB/js/actions/_admin/app.js:82:18), <anonymous>:2:135)
+    at Function.callback (/work/ArangoDB/js/actions/_admin/app.js:82:18))
+
+   Suites failed: 1 Tests Failed: 1
+
+
+- `tests/js/server/shell/shell-pregel-grey.js`
+
+  just hangs
+
 - `tests/js/common/aql/aql-view-arangosearch-cluster.js`
 
   taking too long

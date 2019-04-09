@@ -281,6 +281,11 @@ is determined from the document's attribute values only.
 
 Please note that this API is only meaningful and available on a cluster coordinator.
 
+### Foxx API for running tests
+
+The HTTP API for running Foxx service tests now supports a `filter` attribute,
+which can be used to limit which test cases should be executed.
+
 
 Web interface
 -------------
