@@ -1607,7 +1607,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
       std::string("FOR c in compact FILTER c._key >= '") + firstIndex
       + std::string("' SORT c._key LIMIT 1 RETURN c");
         
-    arangodb::aql::Query compQuery(false, *_vocbase, aql::QueryString(compQueryStr),
+    arangodb::aql::Query compQuery(false, _vocbase, aql::QueryString(compQueryStr),
                                bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     aql::QueryResult compQueryResult = compQuery.execute(_queryRegistry);
