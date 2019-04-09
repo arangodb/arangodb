@@ -93,8 +93,8 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 /// there are active contexts
 //////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, TRI_server_id_t serverId) {
-  auto context = std::make_unique<RocksDBReplicationContext>(ttl, serverId);
+RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, std::string const& clientId) {
+  auto context = std::make_unique<RocksDBReplicationContext>(ttl, clientId);
   TRI_ASSERT(context.get() != nullptr);
   TRI_ASSERT(context->isUsed());
 
@@ -198,10 +198,13 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(RocksDBReplicationId 
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief find an existing context by id and extend lifetime
-/// may be used concurrently on used contextes
+/// may be used concurrently on used contexts
+/// populates clientId
 //////////////////////////////////////////////////////////////////////////////
 
-int RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
+int RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, 
+                                              std::string& clientId,
+                                              double ttl) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
   auto it = _contexts.find(id);
@@ -218,6 +221,9 @@ int RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double tt
     // already deleted
     return TRI_ERROR_CURSOR_NOT_FOUND;
   }
+
+  // populate clientId
+  clientId = context->replicationClientId();
 
   context->extendLifetime(ttl);
 

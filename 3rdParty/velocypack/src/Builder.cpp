@@ -120,7 +120,11 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
   }
   VELOCYPACK_ASSERT(_sortEntries.size() == n);
   std::sort(_sortEntries.begin(), _sortEntries.end(), [](SortEntry const& a, 
-                                                         SortEntry const& b) noexcept(checkOverflow(UINT64_MAX)) {
+                                                         SortEntry const& b) 
+#ifdef VELOCYPACK_64BIT
+    noexcept
+#endif
+  {
     // return true iff a < b:
     uint64_t sizea = a.nameSize;
     uint64_t sizeb = b.nameSize;
