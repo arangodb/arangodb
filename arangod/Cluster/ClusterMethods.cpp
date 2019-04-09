@@ -3036,8 +3036,10 @@ arangodb::Result applyDBServerMatchesToPlan(
   VPackSlice const plan, std::unordered_map<ServerID,ServerID> const& matches,
   VPackBuilder& newPlan) {
 
+  
   std::function<void(
     VPackSlice const, std::unordered_map<ServerID,ServerID> const&)> replaceDBServer;
+  
   replaceDBServer = [&newPlan, &replaceDBServer](
     VPackSlice const s, std::unordered_map<ServerID,ServerID> const& matches) {
     if (s.isObject()) {
@@ -3052,17 +3054,18 @@ arangodb::Result applyDBServerMatchesToPlan(
         replaceDBServer(it, matches);
       }
     } else {
+      bool swapped = false;
       if (s.isString()) {
-        bool replaced = false;
         for (auto const& match : matches) {
-          if(s.isEqualString(match.first)) {
-            replaced = true;
+          if (s.isString() && s.isEqualString(match.first)) {
             newPlan.add(VPackValue(match.second));
+            swapped = true;
+            break;
           }
         }
-        if (!replaced) {
-          newPlan.add(s);
-        }
+      }
+      if (!swapped) {
+        newPlan.add(s);
       }
     }
 

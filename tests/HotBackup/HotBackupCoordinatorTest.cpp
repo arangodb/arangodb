@@ -198,7 +198,7 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     REQUIRE(!res.ok());
   }
 
-  SECTION("Test one less local server than in backup") {
+  SECTION("Test effect of first db server changed on new plan") {
     std::shared_ptr<VPackBuilder> props;
 
     std::vector<ServerID> dbServers;
@@ -212,8 +212,10 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     
     arangodb::Result res = matchBackupServers(plan, dbServers, matches);
     
-    REQUIRE(matches.size() == 0);
-    REQUIRE(!res.ok());
+    VPackBuilder newPlan;
+    res = applyDBServerMatchesToPlan(plan, matches, newPlan);
+    std::cout << newPlan.toJson() << std::endl;
+    
   }
 
 }

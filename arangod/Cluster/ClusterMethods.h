@@ -301,6 +301,16 @@ arangodb::Result matchBackupServers(
   VPackSlice const planDump, std::vector<ServerID> const& dbServers,
   std::unordered_map<std::string,std::string>& match);
 
+/**
+ * @brief apply database server matches to plan
+ * @param  plan     Plan from hot backup
+ * @param  matches  Match backup's server ids to new server ids
+ * @param  newPlan  Resulting new plan
+ * @return          Operation's result
+ */
+arangodb::Result applyDBServerMatchesToPlan(
+  VPackSlice const plan, std::unordered_map<ServerID,ServerID> const& matches,
+  VPackBuilder& newPlan);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the active journals for the collection on all DBservers
