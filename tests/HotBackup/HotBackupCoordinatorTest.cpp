@@ -159,12 +159,9 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     std::vector<ServerID> dbServers;
     std::unordered_map<ServerID,ServerID> matches;
 
-    for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
-      dbServers.push_back(i.key.copyString());
-    }
-
-    for (auto& i : dbServers) {
-      i = std::string("PRMR_") + to_string(boost::uuids::random_generator()());
+    for (size_t i = 0; i < plan.get("DBServers").length(); ++i) {
+      dbServers.push_back(std::string("PRMR_")
+                          + to_string(boost::uuids::random_generator()()));
     }
     
     arangodb::Result res = matchBackupServers(plan, dbServers, matches);
@@ -204,8 +201,8 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     
     arangodb::Result res = matchBackupServers(plan, dbServers, matches);
     
-    REQUIRE(matches.size() == 0);
     REQUIRE(!res.ok());
+    REQUIRE(matches.size() == 0);
   }
 
   SECTION("Test effect of first db server changed on new plan") {
@@ -222,6 +219,8 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     
     arangodb::Result res = matchBackupServers(plan, dbServers, matches);
     
+    REQUIRE(res.ok());
+
     VPackBuilder newPlan;
     res = applyDBServerMatchesToPlan(plan, matches, newPlan);
 
@@ -250,13 +249,16 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     
     arangodb::Result res = matchBackupServers(plan, dbServers, matches);
     
+    REQUIRE(res.ok());
+
     VPackBuilder newPlan;
     res = applyDBServerMatchesToPlan(plan, matches, newPlan);
 
+    VPackSlice const nplan = newPlan.slice();
     for (auto const& m : matches) {
-      REQUIRE(countSubstring(newPlan.slice().get("Collections").toJson(), m.first) == 0);
+      REQUIRE(countSubstring(nplan.get("Collections").toJson(), m.first) == 0);
       REQUIRE(countSubstring(plan.get("Collections").toJson(), m.second) == 0);
-      REQUIRE(countSubstring(newPlan.slice().get("Collections").toJson(), m.second) ==
+      REQUIRE(countSubstring(nplan.get("Collections").toJson(), m.second) ==
         countSubstring(plan.get("Collections").toJson(), m.first));
     }
     
@@ -275,13 +277,43 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     
     arangodb::Result res = matchBackupServers(plan, dbServers, matches);
     
+    REQUIRE(res.ok());
+
     VPackBuilder newPlan;
     res = applyDBServerMatchesToPlan(plan, matches, newPlan);
 
+    VPackSlice const nplan = newPlan.slice();
     for (auto const& m : matches) {
-      REQUIRE(countSubstring(newPlan.slice().get("Collections").toJson(), m.first) == 0);
+      REQUIRE(countSubstring(nplan.get("Collections").toJson(), m.first) == 0);
       REQUIRE(countSubstring(plan.get("Collections").toJson(), m.second) == 0);
-      REQUIRE(countSubstring(newPlan.slice().get("Collections").toJson(), m.second) ==
+      REQUIRE(countSubstring(nplan.get("Collections").toJson(), m.second) ==
+        countSubstring(plan.get("Collections").toJson(), m.first));
+    }
+    
+  }
+
+  SECTION("Test irrelevance of string size for db server id") {
+    std::shared_ptr<VPackBuilder> props;
+
+    std::vector<ServerID> dbServers;
+    std::unordered_map<ServerID,ServerID> matches;
+
+    dbServers.push_back(std::string("PRMR_abcdefg"));
+    dbServers.push_back(std::string("1c0"));
+    dbServers.push_back(std::string("Hello"));
+    
+    arangodb::Result res = matchBackupServers(plan, dbServers, matches);
+    
+    REQUIRE(res.ok());
+
+    VPackBuilder newPlan;
+    res = applyDBServerMatchesToPlan(plan, matches, newPlan);
+
+    VPackSlice const nplan = newPlan.slice();
+    for (auto const& m : matches) {
+      REQUIRE(countSubstring(nplan.get("Collections").toJson(), m.first) == 0);
+      REQUIRE(countSubstring(plan.get("Collections").toJson(), m.second) == 0);
+      REQUIRE(countSubstring(nplan.get("Collections").toJson(), m.second) ==
         countSubstring(plan.get("Collections").toJson(), m.first));
     }
     

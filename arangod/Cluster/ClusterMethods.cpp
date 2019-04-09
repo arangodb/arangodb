@@ -2756,6 +2756,7 @@ int fetchEdgesFromEngines(std::string const& dbname,
   return TRI_ERROR_NO_ERROR;
 }
 
+std::string const apiStr("/_api/backup/");
 
 arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
                                std::vector<std::string>& hotBackups) {
@@ -2774,7 +2775,7 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
     builder.add("operation", VPackValue("list"));
   }
   auto body = std::make_shared<std::string>(builder.toJson());
-  std::string const url = "/_api/hotbackup/list";
+  std::string const url = apiStr + "list";
 
   std::vector<ClusterCommRequest> requests;
   for (auto const& dbServer : dbServers) {
@@ -2905,7 +2906,7 @@ arangodb::Result controlMaintenanceFeature(
   {
     VPackObjectBuilder b(&builder);
     builder.add("execute", VPackValue(command));
-    builder.add("reason", VPackValue("hotbackup"));
+    builder.add("reason", VPackValue("backup"));
     builder.add("duration", VPackValue(30));
     builder.add("id", VPackValue(backupId));
   }
