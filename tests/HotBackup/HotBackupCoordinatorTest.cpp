@@ -298,9 +298,9 @@ TEST_CASE("HotBackup", "[cluster][hotbackup]") {
     std::vector<ServerID> dbServers;
     std::unordered_map<ServerID,ServerID> matches;
 
-    dbServers.push_back(std::string("PRMR_abcdefg"));
-    dbServers.push_back(std::string("1c0"));
-    dbServers.push_back(std::string("Hello"));
+    dbServers.push_back("PRMR_abcdefg");
+    dbServers.push_back("1c0");
+    dbServers.push_back("Hello");
     
     arangodb::Result res = matchBackupServers(plan, dbServers, matches);
     
