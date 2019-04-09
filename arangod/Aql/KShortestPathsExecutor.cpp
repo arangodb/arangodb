@@ -241,7 +241,7 @@ bool KShortestPathsExecutor::getVertexId(bool isTarget, VPackSlice& id) {
       if (!::isValidId(id)) {
         _finder.options().query()->registerWarning(
             TRI_ERROR_BAD_PARAMETER,
-            "Invalid input for Shortest Path: "
+            "Invalid input for k Shortest Paths: "
             "Only id strings or objects with "
             "_id are allowed");
         return false;
@@ -250,7 +250,7 @@ bool KShortestPathsExecutor::getVertexId(bool isTarget, VPackSlice& id) {
     } else {
       _finder.options().query()->registerWarning(
           TRI_ERROR_BAD_PARAMETER,
-          "Invalid input for Shortest Path: "
+          "Invalid input for k Shortest Paths: "
           "Only id strings or objects with "
           "_id are allowed");
       return false;
@@ -264,7 +264,7 @@ bool KShortestPathsExecutor::getVertexId(bool isTarget, VPackSlice& id) {
     if (!::isValidId(id)) {
       _finder.options().query()->registerWarning(
           TRI_ERROR_BAD_PARAMETER,
-          "Invalid input for Shortest Path: "
+          "Invalid input for k Shortest Paths: "
           "Only id strings or objects with "
           "_id are allowed");
       return false;

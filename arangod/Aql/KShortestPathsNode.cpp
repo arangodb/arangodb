@@ -1,4 +1,4 @@
-/// @brief Implementation of Shortest Path Execution Node
+/// @brief Implementation of k Shortest Path Execution Node
 ///
 /// @file arangod/Aql/KShortestPathsNode.cpp
 ///
