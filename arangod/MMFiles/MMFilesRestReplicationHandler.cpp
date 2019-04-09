@@ -668,8 +668,7 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
   size_t const count = keys->count();
   auto keysRepository = _vocbase.collectionKeys();
 
-  keysRepository->store(keys.get());
-  keys.release();
+  keysRepository->store(std::move(keys));
 
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));

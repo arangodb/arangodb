@@ -585,7 +585,7 @@ std::string getSingleShardId(arangodb::aql::ExecutionPlan const* plan,
   }
 
   // note for which shard keys we need to look for
-  auto shardKeys = collection->shardKeys();
+  auto shardKeys = collection->shardKeys(true);
   std::unordered_set<std::string> toFind;
   for (auto const& it : shardKeys) {
     if (it.find('.') != std::string::npos) {
@@ -1439,7 +1439,7 @@ class PropagateConstantAttributesHelper {
                   // don't remove a smart join attribute access!
                   return;
                 } else {
-                  std::vector<std::string> const& shardKeys = logical->shardKeys();
+                  std::vector<std::string> shardKeys = collection->shardKeys(true);
                   if (std::find(shardKeys.begin(), shardKeys.end(), nameAttribute->getString()) != shardKeys.end()) {
                     // don't remove equality lookups on shard keys, as this may prevent
                     // the restrict-to-single-shard rule from being applied later!
@@ -4711,7 +4711,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
               break;  // abort . . .
             }
             // check the remove node's collection is sharded over _key
-            std::vector<std::string> shardKeys = rn->collection()->shardKeys();
+            std::vector<std::string> shardKeys = rn->collection()->shardKeys(false);
             if (shardKeys.size() != 1 || shardKeys[0] != StaticStrings::KeyString) {
               break;  // abort . . .
             }
@@ -4730,7 +4730,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
             }
 
             // note for which shard keys we need to look for
-            auto shardKeys = rn->collection()->shardKeys();
+            auto shardKeys = rn->collection()->shardKeys(false);
             std::unordered_set<std::string> toFind;
             for (auto const& it : shardKeys) {
               toFind.emplace(it);

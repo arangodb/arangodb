@@ -109,6 +109,8 @@ class CursorRepository {
 
   bool containsUsedCursor();
 
+  size_t count();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run a garbage collection on the cursors
   /// @return
