@@ -839,17 +839,16 @@ function dumpAgency(instanceInfo, options) {
     if (agencyReply.code === 200) {
       let agencyValue = JSON.parse(agencyReply.body);
       fs.write(fs.join(options.testOutputDirectory, fn + '_' + arangod.pid + ".json"), JSON.stringify(agencyValue, null, 2));
-    }
-    else {
+    } else {
       print(agencyReply);
     }
   }
   instanceInfo.arangods.forEach((arangod) => {
     if (arangod.role === "agent") {
       if (arangod.hasOwnProperty('exitStatus')) {
-        print(Date() + " this agent is already dead: " + arangod);
+        print(Date() + " this agent is already dead: " + JSON.stringify(arangod));
       } else {
-        print(Date() + " Attempting to dump Agent: " + arangod);
+        print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod));
         dumpAgent(arangod, '/_api/agency/config', 'GET', 'agencyConfig');
 
         dumpAgent(arangod, '/_api/agency/state', 'GET', 'agencyState');
