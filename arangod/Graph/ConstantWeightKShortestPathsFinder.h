@@ -147,6 +147,7 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
 
  public:
   explicit ConstantWeightKShortestPathsFinder(ShortestPathOptions& options);
+  explicit ConstantWeightKShortestPathsFinder(ShortestPathOptions& options, std::function<void()> *callback);
   ~ConstantWeightKShortestPathsFinder();
 
   // This is here because we inherit from ShortestPathFinder (to get the destroyEngines function)
@@ -188,6 +189,12 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
                        const std::unordered_set<Edge>& forbiddenEdges, VertexRef& join);
 
  private:
+  std::function<void()> const * _callback;
+  inline void guardedCallback() {
+    if(_callback != nullptr) {
+      (*_callback)();
+    }
+  }
   bool _pathAvailable;
 
   VertexRef _start;
