@@ -3350,17 +3350,17 @@ SECTION("test_upgrade_static_legacy") {
 SECTION("test_visit") {
   struct ExpectedType {
     irs::flags _features;
-    irs::string_ref _properties;
-    irs::string_ref _type;
-    ExpectedType(irs::string_ref const& type, irs::string_ref const& properties, irs::flags const& features)
-      : _features(features), _properties(properties), _type(type) {
+    std::string _name;
+    std::string _properties;
+    ExpectedType(irs::string_ref const& name, irs::string_ref const& properties, irs::flags const& features)
+      : _features(features), _name(name), _properties(properties) {
     }
     bool operator<(ExpectedType const& other) const {
-      if (_type < other._type) {
+      if (_name < other._name) {
         return true;
       }
 
-      if (_type > other._type) {
+      if (_name > other._name) {
         return false;
       }
 
@@ -3431,7 +3431,7 @@ SECTION("test_visit") {
       if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
         return true; // skip static analyzers
       }
-
+std::cerr << __LINE__ << "|" << std::string(analyzer->name()) << "|" << std::string(analyzer->properties()) << "|" << analyzer->features().size() << "|" << std::endl;
       CHECK((analyzer->type() == "TestAnalyzer"));
       CHECK((1 == expected.erase(ExpectedType(analyzer->name(), analyzer->properties(), analyzer->features()))));
       return true;
@@ -3453,7 +3453,7 @@ SECTION("test_visit") {
       if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
         return true; // skip static analyzers
       }
-
+std::cerr << __LINE__ << "|" << std::string(analyzer->name()) << "|" << std::string(analyzer->properties()) << "|" << analyzer->features().size() << "|" << std::endl;
       CHECK((analyzer->type() == "TestAnalyzer"));
       CHECK((1 == expected.erase(ExpectedType(analyzer->name(), analyzer->properties(), analyzer->features()))));
       return false;
