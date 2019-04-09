@@ -131,6 +131,16 @@ bool RestCursorHandler::cancel() {
   return cancelQuery();
 }
 
+void RestCursorHandler::handleError(basics::Exception const& ex) {
+  try {
+    bool parseSuccess = true;
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+    VPackSlice body = parsedBody.get()->slice();
+    events::QueryDocument(*_request, _response.get(), body);
+  } catch (...) {
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the query either as streaming cursor or in _query
 /// the query is not executed here.

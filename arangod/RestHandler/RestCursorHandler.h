@@ -67,6 +67,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   void shutdownExecute(bool isFinalized) noexcept override;
 
   bool cancel() override final;
+  void handleError(basics::Exception const&) override;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
