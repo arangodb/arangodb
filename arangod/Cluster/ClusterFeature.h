@@ -91,6 +91,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
 
  private:
   bool _unregisterOnShutdown;
+  bool _resignLeadershipOnShutdown;
   bool _enableCluster;
   bool _requirePersistedId;
   std::shared_ptr<HeartbeatThread> _heartbeatThread;
