@@ -66,12 +66,8 @@ function permissions_server(options) {
   if (serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
     clonedOpts['server.jwt-secret'] = serverOptions['server.jwt-secret'];
   }
-    print(instanceInfo)
-
   pu.shutdownInstance(instanceInfo, clonedOpts, false);
   pu.reStartInstance(options, instanceInfo);
-  print("uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu")
-//  require("internal").sleep(30);
   pu.shutdownInstance(instanceInfo, clonedOpts, false);
   return  { failed: 0 };
 }

@@ -839,17 +839,16 @@ function dumpAgency(instanceInfo, options) {
     if (agencyReply.code === 200) {
       let agencyValue = JSON.parse(agencyReply.body);
       fs.write(fs.join(options.testOutputDirectory, fn + '_' + arangod.pid + ".json"), JSON.stringify(agencyValue, null, 2));
-    }
-    else {
+    } else {
       print(agencyReply);
     }
   }
   instanceInfo.arangods.forEach((arangod) => {
     if (arangod.role === "agent") {
       if (arangod.hasOwnProperty('exitStatus')) {
-        print(Date() + " this agent is already dead: " + arangod);
+        print(Date() + " this agent is already dead: " + JSON.stringify(arangod));
       } else {
-        print(Date() + " Attempting to dump Agent: " + arangod);
+        print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod));
         dumpAgent(arangod, '/_api/agency/config', 'GET', 'agencyConfig');
 
         dumpAgent(arangod, '/_api/agency/state', 'GET', 'agencyState');
@@ -876,8 +875,6 @@ function checkArangoAlive (arangod, options) {
   const ret = res.status === 'RUNNING' && crashUtils.checkMonitorAlive(ARANGOD_BIN, arangod, options, res);
 
   if (!ret) {
-    print(new Error().stack)
-    
     print(Date() + ' ArangoD with PID ' + arangod.pid + ' gone:');
     if (!arangod.hasOwnProperty('exitStatus')) {
       arangod.exitStatus = res;
@@ -1687,8 +1684,6 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
 
 function reStartInstance(options, instanceInfo) {
   let launchInstance = function(options, oneInstanceInfo) {
-    print("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
-    delete(oneInstanceInfo.exitStatus);
     try {
       oneInstanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(oneInstanceInfo.args), options).pid;
     } catch (x) {
@@ -1697,42 +1692,44 @@ function reStartInstance(options, instanceInfo) {
       throw x;
     }
     if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
-      runProcdump(options, oneInstanceInfo, rootDir, oneInstanceInfo.pid);
+      runProcdump(options, oneInstanceInfo, oneInstanceInfo.rootDir, oneInstanceInfo.pid);
     }
-  }
-
-  print(instanceInfo)
+  };
   
   const startTime = time();
-/*
+
   instanceInfo.arangods.forEach(function (oneInstance, i) {
     delete(oneInstance.exitStatus);
     delete(oneInstance.pid);
     oneInstance.upAndRunning = false;
   });
-  */
+  
   if (options.cluster) {
     let agencyInstance = {arangods: []};
     instanceInfo.arangods.forEach(function (oneInstance, i) {
       if (oneInstance.role === 'agent') {
+        print("relaunching: " + JSON.stringify(oneInstance));
         launchInstance(options, oneInstance);
         agencyInstance.arangods.push(_.clone(oneInstance));
       }
     });
     let agencyEndpoint = instanceInfo.endpoint;
-    require("internal").sleep(1)
     if (!checkInstanceAlive(agencyInstance, options)) {
       throw new Error('startup of agency failed! bailing out!');
     }
   }
 
   instanceInfo.arangods.forEach(function (oneInstance, i) {
-    if (oneInstance.role === 'PRIMARY') {
+    if ((oneInstance.role === 'PRIMARY') ||
+        (oneInstance.role === 'primary') ||
+        (oneInstance.role === 'dbserver')) {
+      print("relaunching: " + JSON.stringify(oneInstance));
       launchInstance(options, oneInstance);
     }
   });
   instanceInfo.arangods.forEach(function (oneInstance, i) {
-    if (oneInstance.role === 'COORDINATOR') {
+    if ((oneInstance.role === 'COORDINATOR') || (oneInstance.role === 'coordinator')) {
+      print("relaunching: " + JSON.stringify(oneInstance));
       launchInstance(options, oneInstance);
     }
   });
@@ -1747,8 +1744,6 @@ function reStartInstance(options, instanceInfo) {
   }
 
   launchFinalize(options, instanceInfo, startTime);
-
-  print(instanceInfo)
 }
 
 // exports.analyzeServerCrash = analyzeServerCrash;
