@@ -1125,8 +1125,9 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   options.fill_cache = false;
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(options, _cf));
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
+    TRI_ASSERT(it->key().compare(bounds.end()) < 1);
     uint64_t hash = RocksDBEdgeIndex::HashForKey(it->key());
     _estimator->insert(hash);
   }
-  _estimator->setCommitSeq(seq);
+  _estimator->setAppliedSeq(seq);
 }
