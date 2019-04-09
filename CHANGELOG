@@ -1,40 +1,23 @@
 devel
 -----
 
+* added options to make server more secure:
+   `--server.harden`: denies version and changing log levels via rest api
+   `--foxx.disable-api`: disables Foxx amangment api
+   `--foxx.disable-store`: disables Foxx UI
+   `--javascript.allow-port-testing`: enables internal.testPort()
+   `--javascript.allow-external-process-control`: enables external process control
+   `--javascript.harden`: disables getPid(), processStatistics() and logLevel()
+   `--javascript.startup-options-*`: control startup options visible in JavaScript
+   `--javascript.environment-variables-*`: control environment variables visible in JavaScript
+   `--javascript.endpoints-*`: control accessible endpoints in JavaScript
+   `--javascript.files-white-list`: control file access in JavaScript
+
+   Note: There is a [detailed description of all options](https://github.com/arangodb-helper/arangodb/blob/master/Documentation/Books/Manual/Security/SecurityOptions.md).
+
 * removed support for undocumented HTTP header `x-arango-v8-context`, which
   allowed controlling in which particular V8 context number a JavaScript-based
   action was executed. This header was only used internally for testing.
-
-* added option `--javascript.endpoints-filter` for disallowing the connection
-  to certain endpoints via the `requests` module.
-
-  If specified, this option must be valid ECMAScript regular expression. Any
-  endpoint that matches this regular expression cannot be contacted via the
-  `requests` module. Endpoint values are passed into the filter in a normalized
-  format starting with either of the prefixes `tcp://`, `ssl://`, `unix://`
-  or `srv://`.
-  Note that for HTTP/SSL-based endpoints the port number will be included too,
-  and that the endpoint can be specified as an IP address or host name.
-
-* added option `--javascript.startup-options-filter` for filtering certain
-  startup options out before passing their values to JavaScript actions.
-
-  If specified, this option must be valid ECMAScript regular expression.
-  Any startup option whose name that matches the regular expression will
-  not be exposed to JavaScript actions. Option names are passed into the
-  filter without the two leading dashes.
-
-  For example, to hide all options from the `server` and the `ssl` sections,
-  plus all options whose name contains "timeout", one could use the regular
-  expression "((server|ssl)\.|timeout)"
-
-* added option `--javascript.environment-variables-filter` for filtering certain
-  environment variables out before passing their values to JavaScript actions.
-
-  If specified, this option must be a valid ECMAScript regular expression.
-  Any environment variable whose name that matches the regular expression
-  will not be exposed to JavaScript actions. The matching will be performed
-  in a case-sensitive way.
 
 * added function `db.<collection>.getResponsibleShard()` to find out which is the
   responsible shard for a given document. Note that this function is only available

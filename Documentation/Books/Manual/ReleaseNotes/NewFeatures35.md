@@ -394,6 +394,8 @@ Client configurations that use this configuration variable should adjust their
 configuration and set this variable to a boolean value instead of to a numeric
 value.
 
+FIXME [Security Options](../Security/SecurityOptions.md)
+
 Miscellaneous
 -------------
 
