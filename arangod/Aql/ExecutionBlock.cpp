@@ -40,7 +40,6 @@ namespace {
 std::string const doneString = "DONE";
 std::string const hasMoreString = "HASMORE";
 std::string const waitingString = "WAITING";
-std::string const unknownString = "UNKNOWN";
 
 static std::string const& stateToString(ExecutionState state) {
   switch (state) {
@@ -51,8 +50,6 @@ static std::string const& stateToString(ExecutionState state) {
     case ExecutionState::WAITING:
       return waitingString;
   }
-  TRI_ASSERT(false);
-  return unknownString;
 }
 
 }  // namespace
