@@ -3431,7 +3431,7 @@ SECTION("test_visit") {
       if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
         return true; // skip static analyzers
       }
-std::cerr << __LINE__ << "|" << std::string(analyzer->name()) << "|" << std::string(analyzer->properties()) << "|" << analyzer->features().size() << "|" << std::endl;
+
       CHECK((analyzer->type() == "TestAnalyzer"));
       CHECK((1 == expected.erase(ExpectedType(analyzer->name(), analyzer->properties(), analyzer->features()))));
       return true;
@@ -3453,7 +3453,7 @@ std::cerr << __LINE__ << "|" << std::string(analyzer->name()) << "|" << std::str
       if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
         return true; // skip static analyzers
       }
-std::cerr << __LINE__ << "|" << std::string(analyzer->name()) << "|" << std::string(analyzer->properties()) << "|" << analyzer->features().size() << "|" << std::endl;
+
       CHECK((analyzer->type() == "TestAnalyzer"));
       CHECK((1 == expected.erase(ExpectedType(analyzer->name(), analyzer->properties(), analyzer->features()))));
       return false;
