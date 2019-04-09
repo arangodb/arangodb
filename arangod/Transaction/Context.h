@@ -141,15 +141,15 @@ class Context {
 
   SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
   SmallVector<arangodb::velocypack::Builder*, 32> _builders;
-
+  
   std::unique_ptr<arangodb::basics::StringBuffer> _stringBuffer;
-  std::unique_ptr<std::string> _stdString;
+  
+  SmallVector<std::string*, 32>::allocator_type::arena_type _strArena;
+  SmallVector<std::string*, 32> _strings;
 
   arangodb::velocypack::Options _options;
   arangodb::velocypack::Options _dumpOptions;
   
-private:
-
  private:
   std::unique_ptr<transaction::ContextData> _contextData;
 

@@ -23,6 +23,7 @@
 
 #include "v8-views.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Logger/Logger.h"
