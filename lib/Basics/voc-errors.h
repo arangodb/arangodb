@@ -1932,6 +1932,7 @@ constexpr int TRI_ERROR_LOCAL_LOCK_FAILED                                       
 constexpr int TRI_ERROR_LOCAL_LOCK_RETRY                                        =  7010;
 
 
+
 /// register all errors for ArangoDB
 void TRI_InitializeErrorMessages();
 
