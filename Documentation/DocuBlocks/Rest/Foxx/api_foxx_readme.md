@@ -14,7 +14,7 @@ Mount path of the installed service.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Returned if the request was sucessful.
+Returned if the request was successful.
 
 @RESTRETURNCODE{204}
 Returned if no README file was found.
