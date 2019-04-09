@@ -915,8 +915,8 @@ function StatementSuite () {
       try {
         // cursor does not exist anymore
         c.next();
+        fail();
       } catch (err) {
-        require("internal").print(err);
         assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
       }
     },

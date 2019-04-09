@@ -134,7 +134,6 @@ function indexSuite() {
       assertEqual(id.name, idx.name);
       
       var fqn = `${collection.name()}/${id.name}`;
-      require('internal').print(fqn);
       idx = internal.db._index(fqn);
       assertEqual(id.id, idx.id);
       assertEqual(id.name, idx.name);
