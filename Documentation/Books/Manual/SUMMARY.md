@@ -358,6 +358,7 @@
     * [Removal Procedure](Administration/Starter/Removal.md)
     * [Recovery Procedure](Administration/Starter/Recovery.md)
 * [Security](Security/README.md)
+  * [Security Options](Security/SecurityOptions.md)
   * [Change Root Password](Security/ChangeRootPassword.md)
   * [Encryption at Rest](Security/Encryption/README.md)
   * [Auditing](Security/Auditing/README.md)

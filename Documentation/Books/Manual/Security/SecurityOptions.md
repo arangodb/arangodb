@@ -1,79 +1,120 @@
-# Security Options
+# Server security options
 
-`arangod` has several options that allow you to make your installation more
-secure. Below you will find an introduction to back- and white-lists. Followed
-by a detailed description of all options that are relevant for your server's
-security.
+_arangod_ provides a variety of options to make a setup more secure. 
+Administrators can use these options to limit access to certain ArangoDB
+server functionality as well as providing the leakage of information about
+the environment that a server is running in.
 
-## Black- and White-lists
+## General security options
 
-In oder to make proper use of the options presented below you must understand
-how black-and white-lists work for ArangoDB C++ applications.
-
-- white-lists overrule black-lists
-- all provided parameters must be valid words in the language defined by the
-  *Modified ECMAScript regular expression grammar*
-  (https://en.cppreference.com/w/cpp/regex/ecmascript)
-- same options given multiple times will be combined into a logical
-  disjunction.
-
-### Examples
-
-The following parameters:
-`./arangodb-c++-executable --fs-white-list /etc/required/ --fs-white-list /etc/mtab --fs-black-list /etc --fs-black-list /home`
-will resolve internally to the following regular expressions:
-`whitelist = "/etc/required/|/etc/mtab"` and `backlist = "/etc|/home"` files in `/etc/required` and `/etc/mtab` will be accessible,
-even though the blacklist tries to deny the access to `/etc`. This is the case because white-lists always win.
-
-## Contexts
-In arangod there are different contexts. Foxx code for example will typically
-started in one of the restricted context, while some JavaScript code that
-controls aspects of the cluster will be run in an interanl context.
-
-## Options
+The following security options are available:
 
 - `--server.harden`
-  If this option is set to true and authentication is enabled non admin users
-  will be denied version information via the rest api and they will not be able
-  to change the servers log level. (default: false)
+  If this option is set to `true` and authentication is enabled, non-admin users
+  will be denied version information via the REST version API at `/_api/version`, and 
+  they will not be able to change the server's log level via the REST API at
+  `/_admin/log/level`. The default value is `false`.
 
-- `--foxx.disable-api`
-  If set to true this option disables the Foxx management api. foxxmanager and
-  foxx tool will be affected as well. (default: false)
 
-- `--foxx.disable-store`
-  If set to true this option disables the Foxx store in arangod's web-ui.
-  (default: false)
+## JavaScript security options
 
-- `--javascript.allow-port-testing`
-  If set to true this option enables the testPort() JavaScript function in all
-  contexts. (default: false)
+`arangod` has several options that allow you to make your installation more
+secure when it comes to running application code in it. Below you will find 
+an overview of the relevant options.
 
-- `--javascript.allow-external-process-control`
-  If set to true allows execution and control of external binaries in
-  restricted contexts. (default: false)
+### Blacklist and whitelists
 
-- `--javascript.harden`
-  If set to true it will deactivate the following JavaScript functions:
-  getPid(), processStatistics() and logLevel() in a all contexts (default:
-  false)
+Several options to restrict application code functionality consist of a 
+blacklist part and whitelist part. Blacklists can be used to disallow access
+to dedicated functionality, whereas whitelists can be used to allow access
+to certain functionality.
 
-- `--javascript.startup-options-white-list` and `--javascript.startup-options-black-list`
-  Flags that control with startup options will be exposed to JavaScript in all
-  contexts, following above rules for black- and white-lists.
+If a functionality is covered in both a blacklist and a whitelist, the 
+whitelist will overrule and access to the functionality will be allowed.
 
-- `--javascript.environment-variables-white-list` and `--javascript.environment-variables-black-list`
-  Flags that control which environment variables will be exposed to JavaScript
-  in all contexts, following above rules for black- and white-lists.
+Values for blacklist and whitelist options need to be specified as ECMAScript 
+regular expressions. Each option can be used multiple times. In this case,
+the individual values for each option will be combined with a _logical or_.
 
-- `--javascript.endpoints-white-list` and `--javascript.endpoints-black-list`
-  Flags that control which endpoints can be used with internal.download() in
-  restricted contexts, following above rules for black- and white-lists.
+For example, the following combination of startup options
+
+    --javascript.files-white-list "/etc/required/"
+    --javascript.files-white-list "/etc/mtab"
+    --javascript.files-black-list "/etc"
+    --javascript.files-black-list "/home"
+
+will resolve internally to the following regular expressions:
+
+```
+whitelist = "/etc/required/|/etc/mtab"
+blacklist = "/etc|/home"
+```
+
+Files in `/etc/required` and `/etc/mtab` will be accessible, because even though the 
+blacklist regular expression matches `/etc` it, the access to it is explicitly
+allowed via the whitelist.
+
+### Options for blacklisting and whitelisting
+
+The following options are available for blacklisting and whitelisting access
+to dedicated functionality for application code:
+
+- `--javascript.startup-options-white-list` and `--javascript.startup-options-black-list`:
+  These options control which startup options will be exposed to JavaScript code, 
+  following above rules for blacklists and whitelists.
+
+- `--javascript.environment-variables-white-list` and `--javascript.environment-variables-black-list`:
+  These options control which environment variables will be exposed to JavaScript
+  code, following above rules for blacklists and whitelists.
+
+- `--javascript.endpoints-white-list` and `--javascript.endpoints-black-list`:
+  These options control which endpoints can be used from within the `@arangodb/request`
+  JavaScript module.
   Endpoint values are passed into the filter in a normalized format starting
   with either of the prefixes `tcp://`, `ssl://`, `unix://` or `srv://`.
   Note that for HTTP/SSL-based endpoints the port number will be included too,
-  and that the endpoint can be specified as an IP address or host name.
+  and that the endpoint can be specified either as an IP address or host name
+  from application code.
 
-- `--javascript.files-white-list` and `--javascript.files-black-list`
-  Flags that control which paths can be accessed from JavaScript in restricted
-  contexts, following above rules for black- and white-lists.
+- `--javascript.files-white-list` and `--javascript.files-black-list`:
+  These options control which filesystem paths can be accessed from JavaScript code 
+  in restricted contexts, following above rules for blacklist and whitelists.
+
+### Additional JavaScript security options
+
+In addition to the blacklisting and whitelisting security options, the following
+extra options are available for locking down JavaScript access to server functionality:
+
+- `--javascript.allow-port-testing`:
+  If set to `true`, this option enables the `testPort` JavaScript function in the
+  `internal` module. The default value is `false`.
+
+- `--javascript.allow-external-process-control`:
+  If set to `true`, this option allows the execution and control of external processes
+  from JavaScript code. The default value is `false`.
+
+- `--javascript.harden`:
+  If set to `true`, this setting will deactivate the following JavaScript functions
+  which may leak information about the environment:
+
+  - `internal.getPid()`
+  - `internal.processStatistics()`
+  - `internal.logLevel()`.
+
+  The default value is `false`.
+
+## Security options for managing Foxx applications
+
+The following options are available for controlling the installation of Foxx applications
+in an ArangoDB server:
+
+- `--foxx.disable-api`:
+  If set to `true`, this option disables the Foxx management API, which will make it
+  impossible to install and uninstall Foxx applications. The default value is `false`.
+
+- `--foxx.disable-store`:
+  If set to `true`, this option disables the Foxx app store in ArangoDB's web interface,
+  which will prevent ArangoDB and its web interface from making calls to the main Foxx 
+  application Github repository at https://github.com/arangodb/foxx-apps.
+  The default value is `false`.
+
