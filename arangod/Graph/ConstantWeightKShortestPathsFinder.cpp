@@ -70,8 +70,8 @@ bool ConstantWeightKShortestPathsFinder::startKShortestPathsTraversal(
 }
 
 bool ConstantWeightKShortestPathsFinder::computeShortestPath(
-    const VertexRef& start, const VertexRef& end, const std::vector<VertexRef>& forbiddenVertices,
-    const std::vector<Edge>& forbiddenEdges, Path& result) {
+    const VertexRef& start, const VertexRef& end, const std::unordered_set<VertexRef>& forbiddenVertices,
+    const std::unordered_set<Edge>& forbiddenEdges, Path& result) {
   bool found = false;
   Ball left(start, FORWARD);
   Ball right(end, BACKWARD);
@@ -134,29 +134,19 @@ void ConstantWeightKShortestPathsFinder::computeNeighbourhoodOfVertex(
 }
 
 bool ConstantWeightKShortestPathsFinder::advanceFrontier(
-    Ball& source, const Ball& target, const std::vector<VertexRef>& forbiddenVertices,
-    const std::vector<Edge>& forbiddenEdges, VertexRef& join) {
+    Ball& source, const Ball& target, const std::unordered_set<VertexRef>& forbiddenVertices,
+    const std::unordered_set<Edge>& forbiddenEdges, VertexRef& join) {
   std::vector<VertexRef> neighbours;
   std::vector<graph::EdgeDocumentToken> edges;
   Frontier newFrontier;
 
   // TODO: This is slow and has to be converted to hash tables.
   auto isEdgeForbidden = [forbiddenEdges](const Edge& e) -> bool {
-    for (auto const& f : forbiddenEdges) {
-      if (f.equals(e)) {
-        return true;
-      }
-    }
-    return false;
-  };
+                           return forbiddenEdges.find(e) != forbiddenEdges.end();
+                         };
   auto isVertexForbidden = [forbiddenVertices](const VertexRef& v) -> bool {
-    for (auto const& w : forbiddenVertices) {
-      if (w.equals(v)) {
-        return true;
-      }
-    }
-    return false;
-  };
+                             return forbiddenVertices.find(v) != forbiddenVertices.end();
+                           };
 
   for (auto& v : source._frontier) {
     neighbours.clear();
@@ -166,7 +156,6 @@ bool ConstantWeightKShortestPathsFinder::advanceFrontier(
     TRI_ASSERT(edges.size() == neighbours.size());
     size_t const neighboursSize = neighbours.size();
     for (size_t i = 0; i < neighboursSize; ++i) {
-      // FIXME: isEdgeForbidden is slow
       if (!isEdgeForbidden(edges[i]) && !isVertexForbidden(neighbours[i])) {
         auto const& n = neighbours[i];
 
@@ -221,8 +210,8 @@ void ConstantWeightKShortestPathsFinder::reconstructPath(const Ball& left, const
 }
 
 bool ConstantWeightKShortestPathsFinder::computeNextShortestPath(Path& result) {
-  std::vector<VertexRef> forbiddenVertices;
-  std::vector<Edge> forbiddenEdges;
+  std::unordered_map<VertexRef> forbiddenVertices;
+  std::unordered_map<Edge> forbiddenEdges;
   std::vector<Path> candidates;
   Path tmpPath, candidate;
   TRI_ASSERT(!_shortestPaths.empty());
