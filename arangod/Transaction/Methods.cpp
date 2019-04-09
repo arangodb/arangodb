@@ -3128,7 +3128,7 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
     throwCollectionNotFound(cname.c_str());
   }
 
-  auto addCollection = [this, &cname, type](TRI_voc_cid_t cid) -> void {
+  auto addCollectionCallback = [this, &cname, type](TRI_voc_cid_t cid) -> void {
     auto res = _state->addCollection(cid, cname, type, _state->nestingLevel(), false);
 
     if (res.fail()) {
@@ -3139,8 +3139,8 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
   Result res;
   bool visited = false;
   std::function<bool(LogicalCollection&)> visitor(
-      [this, &addCollection, &res, cid, &visited](LogicalCollection& col) -> bool {
-        addCollection(col.id());  // will throw on error
+      [this, &addCollectionCallback, &res, cid, &visited](LogicalCollection& col) -> bool {
+        addCollectionCallback(col.id());  // will throw on error
         res = applyDataSourceRegistrationCallbacks(col, *this);
         visited |= cid == col.id();
 
@@ -3150,10 +3150,10 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
   if (!resolver()->visitCollections(visitor, cid) || res.fail()) {
     // trigger exception as per the original behaviour (tests depend on this)
     if (res.ok() && !visited) {
-      addCollection(cid);  // will throw on error
+      addCollectionCallback(cid);  // will throw on error
     }
-
-    return res.ok() ? Result(TRI_ERROR_INTERNAL) : res;  // return first error
+        
+    return res.ok() ? Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) : res;  // return first error
   }
 
   // skip provided 'cid' if it was already done by the visitor

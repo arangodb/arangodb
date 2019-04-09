@@ -62,8 +62,7 @@ function indexSuite() {
       try {
         collection.unload();
         collection.drop();
-      }
-      catch (err) {
+      } catch (err) {
       }
       collection = null;
     },
@@ -203,8 +202,7 @@ function indexSuite() {
         try {
           collection.index(id);
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
         }
       });
@@ -238,16 +236,14 @@ function indexSuite() {
       try {
         collection.index(idx.id);
         fail();
-      }
-      catch (e1) {
+      } catch (e1) {
         assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, e1.errorNum);
       }
 
       try {
         collection.getIndexes();
         fail();
-      }
-      catch (e2) {
+      } catch (e2) {
         assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, e2.errorNum);
       }
     }
