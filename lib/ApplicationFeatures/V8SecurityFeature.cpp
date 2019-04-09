@@ -52,65 +52,62 @@ V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& se
 
 void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
-  options->addOption("--server.harden",
-                     "harden api",
-                     new BooleanParameter(&_denyHardenedApi));
+  options->addOption(
+      "--server.harden",
+      "users will not be able to receive version information or change "
+      "the log level via the rest api. Admin users and servers without "
+      "authentication will be unaffected.",
+      new BooleanParameter(&_denyHardenedApi));
 
 
   options->addSection("foxx", "Configure Foxx");
-  options->addOption(
-      "--foxx.disable-api",
-      "FIXME disables foxx api",
-      new BooleanParameter(&_disableFoxxApi));
+  options->addOption("--foxx.disable-api", "disables Foxx management api",
+                     new BooleanParameter(&_disableFoxxApi));
+  options->addOption("--foxx.disable-store", "disables Foxx store in web-ui",
+                     new BooleanParameter(&_disableFoxxStore));
 
-  options->addOption(
-      "--foxx.disable-store",
-      "FIXME disables foxx store",
-      new BooleanParameter(&_disableFoxxStore));
 
   options->addSection("javascript", "Configure the Javascript engine");
-  options->addOption(
-      "--javascript.allow-port-testing",
-      "allow testing of ports",
-      new BooleanParameter(&_allowPortTesting));
-  options->addOption(
-      "--javascript.allow-external-process-control",
-      "allow execution of external binaries. default set to false",
-      new BooleanParameter(&_allowExecutionOfBinaries));
+  options->addOption("--javascript.allow-port-testing", "allow testing of ports",
+                     new BooleanParameter(&_allowPortTesting));
+  options->addOption("--javascript.allow-external-process-control",
+                     "allow execution and control of external binaries.",
+                     new BooleanParameter(&_allowExecutionOfBinaries));
   options->addOption("--javascript.harden",
-                     "harden LoadJavaScriptFile",
+                     "disables javascript funtions: getPid(), "
+                     "processStatistics() andl logLevel()",
                      new BooleanParameter(&_denyHardenedJavaScript));
+
   options->addOption("--javascript.startup-options-white-list",
                      "startup options whose names match this regular "
                      "expression will be whitelisted and exposed to JavaScript",
                      new VectorParameter<StringParameter>(&_startupOptionsWhiteListVec));
   options->addOption("--javascript.startup-options-black-list",
                      "startup options whose names match this regular "
-                     "expression will not be exposed (if not whitelisted) to JavaScript actions",
+                     "expression will not be exposed (if not whitelisted) to "
+                     "JavaScript actions",
                      new VectorParameter<StringParameter>(&_startupOptionsBlackListVec));
+
   options->addOption("--javascript.environment-variables-white-list",
-                     "FIXME",
+                     "variables that will be accessible in JavaScript",
                      new VectorParameter<StringParameter>(&_environmentVariablesWhiteListVec));
   options->addOption("--javascript.environment-variables-black-list",
-                     "FIXME",
+                     "variables that will be inaccessible in JavaScript if not white listed",
                      new VectorParameter<StringParameter>(&_environmentVariablesBlackListVec));
-  options->addOption(
-      "--javascript.endpoints-white-list",
-      "FIXME",
-      //"endpoints that match this regular expression cannot be connected to via internal.download() in JavaScript actions",
-      new VectorParameter<StringParameter>(&_endpointsWhiteListVec));
-  options->addOption(
-      "--javascript.endpoints-black-list",
-      "FIXME",
-      // "endpoints that match this regular expression cannot be connected to via " "internal.download() in JavaScript actions",
-      new VectorParameter<StringParameter>(&_endpointsBlackListVec));
+
+  options->addOption("--javascript.endpoints-white-list",
+                     "endpoints that can be connected to via internal.download() in JavaScript actions",
+                     new VectorParameter<StringParameter>(&_endpointsWhiteListVec));
+  options->addOption("--javascript.endpoints-black-list",
+                     "endpoints that cannot be connected to via internal.download() in JavaScript actions if not white listed",
+                     new VectorParameter<StringParameter>(&_endpointsBlackListVec));
+
   options->addOption("--javascript.files-white-list",
-                     "paths to be added to files-white-list-expression",
+                     "paths that will be accessible from within JavaScript in restricted contexts",
                      new VectorParameter<StringParameter>(&_filesWhiteListVec));
   options->addOption("--javascript.files-black-list",
-                     "paths to be added to files-black-list-expression",
+                     "paths that will be inaccessible from within JavaScript in restricted contexts if not white listed",
                      new VectorParameter<StringParameter>(&_filesBlackListVec));
-
 }
 
 namespace {
