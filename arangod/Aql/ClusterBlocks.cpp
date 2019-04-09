@@ -72,7 +72,79 @@ BlockWithClients::BlockWithClients(ExecutionEngine* engine, ExecutionNode const*
 }
 
 std::pair<ExecutionState, Result> BlockWithClients::initializeCursor(InputAqlItemRow const& input) {
-  return ExecutionBlock::initializeCursor(input);
+  if (_dependencyPos == _dependencies.end()) {
+    // We need to start again.
+    _dependencyPos = _dependencies.begin();
+  }
+  for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
+    auto res = (*_dependencyPos)->initializeCursor(input);
+    if (res.first == ExecutionState::WAITING || !res.second.ok()) {
+      // If we need to wait or get an error we return as is.
+      return res;
+    }
+  }
+
+  for (auto& it : _buffer) {
+    returnBlock(it);
+  }
+  _buffer.clear();
+
+  _done = false;
+  _upstreamState = ExecutionState::HASMORE;
+  _pos = 0;
+  _collector.clear();
+
+  TRI_ASSERT(getHasMoreState() == ExecutionState::HASMORE);
+  TRI_ASSERT(_dependencyPos == _dependencies.end());
+  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+}
+
+void BlockWithClients::returnBlock(AqlItemBlock*& block) noexcept {
+  _engine->itemBlockManager().returnBlock(block);
+}
+
+ExecutionState BlockWithClients::getHasMoreState() {
+  if (_done) {
+    return ExecutionState::DONE;
+  }
+  if (_buffer.empty() && _upstreamState == ExecutionState::DONE) {
+    _done = true;
+    return ExecutionState::DONE;
+  }
+  return ExecutionState::HASMORE;
+}
+
+std::pair<ExecutionState, Result> BlockWithClients::internalShutdown(int errorCode) {
+  if (_dependencyPos == _dependencies.end()) {
+    _shutdownResult.reset(TRI_ERROR_NO_ERROR);
+    _dependencyPos = _dependencies.begin();
+  }
+
+  for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
+    Result res;
+    ExecutionState state;
+    try {
+      std::tie(state, res) = (*_dependencyPos)->shutdown(errorCode);
+      if (state == ExecutionState::WAITING) {
+        return {state, TRI_ERROR_NO_ERROR};
+      }
+    } catch (...) {
+      _shutdownResult.reset(TRI_ERROR_INTERNAL);
+    }
+
+    if (res.fail()) {
+      _shutdownResult = res;
+    }
+  }
+
+  if (!_buffer.empty()) {
+    for (auto& it : _buffer) {
+      delete it;
+    }
+    _buffer.clear();
+  }
+
+  return {ExecutionState::DONE, _shutdownResult};
 }
 
 /// @brief shutdown
@@ -80,7 +152,7 @@ std::pair<ExecutionState, Result> BlockWithClients::shutdown(int errorCode) {
   if (_wasShutdown) {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
-  auto res = ExecutionBlock::shutdown(errorCode);
+  auto res = internalShutdown(errorCode);
   if (res.first == ExecutionState::WAITING) {
     return res;
   }

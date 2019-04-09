@@ -62,6 +62,15 @@ class BlockWithClients : public ExecutionBlock {
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
+  /// @brief return aql item block
+  void returnBlock(AqlItemBlock*& block) noexcept;
+
+  /// @brief hasMoreState
+  ExecutionState getHasMoreState();
+
+  /// @brief moved shutdown function from ExecutionBlock
+  std::pair<ExecutionState, Result> internalShutdown(int);
+
   /// @brief shutdown
   std::pair<ExecutionState, Result> shutdown(int) override;
 

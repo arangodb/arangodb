@@ -182,9 +182,12 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   /// Special implementation for all Executors that need to implement Shutdown
   /// Most do not, we might be able to move their shutdown logic to a more
   /// central place.
+  std::pair<ExecutionState, Result> internalShutdown(int);
   std::pair<ExecutionState, Result> shutdown(int) override;
 
  private:
+  ExecutionState getHasMoreState();
+
   /**
    * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
    *        arguments compatible to getSome's return type.
@@ -201,6 +204,12 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * @brief Inner getSome() part, without the tracing calls.
    */
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutTrace(size_t atMost);
+
+  /// @brief request an AqlItemBlock
+  AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
+
+  /// @brief return an AqlItemBlock to the memory manager
+  void returnBlock(AqlItemBlock*& block) noexcept;
 
   /**
    * @brief Allocates a new AqlItemBlock and returns it in a shell, with the

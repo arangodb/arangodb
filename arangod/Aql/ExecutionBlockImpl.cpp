@@ -215,6 +215,18 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
 }
 
 template <class Executor>
+ExecutionState ExecutionBlockImpl<Executor>::getHasMoreState() {
+  if (_done) {
+    return ExecutionState::DONE;
+  }
+  if (_buffer.empty() && _upstreamState == ExecutionState::DONE) {
+    _done = true;
+    return ExecutionState::DONE;
+  }
+  return ExecutionState::HASMORE;
+}
+
+template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::traceSkipSomeEnd(
     ExecutionState state, size_t skipped) {
   ExecutionBlock::traceSkipSomeEnd(skipped, state);
@@ -244,12 +256,70 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   //   }
   // }
 
-  return ExecutionBlock::initializeCursor(input);
+  if (_dependencyPos == _dependencies.end()) {
+    // We need to start again.
+    _dependencyPos = _dependencies.begin();
+  }
+  for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
+    auto res = (*_dependencyPos)->initializeCursor(input);
+    if (res.first == ExecutionState::WAITING || !res.second.ok()) {
+      // If we need to wait or get an error we return as is.
+      return res;
+    }
+  }
+
+  for (auto& it : _buffer) {
+    returnBlock(it);
+  }
+  _buffer.clear();
+
+  _done = false;
+  _upstreamState = ExecutionState::HASMORE;
+  _pos = 0;
+  _collector.clear();
+
+  TRI_ASSERT(getHasMoreState() == ExecutionState::HASMORE);
+  TRI_ASSERT(_dependencyPos == _dependencies.end());
+  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+}
+
+template <class Executor>
+std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::internalShutdown(int errorCode) {
+  if (_dependencyPos == _dependencies.end()) {
+    _shutdownResult.reset(TRI_ERROR_NO_ERROR);
+    _dependencyPos = _dependencies.begin();
+  }
+
+  for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
+    Result res;
+    ExecutionState state;
+    try {
+      std::tie(state, res) = (*_dependencyPos)->shutdown(errorCode);
+      if (state == ExecutionState::WAITING) {
+        return {state, TRI_ERROR_NO_ERROR};
+      }
+    } catch (...) {
+      _shutdownResult.reset(TRI_ERROR_INTERNAL);
+    }
+
+    if (res.fail()) {
+      _shutdownResult = res;
+    }
+  }
+
+  if (!_buffer.empty()) {
+    for (auto& it : _buffer) {
+      delete it;
+    }
+    _buffer.clear();
+  }
+
+  return {ExecutionState::DONE, _shutdownResult};
 }
 
 template <class Executor>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int errorCode) {
-  return ExecutionBlock::shutdown(errorCode);
+  return internalShutdown(errorCode);
 }
 
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
@@ -283,7 +353,32 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   _executor.~IdExecutor<ConstFetcher>();
   new (&_executor) IdExecutor<ConstFetcher>(_rowFetcher, _infos);
 
-  return ExecutionBlock::initializeCursor(input);
+  // end of default initializeCursor
+  if (_dependencyPos == _dependencies.end()) {
+    // We need to start again.
+    _dependencyPos = _dependencies.begin();
+  }
+  for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
+    auto res = (*_dependencyPos)->initializeCursor(input);
+    if (res.first == ExecutionState::WAITING || !res.second.ok()) {
+      // If we need to wait or get an error we return as is.
+      return res;
+    }
+  }
+
+  for (auto& it : _buffer) {
+    returnBlock(it);
+  }
+  _buffer.clear();
+
+  _done = false;
+  _upstreamState = ExecutionState::HASMORE;
+  _pos = 0;
+  _collector.clear();
+
+  TRI_ASSERT(getHasMoreState() == ExecutionState::HASMORE);
+  TRI_ASSERT(_dependencyPos == _dependencies.end());
+  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
 template <>
@@ -291,7 +386,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<TraversalExecutor>::shutdow
   ExecutionState state;
   Result result;
 
-  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+  std::tie(state, result) = internalShutdown(errorCode);
+
   if (state == ExecutionState::WAITING) {
     return {state, result};
   }
@@ -303,7 +399,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<ShortestPathExecutor>::shut
   ExecutionState state;
   Result result;
 
-  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+  std::tie(state, result) = internalShutdown(errorCode);
   if (state == ExecutionState::WAITING) {
     return {state, result};
   }
@@ -321,7 +417,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor>::shutdown
   }
   Result result;
 
-  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+  // std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+  std::tie(state, result) = this->shutdown(errorCode);
   if (state == ExecutionState::WAITING) {
     return {state, result};
   }
@@ -333,6 +430,17 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor>::shutdown
 
 }  // namespace aql
 }  // namespace arangodb
+
+
+template <class Executor>
+AqlItemBlock* ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems, RegisterId nrRegs) {  // TODO check correct here?
+  return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
+}
+
+template <class Executor>
+void ExecutionBlockImpl<Executor>::returnBlock(AqlItemBlock*& block) noexcept { // TODO check?
+  _engine->itemBlockManager().returnBlock(block);
+}
 
 template <class Executor>
 std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>

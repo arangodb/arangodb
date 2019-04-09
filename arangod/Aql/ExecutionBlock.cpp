@@ -90,68 +90,6 @@ void ExecutionBlock::throwIfKilled() {
   }
 }
 
-std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(InputAqlItemRow const& input) {
-  if (_dependencyPos == _dependencies.end()) {
-    // We need to start again.
-    _dependencyPos = _dependencies.begin();
-  }
-  for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
-    auto res = (*_dependencyPos)->initializeCursor(input);
-    if (res.first == ExecutionState::WAITING || !res.second.ok()) {
-      // If we need to wait or get an error we return as is.
-      return res;
-    }
-  }
-
-  for (auto& it : _buffer) {
-    returnBlock(it);
-  }
-  _buffer.clear();
-
-  _done = false;
-  _upstreamState = ExecutionState::HASMORE;
-  _pos = 0;
-  _collector.clear();
-
-  TRI_ASSERT(getHasMoreState() == ExecutionState::HASMORE);
-  TRI_ASSERT(_dependencyPos == _dependencies.end());
-  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-}
-
-/// @brief shutdown, will be called exactly once for the whole query
-std::pair<ExecutionState, Result> ExecutionBlock::shutdown(int errorCode) {
-  if (_dependencyPos == _dependencies.end()) {
-    _shutdownResult.reset(TRI_ERROR_NO_ERROR);
-    _dependencyPos = _dependencies.begin();
-  }
-
-  for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
-    Result res;
-    ExecutionState state;
-    try {
-      std::tie(state, res) = (*_dependencyPos)->shutdown(errorCode);
-      if (state == ExecutionState::WAITING) {
-        return {state, TRI_ERROR_NO_ERROR};
-      }
-    } catch (...) {
-      _shutdownResult.reset(TRI_ERROR_INTERNAL);
-    }
-
-    if (res.fail()) {
-      _shutdownResult = res;
-    }
-  }
-
-  if (!_buffer.empty()) {
-    for (auto& it : _buffer) {
-      delete it;
-    }
-    _buffer.clear();
-  }
-
-  return {ExecutionState::DONE, _shutdownResult};
-}
-
 // Trace the start of a getSome call
 void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
@@ -211,7 +149,7 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
   }
 }
 
-void ExecutionBlock::traceSkipSomeBegin(size_t atMost) {
+void ExecutionBlock::traceSkipSomeBegin(size_t atMost) { // ALL TRACE TODO: -> IMPL PRIV
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     if (_getSomeBegin <= 0.0) {
       _getSomeBegin = TRI_microtime();
@@ -250,25 +188,4 @@ void ExecutionBlock::traceSkipSomeEnd(size_t skipped, ExecutionState state) {
           << " id=" << node->id() << " state=" << ::stateToString(state);
     }
   }
-}
-
-/// @brief request an AqlItemBlock from the memory manager
-AqlItemBlock* ExecutionBlock::requestBlock(size_t nrItems, RegisterId nrRegs) {
-  return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
-}
-
-/// @brief return an AqlItemBlock to the memory manager
-void ExecutionBlock::returnBlock(AqlItemBlock*& block) noexcept {
-  _engine->itemBlockManager().returnBlock(block);
-}
-
-ExecutionState ExecutionBlock::getHasMoreState() {
-  if (_done) {
-    return ExecutionState::DONE;
-  }
-  if (_buffer.empty() && _upstreamState == ExecutionState::DONE) {
-    _done = true;
-    return ExecutionState::DONE;
-  }
-  return ExecutionState::HASMORE;
 }

@@ -117,22 +117,6 @@ class ExecutionBlock {
   /// @brief throw an exception if query was killed
   void throwIfKilled();
 
-
- protected:
-  /// @brief request an AqlItemBlock from the memory manager
-  AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
-
-  /// @brief return an AqlItemBlock to the memory manager
-  void returnBlock(AqlItemBlock*& block) noexcept;
-
-  /// @brief Returns the success return start of this block.
-  ///        Can either be HASMORE or DONE.
-  ///        Guarantee is that if DONE is returned every subsequent call
-  ///        to get/skipSome will NOT find mor documents.
-  ///        HASMORE is allowed to lie, so a next call to get/skipSome could
-  ///        return no more results.
-  virtual ExecutionState getHasMoreState();
-
  protected:
   /// @brief the execution engine
   ExecutionEngine* _engine;
