@@ -214,22 +214,28 @@ arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(arangodb::velocypac
 
 bool DepthFirstEnumerator::shouldPrune() {
   // We need to call prune here
-  if (_opts->usesPrune()) {
-    auto* evaluator = _opts->getPruneEvaluator();
-    if (evaluator->needsVertex()) {
-      evaluator->injectVertex(lastVertexToAqlValue().slice());
-    }
-    if (evaluator->needsEdge()) {
-      evaluator->injectEdge(lastEdgeToAqlValue().slice());
-    }
-    transaction::BuilderLeaser builder(_opts->trx());
-    if (!evaluator->needsPath()) {
-      return evaluator->evaluate();
-    }
-    aql::AqlValue val = pathToAqlValue(*builder.get());
-    aql::AqlValueGuard guard(val, true);
-    evaluator->injectPath(val.slice());
-    return evaluator->evaluate();
+  if (!_opts->usesPrune()) {
+    return false;
   }
-  return false;
+  auto* evaluator = _opts->getPruneEvaluator();
+  aql::AqlValue vertex;
+  aql::AqlValueGuard vertexGuard{vertex, true};
+  if (evaluator->needsVertex()) {
+    vertex = lastVertexToAqlValue();
+    evaluator->injectVertex(vertex.slice());
+  }
+  aql::AqlValue edge;
+  aql::AqlValueGuard edgeGuard{edge, true};
+  if (evaluator->needsEdge()) {
+    edge = lastEdgeToAqlValue();
+    evaluator->injectEdge(edge.slice());
+  }
+  transaction::BuilderLeaser builder(_opts->trx());
+  aql::AqlValue path;
+  aql::AqlValueGuard pathGuard{path, true};
+  if (evaluator->needsPath()) {
+    path = pathToAqlValue(*builder.get());
+    evaluator->injectPath(path.slice());
+  }
+  return evaluator->evaluate();
 }
