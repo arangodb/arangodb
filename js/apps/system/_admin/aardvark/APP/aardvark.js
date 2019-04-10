@@ -89,7 +89,7 @@ router.get('/config.js', function (req, res) {
       isCluster: cluster.isCluster(),
       engine: db._engine().name,
       statisticsEnabled: internal.enabledStatistics(),
-      disableFoxxStore: internal.disableFoxxStore(),
+      disableFoxxStore: internal.isFoxxStoreDisabled(),
     })}`
   );
 })

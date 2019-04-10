@@ -82,7 +82,7 @@ function prepareServiceRequestBody (req, res, next) {
   next();
 }
 
-if (!require("internal").disableFoxxApi()) {
+if (!require("internal").isFoxxApiDisabled()) {
 router.use((req, res, next) => {
   try {
     next();

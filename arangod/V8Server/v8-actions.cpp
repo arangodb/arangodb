@@ -1642,7 +1642,7 @@ static void JS_DebugClearFailAt(v8::FunctionCallbackInfo<v8::Value> const& args)
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_DisableFoxxApi(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_IsFoxxApiDisabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -1650,12 +1650,12 @@ static void JS_DisableFoxxApi(v8::FunctionCallbackInfo<v8::Value> const& args) {
       application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
           "ServerSecurity");
   TRI_ASSERT(security != nullptr);
-  TRI_V8_RETURN_BOOL(security->disableFoxxApi(isolate));
+  TRI_V8_RETURN_BOOL(security->isFoxxApiDisabled(isolate));
 
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_DisableFoxxStore(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_IsFoxxStoreDisabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -1663,7 +1663,7 @@ static void JS_DisableFoxxStore(v8::FunctionCallbackInfo<v8::Value> const& args)
       application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
           "ServerSecurity");
   TRI_ASSERT(security != nullptr);
-  TRI_V8_RETURN_BOOL(security->disableFoxxStore(isolate));
+  TRI_V8_RETURN_BOOL(security->isFoxxStoreDisabled(isolate));
 
   TRI_V8_TRY_CATCH_END
 }
@@ -1676,9 +1676,9 @@ void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context)
                                JS_DebugClearFailAt);
 
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_DISABLE_FOXX_API"), JS_DisableFoxxApi);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_API_DISABLED"), JS_IsFoxxApiDisabled);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_DISABLE_FOXX_STORE"), JS_DisableFoxxStore);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_STORE_DISABLED"), JS_IsFoxxStoreDisabled);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_AddGlobalFunctionVocbase(

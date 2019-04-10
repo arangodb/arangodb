@@ -156,13 +156,13 @@
       return global.WAL_WAITCOLLECTOR.apply(null, arguments);
     }
   };
-  
+
   // / @brief ttlStatistics
   if (global.SYS_TTL_STATISTICS) {
     exports.ttlStatistics = global.SYS_TTL_STATISTICS;
     delete global.SYS_TTL_STATISTICS;
   }
-  
+
   // / @brief ttlProperties
   if (global.SYS_TTL_PROPERTIES) {
     exports.ttlProperties = global.SYS_TTL_PROPERTIES;
@@ -177,23 +177,20 @@
     exports.defineAction = global.SYS_DEFINE_ACTION;
     delete global.SYS_DEFINE_ACTION;
   }
-  
+
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief denyFoxx API
+  // / @brief expose configuration
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_DISABLE_FOXX_API) {
-    exports.disableFoxxApi = global.SYS_DISABLE_FOXX_API;
-    delete global.SYS_DISABLE_FOXX_API;
+
+  if (global.SYS_IS_FOXX_API_DISABLED) {
+    exports.isFoxxApiDisabled = global.SYS_IS_FOXX_API_DISABLED;
+    delete global.SYS_IS_FOXX_API_DISABLED;
   }
 
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief denyFoxx Store
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_DISABLE_FOXX_STORE) {
-    exports.disableFoxxStore = global.SYS_DISABLE_FOXX_STORE;
-    delete global.SYS_DISABLE_FOXX_STORE;
+  if (global.SYS_IS_FOXX_STORE_DISABLED) {
+    exports.isFoxxStoreDisabled = global.SYS_IS_FOXX_STORE_DISABLED;
+    delete global.SYS_IS_FOXX_STORE_DISABLED;
   }
 
 
@@ -225,7 +222,7 @@
       }
 
       modules = modules.byExample({ autoload: true }).toArray();
-        
+
       modules.forEach(function (module) {
         // this module is only meant to be executed in one thread
         if (exports.threadNumber !== 0 && !module.perThread) {

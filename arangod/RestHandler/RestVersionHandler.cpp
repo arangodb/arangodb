@@ -52,7 +52,7 @@ RestStatus RestVersionHandler::execute() {
           "ServerSecurity");
   TRI_ASSERT(security != nullptr);
 
-  bool hardened = security->isDeniedHardenedApi(nullptr);
+  bool hardened = security->isRestApiHardenend(nullptr);
   bool allowInfo = !hardened;  // allow access if harden flag was not given
 
   ExecContext const* exec = ExecContext::CURRENT;
