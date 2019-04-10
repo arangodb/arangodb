@@ -91,6 +91,7 @@ function recoverySuite () {
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
+      assertEqual(indexes.length, 4);
       for (let i of indexes) {
         switch (i.type) {
           case 'primary':

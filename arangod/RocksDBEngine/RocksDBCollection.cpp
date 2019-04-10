@@ -315,6 +315,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
   TRI_vocbase_col_status_e status;
   Result res = vocbase.useCollection(&_logicalCollection, status);
+  
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -375,30 +376,31 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
             << "' but found conflicting index '" << builder.slice().toJson() << "'";
 #endif
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-                                       "duplicate value for `" + 
-                                           arangodb::StaticStrings::IndexId +
-                                           "` or `" + 
-                                           arangodb::StaticStrings::IndexName +
-                                           "`");
+                                       "duplicate value for `" + StaticStrings::IndexId +
+                                           "` or `" + StaticStrings::IndexName + "`");
       }
     }
   }
-
-  auto buildIdx =
-      std::make_shared<RocksDBBuilderIndex>(std::static_pointer_cast<RocksDBIndex>(idx));
-  // Step 3. add index to collection entry (for removal after a crash)
-  if (!engine->inRecovery()) {  // manually modify collection entry, other
-                                // methods need lock
-    RocksDBKey key;             // read collection info from database
-    key.constructCollection(_logicalCollection.vocbase().id(),
-                            _logicalCollection.id());
-    rocksdb::PinnableSlice ps;
-    rocksdb::Status s = engine->db()->Get(rocksdb::ReadOptions(),
-                                          RocksDBColumnFamily::definitions(),
-                                          key.string(), &ps);
-    if (!s.ok()) {
-      res.reset(rocksutils::convertStatus(s));
-    } else {
+  
+  do {
+    
+    // Step 3. add index to collection entry (for removal after a crash)
+    auto buildIdx =
+    std::make_shared<RocksDBBuilderIndex>(std::static_pointer_cast<RocksDBIndex>(idx));
+    if (!engine->inRecovery()) {  // manually modify collection entry, other
+      // methods need lock
+      RocksDBKey key;             // read collection info from database
+      key.constructCollection(_logicalCollection.vocbase().id(),
+                              _logicalCollection.id());
+      rocksdb::PinnableSlice ps;
+      rocksdb::Status s = engine->db()->Get(rocksdb::ReadOptions(),
+                                            RocksDBColumnFamily::definitions(),
+                                            key.string(), &ps);
+      if (!s.ok()) {
+        res.reset(rocksutils::convertStatus(s));
+        break;
+      }
+      
       VPackBuilder builder;
       builder.openObject();
       for (auto const& pair : VPackObjectIterator(VPackSlice(ps.data()))) {
@@ -415,68 +417,73 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
       res = engine->writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
                                                 _logicalCollection.id(), builder.slice(),
                                                 RocksDBLogValue::Empty());
+      if (res.fail()) {
+        break;
+      }
     }
-  }
-
-  const bool inBackground =
-      basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IndexInBackground, false);
-  // Step 4. fill index
-  if (res.ok()) {
+    
+    // Step 4. fill index
+    const bool inBackground =
+    basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IndexInBackground, false);
     if (inBackground) {  // allow concurrent inserts into index
       _indexes.emplace_back(buildIdx);
       res = buildIdx->fillIndexBackground(locker);
     } else {
       res = buildIdx->fillIndexForeground();
     }
-  }
-  TRI_ASSERT(res.fail() || locker.isLocked());  // always lock to avoid inconsistencies
-  locker.lock();
-
-  // Step 5. cleanup
-  if (res.ok()) {
-    {
-      WRITE_LOCKER(guard, _indexesLock);
-      if (inBackground) {  // swap in actual index
-        for (size_t i = 0; i < _indexes.size(); i++) {
-          if (_indexes[i]->id() == buildIdx->id()) {
-            _indexes[i] = idx;
-            break;
-          }
-        }
-      } else {
-        _indexes.push_back(idx);
-      }
+    if (res.fail()) {
+      break;
     }
-
+    locker.lock(); // always lock to avoid inconsistencies
+    
+    // Step 5. register in index list
+    WRITE_LOCKER(guard, _indexesLock);
+    if (inBackground) {  // swap in actual index
+      for (size_t i = 0; i < _indexes.size(); i++) {
+        if (_indexes[i]->id() == buildIdx->id()) {
+          _indexes[i] = idx;
+          break;
+        }
+      }
+    } else {
+      _indexes.push_back(idx);
+    }
+    guard.unlock();
 #if USE_PLAN_CACHE
     arangodb::aql::PlanCache::instance()->invalidate(_logicalCollection->vocbase());
 #endif
+    
+    // inBackground index might not recover selectivity estimate w/o sync
+    if (inBackground && !idx->unique() && idx->hasSelectivityEstimate()) {
+      engine->settingsManager()->sync(false);
+    }
 
+    // Step 6. persist in rocksdb
     if (!engine->inRecovery()) {  // write new collection marker
       auto builder =
-          _logicalCollection.toVelocyPackIgnore({"path", "statusString"}, true,
-                                                /*forPersistence*/ true);
+      _logicalCollection.toVelocyPackIgnore({"path", "statusString"}, true,
+                                            /*forPersistence*/ true);
       VPackBuilder indexInfo;
       idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::Internals));
-      res = engine->writeCreateCollectionMarker(
-          _logicalCollection.vocbase().id(), _logicalCollection.id(), builder.slice(),
-          RocksDBLogValue::IndexCreate(_logicalCollection.vocbase().id(),
-                                       _logicalCollection.id(), indexInfo.slice()));
+      res = engine->writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
+                                                _logicalCollection.id(), builder.slice(),
+                                                RocksDBLogValue::IndexCreate(_logicalCollection.vocbase().id(),
+                                                                             _logicalCollection.id(), indexInfo.slice()));
     }
-  }
+  } while(false);
 
-  if (res.fail()) {
-    {  // We could not create the index. Better abort
-      WRITE_LOCKER(guard, _indexesLock);
-      auto it = _indexes.begin();
-      while (it != _indexes.end()) {
-        if ((*it)->id() == idx->id()) {
-          _indexes.erase(it);
-          break;
-        }
-        it++;
+  // cleanup routine
+  if (res.fail()) { // We could not create the index. Better abort
+    WRITE_LOCKER(guard, _indexesLock);
+    auto it = _indexes.begin();
+    while (it != _indexes.end()) {
+      if ((*it)->id() == idx->id()) {
+        _indexes.erase(it);
+        break;
       }
+      it++;
     }
+    guard.unlock();
     idx->drop();
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1451,7 +1458,6 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
                                             IndexIterator::DocumentCallback const& cb,
                                             bool withCache) const {
 
-  bool lockTimeout = false;
   if (withCache && useCache()) {
     RocksDBKeyLeaser key(trx);
     key->constructDocument(_objectId, documentId);
@@ -1462,11 +1468,6 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
     if (f.found()) {
       cb(documentId, VPackSlice(reinterpret_cast<char const*>(f.value()->value())));
       return true;
-    }
-    if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
-      // assuming someone is currently holding a write lock, which
-      // is why we cannot access the TransactionalBucket.
-      lockTimeout = true;  // we skip the insert in this case
     }
   }
   
@@ -1501,7 +1502,7 @@ void RocksDBCollection::adjustNumberDocuments(TRI_voc_rid_t revId, int64_t adjus
 
 /// load the number of docs from storage, use careful
 void RocksDBCollection::loadInitialNumberDocuments() {
-  RocksDBCollectionMeta::DocCount count = _meta.currentCount();
+  RocksDBCollectionMeta::DocCount count = _meta.loadCount();
   TRI_ASSERT(count._added >= count._removed);
   _numberDocuments = count._added - count._removed;
   _revisionId = count._revisionId;

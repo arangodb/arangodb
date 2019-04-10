@@ -359,7 +359,7 @@ function dumpTestSuite () {
       res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 5000 OPTIONS { waitForSync:true } RETURN doc").toArray();
       assertEqual(0, res.length);
 
-      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') OPTIONS { waitForSync:true } RETURN doc").toArray();
+      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'UnitTestsDumpSrc::text_en') OPTIONS { waitForSync:true } RETURN doc").toArray();
       assertEqual(1, res.length);
     }
 

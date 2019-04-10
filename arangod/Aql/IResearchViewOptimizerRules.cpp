@@ -131,13 +131,19 @@ void handleViewsRule(arangodb::aql::Optimizer* opt,
                      std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
                      arangodb::aql::OptimizerRule const* rule) {
   TRI_ASSERT(plan && plan->getAst() && plan->getAst()->query());
-  auto& query = *plan->getAst()->query();
 
   // ensure 'Optimizer::addPlan' will be called
   bool modified = false;
   auto addPlan = irs::make_finally([opt, &plan, rule, &modified]() {
     opt->addPlan(std::move(plan), rule, modified);
   });
+
+  if (!plan->contains(EN::ENUMERATE_IRESEARCH_VIEW)) {
+    // no view present in the query, so no need to do any expensive
+    // transformations
+    return;
+  }
+
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
 
@@ -155,6 +161,8 @@ void handleViewsRule(arangodb::aql::Optimizer* opt,
   // register replaced scorers to be evaluated by corresponding view nodes
   nodes.clear();
   plan->findNodesOfType(nodes, EN::ENUMERATE_IRESEARCH_VIEW, true);
+  
+  auto& query = *plan->getAst()->query();
 
   std::vector<Scorer> scorers;
 
