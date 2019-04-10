@@ -39,6 +39,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
+#include "ApplicationFeatures/ServerSecurityFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
@@ -2906,11 +2907,11 @@ static void JS_DisableFoxxApi(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
-  TRI_V8_RETURN_BOOL(v8security->disableFoxxApi(isolate));
+  ServerSecurityFeature* security =
+      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
+          "ServerSecurity");
+  TRI_ASSERT(security != nullptr);
+  TRI_V8_RETURN_BOOL(security->disableFoxxApi(isolate));
 
   TRI_V8_TRY_CATCH_END
 }
@@ -2919,11 +2920,11 @@ static void JS_DisableFoxxStore(v8::FunctionCallbackInfo<v8::Value> const& args)
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
-  TRI_V8_RETURN_BOOL(v8security->disableFoxxStore(isolate));
+  ServerSecurityFeature* security =
+      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
+          "ServerSecurity");
+  TRI_ASSERT(security != nullptr);
+  TRI_V8_RETURN_BOOL(security->disableFoxxStore(isolate));
 
   TRI_V8_TRY_CATCH_END
 }

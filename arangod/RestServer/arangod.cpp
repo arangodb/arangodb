@@ -48,6 +48,7 @@
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "ApplicationFeatures/ServerPhase.h"
+#include "ApplicationFeatures/ServerSecurityFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
@@ -204,6 +205,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new ScriptFeature(server, &ret));
     server.addFeature(new ServerFeature(server, &ret));
     server.addFeature(new ServerIdFeature(server));
+    server.addFeature(new ServerSecurityFeature(server));
     server.addFeature(new ShardingFeature(server));
     server.addFeature(new ShellColorsFeature(server));
     server.addFeature(new ShutdownFeature(server, {"Script"}));
@@ -212,13 +214,13 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new StorageEngineFeature(server));
     server.addFeature(new SystemDatabaseFeature(server));
     server.addFeature(new TempFeature(server, name));
-    server.addFeature(new transaction::ManagerFeature(server));
     server.addFeature(new TraverserEngineRegistryFeature(server));
     server.addFeature(new TtlFeature(server));
     server.addFeature(new UpgradeFeature(server, &ret, nonServerFeatures));
     server.addFeature(new V8DealerFeature(server));
     server.addFeature(new V8PlatformFeature(server));
     server.addFeature(new V8SecurityFeature(server));
+    server.addFeature(new transaction::ManagerFeature(server));
     server.addFeature(new VersionFeature(server));
     server.addFeature(new ViewTypesFeature(server));
     server.addFeature(new aql::AqlFunctionFeature(server));

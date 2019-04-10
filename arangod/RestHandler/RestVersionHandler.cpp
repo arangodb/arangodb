@@ -23,7 +23,7 @@
 
 #include "RestVersionHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "ApplicationFeatures/ServerSecurityFeature.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
@@ -47,12 +47,12 @@ RestVersionHandler::RestVersionHandler(GeneralRequest* request, GeneralResponse*
 RestStatus RestVersionHandler::execute() {
   VPackBuilder result;
 
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
+  ServerSecurityFeature* security =
+      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
+          "ServerSecurity");
+  TRI_ASSERT(security != nullptr);
 
-  bool hardened = v8security->isDeniedHardenedApi(nullptr);
+  bool hardened = security->isDeniedHardenedApi(nullptr);
   bool allowInfo = !hardened;  // allow access if harden flag was not given
 
   ExecContext const* exec = ExecContext::CURRENT;

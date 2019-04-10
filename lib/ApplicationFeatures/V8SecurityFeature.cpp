@@ -40,9 +40,6 @@ using namespace arangodb::options;
 
 V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "V8Security"),
-      _enableFoxxApi(true),
-      _enableFoxxStore(true),
-      _denyHardenedApi(false),
       _denyHardenedJavaScript(false),
       _allowExecutionOfBinaries(false),
       _allowPortTesting(false) {
@@ -51,22 +48,6 @@ V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& se
 }
 
 void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
-  options->addOption("--server.harden",
-                     "users will not be able to receive version information or change "
-                     "the log level via the REST API. Admin users and servers without "
-                     "authentication will be unaffected.",
-                     new BooleanParameter(&_denyHardenedApi))
-                     .setIntroducedIn(30500);
-
-  options->addSection("foxx", "Configure Foxx");
-  options->addOption("--foxx.api", "enables / disables Foxx management REST APIs",
-                     new BooleanParameter(&_enableFoxxApi))
-                     .setIntroducedIn(30500);
-  options->addOption("--foxx.store", "enables / disables Foxx store in web interface",
-                     new BooleanParameter(&_enableFoxxApi))
-                     .setIntroducedIn(30500);
-
   options->addSection("javascript", "Configure the Javascript engine");
   options->addOption("--javascript.allow-port-testing", "allow testing of ports from within JavaScript actions",
                      new BooleanParameter(&_allowPortTesting),
@@ -336,20 +317,8 @@ bool V8SecurityFeature::isAllowedToTestPorts(v8::Isolate* isolate) const {
   return _allowPortTesting;
 }
 
-bool V8SecurityFeature::disableFoxxApi(v8::Isolate* isolate) const {
-  return !_enableFoxxApi;
-}
-
-bool V8SecurityFeature::disableFoxxStore(v8::Isolate* isolate) const {
-  return !_enableFoxxStore;
-}
-
 bool V8SecurityFeature::isDeniedHardenedJavaScript(v8::Isolate* isolate) const {
   return _denyHardenedJavaScript;
-}
-
-bool V8SecurityFeature::isDeniedHardenedApi(v8::Isolate* isolate) const {
-  return _denyHardenedApi;
 }
 
 bool V8SecurityFeature::isAllowedToDefineHttpAction(v8::Isolate* isolate) const {

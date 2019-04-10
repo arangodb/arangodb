@@ -53,7 +53,6 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   /// @brief tests if in the current security context it is allowed to
   /// execute external binaries
   bool isDeniedHardenedJavaScript(v8::Isolate* isolate) const;
-  bool isDeniedHardenedApi(v8::Isolate* isolate) const;
 
   /// @brief tests if in the current security context it is allowed to define
   /// additional HTTP REST actions
@@ -78,16 +77,11 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   /// calling JavaScript code
   bool isAllowedToAccessPath(v8::Isolate* isolate, std::string path, FSAccessType access) const;
   bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, FSAccessType access) const;
-  bool disableFoxxApi(v8::Isolate* isolate) const;
-  bool disableFoxxStore(v8::Isolate* isolate) const;
   bool isInternalContext(v8::Isolate* isolate) const;
 
   void addToInternalReadWhiteList(char const* item);
 
  private:
-  bool _enableFoxxApi;
-  bool _enableFoxxStore;
-  bool _denyHardenedApi;
   bool _denyHardenedJavaScript;
   bool _allowExecutionOfBinaries;
   bool _allowPortTesting;

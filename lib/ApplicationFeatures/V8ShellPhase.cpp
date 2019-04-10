@@ -32,6 +32,7 @@ V8ShellFeaturePhase::V8ShellFeaturePhase(ApplicationServer& server)
 
   startsAfter("V8Shell");
   startsAfter("V8Platform");
+  startsAfter("ServerSecurity");
   startsAfter("V8Security");
   startsAfter("Console");
 }

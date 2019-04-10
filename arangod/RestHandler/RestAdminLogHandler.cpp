@@ -27,7 +27,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "ApplicationFeatures/ServerSecurityFeature.h"
 #include "Basics/StringUtils.h"
 #include "Logger/LogBuffer.h"
 #include "Logger/Logger.h"
@@ -48,12 +48,12 @@ RestStatus RestAdminLogHandler::execute() {
   if (len == 0) {
     reportLogs();
   } else {
-    V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-    TRI_ASSERT(v8security != nullptr);
+    ServerSecurityFeature* security =
+      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
+          "ServerSecurity");
+    TRI_ASSERT(security != nullptr);
 
-    bool allowToChangeLogLevel = !v8security->isDeniedHardenedApi(nullptr);
+    bool allowToChangeLogLevel = !security->isDeniedHardenedApi(nullptr);
 
     ExecContext const* exec = ExecContext::CURRENT;
     if (exec == nullptr || exec->isAdminUser()) {

@@ -66,6 +66,12 @@ void ServerSecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 
 }
 
+void ServerSecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+}
+
+void ServerSecurityFeature::start() {
+}
+
 bool ServerSecurityFeature::disableFoxxApi(v8::Isolate* isolate) const {
   return !_enableFoxxApi;
 }
