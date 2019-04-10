@@ -68,9 +68,6 @@ class RocksDBSettingsManager {
   bool lockForSync(bool force);
 
  private:
-  /// @brief protect _syncing and _counters
-  mutable basics::ReadWriteLock _rwLock;
-
   /// @brief a reusable builder, used inside sync() to serialize objects
   arangodb::velocypack::Builder _tmpBuilder;
 
