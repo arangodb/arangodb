@@ -158,6 +158,7 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/PageSizeFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
   ApplicationFeatures/RocksDBOptionFeature.cpp
+  ApplicationFeatures/ServerSecurityFeature.cpp
   ApplicationFeatures/ShellColorsFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
