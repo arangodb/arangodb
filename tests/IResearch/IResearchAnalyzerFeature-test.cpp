@@ -2087,8 +2087,8 @@ SECTION("test_upgrade_static_legacy") {
     CHECK((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
     CHECK((false == !vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
-    CHECK((TRI_ERROR_NO_ERROR == result.code));
-    auto slice = result.result->slice();
+    CHECK((result.result.ok()));
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -2160,8 +2160,8 @@ SECTION("test_upgrade_static_legacy") {
     CHECK((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
     CHECK((false == !vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
-    CHECK((TRI_ERROR_NO_ERROR == result.code));
-    auto slice = result.result->slice();
+    CHECK((result.result.ok()));
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -2222,8 +2222,8 @@ SECTION("test_upgrade_static_legacy") {
     CHECK((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
     CHECK((false == !vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
-    CHECK((TRI_ERROR_NO_ERROR == result.code));
-    auto slice = result.result->slice();
+    CHECK((result.result.ok()));
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -2300,8 +2300,8 @@ SECTION("test_upgrade_static_legacy") {
     CHECK((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
     CHECK((false == !vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
-    CHECK((TRI_ERROR_NO_ERROR == result.code));
-    auto slice = result.result->slice();
+    CHECK((result.result.ok()));
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -2376,8 +2376,8 @@ SECTION("test_upgrade_static_legacy") {
     CHECK((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
     CHECK((false == !vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
-    CHECK((TRI_ERROR_NO_ERROR == result.code));
-    auto slice = result.result->slice();
+    CHECK((result.result.ok()));
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -2468,8 +2468,8 @@ SECTION("test_upgrade_static_legacy") {
     CHECK((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
     CHECK((false == !vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
-    CHECK((TRI_ERROR_NO_ERROR == result.code));
-    auto slice = result.result->slice();
+    CHECK((result.result.ok()));
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
