@@ -4,6 +4,23 @@ In this file we collect information about which tests are currently
 greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 
+- `tests/js/client/active-failover/basic.js`
+
+   [FAILED]  tests/js/client/active-failover/basic.js
+
+      "testFailover" failed: at assertion #86: assertEqual: (10000) is not equal to (9289)
+    (Error
+    at assertEqual (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:103:19)
+    at Object.testFailover (/work/ArangoDB/tests/js/client/active-failover/basic.js:332:7)
+    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:515:23)
+    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:173:24)
+    at /work/ArangoDB/tests/js/client/active-failover/basic.js:502:9
+    at /work/ArangoDB/tests/js/client/active-failover/basic.js:505:3
+    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:250:12)
+    at /work/ArangoDB/js/common/modules/@arangodb/testrunner.js:47:13
+    at arrayEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:508:11)
+    at Function.forEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:9334:14))
+
 - `shell-foxx-api-spec.js`
 
   * Test "shell_client"
