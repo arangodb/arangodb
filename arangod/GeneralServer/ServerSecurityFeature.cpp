@@ -51,7 +51,7 @@ void ServerSecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
                      new BooleanParameter(&_enableFoxxApi))
                      .setIntroducedIn(30500);
   options->addOption("--foxx.store", "enables Foxx store in web interface",
-                     new BooleanParameter(&_enableFoxxApi))
+                     new BooleanParameter(&_enableFoxxStore))
                      .setIntroducedIn(30500);
 
 }
