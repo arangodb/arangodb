@@ -136,13 +136,6 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan, size_t id, TRI_vocba
 
   parseNodeInput(start, _startVertexId, _inStartVariable);
   parseNodeInput(target, _targetVertexId, _inTargetVariable);
-
-  // Make sure we are LIMITed
-  if (!ast->root()->containsNodeType(NODE_TYPE_LIMIT)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUERY_PARSE,
-        "k-shortest-paths queries must contain LIMIT statement.");
-  }
 }
 
 /// @brief Internal constructor to clone the node.
