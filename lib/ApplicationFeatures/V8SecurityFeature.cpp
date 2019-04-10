@@ -179,7 +179,7 @@ void V8SecurityFeature::addToInternalReadWhiteList(char const* item) {
   convertToRe(_readWhiteListSet, _readWhiteList);
   _readWhiteListRegex =
       std::regex(_readWhiteList, std::regex::nosubs | std::regex::ECMAScript);
-  LOG_TOPIC("de5db6", DEBUG, Logger::FIXME) << _readWhiteList;
+  LOG_TOPIC("dedb6", DEBUG, Logger::FIXME) << _readWhiteList;
 }
 
 void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -190,7 +190,7 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   try {
     std::regex(_startupOptionsWhiteList, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
-    LOG_TOPIC("ab9d5", FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("ab6d5", FATAL, arangodb::Logger::FIXME)
         << "value for '--javascript.startup-options-white-list' is not a "
            "valid regular "
            "expression: "
@@ -202,7 +202,7 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   try {
     std::regex(_startupOptionsBlackList, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
-    LOG_TOPIC("ab8d5", FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("ab2d5", FATAL, arangodb::Logger::FIXME)
         << "value for '--javascript.startup-options-black-list' is not a "
            "valid regular "
            "expression: "
@@ -215,7 +215,7 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   try {
     std::regex(_environmentVariablesWhiteList, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
-    LOG_TOPIC("ab9d5", FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("cb9d5", FATAL, arangodb::Logger::FIXME)
         << "value for '--javascript.environment-variables-white-list' is not a "
            "valid regular "
            "expression: "
@@ -227,7 +227,7 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   try {
     std::regex(_environmentVariablesBlackList, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
-    LOG_TOPIC("ab8d5", FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("4b8d5", FATAL, arangodb::Logger::FIXME)
         << "value for '--javascript.environment-variables-black-list' is not a "
            "valid regular "
            "expression: "
@@ -265,7 +265,7 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   try {
     std::regex(_filesWhiteList, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
-    LOG_TOPIC("ab9d5", FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("4b9d5", FATAL, arangodb::Logger::FIXME)
         << "value for '--javascript.files-white-list' is not a "
            "valid regular "
            "expression: "
@@ -277,7 +277,7 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   try {
     std::regex(_filesBlackList, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
-    LOG_TOPIC("ab8d5", FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("a48d5", FATAL, arangodb::Logger::FIXME)
         << "value for '--javascript.files-black-list' is not a "
            "valid regular "
            "expression: "
