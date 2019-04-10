@@ -77,25 +77,6 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
         a++;
         _vertices.emplace_back(p._vertices.at(a));
       }
-
-      /* if (a == b) { */
-      /*   _vertices.emplace_back(p._vertices.at(a)); */
-      /* } else if (this->length() == 0) { */
-      /*   for (size_t i = a; i < b; ++i) { */
-      /*     _vertices.emplace_back(p._vertices.at(i)); */
-      /*     _edges.emplace_back(p._edges.at(i)); */
-      /*   } */
-      /*   _vertices.emplace_back(p._vertices.at(b)); */
-      /* } else { */
-      /*   TRI_ASSERT((this->_vertices.back().equals(p._vertices.front()))); */
-
-      /*   _edges.emplace_back(p._edges.at(a)); */
-
-      /*   for (size_t i = a + 1; i < b; ++i) { */
-      /*     _vertices.emplace_back(p._vertices.at(i)); */
-      /*     _edges.emplace_back(p._edges.at(i)); */
-      /*   } */
-      /*   _vertices.emplace_back(p._vertices.at(b)); */
     };
     void print(const std::string& pre) const {
       LOG_DEVEL << pre << " vertices " << _vertices.size();
