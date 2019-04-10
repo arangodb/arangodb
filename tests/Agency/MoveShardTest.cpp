@@ -515,7 +515,7 @@ SECTION("the job should fail if the target server is failed") {
   Verify(Method(mockAgent,write));
 }
 
-SECTION("the job should wait until the target server is good") {
+SECTION("the job should fail if the target server is failed") {
   std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure = [&](VPackSlice const& s, std::string const& path) {
     std::unique_ptr<VPackBuilder> builder;
     builder.reset(new VPackBuilder());
@@ -543,6 +543,12 @@ SECTION("the job should wait until the target server is good") {
   };
 
   Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    INFO("WriteTransaction: " << q->slice().toJson());
+    CHECK_FAILURE("ToDo", q);
+    return fakeWriteResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface& agent = mockAgent.get();
 
   auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
@@ -552,6 +558,7 @@ SECTION("the job should wait until the target server is good") {
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
   moveShard.start(aborts);
+  Verify(Method(mockAgent,write));
 }
 
 SECTION("the job should fail if the shard distributes its shards like some other") {
