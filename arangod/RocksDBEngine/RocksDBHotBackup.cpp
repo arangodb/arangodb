@@ -536,10 +536,20 @@ void RocksDBHotBackupCreate::executeCreate() {
       if (fd != -1) {
         TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
 
-        std::string json = _agencyDump.toJson();
-        auto context = EncryptionFeature::beginEncryption(fd, encryptionKey);
+        try {
+          std::string json = _agencyDump.toJson();
+          auto context = EncryptionFeature::beginEncryption(fd, encryptionKey);
 
-        _success = EncryptionFeature::writeData(*context.get(), json.c_str(), json.size());
+          _success = EncryptionFeature::writeData(*context.get(), json.c_str(), json.size());
+        } catch(...) {
+          _success = false;
+          _respCode = rest::ResponseCode::BAD;
+          _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+          _errorMessage = "RocksDBHotBackupCreate caught exception.";
+          LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+            << "RocksDBHotBackupCreate caught exception.";
+        }
+
       } else {
         _success = false;
       }
