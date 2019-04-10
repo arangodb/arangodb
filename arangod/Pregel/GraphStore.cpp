@@ -172,7 +172,8 @@ std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocate
   _index.resize(vCount);
   size_t requiredMem = vCount * _graphFormat->estimatedVertexSize() +
                        eCount * _graphFormat->estimatedEdgeSize();
-  if (!_config->lazyLoading() && requiredMem > totalMemory / 2) {
+  if (!_config->lazyLoading() &&
+      (_config->useMemoryMaps() || requiredMem > totalMemory / 2)) {
     if (_graphFormat->estimatedVertexSize() > 0) {
       _vertexData = new MappedFileBuffer<V>(vCount);
     }
@@ -268,7 +269,9 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config, std::string const& doc
   // figure out if we got this vertex locally
   PregelID _id = config->documentIdToPregel(documentID);
   if (config->isLocalVertexShard(_id.shard)) {
-    loadDocument(config, _id.shard, _id.key);
+    std::lock_guard<std::mutex> guard(_keyHeapMutex);
+    VPackStringRef keyRef = _keyHeap.registerString(documentID.data(), documentID.size());
+    loadDocument(config, _id.shard, keyRef);
   }
 }
 

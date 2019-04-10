@@ -53,6 +53,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   _coordinatorId = coordID.copyString();
   _asynchronousMode = async.getBool();
   _lazyLoading = params.get(Utils::lazyLoadingKey).getBool();
+  _useMemoryMaps = params.get(Utils::useMemoryMaps).getBool();
 
   VPackSlice userParams = params.get(Utils::userParametersKey);
   VPackSlice parallel = userParams.get(Utils::parallelismKey);

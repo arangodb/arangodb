@@ -719,6 +719,12 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
   LOG_TOPIC("17f3c", INFO, Logger::PREGEL) << "Recovery finished";
 }
 
+class WorkerCb : public arangodb::ClusterCommCallback {
+  bool operator()(ClusterCommResult*) override {
+    return true;
+  }
+};
+
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const& message) {
   if (ServerState::instance()->isRunningInCluster() == false) {
@@ -735,11 +741,10 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
     std::unordered_map<std::string, std::string> headers;
     auto body = std::make_shared<std::string const>(message.toJson());
     cc->asyncRequest(coordinatorTransactionID, "server:" + _config.coordinatorId(),
-                     rest::RequestType::POST, baseUrl + path, body, headers, nullptr,
+                     rest::RequestType::POST, baseUrl + path, body, headers,
+                     std::make_shared<WorkerCb>(), // noop callback
                      120.0,  // timeout
                      true);  // single request, no answer expected
-    // Forget about it
-    cc->drop(coordinatorTransactionID, 0, "");
   }
 }
 
