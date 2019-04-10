@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed internal issue #536: ArangoSearch may crash server during term lookup
+
 * added `filter` option to Foxx HTTP API for running tests.
 
 * added function `db.<collection>.getResponsibleShard()` to find out which is the
