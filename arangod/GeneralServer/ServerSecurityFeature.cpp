@@ -41,17 +41,16 @@ ServerSecurityFeature::ServerSecurityFeature(application_features::ApplicationSe
 void ServerSecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
   options->addOption("--server.harden",
-                     "users will not be able to receive version information or change "
-                     "the log level via the REST API. Admin users and servers without "
-                     "authentication will be unaffected.",
+                     "lock down REST APIs that reveal version information or server "
+                     "internals for non-admin users",
                      new BooleanParameter(&_hardenedRestApi))
                      .setIntroducedIn(30500);
 
   options->addSection("foxx", "Configure Foxx");
-  options->addOption("--foxx.api", "enables / disables Foxx management REST APIs",
+  options->addOption("--foxx.api", "enables Foxx management REST APIs",
                      new BooleanParameter(&_enableFoxxApi))
                      .setIntroducedIn(30500);
-  options->addOption("--foxx.store", "enables / disables Foxx store in web interface",
+  options->addOption("--foxx.store", "enables Foxx store in web interface",
                      new BooleanParameter(&_enableFoxxApi))
                      .setIntroducedIn(30500);
 
