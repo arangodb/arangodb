@@ -66,7 +66,7 @@ Index::Index(VPackSlice const& info,
 
     auto& lon = fields[1];
     _longitude.reserve(lon.size());
-    std::transform(lon.begin(), lat.end(), std::back_inserter(_longitude),
+    std::transform(lon.begin(), lon.end(), std::back_inserter(_longitude),
                    [](auto const& a) { return a.name; } );
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
