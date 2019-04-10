@@ -202,7 +202,6 @@ Result RocksDBSettingsManager::sync(bool force) {
     batch.Clear();
   }
 
-  LOG_DEVEL << "_lastSync " << _lastSync << "  minSeqNr " << minSeqNr;
   TRI_ASSERT(_lastSync <= minSeqNr);
   if (!didWork) {
     _lastSync = minSeqNr;

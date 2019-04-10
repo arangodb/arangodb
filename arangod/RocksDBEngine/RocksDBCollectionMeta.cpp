@@ -209,9 +209,6 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
   } else {
     appliedSeq = maxCommitSeq;
   }
-  
-  LOG_DEVEL << coll.name();
-  LOG_DEVEL << "maxCommitSeq " << maxCommitSeq << "  "  << commitSeq;
 
   RocksDBKey key;
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
