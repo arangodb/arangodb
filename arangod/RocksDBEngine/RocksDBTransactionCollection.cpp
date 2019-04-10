@@ -38,8 +38,7 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx
                                                            TRI_voc_cid_t cid,
                                                            AccessMode::Type accessType,
                                                            int nestingLevel)
-    : TransactionCollection(trx, cid, accessType),
-      _nestingLevel(nestingLevel),
+    : TransactionCollection(trx, cid, accessType, nestingLevel),
       _initialNumberDocuments(0),
       _revision(0),
       _numInserts(0),
@@ -70,29 +69,6 @@ bool RocksDBTransactionCollection::canAccess(AccessMode::Type accessType) const 
   }
 
   return true;
-}
-
-int RocksDBTransactionCollection::updateUsage(AccessMode::Type accessType, int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    if (nestingLevel > 0) {
-      // trying to write access a collection that is only marked with
-      // read-access
-      return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
-    }
-
-    TRI_ASSERT(nestingLevel == 0);
-
-    // upgrade collection type to write-access
-    _accessType = accessType;
-  }
-
-  if (nestingLevel < _nestingLevel) {
-    _nestingLevel = nestingLevel;
-  }
-
-  // all correct
-  return TRI_ERROR_NO_ERROR;
 }
 
 int RocksDBTransactionCollection::use(int nestingLevel) {

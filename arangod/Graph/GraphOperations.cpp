@@ -820,8 +820,9 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
       query.setTransactionContext(ctx); // hack to share  the same transaction
 
       auto queryResult = query.executeSync(QueryRegistryFeature::registry());
-      if (queryResult.code != TRI_ERROR_NO_ERROR) {
-        return OperationResult(queryResult.code);
+      
+      if (queryResult.result.fail()) {
+        return OperationResult(std::move(queryResult.result));
       }
     }
   }
