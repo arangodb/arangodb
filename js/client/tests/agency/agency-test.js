@@ -673,10 +673,9 @@ function agencyTestSuite () {
       wait(1.1);
       assertEqual(readAndCheck([["/a/y"]]), [{a:{}}]);
       writeAndCheck([[{"/a/y":{"op":"set","new":12, "ttl": 1}}]]);
-      writeAndCheck([[{"/a/y":{"op":"set","new":12}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
       wait(1.1);
-      assertEqual(readAndCheck([["/a/y"]]), [{"a":{}}]);
+      assertEqual(readAndCheck([["/a/y"]]), [{a:{}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12}}}]]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]),
                   [{"foo":{"bar":{"baz":12}}}]);
@@ -687,6 +686,12 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{}}]);
+      writeAndCheck([[{"a/u":{"op":"set","new":25, "ttl": 2}}]]);
+      assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":25}}]);
+      writeAndCheck([[{"a/u":{"op":"set","new":26}}]]);
+      assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);
+      wait(3.0);  // key should still be there
+      assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1037,7 +1042,7 @@ function agencyTestSuite () {
       var res = accessAgency("write",[[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
       assertEqual(res.statusCode, 403);
     },
-/*
+/* Unreliable test needs to be fixed
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Compaction
 ////////////////////////////////////////////////////////////////////////////////    
