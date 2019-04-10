@@ -209,7 +209,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   }
 
   _tmpBuilder.clear();
-  Result res = writeSettings(batch, _tmpBuilder, std::max(_lastSync, minSeqNr));
+  Result res = writeSettings(batch, _tmpBuilder, std::max(_lastSync.load(), minSeqNr));
   if (res.fail()) {
     LOG_TOPIC("8a5e6", WARN, Logger::ENGINES)
         << "could not store metadata settings " << res.errorMessage();
@@ -219,7 +219,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   // we have to commit all counters in one batch
   auto s = _db->Write(wo, &batch);
   if (s.ok()) {
-    _lastSync = std::max(_lastSync, minSeqNr);
+    _lastSync = std::max(_lastSync.load(), minSeqNr);
   }
 
   return rocksutils::convertStatus(s);

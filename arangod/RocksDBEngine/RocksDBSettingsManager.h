@@ -72,7 +72,7 @@ class RocksDBSettingsManager {
   arangodb::velocypack::Builder _tmpBuilder;
 
   /// @brief last sync sequence number
-  rocksdb::SequenceNumber _lastSync;
+  std::atomic<rocksdb::SequenceNumber> _lastSync;
 
   /// @brief currently syncing
   std::atomic<bool> _syncing;

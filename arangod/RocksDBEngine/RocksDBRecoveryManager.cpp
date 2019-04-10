@@ -429,7 +429,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
           TRI_ASSERT(ridx->type() != Index::TRI_IDX_TYPE_EDGE_INDEX || est);
           if (est) {
-            TRI_ASSERT(est->appliedSeq() <= _currentSequence);
             est->clear();
             est->setAppliedSeq(_currentSequence);
           }
