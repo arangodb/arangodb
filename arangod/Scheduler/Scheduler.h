@@ -66,7 +66,13 @@ class Scheduler {
 
   class WorkItem {
    public:
-    virtual ~WorkItem() { cancel(); };
+    virtual ~WorkItem() { 
+      try {
+        cancel(); 
+      } catch (...) {
+        // destructor... no exceptions allowed here
+      }
+    }
 
     // Cancels the WorkItem
     void cancel() { executeWithCancel(true); }
