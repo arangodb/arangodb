@@ -98,7 +98,6 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
         : _startOrEnd(startOrEnd){};
   };
   typedef std::deque<VertexRef> Frontier;
-  typedef std::deque<VertexRef> Trace;
 
   // Contains the vertices that were found while searching
   // for a shortest path between start and end together with
@@ -111,7 +110,6 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
     Direction _direction;
     FoundVertices _vertices;
     Frontier _frontier;
-    Trace _trace;
 
     Ball(void){};
     Ball(const VertexRef& centre, Direction direction)
@@ -123,7 +121,6 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
     void clear() {
       _vertices.clear();
       _frontier.clear();
-      _trace.clear();
     };
     void setCentre(const VertexRef& centre) {
       _centre = centre;
