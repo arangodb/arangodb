@@ -1082,7 +1082,7 @@ static void JS_ExecuteGlobalContextFunction(v8::FunctionCallbackInfo<v8::Value> 
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
 
-  if (v8security->isInternalContext(isolate)) {
+  if (!v8security->isInternalContext(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "not allowed for restricted contexts");
   }
 
