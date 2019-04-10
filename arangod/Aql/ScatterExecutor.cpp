@@ -38,15 +38,19 @@ ExecutionBlockImpl<ScatterExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
   }
 }
 
+void ExecutionBlockImpl<ScatterExecutor>::traceGetSomeBegin(size_t atMost) {
+  traceGetSomeBeginInner(atMost);
+}
+
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<ScatterExecutor>::traceGetSomeEnd(
     ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
-  ExecutionBlock::traceGetSomeEnd(result.get(), state);
+  traceGetSomeEndInner(result.get(), state);
   return {state, std::move(result)};
 }
 
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::traceSkipSomeEnd(
     ExecutionState state, size_t skipped) {
-  ExecutionBlock::traceSkipSomeEnd(skipped, state);
+  traceSkipSomeEndInner(skipped, state);
   return {state, skipped};
 }
 
@@ -66,7 +70,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<ScatterExecutor>::initializ
 /// @brief getSomeForShard
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<ScatterExecutor>::getSomeForShard(
     size_t atMost, std::string const& shardId) {
-  traceGetSomeBegin(atMost);
+  traceGetSomeBeginInner(atMost);
   auto result = getSomeForShardWithoutTrace(atMost, shardId);
   return traceGetSomeEnd(result.first, std::move(result.second));
 }
@@ -88,7 +92,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Scat
 /// @brief skipSomeForShard
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::skipSomeForShard(
     size_t atMost, std::string const& shardId) {
-  traceSkipSomeBegin(atMost);
+  traceSkipSomeBeginInner(atMost);
   auto result = skipSomeForShardWithoutTrace(atMost, shardId);
   return traceSkipSomeEnd(result.first, result.second);
 }

@@ -51,13 +51,13 @@ ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<DistributeExecutor>::traceGetSomeEnd(
     ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
-  ExecutionBlock::traceGetSomeEnd(result.get(), state);
+  traceGetSomeEndInner(result.get(), state);
   return {state, std::move(result)};
 }
 
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::traceSkipSomeEnd(
     ExecutionState state, size_t skipped) {
-  ExecutionBlock::traceSkipSomeEnd(skipped, state);
+  traceSkipSomeEndInner(skipped, state);
   return {state, skipped};
 }
 
@@ -78,7 +78,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<DistributeExecutor>::initia
 /// @brief getSomeForShard
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<DistributeExecutor>::getSomeForShard(
     size_t atMost, std::string const& shardId) {
-  traceGetSomeBegin(atMost);
+  traceGetSomeBeginInner(atMost);
   auto result = getSomeForShardWithoutTrace(atMost, shardId);
   return traceGetSomeEnd(result.first, std::move(result.second));
 }
@@ -101,7 +101,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Dist
 /// @brief skipSomeForShard
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::skipSomeForShard(
     size_t atMost, std::string const& shardId) {
-  traceSkipSomeBegin(atMost);
+  traceSkipSomeBeginInner(atMost);
   auto result = skipSomeForShardWithoutTrace(atMost, shardId);
   return traceSkipSomeEnd(result.first, result.second);
 }

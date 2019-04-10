@@ -59,12 +59,36 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+
+std::string const doneString = "DONE";
+std::string const hasMoreString = "HASMORE";
+std::string const waitingString = "WAITING";
+
+static std::string const& stateToString(ExecutionState state) {
+  switch (state) {
+    case ExecutionState::DONE:
+      return doneString;
+    case ExecutionState::HASMORE:
+      return hasMoreString;
+    case ExecutionState::WAITING:
+      return waitingString;
+  }
+}
+
+}  // namespace
+
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
 
 BlockWithClients::BlockWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
                                    std::vector<std::string> const& shardIds)
-    : ExecutionBlock(engine, ep), _nrClients(shardIds.size()), _wasShutdown(false) {
+    : ExecutionBlock(engine, ep),
+      _nrClients(shardIds.size()),
+      _wasShutdown(false),
+      _engine(engine),
+      _trx(engine->getQuery()->trx()),
+      _pos(0) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.emplace(std::make_pair(shardIds[i], i));
@@ -175,3 +199,100 @@ size_t BlockWithClients::getClientId(std::string const& shardId) const {
   }
   return ((*it).second);
 }
+
+void BlockWithClients::traceGetSomeBeginInner(size_t atMost) {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    if (_getSomeBegin <= 0.0) {
+      _getSomeBegin = TRI_microtime();
+    }
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      LOG_TOPIC("ca7db", INFO, Logger::QUERIES)
+      << "getSome type=" << _exeNode->getTypeString() << " atMost = " << atMost
+      << " this=" << (uintptr_t)this << " id=" << _exeNode->id();
+    }
+  }
+}
+
+void BlockWithClients::traceGetSomeEndInner(AqlItemBlock const* result,
+                                                        ExecutionState state) {
+  TRI_ASSERT(result != nullptr || state != ExecutionState::HASMORE);
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    ExecutionStats::Node stats;
+    stats.calls = 1;
+    stats.items = result != nullptr ? result->size() : 0;
+    if (state != ExecutionState::WAITING) {
+      stats.runtime = TRI_microtime() - _getSomeBegin;
+      _getSomeBegin = 0.0;
+    }
+
+    auto it = _engine->_stats.nodes.find(_exeNode->id());
+    if (it != _engine->_stats.nodes.end()) {
+      it->second += stats;
+    } else {
+      _engine->_stats.nodes.emplace(_exeNode->id(), stats);
+    }
+
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      LOG_TOPIC("07a60", INFO, Logger::QUERIES)
+      << "getSome done type=" << _exeNode->getTypeString()
+      << " this=" << (uintptr_t)this << " id=" << _exeNode->id()
+      << " state=" << ::stateToString(state);
+
+      if (_profile >= PROFILE_LEVEL_TRACE_2) {
+        if (result == nullptr) {
+          LOG_TOPIC("daa64", INFO, Logger::QUERIES)
+          << "getSome type=" << _exeNode->getTypeString() << " result: nullptr";
+        } else {
+          VPackBuilder builder;
+          {
+            VPackObjectBuilder guard(&builder);
+            result->toVelocyPack(_trx, builder);
+          }
+          LOG_TOPIC("fcd9c", INFO, Logger::QUERIES)
+          << "getSome type=" << _exeNode->getTypeString()
+          << " result: " << builder.toJson();
+        }
+      }
+    }
+  }
+}
+
+void BlockWithClients::traceSkipSomeBeginInner(size_t atMost) {  // ALL TRACE TODO: -> IMPL PRIV
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    if (_getSomeBegin <= 0.0) {
+      _getSomeBegin = TRI_microtime();
+    }
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      LOG_TOPIC("dba8a", INFO, Logger::QUERIES)
+      << "skipSome type=" << _exeNode->getTypeString() << " atMost = " << atMost
+      << " this=" << (uintptr_t)this << " id=" << _exeNode->id();
+    }
+  }
+}
+
+void BlockWithClients::traceSkipSomeEndInner(size_t skipped, ExecutionState state) {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    ExecutionStats::Node stats;
+    stats.calls = 1;
+    stats.items = skipped;
+    if (state != ExecutionState::WAITING) {
+      stats.runtime = TRI_microtime() - _getSomeBegin;
+      _getSomeBegin = 0.0;
+    }
+
+    auto it = _engine->_stats.nodes.find(_exeNode->id());
+    if (it != _engine->_stats.nodes.end()) {
+      it->second += stats;
+    } else {
+      _engine->_stats.nodes.emplace(_exeNode->id(), stats);
+    }
+
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      LOG_TOPIC("d1950", INFO, Logger::QUERIES)
+      << "skipSome done type=" << _exeNode->getTypeString()
+      << " this=" << (uintptr_t)this << " id=" << _exeNode->id()
+      << " state=" << ::stateToString(state);
+    }
+  }
+}
+

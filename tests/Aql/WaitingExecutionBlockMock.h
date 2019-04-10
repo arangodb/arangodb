@@ -97,12 +97,22 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
    */
   std::pair<arangodb::aql::ExecutionState, size_t> skipSome(size_t atMost) override;
 
+  // TODO: re-check trace functions
+  void traceGetSomeBeginInner(size_t atMost);
+  void traceGetSomeEndInner(arangodb::aql::AqlItemBlock const*, arangodb::aql::ExecutionState state);
+
+  void traceSkipSomeBeginInner(size_t atMost);
+  void traceSkipSomeEndInner(size_t skipped, arangodb::aql::ExecutionState state);
+
  private:
   std::deque<std::unique_ptr<arangodb::aql::AqlItemBlock>> _data;
   arangodb::aql::ResourceMonitor _resourceMonitor;
   size_t _inflight;
   bool _returnedDone = false;
   bool _hasWaited;
+
+  /// @brief the execution engine
+  arangodb::aql::ExecutionEngine* _engine;
 };
 }  // namespace aql
 

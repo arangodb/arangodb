@@ -145,6 +145,7 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlockWithClients {
   /// @brief the execution state of the dependency
   ///        used to determine HASMORE or DONE better
   ExecutionState _upstreamState;
+
 };
 
 }  // namespace aql

@@ -54,13 +54,6 @@ class ExecutionBlock {
   /// @brief batch size value
   static constexpr inline size_t DefaultBatchSize() { return 1000; }
 
-  /// @brief add a dependency
-  TEST_VIRTUAL void addDependency(ExecutionBlock* ep) {
-    TRI_ASSERT(ep != nullptr);
-    _dependencies.emplace_back(ep);
-    _dependencyPos = _dependencies.end();
-  }
-
   /// @brief Methods for execution
   /// Lifecycle is:
   ///    CONSTRUCTOR
@@ -96,6 +89,7 @@ class ExecutionBlock {
   /// elements skipped is returned.
   virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost) = 0;
 
+  // TODO: Can we get rid of this? Problem: Subquery Executor is using it.
   ExecutionNode const* getPlanNode() const { return _exeNode; }
 
   // @brief Will be called on the querywakeup callback with the
@@ -108,11 +102,12 @@ class ExecutionBlock {
     return true;
   }
 
-  void traceGetSomeBegin(size_t atMost);
-  void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state);
-
-  void traceSkipSomeBegin(size_t atMost);
-  void traceSkipSomeEnd(size_t skipped, ExecutionState state);
+  /// @brief add a dependency
+  void addDependency(ExecutionBlock* ep) {
+    TRI_ASSERT(ep != nullptr);
+    _dependencies.emplace_back(ep);
+    _dependencyPos = _dependencies.end();
+  }
 
   /// @brief throw an exception if query was killed
   void throwIfKilled();
@@ -121,11 +116,15 @@ class ExecutionBlock {
   /// @brief the execution engine
   ExecutionEngine* _engine;
 
-  /// @brief the transaction for this query
-  transaction::Methods* _trx;
+  /// @brief the Result returned during the shutdown phase. Is kept for multiple
+  ///        waiting phases.
+  Result _shutdownResult;
+
+  /// @brief if this is set, we are done, this is reset to false by execute()
+  bool _done;
 
   /// @brief our corresponding ExecutionNode node
-  ExecutionNode const* _exeNode;
+  ExecutionNode const* _exeNode; // TODO: Can we get rid of this? Problem: Subquery Executor is using it.
 
   /// @brief our dependent nodes
   std::vector<ExecutionBlock*> _dependencies;
@@ -134,27 +133,6 @@ class ExecutionBlock {
   ///        used in initializeCursor and shutdown.
   ///        Needs to be set to .end() everytime we modify _dependencies
   std::vector<ExecutionBlock*>::iterator _dependencyPos;
-
-  /// @brief the Result returned during the shutdown phase. Is kept for multiple
-  ///        waiting phases.
-  Result _shutdownResult;
-
-  /// @brief this is our buffer for the items, it is a deque of AqlItemBlocks.
-  /// We keep the following invariant between this and the other two variables
-  /// _pos and _done: If _buffer.size() != 0, then 0 <= _pos <
-  /// _buffer[0]->size()
-  /// and _buffer[0][_pos] is the next item to be handed on. If _done is true,
-  /// then no more documents will ever be returned. _done will be set to
-  /// true if and only if we have no more data ourselves (i.e.
-  /// _buffer.size()==0)
-  /// and we have unsuccessfully tried to get another block from our dependency.
-  std::deque<AqlItemBlock*> _buffer;
-
-  /// @brief current working position in the first entry of _buffer
-  size_t _pos;
-
-  /// @brief if this is set, we are done, this is reset to false by execute()
-  bool _done;
 
   /// @brief profiling level
   uint32_t _profile;

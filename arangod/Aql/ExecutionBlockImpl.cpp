@@ -38,21 +38,21 @@
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/EnumerateCollectionExecutor.h"
-#include "Aql/ModificationExecutor.h"
-#include "Aql/ModificationExecutorTraits.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
-#include "Aql/IResearchViewExecutor.h"
 #include "Aql/HashedCollectExecutor.h"
+#include "Aql/IResearchViewExecutor.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexExecutor.h"
 #include "Aql/LimitExecutor.h"
+#include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutorTraits.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathExecutor.h"
+#include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
-#include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SortedCollectExecutor.h"
 #include "Aql/SortingGatherExecutor.h"
 #include "Aql/SubqueryExecutor.h"
@@ -63,25 +63,58 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+
+std::string const doneString = "DONE";
+std::string const hasMoreString = "HASMORE";
+std::string const waitingString = "WAITING";
+
+static std::string const& stateToString(ExecutionState state) {
+  switch (state) {
+    case ExecutionState::DONE:
+      return doneString;
+    case ExecutionState::HASMORE:
+      return hasMoreString;
+    case ExecutionState::WAITING:
+      return waitingString;
+  }
+}
+
+}  // namespace
+
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
                                                  typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
-      _blockFetcher(_dependencies, _engine->itemBlockManager(),
+      _blockFetcher(_dependencies, engine->itemBlockManager(),
                     infos.getInputRegisters(), infos.numberOfInputRegisters()),
       _rowFetcher(_blockFetcher),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
       _outputItemRow(),
-      _query(*engine->getQuery()) {}
+      _query(*engine->getQuery()),
+      _engine(engine),
+      _trx(engine->getQuery()->trx()),
+      _pos(0) {
+  TRI_ASSERT(_trx != nullptr);
+
+  // already insert ourselves into the statistics results
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
+  }
+}
 
 template <class Executor>
-ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {}
+ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
+  for (auto& it : _buffer) {
+    delete it;
+  }
+}
 
 template <class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
-  traceGetSomeBegin(atMost);
+  traceGetSomeBeginInner(atMost);
   auto result = getSomeWithoutTrace(atMost);
   return traceGetSomeEnd(result.first, std::move(result.second));
 }
@@ -192,7 +225,7 @@ template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t atMost) {
   // TODO IMPLEMENT ME, this is a stub!
 
-  traceSkipSomeBegin(atMost);
+  traceSkipSomeBeginInner(atMost);
 
   auto res = getSomeWithoutTrace(atMost);
 
@@ -210,7 +243,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
 template <class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::traceGetSomeEnd(
     ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
-  ExecutionBlock::traceGetSomeEnd(result.get(), state);
+  traceGetSomeEndInner(result.get(), state);
   return {state, std::move(result)};
 }
 
@@ -229,7 +262,7 @@ ExecutionState ExecutionBlockImpl<Executor>::getHasMoreState() {
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::traceSkipSomeEnd(
     ExecutionState state, size_t skipped) {
-  ExecutionBlock::traceSkipSomeEnd(skipped, state);
+  traceSkipSomeEndInner(skipped, state);
   return {state, skipped};
 }
 
@@ -430,14 +463,13 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor>::shutdown
 }  // namespace aql
 }  // namespace arangodb
 
-
 template <class Executor>
 AqlItemBlock* ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems, RegisterId nrRegs) {  // TODO check correct here?
   return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
 }
 
 template <class Executor>
-void ExecutionBlockImpl<Executor>::returnBlock(AqlItemBlock*& block) noexcept { // TODO check?
+void ExecutionBlockImpl<Executor>::returnBlock(AqlItemBlock*& block) noexcept {  // TODO check?
   _engine->itemBlockManager().returnBlock(block);
 }
 
@@ -509,6 +541,108 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
   //                                               _infos.registersToKeep());
 
   return {ExecutionState::HASMORE, std::move(blockShell)};
+}
+
+// Trace the start of a getSome call
+template <class Executor>
+void ExecutionBlockImpl<Executor>::traceGetSomeBeginInner(size_t atMost) {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    if (_getSomeBegin <= 0.0) {
+      _getSomeBegin = TRI_microtime();
+    }
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      LOG_TOPIC("ca7db", INFO, Logger::QUERIES)
+          << "getSome type=" << _exeNode->getTypeString() << " atMost = " << atMost
+          << " this=" << (uintptr_t)this << " id=" << _exeNode->id();
+    }
+  }
+}
+
+// Trace the end of a getSome call, potentially with result
+template <class Executor>
+void ExecutionBlockImpl<Executor>::traceGetSomeEndInner(AqlItemBlock const* result,
+                                                        ExecutionState state) {
+  TRI_ASSERT(result != nullptr || state != ExecutionState::HASMORE);
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    ExecutionStats::Node stats;
+    stats.calls = 1;
+    stats.items = result != nullptr ? result->size() : 0;
+    if (state != ExecutionState::WAITING) {
+      stats.runtime = TRI_microtime() - _getSomeBegin;
+      _getSomeBegin = 0.0;
+    }
+
+    auto it = _engine->_stats.nodes.find(_exeNode->id());
+    if (it != _engine->_stats.nodes.end()) {
+      it->second += stats;
+    } else {
+      _engine->_stats.nodes.emplace(_exeNode->id(), stats);
+    }
+
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      LOG_TOPIC("07a60", INFO, Logger::QUERIES)
+          << "getSome done type=" << _exeNode->getTypeString()
+          << " this=" << (uintptr_t)this << " id=" << _exeNode->id()
+          << " state=" << ::stateToString(state);
+
+      if (_profile >= PROFILE_LEVEL_TRACE_2) {
+        if (result == nullptr) {
+          LOG_TOPIC("daa64", INFO, Logger::QUERIES)
+              << "getSome type=" << _exeNode->getTypeString() << " result: nullptr";
+        } else {
+          VPackBuilder builder;
+          {
+            VPackObjectBuilder guard(&builder);
+            result->toVelocyPack(_trx, builder);
+          }
+          LOG_TOPIC("fcd9c", INFO, Logger::QUERIES)
+              << "getSome type=" << _exeNode->getTypeString()
+              << " result: " << builder.toJson();
+        }
+      }
+    }
+  }
+}
+
+template <class Executor>
+void ExecutionBlockImpl<Executor>::traceSkipSomeBeginInner(size_t atMost) {  // ALL TRACE TODO: -> IMPL PRIV
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    if (_getSomeBegin <= 0.0) {
+      _getSomeBegin = TRI_microtime();
+    }
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      LOG_TOPIC("dba8a", INFO, Logger::QUERIES)
+          << "skipSome type=" << _exeNode->getTypeString() << " atMost = " << atMost
+          << " this=" << (uintptr_t)this << " id=" << _exeNode->id();
+    }
+  }
+}
+
+template <class Executor>
+void ExecutionBlockImpl<Executor>::traceSkipSomeEndInner(size_t skipped, ExecutionState state) {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    ExecutionStats::Node stats;
+    stats.calls = 1;
+    stats.items = skipped;
+    if (state != ExecutionState::WAITING) {
+      stats.runtime = TRI_microtime() - _getSomeBegin;
+      _getSomeBegin = 0.0;
+    }
+
+    auto it = _engine->_stats.nodes.find(_exeNode->id());
+    if (it != _engine->_stats.nodes.end()) {
+      it->second += stats;
+    } else {
+      _engine->_stats.nodes.emplace(_exeNode->id(), stats);
+    }
+
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      LOG_TOPIC("d1950", INFO, Logger::QUERIES)
+          << "skipSome done type=" << _exeNode->getTypeString()
+          << " this=" << (uintptr_t)this << " id=" << _exeNode->id()
+          << " state=" << ::stateToString(state);
+    }
+  }
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;

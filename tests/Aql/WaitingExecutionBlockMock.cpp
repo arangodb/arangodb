@@ -23,7 +23,11 @@
 #include "WaitingExecutionBlockMock.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/ExecutionStats.h"
+#include "Aql/ExecutorInfos.h"
+#include "Aql/QueryOptions.h"
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -32,6 +36,25 @@ using namespace arangodb::aql;
 using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
+namespace {
+
+std::string const doneString = "DONE";
+std::string const hasMoreString = "HASMORE";
+std::string const waitingString = "WAITING";
+
+static std::string const& stateToString(ExecutionState state) {
+  switch (state) {
+    case ExecutionState::DONE:
+      return doneString;
+    case ExecutionState::HASMORE:
+      return hasMoreString;
+    case ExecutionState::WAITING:
+      return waitingString;
+  }
+}
+
+}  // namespace
+
 WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
                                                      ExecutionNode const* node,
                                                      std::deque<std::unique_ptr<AqlItemBlock>>&& data)
@@ -39,7 +62,8 @@ WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
       _data(std::move(data)),
       _resourceMonitor(),
       _inflight(0),
-      _hasWaited(false) {}
+      _hasWaited(false),
+      _engine(engine) {}
 
 std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlockMock::initializeCursor(
     arangodb::aql::InputAqlItemRow const& input) {
@@ -86,16 +110,16 @@ WaitingExecutionBlockMock::getSome(size_t atMost) {
 }
 
 std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skipSome(size_t atMost) {
-  traceSkipSomeBegin(atMost);
+  traceSkipSomeBeginInner(atMost);
   if (!_hasWaited) {
     _hasWaited = true;
-    traceSkipSomeEnd(0, ExecutionState::WAITING);
+    traceSkipSomeEndInner(0, ExecutionState::WAITING);
     return {ExecutionState::WAITING, 0};
   }
   _hasWaited = false;
 
   if (_data.empty()) {
-    traceSkipSomeEnd(0, ExecutionState::DONE);
+    traceSkipSomeEndInner(0, ExecutionState::DONE);
     return {ExecutionState::DONE, 0};
   }
 
@@ -103,10 +127,49 @@ std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skip
   _data.pop_front();
 
   if (_data.empty()) {
-    traceSkipSomeEnd(skipped, ExecutionState::DONE);
+    traceSkipSomeEndInner(skipped, ExecutionState::DONE);
     return {ExecutionState::DONE, skipped};
   } else {
-    traceSkipSomeEnd(skipped, ExecutionState::HASMORE);
+    traceSkipSomeEndInner(skipped, ExecutionState::HASMORE);
     return {ExecutionState::HASMORE, skipped};
+  }
+}
+
+void WaitingExecutionBlockMock::traceSkipSomeBeginInner(size_t atMost) {  // ALL TRACE TODO: -> IMPL PRIV
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    if (_getSomeBegin <= 0.0) {
+      _getSomeBegin = TRI_microtime();
+    }
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      LOG_TOPIC("dba8a", INFO, Logger::QUERIES)
+          << "skipSome type=" << _exeNode->getTypeString() << " atMost = " << atMost
+          << " this=" << (uintptr_t)this << " id=" << _exeNode->id();
+    }
+  }
+}
+
+void WaitingExecutionBlockMock::traceSkipSomeEndInner(size_t skipped, ExecutionState state) {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    ExecutionStats::Node stats;
+    stats.calls = 1;
+    stats.items = skipped;
+    if (state != ExecutionState::WAITING) {
+      stats.runtime = TRI_microtime() - _getSomeBegin;
+      _getSomeBegin = 0.0;
+    }
+
+    auto it = _engine->_stats.nodes.find(_exeNode->id());
+    if (it != _engine->_stats.nodes.end()) {
+      it->second += stats;
+    } else {
+      _engine->_stats.nodes.emplace(_exeNode->id(), stats);
+    }
+
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      LOG_TOPIC("d1950", INFO, Logger::QUERIES)
+          << "skipSome done type=" << _exeNode->getTypeString()
+          << " this=" << (uintptr_t)this << " id=" << _exeNode->id()
+          << " state=" << ::stateToString(state);
+    }
   }
 }

@@ -59,6 +59,8 @@ class ExecutionBlockImpl<ScatterExecutor> : public BlockWithClients {
                                                      std::string const& shardId) override;
 
  private:
+  void traceGetSomeBegin(size_t atMost);
+
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> traceGetSomeEnd(
       ExecutionState state, std::unique_ptr<AqlItemBlock> result);
 

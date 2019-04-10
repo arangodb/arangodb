@@ -51,7 +51,7 @@ class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
 
-class BlockWithClients : public ExecutionBlock {
+class BlockWithClients : public ExecutionBlock { // TODO: ask Tobias
  public:
   BlockWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
                    std::vector<std::string> const& shardIds);
@@ -94,20 +94,54 @@ class BlockWithClients : public ExecutionBlock {
   virtual std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost,
                                                              std::string const& shardId) = 0;
 
+  /// TODO: maybe removable, ask Tobias - ClusterBlocks <-> ExecutionBlock <-> IMPL
+  void traceGetSomeBeginInner(size_t atMost);
+  void traceGetSomeEndInner(AqlItemBlock const*, ExecutionState state);
+
+  void traceSkipSomeBeginInner(size_t atMost);
+  void traceSkipSomeEndInner(size_t skipped, ExecutionState state);
+
+  /// @brief throw an exception if query was killed
+  void throwIfKilled();
+  /// TODO: maybe removable, ask Tobias - ClusterBlocks <-> ExecutionBlock <-> IMPL
+
  protected:
   /// @brief getClientId: get the number <clientId> (used internally)
   /// corresponding to <shardId>
   size_t getClientId(std::string const& shardId) const;
 
- protected:
   /// @brief _shardIdMap: map from shardIds to clientNrs
   std::unordered_map<std::string, size_t> _shardIdMap;
 
   /// @brief _nrClients: total number of clients
   size_t _nrClients;
 
+ public:
+  /// @brief the execution engine
+  ExecutionEngine* _engine;
+
+  /// @brief the transaction for this query
+  transaction::Methods* _trx;
+
+  /// @brief this is our buffer for the items, it is a deque of AqlItemBlocks.
+  /// We keep the following invariant between this and the other two variables
+  /// _pos and _done: If _buffer.size() != 0, then 0 <= _pos <
+  /// _buffer[0]->size()
+  /// and _buffer[0][_pos] is the next item to be handed on. If _done is true,
+  /// then no more documents will ever be returned. _done will be set to
+  /// true if and only if we have no more data ourselves (i.e.
+  /// _buffer.size()==0)
+  /// and we have unsuccessfully tried to get another block from our dependency.
+  std::deque<AqlItemBlock*> _buffer;
+
+  /// @brief current working position in the first entry of _buffer
+  size_t _pos;
+
+
  private:
   bool _wasShutdown;
+
+ protected:
 };
 
 }  // namespace aql
