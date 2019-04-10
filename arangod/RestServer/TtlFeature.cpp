@@ -108,6 +108,9 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
         return Result(TRI_ERROR_BAD_PARAMETER, "expecting numeric value for frequency");
       }
       frequency = slice.get("frequency").getNumericValue<uint64_t>();
+      if (frequency < TtlProperties::minFrequency) {
+        return Result(TRI_ERROR_BAD_PARAMETER, "too low value for frequency");
+      }
     }
     if (slice.hasKey("maxTotalRemoves")) {
       if (!slice.get("maxTotalRemoves").isNumber()) {
@@ -437,6 +440,12 @@ void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_properties.maxCollectionRemoves == 0) {
     LOG_TOPIC("2ab82", FATAL, arangodb::Logger::STARTUP)
         << "invalid value for '--ttl.max-collection-removes'.";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_properties.frequency < TtlProperties::minFrequency) {
+    LOG_TOPIC("ea696", FATAL, arangodb::Logger::STARTUP)
+        << "too low value for '--ttl.frequency'.";
     FATAL_ERROR_EXIT();
   }
 }
