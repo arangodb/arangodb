@@ -85,8 +85,8 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   void addToInternalReadWhiteList(char const* item);
 
  private:
-  bool _disableFoxxApi;
-  bool _disableFoxxStore;
+  bool _enableFoxxApi;
+  bool _enableFoxxStore;
   bool _denyHardenedApi;
   bool _denyHardenedJavaScript;
   bool _allowExecutionOfBinaries;

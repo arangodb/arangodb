@@ -40,8 +40,8 @@ using namespace arangodb::options;
 
 V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "V8Security"),
-      _disableFoxxApi(false),
-      _disableFoxxStore(false),
+      _enableFoxxApi(true),
+      _enableFoxxStore(true),
       _denyHardenedApi(false),
       _denyHardenedJavaScript(false),
       _allowExecutionOfBinaries(false),
@@ -60,11 +60,11 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                      .setIntroducedIn(30500);
 
   options->addSection("foxx", "Configure Foxx");
-  options->addOption("--foxx.disable-api", "disables Foxx management REST APIs",
-                     new BooleanParameter(&_disableFoxxApi))
+  options->addOption("--foxx.api", "enables / disables Foxx management REST APIs",
+                     new BooleanParameter(&_enableFoxxApi))
                      .setIntroducedIn(30500);
-  options->addOption("--foxx.disable-store", "disables Foxx store in web interface",
-                     new BooleanParameter(&_disableFoxxStore))
+  options->addOption("--foxx.store", "enables / disables Foxx store in web interface",
+                     new BooleanParameter(&_enableFoxxApi))
                      .setIntroducedIn(30500);
 
   options->addSection("javascript", "Configure the Javascript engine");
@@ -337,11 +337,11 @@ bool V8SecurityFeature::isAllowedToTestPorts(v8::Isolate* isolate) const {
 }
 
 bool V8SecurityFeature::disableFoxxApi(v8::Isolate* isolate) const {
-  return _disableFoxxApi;
+  return !_enableFoxxApi;
 }
 
 bool V8SecurityFeature::disableFoxxStore(v8::Isolate* isolate) const {
-  return _disableFoxxStore;
+  return !_enableFoxxStore;
 }
 
 bool V8SecurityFeature::isDeniedHardenedJavaScript(v8::Isolate* isolate) const {
