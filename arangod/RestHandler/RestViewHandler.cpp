@@ -30,6 +30,7 @@
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Events.h"
 #include "VocBase/LogicalView.h"
 
 #include <velocypack/velocypack-aliases.h>
@@ -140,7 +141,7 @@ RestStatus RestViewHandler::execute() {
 void RestViewHandler::createView() {
   if (_request->payload().isEmptyObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
-
+    events::CreateView(_vocbase.name(), "", TRI_ERROR_HTTP_CORRUPTED_JSON);
     return;
   }
 
@@ -149,7 +150,7 @@ void RestViewHandler::createView() {
   if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting POST /_api/view");
-
+    events::CreateView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
 
@@ -157,6 +158,7 @@ void RestViewHandler::createView() {
   VPackSlice const body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
+    events::CreateView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
 
@@ -168,7 +170,7 @@ void RestViewHandler::createView() {
 
   if (!body.isObject()) {
     badParamError();
-
+    events::CreateView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
 
@@ -177,7 +179,9 @@ void RestViewHandler::createView() {
 
   if (!nameSlice.isString() || !typeSlice.isString()) {
     badParamError();
-
+    events::CreateView(_vocbase.name(),
+                       (nameSlice.isString() ? nameSlice.copyString() : ""),
+                       TRI_ERROR_BAD_PARAMETER);
     return;
   }
 
@@ -188,7 +192,7 @@ void RestViewHandler::createView() {
   if (!canUse(auth::Level::RW, _vocbase)) {
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to create view"));
-
+    events::CreateView(_vocbase.name(), nameSlice.copyString(), TRI_ERROR_FORBIDDEN);
     return;
   }
 
@@ -198,14 +202,14 @@ void RestViewHandler::createView() {
 
     if (!res.ok()) {
       generateError(res);
-
+      events::CreateView(_vocbase.name(), nameSlice.copyString(), res.errorNumber());
       return;
     }
 
     if (!view) {
       generateError(
           arangodb::Result(TRI_ERROR_INTERNAL, "problem creating view"));
-
+      events::CreateView(_vocbase.name(), nameSlice.copyString(), TRI_ERROR_INTERNAL);
       return;
     }
 
@@ -216,15 +220,16 @@ void RestViewHandler::createView() {
 
     if (!res.ok()) {
       generateError(res);
-
       return;
     }
 
     builder.close();
     generateResult(rest::ResponseCode::CREATED, builder.slice());
   } catch (basics::Exception const& ex) {
+    events::CreateView(_vocbase.name(), nameSlice.copyString(), ex.code());
     generateError(arangodb::Result(ex.code(), ex.message()));
   } catch (...) {
+    events::CreateView(_vocbase.name(), nameSlice.copyString(), TRI_errno());
     generateError(arangodb::Result(TRI_errno(), "problem creating view"));
   }
 }
@@ -389,6 +394,7 @@ void RestViewHandler::deleteView() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting DELETE /_api/view/<view-name>");
 
+    events::DropView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
 
@@ -399,6 +405,7 @@ void RestViewHandler::deleteView() {
   if (!view) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
+    events::DropView(_vocbase.name(), name, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return;
   }
 
@@ -410,6 +417,7 @@ void RestViewHandler::deleteView() {
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to drop view"));
 
+    events::DropView(_vocbase.name(), name, TRI_ERROR_FORBIDDEN);
     return;
   }
 
@@ -418,6 +426,7 @@ void RestViewHandler::deleteView() {
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to drop system view"));
 
+    events::DropView(_vocbase.name(), name, TRI_ERROR_FORBIDDEN);
     return;
   }
 

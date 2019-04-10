@@ -26,9 +26,10 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/Methods/Indexes.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -212,6 +213,7 @@ RestStatus RestIndexHandler::createIndex() {
     return RestStatus::DONE;
   }
   if (!suffixes.empty()) {
+    events::CreateIndex(_vocbase.name(), "(unknown)", body, TRI_ERROR_BAD_PARAMETER);
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST " + _request->requestPath() +
                       "?collection=<collection-name>");
@@ -221,12 +223,15 @@ RestStatus RestIndexHandler::createIndex() {
   bool found = false;
   std::string cName = _request->value("collection", found);
   if (!found) {
+    events::CreateIndex(_vocbase.name(), "(unknown)", body,
+                        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 
   auto coll = collection(cName);
   if (coll == nullptr) {
+    events::CreateIndex(_vocbase.name(), cName, body, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
@@ -272,6 +277,7 @@ RestStatus RestIndexHandler::createIndex() {
 RestStatus RestIndexHandler::dropIndex() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 2) {
+    events::DropIndex(_vocbase.name(), "(unknown)", "(unknown)", TRI_ERROR_BAD_PARAMETER);
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /<collection-name>/<index-identifier>");
     return RestStatus::DONE;
@@ -280,6 +286,7 @@ RestStatus RestIndexHandler::dropIndex() {
   std::string const& cName = suffixes[0];
   auto coll = collection(cName);
   if (coll == nullptr) {
+    events::DropIndex(_vocbase.name(), cName, "(unknown)", TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }

@@ -29,6 +29,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -129,11 +130,13 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDangling()) {
+    events::CreateView(vocbase.name(), "", TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   // we require exactly 3 arguments
   if (args.Length() != 3) {
+    events::CreateView(vocbase.name(), "", TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION_USAGE("_createView(<name>, <type>, <properties>)");
   }
 
@@ -146,6 +149,7 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
   std::string const type = TRI_ObjectToString(isolate, args[1]);
 
   if (!args[2]->IsObject()) {
+    events::CreateView(vocbase.name(), name, TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
   }
 
@@ -155,6 +159,7 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
   int res = TRI_V8ToVPack(isolate, properties, obj, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    events::CreateView(vocbase.name(), name, res);
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -163,6 +168,7 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
   // ...........................................................................
 
   if (!canUse(auth::Level::RW, vocbase)) {
+    events::CreateView(vocbase.name(), name, TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to create view");
   }
@@ -184,6 +190,7 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
     auto res = LogicalView::create(view, vocbase, builder.slice());
 
     if (!res.ok()) {
+      // events::CreateView(vocbase.name(), name, res.errorNumber());
       TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
 
@@ -200,10 +207,13 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
 
     TRI_V8_RETURN(result);
   } catch (basics::Exception const& ex) {
+    events::CreateView(vocbase.name(), name, ex.code());
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
   } catch (std::exception const& ex) {
+    events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create view");
   }
   TRI_V8_TRY_CATCH_END
@@ -216,11 +226,13 @@ static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDangling()) {
+    events::DropView(vocbase.name(), "", TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   // we require exactly 1 string argument and an optional boolean argument
   if (args.Length() < 1 || args.Length() > 2) {
+    events::DropView(vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_EXCEPTION_USAGE("_dropView(<name> [, allowDropSystem])");
   }
 
@@ -256,12 +268,14 @@ static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
   if (view) {
     if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
+      events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "insufficient rights to drop view");
     }
 
     // prevent dropping of system views
     if (!allowDropSystem && view->system()) {
+      events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "insufficient rights to drop system view");
     }
@@ -271,6 +285,8 @@ static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
+  } else {
+    events::DropView(vocbase.name(), name, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -282,10 +298,11 @@ static void JS_DropViewVocbaseObj(v8::FunctionCallbackInfo<v8::Value> const& arg
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
-
+  auto& vocbase = GetContextVocBase(isolate);
   auto* view = UnwrapView(isolate, args.Holder());
 
   if (!view) {
+    events::DropView(vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
   }
 
@@ -315,12 +332,14 @@ static void JS_DropViewVocbaseObj(v8::FunctionCallbackInfo<v8::Value> const& arg
   // ...........................................................................
 
   if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
+    events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to drop view");
   }
 
   // prevent dropping of system views
   if (!allowDropSystem && view->system()) {
+    events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to drop system view");
   }

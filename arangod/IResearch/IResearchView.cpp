@@ -31,6 +31,7 @@
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -39,6 +40,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -146,6 +148,12 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
                    : IResearchLinkHelper::validateLinks(vocbase, links);
 
     if (!res.ok()) {
+      std::string name;
+      if (definition.isObject()) {
+        name = arangodb::basics::VelocyPackHelper::getStringValue(
+            definition, arangodb::StaticStrings::DataSourceName, "");
+      }
+      events::CreateView(vocbase.name(), name, res.errorNumber());
       return res;
     }
 
@@ -156,10 +164,22 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
               : arangodb::LogicalViewHelperClusterInfo::construct(impl, vocbase, definition);
 
     if (!res.ok()) {
+      std::string name;
+      if (definition.isObject()) {
+        name = arangodb::basics::VelocyPackHelper::getStringValue(
+            definition, arangodb::StaticStrings::DataSourceName, "");
+      }
+      events::CreateView(vocbase.name(), name, res.errorNumber());
       return res;
     }
 
     if (!impl) {
+      std::string name;
+      if (definition.isObject()) {
+        name = arangodb::basics::VelocyPackHelper::getStringValue(
+            definition, arangodb::StaticStrings::DataSourceName, "");
+      }
+      events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
       return arangodb::Result(TRI_ERROR_INTERNAL,
                               std::string(
                                   "failure during instantiation while creating "
@@ -167,7 +187,7 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
                                   vocbase.name() + "'");
     }
 
-    // create links on a best-effor basis
+    // create links on a best-effort basis
     // link creation failure does not cause view creation failure
     try {
       std::unordered_set<TRI_voc_cid_t> collections;
@@ -180,14 +200,34 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
       }
     } catch (arangodb::basics::Exception const& e) {
       IR_LOG_EXCEPTION();
+      std::string name;
+      if (definition.isObject()) {
+        name = arangodb::basics::VelocyPackHelper::getStringValue(
+            definition, arangodb::StaticStrings::DataSourceName, "");
+      }
+      events::CreateView(vocbase.name(), name, e.code());
       LOG_TOPIC("eddb2", WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while creating links while creating arangosearch view '" << impl->name() << "': " << e.code() << " " << e.what();
+          << "caught exception while creating links while creating "
+             "arangosearch view '"
+          << impl->name() << "': " << e.code() << " " << e.what();
     } catch (std::exception const& e) {
       IR_LOG_EXCEPTION();
+      std::string name;
+      if (definition.isObject()) {
+        name = arangodb::basics::VelocyPackHelper::getStringValue(
+            definition, arangodb::StaticStrings::DataSourceName, "");
+      }
+      events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
       LOG_TOPIC("dc829", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while creating links while creating arangosearch view '" << impl->name() << "': " << e.what();
     } catch (...) {
       IR_LOG_EXCEPTION();
+      std::string name;
+      if (definition.isObject()) {
+        name = arangodb::basics::VelocyPackHelper::getStringValue(
+            definition, arangodb::StaticStrings::DataSourceName, "");
+      }
+      events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
       LOG_TOPIC("6491c", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while creating links while creating arangosearch view '" << impl->name() << "'";
     }

@@ -33,6 +33,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -513,6 +514,7 @@ void RestCollectionHandler::handleCommandDelete() {
       });
 
   if (found.fail()) {
+    events::DropCollection(_vocbase.name(), name, found.errorNumber());
     generateError(found);
   } else if (res.fail()) {
     generateError(res);
