@@ -361,15 +361,12 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
                                 !_endpointsBlackList.empty(), _endpointsBlackListRegex);
 }
 
-bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* path,
+bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string const&  path,
                                               FSAccessType access) const {
-  // expects 0 terminated utf-8 string
-  TRI_ASSERT(path != nullptr);
-
-  return isAllowedToAccessPath(isolate, std::string(path), access);
+  return V8SecurityFeature::isAllowedToAccessPath(isolate, path.c_str(), access);
 }
 
-bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string path,
+bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* path,
                                               FSAccessType access) const {
   // check security context first
   TRI_GET_GLOBALS();
@@ -386,17 +383,18 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string 
   }
 
   // remove link
-  path = TRI_ResolveSymbolicLink(std::move(path));
+  std::string paths = TRI_ResolveSymbolicLink(path);
 
   // make absolute
   std::string cwd = FileUtils::currentDirectory().result();
   {
     auto absPath = std::unique_ptr<char, void (*)(char*)>(
-        TRI_GetAbsolutePath(path.c_str(), cwd.c_str()), &TRI_FreeString);
+        TRI_GetAbsolutePath(paths.c_str(), cwd.c_str()), &TRI_FreeString);
     if (absPath) {
-      path = std::string(absPath.get());
+      paths = std::string(absPath.get());
     }
   }
+  path = paths.c_str();
 
   if (access == FSAccessType::READ && std::regex_search(path, _readWhiteListRegex)) {
     // even in restricted contexts we may read module paths
