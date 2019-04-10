@@ -344,6 +344,11 @@ bool V8SecurityFeature::isAllowedToDefineHttpAction(v8::Isolate* isolate) const 
   return v8g != nullptr && v8g->_securityContext.canDefineHttpAction();
 }
 
+bool V8SecurityFeature::isInternalContext(v8::Isolate* isolate) const {
+  TRI_GET_GLOBALS();
+  return v8g != nullptr && v8g->_securityContext.isInternal();
+}
+
 bool V8SecurityFeature::shouldExposeStartupOption(v8::Isolate* isolate,
                                                   std::string const& name) const {
   return checkBlackAndWhiteList(name, !_startupOptionsWhiteList.empty(),

@@ -80,6 +80,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, FSAccessType access) const;
   bool disableFoxxApi(v8::Isolate* isolate) const;
   bool disableFoxxStore(v8::Isolate* isolate) const;
+  bool isInternalContext(v8::Isolate* isolate) const;
 
   void addToInternalReadWhiteList(char const* item);
 

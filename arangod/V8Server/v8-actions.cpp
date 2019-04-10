@@ -1077,6 +1077,14 @@ static void JS_ExecuteGlobalContextFunction(v8::FunctionCallbackInfo<v8::Value> 
     TRI_V8_THROW_TYPE_ERROR("<definition> must be a UTF-8 function definition");
   }
 
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+
+  if (v8security->isInternalContext(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "not allowed for restricted contexts");
+  }
+
   std::string const def = std::string(*utf8def, utf8def.length());
 
   // and pass it to the V8 contexts
