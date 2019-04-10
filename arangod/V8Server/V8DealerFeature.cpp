@@ -771,7 +771,7 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
   TRI_DEFER(unblockDynamicContextCreation());
 
   LOG_TOPIC("1364d", TRACE, Logger::V8) << "loading JavaScript file '" << file << "' in all ("
-                               << contexts.size() << ") V8 context";
+                               << contexts.size() << ") V8 contexts";
 
   // now safely scan the local copy of the contexts
   for (auto& context : contexts) {
