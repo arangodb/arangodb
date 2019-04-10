@@ -348,14 +348,11 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
     if (v8connection != nullptr) {
       if (v8connection->isConnected() &&
           v8connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
-        std::ostringstream is;
-
-        is << "Connected to ArangoDB '" << v8connection->endpointSpecification()
-           << "' version: " << v8connection->version() << " [" << v8connection->role() << ", "
-           << v8connection->mode() << "], database: '" << v8connection->databaseName()
-           << "', username: '" << v8connection->username() << "'";
-
-        _console->printLine(is.str());
+        std::string msg = ClientFeature::buildConnectedMessage(
+            v8connection->endpointSpecification(), v8connection->version(),
+            v8connection->role(), v8connection->mode(), v8connection->databaseName(),
+            v8connection->username());
+        _console->printLine(msg);
 
         if (v8connection->role() == "PRIMARY" || v8connection->role() == "DBSERVER") {
           std::string msg("WARNING: You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator");
