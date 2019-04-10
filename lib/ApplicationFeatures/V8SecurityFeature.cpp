@@ -52,66 +52,80 @@ V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& se
 
 void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
-  options->addOption(
-      "--server.harden",
-      "users will not be able to receive version information or change "
-      "the log level via the rest api. Admin users and servers without "
-      "authentication will be unaffected.",
-      new BooleanParameter(&_denyHardenedApi));
+  options->addOption("--server.harden",
+                     "users will not be able to receive version information or change "
+                     "the log level via the REST API. Admin users and servers without "
+                     "authentication will be unaffected.",
+                     new BooleanParameter(&_denyHardenedApi))
+                     .setIntroducedIn(30500);
 
   options->addSection("foxx", "Configure Foxx");
-  options->addOption("--foxx.disable-api", "disables Foxx management api",
-                     new BooleanParameter(&_disableFoxxApi));
-  options->addOption("--foxx.disable-store", "disables Foxx store in web-ui",
-                     new BooleanParameter(&_disableFoxxStore));
+  options->addOption("--foxx.disable-api", "disables Foxx management REST APIs",
+                     new BooleanParameter(&_disableFoxxApi))
+                     .setIntroducedIn(30500);
+  options->addOption("--foxx.disable-store", "disables Foxx store in web interface",
+                     new BooleanParameter(&_disableFoxxStore))
+                     .setIntroducedIn(30500);
 
   options->addSection("javascript", "Configure the Javascript engine");
-  options->addOption("--javascript.allow-port-testing", "allow testing of ports",
-                     new BooleanParameter(&_allowPortTesting));
+  options->addOption("--javascript.allow-port-testing", "allow testing of ports from within JavaScript actions",
+                     new BooleanParameter(&_allowPortTesting),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                    .setIntroducedIn(30500);
+
   options->addOption("--javascript.allow-external-process-control",
-                     "allow execution and control of external binaries.",
-                     new BooleanParameter(&_allowExecutionOfBinaries));
+                     "allow execution and control of external processes from within JavaScript actions",
+                     new BooleanParameter(&_allowExecutionOfBinaries),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30500);
+
   options->addOption("--javascript.harden",
-                     "disables javascript funtions: getPid(), "
+                     "disables access to JavaScript functions in the internal module: getPid(), "
                      "processStatistics() andl logLevel()",
-                     new BooleanParameter(&_denyHardenedJavaScript));
+                     new BooleanParameter(&_denyHardenedJavaScript))
+                     .setIntroducedIn(30500);
 
   options->addOption("--javascript.startup-options-white-list",
                      "startup options whose names match this regular "
                      "expression will be whitelisted and exposed to JavaScript",
-                     new VectorParameter<StringParameter>(&_startupOptionsWhiteListVec));
+                     new VectorParameter<StringParameter>(&_startupOptionsWhiteListVec))
+                     .setIntroducedIn(30500);
   options->addOption("--javascript.startup-options-black-list",
                      "startup options whose names match this regular "
                      "expression will not be exposed (if not whitelisted) to "
                      "JavaScript actions",
-                     new VectorParameter<StringParameter>(&_startupOptionsBlackListVec));
+                     new VectorParameter<StringParameter>(&_startupOptionsBlackListVec))
+                     .setIntroducedIn(30500);
 
   options->addOption("--javascript.environment-variables-white-list",
-                     "variables that will be accessible in JavaScript",
-                     new VectorParameter<StringParameter>(&_environmentVariablesWhiteListVec));
-  options->addOption(
-      "--javascript.environment-variables-black-list",
-      "variables that will be inaccessible in JavaScript if not white listed",
-      new VectorParameter<StringParameter>(&_environmentVariablesBlackListVec));
+                     "environment variables that will be accessible in JavaScript",
+                     new VectorParameter<StringParameter>(&_environmentVariablesWhiteListVec))
+                     .setIntroducedIn(30500);
+  options->addOption("--javascript.environment-variables-black-list",
+                     "environment variables that will be inaccessible in JavaScript if not whitelisted",
+                     new VectorParameter<StringParameter>(&_environmentVariablesBlackListVec))
+                     .setIntroducedIn(30500);
 
   options->addOption("--javascript.endpoints-white-list",
                      "endpoints that can be connected to via "
-                     "internal.download() in JavaScript actions",
-                     new VectorParameter<StringParameter>(&_endpointsWhiteListVec));
-  options->addOption(
-      "--javascript.endpoints-black-list",
-      "endpoints that cannot be connected to via internal.download() in "
-      "JavaScript actions if not white listed",
-      new VectorParameter<StringParameter>(&_endpointsBlackListVec));
+                     "@arangodb/request module in JavaScript actions",
+                     new VectorParameter<StringParameter>(&_endpointsWhiteListVec))
+                     .setIntroducedIn(30500);
+  options->addOption("--javascript.endpoints-black-list",
+                     "endpoints that cannot be connected to via @arangodb/request module in "
+                     "JavaScript actions if not whitelisted",
+                     new VectorParameter<StringParameter>(&_endpointsBlackListVec))
+                     .setIntroducedIn(30500);
 
   options->addOption("--javascript.files-white-list",
-                     "paths that will be accessible from within JavaScript in "
-                     "restricted contexts",
-                     new VectorParameter<StringParameter>(&_filesWhiteListVec));
+                     "filesystem paths that will be accessible from within JavaScript actions",
+                     new VectorParameter<StringParameter>(&_filesWhiteListVec))
+                     .setIntroducedIn(30500);
   options->addOption("--javascript.files-black-list",
-                     "paths that will be inaccessible from within JavaScript "
-                     "in restricted contexts if not white listed",
-                     new VectorParameter<StringParameter>(&_filesBlackListVec));
+                     "filesystem paths that will be inaccessible from within JavaScript actions "
+                     "if not whitelisted",
+                     new VectorParameter<StringParameter>(&_filesBlackListVec))
+                     .setIntroducedIn(30500);
 }
 
 namespace {
