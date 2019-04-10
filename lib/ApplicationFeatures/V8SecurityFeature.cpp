@@ -40,7 +40,7 @@ using namespace arangodb::options;
 
 V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "V8Security"),
-      _denyHardenedJavaScript(false),
+      _hardenInternalModule(false),
       _allowProcessControl(false),
       _allowPortTesting(false) {
   setOptional(false);
@@ -63,7 +63,7 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
   options->addOption("--javascript.harden",
                      "disables access to JavaScript functions in the internal module: getPid(), "
                      "processStatistics() andl logLevel()",
-                     new BooleanParameter(&_denyHardenedJavaScript))
+                     new BooleanParameter(&_hardenInternalModule))
                      .setIntroducedIn(30500);
 
   options->addOption("--javascript.startup-options-white-list",
@@ -317,8 +317,8 @@ bool V8SecurityFeature::isAllowedToTestPorts(v8::Isolate* isolate) const {
   return _allowPortTesting;
 }
 
-bool V8SecurityFeature::isDeniedHardenedJavaScript(v8::Isolate* isolate) const {
-  return _denyHardenedJavaScript;
+bool V8SecurityFeature::isInternalModuleHardenend(v8::Isolate* isolate) const {
+  return _hardenInternalModule;
 }
 
 bool V8SecurityFeature::isAllowedToDefineHttpAction(v8::Isolate* isolate) const {

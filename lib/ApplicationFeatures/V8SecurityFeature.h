@@ -52,7 +52,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
 
   /// @brief tests if in the current security context it is allowed to
   /// execute external binaries
-  bool isDeniedHardenedJavaScript(v8::Isolate* isolate) const;
+  bool isInternalModuleHardenend(v8::Isolate* isolate) const;
 
   /// @brief tests if in the current security context it is allowed to define
   /// additional HTTP REST actions
@@ -82,7 +82,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   void addToInternalReadWhiteList(char const* item);
 
  private:
-  bool _denyHardenedJavaScript;
+  bool _hardenInternalModule;
   bool _allowProcessControl;
   bool _allowPortTesting;
 
