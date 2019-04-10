@@ -529,23 +529,19 @@ void RocksDBHotBackupCreate::executeCreate() {
       std::string agencyDumpFileName = dirPathFinal + TRI_DIR_SEPARATOR_CHAR + "agency.json";
 
 #ifdef USE_ENTERPRISE
-      auto encryptFeature = application_features::ApplicationServer::lookupFeature<EncryptionFeature>("Encryption");
 
-      if (encryptFeature != nullptr) {
-        int fd = TRI_TRACKED_CREATE_FILE(agencyDumpFileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
-                                     S_IRUSR | S_IWUSR | S_IRGRP);
-        if (fd != -1) {
-          TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+      std::string encryptionKey = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->getEncryptionKey();
+      int fd = TRI_TRACKED_CREATE_FILE(agencyDumpFileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
+                                   S_IRUSR | S_IWUSR | S_IRGRP);
+      if (fd != -1) {
+        TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
 
-          std::string json = _agencyDump.toJson();
-          auto context = encryptFeature->beginEncryption(fd);
+        std::string json = _agencyDump.toJson();
+        auto context = EncryptionFeature::beginEncryption(fd, encryptionKey);
 
-          _success = encryptFeature->writeData(*context.get(), json.c_str(), json.size());
-        } else {
-          _success = false;
-        }
+        _success = EncryptionFeature::writeData(*context.get(), json.c_str(), json.size());
       } else {
-        basics::FileUtils::spit(agencyDumpFileName, _agencyDump.toJson(), true);
+        _success = false;
       }
 #else
       basics::FileUtils::spit(agencyDumpFileName, _agencyDump.toJson(), true);
