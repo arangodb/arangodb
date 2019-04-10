@@ -362,6 +362,7 @@ SET(ARANGOD_SOURCES
   GeneralServer/ListenTask.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
+  GeneralServer/ServerSecurityFeature.cpp
   GeneralServer/SocketSslTcp.cpp
   GeneralServer/SocketTask.cpp
   GeneralServer/Task.cpp

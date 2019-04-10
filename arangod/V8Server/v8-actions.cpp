@@ -35,6 +35,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
@@ -1641,12 +1642,44 @@ static void JS_DebugClearFailAt(v8::FunctionCallbackInfo<v8::Value> const& args)
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_DisableFoxxApi(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  ServerSecurityFeature* security =
+      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
+          "ServerSecurity");
+  TRI_ASSERT(security != nullptr);
+  TRI_V8_RETURN_BOOL(security->disableFoxxApi(isolate));
+
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_DisableFoxxStore(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  ServerSecurityFeature* security =
+      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
+          "ServerSecurity");
+  TRI_ASSERT(security != nullptr);
+  TRI_V8_RETURN_BOOL(security->disableFoxxStore(isolate));
+
+  TRI_V8_TRY_CATCH_END
+}
+
 void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   // debugging functions
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_DEBUG_CLEAR_FAILAT"),
                                JS_DebugClearFailAt);
+
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_DISABLE_FOXX_API"), JS_DisableFoxxApi);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_DISABLE_FOXX_STORE"), JS_DisableFoxxStore);
+
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_DEBUG_SEGFAULT"), JS_DebugSegfault);
