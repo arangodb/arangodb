@@ -3,7 +3,7 @@ devel
 
 * added options to make server more secure:
   `--server.harden`: denies version and changing log levels via rest api
-  `--foxx.api`: set to false disables Foxx amangment api
+  `--foxx.api`: set to false disables Foxx management API
   `--foxx.store`: set to false disables Foxx UI
   `--javascript.allow-port-testing`: enables internal.testPort()
   `--javascript.allow-external-process-control`: enables external process control
