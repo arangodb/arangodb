@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print */
+/* global print, params */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -49,9 +49,6 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const functionsDocumentation = {
   'permissions_server': 'permissions test for the server'
 };
-const optionsDocumentation = [
-  '   - `skipShebang`: if set, the shebang tests are skipped.'
-];
 
 const testPaths = {
   'permissions_server': [tu.pathForTesting('server/permissions')]
@@ -70,12 +67,10 @@ function permissions_server(options) {
   let paramsSecondRun = {'javascript.allow-port-testing':false };
 
   let instanceInfo = pu.startInstance(options.protocol, options, paramsFistRun, "permissions_server"); // fist start
-  // geiles setup
   pu.shutdownInstance(instanceInfo, clonedOpts, false);                                     // stop
   pu.reStartInstance(options, instanceInfo, paramsSecondRun);      // restart with restricted permissions
-  // geile tests
   pu.shutdownInstance(instanceInfo, clonedOpts, false);
-  return  { failed: 0 };
+  return { failed: 0 };
 }
 
 function doxx_xxx(options) {
@@ -142,10 +137,6 @@ function doxx_xxx(options) {
     params.setup,
     !params.setup && params.options.coreCheck);
 
-
-
-
-
   let res = {};
   let filtered = {};
   let rootDir = fs.join(fs.getTempPath(), 'permissions');
@@ -182,5 +173,4 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   Object.assign(allTestPaths, testPaths);
   testFns['permissions_server'] = permissions_server;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 };

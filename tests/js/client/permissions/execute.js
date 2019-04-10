@@ -68,50 +68,42 @@ function testSuite() {
       }
       try {
         let rv = statusExternal(env['PID']);
-        print(rv);
         fail();
       } catch (err) {
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
       }
       try {
         let rv = killExternal(env['PID']);
-        print(rv);
         fail();
       } catch (err) {
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
       }
       try {
         let rv = getExternalSpawned();
-        print(rv);
         fail();
       } catch (err) {
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
       }
       try {
         let rv = processStatistics();
-        print(rv);
         fail();
       } catch (err) {
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
       }
       try {
         let rv = getPid();
-        print(rv);
         fail();
       } catch (err) {
-        print(err)
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
       }
       try {
         let rv = suspendExternal(env['PID']);
-        print(rv);
         fail();
       } catch (err) {
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
       }
       try {
         let rv = continueExternal(env['PID']);
-        print(rv);
         fail();
       } catch (err) {
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
