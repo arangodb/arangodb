@@ -41,7 +41,7 @@ ServerSecurityFeature::ServerSecurityFeature(application_features::ApplicationSe
     : ApplicationFeature(server, "ServerSecurity"),
       _enableFoxxApi(true),
       _enableFoxxStore(true),
-      _denyHardenedApi(false) {
+      _hardenedRestApi(false) {
   setOptional(false);
   startsAfter("ServerPlatform");
 }
@@ -52,7 +52,7 @@ void ServerSecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
                      "users will not be able to receive version information or change "
                      "the log level via the REST API. Admin users and servers without "
                      "authentication will be unaffected.",
-                     new BooleanParameter(&_denyHardenedApi))
+                     new BooleanParameter(&_hardenedRestApi))
                      .setIntroducedIn(30500);
 
   options->addSection("foxx", "Configure Foxx");
@@ -71,16 +71,16 @@ void ServerSecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
 void ServerSecurityFeature::start() {
 }
 
-bool ServerSecurityFeature::disableFoxxApi(v8::Isolate* isolate) const {
+bool ServerSecurityFeature::isFoxxApiDisabled(v8::Isolate* isolate) const {
   return !_enableFoxxApi;
 }
 
-bool ServerSecurityFeature::disableFoxxStore(v8::Isolate* isolate) const {
+bool ServerSecurityFeature::isFoxxStoreDisabled(v8::Isolate* isolate) const {
   return !_enableFoxxStore;
 }
 
-bool ServerSecurityFeature::isDeniedHardenedApi(v8::Isolate* isolate) const {
-  return _denyHardenedApi;
+bool ServerSecurityFeature::isRestApiHardenend(v8::Isolate* isolate) const {
+  return _hardenedRestApi;
 }
 
 bool ServerSecurityFeature::isInternalContext(v8::Isolate* isolate) const {

@@ -118,8 +118,8 @@ function resolveAppInfo (appInfo, refresh) {
   return {source: appInfo};
 }
 
-// disable foxx manager routes / foxx-cli when disableFoxxApi
-if(!require("internal").disableFoxxApi()){
+// disable foxx manager routes / foxx-cli when foxx api is disabled
+if(!require("internal").isFoxxApiDisabled()){
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief sets up a Foxx service

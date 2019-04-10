@@ -568,7 +568,7 @@ function _prepareService (serviceInfo, legacy = false) {
         _buildServiceFromFile(tempServicePath, tempBundlePath, serviceInfo);
       }
     } else {
-      !internal.disableFoxxApi() && store.installationInfo(serviceInfo);  //disable foxx store
+      !internal.isFoxxApiDisabled() && store.installationInfo(serviceInfo);  //disable foxx store
       if (!info) {
         throw new ArangoError({
           errorNum: errors.ERROR_SERVICE_SOURCE_NOT_FOUND.code,

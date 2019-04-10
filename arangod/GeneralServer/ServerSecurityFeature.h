@@ -40,15 +40,15 @@ class ServerSecurityFeature final : public application_features::ApplicationFeat
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
 
-  bool isDeniedHardenedApi(v8::Isolate* isolate) const;
-  bool disableFoxxApi(v8::Isolate* isolate) const;
-  bool disableFoxxStore(v8::Isolate* isolate) const;
+  bool isRestApiHardenend(v8::Isolate* isolate) const;
+  bool isFoxxApiDisabled(v8::Isolate* isolate) const;
+  bool isFoxxStoreDisabled(v8::Isolate* isolate) const;
   bool isInternalContext(v8::Isolate* isolate) const;
 
  private:
   bool _enableFoxxApi;
   bool _enableFoxxStore;
-  bool _denyHardenedApi;
+  bool _hardenedRestApi;
 };
 
 }  // namespace arangodb
