@@ -1013,7 +1013,7 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback) 
     }
 
     auto in = _dataStore._directory->open( // open checkpoint file
-      checkpointFile, irs::IOAdvice::READONCE_SEQUENTIAL // args
+      checkpointFile, irs::IOAdvice::NORMAL // args, use 'NORMAL' since the file could be empty
     );
 
     if (!in) {

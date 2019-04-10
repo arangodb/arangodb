@@ -53,7 +53,7 @@ RestStatus RestAdminLogHandler::execute() {
           "ServerSecurity");
     TRI_ASSERT(security != nullptr);
 
-    bool allowToChangeLogLevel = !security->isRestApiHardenend(nullptr);
+    bool allowToChangeLogLevel = !security->isRestApiHardened(nullptr);
 
     ExecContext const* exec = ExecContext::CURRENT;
     if (exec == nullptr || exec->isAdminUser()) {

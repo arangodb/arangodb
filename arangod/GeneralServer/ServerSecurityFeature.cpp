@@ -79,7 +79,7 @@ bool ServerSecurityFeature::isFoxxStoreDisabled(v8::Isolate* isolate) const {
   return !_enableFoxxStore;
 }
 
-bool ServerSecurityFeature::isRestApiHardenend(v8::Isolate* isolate) const {
+bool ServerSecurityFeature::isRestApiHardened(v8::Isolate* isolate) const {
   return _hardenedRestApi;
 }
 

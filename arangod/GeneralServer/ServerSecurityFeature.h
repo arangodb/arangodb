@@ -40,7 +40,7 @@ class ServerSecurityFeature final : public application_features::ApplicationFeat
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
 
-  bool isRestApiHardenend(v8::Isolate* isolate) const;
+  bool isRestApiHardened(v8::Isolate* isolate) const;
   bool isFoxxApiDisabled(v8::Isolate* isolate) const;
   bool isFoxxStoreDisabled(v8::Isolate* isolate) const;
   bool isInternalContext(v8::Isolate* isolate) const;

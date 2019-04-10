@@ -430,8 +430,8 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
                              nullptr, nullptr, arangodb::aql::PART_MAIN);
   auto parseResult = query.parse();
 
-  if (parseResult.code != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_FULL(parseResult.code, parseResult.details);
+  if (parseResult.result.fail()) {
+    TRI_V8_THROW_EXCEPTION_FULL(parseResult.result.errorNumber(), parseResult.result.errorMessage());
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -458,7 +458,7 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "ast"),
-              TRI_VPackToV8(isolate, parseResult.result->slice()));
+              TRI_VPackToV8(isolate, parseResult.data->slice()));
 
   if (parseResult.extra == nullptr ||
       !parseResult.extra->slice().hasKey("warnings")) {
@@ -530,19 +530,19 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
                              bindVars, options, arangodb::aql::PART_MAIN);
   auto queryResult = query.explain();
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_FULL(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(), queryResult.result.errorMessage());
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  if (queryResult.result != nullptr) {
+  if (queryResult.data != nullptr) {
     if (query.queryOptions().allPlans) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "plans"),
-                  TRI_VPackToV8(isolate, queryResult.result->slice()));
+                  TRI_VPackToV8(isolate, queryResult.data->slice()));
     } else {
       result->Set(TRI_V8_ASCII_STRING(isolate, "plan"),
-                  TRI_VPackToV8(isolate, queryResult.result->slice()));
+                  TRI_VPackToV8(isolate, queryResult.data->slice()));
       result->Set(TRI_V8_ASCII_STRING(isolate, "cacheable"),
                   v8::Boolean::New(isolate, queryResult.cached));
     }
@@ -617,15 +617,15 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   aql::QueryResult queryResult =
       query.executeSync(static_cast<arangodb::aql::QueryRegistry*>(queryRegistry));
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_FULL(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(), queryResult.result.errorMessage());
   }
 
   // return the array value as it is. this is a performance optimization
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  if (queryResult.result != nullptr) {
+  if (queryResult.data != nullptr) {
     result->Set(TRI_V8_ASCII_STRING(isolate, "json"),
-                TRI_VPackToV8(isolate, queryResult.result->slice(),
+                TRI_VPackToV8(isolate, queryResult.data->slice(),
                               queryResult.context->getVPackOptions()));
   }
   if (queryResult.extra != nullptr) {
@@ -727,21 +727,21 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     ss->waitForAsyncResponse();
   }
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED) {
+  if (queryResult.result.fail()) {
+    if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED)) {
       TRI_GET_GLOBALS();
       v8g->_canceled = true;
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
 
-    TRI_V8_THROW_EXCEPTION_FULL(queryResult.code, queryResult.details);
+    TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(), queryResult.result.errorMessage());
   }
 
   // return the array value as it is. this is a performance optimization
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  if (!queryResult.result.IsEmpty()) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "json"), queryResult.result);
+  if (!queryResult.data.IsEmpty()) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "json"), queryResult.data);
   }
 
   if (queryResult.extra != nullptr) {

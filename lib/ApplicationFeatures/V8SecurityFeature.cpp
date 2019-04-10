@@ -317,7 +317,7 @@ bool V8SecurityFeature::isAllowedToTestPorts(v8::Isolate* isolate) const {
   return _allowPortTesting;
 }
 
-bool V8SecurityFeature::isInternalModuleHardenend(v8::Isolate* isolate) const {
+bool V8SecurityFeature::isInternalModuleHardened(v8::Isolate* isolate) const {
   return _hardenInternalModule;
 }
 
