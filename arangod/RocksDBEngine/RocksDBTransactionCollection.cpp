@@ -163,6 +163,14 @@ void RocksDBTransactionCollection::unuse(int nestingLevel) {
 }
 
 void RocksDBTransactionCollection::release() {
+  // questionable, but seems to work
+  if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
+      _transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+    TRI_ASSERT(!_usageLocked);
+    _collection = nullptr;
+    return;
+  }
+
   if (isLocked()) {
     // unlock our own r/w locks
     doUnlock(_accessType, 0);
@@ -178,7 +186,6 @@ void RocksDBTransactionCollection::release() {
       _transaction->vocbase().releaseCollection(_collection.get());
       _usageLocked = false;
     }
-
     _collection = nullptr;
   } else {
     TRI_ASSERT(!_usageLocked);
@@ -225,7 +232,7 @@ void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
   }
 }
 
-void RocksDBTransactionCollection::commitCounts(uint64_t trxId, uint64_t commitSeq) {
+void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq) {
   TRI_ASSERT(_collection != nullptr);
 
   // Update the collection count
@@ -269,14 +276,14 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId, uint64_t commitS
   _trackedIndexOperations.clear();
 }
 
-void RocksDBTransactionCollection::trackIndexInsert(uint64_t idxObjectId, uint64_t hash) {
+void RocksDBTransactionCollection::trackIndexInsert(TRI_idx_iid_t iid, uint64_t hash) {
   // First list is Inserts
-  _trackedIndexOperations[idxObjectId].inserts.emplace_back(hash);
+  _trackedIndexOperations[iid].inserts.emplace_back(hash);
 }
 
-void RocksDBTransactionCollection::trackIndexRemove(uint64_t idxObjectId, uint64_t hash) {
+void RocksDBTransactionCollection::trackIndexRemove(TRI_idx_iid_t iid, uint64_t hash) {
   // Second list is Removes
-  _trackedIndexOperations[idxObjectId].removals.emplace_back(hash);
+  _trackedIndexOperations[iid].removals.emplace_back(hash);
 }
 
 /// @brief lock a collection

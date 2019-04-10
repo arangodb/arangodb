@@ -838,19 +838,17 @@ function dumpAgency(instanceInfo, options) {
     let agencyReply = download(arangod.url + path, method === 'POST' ? '[["/"]]' : '', opts);
     if (agencyReply.code === 200) {
       let agencyValue = JSON.parse(agencyReply.body);
-      print(JSON.stringify(agencyValue));
       fs.write(fs.join(options.testOutputDirectory, fn + '_' + arangod.pid + ".json"), JSON.stringify(agencyValue, null, 2));
-    }
-    else {
+    } else {
       print(agencyReply);
     }
   }
   instanceInfo.arangods.forEach((arangod) => {
     if (arangod.role === "agent") {
       if (arangod.hasOwnProperty('exitStatus')) {
-        print(Date() + " this agent is already dead: " + arangod);
+        print(Date() + " this agent is already dead: " + JSON.stringify(arangod));
       } else {
-        print(Date() + " Attempting to dump Agent: " + arangod);
+        print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod));
         dumpAgent(arangod, '/_api/agency/config', 'GET', 'agencyConfig');
 
         dumpAgent(arangod, '/_api/agency/state', 'GET', 'agencyState');
@@ -1052,6 +1050,7 @@ function shutdownArangod (arangod, options, forceTerminate) {
     } else {
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
+      requestOptions.timeout = 60; // 60 seconds hopefully are enough for getting a response
       print(Date() + ' ' + arangod.url + '/_admin/shutdown');
       let sockStat = getSockStat(arangod, options, "Sock stat for: ");
       const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
@@ -1152,6 +1151,9 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     timeout *= 2;
   }
 
+  if ((toShutdown.length > 0) && (options.cluster === true)) {
+    dumpAgency(instanceInfo, options);
+  }
   var shutdownTime = internal.time();
   while (toShutdown.length > 0) {
     toShutdown = toShutdown.filter(arangod => {

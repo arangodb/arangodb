@@ -61,7 +61,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   uint64_t messageId() const;
 
   GeneralRequest const* request() const { return _request.get(); }
-  std::unique_ptr<GeneralRequest> stealRequest() { return std::move(_request); }
 
   GeneralResponse* response() const { return _response.get(); }
   std::unique_ptr<GeneralResponse> stealResponse() {

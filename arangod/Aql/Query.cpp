@@ -277,6 +277,14 @@ void Query::setExecutionTime() {
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
   }
 }
+    
+/// @brief increase number of HTTP requests. this is normally
+/// called during the setup of a query
+void Query::incHttpRequests(size_t requests) {
+  if (_engine != nullptr) {
+    _engine->_stats.requests += requests;
+  }
+}
 
 /// @brief register an error, with an optional parameter inserted into printf
 /// this also makes the query abort
@@ -304,6 +312,10 @@ void Query::registerErrorCustom(int code, char const* details) {
   errorMessage.append(details);
 
   THROW_ARANGO_EXCEPTION_MESSAGE(code, errorMessage);
+}
+
+void Query::registerWarning(int code, std::string const& details) {
+  registerWarning(code, details.c_str());
 }
 
 /// @brief register a warning

@@ -34,6 +34,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/StandaloneContext.h"
 
 using namespace arangodb;
 
@@ -47,7 +48,7 @@ using namespace arangodb::consensus;
 
 RestAgencyHandler::RestAgencyHandler(GeneralRequest* request,
                                      GeneralResponse* response, Agent* agent)
-    : RestBaseHandler(request, response), _agent(agent) {}
+    : RestVocbaseBaseHandler(request, response), _agent(agent) {}
 
 inline RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
   LOG_TOPIC("46536", WARN, Logger::AGENCY)
@@ -562,19 +563,12 @@ RestStatus RestAgencyHandler::handleConfig() {
 RestStatus RestAgencyHandler::handleState() {
 
   VPackBuilder body;
-  body.add(VPackValue(VPackValueType::Array));
-  for (auto const& i : _agent->state().get()) {
-    body.add(VPackValue(VPackValueType::Object));
-    body.add("index", VPackValue(i.index));
-    body.add("term", VPackValue(i.term));
-    if (i.entry != nullptr) {
-      body.add("query", VPackSlice(i.entry->data()));
-    }
-    body.add("clientId", VPackValue(i.clientId));
-    body.close();
+  { 
+    VPackObjectBuilder o(&body);
+    _agent->readDB(body);
   }
-  body.close();
-  generateResult(rest::ResponseCode::OK, body.slice());
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  generateResult(rest::ResponseCode::OK, body.slice(), ctx->getVPackOptionsForDump());
   return RestStatus::DONE;
 }
 

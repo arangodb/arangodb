@@ -185,6 +185,8 @@ class RocksDBEngine final : public StorageEngine {
                              ) const override {
     return std::string();  // no path to be returned here
   }
+  
+  void cleanupReplicationContexts() override;
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                          int& status) override;
@@ -344,6 +346,7 @@ class RocksDBEngine final : public StorageEngine {
   void prepareEnterprise();
   void startEnterprise();
   void configureEnterpriseRocksDBOptions(rocksdb::Options& options);
+  void validateJournalFiles() const;
 
   enterprise::RocksDBEngineEEData _eeData;
 #endif

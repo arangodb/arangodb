@@ -86,7 +86,6 @@ VstCommTask::VstCommTask(GeneralServer& server, GeneralServer::IoContext& contex
       GeneralCommTask(server, context, std::move(socket), std::move(info), timeout, skipInit),
       _authorized(!_auth->isActive()),
       _authMethod(rest::AuthenticationMethod::NONE),
-      _authenticatedUser(),
       _protocolVersion(protocolVersion) {
   _protocol = "vst";
 
@@ -290,16 +289,15 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header, uint64_t messageId)
     LOG_TOPIC("01f44", ERR, Logger::REQUESTS) << "Unknown VST encryption type";
   }
 
-  auto entry = _auth->tokenCache().checkAuthentication(_authMethod, authString);
-  _authorized = entry.authenticated();
+  _authToken = _auth->tokenCache().checkAuthentication(_authMethod, authString);
+  _authorized = _authToken.authenticated();
 
   if (_authorized || !_auth->isActive()) {
-    _authenticatedUser = std::move(entry._username);
     // simon: drivers expect a response for their auth request
     addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, messageId,
                      TRI_ERROR_NO_ERROR, "auth successful");
   } else {
-    _authenticatedUser.clear();
+    _authToken = auth::TokenCache::Entry::Unauthenticated();
     addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK,
                      messageId, TRI_ERROR_HTTP_UNAUTHORIZED);
   }
@@ -381,11 +379,11 @@ bool VstCommTask::processRead(double startTime) {
       auto req = std::make_unique<VstRequest>(_connectionInfo, std::move(message),
                                               chunkHeader._messageID);
       req->setAuthenticated(_authorized);
-      req->setUser(_authenticatedUser);
+      req->setUser(_authToken._username);
       req->setAuthenticationMethod(_authMethod);
       if (_authorized && _auth->userManager() != nullptr) {
         // if we don't call checkAuthentication we need to refresh
-        _auth->userManager()->refreshUser(_authenticatedUser);
+        _auth->userManager()->refreshUser(_authToken._username);
       }
 
       RequestFlow cont = prepareExecution(*req.get());

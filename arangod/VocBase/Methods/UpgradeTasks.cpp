@@ -281,11 +281,6 @@ bool UpgradeTasks::setupAqlFunctions(TRI_vocbase_t& vocbase,
   return ::createSystemCollection(vocbase, "_aqlfunctions");
 }
 
-bool UpgradeTasks::createFrontend(TRI_vocbase_t& vocbase,
-                                  arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(vocbase, "_frontend");
-}
-
 bool UpgradeTasks::setupQueues(TRI_vocbase_t& vocbase,
                                arangodb::velocypack::Slice const& slice) {
   return ::createSystemCollection(vocbase, "_queues");

@@ -2310,6 +2310,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
+  // 0.0 means using the default timeout (whatever that is)
   double ttl = VelocyPackHelper::getNumericValue(ttlSlice, 0.0);
 
   if (col->getStatusLocked() != TRI_VOC_COL_STATUS_LOADED) {
@@ -2727,12 +2728,16 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   // is not responsible anymore, it has been handed over to the
   // registry.
   auto q = query.release();
+
   // Make sure to return the query after we are done
-  TRI_DEFER(queryRegistry->close(&_vocbase, id));
+  auto guard = scopeGuard([this, id, &queryRegistry]() {
+    queryRegistry->close(&_vocbase, id);
+  });
 
   if (isTombstoned(id)) {
     try {
-      // Code does not matter, read only access, so we can roll back.
+      guard.fire();
+      // error code does not matter, read only access, so we can roll back.
       // we can ignore the openness here, as it was our thread that had
       // inserted the query just a couple of instructions before
       queryRegistry->destroy(_vocbase.name(), id, TRI_ERROR_QUERY_KILLED, true /*ignoreOpened*/);
@@ -2756,6 +2761,9 @@ ResultT<bool> RestReplicationHandler::isLockHeld(aql::QueryId id) const {
   auto queryRegistry = QueryRegistryFeature::registry();
   if (queryRegistry == nullptr) {
     return ResultT<bool>::error(TRI_ERROR_SHUTTING_DOWN);
+  }
+  if (_vocbase.isDropped()) {
+    return ResultT<bool>::error(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   auto res = queryRegistry->isQueryInUse(&_vocbase, id);
   if (!res.ok()) {

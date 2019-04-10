@@ -75,7 +75,7 @@ arangodb::Result writeSettings(rocksdb::WriteBatch& batch, VPackBuilder& b, uint
   b.close();
 
   VPackSlice slice = b.slice();
-  LOG_TOPIC("f5e34", TRACE, Logger::ENGINES) << "writing settings: " << slice.toJson();
+  LOG_TOPIC("f5e34", DEBUG, Logger::ENGINES) << "writing settings: " << slice.toJson();
 
   RocksDBKey key;
   key.constructSettingsValue(RocksDBSettingsType::ServerTick);
@@ -146,7 +146,7 @@ Result RocksDBSettingsManager::sync(bool force) {
 
   // fetch the seq number prior to any writes; this guarantees that we save
   // any subsequent updates in the WAL to replay if we crash in the middle
-  auto maxSeqNr = _db->GetLatestSequenceNumber();
+  auto const maxSeqNr = _db->GetLatestSequenceNumber();
   auto minSeqNr = maxSeqNr;
 
   rocksdb::TransactionOptions opts;
@@ -158,6 +158,7 @@ Result RocksDBSettingsManager::sync(bool force) {
 
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
   auto dbfeature = arangodb::DatabaseFeature::DATABASE;
+  TRI_ASSERT(!engine->inRecovery()); // just don't
 
   bool didWork = false;
   auto mappings = engine->collectionMappings();
@@ -180,7 +181,7 @@ Result RocksDBSettingsManager::sync(bool force) {
     TRI_DEFER(vocbase->releaseCollection(coll.get()));
 
     auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
-    rocksdb::SequenceNumber appliedSeq = minSeqNr;
+    rocksdb::SequenceNumber appliedSeq = maxSeqNr;
     Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder, appliedSeq);
     minSeqNr = std::min(minSeqNr, appliedSeq);
 
@@ -208,7 +209,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   }
 
   _tmpBuilder.clear();
-  Result res = writeSettings(batch, _tmpBuilder, minSeqNr);
+  Result res = writeSettings(batch, _tmpBuilder, std::max(_lastSync, minSeqNr));
   if (res.fail()) {
     LOG_TOPIC("8a5e6", WARN, Logger::ENGINES)
         << "could not store metadata settings " << res.errorMessage();
@@ -219,7 +220,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   auto s = _db->Write(wo, &batch);
   if (s.ok()) {
     WRITE_LOCKER(guard, _rwLock);
-    _lastSync = minSeqNr;
+    _lastSync = std::max(_lastSync, minSeqNr);
   }
 
   return rocksutils::convertStatus(s);

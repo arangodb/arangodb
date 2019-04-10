@@ -40,7 +40,7 @@ uint8_t const* MMFilesIndexLookupContext::lookup(LocalDocumentId token) const {
   try {
     uint8_t const* vpack = static_cast<MMFilesCollection*>(_collection->getPhysical())->lookupDocumentVPack(token);
     if (vpack != nullptr && _result != nullptr) {
-      _result->setUnmanaged(vpack, token);
+      _result->setUnmanaged(vpack);
     }
     return vpack;
   } catch (...) {

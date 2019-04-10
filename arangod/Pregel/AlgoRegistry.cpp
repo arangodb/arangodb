@@ -74,13 +74,13 @@ IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm, VPackSli
 }
 
 template <typename V, typename E, typename M>
-/*static*/ std::unique_ptr<IWorker> AlgoRegistry::createWorker(TRI_vocbase_t& vocbase,
+/*static*/ std::shared_ptr<IWorker> AlgoRegistry::createWorker(TRI_vocbase_t& vocbase,
                                                                Algorithm<V, E, M>* algo,
                                                                VPackSlice body) {
-  return std::make_unique<Worker<V, E, M>>(vocbase, algo, body);
+  return std::make_shared<Worker<V, E, M>>(vocbase, algo, body);
 }
 
-/*static*/ std::unique_ptr<IWorker> AlgoRegistry::createWorker(TRI_vocbase_t& vocbase,
+/*static*/ std::shared_ptr<IWorker> AlgoRegistry::createWorker(TRI_vocbase_t& vocbase,
                                                                VPackSlice body) {
   VPackSlice algoSlice = body.get(Utils::algorithmKey);
 

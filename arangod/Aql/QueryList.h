@@ -198,6 +198,8 @@ class QueryList {
   /// @brief clear the list of slow queries
   void clearSlow();
 
+  size_t count();
+
  private:
   std::string extractQueryString(Query const* query, size_t maxLength) const;
 

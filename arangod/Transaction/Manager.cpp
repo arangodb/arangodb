@@ -163,14 +163,20 @@ Manager::ManagedTrx::~ManagedTrx() {
     delete state;
     return;
   }
-  transaction::Options opts;
-  auto ctx = std::make_shared<transaction::ManagedContext>(2, state, AccessMode::Type::NONE);
-  MGMethods trx(ctx, opts); // own state now
-  trx.begin();
-  TRI_ASSERT(state->nestingLevel() == 1);
-  state->decreaseNesting();
-  TRI_ASSERT(state->isTopLevelTransaction());
-  trx.abort();
+
+  try {
+    transaction::Options opts;
+    auto ctx = std::make_shared<transaction::ManagedContext>(2, state, AccessMode::Type::NONE);
+    MGMethods trx(ctx, opts); // own state now
+    trx.begin();
+    TRI_ASSERT(state->nestingLevel() == 1);
+    state->decreaseNesting();
+    TRI_ASSERT(state->isTopLevelTransaction());
+    trx.abort();
+  } catch (...) {
+    // obviously it is not good to consume all exceptions here,
+    // but we are in a destructor and must never throw from here
+  }
 }
   
 using namespace arangodb;
@@ -605,7 +611,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
   trx.state()->decreaseNesting();
   TRI_ASSERT(trx.state()->isTopLevelTransaction());
   if (clearServers) {
-    state->clearKnownServers();
+    trx.state()->clearKnownServers();
   }
   if (status == transaction::Status::COMMITTED) {
     res = trx.commit();

@@ -39,6 +39,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/Function.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
 #include "Aql/KShortestPathsNode.h"
@@ -59,7 +60,6 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
-#include "IResearch/IResearchViewNode.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -1112,6 +1112,15 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
   }
 }
 
+RegisterId ExecutionNode::varToRegUnchecked(Variable const& var) const {
+  std::unordered_map<VariableId, VarInfo> const& varInfo = getRegisterPlan()->varInfo;
+  auto const it = varInfo.find(var.id);
+  TRI_ASSERT(it != varInfo.end());
+  RegisterId const reg = it->second.registerId;
+
+  return reg;
+}
+
 /// @brief replace a dependency, returns true if the pointer was found and
 /// replaced, please note that this does not delete oldNode!
 bool ExecutionNode::replaceDependency(ExecutionNode* oldNode, ExecutionNode* newNode) {
@@ -1229,6 +1238,34 @@ RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
   RegisterId rv = it->second.registerId;
   TRI_ASSERT(rv < ExecutionNode::MaxRegisterId);
   return rv;
+}
+
+// This is the general case and will not work if e.g. there is no predecessor.
+ExecutorInfos ExecutionNode::createRegisterInfos(
+    std::shared_ptr<std::unordered_set<RegisterId>>&& readableInputRegisters,
+    std::shared_ptr<std::unordered_set<RegisterId>>&& writableOutputRegisters) const {
+  RegisterId const nrOutRegs = getNrOutputRegisters();
+  RegisterId const nrInRegs = getNrInputRegisters();
+
+  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
+  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+
+  return ExecutorInfos{std::move(readableInputRegisters),
+                       std::move(writableOutputRegisters),
+                       nrInRegs,
+                       nrOutRegs,
+                       std::move(regsToClear),
+                       std::move(regsToKeep)};
+}
+
+RegisterId ExecutionNode::getNrInputRegisters() const {
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  return getRegisterPlan()->nrRegs[previousNode->getDepth()];
+}
+
+RegisterId ExecutionNode::getNrOutputRegisters() const {
+  return getRegisterPlan()->nrRegs[getDepth()];
 }
 
 /// @brief creates corresponding ExecutionBlock

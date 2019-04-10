@@ -10,6 +10,7 @@ The following methods exist on the collection object (returned by *db.name*):
 * [collection.count()](../../DataModeling/Documents/DocumentMethods.md#count)
 * [collection.drop()](../../DataModeling/Collections/CollectionMethods.md#drop)
 * [collection.figures()](../../DataModeling/Collections/CollectionMethods.md#figures)
+* [collection.getResponsibleShard()](../../DataModeling/Collections/CollectionMethods.md#getresponsibleshard)
 * [collection.load()](../../DataModeling/Collections/CollectionMethods.md#load)
 * [collection.properties(options)](../../DataModeling/Collections/CollectionMethods.md#properties)
 * [collection.revision()](../../DataModeling/Collections/CollectionMethods.md#revision)

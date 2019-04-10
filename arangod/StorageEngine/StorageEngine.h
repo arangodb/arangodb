@@ -161,7 +161,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) = 0;
 
-  //// operations on databasea
+  //// operations on databases
 
   /// @brief opens a database
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::velocypack::Slice const& args,
@@ -337,6 +337,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void addRestHandlers(rest::RestHandlerFactory& handlerFactory) {}
 
   // replication
+  virtual void cleanupReplicationContexts() = 0;
+
   virtual velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                                  int& status) = 0;
   virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(int&) = 0;
