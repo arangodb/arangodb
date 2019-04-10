@@ -338,6 +338,7 @@ class ApplicationServer {
 
   // stop flag. this is being changed by calling beginShutdown
   std::atomic<bool> _stopping;
+  std::atomic<bool> _beginStopping;
 
   // whether or not privileges have been dropped permanently
   bool _privilegesDropped = false;

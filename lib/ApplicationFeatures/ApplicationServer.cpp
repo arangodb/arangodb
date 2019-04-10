@@ -253,28 +253,30 @@ void ApplicationServer::run(int argc, char* argv[]) {
 void ApplicationServer::beginShutdown() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
 
-  bool old = _stopping.exchange(true);
+  bool old = _beginStopping.exchange(true);
+  if (old) {
+    return ;
+  }
 
   // fowards the begin shutdown signal to all features
-  if (!old) {
-    for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
-      if ((*it)->isEnabled()) {
-        LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
-        try {
-          (*it)->beginShutdown();
-        } catch (std::exception const& ex) {
-          LOG_TOPIC(ERR, Logger::STARTUP)
-              << "caught exception during beginShutdown of feature '"
-              << (*it)->name() << "': " << ex.what();
-        } catch (...) {
-          LOG_TOPIC(ERR, Logger::STARTUP)
-              << "caught unknown exception during beginShutdown of feature '"
-              << (*it)->name() << "'";
-        }
+  for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
+    if ((*it)->isEnabled()) {
+      LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
+      try {
+        (*it)->beginShutdown();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC(ERR, Logger::STARTUP)
+            << "caught exception during beginShutdown of feature '"
+            << (*it)->name() << "': " << ex.what();
+      } catch (...) {
+        LOG_TOPIC(ERR, Logger::STARTUP)
+            << "caught unknown exception during beginShutdown of feature '"
+            << (*it)->name() << "'";
       }
     }
   }
 
+  _stopping.store(true);
   CONDITION_LOCKER(guard, _shutdownCondition);
   guard.signal();
 }
