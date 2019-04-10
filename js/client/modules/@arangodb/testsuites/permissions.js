@@ -54,11 +54,10 @@ const optionsDocumentation = [
 ];
 
 const testPaths = {
-  'permissions_server': [tu.pathForTesting('client/permissions')]
+  'permissions_server': [tu.pathForTesting('server/permissions')]
 };
 
 function permissions_server(options) {
-  let instanceInfo = pu.startInstance(options.protocol, options, {}, "permissions");
 
   // pass on JWT secret
   let clonedOpts = _.clone(options);
@@ -66,10 +65,116 @@ function permissions_server(options) {
   if (serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
     clonedOpts['server.jwt-secret'] = serverOptions['server.jwt-secret'];
   }
-  pu.shutdownInstance(instanceInfo, clonedOpts, false);
-  pu.reStartInstance(options, instanceInfo, {'javascript.allow-port-testing':false });
+
+  paramsFistRun = {};
+  paramsSecondRun = {'javascript.allow-port-testing':false };
+
+  let instanceInfo = pu.startInstance(options.protocol, options, paramsFistRun, "permissions_server"); // fist start
+  pu.shutdownInstance(instanceInfo, clonedOpts, false);                                     // stop
+  pu.reStartInstance(options, instanceInfo, paramsSecondRun);      // restart with restricted permissions
   pu.shutdownInstance(instanceInfo, clonedOpts, false);
   return  { failed: 0 };
+}
+
+function doxx-xxx(options) {
+  let argv = [];
+
+  let binary = pu.ARANGOD_BIN;
+
+  if (params.setup) {
+    params.options.disableMonitor = true;
+    params.testDir = fs.join(params.tempDir, `${params.count}`);
+    pu.cleanupDBDirectoriesAppend(params.testDir);
+    let dataDir = fs.join(params.testDir, 'data');
+    let appDir = fs.join(params.testDir, 'app');
+    let tmpDir = fs.join(params.testDir, 'tmp');
+    fs.makeDirectoryRecursive(params.testDir);
+    fs.makeDirectoryRecursive(dataDir);
+    fs.makeDirectoryRecursive(tmpDir);
+    fs.makeDirectoryRecursive(appDir);
+
+    let args = pu.makeArgs.arangod(params.options, appDir, '', tmpDir);
+    // enable development debugging if extremeVerbosity is set
+    if (params.options.extremeVerbosity === true) {
+      args['log.level'] = 'development=info';
+    }
+    args = Object.assign(args, params.options.extraArgs);
+    args = Object.assign(args, {
+      'wal.reserve-logfiles': 1,
+      'rocksdb.wal-file-timeout-initial': 10,
+      'database.directory': fs.join(dataDir + 'db'),
+      'server.rest-server': 'false',
+      'replication.auto-start': 'true',
+      'javascript.script': params.script
+    });
+    params.args = args;
+
+    argv = toArgv(
+      Object.assign(params.args,
+                    {
+                      'javascript.script-parameter': 'setup'
+                    }
+                   )
+    );
+  } else {
+    argv = toArgv(
+      Object.assign(params.args,
+                    {
+                      'log.foreground-tty': 'true',
+                      'wal.ignore-logfile-errors': 'true',
+                      'database.ignore-datafile-errors': 'false', // intentionally false!
+                      'javascript.script-parameter': 'recovery'
+                    }
+                   )
+    );
+    if (params.options.rr) {
+      binary = 'rr';
+      argv.unshift(pu.ARANGOD_BIN);
+    }
+  }
+  params.instanceInfo.pid = pu.executeAndWait(
+    binary,
+    argv,
+    params.options,
+    'recovery',
+    params.instanceInfo.rootDir,
+    params.setup,
+    !params.setup && params.options.coreCheck);
+
+
+
+
+
+  let res = {};
+  let filtered = {};
+  let rootDir = fs.join(fs.getTempPath(), 'permissions');
+  const tests = tu.scanTestPaths(testPaths.permissions);
+
+  fs.makeDirectoryRecursive(rootDir);
+
+  tests.forEach(function (f, i) {
+    if (tu.filterTestcaseByOptions(f, options, filtered)) {
+      let content = fs.read(f);
+      content = `(function(){ const getOptions = true; ${content} 
+}())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
+
+      let testOptions = executeScript(content, true, f);
+      res[f] = tu.runInArangosh(options,
+                                {
+                                  endpoint: 'tcp://127.0.0.1:8888',
+                                  rootDir: rootDir
+                                },
+                                f,
+                                testOptions
+                               );
+    } else {
+      if (options.extremeVerbosity) {
+        print('Skipped ' + f + ' because of ' + filtered.filter);
+      }
+    }
+
+  });
+  return res;
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {

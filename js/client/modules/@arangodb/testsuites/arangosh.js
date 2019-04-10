@@ -261,23 +261,25 @@ function permissions(options) {
   tests.forEach(function (f, i) {
     if (tu.filterTestcaseByOptions(f, options, filtered)) {
       let content = fs.read(f);
-      content = `(function(){ const getOptions = true; ${content}
-}())`;
-      
+      content = `(function(){ const getOptions = true; ${content} 
+}())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
+
       let testOptions = executeScript(content, true, f);
-      res[f] = tu.runInArangosh(options, {
-        endpoint: 'tcp://127.0.0.1:8888',
-        rootDir: rootDir
-      },
+      res[f] = tu.runInArangosh(options,
+                                {
+                                  endpoint: 'tcp://127.0.0.1:8888',
+                                  rootDir: rootDir
+                                },
                                 f,
-                                testOptions);
+                                testOptions
+                               );
     } else {
       if (options.extremeVerbosity) {
         print('Skipped ' + f + ' because of ' + filtered.filter);
       }
     }
 
-  });             
+  });
   return res;
 }
 
