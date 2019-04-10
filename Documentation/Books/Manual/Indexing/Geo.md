@@ -174,7 +174,7 @@ FOR x IN geo_collection
   RETURN x
 ```
 
-The first parameter of `GEO_CONTAINS` must be a polygon. Other types are not valid. 
+The first parameter of `GEO_INTERSECTS` must be a polygon. Other types are not valid. 
 The second parameter must contain the document field on which the index was created.
 
 
