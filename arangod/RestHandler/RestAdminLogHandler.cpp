@@ -53,7 +53,7 @@ RestStatus RestAdminLogHandler::execute() {
           "ServerSecurity");
     TRI_ASSERT(security != nullptr);
 
-    bool allowToChangeLogLevel = !security->isRestApiHardened(nullptr);
+    bool allowToChangeLogLevel = !security->isRestApiHardened();
 
     ExecContext const* exec = ExecContext::CURRENT;
     if (exec == nullptr || exec->isAdminUser()) {
@@ -62,10 +62,10 @@ RestStatus RestAdminLogHandler::execute() {
       allowToChangeLogLevel = true;
     }
 
-    if(allowToChangeLogLevel){
+    if (allowToChangeLogLevel) {
       setLogLevel();
     } else {
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     }
   }
 

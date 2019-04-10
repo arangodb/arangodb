@@ -20,18 +20,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/FileUtils.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/StringUtils.h"
-#include "Basics/files.h"
-#include "Basics/tri-strings.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "V8/v8-globals.h"
-
-#include <v8.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -65,25 +57,14 @@ void ServerSecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 
 }
 
-void ServerSecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-}
-
-void ServerSecurityFeature::start() {
-}
-
-bool ServerSecurityFeature::isFoxxApiDisabled(v8::Isolate* isolate) const {
+bool ServerSecurityFeature::isFoxxApiDisabled() const {
   return !_enableFoxxApi;
 }
 
-bool ServerSecurityFeature::isFoxxStoreDisabled(v8::Isolate* isolate) const {
+bool ServerSecurityFeature::isFoxxStoreDisabled() const {
   return !_enableFoxxStore;
 }
 
-bool ServerSecurityFeature::isRestApiHardened(v8::Isolate* isolate) const {
+bool ServerSecurityFeature::isRestApiHardened() const {
   return _hardenedRestApi;
-}
-
-bool ServerSecurityFeature::isInternalContext(v8::Isolate* isolate) const {
-  TRI_GET_GLOBALS();
-  return v8g != nullptr && v8g->_securityContext.isInternal();
 }

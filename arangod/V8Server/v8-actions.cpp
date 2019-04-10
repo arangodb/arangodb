@@ -1650,7 +1650,7 @@ static void JS_IsFoxxApiDisabled(v8::FunctionCallbackInfo<v8::Value> const& args
       application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
           "ServerSecurity");
   TRI_ASSERT(security != nullptr);
-  TRI_V8_RETURN_BOOL(security->isFoxxApiDisabled(isolate));
+  TRI_V8_RETURN_BOOL(security->isFoxxApiDisabled());
 
   TRI_V8_TRY_CATCH_END
 }
@@ -1663,7 +1663,7 @@ static void JS_IsFoxxStoreDisabled(v8::FunctionCallbackInfo<v8::Value> const& ar
       application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
           "ServerSecurity");
   TRI_ASSERT(security != nullptr);
-  TRI_V8_RETURN_BOOL(security->isFoxxStoreDisabled(isolate));
+  TRI_V8_RETURN_BOOL(security->isFoxxStoreDisabled());
 
   TRI_V8_TRY_CATCH_END
 }
