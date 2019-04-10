@@ -41,7 +41,7 @@ bool JavaScriptSecurityContext::canWriteFs() const {
   return _type == Type::Internal;
 }
 
-bool JavaScriptSecurityContext::canExecuteExternalBinaries() const {
+bool JavaScriptSecurityContext::canControlProcesses() const {
   return _type == Type::Internal;
 }
 

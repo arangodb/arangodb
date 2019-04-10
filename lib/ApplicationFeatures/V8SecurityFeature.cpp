@@ -41,7 +41,7 @@ using namespace arangodb::options;
 V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "V8Security"),
       _denyHardenedJavaScript(false),
-      _allowExecutionOfBinaries(false),
+      _allowProcessControl(false),
       _allowPortTesting(false) {
   setOptional(false);
   startsAfter("V8Platform");
@@ -56,7 +56,7 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
 
   options->addOption("--javascript.allow-external-process-control",
                      "allow execution and control of external processes from within JavaScript actions",
-                     new BooleanParameter(&_allowExecutionOfBinaries),
+                     new BooleanParameter(&_allowProcessControl),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30500);
 
@@ -308,9 +308,9 @@ bool V8SecurityFeature::isAllowedToExecuteExternalBinaries(v8::Isolate* isolate)
   TRI_GET_GLOBALS();
   // v8g may be a nullptr when we are in arangosh
   if (v8g != nullptr) {
-    return _allowExecutionOfBinaries || v8g->_securityContext.canExecuteExternalBinaries();
+    return _allowProcessControl || v8g->_securityContext.canControlProcesses();
   }
-  return _allowExecutionOfBinaries;
+  return _allowProcessControl;
 }
 
 bool V8SecurityFeature::isAllowedToTestPorts(v8::Isolate* isolate) const {

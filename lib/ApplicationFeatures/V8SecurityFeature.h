@@ -83,7 +83,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
 
  private:
   bool _denyHardenedJavaScript;
-  bool _allowExecutionOfBinaries;
+  bool _allowProcessControl;
   bool _allowPortTesting;
 
   std::string _readWhiteList;

@@ -66,7 +66,7 @@ class JavaScriptSecurityContext {
 
   /// @brief whether or not execution or state-modification of external
   /// binaries is allowed.
-  bool canExecuteExternalBinaries() const;
+  bool canControlProcesses() const;
 
   /// @brief create a security context that is most restricted
   static JavaScriptSecurityContext createRestrictedContext();
