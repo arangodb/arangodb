@@ -414,6 +414,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief shards have versions in order to be able to distinguish between
   /// independant actions
   std::unordered_map<std::string, size_t> _shardVersion;
+
+  bool _resignLeadershipOnShutdown;
 };
 
 }  // namespace arangodb

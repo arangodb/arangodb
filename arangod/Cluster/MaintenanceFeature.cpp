@@ -36,6 +36,9 @@
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
+#include "Agency/AgencyComm.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -99,6 +102,11 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
       new Int32Parameter(&_secondsActionsLinger),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
+  options->addOption("--cluster.resign-leadership-on-shutdown",
+                    "create resign leader ship job for this dbsever on shutdown",
+                    new BooleanParameter(&_resignLeadershipOnShutdown),
+                    arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+
 }  // MaintenanceFeature::collectOptions
 
 void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -145,6 +153,111 @@ void MaintenanceFeature::start() {
 }  // MaintenanceFeature::start
 
 void MaintenanceFeature::beginShutdown() {
+
+  if (_resignLeadershipOnShutdown) {
+
+    struct callback_data {
+      uint64_t _jobId;              // initialised before callback
+      bool _completed;              // populated by the callback
+      std::mutex _mutex;            // mutex used by callback and loop to sync access to callback_data
+      std::condition_variable _cv;  // signaled if callback has found something
+
+      callback_data(uint64_t jobId) : _jobId(jobId), _completed(false) {}
+    };
+
+    // create common shared memory with jobid
+    auto shared = std::make_shared<callback_data>(ClusterInfo::instance()->uniqid());
+
+    AgencyComm am;
+
+    // copy jobId and serverId by value
+    /*auto jobCallback = [shared](VPackSlice const& result) -> bool {
+      std::unique_lock<std::mutex> lock(shared->_mutex);
+      shared->_completed = true;
+      shared->_cv.notify_one();
+      return false;
+    };
+
+
+
+    auto acr = ClusterFeature::instance()->agencyCallbackRegistry();
+
+    // register agency callback
+    //  false, false -> we don't care about the value
+    auto callbackOnFailed = std::make_shared<AgencyCallback>(am, "Target/Failed/" + std::to_string(shared->_jobId), jobCallback, false, false);
+    auto callbackOnFinished = std::make_shared<AgencyCallback>(am, "Target/Finished/" + std::to_string(shared->_jobId), jobCallback, false, false);
+
+    acr->registerCallback(callbackOnFailed);
+    acr->registerCallback(callbackOnFinished);
+    auto cbGuard = scopeGuard([&] {
+      acr->unregisterCallback(callbackOnFailed);
+      acr->unregisterCallback(callbackOnFinished);
+    });*/
+
+    std::string serverId = ServerState::instance()->getId();
+    VPackBuilder jobDesc;
+    {
+      VPackObjectBuilder jobObj(&jobDesc);
+      jobDesc.add("type", VPackValue("resignLeadership"));
+      jobDesc.add("server", VPackValue(serverId));
+      jobDesc.add("jobId", VPackValue(std::to_string(shared->_jobId)));
+      jobDesc.add("timeCreated", VPackValue("2019-04-10T11:34:19Z"));
+      jobDesc.add("creator", VPackValue(serverId));
+    }
+
+    LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) <<
+      "Starting resigning leadership of shards";
+    am.setValue("Target/ToDo/" + std::to_string(shared->_jobId), jobDesc.slice(), 0.0);
+
+    using clock = std::chrono::steady_clock;
+
+    auto startTime = clock::now();
+    auto timeout = std::chrono::seconds(120);
+
+    auto endtime = startTime + timeout;
+
+    auto checkAgencyPathExists = [&am](std::string const& path, uint64_t jobId) -> bool {
+      try {
+        AgencyCommResult result = am.getValues("Target/" + path + "/" + std::to_string(jobId));
+        if (result.successful()) {
+          LOG_DEVEL << result.slice().toJson();
+          VPackSlice value = result.slice()[0].get(std::vector<std::string>{AgencyCommManager::path(), "Target", path, std::to_string(jobId)});
+          if (value.isObject() && value.hasKey("jobId") && value.get("jobId").isEqualString(std::to_string(jobId))) {
+            return true;
+          }
+        } else {
+          LOG_DEVEL << "Failed to read agency";
+        }
+      } catch(...) {
+        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER) <<
+          "Exception when checking for job completion";
+      }
+
+      return false;
+    };
+
+    // we can not test for application_features::ApplicationServer::isRetryOK() because it is never okay in shutdown
+    while (clock::now() < endtime) {
+
+      bool completed = checkAgencyPathExists ("Failed", shared->_jobId)
+        || checkAgencyPathExists ("Finished", shared->_jobId);
+
+      if (completed) {
+        break;
+      }
+
+      std::unique_lock<std::mutex> lock(shared->_mutex);
+      shared->_cv.wait_for(lock, std::chrono::seconds(1));
+
+      if (shared->_completed) {
+        break ;
+      }
+    }
+
+    LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) <<
+      "Resigning leadership completed (finished, failed or timed out)";
+  }
+
   _isShuttingDown = true;
   CONDITION_LOCKER(cLock, _actionRegistryCond);
   _actionRegistryCond.broadcast();

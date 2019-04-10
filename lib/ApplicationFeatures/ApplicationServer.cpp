@@ -40,7 +40,7 @@ using namespace arangodb::options;
 namespace {
 // fail and abort with the specified message
 static void failCallback(std::string const& message) {
-  LOG_TOPIC("85b08", FATAL, arangodb::Logger::FIXME) << "error. cannot proceed. reason: " << message;
+  LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "error. cannot proceed. reason: " << message;
   FATAL_ERROR_EXIT();
 }
 }  // namespace
@@ -57,7 +57,7 @@ ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
   fail = failCallback;
 
   if (ApplicationServer::server != nullptr) {
-    LOG_TOPIC("fbe91", ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "ApplicationServer initialized twice";
   }
 
@@ -169,7 +169,7 @@ bool ApplicationServer::isRequired(std::string const& name) const {
 // of all feature, start them and wait for a shutdown
 // signal. after that, it will shutdown all features
 void ApplicationServer::run(int argc, char* argv[]) {
-  LOG_TOPIC("cc34f", TRACE, Logger::STARTUP) << "ApplicationServer::run";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::run";
 
   // collect options from all features
   // in this phase, all features are order-independent
@@ -251,30 +251,32 @@ void ApplicationServer::run(int argc, char* argv[]) {
 
 // signal the server to shut down
 void ApplicationServer::beginShutdown() {
-  LOG_TOPIC("c7911", TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
 
-  bool old = _stopping.exchange(true);
+  bool old = _beginStopping.exchange(true);
+  if (old) {
+    return ;
+  }
 
   // fowards the begin shutdown signal to all features
-  if (!old) {
-    for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
-      if ((*it)->isEnabled()) {
-        LOG_TOPIC("e181f", TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
-        try {
-          (*it)->beginShutdown();
-        } catch (std::exception const& ex) {
-          LOG_TOPIC("b2cf4", ERR, Logger::STARTUP)
-              << "caught exception during beginShutdown of feature '"
-              << (*it)->name() << "': " << ex.what();
-        } catch (...) {
-          LOG_TOPIC("3f708", ERR, Logger::STARTUP)
-              << "caught unknown exception during beginShutdown of feature '"
-              << (*it)->name() << "'";
-        }
+  for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
+    if ((*it)->isEnabled()) {
+      LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
+      try {
+        (*it)->beginShutdown();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC(ERR, Logger::STARTUP)
+            << "caught exception during beginShutdown of feature '"
+            << (*it)->name() << "': " << ex.what();
+      } catch (...) {
+        LOG_TOPIC(ERR, Logger::STARTUP)
+            << "caught unknown exception during beginShutdown of feature '"
+            << (*it)->name() << "'";
       }
     }
   }
 
+  _stopping.store(true);
   CONDITION_LOCKER(guard, _shutdownCondition);
   guard.signal();
 }
@@ -283,11 +285,8 @@ void ApplicationServer::shutdownFatalError() {
   reportServerProgress(ServerState::ABORT);
 }
 
-// return VPack options, with optional filters applied to filter
-// out specific options. the filter function is expected to return true
-// for any options that should become part of the result
-VPackBuilder ApplicationServer::options(std::function<bool(std::string const&)> const& filter) const {
-  return _options->toVPack(false, false, filter);
+VPackBuilder ApplicationServer::options(std::unordered_set<std::string> const& excludes) const {
+  return _options->toVPack(false, false, excludes);
 }
 
 // walks over all features and runs a callback function for them
@@ -302,7 +301,7 @@ void ApplicationServer::apply(std::function<void(ApplicationFeature*)> callback,
 }
 
 void ApplicationServer::collectOptions() {
-  LOG_TOPIC("0eac7", TRACE, Logger::STARTUP) << "ApplicationServer::collectOptions";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::collectOptions";
 
   _options->addSection(Section("", "Global configuration", "global options", false, false));
 
@@ -319,7 +318,7 @@ void ApplicationServer::collectOptions() {
 
   apply(
       [this](ApplicationFeature* feature) {
-        LOG_TOPIC("b2731", TRACE, Logger::STARTUP) << feature->name() << "::loadOptions";
+        LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::loadOptions";
         feature->collectOptions(_options);
         reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
       },
@@ -363,13 +362,13 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
 
   for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
     if ((*it)->isEnabled()) {
-      LOG_TOPIC("5c642", TRACE, Logger::STARTUP) << (*it)->name() << "::loadOptions";
+      LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::loadOptions";
       (*it)->loadOptions(_options, _binaryPath);
     }
   }
 
   if (_dumpOptions) {
-    auto builder = _options->toVPack(false, true, [](std::string const&) { return true; });
+    auto builder = _options->toVPack(false, true, std::unordered_set<std::string>());
     arangodb::velocypack::Options options;
     options.prettyPrint = true;
     std::cout << builder.slice().toJson(&options) << std::endl;
@@ -378,11 +377,11 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
 }
 
 void ApplicationServer::validateOptions() {
-  LOG_TOPIC("1ed27", TRACE, Logger::STARTUP) << "ApplicationServer::validateOptions";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::validateOptions";
 
   for (auto feature : _orderedFeatures) {
     if (feature->isEnabled()) {
-      LOG_TOPIC("fa73c", TRACE, Logger::STARTUP) << feature->name() << "::validateOptions";
+      LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::validateOptions";
       feature->validateOptions(_options);
       feature->state(FeatureState::VALIDATED);
       reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
@@ -393,7 +392,7 @@ void ApplicationServer::validateOptions() {
   _options->walk(
       [](Section const&, Option const& option) {
         if (option.hasFlag(arangodb::options::Flags::Obsolete)) {
-          LOG_TOPIC("6843e", WARN, Logger::STARTUP)
+          LOG_TOPIC(WARN, Logger::STARTUP)
               << "obsolete option '" << option.displayName() << "' used in configuration. "
               << "setting this option will not have any effect.";
         }
@@ -403,7 +402,7 @@ void ApplicationServer::validateOptions() {
 
 // setup and validate all feature dependencies, determine feature order
 void ApplicationServer::setupDependencies(bool failOnMissing) {
-  LOG_TOPIC("15559", TRACE, Logger::STARTUP)
+  LOG_TOPIC(TRACE, Logger::STARTUP)
       << "ApplicationServer::validateDependencies";
 
   // apply all "startsBefore" values
@@ -468,7 +467,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
     features.insert(insertPosition, it.second);
   }
 
-  LOG_TOPIC("0fafb", TRACE, Logger::STARTUP) << "ordered features:";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ordered features:";
 
   int position = 0;
   for (auto feature : features) {
@@ -478,7 +477,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
     if (!startsAfter.empty()) {
       dependencies = " - depends on: " + StringUtils::join(startsAfter, ", ");
     }
-    LOG_TOPIC("b2ad5", TRACE, Logger::STARTUP)
+    LOG_TOPIC(TRACE, Logger::STARTUP)
         << "feature #" << ++position << ": " << feature->name()
         << (feature->isEnabled() ? "" : " (disabled)") << dependencies;
   }
@@ -499,7 +498,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
 }
 
 void ApplicationServer::daemonize() {
-  LOG_TOPIC("ca0b1", TRACE, Logger::STARTUP) << "ApplicationServer::daemonize";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::daemonize";
 
   for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
     if ((*it)->isEnabled()) {
@@ -509,7 +508,7 @@ void ApplicationServer::daemonize() {
 }
 
 void ApplicationServer::disableDependentFeatures() {
-  LOG_TOPIC("3e03b", TRACE, Logger::STARTUP)
+  LOG_TOPIC(TRACE, Logger::STARTUP)
       << "ApplicationServer::disableDependentFeatures";
 
   for (auto feature : _orderedFeatures) {
@@ -522,18 +521,16 @@ void ApplicationServer::disableDependentFeatures() {
     for (auto const& other : onlyEnabledWith) {
       ApplicationFeature* f = lookupFeature(other);
       if (f == nullptr) {
-        LOG_TOPIC("f70cc", TRACE, Logger::STARTUP)
-            << "turning off feature '" << feature->name()
-            << "' because it is enabled only in conjunction with non-existing "
-               "feature '"
+        LOG_TOPIC(TRACE, Logger::STARTUP)
+            << "turning off feature '"
+            << feature->name() << "' because it is enabled only in conjunction with non-existing feature '"
             << other << "'";
         feature->disable();
         break;
       } else if (!f->isEnabled()) {
-        LOG_TOPIC("58e0e", TRACE, Logger::STARTUP)
-            << "turning off feature '" << feature->name()
-            << "' because it is enabled only in conjunction with disabled "
-               "feature '"
+        LOG_TOPIC(TRACE, Logger::STARTUP)
+            << "turning off feature '"
+            << feature->name() << "' because it is enabled only in conjunction with disabled feature '"
             << f->name() << "'";
         feature->disable();
         break;
@@ -543,7 +540,7 @@ void ApplicationServer::disableDependentFeatures() {
 }
 
 void ApplicationServer::prepare() {
-  LOG_TOPIC("04e8f", TRACE, Logger::STARTUP) << "ApplicationServer::prepare";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::prepare";
 
   // we start with elevated privileges
   bool privilegesElevated = true;
@@ -564,11 +561,11 @@ void ApplicationServer::prepare() {
       }
 
       try {
-        LOG_TOPIC("d4e57", TRACE, Logger::STARTUP) << feature->name() << "::prepare";
+        LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::prepare";
         feature->prepare();
         feature->state(FeatureState::PREPARED);
       } catch (std::exception const& ex) {
-        LOG_TOPIC("37921", ERR, Logger::STARTUP)
+        LOG_TOPIC(ERR, Logger::STARTUP)
             << "caught exception during prepare of feature '" << feature->name()
             << "': " << ex.what();
         // restore original privileges
@@ -577,7 +574,7 @@ void ApplicationServer::prepare() {
         }
         throw;
       } catch (...) {
-        LOG_TOPIC("a1b9f", ERR, Logger::STARTUP)
+        LOG_TOPIC(ERR, Logger::STARTUP)
             << "caught unknown exception during preparation of feature '"
             << feature->name() << "'";
         // restore original privileges
@@ -593,7 +590,7 @@ void ApplicationServer::prepare() {
 }
 
 void ApplicationServer::start() {
-  LOG_TOPIC("8ef64", TRACE, Logger::STARTUP) << "ApplicationServer::start";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::start";
 
   Result res;
 
@@ -602,7 +599,7 @@ void ApplicationServer::start() {
       continue;
     }
 
-    LOG_TOPIC("27b63", TRACE, Logger::STARTUP) << feature->name() << "::start";
+    LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::start";
 
     try {
       feature->start();
@@ -634,8 +631,8 @@ void ApplicationServer::start() {
     }
 
     if (res.fail()) {
-      LOG_TOPIC("4ec19", ERR, Logger::STARTUP) << res.errorMessage() << ". shutting down";
-      LOG_TOPIC("51732", TRACE, Logger::STARTUP)
+      LOG_TOPIC(ERR, Logger::STARTUP) << res.errorMessage() << ". shutting down";
+      LOG_TOPIC(TRACE, Logger::STARTUP)
           << "aborting startup, now stopping and unpreparing all features";
       // try to stop all feature that we just started
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
@@ -644,7 +641,7 @@ void ApplicationServer::start() {
           continue;
         }
         if (feature->state() == FeatureState::STARTED) {
-          LOG_TOPIC("e5cfd", TRACE, Logger::STARTUP)
+          LOG_TOPIC(TRACE, Logger::STARTUP)
               << "forcefully stopping feature '" << feature->name() << "'";
           try {
             feature->beginShutdown();
@@ -652,7 +649,7 @@ void ApplicationServer::start() {
             feature->state(FeatureState::STOPPED);
           } catch (...) {
             // ignore errors on shutdown
-            LOG_TOPIC("13223", TRACE, Logger::STARTUP)
+            LOG_TOPIC(TRACE, Logger::STARTUP)
                 << "caught exception while stopping feature '" << feature->name() << "'";
           }
         }
@@ -662,14 +659,14 @@ void ApplicationServer::start() {
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
         auto feature = *it;
         if (feature->state() == FeatureState::STOPPED) {
-          LOG_TOPIC("6ba4f", TRACE, Logger::STARTUP)
+          LOG_TOPIC(TRACE, Logger::STARTUP)
               << "forcefully unpreparing feature '" << feature->name() << "'";
           try {
             feature->unprepare();
             feature->state(FeatureState::UNPREPARED);
           } catch (...) {
             // ignore errors on shutdown
-            LOG_TOPIC("7d68f", TRACE, Logger::STARTUP)
+            LOG_TOPIC(TRACE, Logger::STARTUP)
                 << "caught exception while unpreparing feature '"
                 << feature->name() << "'";
           }
@@ -687,7 +684,7 @@ void ApplicationServer::start() {
 }
 
 void ApplicationServer::stop() {
-  LOG_TOPIC("3e53e", TRACE, Logger::STARTUP) << "ApplicationServer::stop";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::stop";
 
   for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
     auto feature = *it;
@@ -695,15 +692,15 @@ void ApplicationServer::stop() {
       continue;
     }
 
-    LOG_TOPIC("4cd18", TRACE, Logger::STARTUP) << feature->name() << "::stop";
+    LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::stop";
     try {
       feature->stop();
     } catch (std::exception const& ex) {
-      LOG_TOPIC("f07eb", ERR, Logger::STARTUP)
+      LOG_TOPIC(ERR, Logger::STARTUP)
           << "caught exception during stop of feature '" << feature->name()
           << "': " << ex.what();
     } catch (...) {
-      LOG_TOPIC("6d496", ERR, Logger::STARTUP)
+      LOG_TOPIC(ERR, Logger::STARTUP)
           << "caught unknown exception during stop of feature '"
           << feature->name() << "'";
     }
@@ -713,23 +710,20 @@ void ApplicationServer::stop() {
 }
 
 void ApplicationServer::unprepare() {
-  LOG_TOPIC("d6764", TRACE, Logger::STARTUP) << "ApplicationServer::unprepare";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::unprepare";
 
   for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
     auto feature = *it;
-    if (!feature->isEnabled()) {
-      continue;
-    }
 
-    LOG_TOPIC("98be4", TRACE, Logger::STARTUP) << feature->name() << "::unprepare";
+    LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::unprepare";
     try {
       feature->unprepare();
     } catch (std::exception const& ex) {
-      LOG_TOPIC("dc019", ERR, Logger::STARTUP)
+      LOG_TOPIC(ERR, Logger::STARTUP)
           << "caught exception during unprepare of feature '" << feature->name()
           << "': " << ex.what();
     } catch (...) {
-      LOG_TOPIC("859a3", ERR, Logger::STARTUP)
+      LOG_TOPIC(ERR, Logger::STARTUP)
           << "caught unknown exception during unprepare of feature '"
           << feature->name() << "'";
     }
@@ -739,7 +733,7 @@ void ApplicationServer::unprepare() {
 }
 
 void ApplicationServer::wait() {
-  LOG_TOPIC("f86df", TRACE, Logger::STARTUP) << "ApplicationServer::wait";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::wait";
 
   while (!_stopping) {
     CONDITION_LOCKER(guard, _shutdownCondition);
@@ -754,7 +748,7 @@ void ApplicationServer::raisePrivilegesTemporarily() {
         TRI_ERROR_INTERNAL, "must not raise privileges after dropping them");
   }
 
-  LOG_TOPIC("34163", TRACE, Logger::STARTUP) << "raising privileges";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "raising privileges";
   // TODO: raising privileges not implemented
 }
 
@@ -766,7 +760,7 @@ void ApplicationServer::dropPrivilegesTemporarily() {
         "must not try to drop privileges after dropping them");
   }
 
-  LOG_TOPIC("8d23d", TRACE, Logger::STARTUP) << "dropping privileges";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "dropping privileges";
   // TODO: dropping privileges not implemented
 }
 
