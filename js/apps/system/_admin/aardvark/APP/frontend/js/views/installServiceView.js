@@ -90,7 +90,7 @@
 
     render: function () {
       if (frontendConfig.disableFoxxStore) {
-        $(this.el).html('<div>FoxxStore disabled due to server configuration (--foxx.disable-store true).</div>');
+        $(this.el).html('<div>Foxx store is disabled via server configuration.</div>');
         return this;
       } else {
         // if repo not fetched yet, wait
