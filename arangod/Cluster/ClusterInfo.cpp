@@ -849,7 +849,6 @@ void ClusterInfo::loadPlan() {
     LOG_TOPIC("12dfa", DEBUG, Logger::CLUSTER)
       << "loadPlan done: wantedVersion=" << storedVersion
       << ", doneVersion=" << _planProt.doneVersion;
-    return;
   }
 
   WRITE_LOCKER(writeLocker, _planProt.lock);
