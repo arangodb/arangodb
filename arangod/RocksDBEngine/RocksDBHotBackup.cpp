@@ -528,34 +528,32 @@ void RocksDBHotBackupCreate::executeCreate() {
     if (_success && !_agencyDump.isNone()) {
       std::string agencyDumpFileName = dirPathFinal + TRI_DIR_SEPARATOR_CHAR + "agency.json";
 
+      try {
+        // toJson may throw
+        std::string json = _agencyDump.toJson();
+
 #ifdef USE_ENTERPRISE
-
-      std::string encryptionKey = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->getEncryptionKey();
-      int fd = TRI_TRACKED_CREATE_FILE(agencyDumpFileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
-                                   S_IRUSR | S_IWUSR | S_IRGRP);
-      if (fd != -1) {
-        TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
-
-        try {
-          std::string json = _agencyDump.toJson();
+        std::string encryptionKey = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->getEncryptionKey();
+        int fd = TRI_TRACKED_CREATE_FILE(agencyDumpFileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
+                                     S_IRUSR | S_IWUSR | S_IRGRP);
+        if (fd != -1) {
+          TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
           auto context = EncryptionFeature::beginEncryption(fd, encryptionKey);
-
           _success = EncryptionFeature::writeData(*context.get(), json.c_str(), json.size());
-        } catch(...) {
+        } else {
           _success = false;
-          _respCode = rest::ResponseCode::BAD;
-          _respError = TRI_ERROR_HTTP_SERVER_ERROR;
-          _errorMessage = "RocksDBHotBackupCreate caught exception.";
-          LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-            << "RocksDBHotBackupCreate caught exception.";
         }
-
-      } else {
-        _success = false;
-      }
 #else
-      basics::FileUtils::spit(agencyDumpFileName, _agencyDump.toJson(), true);
+        basics::FileUtils::spit(agencyDumpFileName, json, true);
 #endif
+      } catch(...) {
+        _success = false;
+        _respCode = rest::ResponseCode::BAD;
+        _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+        _errorMessage = "RocksDBHotBackupCreate caught exception.";
+        LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+          << "RocksDBHotBackupCreate caught exception.";
+      }
     }
   } // if
 
