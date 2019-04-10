@@ -66,19 +66,20 @@ function permissions_server(options) {
     clonedOpts['server.jwt-secret'] = serverOptions['server.jwt-secret'];
   }
 
-  paramsFistRun = {};
-  paramsSecondRun = {'javascript.allow-port-testing':false };
+  let paramsFistRun = {};
+  let paramsSecondRun = {'javascript.allow-port-testing':false };
 
   let instanceInfo = pu.startInstance(options.protocol, options, paramsFistRun, "permissions_server"); // fist start
+  // geiles setup
   pu.shutdownInstance(instanceInfo, clonedOpts, false);                                     // stop
   pu.reStartInstance(options, instanceInfo, paramsSecondRun);      // restart with restricted permissions
+  // geile tests
   pu.shutdownInstance(instanceInfo, clonedOpts, false);
   return  { failed: 0 };
 }
 
 function doxx_xxx(options) {
   let argv = [];
-
   let binary = pu.ARANGOD_BIN;
 
   if (params.setup) {
@@ -155,7 +156,7 @@ function doxx_xxx(options) {
   tests.forEach(function (f, i) {
     if (tu.filterTestcaseByOptions(f, options, filtered)) {
       let content = fs.read(f);
-      content = `(function(){ const getOptions = true; ${content} 
+      content = `(function(){ const getOptions = true; ${content}
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
 
       let testOptions = executeScript(content, true, f);

@@ -45,10 +45,6 @@ bool JavaScriptSecurityContext::canExecuteExternalBinaries() const {
   return _type == Type::Internal;
 }
 
-bool JavaScriptSecurityContext::canParseJs() const {
-  return _type == Type::Internal || _type == Type::AdminScript;
-}
-
 /*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createRestrictedContext() {
   JavaScriptSecurityContext context(Type::Restricted);
   context._canUseDatabase = false;
