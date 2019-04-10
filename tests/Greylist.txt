@@ -4,6 +4,20 @@ In this file we collect information about which tests are currently
 greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 
+- `shell-foxx-api-spec.js`
+
+  * Test "shell_client"
+    [FAILED]  tests/js/client/shell/shell-foxx-api-spec.js
+
+      "Foxx service "before each" hook for "uninstalled should not be available"" failed: ArangoError: ArangoError 3002: service files missing
+  Mount: /foxx-crud-test-download
+    at Object.exports.checkRequestResult (js/client/modules/@arangodb/arangosh.js:97:21)
+    at Object.install (js/client/modules/@arangodb/foxx/manager.js:282:12)
+    at Context.beforeEach (tests/js/client/shell/shell-foxx-api-spec.js:156:17)
+    at Function.global.DEFINE_MODULE.exports.nextTick [as immediately] (common/bootstrap/modules/process.js:30:5)
+
+   Suites failed: 1 Tests Failed: 1
+
 - `tests/js/server/resilience/moving-shards-cluster.js`
 
   * Test "resilience"
