@@ -76,7 +76,7 @@ function permissions_server(options) {
   return  { failed: 0 };
 }
 
-function doxx-xxx(options) {
+function doxx_xxx(options) {
   let argv = [];
 
   let binary = pu.ARANGOD_BIN;
