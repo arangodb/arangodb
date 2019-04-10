@@ -20,7 +20,7 @@ reduce memory usage and, for some queries, also execution time for the sorting.
 If the optimization is applied, it will show as "sort-limit" rule in the query execution
 plan.
 
-### Index Hints in AQL
+### Index hints in AQL
 
 Users may now take advantage of the `indexHint` inline query option to override
 the internal optimizer decision regarding which index to use to serve content
@@ -195,7 +195,7 @@ from a collection.
 
 A TTL index can be set up by setting an `expireAfter` value and by picking a single 
 document attribute which contains the documents' creation date and time. Documents 
-are expired after `expireAfter` seconds after their creation time. The creation time
+expire `expireAfter` seconds after their creation time. The creation time
 is specified as either a numeric timestamp or a UTC datestring.
 
 For example, if `expireAfter` is set to 600 seconds (10 minutes) and the index
@@ -205,7 +205,7 @@ attribute is "creationDate" and there is the following document:
 
 This document will be indexed with a creation timestamp value of `1550165973`,
 which translates to the human-readable date string `2019-02-14T17:39:33.000Z`. The 
-document will expire 600 seconds afterwards, which is at timestamp `1550166573000` (or
+document will expire 600 seconds afterwards, which is at timestamp `1550166573` (or
 `2019-02-14T17:49:33.000Z` in the human-readable version).
 
 The actual removal of expired documents will not necessarily happen immediately. 

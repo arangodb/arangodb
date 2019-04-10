@@ -1050,6 +1050,7 @@ function shutdownArangod (arangod, options, forceTerminate) {
     } else {
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
+      requestOptions.timeout = 60; // 60 seconds hopefully are enough for getting a response
       print(Date() + ' ' + arangod.url + '/_admin/shutdown');
       let sockStat = getSockStat(arangod, options, "Sock stat for: ");
       const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
