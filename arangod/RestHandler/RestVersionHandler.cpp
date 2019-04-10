@@ -21,13 +21,13 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestVersionHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/ServerSecurityFeature.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
+#include "RestVersionHandler.h"
 #include "Utils/ExecContext.h"
 
 #include <velocypack/Builder.h>
