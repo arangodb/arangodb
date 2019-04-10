@@ -1436,8 +1436,10 @@ void Supervision::enforceReplication() {
             auto const& currentServers = currentDBs.hasAsArray(curPath);
             size_t inSyncReplicationFactor = actualReplicationFactor;
             if (currentServers.second) {
-              if (currentServers.first.length() < actualReplicationFactor) {
-                inSyncReplicationFactor = currentServers.first.length();
+              size_t nrGoodOrBad
+                = Job::countGoodOrBadServersInList(_snapshot, currentServers.first);
+              if (nrGoodOrBad < actualReplicationFactor) {
+                inSyncReplicationFactor = nrGoodOrBad;
               }
             }
 
@@ -1455,10 +1457,8 @@ void Supervision::enforceReplication() {
                 found = true;
                 LOG_TOPIC(DEBUG, Logger::SUPERVISION)
                     << "already found "
-                       "addFollower or removeFollower job in ToDo, not "
-                       "scheduling "
-                       "again for shard "
-                    << shard_.first;
+                       "addFollower, removeFollower or moveShard job in ToDo,"
+                       "not scheduling again for shard " << shard_.first;
                 break;
               }
             }
