@@ -313,10 +313,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
       if (hash != 0) {
         auto* idx = findIndex(RocksDBKey::objectId(key));
-        if (idx && idx->estimator() != nullptr) {
-          if (idx->estimator()->appliedSeq() < _currentSequence) {
+        if (idx) {
+          RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
+          if (est && est->appliedSeq() < _currentSequence) {
             // We track estimates for this index
-            idx->estimator()->insert(hash);
+            est->insert(hash);
           }
         }
       }
@@ -361,10 +362,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
       if (hash != 0) {
         auto* idx = findIndex(RocksDBKey::objectId(key));
-        if (idx && idx->estimator() != nullptr) {
-          if (idx->estimator()->appliedSeq() < _currentSequence) {
+        if (idx) {
+          RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
+          if (est && est->appliedSeq() < _currentSequence) {
             // We track estimates for this index
-            idx->estimator()->remove(hash);
+            est->remove(hash);
           }
         }
       }
