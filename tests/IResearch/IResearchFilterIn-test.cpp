@@ -587,7 +587,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -695,7 +695,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -803,7 +803,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -910,7 +910,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -1018,7 +1018,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -1121,7 +1121,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2459,7 +2459,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2573,7 +2573,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2687,7 +2687,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2801,7 +2801,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2916,7 +2916,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -3029,7 +3029,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -3135,7 +3135,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);

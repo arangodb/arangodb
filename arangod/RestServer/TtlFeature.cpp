@@ -329,14 +329,14 @@ class TtlThread final : public Thread {
           aql::Query query(false, *vocbase, aql::QueryString(::removeQuery), bindVars, nullptr, arangodb::aql::PART_MAIN);
           aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
-          if (queryResult.code != TRI_ERROR_NO_ERROR) {
+          if (queryResult.result.fail()) {
             // we can probably live with an error here...
             // the thread will try to remove the documents again on next iteration
-            if (queryResult.code != TRI_ERROR_ARANGO_READ_ONLY &&
-                queryResult.code != TRI_ERROR_ARANGO_CONFLICT &&
-                queryResult.code != TRI_ERROR_LOCKED &&
-                queryResult.code != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-              LOG_TOPIC("08300", WARN, Logger::TTL) << "error during TTL document removal for collection '" << collection->name() << "': " << queryResult.details;
+            if (!queryResult.result.is(TRI_ERROR_ARANGO_READ_ONLY) &&
+                !queryResult.result.is(TRI_ERROR_ARANGO_CONFLICT) &&
+                !queryResult.result.is(TRI_ERROR_LOCKED) &&
+                !queryResult.result.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+              LOG_TOPIC("08300", WARN, Logger::TTL) << "error during TTL document removal for collection '" << collection->name() << "': " << queryResult.result.errorMessage();
             }
           } else {
             auto extra = queryResult.extra;

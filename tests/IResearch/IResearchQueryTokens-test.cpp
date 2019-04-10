@@ -289,7 +289,7 @@ TEST_CASE("IResearchQueryTestTokens", "[iresearch][iresearch-query]") {
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));
-    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
+    CHECK((arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
   }
 
   // test no-match
@@ -300,8 +300,8 @@ TEST_CASE("IResearchQueryTestTokens", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.prefix IN TOKENS('def', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -322,8 +322,8 @@ TEST_CASE("IResearchQueryTestTokens", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d['prefix'] IN TOKENS('def', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -345,8 +345,8 @@ TEST_CASE("IResearchQueryTestTokens", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.prefix IN TOKENS('ab,abcde,de', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -368,8 +368,8 @@ TEST_CASE("IResearchQueryTestTokens", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d['prefix'] IN TOKENS('ab,abcde,de', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -394,8 +394,8 @@ TEST_CASE("IResearchQueryTestTokens", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.prefix IN TOKENS('z,xy,abcy,abcd,abc', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -420,8 +420,8 @@ TEST_CASE("IResearchQueryTestTokens", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d['prefix'] IN TOKENS('z,xy,abcy,abcd,abc', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
