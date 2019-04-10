@@ -190,65 +190,18 @@ other operations on the collection.
 TTL (time-to-live) Indexes
 --------------------------
 
-The new TTL indexes provided by ArangoDB can be used for removing expired documents
-from a collection. 
+The new TTL indexes feature provided by ArangoDB can be used for automatically 
+removing expired documents from a collection. 
 
-A TTL index can be set up by setting an `expireAfter` value and by picking a single 
-document attribute which contains the documents' creation date and time. Documents 
-expire `expireAfter` seconds after their creation time. The creation time
-is specified as either a numeric timestamp or a UTC datestring.
+TTL indexes support eventual removal of documents which are past a configured
+expiration timepoint. The expiration timepoints can be based upon the documents' 
+original insertion or last-updated timepoints, with adding a period during
+which to retain the documents.
+Alternatively, expiration timepoints can be specified as absolute values per
+document.
+It is also possible to exclude documents from automatic expiration and removal.
 
-For example, if `expireAfter` is set to 600 seconds (10 minutes) and the index
-attribute is "creationDate" and there is the following document:
-
-    { "creationDate" : 1550165973 }
-
-This document will be indexed with a creation timestamp value of `1550165973`,
-which translates to the human-readable date string `2019-02-14T17:39:33.000Z`. The 
-document will expire 600 seconds afterwards, which is at timestamp `1550166573` (or
-`2019-02-14T17:49:33.000Z` in the human-readable version).
-
-The actual removal of expired documents will not necessarily happen immediately. 
-Expired documents will eventually removed by a background thread that is periodically
-going through all TTL indexes and removing the expired documents.
-
-There is no guarantee when exactly the removal of expired documents will be carried
-out, so queries may still find and return documents that have already expired. These
-will eventually be removed when the background thread kicks in and has capacity to
-remove the expired documents. It is guaranteed however that only documents which are 
-past their expiration time will actually be removed.
-
-Please note that the numeric timestamp values for the index attribute should be 
-specified in seconds since January 1st 1970 (Unix timestamp). To calculate the current 
-timestamp from JavaScript in this format, there is `Date.now() / 1000`, to calculate it 
-from an arbitrary Date instance, there is `Date.getTime() / 1000`.
-
-Alternatively, the index attribute values can be specified as a date string in format
-`YYYY-MM-DDTHH:MM:SS` with optional milliseconds. All date strings will be interpreted 
-as UTC dates.
-    
-The above example document using a datestring attribute value would be
-
-    { "creationDate" : "2019-02-14T17:39:33.000Z" }
-
-In case the index attribute does not contain a numeric value nor a proper date string, 
-the document will not be stored in the TTL index and thus will not become a candidate 
-for expiration and removal. Providing either a non-numeric value or even no value for 
-the index attribute is a supported way of keeping documents from being expired and removed.
-
-There can at most be one TTL index per collection. It is not recommended to use
-TTL indexes for user-land AQL queries, as TTL indexes may store a transformed,
-always numerical version of the index attribute value.
-
-The frequency for invoking the background removal thread can be configured 
-using the `--ttl.frequency` startup option. 
-In order to avoid "random" load spikes by the background thread suddenly kicking 
-in and removing a lot of documents at once, the number of to-be-removed documents
-per thread invocation can be capped.
-The total maximum number of documents to be removed per thread invocation is
-controlled by the startup option `--ttl.max-total-removes`. The maximum number of
-documents in a single collection at once can be controlled by the startup option
-`--ttl.max-collection-removes`.
+Also see the [TTL Indexes](../Indexing/Ttl.md) page.
 
 
 HTTP API extensions

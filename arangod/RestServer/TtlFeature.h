@@ -55,6 +55,7 @@ struct TtlStatistics {
 };
   
 struct TtlProperties {
+  static constexpr uint64_t minFrequency = 1 * 1000; // milliseconds
   uint64_t frequency = 30 * 1000; // milliseconds
   uint64_t maxTotalRemoves = 1000000;
   uint64_t maxCollectionRemoves = 1000000;

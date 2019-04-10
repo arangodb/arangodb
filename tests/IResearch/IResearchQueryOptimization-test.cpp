@@ -314,7 +314,6 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
   // populate view with the data
   {
     arangodb::OperationOptions opt;
-    TRI_voc_tick_t tick;
 
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -370,9 +369,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -431,9 +430,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -480,9 +479,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -529,9 +528,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -577,9 +576,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -636,9 +635,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -674,9 +673,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -723,9 +722,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -772,9 +771,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -833,9 +832,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -885,9 +884,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -937,9 +936,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -999,9 +998,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1061,9 +1060,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1113,9 +1112,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1165,9 +1164,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1223,9 +1222,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1285,9 +1284,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1337,9 +1336,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1395,9 +1394,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1457,9 +1456,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1514,9 +1513,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1561,9 +1560,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1606,9 +1605,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1652,9 +1651,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1697,9 +1696,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1734,9 +1733,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1779,9 +1778,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1824,9 +1823,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1870,9 +1869,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1916,9 +1915,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1961,9 +1960,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2006,9 +2005,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2052,9 +2051,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2098,9 +2097,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2143,9 +2142,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2188,9 +2187,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2234,9 +2233,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2280,9 +2279,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2325,9 +2324,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2371,9 +2370,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2416,9 +2415,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2462,9 +2461,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2507,9 +2506,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2544,9 +2543,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2589,9 +2588,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2634,9 +2633,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2680,9 +2679,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2726,9 +2725,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2771,9 +2770,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2816,9 +2815,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2862,9 +2861,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2908,9 +2907,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2953,9 +2952,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2998,9 +2997,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3044,9 +3043,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3090,9 +3089,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3135,9 +3134,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3181,9 +3180,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3226,9 +3225,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3263,9 +3262,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3309,9 +3308,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3354,9 +3353,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3400,9 +3399,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3445,9 +3444,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3490,9 +3489,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3534,9 +3533,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3579,9 +3578,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3625,9 +3624,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3670,9 +3669,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3716,9 +3715,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3762,9 +3761,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3808,9 +3807,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3853,9 +3852,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3899,9 +3898,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3944,9 +3943,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3990,9 +3989,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4035,9 +4034,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4081,9 +4080,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4126,9 +4125,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4172,9 +4171,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4217,9 +4216,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4263,9 +4262,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4308,9 +4307,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4354,9 +4353,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4399,9 +4398,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4445,9 +4444,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4490,9 +4489,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4536,9 +4535,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4581,9 +4580,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4627,9 +4626,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4672,9 +4671,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4718,9 +4717,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4764,9 +4763,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4809,9 +4808,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4855,9 +4854,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4900,9 +4899,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4946,9 +4945,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -4991,9 +4990,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5037,9 +5036,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5082,9 +5081,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5127,9 +5126,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5172,9 +5171,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5217,9 +5216,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     }
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5262,9 +5261,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5307,9 +5306,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5352,9 +5351,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5398,9 +5397,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5444,9 +5443,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5490,9 +5489,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5535,9 +5534,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5581,9 +5580,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5627,9 +5626,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5673,9 +5672,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5718,9 +5717,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5763,9 +5762,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5809,9 +5808,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5854,9 +5853,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5899,9 +5898,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5945,9 +5944,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -5991,9 +5990,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6036,9 +6035,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6081,9 +6080,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6126,9 +6125,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6171,9 +6170,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6216,9 +6215,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6261,9 +6260,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6306,9 +6305,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6352,9 +6351,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6398,9 +6397,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6444,9 +6443,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6490,9 +6489,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6536,9 +6535,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6582,9 +6581,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6627,9 +6626,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6672,9 +6671,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6718,9 +6717,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6764,9 +6763,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6809,9 +6808,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6855,9 +6854,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6900,9 +6899,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6946,9 +6945,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -6991,9 +6990,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7037,9 +7036,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7083,9 +7082,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7129,9 +7128,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7175,9 +7174,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7221,9 +7220,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7267,9 +7266,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7312,9 +7311,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7357,9 +7356,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7402,9 +7401,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7447,9 +7446,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7492,9 +7491,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7537,9 +7536,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7582,9 +7581,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7628,9 +7627,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7674,9 +7673,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7720,9 +7719,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7765,9 +7764,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7811,9 +7810,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7856,9 +7855,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7902,9 +7901,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7947,9 +7946,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -7993,9 +7992,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -8039,9 +8038,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -8084,9 +8083,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -8130,9 +8129,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -8176,9 +8175,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -8222,9 +8221,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -8267,9 +8266,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -8312,9 +8311,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -8357,9 +8356,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -8402,9 +8401,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -8447,9 +8446,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -8492,9 +8491,9 @@ TEST_CASE("IResearchQueryTestOptimization", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);

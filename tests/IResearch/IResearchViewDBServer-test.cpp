@@ -652,7 +652,6 @@ SECTION("test_query") {
       CHECK((trx.begin().ok()));
 
       arangodb::ManagedDocumentResult inserted;
-      TRI_voc_tick_t tick;
       arangodb::OperationOptions options;
       for (size_t i = 1; i <= 12; ++i) {
         auto doc = arangodb::velocypack::Parser::fromJson(std::string("{ \"key\": ") + std::to_string(i) + " }");
@@ -692,7 +691,6 @@ SECTION("test_query") {
       CHECK((trx.begin().ok()));
 
       arangodb::ManagedDocumentResult inserted;
-      TRI_voc_tick_t tick;
       arangodb::OperationOptions options;
       for (size_t i = 13; i <= 24; ++i) {
         auto doc = arangodb::velocypack::Parser::fromJson(std::string("{ \"key\": ") + std::to_string(i) + " }");

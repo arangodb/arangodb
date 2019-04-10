@@ -356,16 +356,29 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
       } else {  // only support local collections / shards
         cid = resolver.getCollectionIdLocal(cname);
       }
+      
       if (cid == 0) {
+        // not found
+        res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, 
+                  std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) + ":" + cname);
+      } else {
+        res.reset(state->addCollection(cid, cname, mode, /*nestingLevel*/0, false));
+      }
+
+      if (res.fail()) {
         return false;
       }
-      state->addCollection(cid, cname, mode, /*nestingLevel*/0, false);
     }
     return true;
   };
   if (!lockCols(exclusives, AccessMode::Type::EXCLUSIVE) ||
       !lockCols(writes, AccessMode::Type::WRITE) ||
       !lockCols(reads, AccessMode::Type::READ)) {
+    if (res.fail()) {
+      // error already set by callback function
+      return res;
+    }
+    // no error set. so it must be "data source not found"
     return res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
   
