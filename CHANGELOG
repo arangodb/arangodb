@@ -46,6 +46,9 @@ devel
   to a value of 2 and the jemalloc memory allocator is in use. This combination
   does not play well together.
 
+* added AQL function DECODE_REV for decomposing `_rev` values into their
+  individual parts
+
 * added AQL functions CRC32 and FNV64 for hashing data
 
 * renamed attribute key `openssl-version` in server/client tool version
