@@ -427,6 +427,12 @@ devel
 
 * make AddFollower less aggressive
 
+* lots of agency performance improvements, mostly avoiding copying
+
+* priority queue for maintenance jobs
+
+* do not wait for replication after each job execution in Supervision
+
 v3.4.1 (XXXX-XX-XX)
 -------------------
 
