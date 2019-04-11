@@ -36,25 +36,6 @@ using namespace arangodb::aql;
 using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
-namespace {
-
-std::string const doneString = "DONE";
-std::string const hasMoreString = "HASMORE";
-std::string const waitingString = "WAITING";
-
-static std::string const& stateToString(ExecutionState state) {
-  switch (state) {
-    case ExecutionState::DONE:
-      return doneString;
-    case ExecutionState::HASMORE:
-      return hasMoreString;
-    case ExecutionState::WAITING:
-      return waitingString;
-  }
-}
-
-}  // namespace
-
 WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
                                                      ExecutionNode const* node,
                                                      std::deque<std::unique_ptr<AqlItemBlock>>&& data)
@@ -110,16 +91,16 @@ WaitingExecutionBlockMock::getSome(size_t atMost) {
 }
 
 std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skipSome(size_t atMost) {
-  traceSkipSomeBeginInner(atMost);
+  traceSkipSomeBegin(atMost);
   if (!_hasWaited) {
     _hasWaited = true;
-    traceSkipSomeEndInner(0, ExecutionState::WAITING);
+    traceSkipSomeEnd(0, ExecutionState::WAITING);
     return {ExecutionState::WAITING, 0};
   }
   _hasWaited = false;
 
   if (_data.empty()) {
-    traceSkipSomeEndInner(0, ExecutionState::DONE);
+    traceSkipSomeEnd(0, ExecutionState::DONE);
     return {ExecutionState::DONE, 0};
   }
 
@@ -127,49 +108,10 @@ std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skip
   _data.pop_front();
 
   if (_data.empty()) {
-    traceSkipSomeEndInner(skipped, ExecutionState::DONE);
+    traceSkipSomeEnd(skipped, ExecutionState::DONE);
     return {ExecutionState::DONE, skipped};
   } else {
-    traceSkipSomeEndInner(skipped, ExecutionState::HASMORE);
+    traceSkipSomeEnd(skipped, ExecutionState::HASMORE);
     return {ExecutionState::HASMORE, skipped};
-  }
-}
-
-void WaitingExecutionBlockMock::traceSkipSomeBeginInner(size_t atMost) {  // ALL TRACE TODO: -> IMPL PRIV
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    if (_getSomeBegin <= 0.0) {
-      _getSomeBegin = TRI_microtime();
-    }
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
-      LOG_TOPIC("dba8a", INFO, Logger::QUERIES)
-          << "skipSome type=" << _exeNode->getTypeString() << " atMost = " << atMost
-          << " this=" << (uintptr_t)this << " id=" << _exeNode->id();
-    }
-  }
-}
-
-void WaitingExecutionBlockMock::traceSkipSomeEndInner(size_t skipped, ExecutionState state) {
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    ExecutionStats::Node stats;
-    stats.calls = 1;
-    stats.items = skipped;
-    if (state != ExecutionState::WAITING) {
-      stats.runtime = TRI_microtime() - _getSomeBegin;
-      _getSomeBegin = 0.0;
-    }
-
-    auto it = _engine->_stats.nodes.find(_exeNode->id());
-    if (it != _engine->_stats.nodes.end()) {
-      it->second += stats;
-    } else {
-      _engine->_stats.nodes.emplace(_exeNode->id(), stats);
-    }
-
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
-      LOG_TOPIC("d1950", INFO, Logger::QUERIES)
-          << "skipSome done type=" << _exeNode->getTypeString()
-          << " this=" << (uintptr_t)this << " id=" << _exeNode->id()
-          << " state=" << ::stateToString(state);
-    }
   }
 }
