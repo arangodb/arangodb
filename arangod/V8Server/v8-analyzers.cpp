@@ -410,7 +410,7 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // expecting one argument
   // analyzer(name: <string>);
   if (args.Length() != 1 || !args[0]->IsString()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("analyser(<name>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("analyzer(<name>)");
   }
 
   PREVENT_EMBEDDED_TRANSACTION();

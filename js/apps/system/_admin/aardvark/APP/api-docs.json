@@ -7277,6 +7277,133 @@
                 "x-hints": ""
             }
         }, 
+        "/_api/analyzer": {
+            "get": {
+                "description": "\n\nRetrieves a an array of all analyzer definitions.\nThe resulting array contains objects with the following attributes:\n- *name*: the analyzer name\n- *type*: the analyzer type\n- *properties*: the properties used to configure the specified type\n- *features*: the set of features to set on the analyzer generated fields\n\n\n\n\n**Example:**\n Retrieve all analyzer definitions:\n\n<pre><code><span class=\"hljs-meta\">shell&gt;</span><span class=\"bash\"> curl --header <span class=\"hljs-string\">'accept: application/json'</span> --dump - http://localhost:8529/_api/analyzer</span>\n</code><code>\n</code><code>HTTP/<span class=\"hljs-number\">1.1</span> OK\n</code><code>content-type: application/json; charset=utf<span class=\"hljs-number\">-8</span>\n</code><code>x-content-type-options: nosniff\n</code><code>\n</code><code>{ \n</code><code>  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n</code><code>  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">200</span>, \n</code><code>  <span class=\"hljs-string\">\"result\"</span> : [ ] \n</code><code>}\n</code></pre>\n\n\n\n\n", 
+                "parameters": [], 
+                "responses": {
+                    "200": {
+                        "description": "The analyzer definitions was retrieved successfully.\n\n"
+                    }
+                }, 
+                "summary": "List all analyzers", 
+                "tags": [
+                    "Analyzers"
+                ], 
+                "x-examples": [], 
+                "x-filename": "/home/user/git-root/arangodb-devel.debug/Documentation/DocuBlocks/Rest/Analyzers/get_api_analyzers.md", 
+                "x-hints": ""
+            }, 
+            "post": {
+                "description": "\n**A JSON object with these properties is required:**\n\n  - **features** (string): The set of features to set on the analyzer generated fields.\n   The default value is an empty array.\n  - **type**: The analyzer type.\n  - **name**: The analyzer name.\n  - **properties**: The properties used to configure the specified type.\n   Value may be a string, an object or null.\n   The default value is *null*.\n\n\n\n\nCreates a new analyzer based on the provided configuration.\n\n\n\n\n**Example:**\n \n\n<pre><code><span class=\"hljs-meta\">shell&gt;</span><span class=\"bash\"> curl -X POST --header <span class=\"hljs-string\">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/analyzer</span> &lt;&lt;EOF\n</code><code>{ \n</code><code>  <span class=\"hljs-string\">\"name\"</span> : <span class=\"hljs-string\">\"_system::testAnalyzer\"</span>, \n</code><code>  <span class=\"hljs-string\">\"type\"</span> : <span class=\"hljs-string\">\"identity\"</span> \n</code><code>}\n</code><code>EOF\n</code><code>\n</code><code>HTTP/<span class=\"hljs-number\">1.1</span> Created\n</code><code>content-type: application/json; charset=utf<span class=\"hljs-number\">-8</span>\n</code><code>x-content-type-options: nosniff\n</code><code>\n</code><code>{ \n</code><code>  <span class=\"hljs-string\">\"name\"</span> : <span class=\"hljs-string\">\"_system::testAnalyzer\"</span>, \n</code><code>  <span class=\"hljs-string\">\"type\"</span> : <span class=\"hljs-string\">\"identity\"</span>, \n</code><code>  <span class=\"hljs-string\">\"properties\"</span> : <span class=\"hljs-literal\">null</span>, \n</code><code>  <span class=\"hljs-string\">\"features\"</span> : [ ] \n</code><code>}\n</code></pre>\n\n\n\n\n", 
+                "parameters": [
+                    {
+                        "in": "body", 
+                        "name": "Json Request Body", 
+                        "required": true, 
+                        "schema": {
+                            "$ref": "#/definitions/post_api_analyzer"
+                        }, 
+                        "x-description-offset": 54
+                    }
+                ], 
+                "responses": {
+                    "200": {
+                        "description": "An analyzer with a matching name and definition already exists.\n\n"
+                    }, 
+                    "201": {
+                        "description": "A new analyzer definition was successfully created.\n\n"
+                    }, 
+                    "400": {
+                        "description": "One or more of the required parameters is missing or one or more of the parameters\nis not valid.\n\n"
+                    }, 
+                    "403": {
+                        "description": "The user does not have permission to create and analyzer with this configuration.\n\n"
+                    }
+                }, 
+                "summary": "Create an analyzer with the suppiled definition", 
+                "tags": [
+                    "Analyzers"
+                ], 
+                "x-examples": [], 
+                "x-filename": "/home/user/git-root/arangodb-devel.debug/Documentation/DocuBlocks/Rest/Analyzers/post_api_analyzer.md", 
+                "x-hints": ""
+            }
+        }, 
+        "/_api/analyzer/{analyzer-name}": {
+            "delete": {
+                "description": "\n\nRemoves an analyzer configuration identified by *analyzer-name*.\n\nIf the analyzer definition was successfully dropped, an object is returned with\nthe following attributes:\n- *error*: *false*\n- *name*: The name of the removed analyzer\n\n\n\n\n**Example:**\n Removing without *force*:\n\n<pre><code><span class=\"hljs-meta\">shell&gt;</span><span class=\"bash\"> curl -X DELETE --header <span class=\"hljs-string\">'accept: application/json'</span> --dump - http://localhost:8529/_api/analyzer/_system%3A%3AtestAnalyzer</span>\n</code><code>\n</code><code>HTTP/<span class=\"hljs-number\">1.1</span> OK\n</code><code>content-type: application/json; charset=utf<span class=\"hljs-number\">-8</span>\n</code><code>x-content-type-options: nosniff\n</code><code>\n</code><code>{ \n</code><code>  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n</code><code>  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">200</span>, \n</code><code>  <span class=\"hljs-string\">\"name\"</span> : <span class=\"hljs-string\">\"_system::testAnalyzer\"</span> \n</code><code>}\n</code></pre>\n\n\n\n\n**Example:**\n Removing with *force*:\n\n<pre><code><span class=\"hljs-meta\">shell&gt;</span><span class=\"bash\"> curl -X POST --header <span class=\"hljs-string\">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/collection</span> &lt;&lt;EOF\n</code><code>{ \n</code><code>  <span class=\"hljs-string\">\"name\"</span> : <span class=\"hljs-string\">\"testCollection\"</span> \n</code><code>}\n</code><code>EOF\n</code><code>\n</code><code><span class=\"hljs-meta\">shell&gt;</span><span class=\"bash\"> curl -X POST --header <span class=\"hljs-string\">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/view</span> &lt;&lt;EOF\n</code><code>{ \n</code><code>  <span class=\"hljs-string\">\"name\"</span> : <span class=\"hljs-string\">\"testView\"</span>, \n</code><code>  <span class=\"hljs-string\">\"type\"</span> : <span class=\"hljs-string\">\"arangosearch\"</span>, \n</code><code>  <span class=\"hljs-string\">\"links\"</span> : { \n</code><code>    <span class=\"hljs-string\">\"testCollection\"</span> : { \n</code><code>      <span class=\"hljs-string\">\"analyzers\"</span> : [ \n</code><code>        <span class=\"hljs-string\">\"_system::testAnalyzer\"</span> \n</code><code>      ] \n</code><code>    } \n</code><code>  } \n</code><code>}\n</code><code>EOF\n</code><code>\n</code><code><span class=\"hljs-meta\">shell&gt;</span><span class=\"bash\"> curl -X DELETE --header <span class=\"hljs-string\">'accept: application/json'</span> --dump - http://localhost:8529/_api/analyzer/_system%3A%3AtestAnalyzer?force=<span class=\"hljs-literal\">false</span></span>\n</code><code>\n</code><code><span class=\"hljs-meta\">shell&gt;</span><span class=\"bash\"> curl -X DELETE --header <span class=\"hljs-string\">'accept: application/json'</span> --dump - http://localhost:8529/_api/analyzer/_system%3A%3AtestAnalyzer?force=<span class=\"hljs-literal\">true</span></span>\n</code><code>\n</code><code>HTTP/<span class=\"hljs-number\">1.1</span> OK\n</code><code>content-type: application/json; charset=utf<span class=\"hljs-number\">-8</span>\n</code><code>x-content-type-options: nosniff\n</code><code>\n</code><code>{ \n</code><code>  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n</code><code>  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">200</span>, \n</code><code>  <span class=\"hljs-string\">\"name\"</span> : <span class=\"hljs-string\">\"_system::testAnalyzer\"</span> \n</code><code>}\n</code></pre>\n\n\n\n\n", 
+                "parameters": [
+                    {
+                        "description": "The name of the analyzer to remove.\n\n", 
+                        "format": "string", 
+                        "in": "path", 
+                        "name": "analyzer-name", 
+                        "required": true, 
+                        "type": "string"
+                    }, 
+                    {
+                        "description": "The analyzer configuration should be removed even if it is in-use.\nThe default value is *false*.\n\n", 
+                        "in": "query", 
+                        "name": "force", 
+                        "required": false, 
+                        "type": "boolean"
+                    }
+                ], 
+                "responses": {
+                    "200": {
+                        "description": "The analyzer configuration was removed successfully.\n\n"
+                    }, 
+                    "400": {
+                        "description": "The *analyzer-name* was not supplied or another request parameter was not\nvalid.\n\n"
+                    }, 
+                    "403": {
+                        "description": "The user does not have permission to remove this analyzer configuration.\n\n"
+                    }, 
+                    "404": {
+                        "description": "Such an analyzer configuration does not exist.\n\n"
+                    }, 
+                    "409": {
+                        "description": "The specified analyzer configuration is still in use and *force* was omitted or\n*false* specified.\n\n"
+                    }
+                }, 
+                "summary": "Remove an analyzer", 
+                "tags": [
+                    "Analyzers"
+                ], 
+                "x-examples": [], 
+                "x-filename": "/home/user/git-root/arangodb-devel.debug/Documentation/DocuBlocks/Rest/Analyzers/delete_api_analyzer.md", 
+                "x-hints": ""
+            }, 
+            "get": {
+                "description": "\n\nRetrieves the full definition for the specified analyzer name.\nThe resulting object contains the following attributes:\n- *name*: the analyzer name\n- *type*: the analyzer type\n- *properties*: the properties used to configure the specified type\n- *features*: the set of features to set on the analyzer generated fields\n\n\n\n\n**Example:**\n Retrieve an analyzer definition:\n\n<pre><code><span class=\"hljs-meta\">shell&gt;</span><span class=\"bash\"> curl --header <span class=\"hljs-string\">'accept: application/json'</span> --dump - http://localhost:8529/_api/analyzer/_system%3A%3AtestAnalyzer</span>\n</code><code>\n</code><code>HTTP/<span class=\"hljs-number\">1.1</span> OK\n</code><code>content-type: application/json; charset=utf<span class=\"hljs-number\">-8</span>\n</code><code>x-content-type-options: nosniff\n</code><code>\n</code><code>{ \n</code><code>  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n</code><code>  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">200</span>, \n</code><code>  <span class=\"hljs-string\">\"type\"</span> : <span class=\"hljs-string\">\"identity\"</span>, \n</code><code>  <span class=\"hljs-string\">\"properties\"</span> : <span class=\"hljs-string\">\"test properties\"</span>, \n</code><code>  <span class=\"hljs-string\">\"features\"</span> : [ ], \n</code><code>  <span class=\"hljs-string\">\"name\"</span> : <span class=\"hljs-string\">\"_system::testAnalyzer\"</span> \n</code><code>}\n</code></pre>\n\n\n\n\n\n", 
+                "parameters": [
+                    {
+                        "description": "The name of the analyzer to retrieve.\n\n", 
+                        "format": "string", 
+                        "in": "path", 
+                        "name": "analyzer-name", 
+                        "required": true, 
+                        "type": "string"
+                    }
+                ], 
+                "responses": {
+                    "200": {
+                        "description": "The analyzer definition was retrieved successfully.\n\n"
+                    }, 
+                    "404": {
+                        "description": "Such an analyzer configuration does not exist.\n\n"
+                    }
+                }, 
+                "summary": "Return the analyzer definition", 
+                "tags": [
+                    "Analyzers"
+                ], 
+                "x-examples": [], 
+                "x-filename": "/home/user/git-root/arangodb-devel.debug/Documentation/DocuBlocks/Rest/Analyzers/get_api_analyzer.md", 
+                "x-hints": ""
+            }
+        }, 
         "/_api/aqlfunction": {
             "get": {
                 "description": "\n\nReturns all registered AQL user functions.\n\nThe call will return a JSON array with status codes and all user functions found under *result*.\n\n\n**HTTP 200**\n*A json document with these Properties is returned:*\n\non success *HTTP 200* is returned.\n\n- **code**: the HTTP status code\n- **result**: All functions, or the ones matching the *namespace* parameter \n  - **isDeterministic**: an optional boolean value to indicate whether the function\n   results are fully deterministic (function return value solely depends on\n   the input value and return value is the same for repeated calls with same\n   input). The *isDeterministic* attribute is currently not used but may be\n   used later for optimizations.\n  - **code**: A string representation of the function body\n  - **name**: The fully qualified name of the user function\n- **error**: boolean flag to indicate whether an error occurred (*false* in this case)\n\n\n**HTTP 400**\n*A json document with these Properties is returned:*\n\nIf the user function name is malformed, the server will respond with *HTTP 400*.\n\n- **errorMessage**: a descriptive error message\n- **errorNum**: the server error number\n- **code**: the HTTP status code\n- **error**: boolean flag to indicate whether an error occurred (*true* in this case)\n\n\n\n\n**Example:**\n \n\n<pre><code><span class=\"hljs-meta\">shell&gt;</span><span class=\"bash\"> curl --header <span class=\"hljs-string\">'accept: application/json'</span> --dump - http://localhost:8529/_api/aqlfunction/<span class=\"hljs-built_in\">test</span></span>\n</code><code>\n</code><code>HTTP/<span class=\"hljs-number\">1.1</span> OK\n</code><code>content-type: application/json; charset=utf<span class=\"hljs-number\">-8</span>\n</code><code>x-content-type-options: nosniff\n</code><code>\n</code><code>{ \n</code><code>  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n</code><code>  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">200</span>, \n</code><code>  <span class=\"hljs-string\">\"result\"</span> : [ ] \n</code><code>}\n</code></pre>\n\n\n\n\n", 
