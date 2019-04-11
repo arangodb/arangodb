@@ -36,12 +36,16 @@ class StringHeap {
   StringHeap& operator=(StringHeap const&) = delete;
 
   explicit StringHeap(size_t blockSize);
-
   ~StringHeap();
 
   /// @brief register a string
   arangodb::velocypack::StringRef registerString(char const* ptr, size_t length);
-
+  arangodb::velocypack::StringRef registerString(arangodb::velocypack::StringRef const& str) {
+    return registerString(str.data(), str.size());
+  }
+  
+  void merge(StringHeap&& heap);
+  
  private:
   /// @brief allocate a new block of memory
   void allocateBlock();

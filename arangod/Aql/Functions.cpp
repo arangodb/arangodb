@@ -32,6 +32,7 @@
 #include "Aql/Query.h"
 #include "Aql/V8Executor.h"
 #include "Basics/Exceptions.h"
+#include "Basics/HybridLogicalClock.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
@@ -6824,6 +6825,50 @@ AqlValue Functions::DateFormat(ExpressionContext* expressionContext,
   }
 
   return AqlValue(arangodb::basics::formatDate(aqlFormatString.slice().copyString(), tp));
+}
+
+/// @brief function DECODE_REV
+AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
+                              transaction::Methods* trx,
+                              VPackFunctionParameters const& parameters) {
+  auto const rev = extractFunctionParameterValue(parameters, 0);
+  if (!rev.isString()) {
+    ::registerInvalidArgumentWarning(expressionContext, "DECODE_REV");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  VPackValueLength l;
+  char const* p = rev.slice().getString(l);
+  uint64_t revInt = arangodb::basics::HybridLogicalClock::decodeTimeStamp(p, l);
+ 
+  if (revInt == 0 || revInt == UINT64_MAX) {
+    ::registerInvalidArgumentWarning(expressionContext, "DECODE_REV");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  uint64_t timeMilli = arangodb::basics::HybridLogicalClock::extractTime(revInt);
+  uint64_t count = arangodb::basics::HybridLogicalClock::extractCount(revInt);
+  time_t timeSeconds = timeMilli / 1000;
+  uint64_t millis = timeMilli % 1000;
+  struct tm date;
+  TRI_gmtime(timeSeconds, &date);
+  
+  char buffer[32];
+  strftime(buffer, 32, "%Y-%m-%dT%H:%M:%S.000Z", &date);
+  // fill millisecond part not covered by strftime
+  buffer[20] = static_cast<char>(millis / 100) + '0';
+  buffer[21] = ((millis / 10) % 10) + '0';
+  buffer[22] = (millis % 10) + '0';
+  // buffer[23] is 'Z'
+  buffer[24] = 0;
+
+  transaction::BuilderLeaser builder(trx);
+  builder->openObject();
+  builder->add("date", VPackValue(buffer));
+  builder->add("count", VPackValue(count));
+  builder->close();
+
+  return AqlValue(builder.get());
 }
 
 AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,

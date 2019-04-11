@@ -561,20 +561,6 @@ class ClusterComm {
                          bool retryOnCollNotFound,
                          bool retryOnBackendUnavailable = true);
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief this method performs the given requests described by the vector
-  /// of ClusterCommRequest structs in the following way:
-  /// Each request is done with asyncRequest.
-  /// After each request is successfully send out we drop all requests.
-  /// Hence it is guaranteed that all requests are send, but
-  /// we will not wait for answers of those requests.
-  /// Also all reporting for the responses is lost, because we do not care.
-  /// NOTE: The requests can be in any communication state after this function
-  /// and you should not read them. If you care for response use performRequests
-  /// instead.
-  ////////////////////////////////////////////////////////////////////////////////
-  void fireAndForgetRequests(std::vector<ClusterCommRequest> const& requests);
-
   typedef std::function<void(std::vector<ClusterCommRequest> const&, size_t, size_t)> AsyncCallback;
   void performAsyncRequests(std::vector<ClusterCommRequest>&&, ClusterCommTimeout timeout,
                             bool retryOnCollNotFound, AsyncCallback const&);

@@ -417,7 +417,6 @@ SET(ARANGOD_SOURCES
   Pregel/IncomingCache.cpp
   Pregel/OutgoingCache.cpp
   Pregel/PregelFeature.cpp
-  Pregel/Recovery.cpp
   Pregel/Utils.cpp
   Pregel/Worker-templates-algorithms.cpp
   Pregel/Worker-templates-native-types.cpp
