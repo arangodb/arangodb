@@ -69,6 +69,7 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
       _customTypeHandler(),
       _builders{_arena},
       _stringBuffer(),
+      _strings{_strArena},
       _options(arangodb::velocypack::Options::Defaults),
       _dumpOptions(arangodb::velocypack::Options::Defaults),
       _transaction{0, false},
@@ -97,11 +98,14 @@ transaction::Context::~Context() {
     delete it;
   }
 
+  // clear all strings handed out
+  for (auto& it : _strings) {
+    delete it;
+  }
+
   if (_ownsResolver) {
     delete _resolver;
   }
-
-  _resolver = nullptr;
 }
 
 /// @brief factory to create a custom type handler, not managed
@@ -143,17 +147,26 @@ void transaction::Context::returnStringBuffer(basics::StringBuffer* stringBuffer
 
 /// @brief temporarily lease a std::string
 std::string* transaction::Context::leaseString() {
-  if (_stdString == nullptr) {
-    _stdString.reset(new std::string());
-  } else {
-    _stdString->clear();
+  if (_strings.empty()) {
+    // create a new string and return it
+    return new std::string();
   }
-  return _stdString.release();
+  
+  // re-use an existing string
+  std::string* s = _strings.back();
+  s->clear();
+  _strings.pop_back();
+  return s;
 }
 
 /// @brief return a temporary std::string object
 void transaction::Context::returnString(std::string* str) {
-  _stdString.reset(str);
+  try {  // put string back into our vector of strings
+    _strings.push_back(str);
+  } catch (...) {
+    // no harm done. just wipe the string
+    delete str;
+  }
 }
 
 /// @brief temporarily lease a Builder object

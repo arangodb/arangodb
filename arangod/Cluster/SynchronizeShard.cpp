@@ -286,7 +286,7 @@ static arangodb::Result addShardFollower(std::string const& endpoint,
       return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
     }
 
-    LOG_TOPIC("79935", DEBUG, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
+    LOG_TOPIC("79935", DEBUG, Logger::MAINTENANCE) << "addShardFollower: success";
     return arangodb::Result();
   } catch (std::exception const& e) {
     std::string errorMsg(
@@ -321,6 +321,21 @@ static arangodb::Result cancelReadLockOnLeader(std::string const& endpoint,
                       std::unordered_map<std::string, std::string>(), timeout);
 
   auto result = comres->result;
+
+  if (result != nullptr && result->getHttpReturnCode() == 404) {
+    auto const vp = result->getBodyVelocyPack();
+    auto const& slice = vp->slice();
+    if (slice.isObject()) {
+      VPackSlice s = slice.get(StaticStrings::ErrorNum);
+      if (s.isNumber()) {
+        int errorNum = s.getNumber<int>();
+        if (errorNum == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+          // database is gone. that means our lock is also gone
+          return arangodb::Result();
+        }
+      }
+    }
+  }
 
   if (result == nullptr || result->getHttpReturnCode() != 200) {
     auto errorMessage = comres->stringifyErrorMessage();
@@ -443,6 +458,22 @@ arangodb::Result SynchronizeShard::getReadLock(std::string const& endpoint,
       LOG_TOPIC("b681f", DEBUG, Logger::MAINTENANCE)
           << "startReadLockOnLeader: Lock not yet acquired...";
     } else {
+      if (result != nullptr && result->getHttpReturnCode() == 404) {
+        auto const vp = result->getBodyVelocyPack();
+        auto const& slice = vp->slice();
+        if (slice.isObject()) {
+          VPackSlice s = slice.get(StaticStrings::ErrorNum);
+          if (s.isNumber()) {
+            int errorNum = s.getNumber<int>();
+            if (errorNum == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+              // database is gone. we can now give up
+              break;
+            }
+          }
+        }
+        // fall-through to other cases intentional here
+      }
+
       LOG_TOPIC("a82bc", DEBUG, Logger::MAINTENANCE)
           << "startReadLockOnLeader: Do not see read lock yet:"
           << putres->stringifyErrorMessage();

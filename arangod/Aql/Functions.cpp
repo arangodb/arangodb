@@ -867,7 +867,7 @@ void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionN
         return;
       }
     }
-    if (res.errorNumber() == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
+    if (res.is(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) {
       // special error message to indicate which collection was undeclared
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
                                      res.errorMessage() + ": " + collectionName +
@@ -3406,7 +3406,6 @@ AqlValue Functions::DateSubtract(ExpressionContext* expressionContext,
   // size == 3 unit / unit type
   // size == 2 iso duration
 
-  year_month_day ymd{floor<days>(tp)};
   if (parameters.size() == 3) {
     AqlValue const& durationUnit = extractFunctionParameterValue(parameters, 1);
     if (!durationUnit.isNumber()) {  // unit must be number

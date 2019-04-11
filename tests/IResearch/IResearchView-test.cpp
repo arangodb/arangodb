@@ -1314,7 +1314,7 @@ SECTION("test_emplace_cid") {
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
 
-      CHECK((false == view->link(link->self())));
+      CHECK((false == view->link(link->self()).ok()));
       CHECK((!persisted)); // emplace() does not modify view meta if cid existed previously
     }
 
@@ -1370,7 +1370,7 @@ SECTION("test_emplace_cid") {
       } link(42, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      CHECK((true == view->link(asyncLinkPtr)));
+      CHECK((true == view->link(asyncLinkPtr).ok()));
       CHECK((persisted)); // emplace() modifies view meta if cid did not exist previously
     }
 
@@ -1429,7 +1429,7 @@ SECTION("test_emplace_cid") {
       } link(42, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      CHECK((true == view->link(asyncLinkPtr)));
+      CHECK((true == view->link(asyncLinkPtr).ok()));
       CHECK((!persisted)); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
     }
 
@@ -1484,7 +1484,7 @@ SECTION("test_emplace_cid") {
       } link(42, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      CHECK((false == view->link(asyncLinkPtr)));
+      CHECK((false == view->link(asyncLinkPtr).ok()));
     }
 
     // collection in view after
@@ -1542,7 +1542,7 @@ SECTION("test_emplace_cid") {
       } link(42, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      CHECK((true == view->link(asyncLinkPtr)));
+      CHECK((true == view->link(asyncLinkPtr).ok()));
       CHECK((!persisted)); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
     }
 
@@ -2119,11 +2119,10 @@ SECTION("test_query") {
       CHECK((trx.begin().ok()));
 
       arangodb::ManagedDocumentResult inserted;
-      TRI_voc_tick_t tick;
       arangodb::OperationOptions options;
       for (size_t i = 1; i <= 12; ++i) {
         auto doc = arangodb::velocypack::Parser::fromJson(std::string("{ \"key\": ") + std::to_string(i) + " }");
-        logicalCollection->insert(&trx, doc->slice(), inserted, options, tick, false);
+        logicalCollection->insert(&trx, doc->slice(), inserted, options, false);
       }
 
       CHECK((trx.commit().ok()));
@@ -2152,11 +2151,10 @@ SECTION("test_query") {
       CHECK((trx.begin().ok()));
 
       arangodb::ManagedDocumentResult inserted;
-      TRI_voc_tick_t tick;
       arangodb::OperationOptions options;
       for (size_t i = 13; i <= 24; ++i) {
         auto doc = arangodb::velocypack::Parser::fromJson(std::string("{ \"key\": ") + std::to_string(i) + " }");
-        logicalCollection->insert(&trx, doc->slice(), inserted, options, tick, false);
+        logicalCollection->insert(&trx, doc->slice(), inserted, options, false);
       }
 
       CHECK(trx.commit().ok());

@@ -961,6 +961,42 @@ static void JS_FiguresVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_GetResponsibleShardVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  if (!ServerState::instance()->isCoordinator()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
+  }
+
+  auto* collection = UnwrapCollection(isolate, args.Holder());
+
+  if (!collection) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+  if (args.Length() < 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleShard(<data>)");
+  }
+  
+  VPackBuilder builder;      
+  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  std::string shardId;
+  res = collection->getResponsibleShard(builder.slice(), false, shardId);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, shardId);
+  TRI_V8_RETURN(result);
+
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionLoad
 ////////////////////////////////////////////////////////////////////////////////
@@ -2470,7 +2506,7 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context, TRI_vocbase_t* vocba
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoCollection"));
 
   rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(3);
+  rt->SetInternalFieldCount(2); // SLOT_CLASS_TYPE + SLOT_CLASS
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "count"), JS_CountVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "document"),
@@ -2481,6 +2517,7 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context, TRI_vocbase_t* vocba
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "drop"), JS_DropVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "exists"), JS_ExistsVocbaseVPack);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "figures"), JS_FiguresVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getResponsibleShard"), JS_GetResponsibleShardVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "insert"), JS_InsertVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "_binaryInsert"),

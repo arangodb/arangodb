@@ -23,6 +23,7 @@
 #include "ManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/MutexLocker.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -42,15 +43,20 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
   setOptional(false);
   startsAfter("BasicsPhase");
   startsAfter("EngineSelector");
+  startsAfter("Scheduler");
   startsBefore("Database");
       
-  _gcfunc = [this] (bool cancelled) {
-    if (!cancelled) {
-      MANAGER->garbageCollect(/*abortAll*/false);
+  _gcfunc = [this] (bool canceled) {
+    if (canceled) {
+      return;
     }
     
-    if (!ApplicationServer::isStopping() && !cancelled) {
-      auto off = std::chrono::seconds(1);
+    MANAGER->garbageCollect(/*abortAll*/false);
+    
+    auto off = std::chrono::seconds(1);
+    
+    MUTEX_LOCKER(guard, _workItemMutex);
+    if (!ApplicationServer::isStopping() && !canceled) {
       _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
     }
   };
@@ -64,18 +70,34 @@ void ManagerFeature::prepare() {
   
 void ManagerFeature::start() {
   auto off = std::chrono::seconds(1);
+
+  MUTEX_LOCKER(guard, _workItemMutex); 
   _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
 }
   
 void ManagerFeature::beginShutdown() {
-  _workItem.reset();
-  // at this point all cursor should have been aborted already
+  {
+    MUTEX_LOCKER(guard, _workItemMutex); 
+    _workItem.reset();
+  }
+  // at this point all cursors should have been aborted already
   MANAGER->garbageCollect(/*abortAll*/true);
   // make sure no lingering managed trx remain
   while (MANAGER->garbageCollect(/*abortAll*/true)) {
     LOG_TOPIC("96298", WARN, Logger::TRANSACTIONS) << "still waiting for managed transaction";
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
+}
+
+void ManagerFeature::stop() {
+  // reset again, as there may be a race between beginShutdown and
+  // the execution of the deferred _workItem
+  {
+    MUTEX_LOCKER(guard, _workItemMutex); 
+    _workItem.reset();
+  }
+  // at this point all cursors should have been aborted already
+  MANAGER->garbageCollect(/*abortAll*/true);
 }
 
 void ManagerFeature::unprepare() {

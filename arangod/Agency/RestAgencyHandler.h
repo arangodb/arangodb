@@ -25,7 +25,7 @@
 #define ARANGOD_REST_HANDLER_REST_AGENCY_HANDLER_H 1
 
 #include "Agency/Agent.h"
-#include "RestHandler/RestBaseHandler.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
 
@@ -33,7 +33,7 @@ namespace arangodb {
 /// @brief REST handler for outside calls to agency (write & read)
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestAgencyHandler : public RestBaseHandler {
+class RestAgencyHandler : public RestVocbaseBaseHandler {
  public:
   RestAgencyHandler(GeneralRequest*, GeneralResponse*, consensus::Agent*);
 

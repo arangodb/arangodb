@@ -971,7 +971,7 @@ function runTests (mount, options = {}) {
     service = reloadInstalledService(mount, true);
   }
   ensureServiceLoaded(mount);
-  return require('@arangodb/foxx/mocha').run(service, options.reporter);
+  return require('@arangodb/foxx/mocha').run(service, options);
 }
 
 function enableDevelopmentMode (mount) {

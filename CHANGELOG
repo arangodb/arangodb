@@ -4,6 +4,14 @@ devel
 * fixed internal issue #2946: Create graph autocomplete was not working under
   certain circumstances.
 
+* added `filter` option to Foxx HTTP API for running tests.
+
+* added function `db.<collection>.getResponsibleShard()` to find out which is the
+  responsible shard for a given document. Note that this function is only available
+  in a cluster coordinator.
+
+* updated bundled version of jemalloc memory allocator to 5.2.0.
+
 * don't create per-database system collection `_frontend` automatically.
   This collection is only needed by the web UI, and it can be created lazily 
   when needed.
@@ -421,6 +429,12 @@ devel
 * fix log spam in agency supervision when leader resigned
 
 * make AddFollower less aggressive
+
+* lots of agency performance improvements, mostly avoiding copying
+
+* priority queue for maintenance jobs
+
+* do not wait for replication after each job execution in Supervision
 
 v3.4.1 (XXXX-XX-XX)
 -------------------

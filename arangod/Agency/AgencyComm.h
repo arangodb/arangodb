@@ -306,9 +306,7 @@ class AgencyTransaction {
 
 /*struct AgencyGeneralTransaction : public AgencyTransaction {
 
-  typedef
-std::pair<std::vector<AgencyOperation>,std::vector<AgencyPrecondition>>
-TransactionType;
+  typedef std::pair<std::vector<AgencyOperation>,std::vector<AgencyPrecondition>> TransactionType;
 
   explicit AgencyGeneralTransaction(AgencyOperation const& op,
                                     AgencyPrecondition const& pre) :

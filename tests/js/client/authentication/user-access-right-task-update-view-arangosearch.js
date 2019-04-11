@@ -30,6 +30,7 @@
 
 'use strict';
 var jsunity = require('jsunity');
+var analyzers = require("@arangodb/analyzers");
 const testHelper = require('@arangodb/test-helper');
 const isEqual = testHelper.isEqual;
 const deriveTestSuite = testHelper.deriveTestSuite;
@@ -243,6 +244,9 @@ function UserRightsManagement(name) {
             rootPrepareCollection(testCol2Name);
 
             rootCreateView(testViewName, { links: { [testCol1Name] : {includeAllFields: true } } });
+     helper.switchUser('root', dbName);
+     analyzers.save(db._name() + "::text_de", "text", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
+     analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
 	},
 
 	tearDown: function() {
@@ -492,7 +496,7 @@ if (hasIResearch(db)) {
 			    tasks.register(task);
 			    wait(keySpaceId, name);
 			    assertTrue(getKey(keySpaceId, `${name}_status`), `${name} could not update the view with sufficient rights`);
-			    assertEqual(rootGetViewProps(testViewName)["links"][testCol1Name]["analyzers"], ["text_de","text_en"], 'View link update reported success, but property was not updated');
+			    assertEqual(rootGetViewProps(testViewName)["links"][testCol1Name]["analyzers"], [db._name() + "::text_de",db._name() + "::text_en"], 'View link update reported success, but property was not updated');
 			} else {
 			    tasks.register(task);
 			    wait(keySpaceId, name);

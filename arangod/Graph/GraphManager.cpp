@@ -424,15 +424,15 @@ Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph
                              nullptr, nullptr, aql::PART_MAIN);
   aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+  if (queryResult.result.fail()) {
+    if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+        (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
       return {TRI_ERROR_REQUEST_CANCELED};
     }
-    return {queryResult.code};
+    return queryResult.result;
   }
 
-  VPackSlice graphsSlice = queryResult.result->slice();
+  VPackSlice graphsSlice = queryResult.data->slice();
   if (graphsSlice.isNone()) {
     return {TRI_ERROR_OUT_OF_MEMORY};
   } else if (!graphsSlice.isArray()) {
@@ -599,15 +599,15 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
       << "starting to load graphs information";
   aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+  if (queryResult.result.fail()) {
+    if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+        (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
       return OperationResult(TRI_ERROR_REQUEST_CANCELED);
     }
-    return OperationResult(queryResult.code);
+    return OperationResult(std::move(queryResult.result));
   }
 
-  VPackSlice graphsSlice = queryResult.result->slice();
+  VPackSlice graphsSlice = queryResult.data->slice();
 
   if (graphsSlice.isNone()) {
     return OperationResult(TRI_ERROR_OUT_OF_MEMORY);

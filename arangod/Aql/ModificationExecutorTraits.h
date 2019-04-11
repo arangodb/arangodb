@@ -54,7 +54,6 @@ struct ModificationBase {
 
   std::size_t _defaultBlockSize = ExecutionBlock::DefaultBatchSize();
   velocypack::Builder _tmpBuilder;  // default
-  bool _prepared = false;
   std::size_t _blockIndex = 0;  // cursor to the current positon
   std::shared_ptr<AqlItemBlockShell> _block = nullptr;
 
@@ -70,7 +69,6 @@ struct ModificationBase {
     // MUST not reset _block
     _justCopy = false;
     _last_not_skip = std::numeric_limits<decltype(_last_not_skip)>::max();
-    _prepared = false;
     _blockIndex = 0;
 
     _tmpBuilder.clear();
@@ -150,7 +148,7 @@ struct UpdateReplace : ModificationBase {
   bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 
   UpdateReplace() = delete;
-  UpdateReplace(MethodPtr method, std::string name)
+  UpdateReplace(MethodPtr method, std::string&& name)
       : _method(method), _name(std::move(name)) {}
 
   void reset() {
@@ -158,8 +156,8 @@ struct UpdateReplace : ModificationBase {
     _updateOrReplaceBuilder.clear();
   };
 
-  MethodPtr _method;
-  std::string _name;
+  MethodPtr const _method;
+  std::string const _name;
   VPackBuilder _updateOrReplaceBuilder;
 };
 

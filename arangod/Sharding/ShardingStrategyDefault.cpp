@@ -69,48 +69,43 @@ template <bool returnNullSlice>
 VPackSlice buildTemporarySlice(VPackSlice const& sub, Part const& part,
                                VPackBuilder& temporaryBuilder, bool splitSlash) {
   if (sub.isString()) {
+    arangodb::velocypack::StringRef key(sub);
+    if (splitSlash) {
+      size_t pos = key.find('/');
+      if (pos != std::string::npos) {
+        // We have an _id. Split it.
+        key = key.substr(pos + 1);
+      }
+    }
     switch (part) {
       case Part::ALL: {
-        if (splitSlash) {
-          arangodb::velocypack::StringRef key(sub);
-          size_t pos = key.find('/');
-          if (pos != std::string::npos) {
-            // We have an _id. Split it.
-            key = key.substr(pos + 1);
-            temporaryBuilder.clear();
-            temporaryBuilder.add(VPackValue(key.toString()));
-            return temporaryBuilder.slice();
-          }
-        }
-        return sub;
+        // by adding the key to the builder, we may invalidate the original key...
+        // however, this is safe here as the original key is not used after we have
+        // added to the builder
+        return VPackSlice(temporaryBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String)));
       }
       case Part::FRONT: {
-        arangodb::velocypack::StringRef prefix(sub);
-        size_t pos;
-        if (splitSlash) {
-          pos = prefix.find('/');
-          if (pos != std::string::npos) {
-            // We have an _id. Split it.
-            prefix = prefix.substr(pos + 1);
-          }
-        }
-        pos = prefix.find(':');
+        size_t pos = key.find(':');
         if (pos != std::string::npos) {
-          prefix = prefix.substr(0, pos);
-          temporaryBuilder.clear();
-          temporaryBuilder.add(VPackValue(prefix.toString()));
-          return temporaryBuilder.slice();
+          key = key.substr(0, pos);
+          // by adding the key to the builder, we may invalidate the original key...
+          // however, this is safe here as the original key is not used after we have
+          // added to the builder
+          return VPackSlice(temporaryBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String)));
         }
+        // fall-through to returning null or original slice
         break;
       }
       case Part::BACK: {
-        std::string prefix = sub.copyString();
-        size_t pos = prefix.rfind(':');
+        size_t pos = key.rfind(':');
         if (pos != std::string::npos) {
-          temporaryBuilder.clear();
-          temporaryBuilder.add(VPackValue(prefix.substr(pos + 1)));
-          return temporaryBuilder.slice();
+          key = key.substr(pos + 1);
+          // by adding the key to the builder, we may invalidate the original key...
+          // however, this is safe here as the original key is not used after we have
+          // added to the builder
+          return VPackSlice(temporaryBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String)));
         }
+        // fall-through to returning null or original slice
         break;
       }
     }
@@ -129,13 +124,16 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
   error = TRI_ERROR_NO_ERROR;
   slice = slice.resolveExternal();
   if (slice.isObject()) {
+    VPackBuilder temporaryBuilder;
     for (auto const& attr : attributes) {
+      temporaryBuilder.clear();
+
       arangodb::velocypack::StringRef realAttr;
       ::Part part;
       ::parseAttributeAndPart(attr, realAttr, part);
       VPackSlice sub = slice.get(realAttr).resolveExternal();
-      VPackBuilder temporaryBuilder;
       if (sub.isNone()) {
+        // shard key attribute not present in document
         if (realAttr == StaticStrings::KeyString && !key.empty()) {
           temporaryBuilder.add(VPackValue(key));
           sub = temporaryBuilder.slice();
@@ -147,6 +145,9 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
           sub = VPackSlice::nullSlice();
         }
       }
+      // buildTemporarySlice may append data to the builder, which may invalidate
+      // the original "sub" value. however, "sub" is reassigned immediately with
+      // a new value, so it does not matter in reality
       sub = ::buildTemporarySlice<returnNullSlice>(sub, part, temporaryBuilder, false);
       hash = sub.normalizedHash(hash);
     }

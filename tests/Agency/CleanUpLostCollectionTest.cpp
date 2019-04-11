@@ -97,7 +97,7 @@ VPackBuilder createJob(std::string const& collection, std::string const& from, s
 TEST_CASE("CleanUpLostCollectionTest", "[agency][supervision]") {
 auto baseStructure = createRootNode();
 write_ret_t fakeWriteResult {true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
-std::string const jobId = "1";
+uint64_t jobId = 1;
 
 SECTION("clean up a lost collection when the leader is failed") {
 
@@ -112,7 +112,7 @@ SECTION("clean up a lost collection when the leader is failed") {
     //  1. Transaction:
     //    - Operation:
     //        delete /arango/Current/Collections/database/collection/s99
-    //        push {
+    //        set /arango/Target/Finished/1 {
     //            "creator": "supervision",
     //            "jobId": "1",
     //            "server": "s99",
@@ -139,8 +139,8 @@ SECTION("clean up a lost collection when the leader is failed") {
     REQUIRE(op1delete.hasKey("op"));
     REQUIRE(op1delete.get("op").isEqualString("delete"));
 
-    REQUIRE(op1.hasKey("/arango/Target/Finished"));
-    auto const& op1push = op1.get("/arango/Target/Finished");
+    REQUIRE(op1.hasKey("/arango/Target/Finished/1"));
+    auto const& op1push = op1.get("/arango/Target/Finished/1");
     REQUIRE(op1push.hasKey("new"));
     auto const& op1new = op1push.get("new");
     REQUIRE(op1new.get("creator").isEqualString("supervision"));
@@ -150,7 +150,7 @@ SECTION("clean up a lost collection when the leader is failed") {
     REQUIRE(op1new.get("type").isEqualString("cleanUpLostCollection"));
 
     REQUIRE(op1push.hasKey("op"));
-    REQUIRE(op1push.get("op").isEqualString("push"));
+    REQUIRE(op1push.get("op").isEqualString("set"));
 
     REQUIRE(pre1.hasKey("/arango/Current/Collections/database/collection/s99"));
     REQUIRE(pre1.hasKey("/arango/Plan/Collections/database/collection/shards/s99"));

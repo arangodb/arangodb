@@ -73,7 +73,7 @@ struct Collections {
   static arangodb::Result lookup( // find collection
     TRI_vocbase_t const& vocbase, // vocbase to search
     std::string const& name, // collection name
-    FuncCallback const& callback // invoke on found collection
+    FuncCallback callback // invoke on found collection
   );
 
   /// Create collection, ownership of collection in callback is
@@ -85,7 +85,7 @@ struct Collections {
     arangodb::velocypack::Slice const& properties, // collection properties
     bool createWaitsForSyncReplication, // replication wait flag
     bool enforceReplicationFactor, // replication factor flag
-    FuncCallback const& callback // invoke on collection creation
+    FuncCallback callback // invoke on collection creation
   );
 
   static Result load(TRI_vocbase_t& vocbase, LogicalCollection* coll);

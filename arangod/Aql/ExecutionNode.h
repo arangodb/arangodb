@@ -55,6 +55,7 @@
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/CostEstimate.h"
 #include "Aql/DocumentProducingNode.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexHint.h"
 #include "Aql/Variable.h"
@@ -81,7 +82,6 @@ struct Collection;
 class Condition;
 class ExecutionBlock;
 class ExecutionEngine;
-class TraversalBlock;
 class ExecutionPlan;
 class RedundantCalculationsReplacer;
 
@@ -506,7 +506,7 @@ class ExecutionNode {
 
   /// @brief get RegisterPlan
   RegisterPlan const* getRegisterPlan() const {
-    TRI_ASSERT(_registerPlan.get() != nullptr);
+    TRI_ASSERT(_registerPlan != nullptr);
     return _registerPlan.get();
   }
 
@@ -560,6 +560,16 @@ class ExecutionNode {
     }
     return ExecutionNode::MaxRegisterId;
   }
+
+  virtual ExecutorInfos createRegisterInfos(
+      std::shared_ptr<std::unordered_set<RegisterId>>&& readableInputRegisters,
+      std::shared_ptr<std::unordered_set<RegisterId>>&& writableOutputRegisters) const;
+
+  RegisterId getNrInputRegisters() const;
+
+  RegisterId getNrOutputRegisters() const;
+
+  RegisterId varToRegUnchecked(Variable const& var) const;
 
  protected:
   /// @brief node id
