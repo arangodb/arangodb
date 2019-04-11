@@ -1374,7 +1374,7 @@ static void JS_GetCurrentResponse(v8::FunctionCallbackInfo<v8::Value> const& arg
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
+void TRI_InitV8Actions(v8::Isolate* isolate) {
   v8::HandleScope scope(isolate);
 
   // .............................................................................
@@ -1668,17 +1668,56 @@ static void JS_IsFoxxStoreDisabled(v8::FunctionCallbackInfo<v8::Value> const& ar
   TRI_V8_TRY_CATCH_END
 }
 
-void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
+static void JS_RunInRestrictedContext(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1 || !args[0]->IsFunction()) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "runInRestrictedContext(<function>)");
+  }
+  
+  v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(args[0]);
+  if (action.IsEmpty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot cannot function instance for runInRestrictedContext");
+  }
+
+  TRI_GET_GLOBALS(); 
+
+  {
+    // take a copy of the previous security context
+    auto oldContext = v8g->_securityContext;
+    
+    // patch security context 
+    v8g->_securityContext = JavaScriptSecurityContext::createRestrictedContext();
+
+    // make sure the old context will be restored
+    auto guard = scopeGuard([&oldContext, &v8g]() {
+      v8g->_securityContext = oldContext;
+    });
+        
+    v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
+    v8::Handle<v8::Value> callArgs[] = {v8::Null(isolate)};
+    v8::Handle<v8::Value> rv = action->Call(current, 0, callArgs);
+    TRI_V8_RETURN(rv);
+  }
+
+  TRI_V8_TRY_CATCH_END
+}
+
+void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_API_DISABLED"), JS_IsFoxxApiDisabled, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_STORE_DISABLED"), JS_IsFoxxStoreDisabled, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_RUN_IN_RESTRICTED_CONTEXT"), JS_RunInRestrictedContext, true);
+  
   // debugging functions
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_DEBUG_CLEAR_FAILAT"),
                                JS_DebugClearFailAt);
-
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_API_DISABLED"), JS_IsFoxxApiDisabled);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_STORE_DISABLED"), JS_IsFoxxStoreDisabled);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_AddGlobalFunctionVocbase(
