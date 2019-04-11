@@ -253,7 +253,7 @@ std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlock
 
   while (buf.size() < atMost) {
     if (_index == _buffer.size()) {
-      auto res = getBlock(atMost);
+      auto res = this->getBlock(atMost);
       if (res.first == ExecutionState::WAITING) {
         return {res.first, false};
       }
