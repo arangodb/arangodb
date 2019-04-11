@@ -1105,6 +1105,7 @@ RocksDBCuckooIndexEstimator<uint64_t>* RocksDBEdgeIndex::estimator() {
 }
 
 void RocksDBEdgeIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> est) {
+  TRI_ASSERT(_estimator == nullptr || _estimator->appliedSeq() <= est->appliedSeq());
   _estimator = std::move(est);
 }
 
