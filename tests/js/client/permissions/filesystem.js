@@ -36,14 +36,14 @@ const testresults = fs.join(rootDir, 'testresult.json'); // where we want to put
 const topLevelForbidden = fs.join(rootDir, 'forbidden');
 const forbiddenZipFileName = fs.join(topLevelForbidden, 'forbidden.zip');
 const topLevelForbiddenRecursive = fs.join(rootDir, 'forbidden_recursive');
-const intoTopLevelForbidden = rootDir + '/allowed/into_forbidden.txt';
 
 const topLevelAllowed = fs.join(rootDir, 'allowed');
+const intoTopLevelForbidden = fs.join(topLevelAllowed, 'into_forbidden.txt');
 const topLevelAllowedUnZip = fs.join(rootDir, 'allowed_unzip');
 const topLevelAllowedRecursive = fs.join(rootDir, 'allowed_recursive');
 const allowedZipFileName = fs.join(topLevelAllowedRecursive, 'allowed.zip');
-const intoTopLevelAllowed = rootDir + '/forbidden/into_allowed.txt';
-      
+const intoTopLevelAllowed = fs.join(intoTopLevelForbidden, 'into_allowed.txt');
+
 const topLevelAllowedFile = fs.join(topLevelAllowed, 'allowed.txt');
 const topLevelForbiddenFile = fs.join(topLevelForbidden, 'forbidden.txt');
 
@@ -113,19 +113,19 @@ if (getOptions === true) {
   return {
     'temp.path': fs.getTempPath(),     // Adjust the temp-path to match our current temp path
     'javascript.files-black-list': [
-      '/var/lib/.*', // that for sure!
-      '/var/log/.*', // that for sure!
-      '/etc/passwd', // if not this, what else?
-      '/etc/.*',
-      topLevelForbidden + '.*',
-      topLevelForbiddenRecursive + '.*'
+      '^/var/lib/', // that for sure!
+      '^/var/log/', // that for sure!
+      '^/etc/passwd', // if not this, what else?
+      '^/etc/',
+      '^' + topLevelForbidden ,
+      '^' + topLevelForbiddenRecursive
       // N/A  subLevelForbidden + '.*'
     ],
     'javascript.files-white-list': [
-      testresults,
-      topLevelAllowed + '.*',
-      subLevelAllowed + '.*',
-      topLevelAllowedRecursive + '.*'
+      '^' + testresults,
+      '^' + topLevelAllowed,
+      '^' + subLevelAllowed,
+      '^' + topLevelAllowedRecursive
     ]
   };
 }
