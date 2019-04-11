@@ -15,47 +15,6 @@ You should reference them via their names instead.
 @RESTURLPARAM{collection-name,string,required}
 The name of the collection.
 
-@RESTDESCRIPTION
-In addition to the above, the result will always contain the
-*waitForSync* attribute, and the *doCompact*, *journalSize*, 
-and *isVolatile* attributes for the MMFiles storage engine.
-This is achieved by forcing a load of the underlying collection.
-
-- *waitForSync*: If *true* then creating, changing or removing
-  documents will wait until the data has been synchronized to disk.
-
-- *doCompact*: Whether or not the collection will be compacted.
-  This option is only present for the MMFiles storage engine.
-
-- *journalSize*: The maximal size setting for journals / datafiles
-  in bytes.
-  This option is only present for the MMFiles storage engine.
-
-- *keyOptions*: JSON object which contains key generation options:
-  - *type*: specifies the type of the key generator. The currently
-    available generators are *traditional*, *autoincrement*, *uuid*
-    and *padded*.
-  - *allowUserKeys*: if set to *true*, then it is allowed to supply
-    own key values in the *_key* attribute of a document. If set to
-    *false*, then the key generator is solely responsible for
-    generating keys and supplying own key values in the *_key* attribute
-    of documents is considered an error.
-
-- *isVolatile*: If *true* then the collection data will be
-  kept in memory only and ArangoDB will not write or sync the data
-  to disk.
-  This option is only present for the MMFiles storage engine.
-
-In a cluster setup, the result will also contain the following attributes:
-- *numberOfShards*: the number of shards of the collection.
-
-- *shardKeys*: contains the names of document attributes that are used to
-  determine the target shard for documents.
-
-- *replicationFactor*: contains how many copies of each shard are kept on different DBServers.
-
-- *shardingStrategy*: the sharding strategy selected for the collection.
-
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
@@ -65,6 +24,13 @@ returned.
 @RESTRETURNCODE{404}
 If the *collection-name* is unknown, then a *HTTP 404*
 is returned.
+
+@RESTRETURNCODE{200}
+
+@RESTREPLYBODY{,object,required,collection_info}
+
+@RESTDESCRIPTION
+
 
 @EXAMPLES
 
