@@ -1239,7 +1239,7 @@ function processQuery(query, explain, planIndex) {
         });
 
         return rc;
-      case 'ShortestPathNode':
+      case 'ShortestPathNode': {
         if (node.hasOwnProperty('vertexOutVariable')) {
           parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));
         }
@@ -1247,7 +1247,7 @@ function processQuery(query, explain, planIndex) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));
         }
         translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        var defaultDirection = node.directions[0];
+        let defaultDirection = node.directions[0];
         rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("SHORTEST_PATH")} `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;
@@ -1301,12 +1301,13 @@ function processQuery(query, explain, planIndex) {
           node.graph = '<anonymous>';
         }
         return rc;
-      case 'KShortestPathsNode':
+      }
+      case 'KShortestPathsNode': {
         if (node.hasOwnProperty('pathOutVariable')) {
           parts.push(variableName(node.pathOutVariable) + '  ' + annotation('/* path */'));
         }
         translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        var defaultDirection = node.directions[0];
+        let defaultDirection = node.directions[0];
         rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("K_SHORTEST_PATHS")} `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;
@@ -1360,6 +1361,7 @@ function processQuery(query, explain, planIndex) {
           node.graph = '<anonymous>';
         }
         return rc;
+      }
       case 'CalculationNode':
         (node.functions || []).forEach(function (f) {
           functions[f.name] = f;
