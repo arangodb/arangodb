@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed internal issue #2946: Create graph autocomplete was not working under
+  certain circumstances.
+
 * added `filter` option to Foxx HTTP API for running tests.
 
 * added function `db.<collection>.getResponsibleShard()` to find out which is the
