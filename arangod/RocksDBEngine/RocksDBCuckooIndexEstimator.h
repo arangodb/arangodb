@@ -178,7 +178,7 @@ class RocksDBCuckooIndexEstimator {
         _nrCuckood(0),
         _nrTotal(0),
         _appliedSeq(0),
-        _needToPersist(true) {
+        _needToPersist(false) {
     // Inflate size so that we have some padding to avoid failure
     size *= 2;
     size = (size >= 1024) ? size : 1024;  // want 256 buckets minimum
