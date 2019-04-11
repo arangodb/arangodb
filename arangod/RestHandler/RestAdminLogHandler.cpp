@@ -32,7 +32,6 @@
 #include "Logger/LogBuffer.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
-#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -42,31 +41,21 @@ RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request, GeneralRespons
     : RestBaseHandler(request, response) {}
 
 RestStatus RestAdminLogHandler::execute() {
+  ServerSecurityFeature* security =
+    application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
+        "ServerSecurity");
+  TRI_ASSERT(security != nullptr);
+
+  if (!security->canAccessHardenedApi()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
   size_t const len = _request->suffixes().size();
-
-
   if (len == 0) {
     reportLogs();
   } else {
-    ServerSecurityFeature* security =
-      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-          "ServerSecurity");
-    TRI_ASSERT(security != nullptr);
-
-    bool allowToChangeLogLevel = !security->isRestApiHardened();
-
-    ExecContext const* exec = ExecContext::CURRENT;
-    if (exec == nullptr || exec->isAdminUser()) {
-      // also allow access if there is not authentication
-      // enabled or when the user is an administrator
-      allowToChangeLogLevel = true;
-    }
-
-    if (allowToChangeLogLevel) {
-      setLogLevel();
-    } else {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
-    }
+    setLogLevel();
   }
 
   return RestStatus::DONE;

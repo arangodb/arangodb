@@ -28,7 +28,6 @@
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
 #include "RestVersionHandler.h"
-#include "Utils/ExecContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -51,16 +50,8 @@ RestStatus RestVersionHandler::execute() {
       application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
           "ServerSecurity");
   TRI_ASSERT(security != nullptr);
-
-  bool hardened = security->isRestApiHardened();
-  bool allowInfo = !hardened;  // allow access if harden flag was not given
-
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec == nullptr || exec->isAdminUser()) {
-    // also allow access if there is not authentication
-    // enabled or when the user is an administrator
-    allowInfo = true;
-  }
+  
+  bool const allowInfo = (!security->canAccessHardenedApi());
 
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));

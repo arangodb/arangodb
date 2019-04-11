@@ -24,7 +24,6 @@
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/StatisticsFeature.h"
-#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -44,18 +43,8 @@ RestStatus RestAdminStatisticsHandler::execute() {
       application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
           "ServerSecurity");
   TRI_ASSERT(security != nullptr);
-
-  bool hardened = security->isRestApiHardened();
-  bool allowInfo = !hardened;  // allow access if harden flag was not given
-
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec == nullptr || exec->isAdminUser()) {
-    // also allow access if there is not authentication
-    // enabled or when the user is an administrator
-    allowInfo = true;
-  }
-    
-  if (!allowInfo) {
+  
+  if (!security->canAccessHardenedApi()) {
     // dont leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN); 
     return RestStatus::DONE;
