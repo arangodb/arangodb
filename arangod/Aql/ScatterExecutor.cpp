@@ -115,7 +115,6 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::skipSomeF
 std::pair<ExecutionState, bool> ExecutionBlockImpl<ScatterExecutor>::getBlock(size_t atMost) {
   ExecutionBlock::throwIfKilled();  // check if we were aborted
 
-  // auto res = getSome(atMost); // TODO CHECK HEIKO BLOCK FETCHER
   auto res = _dependencies[0]->getSome(atMost);
   if (res.first == ExecutionState::WAITING) {
     return {res.first, false};

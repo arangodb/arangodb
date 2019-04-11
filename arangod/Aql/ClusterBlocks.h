@@ -51,7 +51,7 @@ class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
 
-class BlockWithClients : public ExecutionBlock { // TODO: ask Tobias
+class BlockWithClients : public ExecutionBlock {
  public:
   BlockWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
                    std::vector<std::string> const& shardIds);

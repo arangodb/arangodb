@@ -92,7 +92,7 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlockWithClients {
   /// _distBuffer.at(clientId).
   std::pair<ExecutionState, bool> getBlockForClient(size_t atMost, size_t clientId);
 
-  std::pair<ExecutionState, bool> getBlock(size_t atMost); // TODO: Move to Impl?
+  std::pair<ExecutionState, bool> getBlock(size_t atMost);
 
   /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
   /// attributes <shardKeys> of the register <id> to determine to which shard
