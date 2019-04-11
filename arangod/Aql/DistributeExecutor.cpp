@@ -78,7 +78,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<DistributeExecutor>::initia
 /// @brief getSomeForShard
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<DistributeExecutor>::getSomeForShard(
     size_t atMost, std::string const& shardId) {
-  ExecutionBlock::traceGetSomeBegin(atMost);
+  traceGetSomeBegin(atMost);
   auto result = getSomeForShardWithoutTrace(atMost, shardId);
   return traceGetSomeEnd(result.first, std::move(result.second));
 }
@@ -101,7 +101,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Dist
 /// @brief skipSomeForShard
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::skipSomeForShard(
     size_t atMost, std::string const& shardId) {
-  ExecutionBlock::traceSkipSomeBegin(atMost);
+  traceSkipSomeBegin(atMost);
   auto result = skipSomeForShardWithoutTrace(atMost, shardId);
   return traceSkipSomeEnd(result.first, result.second);
 }
@@ -217,7 +217,6 @@ bool ExecutionBlockImpl<DistributeExecutor>::hasMoreForClientId(size_t clientId)
 std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlock(size_t atMost) {
   ExecutionBlock::throwIfKilled();  // check if we were aborted
 
-  // auto res = getSome(atMost); // TODO CHECK
   auto res = _dependencies[0]->getSome(atMost);
   if (res.first == ExecutionState::WAITING) {
     return {res.first, false};
@@ -255,7 +254,7 @@ std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlock
 
   while (buf.size() < atMost) {
     if (_index == _buffer.size()) {
-      auto res = this->getBlock(atMost);
+      auto res = getBlock(atMost);
       if (res.first == ExecutionState::WAITING) {
         return {res.first, false};
       }
