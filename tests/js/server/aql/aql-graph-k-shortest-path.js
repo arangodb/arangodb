@@ -34,202 +34,218 @@ const internal = require("internal");
 const gm = require("@arangodb/general-graph");
 const _ = require("underscore");
 
-function kConstantWeightShortestPathTestSuite() {
-  const graphName = "UnitTestGraph";
-  const vName = "UnitTestVertices";
-  const e1Name = "UnitTestEdges1";
-  const e2Name = "UnitTestEdges2";
-  const source = "UnitTestVertices/source";
-  const target = "UnitTestVertices/target";
-  const badTarget = "UnitTestVertices/badTarget";
-  const looper = "UnitTestVertices/lopper";
+const graphName = "UnitTestGraph";
+const vName = "UnitTestVertices";
+const e1Name = "UnitTestEdges1";
+const e2Name = "UnitTestEdges2";
+const source = "UnitTestVertices/source";
+const target = "UnitTestVertices/target";
+const badTarget = "UnitTestVertices/badTarget";
+const looper = "UnitTestVertices/lopper";
 
-  const tearDownAll = () => {
-    try {
-      gm._drop(graphName, true);
-    } catch (e) {
-      // Don't care for error, we might runinitially with no graph exist
-    }
-    db._drop(e2Name);
-    db._drop(e1Name);
-    db._drop(vName);
-  };
+const isPathValid = (path, length, expectedWeight, allowInbound = false) => {
+  assertTrue(_.isObject(path));
+  // Assert all attributes are present
+  assertTrue(path.hasOwnProperty("vertices"));
+  assertTrue(path.hasOwnProperty("edges"));
+  assertTrue(path.hasOwnProperty("weight"));
+  // Assert weight and number of edges are correct
+  const { vertices, edges, weight } = path;
+  assertEqual(edges.length, length);
+  assertEqual(weight, expectedWeight);
+  assertEqual(edges.length + 1, vertices.length);
 
-  const createGraph = () => {
-    gm._create(graphName, [
-      gm._relation(e1Name, vName, vName),
-      gm._relation(e2Name, vName, vName)
-    ], [],
-      {
-        numberOfShards: 9
-      }
-    );
+  // Assert that source and target are correct
+  assertEqual(vertices[0]._id, source);
+  assertEqual(vertices[vertices.length - 1]._id, target);
 
-    const vertices = [];
-    const e1s = [];
-    const e2s = [];
-    vertices.push({
-      _key: "source"
-    });
-    vertices.push({
-      _key: "target"
-    });
-    vertices.push({
-      _key: "badTarget"
-    });
-    vertices.push({ _key: "looper" });
+  // Assert that the edges and vertices are in correct order
+  // And assert that we have not found a vertex twice
+  const seenVertices = new Set();
+  for (let i = 0; i < vertices.length - 1; ++i) {
+    const from = vertices[i]._id;
+    assertFalse(seenVertices.has(from), `Found vertex ${from} twice on path: ${path.vertices.map(v => v._id)}`);
+    seenVertices.add(from);
 
-    // Insert Data:
-
-    // Pathnum 0 - 2 are relevant for result.
-    // Pathnum 3 - 5 are noise on the start vertex
-    // Pathnum 6 - 8 are noise on the target vertex
-    // Pathnum 9 - 11 are noise on the isolated vertex
-
-    for (let pathNum = 0; pathNum < 3; ++pathNum) {
-      for (let step = 0; step < 4; ++step) {
-        vertices.push({ _key: `vertex_${pathNum}_${step}` });
-      }
+    const to = vertices[i + 1]._id;
+    // Do not ADD to, it will be added next step, just make sure to test both
+    // for the ends
+    assertFalse(seenVertices.has(to), `Found vertex ${to} twice on path: ${path.vertices.map(v => v._id)}`);
+    const e = edges[i];
+    if (e._from === from) {
+      // OUTBOUND EDGE
+      assertEqual(e._to, to);
+    } else {
+      // INBOUND EDGE
+      assertEqual(e._to, from);
+      assertEqual(e._from, to);
+      assertTrue(allowInbound);
     }
 
+  }
+};
 
-    for (let pathNum = 0; pathNum < 12; ++pathNum) {
-      for (let step = 0; step < 3; ++step) {
-        const key = `vertex_${pathNum}_${step}`;
-        vertices.push({ _key: key });
-        // Add valid edges:
-        switch (step) {
-          case 0: {
-            if (pathNum < 6) {
-              // source -> v
-              e1s.push({ _from: source, _to: `${vName}/${key}` });
-            } else if (pathNum < 9) {
-              // v -> target
-              e1s.push({ _from: `${vName}/${key}`, _to: target });
+const allPathsDiffer = (paths) => {
+  const seenPath = new Set();
+  for (const p of paths) {
+    const stringP = JSON.stringify(p);
+    assertFalse(seenPath.has(stringP), `Found path ${stringP} twice ${JSON.stringify(paths, null, 2)}`);
+    seenPath.add(stringP);
+  }
+};
+
+const allPathsAreSorted = (paths) => {
+  let last = paths[0].weight;
+  for (const p of paths) {
+    assertTrue(last <= p.weight);
+    last = p.weight;
+  }
+};
+
+const tearDownAll = () => {
+  try {
+    gm._drop(graphName, true);
+  } catch (e) {
+    // Don't care for error, we might runinitially with no graph exist
+  }
+  db._drop(e2Name);
+  db._drop(e1Name);
+  db._drop(vName);
+};
+
+
+const createGraph = () => {
+  gm._create(graphName, [
+    gm._relation(e1Name, vName, vName),
+    gm._relation(e2Name, vName, vName)
+  ], [],
+    {
+      numberOfShards: 9
+    }
+  );
+
+  const vertices = [];
+  const e1s = [];
+  const e2s = [];
+  vertices.push({
+    _key: "source"
+  });
+  vertices.push({
+    _key: "target"
+  });
+  vertices.push({
+    _key: "badTarget"
+  });
+  vertices.push({ _key: "looper" });
+
+  // Insert Data:
+
+  // Pathnum 0 - 2 are relevant for result.
+  // Pathnum 3 - 5 are noise on the start vertex
+  // Pathnum 6 - 8 are noise on the target vertex
+  // Pathnum 9 - 11 are noise on the isolated vertex
+
+  for (let pathNum = 0; pathNum < 3; ++pathNum) {
+    for (let step = 0; step < 4; ++step) {
+      vertices.push({ _key: `vertex_${pathNum}_${step}` });
+    }
+  }
+
+
+  for (let pathNum = 0; pathNum < 12; ++pathNum) {
+    const weight = (pathNum + 1) * (pathNum + 1);
+    for (let step = 0; step < 3; ++step) {
+      const key = `vertex_${pathNum}_${step}`;
+      vertices.push({ _key: key });
+      // Add valid edges:
+      switch (step) {
+        case 0: {
+          if (pathNum < 6) {
+            // source -> v
+            e1s.push({ _from: source, _to: `${vName}/${key}`, weight });
+          } else if (pathNum < 9) {
+            // v -> target
+            e1s.push({ _from: `${vName}/${key}`, _to: target, weight });
+          } else {
+            // v-> bad
+            e1s.push({ _from: `${vName}/${key}`, _to: badTarget, weight });
+          }
+          break;
+        }
+        case 1: {
+          // connect to step 0
+          e1s.push({ _from: `${vName}/vertex_${pathNum}_1`, _to: `${vName}/${key}`, weight });
+          const mod = pathNum % 3;
+          if (mod !== 0) {
+            // Connect to the path before
+            e1s.push({ _from: `${vName}/vertex_${pathNum - 1}_1`, _to: `${vName}/${key}`, weight });
+          }
+          if (mod !== 2) {
+            // Connect to the path after
+            e1s.push({ _from: `${vName}/vertex_${pathNum + 1}_1`, _to: `${vName}/${key}`, weight });
+          }
+          if (mod === 2 && pathNum === 3) {
+            // Add a path loop and a duplicate edge
+            // duplicate edge
+            e1s.push({ _from: `${vName}/vertex_${pathNum}_1`, _to: `${vName}/${key}`, weight: weight + 1 });
+            e1s.push({ _from: `${vName}/vertex_${pathNum}_1`, _to: looper, weight });
+            e1s.push({ _from: looper, _to: `${vName}/vertex_${pathNum}_1`, weight });
+          }
+          break;
+        }
+        case 2: {
+          if (pathNum < 3) {
+            // These are the valid paths we care for
+            if (pathNum === 1) {
+              // Add an aditional step only on the second path to have differnt path lengths
+              e1s.push({ _from: `${vName}/${key}`, _to: `${vName}/vertex_${pathNum}_3`, weight });
+              e1s.push({ _from: `${vName}/vertex_${pathNum}_3`, _to: target, weight });
             } else {
-              // v-> bad
-              e1s.push({ _from: `${vName}/${key}`, _to: badTarget });
-            }
-            break;
-          }
-          case 1: {
-            // connect to step 0
-            e1s.push({ _from: `${vName}/vertex_${pathNum}_1`, _to: `${vName}/${key}` });
-            const mod = pathNum % 3;
-            if (mod !== 0) {
-              // Connect to the path before
-              e1s.push({ _from: `${vName}/vertex_${pathNum - 1}_1`, _to: `${vName}/${key}` });
-            }
-            if (mod !== 2) {
-              // Connect to the path after
-              e1s.push({ _from: `${vName}/vertex_${pathNum + 1}_1`, _to: `${vName}/${key}` });
-            }
-            if (mod === 2 && pathNum === 3) {
-              // Add a path loop and a duplicate edge
-              // duplicate edge
-              e1s.push({ _from: `${vName}/vertex_${pathNum}_1`, _to: `${vName}/${key}` });
-              e1s.push({ _from: `${vName}/vertex_${pathNum}_1`, _to: looper });
-              e1s.push({ _from: looper, _to: `${vName}/vertex_${pathNum}_1` });
-            }
-            break;
-          }
-          case 2: {
-            if (pathNum < 3) {
-              // These are the valid paths we care for
-              if (pathNum === 1) {
-                // Add an aditional step only on the second path to have differnt path lengths
-                e1s.push({ _from: `${vName}/${key}`, _to: `${vName}/vertex_${pathNum}_3` });
-                e1s.push({ _from: `${vName}/vertex_${pathNum}_3`, _to: target });
-              } else {
-                e1s.push({ _from: `${vName}/${key}`, _to: target });
+              e1s.push({ _from: `${vName}/${key}`, _to: target, weight });
 
-              }
             }
-            // Always connect to source:
-            // 1 -> 2 is connected in e2
-            e2s.push({ _from: `${vName}/vertex_${pathNum}_1`, _to: `${vName}/${key}` });
-            // Add INBOUND shortcut 0 <- 2 in e2
-            e2s.push({ _from: `${vName}/${key}`, _to: `${vName}/vertex_${pathNum}_2` });
-            break;
           }
+          // Always connect to source:
+          // 1 -> 2 is connected in e2
+          e2s.push({ _from: `${vName}/vertex_${pathNum}_1`, _to: `${vName}/${key}`, weight });
+          // Add INBOUND shortcut 0 <- 2 in e2
+          e2s.push({ _from: `${vName}/${key}`, _to: `${vName}/vertex_${pathNum}_2`, weight });
+          break;
         }
       }
     }
+  }
 
-    db[vName].save(vertices);
-    db[e1Name].save(e1s);
-    db[e2Name].save(e2s);
+  db[vName].save(vertices);
+  db[e1Name].save(e1s);
+  db[e2Name].save(e2s);
 
-    // This graph has the following features:
-    // we have 5 paths source -> target of length 4 (via postfix of path0 and path2)
-    // we have 3 paths source -> target of length 5 (via postfix of path1)
+  // This graph has the following features:
+  // we have 5 paths source -> target of length 4 (via postfix of path0 and path2)
+  // we have 3 paths source -> target of length 5 (via postfix of path1)
+  // The weights are defined as (1 + pathNum)^2 on every edge (the duplicate on path2 is 10 instead of 9).
+  // So we end up with weight on the following paths:
+  // * 4 on path0
+  // * 10 on path1->path0 (5 edges)
+  // * 14 on path0->path1
+  // * 20 on path1 (5 edges)
+  // * 26 on path1 -> path2 (5edges)
+  // * 30 on path2 -> path1
+  // * 36 on path2
+  // * 37 on path2 alternative
 
-    // TODO: Add weights
 
-    // We hav no paths source -> badTarget
-    // We have 3 paths when e2 is traversed inbound instead of outbound
-    // source -e1> <e2- target of length 3
-  };
+  // We hav no paths source -> badTarget
+  // We have 3 paths when e2 is traversed inbound instead of outbound
+  // source -e1> <e2- target of length 3
 
-  const isPathValid = (path, length, expectedWeight, allowInbound = false) => {
-    assertTrue(_.isObject(path));
-    // Assert all attributes are present
-    assertTrue(path.hasOwnProperty("vertices"));
-    assertTrue(path.hasOwnProperty("edges"));
-    assertTrue(path.hasOwnProperty("weight"));
-    // Assert weight and number of edges are correct
-    const { vertices, edges, weight } = path;
-    assertEqual(edges.length, length);
-    assertEqual(weight, expectedWeight);
-    assertEqual(edges.length + 1, vertices.length);
+  // So we end up with weight on the following paths:
+  // * 3 on path0
+  // * 16 on path1
+  // * 27 on path2
+};
 
-    // Assert that source and target are correct
-    assertEqual(vertices[0]._id, source);
-    assertEqual(vertices[vertices.length - 1]._id, target);
-
-    // Assert that the edges and vertices are in correct order
-    // And assert that we have not found a vertex twice
-    const seenVertices = new Set();
-    for (let i = 0; i < vertices.length - 1; ++i) {
-      const from = vertices[i]._id;
-      assertFalse(seenVertices.has(from), `Found vertex ${from} twice on path: ${path.vertices.map(v => v._id)}`);
-      seenVertices.add(from);
-
-      const to = vertices[i + 1]._id;
-      // Do not ADD to, it will be added next step, just make sure to test both
-      // for the ends
-      assertFalse(seenVertices.has(to), `Found vertex ${to} twice on path: ${path.vertices.map(v => v._id)}`);
-      const e = edges[i];
-      if (e._from === from) {
-        // OUTBOUND EDGE
-        assertEqual(e._to, to);
-      } else {
-        // INBOUND EDGE
-        assertEqual(e._to, from);
-        assertEqual(e._from, to);
-        assertTrue(allowInbound);
-      }
-
-    }
-  };
-
-  const allPathsDiffer = (paths) => {
-    const seenPath = new Set();
-    for (const p of paths) {
-      const stringP = JSON.stringify(p);
-      assertFalse(seenPath.has(stringP), `Found path ${stringP} twice ${JSON.stringify(paths, null, 2)}`);
-      seenPath.add(stringP);
-    }
-  };
-
-  const allPathsAreSorted = (paths) => {
-    let last = paths[0].weight;
-    for (const p of paths) {
-      assertTrue(last <= p.weight);
-      last = p.weight;
-    }
-  };
-
+function kConstantWeightShortestPathTestSuite() {
   return {
     setUpAll: function () {
       tearDownAll();
@@ -248,10 +264,10 @@ function kConstantWeightShortestPathTestSuite() {
       assertEqual(result.length, 6);
       allPathsAreSorted(result);
       for (let i = 0; i < 5; ++i) {
-        isPathValid(result[i], 5, 5);
+        isPathValid(result[i], 4, 4);
       }
       // The 6th path is the only longer one
-      isPathValid(result[5], 6, 6);
+      isPathValid(result[5], 5, 5);
 
 
     },
@@ -274,13 +290,13 @@ function kConstantWeightShortestPathTestSuite() {
       `;
       const result = db._query(query).toArray();
       allPathsDiffer(result);
-      assertEqual(result.length, 6);
+      assertEqual(result.length, 8);
       allPathsAreSorted(result);
       for (let i = 0; i < 5; ++i) {
-        isPathValid(result[i], 5, 5);
+        isPathValid(result[i], 4, 4);
       }
       for (let i = 5; i < 8; ++i) {
-        isPathValid(result[i], 6, 6);
+        isPathValid(result[i], 5, 5);
       }
     },
 
@@ -298,10 +314,10 @@ function kConstantWeightShortestPathTestSuite() {
       assertEqual(result.length, 8);
       allPathsAreSorted(result);
       for (let i = 0; i < 5; ++i) {
-        isPathValid(result[i], 5, 5);
+        isPathValid(result[i], 4, 4);
       }
       for (let i = 5; i < 8; ++i) {
-        isPathValid(result[i], 6, 6);
+        isPathValid(result[i], 5, 5);
       }
     },
 
@@ -330,10 +346,10 @@ function kConstantWeightShortestPathTestSuite() {
       allPathsAreSorted(result);
 
       for (let i = 0; i < 2; ++i) {
-        isPathValid(result[i], 5, 5);
+        isPathValid(result[i], 4, 4);
       }
       for (let i = 2; i < 3; ++i) {
-        isPathValid(result[i], 6, 6);
+        isPathValid(result[i], 5, 5);
       }
     },
 
@@ -358,7 +374,7 @@ function kConstantWeightShortestPathTestSuite() {
       assertEqual(result.length, 3);
       allPathsAreSorted(result);
       for (let i = 0; i < 3; ++i) {
-        isPathValid(result[i], 4, 4);
+        isPathValid(result[i], 3, 3, true);
       }
     }
 
@@ -366,7 +382,145 @@ function kConstantWeightShortestPathTestSuite() {
 
 }
 
+function kAttributeWeightShortestPathTestSuite() {
+  return {
+    setUpAll: function () {
+      tearDownAll();
+      createGraph();
+    },
+    tearDownAll,
+
+    testPathsExistsLimit: function () {
+      const query = `
+        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+          LIMIT 6
+          RETURN path
+      `;
+      const result = db._query(query).toArray();
+      allPathsDiffer(result);
+      assertEqual(result.length, 6);
+      allPathsAreSorted(result);
+      isPathValid(result[0], 4, 4);
+      isPathValid(result[1], 5, 10);
+      isPathValid(result[2], 4, 14);
+      isPathValid(result[3], 5, 20);
+      isPathValid(result[4], 5, 26);
+      isPathValid(result[5], 4, 30);
+    },
+
+    testNoPathExistsLimit: function () {
+      const query = `
+        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${badTarget}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+          LIMIT 6
+          RETURN path
+      `;
+      const result = db._query(query).toArray();
+      assertEqual(result.length, 0);
+    },
+
+    testFewerPathsThanLimit: function () {
+      const query = `
+        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+          LIMIT 1000
+          RETURN path
+      `;
+      const result = db._query(query).toArray();
+      allPathsDiffer(result);
+      assertEqual(result.length, 8);
+      allPathsAreSorted(result);
+      isPathValid(result[0], 4, 4);
+      isPathValid(result[1], 5, 10);
+      isPathValid(result[2], 4, 14);
+      isPathValid(result[3], 5, 20);
+      isPathValid(result[4], 5, 26);
+      isPathValid(result[5], 4, 30);
+      isPathValid(result[5], 4, 36);
+      isPathValid(result[5], 4, 37);
+    },
+
+    testPathsExistsNoLimit: function () {
+      const query = `
+        FOR source IN ${vName}
+          FILTER source._id == "${source}"
+          FOR target IN ${vName}
+            FILTER target._id == "${target}"
+            FOR path IN OUTBOUND K_SHORTEST_PATHS source TO target GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+            RETURN path
+      `;
+      const result = db._query(query).toArray();
+      allPathsDiffer(result);
+      assertEqual(result.length, 8);
+      allPathsAreSorted(result);
+      isPathValid(result[0], 4, 4);
+      isPathValid(result[1], 5, 10);
+      isPathValid(result[2], 4, 14);
+      isPathValid(result[3], 5, 20);
+      isPathValid(result[4], 5, 26);
+      isPathValid(result[5], 4, 30);
+      isPathValid(result[5], 4, 36);
+      isPathValid(result[5], 4, 37);
+    },
+
+    testNoPathsExistsNoLimit: function () {
+      const query = `
+        FOR source IN ${vName}
+          FILTER source._id == "${source}"
+          FOR target IN ${vName}
+            FILTER target._id == "${badTarget}"
+            FOR path IN OUTBOUND K_SHORTEST_PATHS source TO target GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+            RETURN path
+      `;
+      const result = db._query(query).toArray();
+      assertEqual(result.length, 0);
+    },
+
+    testPathsSkip: function () {
+      const query = `
+        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+          LIMIT 3, 3
+          RETURN path
+      `;
+      const result = db._query(query).toArray();
+      allPathsDiffer(result);
+      assertEqual(result.length, 3);
+      allPathsAreSorted(result);
+      isPathValid(result[0], 5, 20);
+      isPathValid(result[1], 5, 26);
+      isPathValid(result[2], 4, 30);
+
+    },
+
+    testPathsSkipMoreThanExists: function () {
+      const query = `
+        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+          LIMIT 1000, 2
+          RETURN path
+      `;
+      const result = db._query(query).toArray();
+      assertEqual(result.length, 0);
+    },
+
+    testMultiDirections: function () {
+      const query = `
+        WITH "${vName}"
+        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" ${e1Name}, INBOUND ${e2Name} OPTIONS {weightAttribute: "weight"}
+          RETURN path
+      `;
+      const result = db._query(query).toArray();
+      allPathsDiffer(result);
+      assertEqual(result.length, 3);
+      allPathsAreSorted(result);
+      isPathValid(result[0], 3, 3);
+      isPathValid(result[1], 4, 16);
+      isPathValid(result[2], 3, 27);
+    }
+
+  };
+
+}
+
 jsunity.run(kConstantWeightShortestPathTestSuite);
+jsunity.run(kAttributeWeightShortestPathTestSuite);
 
 
 return jsunity.done();
