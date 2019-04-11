@@ -277,7 +277,7 @@ RestStatus RestIndexHandler::createIndex() {
 RestStatus RestIndexHandler::dropIndex() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 2) {
-    events::DropIndex(_vocbase.name(), "(unknown)", "(unknown)", TRI_ERROR_BAD_PARAMETER);
+    events::DropIndex(_vocbase.name(), "(unknown)", "(unknown)", TRI_ERROR_HTTP_BAD_PARAMETER);
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /<collection-name>/<index-identifier>");
     return RestStatus::DONE;

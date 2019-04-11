@@ -50,10 +50,6 @@ const testPaths = {
   audit_client: [tu.pathForTesting('common/audit'), tu.pathForTesting('client/audit')]
 };
 
-const sharedConf = {
-  'audit.output': 'file://' + fs.getTempFile()
-};
-
 function auditLog(onServer) {
   return function(options) {
     if (options.skipAudit === true) {
@@ -68,15 +64,16 @@ function auditLog(onServer) {
     
     let opts = {
       audit: {
-        name: 'audit_' + onServer ? 'server' : 'client',
-        conf: sharedConf
+        name: 'audit_' + onServer ? 'server' : 'client'
       }
     };
+    
+    options.auditLoggingEnabled = true;
 
     print(CYAN + 'Audit log server tests...' + RESET);
     let testCases = tu.scanTestPaths(testPaths['audit_' + (onServer ? 'server' : 'client')]);
 
-    return tu.performTests(options, testCases, 'audit', onServer ? tu.runThere : tu.runInArangosh, opts.audit.conf);
+    return tu.performTests(options, testCases, 'audit', onServer ? tu.runThere : tu.runInArangosh);
   }
 }
 

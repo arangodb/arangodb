@@ -51,7 +51,8 @@ RestCursorHandler::RestCursorHandler(GeneralRequest* request, GeneralResponse* r
       _leasedCursor(nullptr),
       _hasStarted(false),
       _queryKilled(false),
-      _isValidForFinalize(false) {}
+      _isValidForFinalize(false),
+      _auditLogged(false) {}
 
 RestCursorHandler::~RestCursorHandler() {
   if (_leasedCursor) {
@@ -107,12 +108,17 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
   TRI_DEFER(RestVocbaseBaseHandler::shutdownExecute(isFinalized));
   auto const type = _request->requestType();
 
+  // request not done yet
+  if (_state == HandlerState::PAUSED) {
+    return;
+  }
+
   // only trace create cursor requests
   if (type != rest::RequestType::POST) {
     return;
   }
 
-  if (!_isValidForFinalize) {
+  if (!_isValidForFinalize || _auditLogged) {
     // set by RestCursorHandler before
     return;
   }
@@ -122,6 +128,7 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
     std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
     VPackSlice body = parsedBody.get()->slice();
     events::QueryDocument(*_request, _response.get(), body);
+    _auditLogged = true;
   } catch (...) {
   }
 }
@@ -132,11 +139,16 @@ bool RestCursorHandler::cancel() {
 }
 
 void RestCursorHandler::handleError(basics::Exception const& ex) {
+  if (!_isValidForFinalize || _auditLogged) {
+    return;
+  }
+
   try {
     bool parseSuccess = true;
     std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
     VPackSlice body = parsedBody.get()->slice();
     events::QueryDocument(*_request, _response.get(), body);
+    _auditLogged = true;
   } catch (...) {
   }
 }

@@ -42,6 +42,7 @@
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/V8Context.h"
+#include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -211,14 +212,17 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     FuncCallback func // invoke on collection creation
 ) {
   if (name.empty()) {
+    events::CreateCollection(vocbase.name(), name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return TRI_ERROR_ARANGO_ILLEGAL_NAME;
   } else if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
              collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+    events::CreateCollection(vocbase.name(), name, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
   }
 
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec && !exec->canUseDatabase(vocbase.name(), auth::Level::RW)) {
+    events::CreateCollection(vocbase.name(), name, TRI_ERROR_FORBIDDEN);
     return arangodb::Result( // result
       TRI_ERROR_FORBIDDEN, // code
       "cannot create collection in " + vocbase.name() // message
@@ -265,6 +269,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
                                                         enforceReplicationFactor);
 
       if (!col) {
+        events::CreateCollection(vocbase.name(), name, TRI_ERROR_INTERNAL);
         return Result(TRI_ERROR_INTERNAL, "createCollectionOnCoordinator");
       }
 
@@ -281,6 +286,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
         while (true) {
           Result r = um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
             entry.grantCollection(vocbase.name(), name, auth::Level::RW);
+            events::CreateCollection(vocbase.name(), name, TRI_ERROR_NO_ERROR);
 
             return TRI_ERROR_NO_ERROR;
           });
@@ -296,6 +302,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
                 << "Updating user failed with error: " << r.errorMessage()
                 << ". giving up!";
 
+            events::CreateCollection(vocbase.name(), name, r.errorNumber());
             return r;
           }
 
@@ -324,6 +331,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
         while (true) {
           Result r = um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
             entry.grantCollection(vocbase.name(), name, auth::Level::RW);
+            events::CreateCollection(vocbase.name(), name, TRI_ERROR_NO_ERROR);
 
             return TRI_ERROR_NO_ERROR;
           });
@@ -339,6 +347,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
                 << "Updating user failed with error: " << r.errorMessage()
                 << ". giving up!";
 
+            events::CreateCollection(vocbase.name(), name, r.errorNumber());
             return r;
           }
 
@@ -352,12 +361,17 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
       func(col);
     }
   } catch (basics::Exception const& ex) {
+    events::CreateCollection(vocbase.name(), name, ex.code());
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
+    events::CreateCollection(vocbase.name(), name, TRI_ERROR_INTERNAL);
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    events::CreateCollection(vocbase.name(), name, TRI_ERROR_INTERNAL);
     return Result(TRI_ERROR_INTERNAL, "cannot create collection");
   }
+
+  events::CreateCollection(vocbase.name(), name, TRI_ERROR_NO_ERROR);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -612,6 +626,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
            && exec->canUseCollection(coll.name(), auth::Level::RW) // collection modifiable
           )
      ) {
+    events::DropCollection(coll.vocbase().name(), coll.name(), TRI_ERROR_FORBIDDEN);
     return arangodb::Result( // result
       TRI_ERROR_FORBIDDEN, // code
       "Insufficient rights to drop collection " + coll.name() // message
@@ -659,6 +674,8 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
           << ". trying again";
     }
   }
+
+  events::DropCollection(coll.vocbase().name(), coll.name(), res.errorNumber());
 
   return res;
 }

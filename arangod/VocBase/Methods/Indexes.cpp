@@ -560,6 +560,7 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
 }
 
 arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& indexArg) {
+  TRI_ASSERT(collection);
   if (ExecContext::CURRENT != nullptr) {
     if (ExecContext::CURRENT->databaseAuthLevel() != auth::Level::RW ||
         !ExecContext::CURRENT->canUseCollection(collection->name(), auth::Level::RW)) {
@@ -583,18 +584,15 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
     collection->flushClusterIndexEstimates();
 
 #ifdef USE_ENTERPRISE
-    return Indexes::dropCoordinatorEE(collection, iid);
+    res = Indexes::dropCoordinatorEE(collection, iid);
 #else
-    TRI_ASSERT(collection);
-    auto& databaseName = collection->vocbase().name();
-
-    res = ClusterInfo::instance()->dropIndexCoordinator(          // drop index
-        databaseName, std::to_string(collection->id()), iid, 0.0  // args
+    res = ClusterInfo::instance()->dropIndexCoordinator(  // drop index
+        collection->vocbase().name(), std::to_string(collection->id()), iid, 0.0  // args
     );
+#endif
     events::DropIndex(collection->vocbase().name(), collection->name(),
                       std::to_string(iid), res.errorNumber());
     return res;
-#endif
   } else {
     READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
 

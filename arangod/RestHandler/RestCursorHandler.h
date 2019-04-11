@@ -206,6 +206,9 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   bool _isValidForFinalize;
 
+  /// @brief whether or not an audit message has already been logged
+  bool _auditLogged;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief A shared pointer to the query options velocypack, s.t. we avoid
   ///        to reparse and set default options

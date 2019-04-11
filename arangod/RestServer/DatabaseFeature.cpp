@@ -628,11 +628,13 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
         LOG_TOPIC("e7444", ERR, arangodb::Logger::FIXME)
             << "initializing replication applier for database '"
             << vocbase->name() << "' failed: " << ex.what();
+        events::CreateDatabase(name, ex.code());
         return ex.code();
       } catch (std::exception const& ex) {
         LOG_TOPIC("56c41", ERR, arangodb::Logger::FIXME)
             << "initializing replication applier for database '"
             << vocbase->name() << "' failed: " << ex.what();
+        events::CreateDatabase(name, TRI_ERROR_INTERNAL);
         return TRI_ERROR_INTERNAL;
       }
 
@@ -649,6 +651,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
       int res = createApplicationDirectory(name, appPath);
 
       if (res != TRI_ERROR_NO_ERROR) {
+        events::CreateDatabase(name, res);
         THROW_ARANGO_EXCEPTION(res);
       }
     }
@@ -713,6 +716,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
                                   bool removeAppsDirectory) {
   if (name == TRI_VOC_SYSTEM_DATABASE) {
     // prevent deletion of system database
+    events::DropDatabase(name, TRI_ERROR_FORBIDDEN);
     return TRI_ERROR_FORBIDDEN;
   }
 
@@ -767,6 +771,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
       vocbase->visitDataSources(visitor, true);  // aquire a write lock to avoid potential deadlocks
 
       if (TRI_ERROR_NO_ERROR != res) {
+        events::DropDatabase(name, res);
         return res;
       }
 
@@ -774,6 +779,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
       newLists->_droppedDatabases.insert(vocbase);
     } catch (...) {
       delete newLists;
+      events::DropDatabase(name, TRI_ERROR_OUT_OF_MEMORY);
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
@@ -836,6 +842,7 @@ int DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool waitForDeletion,
   }
 
   if (name.empty()) {
+    events::DropDatabase(name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
   // and call the regular drop function

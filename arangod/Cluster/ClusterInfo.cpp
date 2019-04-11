@@ -2880,6 +2880,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   if (!indexes.isArray()) {
     LOG_TOPIC("63178", DEBUG, Logger::CLUSTER) << "Failed to find index " << databaseName
                                       << "/" << collectionID << "/" << iid;
+    events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   }
 
@@ -2897,6 +2898,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
       Index::IndexType type = Index::type(typeSlice.copyString());
 
       if (type == Index::TRI_IDX_TYPE_PRIMARY_INDEX || type == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_FORBIDDEN);
         return Result(TRI_ERROR_FORBIDDEN);
       }
 
@@ -2909,6 +2911,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   if (!indexToRemove.isObject()) {
     LOG_TOPIC("95fe6", DEBUG, Logger::CLUSTER) << "Failed to find index " << databaseName
                                       << "/" << collectionID << "/" << iid;
+    events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
 
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   }
