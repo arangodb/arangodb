@@ -137,4 +137,6 @@ std::pair<ExecutionState, size_t> LimitExecutor::expectedNumberOfRows(size_t atM
       return {ExecutionState::DONE, 0};
     }
   }
+  TRI_ASSERT(false);
+  return {ExecutionState::DONE, 0};
 }
