@@ -1,6 +1,8 @@
 devel
 -----
 
+* added `filter` option to Foxx HTTP API for running tests.
+
 * added function `db.<collection>.getResponsibleShard()` to find out which is the
   responsible shard for a given document. Note that this function is only available
   in a cluster coordinator.

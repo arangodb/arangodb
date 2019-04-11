@@ -492,8 +492,8 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
                                    bindVars, nullptr, arangodb::aql::PART_MAIN);
 
         aql::QueryResult queryResult = query.executeSync(_queryRegistry);
-        if (queryResult.code != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+        if (queryResult.result.fail()) {
+          THROW_ARANGO_EXCEPTION(queryResult.result);
         }
 
         // volatile logs, as mentioned above, this will never make _log
@@ -798,11 +798,11 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
 
   aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  VPackSlice result = queryResult.result->slice();
+  VPackSlice result = queryResult.data->slice();
 
   if (result.isArray()) {
     if (result.length() == 1) {
@@ -848,11 +848,11 @@ bool State::loadCompacted() {
 
   aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  VPackSlice result = queryResult.result->slice();
+  VPackSlice result = queryResult.data->slice();
 
   MUTEX_LOCKER(logLock, _logLock);
 
@@ -890,11 +890,11 @@ bool State::loadOrPersistConfiguration() {
 
   aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  VPackSlice result = queryResult.result->slice();
+  VPackSlice result = queryResult.data->slice();
 
   if (result.isArray() && result.length()) {  // We already have a persisted conf
 
@@ -996,11 +996,11 @@ bool State::loadRemaining() {
 
   aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  auto result = queryResult.result->slice();
+  auto result = queryResult.data->slice();
 
   MUTEX_LOCKER(logLock, _logLock);
   if (result.isArray() && result.length() > 0) {
@@ -1193,8 +1193,8 @@ bool State::compactPersisted(index_t cind, index_t keep) {
 
   aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
   return true;
@@ -1220,8 +1220,8 @@ bool State::removeObsolete(index_t cind) {
 
     aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
 
-    if (queryResult.code != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    if (queryResult.result.fail()) {
+      THROW_ARANGO_EXCEPTION(queryResult.result);
     }
   }
 
@@ -1387,27 +1387,27 @@ query_t State::allLogs() const {
 
   aql::QueryResult compqResult = compq.executeSync(QueryRegistryFeature::registry());
 
-  if (compqResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(compqResult.code, compqResult.details);
+  if (compqResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(compqResult.result);
   }
 
   aql::QueryResult logsqResult = logsq.executeSync(QueryRegistryFeature::registry());
 
-  if (logsqResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(logsqResult.code, logsqResult.details);
+  if (logsqResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(logsqResult.result);
   }
 
   auto everything = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder(everything.get());
     try {
-      everything->add("compact", compqResult.result->slice());
+      everything->add("compact", compqResult.data->slice());
     } catch (std::exception const&) {
       LOG_TOPIC("1face", ERR, Logger::AGENCY)
           << "Failed to assemble compaction part of everything package";
     }
     try {
-      everything->add("logs", logsqResult.result->slice());
+      everything->add("logs", logsqResult.data->slice());
     } catch (std::exception const&) {
       LOG_TOPIC("fe816", ERR, Logger::AGENCY)
           << "Failed to assemble remaining part of everything package";
@@ -1481,11 +1481,11 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
 
   aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  VPackSlice result = queryResult.result->slice();
+  VPackSlice result = queryResult.data->slice();
 
   Store store(nullptr);
   index = 0;
@@ -1508,11 +1508,11 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
 
   aql::QueryResult queryResult2 = query2.executeSync(QueryRegistryFeature::registry());
 
-  if (queryResult2.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult2.code, queryResult2.details);
+  if (queryResult2.result.fail()) {
+    THROW_ARANGO_EXCEPTION(queryResult2.result);
   }
 
-  result = queryResult2.result->slice();
+  result = queryResult2.data->slice();
 
   if (result.isArray() && result.length() > 0) {
     VPackBuilder b;
@@ -1575,11 +1575,11 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
   aql::QueryResult logQueryResult = logQuery.executeSync(_queryRegistry);
 
-  if (logQueryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(logQueryResult.code, logQueryResult.details);
+  if (logQueryResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(logQueryResult.result);
   }
 
-  VPackSlice result = logQueryResult.result->slice().resolveExternals();
+  VPackSlice result = logQueryResult.data->slice().resolveExternals();
   std::string firstIndex;
   uint64_t n = 0;
   
@@ -1625,11 +1625,11 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
     aql::QueryResult compQueryResult = compQuery.executeSync(_queryRegistry);
 
-    if (compQueryResult.code != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(compQueryResult.code, compQueryResult.details);
+    if (compQueryResult.result.fail()) {
+      THROW_ARANGO_EXCEPTION(compQueryResult.result);
     }
     
-    result = compQueryResult.result->slice().resolveExternals();
+    result = compQueryResult.data->slice().resolveExternals();
 
     if (result.isArray()) {
       if (result.length() > 0) {

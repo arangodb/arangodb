@@ -367,8 +367,9 @@ scriptsRouter.post('/:name', (req, res) => {
 instanceRouter.post('/tests', (req, res) => {
   const service = req.service;
   const idiomatic = req.queryParams.idiomatic;
+  const filter = req.queryParams.filter || null;
   const reporter = req.queryParams.reporter || null;
-  const result = FoxxManager.runTests(service.mount, {reporter});
+  const result = FoxxManager.runTests(service.mount, {filter, reporter});
   if (reporter === 'stream' && (idiomatic || req.accepts(LDJSON, 'json') === LDJSON)) {
     res.type(LDJSON);
     for (const row of result) {
@@ -387,6 +388,7 @@ instanceRouter.post('/tests', (req, res) => {
     res.json(result);
   }
 })
+.queryParam('filter', joi.string().allow("").optional())
 .queryParam('reporter', joi.only(...reporters).optional())
 .queryParam('idiomatic', schemas.flag.default(false))
 .response(200, ['json', LDJSON, 'xml', 'text']);

@@ -52,14 +52,20 @@ void mangleNumeric(std::string& name) {
   name.append(NUMERIC_SUFFIX.c_str(), NUMERIC_SUFFIX.size());
 }
 
-void mangleStringField(std::string& name, AnalyzerPool const& pool) {
+void mangleStringField( // mangle string field
+    std::string& name, // field name
+    arangodb::iresearch::IResearchLinkMeta::Analyzer const& analyzer // analyzer to apply
+) {
   name += ANALYZER_DELIMITER;
-  name += pool.name();
+  name += analyzer._shortName;
 }
 
-void demangleStringField(std::string& name, AnalyzerPool const& pool) {
+void demangleStringField( // demangle string field
+    std::string& name, // field name
+    arangodb::iresearch::IResearchLinkMeta::Analyzer const& analyzer // analyzer to apply
+) {
   // +1 for preceding '\1'
-  auto const suffixSize = 1 + pool.name().size();
+  auto const suffixSize = 1 + analyzer._shortName.size();
 
   TRI_ASSERT(name.size() >= suffixSize);
   name.resize(name.size() - suffixSize);
@@ -70,5 +76,5 @@ void demangleStringField(std::string& name, AnalyzerPool const& pool) {
 }  // namespace arangodb
 
 // -----------------------------------------------------------------------------
-// --SECTION-- END-OF-FILE
+// --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

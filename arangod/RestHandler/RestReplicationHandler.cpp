@@ -1323,7 +1323,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(std::string const& colle
     af->userManager()->triggerGlobalReload();
   }
 
-  return Result{queryResult.code};
+  return queryResult.result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

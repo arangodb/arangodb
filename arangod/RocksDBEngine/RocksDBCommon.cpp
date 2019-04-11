@@ -86,11 +86,7 @@ uint64_t latestSequenceNumber() {
 }
 
 std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t objectId) {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
-  RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
-  TRI_ASSERT(rocks->db() != nullptr);
-  return rocks->mapObjectToCollection(objectId);
+  return globalRocksEngine()->mapObjectToCollection(objectId);
 }
 
 RocksDBEngine::IndexTriple mapObjectToIndex(uint64_t objectId) {
