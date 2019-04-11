@@ -292,20 +292,28 @@ bool BreadthFirstEnumerator::prepareSearchOnNextDepth() {
 }
 
 bool BreadthFirstEnumerator::shouldPrune() {
-  if (_opts->usesPrune()) {
-    auto* evaluator = _opts->getPruneEvaluator();
-    if (evaluator->needsVertex()) {
-      evaluator->injectVertex(vertexToAqlValue(_schreierIndex).slice());
-    }
-    if (evaluator->needsEdge()) {
-      evaluator->injectEdge(edgeToAqlValue(_schreierIndex).slice());
-    }
-    transaction::BuilderLeaser builder(_opts->trx());
-    if (evaluator->needsPath()) {
-      aql::AqlValue val = pathToIndexToAqlValue(*builder.get(), _schreierIndex);
-      evaluator->injectPath(val.slice());
-    }
-    return evaluator->evaluate();
+  if (!_opts->usesPrune()) {
+    return false;
   }
-  return false;
+  auto* evaluator = _opts->getPruneEvaluator();
+  aql::AqlValue vertex;
+  aql::AqlValueGuard vertexGuard{vertex, true};
+  if (evaluator->needsVertex()) {
+    vertex = vertexToAqlValue(_schreierIndex);
+    evaluator->injectVertex(vertex.slice());
+  }
+  aql::AqlValue edge;
+  aql::AqlValueGuard edgeGuard{edge, true};
+  if (evaluator->needsEdge()) {
+    edge = edgeToAqlValue(_schreierIndex);
+    evaluator->injectEdge(edge.slice());
+  }
+  transaction::BuilderLeaser builder(_opts->trx());
+  aql::AqlValue path;
+  aql::AqlValueGuard pathGuard{path, true};
+  if (evaluator->needsPath()) {
+    path = pathToIndexToAqlValue(*builder.get(), _schreierIndex);
+    evaluator->injectPath(path.slice());
+  }
+  return evaluator->evaluate();
 }

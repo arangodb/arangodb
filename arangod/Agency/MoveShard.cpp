@@ -83,6 +83,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     _isLeader = tmp_isLeader.first.isTrue();
     _remainsFollower =
         tmp_remainsFollower.second ? tmp_remainsFollower.first.isTrue() : _isLeader;
+    _toServerIsFollower = false;
     _creator = tmp_creator.first;
   } else {
     std::stringstream err;
@@ -218,10 +219,15 @@ bool MoveShard::start(bool&) {
   // Check that the toServer is in state "GOOD":
   std::string health = checkServerHealth(_snapshot, _to);
   if (health != "GOOD") {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
-        << "server " << _to << " is currently " << health
-        << ", not starting MoveShard job " << _jobId;
-    return false;
+    if (health == "BAD") {
+      LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+          << "server " << _to << " is currently " << health
+          << ", not starting MoveShard job " << _jobId;
+      return false;
+    } else {   // FAILED
+      finish("", "", false, "toServer is FAILED");
+      return false;
+    }
   }
 
   // Check that _to is not in `Target/CleanedServers`:
@@ -449,6 +455,17 @@ JOB_STATUS MoveShard::pendingLeader() {
   Builder pre;  // precondition
   bool finishedAfterTransaction = false;
 
+  // Check if any of the servers in the Plan are FAILED, if so,
+  // we abort:
+  if (plan.isArray() &&
+      Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "MoveShard (leader): found FAILED server in Plan, aborting job, db: "
+      << _database << " coll: " << _collection << " shard: " << _shard;
+    abort();
+    return FAILED;
+  }
+
   if (plan[0].copyString() == _from) {
     // Still the old leader, let's check that the toServer is insync:
     size_t done = 0;  // count the number of shards for which _to is in sync:
@@ -663,6 +680,20 @@ JOB_STATUS MoveShard::pendingLeader() {
 }
 
 JOB_STATUS MoveShard::pendingFollower() {
+  // Check if any of the servers in the Plan are FAILED, if so,
+  // we abort:
+  std::string planPath =
+      planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
+  Slice plan = _snapshot.hasAsSlice(planPath).first;
+  if (plan.isArray() &&
+      Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "MoveShard (follower): found FAILED server in Plan, aborting job, db: "
+      << _database << " coll: " << _collection << " shard: " << _shard;
+    abort();
+    return FAILED;
+  }
+
   // Find the other shards in the same distributeShardsLike group:
   std::vector<Job::shard_t> shardsLikeMe =
       clones(_snapshot, _database, _collection, _shard);

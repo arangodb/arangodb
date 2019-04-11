@@ -35,6 +35,7 @@
 #include "Agency/Agent.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -68,8 +69,12 @@ State::State()
 /// Default dtor
 State::~State() {}
 
-inline static std::string timestamp() {
-  std::time_t t = std::time(nullptr);
+inline static std::string timestamp(uint64_t m) {
+
+  using namespace std::chrono;
+  
+  std::time_t t = (m == 0) ? std::time(nullptr) :
+    system_clock::to_time_t(system_clock::time_point(milliseconds(m)));
   char mbstr[100];
   return std::strftime(mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S %Z", std::localtime(&t))
              ? std::string(mbstr)
@@ -83,7 +88,8 @@ inline static std::string stringify(index_t index) {
 }
 
 /// Persist one entry
-bool State::persist(index_t index, term_t term, arangodb::velocypack::Slice const& entry,
+bool State::persist(index_t index, term_t term, uint64_t millis,
+                    arangodb::velocypack::Slice const& entry,
                     std::string const& clientId) const {
   LOG_TOPIC(TRACE, Logger::AGENCY) << "persist index=" << index << " term=" << term
                                    << " entry: " << entry.toJson();
@@ -95,7 +101,7 @@ bool State::persist(index_t index, term_t term, arangodb::velocypack::Slice cons
     body.add("term", Value(term));
     body.add("request", entry);
     body.add("clientId", Value(clientId));
-    body.add("timestamp", Value(timestamp()));
+    body.add("timestamp", Value(timestamp(millis)));
   }
 
   TRI_ASSERT(_vocbase != nullptr);
@@ -128,7 +134,8 @@ bool State::persist(index_t index, term_t term, arangodb::velocypack::Slice cons
   return res.ok();
 }
 
-bool State::persistconf(index_t index, term_t term, arangodb::velocypack::Slice const& entry,
+bool State::persistconf(index_t index, term_t term, uint64_t millis,
+                        arangodb::velocypack::Slice const& entry,
                         std::string const& clientId) const {
   LOG_TOPIC(TRACE, Logger::AGENCY)
       << "persist configuration index=" << index << " term=" << term
@@ -142,7 +149,7 @@ bool State::persistconf(index_t index, term_t term, arangodb::velocypack::Slice 
     log.add("term", Value(term));
     log.add("request", entry);
     log.add("clientId", Value(clientId));
-    log.add("timestamp", Value(timestamp()));
+    log.add("timestamp", Value(timestamp(millis)));
   }
 
   // The new configuration to be persisted.-------------------------------------
@@ -249,7 +256,7 @@ std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
       TRI_ASSERT(transaction.length() > 0);
       size_t pos = transaction.keyAt(0).copyString().find(RECONFIGURE);
 
-      idx[j] = logNonBlocking(_log.back().index + 1, i[0], term, clientId, true,
+      idx[j] = logNonBlocking(_log.back().index + 1, i[0], term, 0, clientId, true,
                               pos == 0 || pos == 1);
     }
     ++j;
@@ -261,20 +268,20 @@ std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
 index_t State::logLeaderSingle(velocypack::Slice const& slice, term_t term,
                                std::string const& clientId) {
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
-  return logNonBlocking(_log.back().index + 1, slice, term, clientId, true);
+  return logNonBlocking(_log.back().index + 1, slice, term, 0, clientId, true);
 }
 
 /// Log transaction (leader)
 index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
-                              term_t term, std::string const& clientId,
+                              term_t term, uint64_t millis, std::string const& clientId,
                               bool leading, bool reconfiguration) {
   _logLock.assertLockedByCurrentThread();
 
   auto buf = std::make_shared<Buffer<uint8_t>>();
   buf->append((char const*)slice.begin(), slice.byteSize());
 
-  bool success = reconfiguration ? persistconf(idx, term, slice, clientId)
-                                 : persist(idx, term, slice, clientId);
+  bool success = reconfiguration ? persistconf(idx, term, millis, slice, clientId)
+    : persist(idx, term, millis, slice, clientId);
 
   if (!success) {  // log to disk or die
     if (leading) {
@@ -403,10 +410,15 @@ index_t State::logFollower(query_t const& transactions) {
       auto clientId = slice.get("clientId").copyString();
       auto index = slice.get("index").getUInt();
 
+      uint64_t tstamp = 0;
+      if (slice.hasKey("timestamp")) { // compatibility with older appendEntries protocol
+        tstamp = slice.get("timestamp").getUInt();
+      }
+
       bool reconfiguration = query.keyAt(0).isEqualString(RECONFIGURE);
 
       // first to disk
-      if (logNonBlocking(index, query, term, clientId, false, reconfiguration) == 0) {
+      if (logNonBlocking(index, query, term, tstamp, clientId, false, reconfiguration) == 0) {
         break;
       }
     }
@@ -737,7 +749,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
       VPackSlice value = arangodb::velocypack::Slice::emptyObjectSlice();
       buf->append(value.startAs<char const>(), value.byteSize());
       _log.push_back(log_t(index_t(0), term_t(0), buf, std::string()));
-      persist(0, 0, value, std::string());
+      persist(0, 0, 0, value, std::string());
     }
     _ready = true;
     return true;
@@ -1567,17 +1579,35 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     THROW_ARANGO_EXCEPTION_MESSAGE(logQueryResult.code, logQueryResult.details);
   }
 
-  VPackSlice result = logQueryResult.result->slice();
+  VPackSlice result = logQueryResult.result->slice().resolveExternals();
   std::string firstIndex;
   uint64_t n = 0;
   
+  auto copyWithoutId = [&](VPackSlice slice, VPackBuilder& builder) {
+    // Need to remove custom attribute in _id:
+    { VPackObjectBuilder guard(&builder);
+      for (auto const& p : VPackObjectIterator(slice)) {
+        if (p.key.copyString() != "_id") {
+          builder.add(p.key);
+          builder.add(p.value);
+        }
+      }
+    }
+  };
+
   builder.add(VPackValue("log"));
   if (result.isArray()) {
     try {
-      builder.add(result.resolveExternals());
+      { VPackArrayBuilder guard(&builder);
+        for (VPackSlice e : VPackArrayIterator(result)) {
+          VPackSlice ee = e.resolveExternals();
+          TRI_ASSERT(ee.isObject());
+          copyWithoutId(ee, builder);
+        }
+      }
       n = result.length();
       if (n > 0) {
-        firstIndex = result[0].get("_key").copyString();
+        firstIndex = result[0].resolveExternals().get("_key").copyString();
       }
     } catch (...) {
       VPackArrayBuilder a(&builder);
@@ -1599,13 +1629,15 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
       THROW_ARANGO_EXCEPTION_MESSAGE(compQueryResult.code, compQueryResult.details);
     }
     
-    result = compQueryResult.result->slice();
+    result = compQueryResult.result->slice().resolveExternals();
 
     if (result.isArray()) {
       if (result.length() > 0) {
         builder.add(VPackValue("compaction"));
         try {
-          builder.add(result[0].resolveExternals());
+          VPackSlice c = result[0].resolveExternals();
+          TRI_ASSERT(c.isObject());
+          copyWithoutId(c, builder);
         } catch (...) {
           VPackObjectBuilder a(&builder);
         }

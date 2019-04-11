@@ -363,11 +363,6 @@ int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid, std::string c
 
 /// @brief release collection locks for a transaction
 int TransactionState::releaseCollections() {
-  if (hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
-      hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
   // process collections in reverse order
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
     (*it)->release();

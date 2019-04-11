@@ -123,7 +123,7 @@ void RocksDBCollectionMeta::removeBlocker(uint64_t trxId) {
   }
 }
 
-/// @brief updates and returns the largest safe seq to squash updated against
+/// @brief returns the largest safe seq to squash updates against
 rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq() const {
   READ_LOCKER(locker, _blockerLock);
   // if we have a blocker use the lowest counter
@@ -273,8 +273,10 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
       output.clear();
 
       seq = est->serialize(output, maxCommitSeq);
-      // calculate retention sequence number
-      appliedSeq = std::min(appliedSeq, seq);
+      if (seq > 0) {
+        // calculate retention sequence number
+        appliedSeq = std::min(appliedSeq, seq);
+      }
       TRI_ASSERT(output.size() > sizeof(uint64_t));
 
       LOG_TOPIC(TRACE, Logger::ENGINES)

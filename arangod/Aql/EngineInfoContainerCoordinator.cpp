@@ -150,7 +150,7 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
   // destroy all query snippets in case of error
   auto guard = scopeGuard([&dbname, &registry, &coordinatorQueryIds]() {
     for (auto const& it : coordinatorQueryIds) {
-      registry->destroy(dbname, it, TRI_ERROR_INTERNAL);
+      registry->destroy(dbname, it, TRI_ERROR_INTERNAL, false);
     }
   });
 

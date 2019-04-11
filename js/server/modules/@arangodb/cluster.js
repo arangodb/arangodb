@@ -513,6 +513,30 @@ function getLocalInfo () {
   return ret;
 }
 
+function waitForStatisticsCollections() {
+  // Waits until _statistics, _statistics15 and _statisticsRaw exist.
+  // This is used in unittests which do cleanOutServer, moveShard or
+  // trigger failovers. We want to have these collections in place before
+  // we start.
+  let count = 0;
+  let db = require('internal').db;
+  while (count++ < 120) {
+    console.topic('startup=info',
+                  'waitForStatisticsCollections: checking for collections...');
+    if (db._collection('_statistics') !== null &&
+        db._collection('_statisticsRaw') !== null &&
+        db._collection('_statistics15') !== null) {
+      console.topic('startup=info',
+                    'waitForStatisticsCollections: all found');
+      return true;
+    }
+    wait(1.0);
+  }
+  console.topic('startup=info',
+                'waitForStatisticsCollections: timeout of 120s reached.');
+  return false;
+}
+
 exports.coordinatorId = coordinatorId;
 exports.isCluster = isCluster;
 exports.isCoordinator = isCoordinator;
@@ -530,3 +554,4 @@ exports.waitForSyncRepl = waitForSyncRepl;
 exports.endpoints = endpoints;
 exports.queryAgencyJob = queryAgencyJob;
 exports.getLocalInfo = getLocalInfo;
+exports.waitForStatisticsCollections = waitForStatisticsCollections;
