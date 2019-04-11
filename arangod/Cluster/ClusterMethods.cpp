@@ -3503,7 +3503,9 @@ arangodb::Result removeLocalBackups(
 }
 
 arangodb::Result hotBackupCoordinator(VPackSlice const payload) {
-  HotBackupMode const mode = CONSISTENT;
+
+  // ToDo: mode
+  //HotBackupMode const mode = CONSISTENT;
 
   /*
     Suggestion for procedure for cluster hotbackup:
@@ -3523,7 +3525,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload) {
 
   try {
 
-    if (!(payload.isObject() || payload.isEmptySlice() ) ||
+    if (!(payload.isObject() || payload.isNone()) ||
         (payload.hasKey("label") && !payload.get("label").isString()) ||
         (payload.hasKey("timeout") && !payload.get("timeout").isNumber())) {
       return arangodb::Result(
@@ -3535,8 +3537,8 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload) {
       payload.get("label").copyString() : to_string(boost::uuids::random_generator()());
     std::string const timeStamp = timepointToString(std::chrono::system_clock::now());
 
-    double timeout = payload.hasKey("timeout") :
-      payload.get("timeout").getNumber<double> : 120.;
+    double timeout = payload.hasKey("timeout") ?
+      payload.get("timeout").getNumber<double>() : 120.;
   
     using namespace std::chrono;
     auto end = steady_clock::now() + milliseconds(static_cast<uint64_t>(1000*timeout));
@@ -3637,10 +3639,26 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload) {
   } catch (std::exception const& e) {
     TRI_ASSERT(false);
     return arangodb::Result(
-      ERROR_HOT_BACKUP_INTERNAL,
+      TRI_ERROR_HOT_BACKUP_INTERNAL,
       std::string("caught exception cretaing cluster backup: ") + e.what());
   }
 }
+
+
+arangodb::Result listHotBakupsOnCoordinator(VPackSlice const paylod) {
+  return arangodb::Result();
+}
+
+
+arangodb::Result uploadHotBakupsOnCoordinator(VPackSlice const paylod) {
+  return arangodb::Result();
+}
+
+
+arangodb::Result downloadHotBakupsOnCoordinator(VPackSlice const paylod) {
+  return arangodb::Result();
+}
+
 
 }  // namespace arangodb
 

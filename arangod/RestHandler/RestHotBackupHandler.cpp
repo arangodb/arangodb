@@ -26,9 +26,7 @@
 
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/HotBackup.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
@@ -42,9 +40,11 @@ RestHotBackupHandler::RestHotBackupHandler(GeneralRequest* request, GeneralRespo
 
 RestStatus RestHotBackupHandler::execute() {
 
-  auto const result = verifyPermitted();
+  auto result = verifyPermitted();
   if (!result.ok()) {
-    return generateError(rest::ResponseCode::FORBIDDEN, result);
+    generateError(
+      rest::ResponseCode::FORBIDDEN, result.errorNumber(), result.errorMessage());
+    return RestStatus::DONE;
   }
 
   RequestType const type = _request->requestType();
@@ -52,17 +52,22 @@ RestStatus RestHotBackupHandler::execute() {
   VPackSlice payload;
   result = parseHotBackupParams(type, suffixes, payload);
   if (!result.ok()) {
-    return generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, result);
+    generateError(
+      rest::ResponseCode::METHOD_NOT_ALLOWED, result.errorNumber(), result.errorMessage());
+    return RestStatus::DONE;
   }
   
   HotBackup hotbackup;
   VPackBuilder report;
   result = hotbackup.execute(suffixes.front(), payload, report);
   if (!result.ok()) {
-    generateError(rest::ResponseCode::BAD, result);
+    generateError(
+      rest::ResponseCode::BAD, result.errorNumber(), result.errorMessage());
+    return RestStatus::DONE;
   }
 
-  return generateResult(rest::ResponseCode::OK, body.slice());
+  generateResult(rest::ResponseCode::OK, report.slice());
+  return RestStatus::DONE;
 
 } // RestHotBackupHandler::execute
 
@@ -74,7 +79,7 @@ arangodb::Result RestHotBackupHandler::verifyPermitted() {
   // do we have admin rights (if rights are active)
   if (nullptr != ExecContext::CURRENT && !ExecContext::CURRENT->isAdminUser()) {
     return arangodb::Result(
-      rest::ResponseCode::FORBIDDEN, "you need admin rights for hotbackup operations");
+      TRI_ERROR_HTTP_FORBIDDEN, "you need admin rights for hotbackup operations");
   } // if
 
   return arangodb::Result();
@@ -86,9 +91,9 @@ arangodb::Result RestHotBackupHandler::parseHotBackupParams(
   RequestType const type, std::vector<std::string> const & suffixes,
   VPackSlice slice) {
 
-  if (type != Request::POST) {
+  if (type != RequestType::POST) {
     return arangodb::Result(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
-      "backup endpoint only handles POST requests");
+                            "backup endpoint only handles POST requests");
   }
 
   if (suffixes.size() != 1) {
@@ -96,7 +101,9 @@ arangodb::Result RestHotBackupHandler::parseHotBackupParams(
       TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
       "backup API only takes a single additional suffix out of "
       "[create, delet, list, upload, download]");
+  }
   
+  bool parseSuccess = false;
   slice = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {

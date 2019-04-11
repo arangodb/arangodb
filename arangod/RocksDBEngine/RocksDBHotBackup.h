@@ -52,7 +52,7 @@ public:
   std::string const& errorMessage() const {return _errorMessage;}
 
   /// @brief Validate and extract parameters appropriate to the operation type
-  virtual void parseParameters(rest::RequestType) {}
+  virtual void parseParameters() {}
 
   /// @brief Execute the operation
   virtual void execute() {}
@@ -115,7 +115,7 @@ public:
   explicit RocksDBHotBackupCreate(VPackSlice body, VPackBuilder& report);
 
   // @brief Validate and extract parameters appropriate to the operation type
-  void parseParameters(rest::RequestType) override;
+  void parseParameters() override;
 
   // @brief Execute an operation
   void execute() override;
@@ -152,7 +152,7 @@ public:
   explicit RocksDBHotBackupRestore(VPackSlice body, VPackBuilder& report);
 
   // @brief Validate and extract parameters appropriate to the operation type
-  void parseParameters(rest::RequestType) override;
+  void parseParameters() override;
 
   // @brief Execute an operation
   void execute() override;
@@ -186,7 +186,7 @@ public:
   RocksDBHotBackupList() = delete;
   explicit RocksDBHotBackupList(VPackSlice body, VPackBuilder& report);
 
-  void parseParameters(rest::RequestType) override;
+  void parseParameters() override;
   void execute() override;
 
 };// class RocksDBHotBackupList
@@ -203,7 +203,7 @@ public:
   RocksDBHotBackupLock(const VPackSlice body, VPackBuilder& report);
   ~RocksDBHotBackupLock();
 
-  void parseParameters(rest::RequestType const) override;
+  void parseParameters() override;
   void execute() override;
 
 protected:

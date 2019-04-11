@@ -20,7 +20,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBHotBackup.h"
-#include "RocksDBHotBackupCoord.h"
 
 #include <ctype.h>
 #include <thread>
@@ -103,7 +102,7 @@ std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
 
   // check the parameter once operation selected
   if (operation) {
-    operation->parseParameters(type);
+    operation->parseParameters();
   } else {
     // if no operation selected, give base class which defaults to "bad"
     operation.reset(new RocksDBHotBackup(body, report));
@@ -392,7 +391,7 @@ RocksDBHotBackupCreate::RocksDBHotBackupCreate(VPackSlice body, VPackBuilder& re
 
 void RocksDBHotBackupCreate::parseParameters() {
 
-  _isCreate = (rest::RequestType::POST == type);
+  _isCreate = true;
   _valid = _isCreate;
 
   // single server create, we generate the timestamp
@@ -564,9 +563,9 @@ RocksDBHotBackupRestore::RocksDBHotBackupRestore(VPackSlice body, VPackBuilder& 
 
 
 /// @brief convert the message payload into class variable options
-void RocksDBHotBackupRestore::parseParameters(rest::RequestType type) {
+void RocksDBHotBackupRestore::parseParameters() {
 
-  _valid = (rest::RequestType::POST == type);
+  _valid = true; //(rest::RequestType::POST == type);
 
   if (!_valid) {
     _result.add(VPackValue(VPackValueType::Object));
@@ -791,9 +790,9 @@ bool RocksDBHotBackupRestore::createRestoringDirectory(std::string& restoreDirOu
 RocksDBHotBackupList::RocksDBHotBackupList(VPackSlice body, VPackBuilder& report)
   : RocksDBHotBackup(body, report) {}
 
-void RocksDBHotBackupList::parseParameters(rest::RequestType type) {
+void RocksDBHotBackupList::parseParameters() {
 
-  _valid = (rest::RequestType::POST == type);
+  _valid = true; //(rest::RequestType::POST == type);
 
   if (!_valid) {
     try {
@@ -918,10 +917,10 @@ RocksDBHotBackupLock::RocksDBHotBackupLock(VPackSlice const body, VPackBuilder& 
 RocksDBHotBackupLock::~RocksDBHotBackupLock() {
 }
 
-void RocksDBHotBackupLock::parseParameters(rest::RequestType const type) {
+void RocksDBHotBackupLock::parseParameters() {
 
-  _isLock = (rest::RequestType::POST == type);
-  _valid = _isLock || (rest::RequestType::DELETE_REQ == type);
+  _isLock = true; //(rest::RequestType::POST == type);
+  _valid = _isLock;// || (rest::RequestType::DELETE_REQ == type);
 
   getParamValue("timeout", _timeoutSeconds, false);
   getParamValue("unlockTimeout", _unlockTimeoutSeconds, false);
