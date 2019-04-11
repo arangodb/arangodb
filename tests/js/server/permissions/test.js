@@ -1,6 +1,6 @@
 
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue */
+/* global getOptions, assertTrue arango print */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief teardown for dump/reload tests
@@ -42,6 +42,7 @@ function testSuite() {
     tearDown: function() {},
     testTest : function() {
       assertTrue(true);
+      print(arango.GET("/_api/version"));
     }
   };
 }
