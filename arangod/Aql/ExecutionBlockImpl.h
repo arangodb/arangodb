@@ -41,6 +41,7 @@
 #include "Aql/Stats.h"
 #include "OutputAqlItemRow.h"
 
+
 namespace arangodb {
 namespace aql {
 
@@ -210,12 +211,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   /// @brief return an AqlItemBlock to the memory manager
   void returnBlock(AqlItemBlock*& block) noexcept;
-
-  void traceGetSomeBeginInner(size_t atMost);
-  void traceGetSomeEndInner(AqlItemBlock const*, ExecutionState state);
-
-  void traceSkipSomeBeginInner(size_t atMost);
-  void traceSkipSomeEndInner(size_t skipped, ExecutionState state);
 
   /**
    * @brief Allocates a new AqlItemBlock and returns it in a shell, with the

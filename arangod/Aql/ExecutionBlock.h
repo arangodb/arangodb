@@ -81,6 +81,11 @@ class ExecutionBlock {
   /// in getOrSkipSome() implementations.
   virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) = 0;
 
+  void traceGetSomeBegin(size_t atMost);
+  void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state);
+
+  void traceSkipSomeBegin(size_t atMost);
+  void traceSkipSomeEnd(size_t skipped, ExecutionState state);
 
   /// @brief skipSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to
@@ -91,6 +96,8 @@ class ExecutionBlock {
 
   // TODO: Can we get rid of this? Problem: Subquery Executor is using it.
   ExecutionNode const* getPlanNode() const { return _exeNode; }
+
+  transaction::Methods* transaction() const { return _trx; }
 
   // @brief Will be called on the querywakeup callback with the
   // result collected over the network. Needs to be implemented
@@ -115,6 +122,9 @@ class ExecutionBlock {
  protected:
   /// @brief the execution engine
   ExecutionEngine* _engine;
+
+  /// @brief the transaction for this query
+  transaction::Methods* _trx;
 
   /// @brief the Result returned during the shutdown phase. Is kept for multiple
   ///        waiting phases.

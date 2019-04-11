@@ -94,17 +94,6 @@ class BlockWithClients : public ExecutionBlock { // TODO: ask Tobias
   virtual std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost,
                                                              std::string const& shardId) = 0;
 
-  /// TODO: maybe removable, ask Tobias - ClusterBlocks <-> ExecutionBlock <-> IMPL
-  void traceGetSomeBeginInner(size_t atMost);
-  void traceGetSomeEndInner(AqlItemBlock const*, ExecutionState state);
-
-  void traceSkipSomeBeginInner(size_t atMost);
-  void traceSkipSomeEndInner(size_t skipped, ExecutionState state);
-
-  /// @brief throw an exception if query was killed
-  void throwIfKilled();
-  /// TODO: maybe removable, ask Tobias - ClusterBlocks <-> ExecutionBlock <-> IMPL
-
  protected:
   /// @brief getClientId: get the number <clientId> (used internally)
   /// corresponding to <shardId>

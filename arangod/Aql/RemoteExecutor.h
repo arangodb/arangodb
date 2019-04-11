@@ -82,11 +82,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
 
-  void traceGetSomeBeginInner(size_t atMost); // TODO tobias
-  void traceSkipSomeBeginInner(size_t atMost); // TODO tobias
-  void traceSkipSomeEndInner(size_t skipped, ExecutionState state); // TODO tobias
-  void traceGetSomeEndInner(AqlItemBlock const*, ExecutionState state);
-
   ExecutorInfos const& infos() const { return _infos; }
 
   Query const& getQuery() const { return _query; }

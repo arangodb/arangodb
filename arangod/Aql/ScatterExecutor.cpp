@@ -39,18 +39,18 @@ ExecutionBlockImpl<ScatterExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
 }
 
 void ExecutionBlockImpl<ScatterExecutor>::traceGetSomeBegin(size_t atMost) {
-  traceGetSomeBeginInner(atMost);
+  ExecutionBlock::traceGetSomeBegin(atMost);
 }
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<ScatterExecutor>::traceGetSomeEnd(
     ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
-  traceGetSomeEndInner(result.get(), state);
+  ExecutionBlock::traceGetSomeEnd(result.get(), state);
   return {state, std::move(result)};
 }
 
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::traceSkipSomeEnd(
     ExecutionState state, size_t skipped) {
-  traceSkipSomeEndInner(skipped, state);
+  ExecutionBlock::traceSkipSomeEnd(skipped, state);
   return {state, skipped};
 }
 
@@ -70,7 +70,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<ScatterExecutor>::initializ
 /// @brief getSomeForShard
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<ScatterExecutor>::getSomeForShard(
     size_t atMost, std::string const& shardId) {
-  traceGetSomeBeginInner(atMost);
+  ExecutionBlock::traceGetSomeBegin(atMost);
   auto result = getSomeForShardWithoutTrace(atMost, shardId);
   return traceGetSomeEnd(result.first, std::move(result.second));
 }
@@ -92,7 +92,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Scat
 /// @brief skipSomeForShard
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::skipSomeForShard(
     size_t atMost, std::string const& shardId) {
-  traceSkipSomeBeginInner(atMost);
+  ExecutionBlock::traceSkipSomeBegin(atMost);
   auto result = skipSomeForShardWithoutTrace(atMost, shardId);
   return traceSkipSomeEnd(result.first, result.second);
 }
@@ -115,7 +115,8 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::skipSomeF
 std::pair<ExecutionState, bool> ExecutionBlockImpl<ScatterExecutor>::getBlock(size_t atMost) {
   ExecutionBlock::throwIfKilled();  // check if we were aborted
 
-  auto res = getSome(atMost);
+  // auto res = getSome(atMost); // TODO CHECK HEIKO BLOCK FETCHER
+  auto res = _dependencies[0]->getSome(atMost);
   if (res.first == ExecutionState::WAITING) {
     return {res.first, false};
   }
