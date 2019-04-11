@@ -55,7 +55,7 @@ the number of index buckets
 *Only relevant for the MMFiles storage engine*
 
 @RESTSTRUCT{isSystem,collection_info,boolean,optional,}
-true if this is a special collection; usually *name* will start with an underscore.
+true if this is a system collection; usually *name* will start with an underscore.
 
 @RESTSTRUCT{name,collection_info,string,optional,}
 literal name of this collection
