@@ -157,20 +157,22 @@ std::pair<ExecutionState, NoStats> KShortestPathsExecutor::produceRow(OutputAqlI
   NoStats s;
 
   while (true) {
-    // If we have paths available
+    // We will have paths available, or return
+    if (!_finder.isPathAvailable()) {
+      if (!fetchPaths()) {
+        return {_rowState, s};
+      }
+    }
 
+    // Now we have a path available, so we go and output it
     transaction::BuilderLeaser tmp(_finder.options().trx());
     tmp->clear();
     if (_finder.getNextPathAql(*tmp.builder())) {
-      // Now we have some paths, maybe, so we go and output one of them
       AqlValue path = AqlValue(*tmp.builder());
       AqlValueGuard guard{path, true};
       output.moveValueInto(_infos.getOutputRegister(KShortestPathsExecutorInfos::PATH),
                            _input, guard);
       return {computeState(), s};
-    }
-    if (!fetchPaths()) {
-      return {_rowState, s};
     }
   }
 }
