@@ -386,6 +386,8 @@ void Conductor::cancelNoLock() {
     _state = ExecutionState::CANCELED;
     _finalizeWorkers();
   }
+
+  _workHandle.reset();
 }
 
 void Conductor::startRecovery() {

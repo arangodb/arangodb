@@ -37,14 +37,6 @@
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
 
-struct NotEmpty {
-  bool operator()(const std::string& s) { return !s.empty(); }
-};
-
-struct Empty {
-  bool operator()(const std::string& s) { return s.empty(); }
-};
-
 const Node::Children Node::dummyChildren = Node::Children();
 const Node Node::_dummyNode = Node("dumm-di-dumm");
 
@@ -71,7 +63,10 @@ inline static std::vector<std::string> split(const std::string& str, char separa
     p = q + 1;
   }
   result.emplace_back(key, p);
-  result.erase(std::find_if(result.rbegin(), result.rend(), NotEmpty()).base(),
+  result.erase(std::find_if(result.rbegin(), result.rend(),
+                            [](std::string const& s) -> bool {
+                              return !s.empty();
+                            }).base(),
                result.end());
   return result;
 }
@@ -716,6 +711,7 @@ bool Node::applieOp(VPackSlice const& slice) {
     if (_parent == nullptr) {  // root node
       _children.clear();
       _value.clear();
+      _vecBufDirty = true;    // just in case there was an array
       return true;
     } else {
       return _parent->removeChild(_nodeName);
@@ -995,7 +991,7 @@ std::pair<Slice, bool> Node::hasAsSlice(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC("16f3d", DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("16f3d", TRACE, Logger::SUPERVISION)
         << "hasAsSlice had exception processing " << url;
   }  // catch
 

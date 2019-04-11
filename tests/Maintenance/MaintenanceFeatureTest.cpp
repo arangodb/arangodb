@@ -37,6 +37,7 @@
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/Maintenance.h"
 
 #include "MaintenanceFeatureMock.h"
 
@@ -76,7 +77,7 @@ public:
       if (gres.ok()) {
         pred.insert({"iterate_count",iterate_count});
       }
-      _preAction = std::make_shared<ActionDescription>(pred);
+      _preAction = std::make_shared<ActionDescription>(pred, arangodb::maintenance::NORMAL_PRIORITY);
     } // if
 
 
@@ -86,7 +87,7 @@ public:
       if (gres.ok()) {
         postd.insert({"iterate_count",iterate_count});
       }
-      _postAction = std::make_shared<ActionDescription>(postd);
+      _postAction = std::make_shared<ActionDescription>(postd, arangodb::maintenance::NORMAL_PRIORITY);
     } // if
   };
 
@@ -175,7 +176,7 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
     action_base_ptr.reset(
       (ActionBase*) new TestActionBasic(
         tf, ActionDescription(std::map<std::string,std::string>{
-            {"name","TestActionBasic"},{"iterate_count","0"}})));
+            {"name","TestActionBasic"},{"iterate_count","0"}}, arangodb::maintenance::NORMAL_PRIORITY)));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
 
@@ -208,7 +209,7 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
       (ActionBase*) new TestActionBasic(
         tf, ActionDescription(std::map<std::string,std::string>{
             {"name","TestActionBasic"},{"iterate_count","0"},{"result_code","1"}
-          })));
+          }, arangodb::maintenance::NORMAL_PRIORITY)));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
 
@@ -239,7 +240,7 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
     action_base_ptr.reset(
       (ActionBase*) new TestActionBasic(
         tf, ActionDescription(std::map<std::string,std::string>{
-            {"name","TestActionBasic"},{"iterate_count","1"}})));
+            {"name","TestActionBasic"},{"iterate_count","1"}}, arangodb::maintenance::NORMAL_PRIORITY)));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
 
@@ -271,7 +272,7 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
       (ActionBase*) new TestActionBasic(
         tf, ActionDescription(std::map<std::string,std::string>{
             {"name","TestActionBasic"},{"iterate_count","1"},{"result_code","1"}
-          })));
+          }, arangodb::maintenance::NORMAL_PRIORITY)));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
 
@@ -304,7 +305,7 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
       (ActionBase*) new TestActionBasic(
         tf, ActionDescription(std::map<std::string,std::string>{
             {"name","TestActionBasic"},{"iterate_count","2"}
-          })));
+          }, arangodb::maintenance::NORMAL_PRIORITY)));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
 
@@ -336,7 +337,7 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
     action_base_ptr.reset(
       (ActionBase*) new TestActionBasic(
         tf, ActionDescription(std::map<std::string,std::string>{
-            {"name","TestActionBasic"},{"iterate_count","100"}})));
+            {"name","TestActionBasic"},{"iterate_count","100"}}, arangodb::maintenance::NORMAL_PRIORITY)));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
 
@@ -369,7 +370,7 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
       (ActionBase*) new TestActionBasic(
         tf, ActionDescription(std::map<std::string,std::string>{
             {"name","TestActionBasic"},{"iterate_count","100"},{"result_code","1"}
-          })));
+          }, arangodb::maintenance::NORMAL_PRIORITY)));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
 
@@ -413,7 +414,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
       (ActionBase*) new TestActionBasic(
         *tf, ActionDescription(std::map<std::string,std::string>{
             {"name","TestActionBasic"},{"iterate_count","100"},{"result_code","1"}
-          })));
+          }, arangodb::maintenance::NORMAL_PRIORITY)));
     arangodb::Result result = tf->addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), false);
 
@@ -426,7 +427,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
       (ActionBase*) new TestActionBasic(
         *tf, ActionDescription(std::map<std::string,std::string>{
             {"name","TestActionBasic"},{"iterate_count","2"}
-          })));
+          }, arangodb::maintenance::NORMAL_PRIORITY)));
     result = tf->addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), false);
 
@@ -440,7 +441,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
       (ActionBase*) new TestActionBasic(
         *tf, ActionDescription(std::map<std::string,std::string>{
             {"name","TestActionBasic"},{"iterate_count","100"},{"result_code","1"}
-          })));
+          }, arangodb::maintenance::NORMAL_PRIORITY)));
     result = tf->addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), false);
 
@@ -496,7 +497,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
       (ActionBase*) new TestActionBasic(
         *tf, ActionDescription(std::map<std::string,std::string>{
             {"name","TestActionBasic"},{"iterate_count","100"},{"preaction_result_code","0"}
-          })));
+          }, arangodb::maintenance::NORMAL_PRIORITY)));
     arangodb::Result result = tf->addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), false);
 
@@ -550,7 +551,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
       (ActionBase*) new TestActionBasic(
         *tf, ActionDescription(std::map<std::string,std::string>{
             {"name","TestActionBasic"},{"iterate_count","100"},{"postaction_result_code","0"}
-          })));
+          }, arangodb::maintenance::NORMAL_PRIORITY)));
     arangodb::Result result = tf->addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), false);
 
@@ -607,7 +608,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
       (ActionBase*) new TestActionBasic(
         *tf, ActionDescription(std::map<std::string,std::string>{
             {"name","TestActionBasic"},{"iterate_count","100"},
-            {TestActionBasic::FAST_TRACK, ""}})));
+            {TestActionBasic::FAST_TRACK, ""}}, arangodb::maintenance::NORMAL_PRIORITY)));
     arangodb::Result result = tf->addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), false);
 
@@ -650,7 +651,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
       (ActionBase*) new TestActionBasic(
         *tf, ActionDescription(std::map<std::string,std::string>{
             {"name","TestActionBasic"},{"iterate_count","100"},{"postaction_result_code","0"}
-          })));
+          }, arangodb::maintenance::NORMAL_PRIORITY)));
     arangodb::Result result = tf->addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), false);
 
