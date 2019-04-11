@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cctype>
 #include <iostream>
+#include <cassert>
 
 #include "rocksdb/env_encryption.h"
 #include "util/aligned_buffer.h"
@@ -748,6 +749,8 @@ Status BlockAccessCipherStream::Decrypt(uint64_t fileOffset, char *data, size_t 
   std::string scratch;
   AllocateScratch(scratch);
 
+  assert(fileOffset < dataSize);
+
   // Decrypt individual blocks.
   while (1) {
     char *block = data;
@@ -771,6 +774,14 @@ Status BlockAccessCipherStream::Decrypt(uint64_t fileOffset, char *data, size_t 
       // Copy decrypted data back to `data`.
       memmove(data, block + blockOffset, n);
     }
+
+    // Simply decrementing dataSize by n could cause it to underflow,
+    // which will very likely make it read over the original bounds later
+    assert(dataSize >= n);
+    if (dataSize < n) {
+      return Status::Corruption("Cannot decrypt data at given offset");
+    }
+
     dataSize -= n;
     if (dataSize == 0) {
       return Status::OK();
@@ -890,6 +901,13 @@ Status CTREncryptionProvider::CreateCipherStream(const std::string& fname, const
   uint64_t initialCounter;
   Slice iv;
   decodeCTRParameters(prefix.data(), blockSize, initialCounter, iv);
+
+  // If the prefix is smaller than twice the block size, we would below read a
+  // very large chunk of the file (and very likely read over the bounds)
+  assert(prefix.size() >= 2 * blockSize);
+  if (prefix.size() < 2 * blockSize) {
+    return Status::Corruption("Unable to read from file " + fname + ": read attempt would read beyond file bounds");
+  }
 
   // Decrypt the encrypted part of the prefix, starting from block 2 (block 0, 1 with initial counter & IV are unencrypted)
   CTRCipherStream cipherStream(cipher_, iv.data(), initialCounter);
