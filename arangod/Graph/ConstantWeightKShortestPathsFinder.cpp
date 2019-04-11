@@ -44,14 +44,14 @@ using namespace arangodb::graph;
 
 //
 ConstantWeightKShortestPathsFinder::ConstantWeightKShortestPathsFinder(ShortestPathOptions& options)
-    : ShortestPathFinder(options), _pathAvailable(false) {}
-
+    : ShortestPathFinder(options), _pathAvailable(false) { }
 ConstantWeightKShortestPathsFinder::~ConstantWeightKShortestPathsFinder() {}
 
 // Sets up k-shortest-paths traversal from start to end
 // Returns number of currently known paths
 bool ConstantWeightKShortestPathsFinder::startKShortestPathsTraversal(
     arangodb::velocypack::Slice const& start, arangodb::velocypack::Slice const& end) {
+
   _start = arangodb::velocypack::StringRef(start);
   _end = arangodb::velocypack::StringRef(end);
   _pathAvailable = true;
@@ -92,8 +92,7 @@ bool ConstantWeightKShortestPathsFinder::computeShortestPath(
 }
 
 void ConstantWeightKShortestPathsFinder::computeNeighbourhoodOfVertex(
-    VertexRef vertex, Direction direction, std::vector<VertexRef>& neighbours,
-    std::vector<Edge>& edges) {
+  VertexRef vertex, Direction direction, std::vector<Step>& steps) {
   std::unique_ptr<EdgeCursor> edgeCursor;
 
   switch (direction) {
@@ -107,35 +106,56 @@ void ConstantWeightKShortestPathsFinder::computeNeighbourhoodOfVertex(
       TRI_ASSERT(true);
   }
 
-  auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
-    if (edge.isString()) {
-      if (edge.compareString(vertex.data(), vertex.length()) != 0) {
-        VertexRef id = _options.cache()->persistString(VertexRef(edge));
-        edges.emplace_back(std::move(eid));
-        neighbours.emplace_back(id);
-      }
-    } else {
-      VertexRef other(transaction::helpers::extractFromFromDocument(edge));
-      if (other == vertex) {
-        other = VertexRef(transaction::helpers::extractToFromDocument(edge));
-      }
-      if (other != vertex) {
-        VertexRef id = _options.cache()->persistString(other);
-        edges.emplace_back(std::move(eid));
-        neighbours.emplace_back(id);
-      }
-    }
-  };
-  edgeCursor->readAll(callback);
+  // TODO: This is a bit of a hack
+  if(_options.useWeight()) {
+    auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
+                      if (edge.isString()) {
+                        VPackSlice doc = _options.cache()->lookupToken(eid);
+                        double weight = _options.weightEdge(doc);
+                        if (edge.compareString(vertex.data(), vertex.length()) != 0) {
+                          VertexRef id = _options.cache()->persistString(VertexRef(edge));
+                          steps.emplace_back(std::move(eid), id, weight);
+                        }
+                      } else {
+                        VertexRef other(transaction::helpers::extractFromFromDocument(edge));
+                        if (other == vertex) {
+                          other = VertexRef(transaction::helpers::extractToFromDocument(edge));
+                        }
+                        if (other != vertex) {
+                          VertexRef id = _options.cache()->persistString(other);
+                          steps.emplace_back(std::move(eid), id, _options.weightEdge(edge));
+                        }
+                      }
+                    };
+    edgeCursor->readAll(callback);
+  } else {
+    auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
+                      if (edge.isString()) {
+                        if (edge.compareString(vertex.data(), vertex.length()) != 0) {
+                          VertexRef id = _options.cache()->persistString(VertexRef(edge));
+                          steps.emplace_back(std::move(eid), id, 1);
+                        }
+                      } else {
+                        VertexRef other(transaction::helpers::extractFromFromDocument(edge));
+                        if (other == vertex) {
+                          other = VertexRef(transaction::helpers::extractToFromDocument(edge));
+                        }
+                        if (other != vertex) {
+                          VertexRef id = _options.cache()->persistString(other);
+                          steps.emplace_back(std::move(eid), id, 1);
+                        }
+                      }
+                    };
+    edgeCursor->readAll(callback);
+  }
 }
 
 bool ConstantWeightKShortestPathsFinder::advanceFrontier(
-    Ball& source, const Ball& target, const std::unordered_set<VertexRef>& forbiddenVertices,
+    Ball& source, Ball& target, const std::unordered_set<VertexRef>& forbiddenVertices,
     const std::unordered_set<Edge>& forbiddenEdges, VertexRef& join) {
-  std::vector<VertexRef> neighbours;
-  std::vector<graph::EdgeDocumentToken> edges;
-  Frontier newFrontier;
+  std::vector<Step> neighbours;
 
+  // TODO: this could be moved into the callback for computeNeighbourhoodOfVertex
   auto isEdgeForbidden = [forbiddenEdges](const Edge& e) -> bool {
     return forbiddenEdges.find(e) != forbiddenEdges.end();
   };
@@ -143,37 +163,39 @@ bool ConstantWeightKShortestPathsFinder::advanceFrontier(
     return forbiddenVertices.find(v) != forbiddenVertices.end();
   };
 
-  for (auto& v : source._frontier) {
-    neighbours.clear();
-    edges.clear();
+  VertexRef vr;
+  FoundVertex *v;
 
-    computeNeighbourhoodOfVertex(v, source._direction, neighbours, edges);
-    TRI_ASSERT(edges.size() == neighbours.size());
-    size_t const neighboursSize = neighbours.size();
-    for (size_t i = 0; i < neighboursSize; ++i) {
-      if (!isEdgeForbidden(edges[i]) && !isVertexForbidden(neighbours[i])) {
-        auto const& n = neighbours[i];
+  bool success = source._frontier.popMinimal(vr, v, true);
+  if(!success) {
+    return false;
+  }
 
-        // NOTE: _edges[i] stays intact after move
-        // and is reset to a nullptr. So if we crash
-        // here no mem-leaks. or undefined behavior
-        // Just make sure _edges is not used after
-        auto inserted =
-            source._vertices.emplace(n, FoundVertex(v, std::move(edges[i])));
+  neighbours.clear();
+  computeNeighbourhoodOfVertex(vr, source._direction, neighbours);
 
-        // vertex was new
-        if (inserted.second) {
-          auto found = target._vertices.find(n);
-          if (found != target._vertices.end()) {
-            join = n;
-            return true;
-          }
-          newFrontier.emplace_back(n);
+  for (auto& s : neighbours) {
+    if (!isEdgeForbidden(s._edge) && !isVertexForbidden(s._vertex)) {
+      double weight = v->weight() + s._weight;
+
+      auto lookup = source._frontier.find(s._vertex);
+      if (lookup != nullptr) {
+        if (lookup->weight() > weight) {
+          source._frontier.lowerWeight(s._vertex, weight);
+          lookup->_pred = vr;
+          lookup->_edge = s._edge;
+        }
+      } else {
+        source._frontier.insert(s._vertex, new FoundVertex(s._vertex, vr, std::move(s._edge), weight));
+
+        auto found = target._frontier.find(s._vertex);
+        if (found != nullptr) {
+          join = s._vertex;
+          return true;
         }
       }
     }
   }
-  source._frontier = newFrontier;
   return false;
 }
 
@@ -183,22 +205,26 @@ void ConstantWeightKShortestPathsFinder::reconstructPath(const Ball& left, const
   result.clear();
   TRI_ASSERT(!join.empty());
   result._vertices.emplace_back(join);
-  auto it = left._vertices.find(join);
-  VertexRef next;
-  while (it != left._vertices.end() && !it->second._startOrEnd) {
-    next = it->second._pred;
-    TRI_ASSERT(!next.empty());
-    result._vertices.push_front(next);
-    result._edges.push_front(it->second._edge);
-    it = left._vertices.find(next);
+
+  FoundVertex *it;
+  it = left._frontier.find(join);
+  TRI_ASSERT(it != nullptr);
+  result._weight = it->weight();
+  while (it != nullptr && it->_weight > 0) {
+    result._vertices.push_front(it->_pred);
+    result._edges.push_front(it->_edge);
+    result._weights.push_front(it->_weight);
+    it = left._frontier.find(it->_pred);
   }
-  it = right._vertices.find(join);
-  while (it != right._vertices.end() && !it->second._startOrEnd) {
-    next = it->second._pred;
-    TRI_ASSERT(!next.empty());
-    result._vertices.emplace_back(next);
-    result._edges.emplace_back(it->second._edge);
-    it = right._vertices.find(next);
+  it = right._frontier.find(join);
+  TRI_ASSERT(it != nullptr);
+  result._weight += it->weight();
+  double wp = it->_weight;
+  while (it != nullptr && it->_weight > 0) {
+    result._vertices.emplace_back(it->_pred);
+    result._edges.emplace_back(it->_edge);
+    result._weights.emplace_back(wp - it->_weight);
+    it = right._frontier.find(it->_pred);
   }
 
   TRI_IF_FAILURE("TraversalOOMPath") {
@@ -262,34 +288,30 @@ bool ConstantWeightKShortestPathsFinder::computeNextShortestPath(Path& result) {
   return available;
 }
 
-bool ConstantWeightKShortestPathsFinder::getNextPath(arangodb::graph::ShortestPathResult& result) {
+bool ConstantWeightKShortestPathsFinder::getNextPath(Path& result) {
   bool available = false;
-  Path kShortestPath;
+  result.clear();
 
   // TODO: this looks a bit ugly
   if (_shortestPaths.empty()) {
     if (_start == _end) {
       TRI_ASSERT(!_start.empty());
-      kShortestPath._vertices.emplace_back(_start);
+      result._vertices.emplace_back(_start);
+      result._weight = 0;
       available = true;
     } else {
-      available = computeShortestPath(_start, _end, {}, {}, kShortestPath);
+      available = computeShortestPath(_start, _end, {}, {}, result);
     }
   } else {
     if (_start == _end) {
       available = false;
     } else {
-      available = computeNextShortestPath(kShortestPath);
+      available = computeNextShortestPath(result);
     }
   }
 
   if (available) {
-    _shortestPaths.emplace_back(kShortestPath);
-
-    result.clear();
-    result._vertices = kShortestPath._vertices;
-    result._edges = kShortestPath._edges;
-
+    _shortestPaths.emplace_back(result);
     _options.fetchVerticesCoordinator(result._vertices);
 
     TRI_IF_FAILURE("TraversalOOMPath") {
@@ -300,8 +322,21 @@ bool ConstantWeightKShortestPathsFinder::getNextPath(arangodb::graph::ShortestPa
   return available;
 }
 
+bool ConstantWeightKShortestPathsFinder::getNextPathShortestPathResult(ShortestPathResult& result) {
+  Path path;
+
+  result.clear();
+  if (getNextPath(path)) {
+    result._vertices = path._vertices;
+    result._edges = path._edges;
+    return true;
+  } else {
+    return false;
+  }
+}
+
 bool ConstantWeightKShortestPathsFinder::getNextPathAql(arangodb::velocypack::Builder& result) {
-  ShortestPathResult path;
+  Path path;
 
   if (getNextPath(path)) {
     result.clear();
@@ -310,7 +345,6 @@ bool ConstantWeightKShortestPathsFinder::getNextPathAql(arangodb::velocypack::Bu
     result.add(VPackValue("edges"));
     result.openArray();
     for (auto const& it : path._edges) {
-      // TRI_ASSERT(it != nullptr);
       _options.cache()->insertEdgeIntoResult(it, result);
     }
     result.close();  // Array
@@ -321,7 +355,9 @@ bool ConstantWeightKShortestPathsFinder::getNextPathAql(arangodb::velocypack::Bu
       _options.cache()->insertVertexIntoResult(it, result);
     }
     result.close();  // Array
-
+    if(_options.useWeight()) {
+      result.add("weight", VPackValue(path._weight));
+    }
     result.close();  // Object
     TRI_ASSERT(result.isClosed());
     return true;

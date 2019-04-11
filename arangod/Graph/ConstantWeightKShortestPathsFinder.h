@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
+#include "Graph/ShortestPathPriorityQueue.h"
 
 #include <velocypack/StringRef.h>
 
@@ -58,6 +59,8 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
   struct Path {
     std::deque<VertexRef> _vertices;
     std::deque<Edge> _edges;
+    std::deque<double> _weights; // weight of path to vertex
+    double _weight;
 
     void clear() {
       _vertices.clear();
@@ -87,51 +90,51 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
     };
   };
 
-  struct FoundVertex {
-    bool _startOrEnd;
-    VertexRef const _pred;
+  struct Step {
     Edge _edge;
+    VertexRef _vertex;
+    double _weight;
 
-    FoundVertex(VertexRef const& pred, Edge&& edge)
-        : _startOrEnd(false), _pred(pred), _edge(std::move(edge)){};
-    FoundVertex(bool startOrEnd)
-        : _startOrEnd(startOrEnd){};
+    Step(const Edge& edge, const VertexRef& vertex, double weight)
+        : _edge(edge), _vertex(vertex), _weight(weight){};
   };
-  typedef std::deque<VertexRef> Frontier;
+
+  struct FoundVertex {
+    VertexRef _vertex;
+    VertexRef _pred;
+    Edge _edge;
+    double _weight;
+
+    // Using negative weight to signifiy start/end vertex
+    FoundVertex(VertexRef const& vertex) : _vertex(vertex), _weight(0){};
+    FoundVertex(VertexRef const& vertex, VertexRef const& pred, Edge&& edge, double weight)
+      : _vertex(vertex), _pred(pred), _edge(std::move(edge)), _weight(weight){};
+    double weight() { return _weight; };
+    void setWeight(double weight ) { _weight = weight; };
+    VertexRef const& getKey() { return _vertex; };
+  };
+//  typedef std::deque<VertexRef> Frontier;
+  typedef ShortestPathPriorityQueue<VertexRef, FoundVertex, double> Frontier;
 
   // Contains the vertices that were found while searching
   // for a shortest path between start and end together with
   // the number of paths leading to that vertex and information
   // how to trace paths from the vertex from start/to end.
-  typedef std::unordered_map<VertexRef, FoundVertex> FoundVertices;
+  typedef std::unordered_map<VertexRef, FoundVertex *> FoundVertices;
 
   struct Ball {
     VertexRef _centre;
     Direction _direction;
-    FoundVertices _vertices;
     Frontier _frontier;
 
     Ball(void){};
     Ball(const VertexRef& centre, Direction direction)
-        : _centre(centre),
-          _direction(direction),
-          _vertices({{centre, FoundVertex(true)}}),
-          _frontier({centre}){};
-
-    void clear() {
-      _vertices.clear();
-      _frontier.clear();
+        : _centre(centre), _direction(direction) {
+      auto v = new FoundVertex(centre);
+      _frontier.insert(centre, v);
     };
-    void setCentre(const VertexRef& centre) {
-      _centre = centre;
-      _frontier.emplace_back(centre);
-      _vertices.emplace(centre, FoundVertex(true));
-    }
-    void setDirection(Direction direction) { _direction = direction; }
-    void setup(const VertexRef& centre, Direction direction) {
-      clear();
-      setCentre(centre);
-      setDirection(direction);
+    ~Ball() {
+      // TODO free all vertices
     }
   };
 
@@ -156,7 +159,11 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
   // get the next available path as AQL value.
   bool getNextPathAql(arangodb::velocypack::Builder& builder);
   // get the next available path as a ShortestPathResult
-  bool getNextPath(arangodb::graph::ShortestPathResult& path);
+  // TODO: this is only here to not break catch-tests and needs a cleaner solution.
+  //       probably by making ShortestPathResult versatile enough and using that
+  bool getNextPathShortestPathResult(ShortestPathResult& path);
+  // get the next available path as a Path
+  bool getNextPath(Path& path);
   bool isPathAvailable(void) { return _pathAvailable; };
 
  private:
@@ -169,11 +176,11 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
                        const VertexRef& join, Path& result);
 
   void computeNeighbourhoodOfVertex(VertexRef vertex, Direction direction,
-                                    std::vector<VertexRef>& neighbours,
-                                    std::vector<Edge>& edges);
+                                    std::vector<Step>& steps);
 
   // returns the number of paths found
-  bool advanceFrontier(Ball& source, const Ball& target,
+  // TODO: check why target can't be const
+  bool advanceFrontier(Ball& source, Ball& target,
                        const std::unordered_set<VertexRef>& forbiddenVertices,
                        const std::unordered_set<Edge>& forbiddenEdges, VertexRef& join);
 

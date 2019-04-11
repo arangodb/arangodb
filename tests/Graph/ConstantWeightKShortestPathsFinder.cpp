@@ -349,8 +349,8 @@ TEST_CASE("ConstantWeightKShortestPathsFinder", "[graph]") {
 
     finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
-    REQUIRE(true == finder->getNextPath(result));
-    REQUIRE(false == finder->getNextPath(result));
+    REQUIRE(true == finder->getNextPathShortestPathResult(result));
+    REQUIRE(false == finder->getNextPathShortestPathResult(result));
   }
 
 
@@ -360,9 +360,9 @@ TEST_CASE("ConstantWeightKShortestPathsFinder", "[graph]") {
     ShortestPathResult result;
 
     finder->startKShortestPathsTraversal(start->slice(), end->slice());
-    REQUIRE(false == finder->getNextPath(result));
+    REQUIRE(false == finder->getNextPathShortestPathResult(result));
     // Repeat to see that we keep returning false and don't crash
-    REQUIRE(false == finder->getNextPath(result));
+    REQUIRE(false == finder->getNextPathShortestPathResult(result));
   }
 
   SECTION("path of length 1") {
@@ -372,7 +372,7 @@ TEST_CASE("ConstantWeightKShortestPathsFinder", "[graph]") {
 
     finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
-    REQUIRE(true == finder->getNextPath(result));
+    REQUIRE(true == finder->getNextPathShortestPathResult(result));
     REQUIRE(checkPath(result, {"1", "2"}, {{}, {"v/1", "v/2"}}));
   }
 
@@ -383,7 +383,7 @@ TEST_CASE("ConstantWeightKShortestPathsFinder", "[graph]") {
 
     finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
-    REQUIRE(true == finder->getNextPath(result));
+    REQUIRE(true == finder->getNextPathShortestPathResult(result));
     REQUIRE(checkPath(result, {"1", "2", "3", "4"},
                       {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}));
   }
@@ -395,7 +395,7 @@ TEST_CASE("ConstantWeightKShortestPathsFinder", "[graph]") {
 
     finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
-    REQUIRE(true == finder->getNextPath(result));
+    REQUIRE(true == finder->getNextPathShortestPathResult(result));
     REQUIRE(result.length() == 5);
   }
 
@@ -406,7 +406,7 @@ TEST_CASE("ConstantWeightKShortestPathsFinder", "[graph]") {
 
     finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
-    REQUIRE(true == finder->getNextPath(result));
+    REQUIRE(true == finder->getNextPathShortestPathResult(result));
     CHECK((checkPath(result, {"21", "22", "23", "24", "25"},
                      {{},
                       {"v/21", "v/22"},
@@ -419,7 +419,7 @@ TEST_CASE("ConstantWeightKShortestPathsFinder", "[graph]") {
                       {"v/26", "v/27"},
                       {"v/27", "v/28"},
                       {"v/28", "v/25"}})));
-    REQUIRE(true == finder->getNextPath(result));
+    REQUIRE(true == finder->getNextPathShortestPathResult(result));
     CHECK((checkPath(result, {"21", "22", "23", "24", "25"},
                      {{},
                       {"v/21", "v/22"},
@@ -441,10 +441,10 @@ TEST_CASE("ConstantWeightKShortestPathsFinder", "[graph]") {
 
     finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
-    REQUIRE(true == finder->getNextPath(result));
-    REQUIRE(true == finder->getNextPath(result));
-    REQUIRE(true == finder->getNextPath(result));
-    REQUIRE(false == finder->getNextPath(result));
+    REQUIRE(true == finder->getNextPathShortestPathResult(result));
+    REQUIRE(true == finder->getNextPathShortestPathResult(result));
+    REQUIRE(true == finder->getNextPathShortestPathResult(result));
+    REQUIRE(false == finder->getNextPathShortestPathResult(result));
   }
 
   delete finder;
