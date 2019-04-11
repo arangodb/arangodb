@@ -32,6 +32,7 @@
 #include "ProgramOptions/Section.h"
 #include "V8/v8-globals.h"
 
+#include <stdlib.h>
 #include <v8.h>
 
 using namespace arangodb;
@@ -110,6 +111,22 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
 }
 
 namespace {
+std::string canonicalpath(std::string&& path)
+  {
+  #ifdef _WIN32
+    return std::move(path);
+  #else
+    auto realPath = std::unique_ptr<char, void (*)(void*)>(
+      ::realpath(path.c_str(), nullptr), &free);
+    if (realPath) {
+      path = std::string(realPath.get());
+    }
+    return std::move(path); // must be moved as it passed with && into the function
+                            // usually no move required
+  #endif
+  }
+
+
 void convertToRe(std::vector<std::string>& files, std::string& target_re) {
   if (!files.empty()) {
     std::stringstream ss;
@@ -128,9 +145,9 @@ void convertToRe(std::unordered_set<std::string>& files, std::string& target_re)
   //does not delete from the set
   if (!files.empty()) {
     std::stringstream ss;
-    auto last = *files.begin();
+    auto last = *files.cbegin();
 
-    for(auto fileIt = std::next(files.begin()); fileIt != files.end(); ++fileIt){
+    for(auto fileIt = std::next(files.cbegin()); fileIt != files.cend(); ++fileIt){
       ss << *fileIt << "|";
     }
 
@@ -168,7 +185,7 @@ void V8SecurityFeature::addToInternalReadWhiteList(char const* item) {
   // This function is not efficient and we would not need the _readWhiteList
   // to be persistent. But the persistence will help in debugging and
   // there are only a few items expected.
-  auto path = std::string(item);
+  auto path = "^" + canonicalpath(item) + TRI_DIR_SEPARATOR_STR;
   _readWhiteListSet.emplace(std::move(path));
   _readWhiteList.clear();
   convertToRe(_readWhiteListSet, _readWhiteList);
@@ -366,7 +383,7 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string 
   return V8SecurityFeature::isAllowedToAccessPath(isolate, path.c_str(), access);
 }
 
-bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* path,
+bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* pathPtr,
                                               FSAccessType access) const {
   // check security context first
   TRI_GET_GLOBALS();
@@ -382,25 +399,38 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
     return true;  // context may read / write without restrictions
   }
 
-  // remove link
-  std::string paths = TRI_ResolveSymbolicLink(path);
+  //
+  std::string path = TRI_ResolveSymbolicLink(pathPtr);
 
   // make absolute
   std::string cwd = FileUtils::currentDirectory().result();
   {
     auto absPath = std::unique_ptr<char, void (*)(char*)>(
-        TRI_GetAbsolutePath(paths.c_str(), cwd.c_str()), &TRI_FreeString);
+        TRI_GetAbsolutePath(path.c_str(), cwd.c_str()), &TRI_FreeString);
     if (absPath) {
-      paths = std::string(absPath.get());
+      path = std::string(absPath.get());
     }
   }
-  path = paths.c_str();
+
+
+  path = canonicalpath(std::move(path));
+  if(basics::FileUtils::isDirectory(path)){
+    path += TRI_DIR_SEPARATOR_STR;
+  };
+
+  //LOG_DEVEL << "@@ try to access " << path;
 
   if (access == FSAccessType::READ && std::regex_search(path, _readWhiteListRegex)) {
     // even in restricted contexts we may read module paths
+    //LOG_DEVEL << "internal match: " << _readWhiteList;
     return true;
   }
 
+  //LOG_DEVEL << "             internal: " << _readWhiteList;
+  //LOG_DEVEL << "                white: " << _filesWhiteList;
+  //LOG_DEVEL << "                black: " << _filesBlackList;
+  //LOG_DEVEL << " black and white list: " << std::boolalpha << checkBlackAndWhiteList(path, !_filesWhiteList.empty(), _filesWhiteListRegex,
+  //                              !_filesBlackList.empty(), _filesBlackListRegex);
   return checkBlackAndWhiteList(path, !_filesWhiteList.empty(), _filesWhiteListRegex,
                                 !_filesBlackList.empty(), _filesBlackListRegex);
 
