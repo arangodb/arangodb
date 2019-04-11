@@ -157,14 +157,14 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
       est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
       // make sure we don't apply yet
-      est.serialize(serialization, meta.committableSeq());
+      est.serialize(serialization, meta.committableSeq(UINT64_MAX));
       serialization.clear();
       REQUIRE(est.appliedSeq() == expected);
       REQUIRE((1.0 / std::max(1.0, static_cast<double>(iteration))) ==
               est.computeEstimate());
 
       meta.removeBlocker(iteration);
-      CHECK(meta.committableSeq() == UINT64_MAX);
+      CHECK(meta.committableSeq(UINT64_MAX) == UINT64_MAX);
       
       // now make sure we apply it
       est.serialize(serialization, currentSeq);
@@ -188,8 +188,8 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
       est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
       // make sure we don't apply yet
-      REQUIRE(meta.committableSeq() == expected + 1);
-      est.serialize(serialization, meta.committableSeq());
+      REQUIRE(meta.committableSeq(UINT64_MAX) == expected + 1);
+      est.serialize(serialization, meta.committableSeq(UINT64_MAX));
       serialization.clear();
       REQUIRE(est.appliedSeq() == expected);
       REQUIRE((1.0 / std::max(1.0, static_cast<double>(10 - iteration))) ==
@@ -198,7 +198,7 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
       meta.removeBlocker(iteration);
 
       // now make sure we apply it
-      est.serialize(serialization, meta.committableSeq());
+      est.serialize(serialization, meta.committableSeq(UINT64_MAX));
       serialization.clear();
       expected = currentSeq;
       REQUIRE(est.appliedSeq() == expected);
@@ -232,7 +232,7 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
       meta.removeBlocker(iteration - 1);
 
       // now make sure we applied last batch, but not this one
-      est.serialize(serialization, meta.committableSeq());
+      est.serialize(serialization, meta.committableSeq(UINT64_MAX));
       serialization.clear();
       REQUIRE(est.appliedSeq() == expected);
       REQUIRE((1.0 / std::max(1.0, static_cast<double>(iteration))) ==
@@ -264,7 +264,7 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
       meta.removeBlocker(std::max(static_cast<size_t>(1), iteration));
 
       // now make sure we haven't applied anything
-      est.serialize(serialization, meta.committableSeq());
+      est.serialize(serialization, meta.committableSeq(UINT64_MAX));
       serialization.clear();
       REQUIRE(est.appliedSeq() == expected);
       REQUIRE(1.0 == est.computeEstimate());
@@ -272,7 +272,7 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
 
     // now remove first blocker and make sure we apply everything
     meta.removeBlocker(0);
-    est.serialize(serialization, meta.committableSeq());
+    est.serialize(serialization, meta.committableSeq(UINT64_MAX));
     expected = currentSeq;
     serialization.clear();
     REQUIRE(est.appliedSeq() == expected);

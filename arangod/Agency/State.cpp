@@ -1566,13 +1566,11 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   auto bindVars = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder b(bindVars.get()); }
 
-  std::string const querystr 
-    = "FOR l IN log FILTER l._key <= 'buf" + stringify(lastIndex) +
-      "' SORT l._key RETURN {'_key': l._key, 'timestamp': l.timestamp,"
-                            "'clientId': l.clientId, 'request': l.request}";
+  std::string const logQueryStr = std::string("FOR l IN log FILTER l._key <= '")
+    + stringify(lastIndex) + std::string("' SORT l._key RETURN l");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query logQuery(false, *_vocbase, aql::QueryString(querystr), bindVars,
+  arangodb::aql::Query logQuery(false, *_vocbase, aql::QueryString(logQueryStr), bindVars,
                              nullptr, arangodb::aql::PART_MAIN);
 
   aql::QueryResult logQueryResult = logQuery.executeSync(_queryRegistry);
@@ -1581,17 +1579,35 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     THROW_ARANGO_EXCEPTION(logQueryResult.result);
   }
 
-  VPackSlice result = logQueryResult.data->slice();
+  VPackSlice result = logQueryResult.data->slice().resolveExternals();
   std::string firstIndex;
   uint64_t n = 0;
   
+  auto copyWithoutId = [&](VPackSlice slice, VPackBuilder& builder) {
+    // Need to remove custom attribute in _id:
+    { VPackObjectBuilder guard(&builder);
+      for (auto const& p : VPackObjectIterator(slice)) {
+        if (p.key.copyString() != "_id") {
+          builder.add(p.key);
+          builder.add(p.value);
+        }
+      }
+    }
+  };
+
   builder.add(VPackValue("log"));
   if (result.isArray()) {
     try {
-      builder.add(result.resolveExternals());
+      { VPackArrayBuilder guard(&builder);
+        for (VPackSlice e : VPackArrayIterator(result)) {
+          VPackSlice ee = e.resolveExternals();
+          TRI_ASSERT(ee.isObject());
+          copyWithoutId(ee, builder);
+        }
+      }
       n = result.length();
       if (n > 0) {
-        firstIndex = result[0].get("_key").copyString();
+        firstIndex = result[0].resolveExternals().get("_key").copyString();
       }
     } catch (...) {
       VPackArrayBuilder a(&builder);
@@ -1613,13 +1629,15 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
       THROW_ARANGO_EXCEPTION(compQueryResult.result);
     }
     
-    result = compQueryResult.data->slice();
+    result = compQueryResult.data->slice().resolveExternals();
 
     if (result.isArray()) {
       if (result.length() > 0) {
         builder.add(VPackValue("compaction"));
         try {
-          builder.add(result[0].resolveExternals());
+          VPackSlice c = result[0].resolveExternals();
+          TRI_ASSERT(c.isObject());
+          copyWithoutId(c, builder);
         } catch (...) {
           VPackObjectBuilder a(&builder);
         }
