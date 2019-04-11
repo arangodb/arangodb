@@ -138,8 +138,8 @@ class TransactionState {
   TransactionCollection* collection(TRI_voc_cid_t cid, AccessMode::Type accessType);
 
   /// @brief add a collection to a transaction
-  int addCollection(TRI_voc_cid_t cid, std::string const& cname,
-                    AccessMode::Type accessType, int nestingLevel, bool force);
+  Result addCollection(TRI_voc_cid_t cid, std::string const& cname,
+                       AccessMode::Type accessType, int nestingLevel, bool force);
 
   /// @brief make sure all declared collections are used & locked
   Result ensureCollections(int nestingLevel = 0);
@@ -220,15 +220,17 @@ class TransactionState {
   /// @brief find a collection in the transaction's list of collections
   TransactionCollection* findCollection(TRI_voc_cid_t cid, size_t& position) const;
 
-  /// @brief check if current user can access this collection
-  int checkCollectionPermission(std::string const& cname, AccessMode::Type) const;
-
   /// @brief release collection locks for a transaction
   void releaseCollections();
 
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
   void clearQueryCache();
+
+ private:
+  /// @brief check if current user can access this collection
+  Result checkCollectionPermission(std::string const& cname, AccessMode::Type) const;
+
   
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction

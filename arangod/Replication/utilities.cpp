@@ -569,7 +569,7 @@ Result buildHttpError(httpclient::SimpleHttpResult* response,
 
   if (response == nullptr || !response->isComplete()) {
     std::string errorMsg;
-    connection.lease([&errorMsg, &response](httpclient::SimpleHttpClient* client) {
+    connection.lease([&errorMsg](httpclient::SimpleHttpClient* client) {
       errorMsg = client->getErrorMessage();
     });
     if (errorMsg.empty() && response != nullptr) {

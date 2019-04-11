@@ -328,9 +328,6 @@ class Query {
   /// @brief whether or not the query cache can be used for the query
   bool canUseQueryCache() const;
 
-  /// @brief neatly format exception messages for the users
-  std::string buildErrorMessage(int errorCode) const;
-
   /// @brief enter a new state
   void enterState(QueryExecutionState::ValueType);
 

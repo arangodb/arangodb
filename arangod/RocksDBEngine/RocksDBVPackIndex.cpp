@@ -37,6 +37,7 @@
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -111,12 +112,12 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
     _done = true;
 
-    rocksdb::PinnableSlice val;
+    rocksdb::PinnableSlice ps;
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
-    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &val);
+    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &ps);
 
     if (s.ok()) {
-      cb(RocksDBValue::documentId(val));
+      cb(RocksDBValue::documentId(ps));
     }
 
     // there is at most one element, so we are done now
@@ -133,12 +134,12 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
     _done = true;
 
-    rocksdb::PinnableSlice val;
+    rocksdb::PinnableSlice ps;
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
-    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &val);
+    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &ps);
 
     if (s.ok()) {
-      cb(LocalDocumentId(RocksDBValue::documentId(val)),
+      cb(LocalDocumentId(RocksDBValue::documentId(ps)),
         RocksDBKey::indexedVPack(_key.ref()));
     }
 
@@ -710,12 +711,13 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
   }
 
   if (res.ok() && !_unique) {
-    auto state = RocksDBTransactionState::toState(&trx);
-
-    for (auto& it : hashes) {
+    auto* state = RocksDBTransactionState::toState(&trx);
+    auto* trxc = static_cast<RocksDBTransactionCollection*>(state->findCollection(_collection.id()));
+    TRI_ASSERT(trxc != nullptr);
+    for (uint64_t hash : hashes) {
       // The estimator is only useful if we are in a non-unique indexes
       TRI_ASSERT(!_unique);
-      state->trackIndexInsert(_collection.id(), id(), it);
+      trxc->trackIndexInsert(id(), hash);
     }
   } else if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
     // find conflicting document
@@ -885,12 +887,13 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
   }
 
   if (res.ok() && !_unique) {
-    auto state = RocksDBTransactionState::toState(&trx);
-
-    for (auto& it : hashes) {
+    auto* state = RocksDBTransactionState::toState(&trx);
+    auto* trxc = static_cast<RocksDBTransactionCollection*>(state->findCollection(_collection.id()));
+    TRI_ASSERT(trxc != nullptr);
+    for (uint64_t hash : hashes) {
       // The estimator is only useful if we are in a non-unique indexes
       TRI_ASSERT(!_unique);
-      state->trackIndexRemove(_collection.id(), id(), it);
+      trxc->trackIndexRemove(id(), hash);
     }
   } else if (res.fail()) {
     addErrorMsg(res);
@@ -1271,6 +1274,7 @@ RocksDBCuckooIndexEstimator<uint64_t>* RocksDBVPackIndex::estimator() {
 
 void RocksDBVPackIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> est) {
   TRI_ASSERT(!_unique);
+  TRI_ASSERT(_estimator == nullptr || _estimator->appliedSeq() <= est->appliedSeq());
   _estimator = std::move(est);
 }
 
@@ -1297,5 +1301,5 @@ void RocksDBVPackIndex::recalculateEstimates() {
     uint64_t hash = RocksDBVPackIndex::HashForKey(it->key());
     _estimator->insert(hash);
   }
-  _estimator->setCommitSeq(seq);
+  _estimator->setAppliedSeq(seq);
 }

@@ -84,26 +84,30 @@ std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const&
 
     return nullptr;
   }
-
-  MUTEX_LOCKER(guard, _tasksLock);
-
-  if (_tasks.find(id) != _tasks.end()) {
-    ec = TRI_ERROR_TASK_DUPLICATE_ID;
-
-    return {nullptr};
+  
+  if (application_features::ApplicationServer::isStopping()) {
+    ec = TRI_ERROR_SHUTTING_DOWN;
+    return nullptr;
   }
-
+  
   TRI_ASSERT(nullptr != vocbase);  // this check was previously in the
                                    // DatabaseGuard constructor which on failure
                                    // would fail Task constructor
 
   std::string user = ExecContext::CURRENT ? ExecContext::CURRENT->user() : "";
   auto task = std::make_shared<Task>(id, name, *vocbase, command, allowUseDatabase);
-  auto itr = _tasks.emplace(id, std::make_pair(user, std::move(task)));
+  
+  MUTEX_LOCKER(guard, _tasksLock);
+
+  if (!_tasks.emplace(id, std::make_pair(user, task)).second) {
+    ec = TRI_ERROR_TASK_DUPLICATE_ID;
+
+    return {nullptr};
+  }
 
   ec = TRI_ERROR_NO_ERROR;
 
-  return itr.first->second.second;
+  return task;
 }
 
 int Task::unregisterTask(std::string const& id, bool cancel) {

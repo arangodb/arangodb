@@ -98,7 +98,6 @@ REGISTER_ANALYZER_JSON(EmptyAnalyzer, EmptyAnalyzer::make);
 struct IResearchLinkMetaSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
   std::vector<arangodb::application_features::ApplicationFeature*> orderedFeatures;
 
@@ -116,9 +115,7 @@ struct IResearchLinkMetaSetup {
     features.emplace_back(new arangodb::DatabaseFeature(server), false);
     features.emplace_back(new arangodb::ShardingFeature(server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false);
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
@@ -140,15 +137,18 @@ struct IResearchLinkMetaSetup {
       f.first->prepare();
     }
 
+    auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature
+    >("Database");
+    dbFeature->loadDatabases(databases->slice());
+
     for (auto& f: features) {
       if (f.second) {
         f.first->start();
       }
     }
 
-    auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
-      arangodb::DatabaseFeature
-    >("Database");
     TRI_vocbase_t* vocbase;
     dbFeature->createDatabase(1, "testVocbase", vocbase); // required for IResearchAnalyzerFeature::emplace(...)
 
@@ -165,7 +165,6 @@ struct IResearchLinkMetaSetup {
   }
 
   ~IResearchLinkMetaSetup() {
-    system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
 
@@ -206,9 +205,10 @@ SECTION("test_defaults") {
   CHECK((arangodb::iresearch::ValueStorage::NONE == meta._storeValues));
   CHECK(1U == meta._analyzers.size());
   CHECK((*(meta._analyzers.begin())));
-  CHECK(("identity" == (*(meta._analyzers.begin()))->name()));
-  CHECK((irs::flags({irs::norm::type(), irs::frequency::type() }) == (*(meta._analyzers.begin()))->features()));
-  CHECK(false == !meta._analyzers.begin()->get());
+  CHECK(("identity" == meta._analyzers.begin()->_pool->name()));
+  CHECK(("identity" == meta._analyzers.begin()->_shortName));
+  CHECK((irs::flags({irs::norm::type(), irs::frequency::type() }) == meta._analyzers.begin()->_pool->features()));
+  CHECK(false == !meta._analyzers.begin()->_pool->get());
 }
 
 SECTION("test_inheritDefaults") {
@@ -226,7 +226,7 @@ SECTION("test_inheritDefaults") {
   defaults._trackListPositions = true;
   defaults._storeValues = arangodb::iresearch::ValueStorage::FULL;
   defaults._analyzers.clear();
-  defaults._analyzers.emplace_back(analyzers.get("testVocbase::empty"));
+  defaults._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(analyzers.get("testVocbase::empty"), "empty"));
   defaults._fields["abc"]->_fields["xyz"] = arangodb::iresearch::IResearchLinkMeta();
 
   auto json = arangodb::velocypack::Parser::fromJson("{}");
@@ -248,9 +248,10 @@ SECTION("test_inheritDefaults") {
         CHECK((arangodb::iresearch::ValueStorage::NONE == actual._storeValues));
         CHECK(1U == actual._analyzers.size());
         CHECK((*(actual._analyzers.begin())));
-        CHECK(("identity" == (*(actual._analyzers.begin()))->name()));
-        CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*(actual._analyzers.begin()))->features()));
-        CHECK(false == !actual._analyzers.begin()->get());
+        CHECK(("identity" == actual._analyzers.begin()->_pool->name()));
+        CHECK(("identity" == actual._analyzers.begin()->_shortName));
+        CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == actual._analyzers.begin()->_pool->features()));
+        CHECK(false == !actual._analyzers.begin()->_pool->get());
       }
     }
   }
@@ -263,9 +264,10 @@ SECTION("test_inheritDefaults") {
 
   CHECK(1U == meta._analyzers.size());
   CHECK((*(meta._analyzers.begin())));
-  CHECK(("testVocbase::empty" == (*(meta._analyzers.begin()))->name()));
-  CHECK((irs::flags({irs::frequency::type()}) == (*(meta._analyzers.begin()))->features()));
-  CHECK(false == !meta._analyzers.begin()->get());
+  CHECK(("testVocbase::empty" == meta._analyzers.begin()->_pool->name()));
+  CHECK(("empty" == meta._analyzers.begin()->_shortName));
+  CHECK((irs::flags({irs::frequency::type()}) == meta._analyzers.begin()->_pool->features()));
+  CHECK(false == !meta._analyzers.begin()->_pool->get());
 }
 
 SECTION("test_readDefaults") {
@@ -282,9 +284,10 @@ SECTION("test_readDefaults") {
     CHECK((arangodb::iresearch::ValueStorage::NONE == meta._storeValues));
     CHECK((1U == meta._analyzers.size()));
     CHECK((*(meta._analyzers.begin())));
-    CHECK(("identity" == (*(meta._analyzers.begin()))->name()));
-    CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*(meta._analyzers.begin()))->features()));
-    CHECK((false == !meta._analyzers.begin()->get()));
+    CHECK(("identity" == meta._analyzers.begin()->_pool->name()));
+    CHECK(("identity" == meta._analyzers.begin()->_shortName));
+    CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == meta._analyzers.begin()->_pool->features()));
+    CHECK((false == !meta._analyzers.begin()->_pool->get()));
   }
 
   // with active vocbase
@@ -299,9 +302,10 @@ SECTION("test_readDefaults") {
     CHECK((arangodb::iresearch::ValueStorage::NONE == meta._storeValues));
     CHECK((1U == meta._analyzers.size()));
     CHECK((*(meta._analyzers.begin())));
-    CHECK(("identity" == (*(meta._analyzers.begin()))->name()));
-    CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*(meta._analyzers.begin()))->features()));
-    CHECK((false == !meta._analyzers.begin()->get()));
+    CHECK(("identity" == meta._analyzers.begin()->_pool->name()));
+    CHECK(("identity" == meta._analyzers.begin()->_shortName));
+    CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == meta._analyzers.begin()->_pool->features()));
+    CHECK((false == !meta._analyzers.begin()->_pool->get()));
   }
 }
 
@@ -358,9 +362,10 @@ SECTION("test_readCustomizedValues") {
           CHECK((arangodb::iresearch::ValueStorage::NONE == actual._storeValues));
           CHECK((1U == actual._analyzers.size()));
           CHECK((*(actual._analyzers.begin())));
-          CHECK(("identity" == (*(actual._analyzers.begin()))->name()));
-          CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*(actual._analyzers.begin()))->features()));
-          CHECK((false == !actual._analyzers.begin()->get()));
+          CHECK(("identity" == actual._analyzers.begin()->_pool->name()));
+          CHECK(("identity" == actual._analyzers.begin()->_shortName));
+          CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == actual._analyzers.begin()->_pool->features()));
+          CHECK((false == !actual._analyzers.begin()->_pool->get()));
         } else if ("all" == fieldOverride.key()) {
           CHECK((2U == actual._fields.size()));
           CHECK((true == (actual._fields.find("d") != actual._fields.end())));
@@ -370,9 +375,10 @@ SECTION("test_readCustomizedValues") {
           CHECK((arangodb::iresearch::ValueStorage::FULL == actual._storeValues));
           CHECK((1U == actual._analyzers.size()));
           CHECK((*(actual._analyzers.begin())));
-          CHECK(("testVocbase::empty" == (*(actual._analyzers.begin()))->name()));
-          CHECK((irs::flags({irs::frequency::type()}) == (*(actual._analyzers.begin()))->features()));
-          CHECK((false == !actual._analyzers.begin()->get()));
+          CHECK(("testVocbase::empty" == actual._analyzers.begin()->_pool->name()));
+          CHECK(("empty" == actual._analyzers.begin()->_shortName));
+          CHECK((irs::flags({irs::frequency::type()}) == actual._analyzers.begin()->_pool->features()));
+          CHECK((false == !actual._analyzers.begin()->_pool->get()));
         } else if ("some" == fieldOverride.key()) {
           CHECK((true == actual._fields.empty())); // not inherited
           CHECK((true == actual._includeAllFields)); // inherited
@@ -381,14 +387,16 @@ SECTION("test_readCustomizedValues") {
           CHECK((2U == actual._analyzers.size()));
           auto itr = actual._analyzers.begin();
           CHECK((*itr));
-          CHECK(("testVocbase::empty" == (*itr)->name()));
-          CHECK((irs::flags({irs::frequency::type()}) == (*itr)->features()));
-          CHECK((false == !itr->get()));
+          CHECK(("testVocbase::empty" == itr->_pool->name()));
+          CHECK(("empty" == itr->_shortName));
+          CHECK((irs::flags({irs::frequency::type()}) == itr->_pool->features()));
+          CHECK((false == !itr->_pool->get()));
           ++itr;
           CHECK((*itr));
-          CHECK(("identity" == (*itr)->name()));
-          CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*itr)->features()));
-          CHECK((false == !itr->get()));
+          CHECK(("identity" == itr->_pool->name()));
+          CHECK(("identity" == itr->_shortName));
+          CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == itr->_pool->features()));
+          CHECK((false == !itr->_pool->get()));
         } else if ("none" == fieldOverride.key()) {
           CHECK((true == actual._fields.empty())); // not inherited
           CHECK((true == actual._includeAllFields)); // inherited
@@ -396,14 +404,16 @@ SECTION("test_readCustomizedValues") {
           CHECK((arangodb::iresearch::ValueStorage::FULL == actual._storeValues));
           auto itr = actual._analyzers.begin();
           CHECK((*itr));
-          CHECK(("testVocbase::empty" == (*itr)->name()));
-          CHECK((irs::flags({irs::frequency::type()}) == (*itr)->features()));
-          CHECK((false == !itr->get()));
+          CHECK(("testVocbase::empty" == itr->_pool->name()));
+          CHECK(("empty" == itr->_shortName));
+          CHECK((irs::flags({irs::frequency::type()}) == itr->_pool->features()));
+          CHECK((false == !itr->_pool->get()));
           ++itr;
           CHECK((*itr));
-          CHECK(("identity" == (*itr)->name()));
-          CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*itr)->features()));
-          CHECK((false == !itr->get()));
+          CHECK(("identity" == itr->_pool->name()));
+          CHECK(("identity" == itr->_shortName));
+          CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == itr->_pool->features()));
+          CHECK((false == !itr->_pool->get()));
         }
       }
     }
@@ -415,14 +425,16 @@ SECTION("test_readCustomizedValues") {
     CHECK((arangodb::iresearch::ValueStorage::FULL == meta._storeValues));
     auto itr = meta._analyzers.begin();
     CHECK((*itr));
-    CHECK(("testVocbase::empty" == (*itr)->name()));
-    CHECK((irs::flags({irs::frequency::type()}) == (*itr)->features()));
-    CHECK((false == !itr->get()));
+    CHECK(("testVocbase::empty" == itr->_pool->name()));
+    CHECK(("empty" == itr->_shortName));
+    CHECK((irs::flags({irs::frequency::type()}) == itr->_pool->features()));
+    CHECK((false == !itr->_pool->get()));
     ++itr;
     CHECK((*itr));
-    CHECK(("identity" == (*itr)->name()));
-    CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*itr)->features()));
-    CHECK((false == !itr->get()));
+    CHECK(("identity" == itr->_pool->name()));
+    CHECK(("identity" == itr->_shortName));
+    CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == itr->_pool->features()));
+    CHECK((false == !itr->_pool->get()));
   }
 }
 
@@ -563,14 +575,14 @@ SECTION("test_writeCustomizedValues") {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
   arangodb::iresearch::IResearchLinkMeta meta;
 
-  analyzers.emplace(emplaceResult, "empty", "empty", "en", { irs::frequency::type() });
+  analyzers.emplace(emplaceResult, arangodb::StaticStrings::SystemDatabase + "::empty", "empty", "en", { irs::frequency::type() });
 
   meta._includeAllFields = true;
   meta._trackListPositions = true;
   meta._storeValues = arangodb::iresearch::ValueStorage::FULL;
   meta._analyzers.clear();
-  meta._analyzers.emplace_back(analyzers.get("identity"));
-  meta._analyzers.emplace_back(analyzers.get("empty"));
+  meta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(analyzers.get("identity"), "identity"));
+  meta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty"), "enmpty"));
   meta._fields["a"] = meta; // copy from meta
   meta._fields["a"]->_fields.clear(); // do not inherit fields to match jSon inheritance
   meta._fields["b"] = meta; // copy from meta
@@ -593,7 +605,7 @@ SECTION("test_writeCustomizedValues") {
   overrideAll._trackListPositions = false;
   overrideAll._storeValues = arangodb::iresearch::ValueStorage::NONE;
   overrideAll._analyzers.clear();
-  overrideAll._analyzers.emplace_back(analyzers.get("empty"));
+  overrideAll._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty"), "empty"));
   overrideSome._fields.clear(); // do not inherit fields to match jSon inheritance
   overrideSome._trackListPositions = false;
   overrideSome._storeValues = arangodb::iresearch::ValueStorage::ID;
@@ -603,7 +615,7 @@ SECTION("test_writeCustomizedValues") {
   {
     std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
     std::unordered_set<std::string> expectedOverrides = { "default", "all", "some", "none" };
-    std::unordered_set<std::string> expectedAnalyzers = { "empty", "identity" };
+    std::unordered_set<std::string> expectedAnalyzers = { arangodb::StaticStrings::SystemDatabase + "::empty", "identity" };
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
 
@@ -672,7 +684,7 @@ SECTION("test_writeCustomizedValues") {
             tmpSlice.isArray() &&
             1 == tmpSlice.length() &&
             tmpSlice.at(0).isString() &&
-            std::string("empty") == tmpSlice.at(0).copyString()
+            std::string(arangodb::StaticStrings::SystemDatabase + "::empty") == tmpSlice.at(0).copyString()
           ));
         } else if ("some" == fieldOverride.copyString()) {
           CHECK((2U == sliceOverride.length()));
@@ -710,7 +722,7 @@ SECTION("test_writeCustomizedValues") {
     std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
     std::unordered_set<std::string> expectedOverrides = { "default", "all", "some", "none" };
     std::set<std::pair<std::string, std::string>> expectedAnalyzers = {
-      { "empty", "en" },
+      { arangodb::StaticStrings::SystemDatabase + "::empty", "en" },
       { "identity", "" },
     };
     arangodb::velocypack::Builder builder;
@@ -782,7 +794,7 @@ SECTION("test_writeCustomizedValues") {
             true == tmpSlice.isArray()
             && 1 == tmpSlice.length()
             && tmpSlice.at(0).isObject()
-            && tmpSlice.at(0).get("name").isString() && std::string("empty") == tmpSlice.at(0).get("name").copyString()
+            && tmpSlice.at(0).get("name").isString() && arangodb::StaticStrings::SystemDatabase + "::empty" == tmpSlice.at(0).get("name").copyString()
             && tmpSlice.at(0).get("type").isString() && std::string("empty") == tmpSlice.at(0).get("type").copyString()
             && tmpSlice.at(0).get("properties").isString() && std::string("en") == tmpSlice.at(0).get("properties").copyString()
             && tmpSlice.at(0).get("features").isArray() && 1 == tmpSlice.at(0).get("features").length()
@@ -830,7 +842,7 @@ SECTION("test_writeCustomizedValues") {
   {
     std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
     std::unordered_set<std::string> expectedOverrides = { "default", "all", "some", "none" };
-    std::unordered_set<std::string> expectedAnalyzers = { "empty", "identity" };
+    std::unordered_set<std::string> expectedAnalyzers = { arangodb::StaticStrings::SystemDatabase + "::empty", "identity" };
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
@@ -900,7 +912,7 @@ SECTION("test_writeCustomizedValues") {
             tmpSlice.isArray() &&
             1 == tmpSlice.length() &&
             tmpSlice.at(0).isString() &&
-            std::string("empty") == tmpSlice.at(0).copyString()
+            arangodb::StaticStrings::SystemDatabase + "::empty" == tmpSlice.at(0).copyString()
           ));
         } else if ("some" == fieldOverride.copyString()) {
           CHECK((2U == sliceOverride.length()));
@@ -938,7 +950,7 @@ SECTION("test_writeCustomizedValues") {
     std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
     std::unordered_set<std::string> expectedOverrides = { "default", "all", "some", "none" };
     std::set<std::pair<std::string, std::string>> expectedAnalyzers = {
-      { "testVocbase::empty", "en" },
+      { arangodb::StaticStrings::SystemDatabase + "::empty", "en" },
       { "identity", "" },
     };
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -1011,7 +1023,7 @@ SECTION("test_writeCustomizedValues") {
             true == tmpSlice.isArray()
             && 1 == tmpSlice.length()
             && tmpSlice.at(0).isObject()
-            && tmpSlice.at(0).get("name").isString() && std::string("testVocbase::empty") == tmpSlice.at(0).get("name").copyString()
+            && tmpSlice.at(0).get("name").isString() && arangodb::StaticStrings::SystemDatabase + "::empty" == tmpSlice.at(0).get("name").copyString()
             && tmpSlice.at(0).get("type").isString() && std::string("empty") == tmpSlice.at(0).get("type").copyString()
             && tmpSlice.at(0).get("properties").isString() && std::string("en") == tmpSlice.at(0).get("properties").copyString()
             && tmpSlice.at(0).get("features").isArray() && 1 == tmpSlice.at(0).get("features").length()
@@ -1264,11 +1276,12 @@ SECTION("test_readAnalyzerDefinitions") {
     std::string errorField;
     CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
     CHECK((1 == meta._analyzers.size()));
-    CHECK((std::string("testVocbase::missing2") == meta._analyzers[0]->name()));
-    CHECK((std::string("empty") == meta._analyzers[0]->type()));
-    CHECK((std::string("ru") == meta._analyzers[0]->properties()));
-    CHECK((1 == meta._analyzers[0]->features().size()));
-    CHECK((true == meta._analyzers[0]->features().check(irs::frequency::type())));
+    CHECK((std::string("testVocbase::missing2") == meta._analyzers[0]._pool->name()));
+    CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
+    CHECK((std::string("ru") == meta._analyzers[0]._pool->properties()));
+    CHECK((1 == meta._analyzers[0]._pool->features().size()));
+    CHECK((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
+    CHECK((std::string("missing2") == meta._analyzers[0]._shortName));
   }
 
   // missing analyzer (full) inRecovery
@@ -1294,11 +1307,12 @@ SECTION("test_readAnalyzerDefinitions") {
     std::string errorField;
     CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
     CHECK((1 == meta._analyzers.size()));
-    CHECK((std::string("testVocbase::empty") == meta._analyzers[0]->name()));
-    CHECK((std::string("empty") == meta._analyzers[0]->type()));
-    CHECK((std::string("de") == meta._analyzers[0]->properties()));
-    CHECK((1 == meta._analyzers[0]->features().size()));
-    CHECK((true == meta._analyzers[0]->features().check(irs::frequency::type())));
+    CHECK((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
+    CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
+    CHECK((std::string("de") == meta._analyzers[0]._pool->properties()));
+    CHECK((1 == meta._analyzers[0]._pool->features().size()));
+    CHECK((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
+    CHECK((std::string("empty") == meta._analyzers[0]._shortName));
   }
 
   // existing analyzer (name only) inRecovery
@@ -1313,11 +1327,12 @@ SECTION("test_readAnalyzerDefinitions") {
     std::string errorField;
     CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
     CHECK((1 == meta._analyzers.size()));
-    CHECK((std::string("testVocbase::empty") == meta._analyzers[0]->name()));
-    CHECK((std::string("empty") == meta._analyzers[0]->type()));
-    CHECK((std::string("de") == meta._analyzers[0]->properties()));
-    CHECK((1 == meta._analyzers[0]->features().size()));
-    CHECK((true == meta._analyzers[0]->features().check(irs::frequency::type())));
+    CHECK((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
+    CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
+    CHECK((std::string("de") == meta._analyzers[0]._pool->properties()));
+    CHECK((1 == meta._analyzers[0]._pool->features().size()));
+    CHECK((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
+    CHECK((std::string("empty") == meta._analyzers[0]._shortName));
   }
 
   // existing analyzer (full) analyzer creation not allowed (pass)
@@ -1329,11 +1344,12 @@ SECTION("test_readAnalyzerDefinitions") {
     std::string errorField;
     CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
     CHECK((1 == meta._analyzers.size()));
-    CHECK((std::string("testVocbase::empty") == meta._analyzers[0]->name()));
-    CHECK((std::string("empty") == meta._analyzers[0]->type()));
-    CHECK((std::string("de") == meta._analyzers[0]->properties()));
-    CHECK((1 == meta._analyzers[0]->features().size()));
-    CHECK((true == meta._analyzers[0]->features().check(irs::frequency::type())));
+    CHECK((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
+    CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
+    CHECK((std::string("de") == meta._analyzers[0]._pool->properties()));
+    CHECK((1 == meta._analyzers[0]._pool->features().size()));
+    CHECK((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
+    CHECK((std::string("empty") == meta._analyzers[0]._shortName));
   }
 
   // existing analyzer (full)
@@ -1345,11 +1361,12 @@ SECTION("test_readAnalyzerDefinitions") {
     std::string errorField;
     CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
     CHECK((1 == meta._analyzers.size()));
-    CHECK((std::string("testVocbase::empty") == meta._analyzers[0]->name()));
-    CHECK((std::string("empty") == meta._analyzers[0]->type()));
-    CHECK((std::string("de") == meta._analyzers[0]->properties()));
-    CHECK((1 == meta._analyzers[0]->features().size()));
-    CHECK((true == meta._analyzers[0]->features().check(irs::frequency::type())));
+    CHECK((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
+    CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
+    CHECK((std::string("de") == meta._analyzers[0]._pool->properties()));
+    CHECK((1 == meta._analyzers[0]._pool->features().size()));
+    CHECK((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
+    CHECK((std::string("empty") == meta._analyzers[0]._shortName));
   }
 
   // existing analyzer (full) inRecovery
@@ -1364,11 +1381,12 @@ SECTION("test_readAnalyzerDefinitions") {
     std::string errorField;
     CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
     CHECK((1 == meta._analyzers.size()));
-    CHECK((std::string("testVocbase::empty") == meta._analyzers[0]->name()));
-    CHECK((std::string("empty") == meta._analyzers[0]->type()));
-    CHECK((std::string("de") == meta._analyzers[0]->properties()));
-    CHECK((1 == meta._analyzers[0]->features().size()));
-    CHECK((true == meta._analyzers[0]->features().check(irs::frequency::type())));
+    CHECK((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
+    CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
+    CHECK((std::string("de") == meta._analyzers[0]._pool->properties()));
+    CHECK((1 == meta._analyzers[0]._pool->features().size()));
+    CHECK((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
+    CHECK((std::string("empty") == meta._analyzers[0]._shortName));
   }
 
   // existing analyzer (definition mismatch)

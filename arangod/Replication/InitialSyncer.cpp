@@ -46,6 +46,7 @@ InitialSyncer::~InitialSyncer() {
 void InitialSyncer::startRecurringBatchExtension() {
   TRI_ASSERT(!_state.isChildSyncer);
   if (isAborted()) {
+    _batchPingTimer.reset();
     return;
   }
 
@@ -58,6 +59,8 @@ void InitialSyncer::startRecurringBatchExtension() {
         if (!cancelled && _batch.id != 0 && !isAborted()) {
           _batch.extend(_state.connection, _progress);
           startRecurringBatchExtension();
+        } else {
+          _batchPingTimer.reset();
         }
       });
 }
