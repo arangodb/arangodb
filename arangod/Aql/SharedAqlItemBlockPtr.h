@@ -125,18 +125,26 @@ SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(std::nullptr_t) noexcept
 }
 
 AqlItemBlock& SharedAqlItemBlockPtr::operator*() noexcept {
+  TRI_ASSERT(_aqlItemBlock != nullptr);
+  TRI_ASSERT(_aqlItemBlock->getRefCount() > 0);
   return *_aqlItemBlock;
 }
 
 AqlItemBlock* SharedAqlItemBlockPtr::operator->() noexcept {
+  TRI_ASSERT(_aqlItemBlock != nullptr);
+  TRI_ASSERT(_aqlItemBlock->getRefCount() > 0);
   return _aqlItemBlock;
 }
 
 AqlItemBlock const& SharedAqlItemBlockPtr::operator*() const noexcept {
+  TRI_ASSERT(_aqlItemBlock != nullptr);
+  TRI_ASSERT(_aqlItemBlock->getRefCount() > 0);
   return *_aqlItemBlock;
 }
 
 AqlItemBlock const* SharedAqlItemBlockPtr::operator->() const noexcept {
+  TRI_ASSERT(_aqlItemBlock != nullptr);
+  TRI_ASSERT(_aqlItemBlock->getRefCount() > 0);
   return _aqlItemBlock;
 }
 
@@ -163,6 +171,7 @@ bool SharedAqlItemBlockPtr::operator!=(SharedAqlItemBlockPtr const& other) const
 }
 
 AqlItemBlock* SharedAqlItemBlockPtr::get() const noexcept {
+  TRI_ASSERT(_aqlItemBlock == nullptr || _aqlItemBlock->getRefCount() > 0);
   return _aqlItemBlock;
 }
 

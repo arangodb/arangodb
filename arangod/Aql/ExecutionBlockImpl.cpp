@@ -117,6 +117,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
       // _rowFetcher must be DONE now already
       return {state, nullptr};
     }
+    TRI_ASSERT(newBlock->size() > 0);
     TRI_ASSERT(newBlock != nullptr);
     _outputItemRow = createOutputRow(newBlock);
   }

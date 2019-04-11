@@ -40,7 +40,7 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the block
 AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, RegisterId nrRegs)
-    : _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager) {
+    : _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager), _refCount(0) {
   TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
 
   if (nrRegs > 0) {

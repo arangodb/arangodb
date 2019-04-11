@@ -368,17 +368,17 @@ class AqlItemBlock {
   std::unordered_map<AqlValue, uint32_t> _valueCount;
 
   /// @brief _nrItems, number of rows
-  size_t _nrItems;
+  size_t _nrItems = 0;
 
   /// @brief _nrRegs, number of columns
-  RegisterId _nrRegs;
+  RegisterId _nrRegs = 0;
 
   /// @brief manager for this item block
   AqlItemBlockManager& _manager;
 
   /// @brief number of SharedAqlItemBlockPtr instances. shall be returned to
   /// the _manager when it reaches 0.
-  mutable size_t _refCount;
+  mutable size_t _refCount = 0;
 };
 
 }  // namespace aql

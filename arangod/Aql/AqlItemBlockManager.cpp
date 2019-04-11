@@ -77,6 +77,7 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, Register
   TRI_ASSERT(block->size() == nrItems);
   TRI_ASSERT(block->getNrRegs() == nrRegs);
   TRI_ASSERT(block->numEntries() == targetSize);
+  TRI_ASSERT(block->getRefCount() == 0);
 
   return SharedAqlItemBlockPtr{block};
 }
@@ -93,9 +94,15 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
   size_t const i = Bucket::getId(targetSize);
   TRI_ASSERT(i < numBuckets);
 
+  // Destroying the block releases the AqlValues. Which in turn may hold DocVecs
+  // and can thus return AqlItemBlocks to this very Manager. So the destroy must
+  // not happen between the check whether `_buckets[i].full()` and
+  // `_buckets[i].push(block)`, because the destroy() can add blocks to the
+  // buckets!
+  block->destroy();
+
   if (!_buckets[i].full()) {
     // recycle the block
-    block->destroy();
     TRI_ASSERT(block->numEntries() == 0);
     // store block in bucket (this will not fail)
     _buckets[i].push(block);
@@ -107,14 +114,18 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
 }
 
 SharedAqlItemBlockPtr AqlItemBlockManager::requestAndInitBlock(arangodb::velocypack::Slice slice) {
-  auto nrItems = VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
-  auto nrRegs = VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
-  if (nrItems <= 0) {
+  auto const nrItemsSigned = VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
+  auto const nrRegs = VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
+  if (nrItemsSigned <= 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
   }
+  auto const nrItems = static_cast<size_t>(nrItemsSigned);
 
-  SharedAqlItemBlockPtr block = requestBlock(static_cast<size_t>(nrItems), nrRegs);
+  SharedAqlItemBlockPtr block = requestBlock(nrItems, nrRegs);
   block->initFromSlice(slice);
+
+  TRI_ASSERT(block->size() == nrItems);
+  TRI_ASSERT(block->getNrRegs() == nrRegs);
 
   return block;
 }
