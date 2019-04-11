@@ -125,14 +125,15 @@ void convertToRe(std::vector<std::string>& files, std::string& target_re) {
 };
 
 void convertToRe(std::unordered_set<std::string>& files, std::string& target_re) {
+  //does not delete from the set
   if (!files.empty()) {
     std::stringstream ss;
-    std::string last = std::move(*files.begin());
-    files.erase(files.begin());
+    auto last = *files.begin();
 
-    for (auto const& f : files) {
-      ss << f << "|";
+    for(auto fileIt = std::next(files.begin()); fileIt != files.end(); ++fileIt){
+      ss << *fileIt << "|";
     }
+
     ss << last;
     target_re = ss.str();
   }
@@ -167,8 +168,7 @@ void V8SecurityFeature::addToInternalReadWhiteList(char const* item) {
   // This function is not efficient and we would not need the _readWhiteList
   // to be persistent. But the persistence will help in debugging and
   // there are only a few items expected.
-  TRI_ASSERT(_readWhiteListSet.size() < 3);
-  auto path = std::string(item) + "*";
+  auto path = std::string(item);
   _readWhiteListSet.emplace(std::move(path));
   _readWhiteList.clear();
   convertToRe(_readWhiteListSet, _readWhiteList);
@@ -403,4 +403,5 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
 
   return checkBlackAndWhiteList(path, !_filesWhiteList.empty(), _filesWhiteListRegex,
                                 !_filesBlackList.empty(), _filesBlackListRegex);
+
 }
