@@ -304,6 +304,7 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
   _state = WorkerState::DONE;
+  _workHandle.reset();
 }
 
 /// WARNING only call this while holding the _commandMutex

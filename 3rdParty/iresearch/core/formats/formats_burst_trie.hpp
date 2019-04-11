@@ -308,8 +308,6 @@ class field_writer final : public irs::field_writer {
  private:
   static const size_t DEFAULT_SIZE = 8;
 
-  static void merge_blocks(std::list< detail::entry >& blocks);
-
   void write_segment_features(data_output& out, const flags& features);
 
   void write_field_features(data_output& out, const flags& features) const;

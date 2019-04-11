@@ -28,29 +28,29 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var db = require('@arangodb').db;
-var internal = require('internal');
-var jsunity = require('jsunity');
+const db = require('@arangodb').db;
+const internal = require('internal');
+const jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
   db._drop('UnitTestsRecovery');
-  var c = db._create('UnitTestsRecovery'), i;
+  let c = db._create('UnitTestsRecovery');
   c.ensureIndex({ type: 'persistent', fields: ['value'] });
 
   internal.debugSetFailAt('TransactionWriteCommitMarkerNoRocksSync');
 
   db._executeTransaction({
     collections: { write: 'UnitTestsRecovery' },
-    action: function () {
-      var db = require('internal').db;
-      var c = db.UnitTestsRecovery, i;
-      for (i = 0; i < 1000; ++i) {
+    action: `function () {
+      const db = require('internal').db;
+      const c = db._collection('UnitTestsRecovery');
+      for (let i = 0; i < 1000; ++i) {
         c.save({ value: i }, { waitForSync: true });
       }
-    }
+    }`
   });
 
   internal.debugSegfault('crashing server');
@@ -73,12 +73,14 @@ function recoverySuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testIndexesRocksDBNoSync: function () {
-      var c = db._collection('UnitTestsRecovery'), idx, i;
-      idx = c.getIndexes()[1];
+      const c = db._collection('UnitTestsRecovery');
+      const idxs = c.getIndexes();
+      assertEqual(idxs.length, 2);
+      let idx = idxs[1];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'value' ], idx.fields);
-      for (i = 0; i < 1000; ++i) {
+      for (let i = 0; i < 1000; ++i) {
         assertEqual(1, c.byExample({ value: i }).toArray().length, i);
       }
     }
