@@ -328,7 +328,7 @@ SECTION("UnaryNot") {
     auto& root = expected.add<irs::Not>();
     root.boost(2.5);
     root.filter<irs::And>()
-        .add<irs::by_term>().field(mangleString("a.b[42].c", "testVocbase::test_analyzer")).term("1");
+        .add<irs::by_term>().field(mangleString("a.b[42].c", "test_analyzer")).term("1");
 
     assertFilterSuccess("FOR d IN collection FILTER analyzer(BOOST(not (d.a.b[42].c == '1'), 2.5), 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER analyzer(boost(not (d['a']['b'][42]['c'] == '1'), 2.5), 'test_analyzer') RETURN d", expected);
@@ -370,7 +370,7 @@ SECTION("UnaryNot") {
     irs::Or expected;
     expected.add<irs::Not>()
             .filter<irs::And>()
-            .add<irs::by_term>().field(mangleString("a.b[23].c", "testVocbase::test_analyzer")).term("42");
+            .add<irs::by_term>().field(mangleString("a.b[23].c", "test_analyzer")).term("42");
 
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER ANALYZER(not (d.a.b[23].c == TO_STRING(c+1)), 'test_analyzer') RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER ANALYZER(not (d.a['b'][23].c == TO_STRING(c+1)), 'test_analyzer') RETURN d", expected, &ctx);
@@ -797,7 +797,7 @@ SECTION("UnaryNot") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -879,7 +879,7 @@ SECTION("UnaryNot") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -961,7 +961,7 @@ SECTION("UnaryNot") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -1043,7 +1043,7 @@ SECTION("UnaryNot") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -1127,7 +1127,7 @@ SECTION("UnaryNot") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -1209,7 +1209,7 @@ SECTION("UnaryNot") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -1294,7 +1294,7 @@ SECTION("UnaryNot") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -1409,9 +1409,9 @@ SECTION("BinaryOr") {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "testVocbase::test_analyzer"))
+        .field(mangleString("a.b.c", "test_analyzer"))
         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
-    root.add<irs::by_term>().field(mangleString("c.b.a", "testVocbase::test_analyzer")).term("2");
+    root.add<irs::by_term>().field(mangleString("c.b.a", "test_analyzer")).term("2");
 
     assertFilterSuccess("FOR d IN collection FILTER analyzer(d.a.b.c < '1' or d.c.b.a == '2', 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER analyzer(d['a']['b']['c'] < '1', 'test_analyzer') or analyzER(d.c.b.a == '2', 'test_analyzer') RETURN d", expected);
@@ -1426,9 +1426,9 @@ SECTION("BinaryOr") {
     auto& root = expected.add<irs::Or>();
     root.boost(0.5);
     root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "testVocbase::test_analyzer"))
+        .field(mangleString("a.b.c", "test_analyzer"))
         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
-    root.add<irs::by_term>().field(mangleString("c.b.a", "testVocbase::test_analyzer")).term("2");
+    root.add<irs::by_term>().field(mangleString("c.b.a", "test_analyzer")).term("2");
 
     assertFilterSuccess("FOR d IN collection FILTER boost(analyzer(d.a.b.c < '1' or d.c.b.a == '2', 'test_analyzer'), 0.5) RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER analyzer(boost(d.a.b.c < '1' or d.c.b.a == '2', 0.5), 'test_analyzer') RETURN d", expected);
@@ -1440,7 +1440,7 @@ SECTION("BinaryOr") {
     auto& root = expected.add<irs::Or>();
     root.boost(0.5);
     root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "testVocbase::test_analyzer"))
+        .field(mangleString("a.b.c", "test_analyzer"))
         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1").boost(2.5);
     root.add<irs::by_term>().field(mangleStringIdentity("c.b.a")).term("2");
 
@@ -1468,9 +1468,9 @@ SECTION("BinaryOr") {
     auto& root = expected.add<irs::Or>();
     root.boost(2.5);
     auto& subRoot = root.add<irs::Or>();
-    subRoot.add<irs::by_term>().field(mangleString("a", "testVocbase::test_analyzer")).term("1").boost(0.5);
+    subRoot.add<irs::by_term>().field(mangleString("a", "test_analyzer")).term("1").boost(0.5);
     subRoot.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
-    root.add<irs::Not>().filter<irs::by_term>().field(mangleString("b", "testVocbase::test_analyzer")).term("3").boost(1.5);
+    root.add<irs::Not>().filter<irs::by_term>().field(mangleString("b", "test_analyzer")).term("3").boost(1.5);
 
     assertFilterSuccess("FOR d IN collection FILTER boost(analyzer(analyzer(boost(d.a == '1', 0.5), 'test_analyzer') or analyzer('2' == d.a, 'identity') or boost(d.b != '3', 1.5), 'test_analyzer'), 2.5) RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER boost(analyzer(boost(d['a'] == '1', 0.5), 'test_analyzer') or '2' == d['a'] or boost(analyzer(d.b != '3', 'test_analyzer'), 1.5), 2.5) RETURN d", expected);
@@ -1757,7 +1757,7 @@ SECTION("BinaryOr") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -1843,7 +1843,7 @@ SECTION("BinaryOr") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -1956,7 +1956,7 @@ SECTION("BinaryAnd") {
     auto& root = expected.add<irs::And>();
     root.boost(0.5);
     root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "testVocbase::test_analyzer"))
+        .field(mangleString("a.b.c", "test_analyzer"))
         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
     root.add<irs::by_term>().field(mangleStringIdentity("c.b.a")).term("2");
 
@@ -1968,7 +1968,7 @@ SECTION("BinaryAnd") {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "testVocbase::test_analyzer"))
+        .field(mangleString("a.b.c", "test_analyzer"))
         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1").boost(0.5);
     root.add<irs::by_term>().field(mangleStringIdentity("c.b.a")).term("2").boost(0.5);
 
@@ -2006,7 +2006,7 @@ SECTION("BinaryAnd") {
         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
     root.add<irs::Not>()
         .filter<irs::And>()
-        .add<irs::by_term>().field(mangleString("c.b.a", "testVocbase::test_analyzer")).term("2");
+        .add<irs::by_term>().field(mangleString("c.b.a", "test_analyzer")).term("2");
 
     assertFilterSuccess("FOR d IN collection FILTER boost(d.a.b.c < '1' and not analyzer(d.c.b.a == '2', 'test_analyzer'), 0.5) RETURN d", expected);
   }
@@ -2020,7 +2020,7 @@ SECTION("BinaryAnd") {
         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
     root.add<irs::Not>()
         .filter<irs::And>()
-        .add<irs::by_term>().field(mangleString("c.b.a", "testVocbase::test_analyzer")).term("2").boost(0.5);
+        .add<irs::by_term>().field(mangleString("c.b.a", "test_analyzer")).term("2").boost(0.5);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < '1' and not boost(analyzer(d.c.b.a == '2', 'test_analyzer'), 0.5) RETURN d", expected);
   }
@@ -2042,7 +2042,7 @@ SECTION("BinaryAnd") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2284,7 +2284,7 @@ SECTION("BinaryAnd") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2372,7 +2372,7 @@ SECTION("BinaryAnd") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2559,7 +2559,7 @@ SECTION("BinaryAnd") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2679,7 +2679,7 @@ SECTION("BinaryAnd") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2860,11 +2860,11 @@ SECTION("BinaryAnd") {
     auto& root = expected.add<irs::And>();
     root.boost(0.5);
     root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "testVocbase::test_analyzer"))
+        .field(mangleString("a.b.c", "test_analyzer"))
         .include<irs::Bound::MIN>(true)
         .term<irs::Bound::MIN>("15");
     root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "testVocbase::test_analyzer"))
+        .field(mangleString("a.b.c", "test_analyzer"))
         .include<irs::Bound::MAX>(false)
         .term<irs::Bound::MAX>("40");
 
@@ -2917,12 +2917,12 @@ SECTION("BinaryAnd") {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "testVocbase::test_analyzer"))
+        .field(mangleString("a.b.c", "test_analyzer"))
         .include<irs::Bound::MIN>(true)
         .term<irs::Bound::MIN>("15")
         .boost(0.5);
     root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "testVocbase::test_analyzer"))
+        .field(mangleString("a.b.c", "test_analyzer"))
         .include<irs::Bound::MAX>(true)
         .term<irs::Bound::MAX>("40")
         .boost(0.5);
@@ -2936,11 +2936,11 @@ SECTION("BinaryAnd") {
     auto& root = expected.add<irs::And>();
     root.boost(0.5);
     root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "testVocbase::test_analyzer"))
+        .field(mangleString("a.b.c", "test_analyzer"))
         .include<irs::Bound::MIN>(true)
         .term<irs::Bound::MIN>("15");
     root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "testVocbase::test_analyzer"))
+        .field(mangleString("a.b.c", "test_analyzer"))
         .include<irs::Bound::MAX>(true)
         .term<irs::Bound::MAX>("40");
 
@@ -3008,11 +3008,11 @@ SECTION("BinaryAnd") {
     auto& root = expected.add<irs::And>();
     root.boost(2.f);
     root.add<irs::by_range>()
-        .field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer"))
+        .field(mangleString("a.b.c.e.f", "test_analyzer"))
         .include<irs::Bound::MIN>(false)
         .term<irs::Bound::MIN>("15");
     root.add<irs::by_range>()
-        .field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer"))
+        .field(mangleString("a.b.c.e.f", "test_analyzer"))
         .include<irs::Bound::MAX>(true)
         .term<irs::Bound::MAX>("40");
 
@@ -3142,7 +3142,7 @@ SECTION("BinaryAnd") {
     auto& root = expected.add<irs::And>();
     root.boost(1.5);
     root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "testVocbase::test_analyzer"))
+        .field(mangleString("a.b.c", "test_analyzer"))
         .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("15");
     root.add<irs::by_granular_range>()
         .field(mangleNumeric("a.b.c"))
@@ -3684,7 +3684,7 @@ SECTION("BinaryAnd") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);

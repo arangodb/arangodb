@@ -98,11 +98,14 @@ transaction::Context::~Context() {
     delete it;
   }
 
+  // clear all strings handed out
+  for (auto& it : _strings) {
+    delete it;
+  }
+
   if (_ownsResolver) {
     delete _resolver;
   }
-
-  _resolver = nullptr;
 }
 
 /// @brief factory to create a custom type handler, not managed

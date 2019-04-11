@@ -732,9 +732,9 @@ Result Collections::revisionId(Context& ctxt, TRI_voc_rid_t& rid) {
     TRI_ASSERT(queryRegistry != nullptr);
     aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
-    Result res = queryResult.code;
-    if (queryResult.code == TRI_ERROR_NO_ERROR) {
-      VPackSlice array = queryResult.result->slice();
+    Result res = queryResult.result;
+    if (queryResult.result.ok()) {
+      VPackSlice array = queryResult.data->slice();
       for (VPackSlice doc : VPackArrayIterator(array)) {
         cb(doc.resolveExternal());
       }

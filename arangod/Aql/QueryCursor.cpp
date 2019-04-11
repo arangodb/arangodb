@@ -50,9 +50,9 @@ QueryResultCursor::QueryResultCursor(TRI_vocbase_t& vocbase,
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, hasCount),
       _guard(vocbase),
       _result(std::move(result)),
-      _iterator(_result.result->slice()),
+      _iterator(_result.data->slice()),
       _cached(_result.cached) {
-  TRI_ASSERT(_result.result->slice().isArray());
+  TRI_ASSERT(_result.data->slice().isArray());
 }
 
 VPackSlice QueryResultCursor::extra() const {
@@ -74,7 +74,7 @@ bool QueryResultCursor::hasNext() {
 
 /// @brief return the next element
 VPackSlice QueryResultCursor::next() {
-  TRI_ASSERT(_result.result != nullptr);
+  TRI_ASSERT(_result.data != nullptr);
   TRI_ASSERT(_iterator.valid());
   VPackSlice slice = _iterator.value();
   _iterator.next();
