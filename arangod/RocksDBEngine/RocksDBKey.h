@@ -47,23 +47,11 @@ class RocksDBKey {
   
   /// @brief construct a leased RocksDBKey
   /// @param leased will use _local std::string if nullptr
-  explicit RocksDBKey(std::string* leased)
-      : _type(RocksDBEntryType::Document),  // placeholder
-        _local(),
-        _buffer(leased != nullptr ? leased : &_local) {}
+  explicit RocksDBKey(std::string* leased);
 
-  explicit RocksDBKey(rocksdb::Slice slice)
-      : _type(static_cast<RocksDBEntryType>(slice.data()[0])),
-        _local(slice.data(), slice.size()),
-        _buffer(&_local) {}
+  explicit RocksDBKey(rocksdb::Slice slice);
 
-  RocksDBKey(RocksDBKey&& other) noexcept
-      : _type(other._type),
-        _local(),
-        _buffer(&_local) {
-     _local.assign(std::move(*(other._buffer)));
-     other._buffer = &(other._local);
-    }
+  RocksDBKey(RocksDBKey&& other) noexcept;
 
   RocksDBKey& operator=(RocksDBKey const& other) = delete;
   RocksDBKey& operator=(RocksDBKey&& other) = delete;

@@ -32,12 +32,12 @@
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/RecursiveLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -67,86 +67,6 @@
 #include "VocBase/ticks.h"
 
 #include <thread>
-
-namespace {
-
-template <typename T>
-class RecursiveReadLocker {
- public:
-  RecursiveReadLocker(T& mutex, std::atomic<std::thread::id>& owner, char const* file, int line)
-      : _locker(&mutex, arangodb::basics::LockerType::TRY, true, file, line) {
-    if (!_locker.isLocked() && owner.load() != std::this_thread::get_id()) {
-      _locker.lock();
-    }
-  }
-
- private:
-  arangodb::basics::ReadLocker<T> _locker;
-};
-
-template <typename T>
-class RecursiveWriteLocker {
- public:
-  RecursiveWriteLocker(T& mutex, std::atomic<std::thread::id>& owner,
-                       arangodb::basics::LockerType type, bool acquire,
-                       char const* file, int line)
-      : _locked(false), _locker(&mutex, type, false, file, line), _owner(owner), _update(noop) {
-    if (acquire) {
-      lock();
-    }
-  }
-
-  ~RecursiveWriteLocker() { unlock(); }
-
-  bool isLocked() { return _locked; }
-
-  void lock() {
-    // recursive locking of the same instance is not yet supported (create a new
-    // instance instead)
-    TRI_ASSERT(_update != owned);
-
-    if (std::this_thread::get_id() != _owner.load()) {  // not recursive
-      _locker.lock();
-      _owner.store(std::this_thread::get_id());
-      _update = owned;
-    }
-
-    _locked = true;
-  }
-
-  void unlock() {
-    _update(*this);
-    _locked = false;
-  }
-
- private:
-  bool _locked;  // track locked state separately for recursive lock aquisition
-  arangodb::basics::WriteLocker<T> _locker;
-  std::atomic<std::thread::id>& _owner;
-  void (*_update)(RecursiveWriteLocker& locker);
-
-  static void noop(RecursiveWriteLocker&) {}
-  static void owned(RecursiveWriteLocker& locker) {
-    static std::thread::id unowned;
-    locker._owner.store(unowned);
-    locker._locker.unlock();
-    locker._update = noop;
-  }
-};
-
-#define NAME__(name, line) name##line
-#define NAME_EXPANDER__(name, line) NAME__(name, line)
-#define NAME(name) NAME_EXPANDER__(name, __LINE__)
-#define RECURSIVE_READ_LOCKER(lock, owner)                             \
-  RecursiveReadLocker<typename std::decay<decltype(lock)>::type> NAME( \
-      RecursiveLocker)(lock, owner, __FILE__, __LINE__)
-#define RECURSIVE_WRITE_LOCKER_NAMED(name, lock, owner, acquire)        \
-  RecursiveWriteLocker<typename std::decay<decltype(lock)>::type> name( \
-      lock, owner, arangodb::basics::LockerType::BLOCKING, acquire, __FILE__, __LINE__)
-#define RECURSIVE_WRITE_LOCKER(lock, owner) \
-  RECURSIVE_WRITE_LOCKER_NAMED(NAME(RecursiveLocker), lock, owner, true)
-
-}  // namespace
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -1541,12 +1461,6 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollection(
   return useCollectionInternal(std::move(collection), status);
 }
 
-/// @brief locks a collection for usage by name
-std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollectionByUuid(
-    std::string const& uuid, TRI_vocbase_col_status_e& status) {
-  return useCollectionInternal(lookupCollectionByUuid(uuid), status);
-}
-
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollectionInternal(
     std::shared_ptr<arangodb::LogicalCollection> coll, TRI_vocbase_col_status_e& status) {
   if (!coll) {
@@ -1821,111 +1735,6 @@ void TRI_vocbase_t::addReplicationApplier() {
   TRI_ASSERT(_type != TRI_VOCBASE_TYPE_COORDINATOR);
   auto* applier = DatabaseReplicationApplier::create(*this);
   _replicationApplier.reset(applier);
-}
-
-/// @brief note the progress of a connected replication client
-/// this only updates the ttl
-void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl) {
-  if (ttl <= 0.0) {
-    ttl = replutils::BatchInfo::DefaultTimeout;
-  }
-
-  double const timestamp = TRI_microtime();
-  double const expires = timestamp + ttl;
-
-  WRITE_LOCKER(writeLocker, _replicationClientsLock);
-
-  auto it = _replicationClients.find(serverId);
-
-  if (it != _replicationClients.end()) {
-    LOG_TOPIC("f1c60", TRACE, Logger::REPLICATION)
-        << "updating replication client entry for server '" << serverId
-        << "' using TTL " << ttl;
-    std::get<0>((*it).second) = timestamp;
-    std::get<1>((*it).second) = expires;
-  } else {
-    LOG_TOPIC("a895c", TRACE, Logger::REPLICATION)
-        << "replication client entry for server '" << serverId << "' not found";
-  }
-}
-
-/// @brief note the progress of a connected replication client
-void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
-                                            TRI_voc_tick_t lastFetchedTick, double ttl) {
-  if (ttl <= 0.0) {
-    ttl = replutils::BatchInfo::DefaultTimeout;
-  }
-  double const timestamp = TRI_microtime();
-  double const expires = timestamp + ttl;
-
-  WRITE_LOCKER(writeLocker, _replicationClientsLock);
-
-  try {
-    auto it = _replicationClients.find(serverId);
-
-    if (it == _replicationClients.end()) {
-      // insert new client entry
-      _replicationClients.emplace(serverId, std::make_tuple(timestamp, expires, lastFetchedTick));
-      LOG_TOPIC("69c75", TRACE, Logger::REPLICATION)
-          << "inserting replication client entry for server '" << serverId
-          << "' using TTL " << ttl << ", last tick: " << lastFetchedTick;
-    } else {
-      // update an existing client entry
-      std::get<0>((*it).second) = timestamp;
-      std::get<1>((*it).second) = expires;
-      if (lastFetchedTick > 0) {
-        std::get<2>((*it).second) = lastFetchedTick;
-        LOG_TOPIC("47d4a", TRACE, Logger::REPLICATION)
-            << "updating replication client entry for server '" << serverId
-            << "' using TTL " << ttl << ", last tick: " << lastFetchedTick;
-      } else {
-        LOG_TOPIC("fce26", TRACE, Logger::REPLICATION)
-            << "updating replication client entry for server '" << serverId
-            << "' using TTL " << ttl;
-      }
-    }
-  } catch (...) {
-    // silently fail...
-    // all we would be missing is the progress information of a slave
-  }
-}
-
-/// @brief return the progress of all replication clients
-std::vector<std::tuple<TRI_server_id_t, double, double, TRI_voc_tick_t>> TRI_vocbase_t::getReplicationClients() {
-  std::vector<std::tuple<TRI_server_id_t, double, double, TRI_voc_tick_t>> result;
-
-  READ_LOCKER(readLocker, _replicationClientsLock);
-
-  for (auto& it : _replicationClients) {
-    result.emplace_back(std::make_tuple(it.first, std::get<0>(it.second),
-                                        std::get<1>(it.second), std::get<2>(it.second)));
-  }
-  return result;
-}
-
-void TRI_vocbase_t::garbageCollectReplicationClients(double expireStamp) {
-  LOG_TOPIC("11a30", TRACE, Logger::REPLICATION)
-      << "garbage collecting replication client entries";
-
-  WRITE_LOCKER(writeLocker, _replicationClientsLock);
-
-  try {
-    auto it = _replicationClients.begin();
-
-    while (it != _replicationClients.end()) {
-      double const expires = std::get<1>((*it).second);
-      if (expireStamp > expires) {
-        LOG_TOPIC("8d7db", DEBUG, Logger::REPLICATION)
-            << "removing expired replication client for server id " << it->first;
-        it = _replicationClients.erase(it);
-      } else {
-        ++it;
-      }
-    }
-  } catch (...) {
-    // silently fail...
-    // all we would be missing is the progress information of a slave
-  }
 }
 
 std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {

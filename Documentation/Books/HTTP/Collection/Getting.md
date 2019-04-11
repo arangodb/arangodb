@@ -13,6 +13,8 @@ Getting Information about a Collection
 <!-- js/actions/api-collection.js -->
 @startDocuBlock get_api_collection_figures
 
+@startDocuBlock get_api_collection_getResponsibleShard
+
 <!-- js/actions/api-collection.js -->
 @startDocuBlock get_api_collection_revision
 

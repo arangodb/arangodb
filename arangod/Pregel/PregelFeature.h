@@ -42,7 +42,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
   explicit PregelFeature(application_features::ApplicationServer& server);
   ~PregelFeature();
 
-  static PregelFeature* instance();
+  static std::shared_ptr<PregelFeature> instance();
   static size_t availableParallelism();
 
   static std::pair<Result, uint64_t> startExecution(
@@ -53,12 +53,13 @@ class PregelFeature final : public application_features::ApplicationFeature {
   void start() override final;
   void beginShutdown() override final;
   void stop() override final;
+  void unprepare() override final;
 
   uint64_t createExecutionNumber();
-  void addConductor(std::unique_ptr<Conductor>&&, uint64_t executionNumber);
+  void addConductor(std::shared_ptr<Conductor>&&, uint64_t executionNumber);
   std::shared_ptr<Conductor> conductor(uint64_t executionNumber);
 
-  void addWorker(std::unique_ptr<IWorker>&&, uint64_t executionNumber);
+  void addWorker(std::shared_ptr<IWorker>&&, uint64_t executionNumber);
   std::shared_ptr<IWorker> worker(uint64_t executionNumber);
 
   void cleanupConductor(uint64_t executionNumber);

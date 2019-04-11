@@ -42,6 +42,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Function.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
@@ -68,7 +69,6 @@
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewCoordinator.h"
-#include "IResearch/IResearchViewNode.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "Random/RandomFeature.h"
@@ -308,29 +308,57 @@ TEST_CASE("IResearchViewCoordinatorTest",
   }
 
   SECTION("visit_collections") {
+    auto* ci = arangodb::ClusterInfo::instance();
+    REQUIRE((nullptr != ci));
+    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+
+    {
+      auto* database = arangodb::DatabaseFeature::DATABASE;
+      REQUIRE((nullptr != database));
+      REQUIRE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testVocbase", vocbase)));
+      REQUIRE((nullptr != vocbase));
+      REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).ok()));
+    }
+
+    std::string collectionId0("100");
+    std::string collectionId1("101");
+    std::string collectionId2("102");
+    std::string viewId("1");
+    auto collectionJson0 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\", \"shards\":{} }");
+    auto collectionJson1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\", \"shards\":{} }");
+    auto collectionJson2 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection2\", \"shards\":{} }");
+    auto linkJson  = arangodb::velocypack::Parser::fromJson("{ \"view\": \"1\" }");
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
         "}");
-    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1,
-                    "testVocbase");
-    arangodb::LogicalView::ptr logicalView;
-    REQUIRE((arangodb::LogicalView::instantiate(logicalView, vocbase, json->slice(), 0)
-                 .ok()));
+    REQUIRE((ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, false, collectionJson0->slice(), 0.0).ok()));
+    auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
+    REQUIRE((false == !logicalCollection0));
+    REQUIRE((ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, false, collectionJson1->slice(), 0.0).ok()));
+    auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
+    REQUIRE((false == !logicalCollection1));
+    REQUIRE((ci->createCollectionCoordinator(vocbase->name(), collectionId2, 0, 1, false, collectionJson2->slice(), 0.0).ok()));
+    auto logicalCollection2 = ci->getCollection(vocbase->name(), collectionId2);
+    REQUIRE((false == !logicalCollection2));
+    REQUIRE((ci->createViewCoordinator(vocbase->name(), viewId, json->slice()).ok()));
+    auto logicalView = ci->getView(vocbase->name(), viewId);
+    REQUIRE((false == !logicalView));
     auto* view =
         dynamic_cast<arangodb::iresearch::IResearchViewCoordinator*>(logicalView.get());
 
     CHECK(nullptr != view);
-    CHECK(0 == view->planVersion());
+    CHECK(6 == view->planVersion());
     CHECK("testView" == view->name());
     CHECK(false == view->deleted());
     CHECK(1 == view->id());
     CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
     CHECK(arangodb::LogicalView::category() == view->category());
-    CHECK(&vocbase == &view->vocbase());
+    CHECK(vocbase == &view->vocbase());
 
-    CHECK((true == view->emplace(1, "1", arangodb::velocypack::Slice::emptyObjectSlice())));
-    CHECK((true == view->emplace(2, "2", arangodb::velocypack::Slice::emptyObjectSlice())));
-    CHECK((true == view->emplace(3, "3", arangodb::velocypack::Slice::emptyObjectSlice())));
+    std::shared_ptr<arangodb::Index> link;
+    CHECK((arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(link, *logicalCollection0, linkJson->slice(), 1, false).ok()));
+    CHECK((arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(link, *logicalCollection1, linkJson->slice(), 2, false).ok()));
+    CHECK((arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(link, *logicalCollection2, linkJson->slice(), 3, false).ok()));
 
     // visit view
     TRI_voc_cid_t expectedCollections[] = {1, 2, 3};
@@ -1287,7 +1315,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -1334,7 +1361,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -1381,7 +1407,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -1516,7 +1541,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -1564,7 +1588,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -1853,7 +1876,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -1900,7 +1922,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -2051,7 +2072,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -2099,7 +2119,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -2147,7 +2166,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -2495,7 +2513,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -2542,7 +2559,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -2681,7 +2697,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -2810,7 +2825,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -3117,7 +3131,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -3165,7 +3178,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -3212,7 +3224,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
       CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
-      CHECK((true == index->hasBatchInsert()));
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
@@ -3505,7 +3516,6 @@ TEST_CASE("IResearchViewCoordinatorTest",
         CHECK((updatedCollection.get() == &(index->collection())));
         CHECK((index->fieldNames().empty()));
         CHECK((index->fields().empty()));
-        CHECK((true == index->hasBatchInsert()));
         CHECK((false == index->hasExpansion()));
         CHECK((false == index->hasSelectivityEstimate()));
         CHECK((false == index->implicitlyUnique()));

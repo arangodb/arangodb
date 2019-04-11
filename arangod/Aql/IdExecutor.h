@@ -85,7 +85,6 @@ class IdExecutor {
 
  private:
   Fetcher& _fetcher;
-  std::unique_ptr<AqlItemBlock> _inputRegisterValues;
 };
 }  // namespace aql
 }  // namespace arangodb

@@ -46,11 +46,9 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/Methods/Indexes.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -1271,12 +1269,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
                            " index(es) for " + collectionMsg);
 
       try {
-        auto physical = col->getPhysical();
-        TRI_ASSERT(physical != nullptr);
-
         for (auto const& idxDef : VPackArrayIterator(indexes)) {
-          std::shared_ptr<arangodb::Index> idx;
-
           if (idxDef.isObject()) {
             VPackSlice const type = idxDef.get(StaticStrings::IndexType);
             if (type.isString()) {
@@ -1285,40 +1278,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             }
           }
 
-          // delete any conflicts first
-          {
-            // check ID first
-            TRI_idx_iid_t iid = 0;
-            CollectionNameResolver resolver(_config.vocbase);
-            Result res = methods::Indexes::extractHandle(col, &resolver, idxDef, iid);
-            if (res.ok() && iid != 0) {
-              // lookup by id
-              auto byId = physical->lookupIndex(iid);
-              auto byDef = physical->lookupIndex(idxDef);
-              if (byId != nullptr && byId != byDef) {
-                // drop existing byId
-                physical->dropIndex(byId->id());
-              }
-            }
-
-            // now check name;
-            std::string name =
-                basics::VelocyPackHelper::getStringValue(idxDef, StaticStrings::IndexName,
-                                                         "");
-            if (!name.empty()) {
-              // lookup by name
-              auto byName = physical->lookupIndex(name);
-              auto byDef = physical->lookupIndex(idxDef);
-              if (byName != nullptr && byName != byDef) {
-                // drop existing byName
-                physical->dropIndex(byName->id());
-              }
-            }
-          }
-
-          bool created = false;
-          idx = physical->createIndex(idxDef, /*restore*/ true, created);
-          TRI_ASSERT(idx != nullptr);
+          createIndexInternal(idxDef, *col);
         }
       } catch (arangodb::basics::Exception const& ex) {
         return res.reset(ex.code(), ex.what());

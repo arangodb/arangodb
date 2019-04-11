@@ -163,14 +163,20 @@ Manager::ManagedTrx::~ManagedTrx() {
     delete state;
     return;
   }
-  transaction::Options opts;
-  auto ctx = std::make_shared<transaction::ManagedContext>(2, state, AccessMode::Type::NONE);
-  MGMethods trx(ctx, opts); // own state now
-  trx.begin();
-  TRI_ASSERT(state->nestingLevel() == 1);
-  state->decreaseNesting();
-  TRI_ASSERT(state->isTopLevelTransaction());
-  trx.abort();
+
+  try {
+    transaction::Options opts;
+    auto ctx = std::make_shared<transaction::ManagedContext>(2, state, AccessMode::Type::NONE);
+    MGMethods trx(ctx, opts); // own state now
+    trx.begin();
+    TRI_ASSERT(state->nestingLevel() == 1);
+    state->decreaseNesting();
+    TRI_ASSERT(state->isTopLevelTransaction());
+    trx.abort();
+  } catch (...) {
+    // obviously it is not good to consume all exceptions here,
+    // but we are in a destructor and must never throw from here
+  }
 }
   
 using namespace arangodb;
@@ -350,16 +356,29 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
       } else {  // only support local collections / shards
         cid = resolver.getCollectionIdLocal(cname);
       }
+      
       if (cid == 0) {
+        // not found
+        res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, 
+                  std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) + ":" + cname);
+      } else {
+        res.reset(state->addCollection(cid, cname, mode, /*nestingLevel*/0, false));
+      }
+
+      if (res.fail()) {
         return false;
       }
-      state->addCollection(cid, cname, mode, /*nestingLevel*/0, false);
     }
     return true;
   };
   if (!lockCols(exclusives, AccessMode::Type::EXCLUSIVE) ||
       !lockCols(writes, AccessMode::Type::WRITE) ||
       !lockCols(reads, AccessMode::Type::READ)) {
+    if (res.fail()) {
+      // error already set by callback function
+      return res;
+    }
+    // no error set. so it must be "data source not found"
     return res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
   
@@ -605,7 +624,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
   trx.state()->decreaseNesting();
   TRI_ASSERT(trx.state()->isTopLevelTransaction());
   if (clearServers) {
-    state->clearKnownServers();
+    trx.state()->clearKnownServers();
   }
   if (status == transaction::Status::COMMITTED) {
     res = trx.commit();

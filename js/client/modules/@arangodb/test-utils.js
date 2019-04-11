@@ -528,6 +528,8 @@ function splitBuckets (options, cases) {
 
   let result = [];
 
+  cases.sort();
+
   for (let i = s % m; i < cases.length; i = i + r) {
     result.push(cases[i]);
   }
@@ -586,7 +588,7 @@ function runThere (options, instanceInfo, file) {
 
     let httpOptions = pu.makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
-    httpOptions.timeout = 1800;
+    httpOptions.timeout = 2700;
 
     if (options.valgrind) {
       httpOptions.timeout *= 2;
@@ -603,7 +605,13 @@ function runThere (options, instanceInfo, file) {
     } else {
       if ((reply.code === 500) &&
           reply.hasOwnProperty('message') &&
-          (reply.message === 'Request timeout reached')) {
+          (
+            (reply.message.search('Request timeout reached') >= 0 ) ||
+            (reply.message.search('timeout during read') >= 0 ) ||
+            (reply.message.search('Connection closed by remote') >= 0 )
+          )) {
+        print(RED + Date() + " request timeout reached (" + reply.message +
+              "), aborting test execution" + RESET);
         return {
           status: false,
           message: reply.message,

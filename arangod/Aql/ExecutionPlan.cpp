@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/IndexHint.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
@@ -47,10 +48,6 @@
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "VocBase/AccessMode.h"
-
-#ifdef USE_IRESEARCH
-#include "IResearch/IResearchViewNode.h"
-#endif
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
@@ -865,7 +862,6 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
                                      "no collection for EnumerateCollection");
     }
     en = registerNode(new EnumerateCollectionNode(this, nextId(), collection, v, false, hint));
-#ifdef USE_IRESEARCH
   } else if (expression->type == NODE_TYPE_VIEW) {
     // second operand is a view
     std::string const viewName = expression->getString();
@@ -893,7 +889,6 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
 
     en = registerNode(new iresearch::IResearchViewNode(*this, nextId(), vocbase, view,
                                                        *v, nullptr, options, {}));
-#endif
   } else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable
     auto inVariable = static_cast<Variable*>(expression->getData());
@@ -945,7 +940,6 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous, AstNode c
 
   TRI_ASSERT(expression->type == NODE_TYPE_VIEW);
 
-#ifdef USE_IRESEARCH
   std::string const viewName = expression->getString();
   auto& vocbase = _ast->query()->vocbase();
 
@@ -978,9 +972,6 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous, AstNode c
 
   en = registerNode(new iresearch::IResearchViewNode(*this, nextId(), vocbase, view, *v,
                                                      search->getMember(0), options, {}));
-#else
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-#endif
 
   TRI_ASSERT(en != nullptr);
 

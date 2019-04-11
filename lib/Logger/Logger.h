@@ -65,6 +65,7 @@
 #include "Basics/threads.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
+#include "Logger/LogTimeFormat.h"
 #include "Logger/LogTopic.h"
 
 namespace arangodb {
@@ -230,10 +231,8 @@ class Logger {
   static bool getUseColor() { return _useColor; };
   static void setUseEscaped(bool);
   static bool getUseEscaped() { return _useEscaped; };
-  static void setUseLocalTime(bool);
-  static bool getUseLocalTime() { return _useLocalTime; };
-  static void setUseMicrotime(bool);
-  static bool getUseMicrotime() { return _useMicrotime; };
+  static bool getUseLocalTime() { return LogTimeFormats::isLocalFormat(_timeFormat); }
+  static void setTimeFormat(LogTimeFormats::TimeFormat);
   static void setKeepLogrotate(bool);
   static void setLogRequestParameters(bool);
   static bool logRequestParameters() { return _logRequestParameters; }
@@ -269,6 +268,7 @@ class Logger {
   static std::atomic<LogLevel> _level;
 
   // these variables must be set before calling initialized
+  static LogTimeFormats::TimeFormat _timeFormat;
   static bool _showLineNumber;
   static bool _shortenFilenames;
   static bool _showThreadIdentifier;
@@ -277,9 +277,7 @@ class Logger {
   static bool _threaded;
   static bool _useColor;
   static bool _useEscaped;
-  static bool _useLocalTime;
   static bool _keepLogRotate;
-  static bool _useMicrotime;
   static bool _logRequestParameters;
   static bool _showIds;
   static char _role;  // current server role to log

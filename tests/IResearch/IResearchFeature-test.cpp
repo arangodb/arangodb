@@ -93,7 +93,8 @@ struct IResearchFeatureSetup {
     arangodb::tests::init();
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(), arangodb::LogLevel::FATAL);
@@ -236,6 +237,8 @@ SECTION("test_upgrade0_1") {
     server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server)); // required for IResearchLink::initDataStore()
     server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
     server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
+    server.addFeature(new arangodb::SystemDatabaseFeature(server, &system)); // required for IResearchAnalyzerFeature::start()
     server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {})); // required for upgrade tasks
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // register iresearch view type
@@ -315,6 +318,8 @@ SECTION("test_upgrade0_1") {
     server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server)); // required for IResearchLink::initDataStore()
     server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
     server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
+    server.addFeature(new arangodb::SystemDatabaseFeature(server, &system)); // required for IResearchLinkHelper::normalize(...)
     server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {})); // required for upgrade tasks
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // register iresearch view type
@@ -542,7 +547,7 @@ SECTION("test_upgrade0_1") {
     REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     REQUIRE((false == !link));
-    REQUIRE((view->link(link->self()))); // link will not notify view in 'vocbase', hence notify manually
+    REQUIRE((view->link(link->self()).ok())); // link will not notify view in 'vocbase', hence notify manually
 
     index->unload(); // release file handles
     bool result;
@@ -623,7 +628,7 @@ SECTION("test_upgrade0_1") {
     REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     REQUIRE((false == !link));
-    REQUIRE((view->link(link->self()))); // link will not notify view in 'vocbase', hence notify manually
+    REQUIRE((view->link(link->self()).ok())); // link will not notify view in 'vocbase', hence notify manually
 
     index->unload(); // release file handles
     bool result;

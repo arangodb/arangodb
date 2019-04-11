@@ -623,7 +623,7 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
   if (!datafile || datafile->status().fail()) {
     datafile = jobData.directory.readableFile(cname + ".data.json");
     if (!datafile || datafile->status().fail()) {
-      result = {TRI_ERROR_CANNOT_READ_FILE, "could not open file"};
+      result = {TRI_ERROR_CANNOT_READ_FILE, "could not open data file for collection " + cname + "'"};
       return result;
     }
   }
@@ -653,7 +653,7 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
     }
     // we read something
     buffer.increaseLength(numRead);
-    jobData.stats.totalRead += (uint64_t)numRead;
+    jobData.stats.totalRead += static_cast<uint64_t>(numRead);
     numReadForThisCollection += numRead;
     numReadSinceLastReport += numRead;
 

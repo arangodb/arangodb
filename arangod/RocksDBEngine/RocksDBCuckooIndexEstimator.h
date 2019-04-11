@@ -153,7 +153,8 @@ class RocksDBCuckooIndexEstimator {
 
  public:
   static bool isFormatSupported(arangodb::velocypack::StringRef serialized) {
-    switch (serialized.front()) {
+    TRI_ASSERT(serialized.size() > sizeof(_appliedSeq) + sizeof(char));
+    switch (serialized[sizeof(_appliedSeq)]) {
       case SerializeFormat::NOCOMPRESSION:
         return true;
     }
@@ -176,7 +177,7 @@ class RocksDBCuckooIndexEstimator {
         _nrUsed(0),
         _nrCuckood(0),
         _nrTotal(0),
-        _committedSeq(0),
+        _appliedSeq(0),
         _needToPersist(true) {
     // Inflate size so that we have some padding to avoid failure
     size *= 2;
@@ -188,8 +189,7 @@ class RocksDBCuckooIndexEstimator {
     initializeDefault();
   }
 
-  RocksDBCuckooIndexEstimator(rocksdb::SequenceNumber commitSeq,
-                              arangodb::velocypack::StringRef const serialized)
+  RocksDBCuckooIndexEstimator(arangodb::velocypack::StringRef const serialized)
       : _randState(0x2636283625154737ULL),
         _logSize(0),
         _size(0),
@@ -205,9 +205,9 @@ class RocksDBCuckooIndexEstimator {
         _nrUsed(0),
         _nrCuckood(0),
         _nrTotal(0),
-        _committedSeq(commitSeq),
+        _appliedSeq(0),
         _needToPersist(false) {
-    switch (serialized.front()) {
+    switch (serialized[sizeof(_appliedSeq)]) {
       case SerializeFormat::NOCOMPRESSION: {
         deserializeUncompressed(serialized);
         break;
@@ -216,7 +216,7 @@ class RocksDBCuckooIndexEstimator {
         LOG_TOPIC("bcd09", WARN, arangodb::Logger::ENGINES)
             << "unable to restore index estimates: invalid format found";
         // Do not construct from serialization, use other constructor instead
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to restore index estimates: invalid format found");
       }
     }
   }
@@ -243,23 +243,21 @@ class RocksDBCuckooIndexEstimator {
    *
    * @param  serialized String for output
    * @param  commitSeq  Above that are still uncommited operations
-   * @return            The committed seq/tick (safe tick to keep in WAL)
    */
-  rocksdb::SequenceNumber serialize(std::string& serialized, rocksdb::SequenceNumber commitSeq) {
+  void serialize(std::string& serialized, rocksdb::SequenceNumber maxCommitSeq) {
     // We always have to start with the commit seq, type and then the length
 
     // commit seq, above that is an uncommited operations
     //    rocksdb::SequenceNumber commitSeq = committableSeq();
     // must apply updates first to be valid, WAL needs to preserve
-    rocksdb::SequenceNumber appliedSeq = applyUpdates(commitSeq);
-    TRI_ASSERT(appliedSeq <= commitSeq);
+    rocksdb::SequenceNumber appliedSeq = applyUpdates(maxCommitSeq);
+    TRI_ASSERT(appliedSeq <= maxCommitSeq);
 
     {
       // Sorry we need a consistent state, so we have to read-lock
       READ_LOCKER(locker, _lock);
 
-      /// appliedSeq might be 0 if we did not applie any operations
-      appliedSeq = std::max(appliedSeq, this->committedSeq());
+      appliedSeq = std::max(appliedSeq, _appliedSeq.load(std::memory_order_acquire));
       TRI_ASSERT(appliedSeq != std::numeric_limits<rocksdb::SequenceNumber>::max());
       rocksutils::uint64ToPersistent(serialized, appliedSeq);
 
@@ -303,11 +301,10 @@ class RocksDBCuckooIndexEstimator {
 
       bool havePendingUpdates = !_insertBuffers.empty() || !_removalBuffers.empty() ||
                                 !_truncateBuffer.empty();
-      _needToPersist.store(havePendingUpdates);
+      _needToPersist.store(havePendingUpdates, std::memory_order_release);
     }
-
-    _committedSeq.store(appliedSeq, std::memory_order_release);
-    return appliedSeq;
+    
+    _appliedSeq.store(appliedSeq, std::memory_order_release);
   }
 
   /// @brief only call directly during startup/recovery; otherwise buffer
@@ -328,14 +325,14 @@ class RocksDBCuckooIndexEstimator {
       }
     }
 
-    _needToPersist.store(true);
+    _needToPersist.store(true, std::memory_order_release);
   }
 
   Result bufferTruncate(rocksdb::SequenceNumber seq) {
     Result res = basics::catchVoidToResult([&]() -> void {
       WRITE_LOCKER(locker, _lock);
       _truncateBuffer.emplace(seq);
-      _needToPersist.store(true);
+      _needToPersist.store(true, std::memory_order_release);
     });
     return res;
   }
@@ -406,7 +403,7 @@ class RocksDBCuckooIndexEstimator {
         slot.increase();
       }
       ++_nrTotal;
-      _needToPersist.store(true);
+      _needToPersist.store(true, std::memory_order_release);
     }
 
     return true;
@@ -438,7 +435,7 @@ class RocksDBCuckooIndexEstimator {
           slot.reset();
           --_nrUsed;
         }
-        _needToPersist.store(true);
+        _needToPersist.store(true, std::memory_order_release);
         return true;
       }
       // If we get here we assume that the element was once inserted, but
@@ -448,7 +445,7 @@ class RocksDBCuckooIndexEstimator {
         // not included in _nrTotal, just decrease here
         --_nrCuckood;
       }
-      _needToPersist.store(true);
+      _needToPersist.store(true, std::memory_order_release);
     }
     return false;
   }
@@ -465,8 +462,7 @@ class RocksDBCuckooIndexEstimator {
   uint64_t nrCuckood() const { return _nrCuckood; }
 
   bool needToPersist() const {
-    READ_LOCKER(locker, _lock);
-    return _needToPersist.load();
+    return _needToPersist.load(std::memory_order_acquire);
   }
 
   /**
@@ -486,19 +482,15 @@ class RocksDBCuckooIndexEstimator {
     TRI_ASSERT(!inserts.empty() || !removals.empty());
     Result res = basics::catchVoidToResult([&]() -> void {
       WRITE_LOCKER(locker, _lock);
-      bool foundSomething = false;
       if (!inserts.empty()) {
         _insertBuffers.emplace(seq, std::move(inserts));
-        foundSomething = true;
       }
       if (!removals.empty()) {
         _removalBuffers.emplace(seq, std::move(removals));
-        foundSomething = true;
       }
-      if (foundSomething) {
-        _needToPersist.store(true);
-        LOG_TOPIC("69002", TRACE, Logger::ENGINES) << "buffered updates with stamp " << seq;
-      }
+      
+      _needToPersist.store(true, std::memory_order_release);
+      LOG_TOPIC("69002", TRACE, Logger::ENGINES) << "buffered updates with stamp " << seq;
     });
     return res;
   }
@@ -510,14 +502,15 @@ class RocksDBCuckooIndexEstimator {
    *
    * @return The latest seq/tick through which the estimate is valid
    */
-  rocksdb::SequenceNumber committedSeq() const {
-    return _committedSeq.load(std::memory_order_acquire);
+  rocksdb::SequenceNumber appliedSeq() const {
+    return _appliedSeq.load(std::memory_order_acquire);
   }
 
   /// @brief set the most recently set "committed" seq/tick
   /// only set when recalculating the index estimate
-  void setCommitSeq(rocksdb::SequenceNumber seq) {
-    _committedSeq.store(seq, std::memory_order_release);
+  void setAppliedSeq(rocksdb::SequenceNumber seq) {
+    _appliedSeq.store(seq, std::memory_order_release);
+    _needToPersist.store(true, std::memory_order_release);
   }
 
  private:  // methods
@@ -550,7 +543,7 @@ class RocksDBCuckooIndexEstimator {
           if (!_insertBuffers.empty()) {
             auto it = _insertBuffers.begin();  // sorted ASC
             if (it->first <= commitSeq) {
-              if (it->first >= ignoreSeq) {
+              if (it->first > ignoreSeq) {
                 inserts = std::move(it->second);
                 TRI_ASSERT(!inserts.empty());
               }
@@ -563,7 +556,7 @@ class RocksDBCuckooIndexEstimator {
           if (!_removalBuffers.empty()) {
             auto it = _removalBuffers.begin();  // sorted ASC
             if (it->first <= commitSeq) {
-              if (it->first >= ignoreSeq) {
+              if (it->first > ignoreSeq) {
                 removals = std::move(it->second);
                 TRI_ASSERT(!removals.empty());
               }
@@ -792,10 +785,15 @@ class RocksDBCuckooIndexEstimator {
   void deserializeUncompressed(arangodb::velocypack::StringRef const& serialized) {
     // Assert that we have at least the member variables
     TRI_ASSERT(serialized.size() >=
+               (sizeof(_appliedSeq)) +
                (sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
                 sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
                 sizeof(_niceSize) + sizeof(_logSize)));
     char const* current = serialized.data();
+    
+    _appliedSeq = rocksutils::uint64FromPersistent(current);
+    current += sizeof(_appliedSeq);
+    
     TRI_ASSERT(*current == SerializeFormat::NOCOMPRESSION);
     current++;  // Skip format char
 
@@ -803,13 +801,13 @@ class RocksDBCuckooIndexEstimator {
     current += sizeof(uint64_t);
     // Validate that the serialized format is exactly as long as
     // we expect it to be
-    TRI_ASSERT(serialized.size() == length);
+    TRI_ASSERT(serialized.size() == length + sizeof(_appliedSeq));
 
     _size = rocksutils::uint64FromPersistent(current);
     current += sizeof(uint64_t);
 
     if (_size <= 256) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to unserialize index estimates");
     }
 
     _nrUsed = rocksutils::uint64FromPersistent(current);
@@ -831,7 +829,7 @@ class RocksDBCuckooIndexEstimator {
 
     // Validate that we have enough data in the serialized format.
     TRI_ASSERT(serialized.size() ==
-               (sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
+               (sizeof(_appliedSeq) + sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
                 sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) + sizeof(_niceSize) +
                 sizeof(_logSize) + (_size * kSlotSize * kSlotsPerBucket)) +
                    (_size * kCounterSize * kSlotsPerBucket));
@@ -922,11 +920,11 @@ class RocksDBCuckooIndexEstimator {
   uint64_t _nrCuckood;  // number of elements that have been removed by cuckoo
   uint64_t _nrTotal;    // number of elements included in total (not cuckood)
 
-  std::atomic<rocksdb::SequenceNumber> _committedSeq;
+  std::atomic<rocksdb::SequenceNumber> _appliedSeq;
   std::atomic<bool> _needToPersist;
 
-  std::map<rocksdb::SequenceNumber, std::vector<Key>> _insertBuffers;
-  std::map<rocksdb::SequenceNumber, std::vector<Key>> _removalBuffers;
+  std::multimap<rocksdb::SequenceNumber, std::vector<Key>> _insertBuffers;
+  std::multimap<rocksdb::SequenceNumber, std::vector<Key>> _removalBuffers;
   std::set<rocksdb::SequenceNumber> _truncateBuffer;
 
   HashKey _hasherKey;        // Instance to compute the first hash function

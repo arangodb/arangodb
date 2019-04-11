@@ -238,21 +238,22 @@ void RocksDBIndex::afterTruncate(TRI_voc_tick_t) {
     createCache();
     TRI_ASSERT(_cachePresent);
   }
-}
+}  
 
 Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
                             LocalDocumentId const& oldDocumentId,
-                            velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
+                            velocypack::Slice const& oldDoc,
+                            LocalDocumentId const& newDocumentId,
                             velocypack::Slice const& newDoc, Index::OperationMode mode) {
   // It is illegal to call this method on the primary index
   // RocksDBPrimaryIndex must override this method accordingly
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
-
+  
   /// only if the insert needs to see the changes of the update, enable indexing:
   IndexingEnabler enabler(mthd, mthd->isIndexingDisabled() && hasExpansion() && unique());
-
+  
   TRI_ASSERT((hasExpansion() && unique()) ? !mthd->isIndexingDisabled() : true);
-
+  
   Result res = remove(trx, mthd, oldDocumentId, oldDoc, mode);
   if (!res.ok()) {
     return res;
@@ -324,10 +325,8 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type, uint64_t objectI
       return RocksDBKeyBounds::LegacyGeoIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_GEO_INDEX:
       return RocksDBKeyBounds::GeoIndex(objectId);
-#ifdef USE_IRESEARCH
     case RocksDBIndex::TRI_IDX_TYPE_IRESEARCH_LINK:
       return RocksDBKeyBounds::DatabaseViews(objectId);
-#endif
     case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

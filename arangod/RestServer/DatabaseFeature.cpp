@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
@@ -49,6 +50,7 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
@@ -66,6 +68,11 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // i am here for debugging only.
+TRI_vocbase_t* DatabaseFeature::CURRENT_VOCBASE = nullptr;
+#endif
 
 DatabaseFeature* DatabaseFeature::DATABASE = nullptr;
 
@@ -159,6 +166,12 @@ void DatabaseManagerThread::run() {
               TRI_RemoveDirectory(path.c_str());
             }
           }
+  
+          auto queryRegistry = QueryRegistryFeature::registry();
+          if (queryRegistry != nullptr) {
+            // destroy all items in the QueryRegistry for this database
+            queryRegistry->destroy(database->name());
+          }
 
           try {
             engine->dropDatabase(*database);
@@ -210,7 +223,7 @@ void DatabaseManagerThread::run() {
               vocbase->cursorRepository()->garbageCollect(force);
             } catch (...) {
             }
-            vocbase->garbageCollectReplicationClients(TRI_microtime());
+            vocbase->replicationClients().garbageCollect(TRI_microtime());
           }
         }
       }
@@ -387,6 +400,11 @@ void DatabaseFeature::beginShutdown() {
 }
 
 void DatabaseFeature::stop() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // i am here for debugging only.
+  static TRI_vocbase_t* currentVocbase = nullptr;
+#endif
+
   stopAppliers();
 
   // turn off query cache and flush it
@@ -396,10 +414,12 @@ void DatabaseFeature::stop() {
   p.maxResultsSize = 0;
   p.includeSystem = false;
   p.showBindVars = false;
-
   
   arangodb::aql::QueryCache::instance()->properties(p);
   arangodb::aql::QueryCache::instance()->invalidate();
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->cleanupReplicationContexts();
 
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
@@ -412,6 +432,20 @@ void DatabaseFeature::stop() {
       continue;
     }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // i am here for debugging only.
+    currentVocbase = vocbase;
+    CURRENT_VOCBASE = vocbase;
+    static size_t currentCursorCount = currentVocbase->cursorRepository()->count();
+    static size_t currentKeysCount = currentVocbase->collectionKeys()->count();
+    static size_t currentQueriesCount = currentVocbase->queryList()->count();
+    
+    LOG_TOPIC("840a4", DEBUG, Logger::FIXME) 
+        << "shutting down database " << currentVocbase->name() << ": " << (void*) currentVocbase
+        << ", cursors: " << currentCursorCount
+        << ", keys: " << currentKeysCount
+        << ", queries: " << currentQueriesCount;
+#endif
     vocbase->processCollections(
         [](LogicalCollection* collection) {
           // no one else must modify the collection's status while we are in
@@ -420,6 +454,12 @@ void DatabaseFeature::stop() {
               [collection]() { collection->close(); });
         },
         true);
+   
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // i am here for debugging only. 
+    LOG_TOPIC("4b2b7", DEBUG, Logger::FIXME) 
+        << "shutting down database " << currentVocbase->name() << ": " << (void*) currentVocbase << " successful";
+#endif
   }
   
   // flush again so we are sure no query is left in the cache here
@@ -443,6 +483,18 @@ void DatabaseFeature::unprepare() {
   }
 
   _databaseManager.reset();
+
+#ifdef ARANGODB_USE_CATCH_TESTS
+  // This is to avoid heap use after free errors in the iresearch tests, because
+  // the destruction a callback uses a database.
+  // I don't know if this is save to do, thus I enclosed it in ARANGODB_USE_CATCH_TESTS
+  // to prevent accidentally breaking anything. However,
+  // TODO Find out if this is okay and may be merged (maybe without the #ifdef),
+  // or if this has to be done differently in the tests instead. The errors may
+  // also go away when some new PR is merged, so maybe this can just be removed
+  // in the future.
+  _pendingRecoveryCallbacks.clear();
+#endif
 
   try {
     // closeOpenDatabases() can throw, but we're in a dtor

@@ -30,8 +30,10 @@
 #include "IResearchViewCoordinator.h"
 #include "VelocyPackHelper.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
@@ -53,13 +55,35 @@ arangodb::Result canUseAnalyzers( // validate
   arangodb::iresearch::IResearchLinkMeta const& meta, // metadata
   TRI_vocbase_t const& defaultVocbase // default vocbase
 ) {
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
+    arangodb::SystemDatabaseFeature // featue type
+  >();
+  auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+
   for (auto& entry: meta._analyzers) {
-    if (entry // valid entry
-        && !arangodb::iresearch::IResearchAnalyzerFeature::canUse(entry->name(), defaultVocbase, arangodb::auth::Level::RO)
-       ) {
+    if (!entry._pool) {
+      continue; // skip invalid entries
+    }
+
+    bool result;
+
+    if (sysVocbase) {
+      result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
+          entry._pool->name(), defaultVocbase, *sysVocbase // args
+        ), // analyzer
+        arangodb::auth::Level::RO // auth level
+      );
+    } else {
+      result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
+        entry._pool->name(), arangodb::auth::Level::RO // args
+      );
+    }
+
+    if (!result) {
       return arangodb::Result( // result
         TRI_ERROR_FORBIDDEN, // code
-        std::string("read access is forbidden to arangosearch analyzer '") + entry->name() + "'"
+        std::string("read access is forbidden to arangosearch analyzer '") + entry._pool->name() + "'"
       );
     }
   }
@@ -211,8 +235,13 @@ arangodb::Result modifyLinks( // modify links
 
     normalized.openObject();
 
+    // @note: DBServerAgencySync::getLocalCollections(...) generates
+    //        'not-forPersistence' definitions that are then compared in
+    //        Maintenance.cpp:compareIndexes(...) via
+    //        arangodb::Index::Compare(...)
+    //        hence must use 'isCreation=false' for normalize(...) to match
     auto res = arangodb::iresearch::IResearchLinkHelper::normalize( // normalize to validate analyzer definitions
-      normalized, link, true, view.vocbase() // args
+      normalized, link, false, view.vocbase() // args
     );
 
     if (!res.ok()) {
@@ -640,13 +669,14 @@ namespace iresearch {
     );
   }
 
-  return meta.json(normalized, isCreation) // 'isCreation' is set when forPersistence
-    ? arangodb::Result()
-    : arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("error generating arangosearch link normalized definition")
-      )
-    ;
+  if (!meta.json(normalized, isCreation, nullptr, &vocbase)) { // 'isCreation' is set when forPersistence
+    return arangodb::Result( // result
+      TRI_ERROR_BAD_PARAMETER, // code
+      "error generating arangosearch link normalized definition" // message
+    );
+  }
+
+  return arangodb::Result();
 }
 
 /*static*/ std::string const& IResearchLinkHelper::type() noexcept {

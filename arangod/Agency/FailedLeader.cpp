@@ -156,7 +156,7 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   if (b == nullptr) {
     _jb->close(); // object
     _jb->close(); // array
-    write_ret_t res = singleWriteTransaction(_agent, *_jb);
+    write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
     return (res.accepted && res.indices.size() == 1 && res.indices[0]);
   }
 
@@ -209,7 +209,7 @@ bool FailedLeader::start(bool& aborts) {
   {
     VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
-      auto jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      auto const& jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
       if (jobIdNode.second) {
         jobIdNode.first.toBuilder(todo);
       } else {
@@ -401,7 +401,7 @@ JOB_STATUS FailedLeader::status() {
   }
 
   std::string database, shard;
-  auto job = _snapshot.hasAsNode(pendingPrefix + _jobId);
+  auto const& job = _snapshot.hasAsNode(pendingPrefix + _jobId);
   if (job.second) {
     auto tmp_database = job.first.hasAsString("database");
     auto tmp_shard = job.first.hasAsString("shard");

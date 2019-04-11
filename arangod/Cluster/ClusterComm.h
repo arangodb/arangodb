@@ -504,7 +504,7 @@ class ClusterComm {
   /// @brief submit a single HTTP request to a shard synchronously.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<ClusterCommResult> syncRequest(
+  TEST_VIRTUAL std::unique_ptr<ClusterCommResult> syncRequest(
       CoordTransactionID const coordTransactionID, std::string const& destination,
       rest::RequestType reqtype, std::string const& path, std::string const& body,
       std::unordered_map<std::string, std::string> const& headerFields,

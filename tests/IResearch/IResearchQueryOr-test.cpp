@@ -89,7 +89,8 @@ struct IResearchQueryOrSetup {
     arangodb::tests::init(true);
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::ERR); // suppress WARNING {aql} Suboptimal AqlItemMatrix index lookup:
@@ -267,7 +268,6 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
   // populate view with the data
   {
     arangodb::OperationOptions opt;
-    TRI_voc_tick_t tick;
 
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -294,14 +294,14 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt, tick, false);
+        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt, false);
         CHECK(res.ok());
         ++i;
       }
     }
 
     CHECK((trx.commit().ok()));
-    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
+    CHECK((arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
   }
 
   // d.name == 'A' OR d.name == 'Q', d.seq DESC
@@ -324,9 +324,9 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.name == 'A' OR d.name == 'Q' SORT d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -353,9 +353,9 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.name == 'X' OR d.same == 'xyz' SORT BM25(d) DESC, TFIDF(d) DESC, d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -406,9 +406,9 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.name == 'K' OR d.value <= 100 OR d.duplicated == 'abcd' SORT TFIDF(d) DESC, d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -445,9 +445,9 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.name == 'A' OR d.name == 'Q' OR d.same != 'xyz' SORT d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -482,9 +482,9 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.name == 'F' OR EXISTS(d.duplicated) SORT BM25(d) DESC, d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -530,9 +530,9 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.name == 'D' OR STARTS_WITH(d.prefix, 'abc') SORT TFIDF(d) DESC, d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -569,9 +569,9 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.name == 'D' OR STARTS_WITH(d.prefix, 'abc') SORT BM25(d) DESC, d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -603,9 +603,9 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.name == 'D' OR STARTS_WITH(d.prefix, 'abc') SORT BM25(d) DESC, d.seq DESC LIMIT 3 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -653,8 +653,8 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH STARTS_WITH(d['prefix'], 'abc') OR EXISTS(d.duplicated) OR d.value < 100 OR d.name >= 'Z' SORT TFIDF(d) DESC, d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -698,8 +698,8 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'v', 1, 'z'), 'test_analyzer') OR STARTS_WITH(d['prefix'], 'abc') OR d.value < 100 OR d.name >= 'Z' SORT TFIDF(d) DESC, d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 

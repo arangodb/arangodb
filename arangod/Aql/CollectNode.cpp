@@ -450,9 +450,7 @@ struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
                en->getType() == ExecutionNode::ENUMERATE_LIST ||
                en->getType() == ExecutionNode::TRAVERSAL ||
                en->getType() == ExecutionNode::SHORTEST_PATH ||
-#ifdef USE_IRESEARCH
                en->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW ||
-#endif
                en->getType() == ExecutionNode::COLLECT) {
       depth += 1;
     }

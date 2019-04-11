@@ -31,6 +31,7 @@
 const fs = require('fs');
 const internal = require("internal");
 const jsunity = require("jsunity");
+var analyzers = require("@arangodb/analyzers");
 const isEnterprise = internal.isEnterprise();
 const db = internal.db;
 
@@ -48,6 +49,7 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -357,7 +359,7 @@ function dumpTestSuite () {
       res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 5000 OPTIONS { waitForSync:true } RETURN doc").toArray();
       assertEqual(0, res.length);
 
-      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') OPTIONS { waitForSync:true } RETURN doc").toArray();
+      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'UnitTestsDumpSrc::text_en') OPTIONS { waitForSync:true } RETURN doc").toArray();
       assertEqual(1, res.length);
     }
 
@@ -404,7 +406,11 @@ function dumpTestEnterpriseSuite () {
     },
 
     testHiddenCollectionsOmitted : function () {
-      const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+      let dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+      if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
+        // when dumping multiple database the database name is one layer added:
+        dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
+      }
 
       const smartEdgeCollectionPath = fs.join(dumpDir, `${edges}.structure.json`);
       const localEdgeCollectionPath = fs.join(dumpDir, `_local_${edges}.structure.json`);
@@ -420,7 +426,11 @@ function dumpTestEnterpriseSuite () {
     testShadowCollectionsOmitted : function () {
       const encryption = fs.read(fs.join(instanceInfo.rootDir, 'dump', 'ENCRYPTION'));
       if (encryption === '' || encryption === 'none') {
-        const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+        let dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+        if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
+          // when dumping multiple database the database name is one layer added:
+          dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
+        }
         const collStructure = JSON.parse(
           fs.read(fs.join(dumpDir, `${edges}.structure.json`))
         );

@@ -131,7 +131,7 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
 
 Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_t batchSize,
                                                 double ttl, bool hasCount) {
-  TRI_ASSERT(result.result != nullptr);
+  TRI_ASSERT(result.data != nullptr);
 
   std::unique_ptr<Cursor> cursor(
       new aql::QueryResultCursor(_vocbase, std::move(result), batchSize, ttl, hasCount));
@@ -271,6 +271,11 @@ void CursorRepository::release(Cursor* cursor) {
 
   // and free the cursor
   delete cursor;
+}
+
+size_t CursorRepository::count() {
+  MUTEX_LOCKER(mutexLocker, _lock);
+  return _cursors.size();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

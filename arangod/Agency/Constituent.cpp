@@ -592,11 +592,11 @@ void Constituent::run() {
 
     aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
-    if (queryResult.code != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    if (queryResult.result.fail()) {
+      THROW_ARANGO_EXCEPTION(queryResult.result);
     }
 
-    VPackSlice result = queryResult.result->slice();
+    VPackSlice result = queryResult.data->slice();
 
     if (result.isArray()) {
       for (auto const& i : VPackArrayIterator(result)) {

@@ -34,6 +34,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/StandaloneContext.h"
 
 using namespace arangodb;
 
@@ -47,7 +48,7 @@ using namespace arangodb::consensus;
 
 RestAgencyHandler::RestAgencyHandler(GeneralRequest* request,
                                      GeneralResponse* response, Agent* agent)
-    : RestBaseHandler(request, response), _agent(agent) {}
+    : RestVocbaseBaseHandler(request, response), _agent(agent) {}
 
 inline RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
   LOG_TOPIC("46536", WARN, Logger::AGENCY)
@@ -530,6 +531,7 @@ RestStatus RestAgencyHandler::handleRead() {
 }
 
 RestStatus RestAgencyHandler::handleConfig() {
+  LOG_TOPIC("eda22", DEBUG, Logger::AGENCY) << "handleConfig start";
   // Update endpoint of peer
   if (_request->requestType() == rest::RequestType::POST) {
     try {
@@ -542,6 +544,7 @@ RestStatus RestAgencyHandler::handleConfig() {
 
   // Respond with configuration
   auto last = _agent->lastCommitted();
+  LOG_TOPIC("55412", DEBUG, Logger::AGENCY) << "handleConfig after lastCommitted";
   Builder body;
   {
     VPackObjectBuilder b(&body);
@@ -549,32 +552,28 @@ RestStatus RestAgencyHandler::handleConfig() {
     body.add("leaderId", Value(_agent->leaderID()));
     body.add("commitIndex", Value(last));
     _agent->lastAckedAgo(body);
+    LOG_TOPIC("ddeea", DEBUG, Logger::AGENCY) << "handleConfig after lastAckedAgo";
     body.add("configuration", _agent->config().toBuilder()->slice());
     body.add("engine", VPackValue(EngineSelectorFeature::engineName()));
     body.add("version", VPackValue(ARANGODB_VERSION));
   }
 
+  LOG_TOPIC("76543", DEBUG, Logger::AGENCY) << "handleConfig after before generateResult";
   generateResult(rest::ResponseCode::OK, body.slice());
 
+  LOG_TOPIC("77891", DEBUG, Logger::AGENCY) << "handleConfig after before done";
   return RestStatus::DONE;
 }
 
 RestStatus RestAgencyHandler::handleState() {
 
   VPackBuilder body;
-  body.add(VPackValue(VPackValueType::Array));
-  for (auto const& i : _agent->state().get()) {
-    body.add(VPackValue(VPackValueType::Object));
-    body.add("index", VPackValue(i.index));
-    body.add("term", VPackValue(i.term));
-    if (i.entry != nullptr) {
-      body.add("query", VPackSlice(i.entry->data()));
-    }
-    body.add("clientId", VPackValue(i.clientId));
-    body.close();
+  { 
+    VPackObjectBuilder o(&body);
+    _agent->readDB(body);
   }
-  body.close();
-  generateResult(rest::ResponseCode::OK, body.slice());
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  generateResult(rest::ResponseCode::OK, body.slice(), ctx->getVPackOptionsForDump());
   return RestStatus::DONE;
 }
 

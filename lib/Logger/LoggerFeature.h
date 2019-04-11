@@ -24,6 +24,7 @@
 #define ARANGODB_LOGGER_LOGGER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Logger/LogTimeFormat.h"
 
 namespace arangodb {
 
@@ -50,6 +51,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   std::string _file;
   std::string _fileMode;
   std::string _fileGroup;
+  std::string _timeFormatString;
   bool _useLocalTime = false;
   bool _useColor = true;
   bool _useEscaped = true;

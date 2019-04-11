@@ -342,7 +342,7 @@ function cleanupLastDirectory (options) {
     while (cleanupDirectories.length) {
       const cleanupDirectory = cleanupDirectories.shift();
       if (options.extremeVerbosity === true) {
-        print("Cleaning up: " + cleanupDirectory);
+        print(Date() + " Cleaning up: " + cleanupDirectory);
       }
       // Avoid attempting to remove the same directory multiple times
       if ((cleanupDirectories.indexOf(cleanupDirectory) === -1) &&
@@ -353,13 +353,13 @@ function cleanupLastDirectory (options) {
             fs.removeDirectoryRecursive(cleanupDirectory, true);
             return;
           } catch (x) {
-            print('failed to delete directory "' + cleanupDirectory + '" - "' +
+            print(Date() + ' failed to delete directory "' + cleanupDirectory + '" - "' +
                   x + '" - Will retry in 5 seconds"');
             sleep(5);
           }
           i += 1;
         }
-        print('failed to delete directory "' + cleanupDirectory + '" - "' +
+        print(Date() + ' failed to delete directory "' + cleanupDirectory + '" - "' +
               '" - Deferring cleanup for test run end."');
         cleanupDirectories.unshift(cleanupDirectory);
       }
@@ -400,7 +400,7 @@ function makeAuthorizationHeaders (options) {
                              {'server_id': 'none',
                               'iss': 'arangodb'}, 'HS256');
     if (options.extremeVerbosity) {
-      print('Using jwt token:     ' + jwt);
+      print(Date() + ' Using jwt token:     ' + jwt);
     }
     return {
       'headers': {
@@ -505,12 +505,12 @@ function runProcdump (options, instanceInfo, rootDir, pid) {
   }
   try {
     if (options.extremeVerbosity) {
-      print("Starting procdump: " + JSON.stringify(procdumpArgs));
+      print(Date() + " Starting procdump: " + JSON.stringify(procdumpArgs));
     }
     instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
     instanceInfo.coreFilePattern = dumpFile;
   } catch (x) {
-    print('failed to start procdump - is it installed?');
+    print(Date() + ' failed to start procdump - is it installed?');
     // throw x;
   }
 }
@@ -518,7 +518,7 @@ function runProcdump (options, instanceInfo, rootDir, pid) {
 function stopProcdump (options, instanceInfo) {
   if (instanceInfo.hasOwnProperty('monitor') &&
       instanceInfo.monitor.pid !== null) {
-    print("wating for procdump to exit");
+    print(Date() + " wating for procdump to exit");
     statusExternal(instanceInfo.monitor.pid, true);
     instanceInfo.monitor.pid = null;
   }
@@ -562,7 +562,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
   }
   
   if (options.extremeVerbosity) {
-    print('executeAndWait: cmd =', cmd, 'args =', args);
+    print(Date() + ' executeAndWait: cmd =', cmd, 'args =', args);
   }
 
   const startTime = time();
@@ -605,7 +605,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
        (platform.substr(0, 3) === 'win')
       )
      ) {
-    print("executeAndWait: Marking crashy - " + JSON.stringify(instanceInfo));
+    print(Date() + " executeAndWait: Marking crashy - " + JSON.stringify(instanceInfo));
     crashUtils.analyzeCrash(cmd,
                             instanceInfo,
                             options,
@@ -619,7 +619,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
   if (instanceInfo.exitStatus.status === 'TERMINATED') {
     const color = (instanceInfo.exitStatus.exit === 0 ? GREEN : RED);
 
-    print(color + 'Finished: ' + instanceInfo.exitStatus.status +
+    print(color + Date() + ' Finished: ' + instanceInfo.exitStatus.status +
       ' exit code: ' + instanceInfo.exitStatus.exit +
       ' Time elapsed: ' + deltaTime + RESET);
 
@@ -641,7 +641,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       errorMessage += instanceInfo.exitStatus.errorMessage;
     }
 
-    print('Finished: ' + instanceInfo.exitStatus.status +
+    print(Date() + ' Finished: ' + instanceInfo.exitStatus.status +
       ' Signal: ' + instanceInfo.exitStatus.signal +
       ' Time elapsed: ' + deltaTime + errorMessage);
 
@@ -656,7 +656,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       errorMessage += instanceInfo.exitStatus.errorMessage;
     }
 
-    print('Finished: ' + instanceInfo.exitStatus.status +
+    print(Date() + ' Finished: ' + instanceInfo.exitStatus.status +
       ' exit code: ' + instanceInfo.exitStatus.signal +
       ' Time elapsed: ' + deltaTime + errorMessage);
 
@@ -826,6 +826,40 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = f
 // //////////////////////////////////////////////////////////////////////////////
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief dump the state of the agency to disk. if we still can get one.
+// //////////////////////////////////////////////////////////////////////////////
+function dumpAgency(instanceInfo, options) {
+  function dumpAgent(arangod, path, method, fn) {
+    let opts = {
+      method: method,
+      jwt: crypto.jwtEncode(instanceInfo.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256')
+    };
+    print('--------------------------------- '+ fn + ' -----------------------------------------------');
+    let agencyReply = download(arangod.url + path, method === 'POST' ? '[["/"]]' : '', opts);
+    if (agencyReply.code === 200) {
+      let agencyValue = JSON.parse(agencyReply.body);
+      fs.write(fs.join(options.testOutputDirectory, fn + '_' + arangod.pid + ".json"), JSON.stringify(agencyValue, null, 2));
+    } else {
+      print(agencyReply);
+    }
+  }
+  instanceInfo.arangods.forEach((arangod) => {
+    if (arangod.role === "agent") {
+      if (arangod.hasOwnProperty('exitStatus')) {
+        print(Date() + " this agent is already dead: " + JSON.stringify(arangod));
+      } else {
+        print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod));
+        dumpAgent(arangod, '/_api/agency/config', 'GET', 'agencyConfig');
+
+        dumpAgent(arangod, '/_api/agency/state', 'GET', 'agencyState');
+
+        dumpAgent(arangod, '/_api/agency/read', 'POST', 'agencyPlan');
+      }
+    }
+  });
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief the bad has happened, tell it the user and try to gather more
 // /        information about the incident. (arangod wrapper for the crash-utils)
 // //////////////////////////////////////////////////////////////////////////////
@@ -841,7 +875,7 @@ function checkArangoAlive (arangod, options) {
   const ret = res.status === 'RUNNING' && crashUtils.checkMonitorAlive(ARANGOD_BIN, arangod, options, res);
 
   if (!ret) {
-    print('ArangoD with PID ' + arangod.pid + ' gone:');
+    print(Date() + ' ArangoD with PID ' + arangod.pid + ' gone:');
     if (!arangod.hasOwnProperty('exitStatus')) {
       arangod.exitStatus = res;
     }
@@ -857,26 +891,43 @@ function checkArangoAlive (arangod, options) {
       arangod.exitStatus = res;
       analyzeServerCrash(arangod, options, 'health Check  - ' + res.signal);
       serverCrashedLocal = true;
-      print("checkArangoAlive: Marking crashy - " + JSON.stringify(arangod));
+      print(Date() + " checkArangoAlive: Marking crashy - " + JSON.stringify(arangod));
     }
   }
 
   return ret;
 }
 
+function abortSurvivors(arangod, options) {
+  print(Date() + " Killing in the name of: ");
+  print(arangod);
+  if (!arangod.hasOwnProperty('exitStatus')) {
+    arangod.exitStatus = killExternal(arangod.pid, abortSignal);
+  }
+}
+
 function checkInstanceAlive (instanceInfo, options) {
   if (options.activefailover && instanceInfo.hasOwnProperty('authOpts')) {
     let d = detectCurrentLeader(instanceInfo);
     if (instanceInfo.endpoint !== d.endpoint) {
-      print('failover has happened, leader is no more! Marking Crashy!');
+      print(Date() + ' failover has happened, leader is no more! Marking Crashy!');
       serverCrashedLocal = true;
+      dumpAgency(instanceInfo, options);
       return false;
     }
   }
   
-  return instanceInfo.arangods.reduce((previous, arangod) => {
+  let rc = instanceInfo.arangods.reduce((previous, arangod) => {
     return previous && checkArangoAlive(arangod, options);
   }, true);
+  if (!rc) {
+    dumpAgency(instanceInfo, options);
+    print(Date() + ' If cluster - will now start killing the rest.');
+    instanceInfo.arangods.forEach((arangod) => {
+      abortSurvivors(arangod, options);
+    });
+  }
+  return rc;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -885,7 +936,7 @@ function checkInstanceAlive (instanceInfo, options) {
 
 function waitOnServerForGC (instanceInfo, options, waitTime) {
   try {
-    print('waiting ' + waitTime + ' for server GC');
+    print(Date() + ' waiting ' + waitTime + ' for server GC');
     const remoteCommand = 'require("internal").wait(' + waitTime + ', true);';
 
     const requestOptions = makeAuthorizationHeaders(options);
@@ -898,7 +949,7 @@ function waitOnServerForGC (instanceInfo, options, waitTime) {
       remoteCommand,
       requestOptions);
 
-    print('waiting ' + waitTime + ' for server GC - done.');
+    print(Date() + ' waiting ' + waitTime + ' for server GC - done.');
 
     if (!reply.error && reply.code === 200) {
       return JSON.parse(reply.body);
@@ -949,7 +1000,7 @@ function executeArangod (cmd, args, options) {
   }
 
   if (options.extremeVerbosity) {
-    print('starting process ' + cmd + ' with arguments: ' + JSON.stringify(args));
+    print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(args));
   }
   return executeExternal(cmd, args);
 }
@@ -979,7 +1030,7 @@ function shutdownArangod (arangod, options, forceTerminate) {
     forceTerminate = false;
   }
   if (options.hasOwnProperty('server')) {
-    print('running with external server');
+    print(Date() + ' running with external server');
     return;
   }
 
@@ -999,6 +1050,7 @@ function shutdownArangod (arangod, options, forceTerminate) {
     } else {
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
+      requestOptions.timeout = 60; // 60 seconds hopefully are enough for getting a response
       print(Date() + ' ' + arangod.url + '/_admin/shutdown');
       let sockStat = getSockStat(arangod, options, "Sock stat for: ");
       const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
@@ -1020,7 +1072,7 @@ function shutdownArangod (arangod, options, forceTerminate) {
       }
     }
   } else {
-    print('Server already dead, doing nothing.');
+    print(Date() + ' Server already dead, doing nothing.');
   }
 }
 
@@ -1037,14 +1089,14 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
   if (options.activefailover) {
     let d = detectCurrentLeader(instanceInfo);
     if (instanceInfo.endpoint !== d.endpoint) {
-      print('failover has happened, leader is no more! Marking Crashy!');
+      print(Date() + ' failover has happened, leader is no more! Marking Crashy!');
       serverCrashedLocal = true;
       forceTerminate = true;
     }
   }
 
   if (!checkInstanceAlive(instanceInfo, options)) {
-    print('Server already dead, doing nothing. This shouldn\'t happen?');
+    print(Date() + ' Server already dead, doing nothing. This shouldn\'t happen?');
   }
 
   if (!forceTerminate) {
@@ -1062,7 +1114,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify("on"), requestOptions);
       }
     } catch (err) {
-      print("error while setting cluster maintenance mode:", err);
+      print(Date() + " error while setting cluster maintenance mode:", err);
     }
   }
 
@@ -1080,7 +1132,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     if (b.role === 'agent') return -1;
     return 0;
   });
-  print('Shutdown order ' + JSON.stringify(toShutdown));
+  print(Date() + ' Shutdown order ' + JSON.stringify(toShutdown));
 
   let nonAgenciesCount = instanceInfo.arangods
       .filter(arangod => {
@@ -1099,6 +1151,9 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     timeout *= 2;
   }
 
+  if ((toShutdown.length > 0) && (options.cluster === true) && (options.dumpAgencyOnError === true)) {
+    dumpAgency(instanceInfo, options);
+  }
   var shutdownTime = internal.time();
   while (toShutdown.length > 0) {
     toShutdown = toShutdown.filter(arangod => {
@@ -1108,12 +1163,12 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         }
         shutdownArangod(arangod, options, forceTerminate);
         if (forceTerminate) {
-          print("FORCED shut down: " + JSON.stringify(arangod));
+          print(Date() + " FORCED shut down: " + JSON.stringify(arangod));
         } else {
           arangod.exitStatus = {
             status: 'RUNNING'
           };
-          print("Commanded shut down: " + JSON.stringify(arangod));
+          print(Date() + " Commanded shut down: " + JSON.stringify(arangod));
         }
         return true;
       }
@@ -1127,7 +1182,8 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
           localTimeout = localTimeout + 60;
         }
         if ((internal.time() - shutdownTime) > localTimeout) {
-          print('forcefully terminating ' + yaml.safeDump(arangod) +
+          dumpAgency(instanceInfo, options);
+          print(Date() + ' forcefully terminating ' + yaml.safeDump(arangod) +
                 ' after ' + timeout + 's grace period; marking crashy.');
           serverCrashedLocal = true;
           arangod.exitStatus = killExternal(arangod.pid, abortSignal);
@@ -1150,7 +1206,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         }
         if (arangod.exitStatus.hasOwnProperty('signal') || arangod.exitStatus.hasOwnProperty('monitor')) {
           analyzeServerCrash(arangod, options, 'instance "' + arangod.role + '" Shutdown - ' + arangod.exitStatus.signal);
-          print("shutdownInstance: Marking crashy - " + JSON.stringify(arangod));
+          print(Date() + " shutdownInstance: Marking crashy - " + JSON.stringify(arangod));
           serverCrashedLocal = true;
         }
         stopProcdump(options, arangod);
@@ -1158,7 +1214,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         if (arangod.role !== 'agent') {
           nonAgenciesCount --;
         }
-        print('Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
+        print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
         stopProcdump(options, arangod);
         return false;
       }
@@ -1185,7 +1241,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     instanceInfo.arangods.forEach(arangod => {
       let errorEntries = readImportantLogLines(arangod.rootDir);
       if (Object.keys(errorEntries).length > 0) {
-        print('Found messages in the server logs: \n' +
+        print(Date() + ' Found messages in the server logs: \n' +
           yaml.safeDump(errorEntries));
       }
     });
@@ -1278,6 +1334,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       primaryArgs['cluster.my-address'] = endpoint;
       primaryArgs['cluster.my-role'] = 'PRIMARY';
       primaryArgs['cluster.agency-endpoint'] = agencyEndpoint;
+      primaryArgs['javascript.enabled'] = 'false';
 
       startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, 'dbserver', primaryArgs), 'dbserver');
     }
@@ -1440,7 +1497,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   try {
     instanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(args), options).pid;
   } catch (x) {
-    print('failed to run arangod - ' + JSON.stringify(x));
+    print(Date() + ' failed to run arangod - ' + JSON.stringify(x));
 
     throw x;
   }
@@ -1472,6 +1529,7 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
   for (let i = 0; i < N; i++) {
     let instanceArgs = _.clone(addArgs);
     instanceArgs['log.file'] = fs.join(rootDir, 'log' + String(i));
+    instanceArgs['javascript.enabled'] = 'false';
     instanceArgs['agency.activate'] = 'true';
     instanceArgs['agency.size'] = String(N);
     instanceArgs['agency.pool-size'] = String(N);
@@ -1503,7 +1561,7 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
     instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
     instanceInfo.role = 'agent';
-    print('Agency Endpoint: ' + instanceInfo.endpoint);
+    print(Date() + ' Agency Endpoint: ' + instanceInfo.endpoint);
   }
   return instanceInfo;
 }
@@ -1594,7 +1652,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
         }
       });
     }
-    print(CYAN + 'up and running in ' + (time() - startTime) + ' seconds' + RESET);
+    print(CYAN + Date() + ' up and running in ' + (time() - startTime) + ' seconds' + RESET);
     var matchPort = /.*:.*:([0-9]*)/;
     var ports = [];
     var processInfo = [];
@@ -1608,7 +1666,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
       processInfo.push('  [' + arangod.role + '] up with pid ' + arangod.pid + ' on port ' + port);
     });
 
-    print('sniffing template:\n  tcpdump -ni lo -s0 -w /tmp/out.pcap ' + ports.join(' or ') + '\n');
+    print(Date() + ' sniffing template:\n  tcpdump -ni lo -s0 -w /tmp/out.pcap ' + ports.join(' or ') + '\n');
     print(processInfo.join('\n') + '\n');
   } catch (e) {
     print(e, e.stack);

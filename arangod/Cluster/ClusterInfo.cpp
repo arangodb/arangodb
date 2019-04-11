@@ -27,6 +27,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -52,64 +53,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-
-namespace {
-
-// identical code to RecursiveWriteLocker in vocbase.cpp except for type
-template <typename T>
-class RecursiveMutexLocker {
- public:
-  RecursiveMutexLocker(T& mutex, std::atomic<std::thread::id>& owner,
-                       arangodb::basics::LockerType type, bool acquire,
-                       char const* file, int line)
-      : _locker(&mutex, type, false, file, line), _owner(owner), _update(noop) {
-    if (acquire) {
-      lock();
-    }
-  }
-
-  ~RecursiveMutexLocker() { unlock(); }
-
-  bool isLocked() { return _locker.isLocked(); }
-
-  void lock() {
-    // recursive locking of the same instance is not yet supported (create a new
-    // instance instead)
-    TRI_ASSERT(_update != owned);
-
-    if (std::this_thread::get_id() != _owner.load()) {  // not recursive
-      _locker.lock();
-      _owner.store(std::this_thread::get_id());
-      _update = owned;
-    }
-  }
-
-  void unlock() { _update(*this); }
-
- private:
-  arangodb::basics::MutexLocker<T> _locker;
-  std::atomic<std::thread::id>& _owner;
-  void (*_update)(RecursiveMutexLocker& locker);
-
-  static void noop(RecursiveMutexLocker&) {}
-  static void owned(RecursiveMutexLocker& locker) {
-    static std::thread::id unowned;
-    locker._owner.store(unowned);
-    locker._locker.unlock();
-    locker._update = noop;
-  }
-};
-
-#define NAME__(name, line) name##line
-#define NAME_EXPANDER__(name, line) NAME__(name, line)
-#define NAME(name) NAME_EXPANDER__(name, __LINE__)
-#define RECURSIVE_MUTEX_LOCKER_NAMED(name, lock, owner, acquire)        \
-  RecursiveMutexLocker<typename std::decay<decltype(lock)>::type> name( \
-      lock, owner, arangodb::basics::LockerType::BLOCKING, acquire, __FILE__, __LINE__)
-#define RECURSIVE_MUTEX_LOCKER(lock, owner) \
-  RECURSIVE_MUTEX_LOCKER_NAMED(NAME(RecursiveLocker), lock, owner, true)
-
-}  // namespace
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
@@ -455,7 +398,7 @@ void ClusterInfo::loadPlan() {
   uint64_t storedVersion = _planProt.wantedVersion;  // this is the version
                                                      // we will set in the end
 
-  LOG_TOPIC("eb0e4", TRACE, Logger::CLUSTER) << "loadPlan: wantedVersion=" << storedVersion
+  LOG_TOPIC("eb0e4", DEBUG, Logger::CLUSTER) << "loadPlan: wantedVersion=" << storedVersion
                                     << ", doneVersion=" << _planProt.doneVersion;
 
   if (_planProt.doneVersion == storedVersion) {
@@ -903,6 +846,9 @@ void ClusterInfo::loadPlan() {
 
       newCollections.emplace(std::make_pair(databaseName, databaseCollections));
     }
+    LOG_TOPIC("12dfa", DEBUG, Logger::CLUSTER)
+      << "loadPlan done: wantedVersion=" << storedVersion
+      << ", doneVersion=" << _planProt.doneVersion;
   }
 
   WRITE_LOCKER(writeLocker, _planProt.lock);
@@ -953,6 +899,9 @@ void ClusterInfo::loadCurrent() {
     return;
   }
 
+  LOG_TOPIC("54789", DEBUG, Logger::CLUSTER) << "loadCurrent: wantedVersion: "
+    << _currentProt.wantedVersion;
+
   // Now contact the agency:
   AgencyCommResult result = _agency.getValues(prefixCurrent);
 
@@ -987,6 +936,8 @@ void ClusterInfo::loadCurrent() {
 
   if (!currentSlice.isObject()) {
     LOG_TOPIC("b8410", ERR, Logger::CLUSTER) << "Current is not an object!";
+
+    LOG_TOPIC("eed43", DEBUG, Logger::CLUSTER) << "loadCurrent done.";
 
     return;
   }
@@ -1602,6 +1553,8 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
     return Result(TRI_ERROR_BAD_PARAMETER);  // must not be empty
   }
 
+  LOG_TOPIC("4315c", DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, loading Plan from agency...";
+
   {
     // check if a collection with the same name is already planned
     loadPlan();
@@ -1634,6 +1587,8 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
       }
     }
   }
+
+  LOG_TOPIC("66541", DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, checking things...";
 
   // mop: why do these ask the agency instead of checking cluster info?
   if (!ac.exists("Plan/Databases/" + databaseName)) {
@@ -1867,6 +1822,8 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
     }
     break;  // Leave loop, since we are done
   }
+
+  LOG_TOPIC("98bca", DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, Plan changed, waiting for success...";
 
   bool isSmart = false;
   VPackSlice smartSlice = json.get(StaticStrings::IsSmart);

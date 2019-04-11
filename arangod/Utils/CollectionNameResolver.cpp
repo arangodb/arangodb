@@ -32,6 +32,10 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
+  
+namespace {
+std::string const UNKNOWN("_unknown");
+}
 
 namespace arangodb {
 
@@ -202,7 +206,7 @@ std::string CollectionNameResolver::getCollectionName(TRI_voc_cid_t cid) const {
     }
   }
 
-  std::string name = localNameLookup(cid);
+  std::string name = lookupName(cid);
   {
     WRITE_LOCKER(locker, _idLock);
     _resolvedIds.emplace(cid, name);
@@ -236,8 +240,8 @@ std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) 
 
   if (ServerState::isDBServer(_serverRole)) {
     // This might be a local system collection:
-    name = localNameLookup(cid);
-    if (name != "_unknown") {
+    name = lookupName(cid);
+    if (name != ::UNKNOWN) {
       WRITE_LOCKER(locker, _idLock);
       _resolvedIds.emplace(cid, name);
       return name;
@@ -284,13 +288,12 @@ std::string CollectionNameResolver::getCollectionName(std::string const& nameOrI
                                             nameOrId.data() + nameOrId.size()));
 }
 
-std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
-  static const std::string UNKNOWN("_unknown");
+std::string CollectionNameResolver::lookupName(TRI_voc_cid_t cid) const {
   auto collection = _vocbase.lookupCollection(cid);
 
   // exactly as in the non-cluster case
   if (!ServerState::isDBServer(_serverRole)) {
-    return collection ? collection->name() : UNKNOWN;
+    return collection ? collection->name() : ::UNKNOWN;
   }
 
   // DBserver case of a shard:
@@ -301,11 +304,11 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
   }
 
   // can be empty, if collection unknown
-  if ((collection == nullptr) || (collection->name().empty())) {
-    return UNKNOWN;
-  } else {
+  if (collection != nullptr && !collection->name().empty()) {
     return collection->name();
   }
+  
+  return ::UNKNOWN;
 }
 
 std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(TRI_voc_cid_t id) const {

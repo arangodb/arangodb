@@ -26,6 +26,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -291,7 +292,30 @@ void ReplicationApplier::doStart(std::function<void()>&& cb,
   // reset error
   _state._lastError.reset();
 
+  {
+    // steal thread
+    std::unique_ptr<Thread> t = std::move(_thread);
+    TRI_ASSERT(_thread == nullptr);
+    // now _thread is empty
+    // and release the write lock so when "thread" goes
+    // out of scope, it actually can call the thread
+    // deleter without holding the write lock (which would
+    // deadlock)
+    writeLocker.unlock();
+  }
+
+  if (application_features::ApplicationServer::isStopping()) {
+    // dont build a new applier if we shutting down
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+
+  // reacquire the lock
+  writeLocker.lockEventual(); 
+ 
+  // build a new instance in _thread 
   cb();
+
+  TRI_ASSERT(_thread != nullptr);
 
   if (!_thread->start()) {
     _thread.reset();
@@ -721,7 +745,7 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
 
     // steal thread
     std::unique_ptr<Thread> t = std::move(_thread);
-    TRI_ASSERT(_thread.get() == nullptr);
+    TRI_ASSERT(_thread == nullptr);
     // now _thread is empty
     // and release the write lock so when "thread" goes
     // out of scope, it actually can call the thread

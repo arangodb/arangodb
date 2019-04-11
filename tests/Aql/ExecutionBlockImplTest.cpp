@@ -85,6 +85,8 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
 
   fakeit::When(Method(mockEngine, itemBlockManager)).AlwaysReturn(blockManager);
   fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
+  fakeit::When(OverloadedMethod(mockBlockManager, returnBlock, void(AqlItemBlock*&)))
+      .AlwaysDo([&](AqlItemBlock*& block) -> void { delete block; block = nullptr; });
   fakeit::When(ConstOverloadedMethod(mockQuery, queryOptions, QueryOptions const&()))
       .AlwaysDo([&]() -> QueryOptions const& { return lqueryOptions; });
   fakeit::When(OverloadedMethod(mockQuery, queryOptions, QueryOptions & ()))

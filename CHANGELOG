@@ -1,6 +1,45 @@
 devel
 -----
 
+* fixed internal issue #2946: Create graph autocomplete was not working under
+  certain circumstances.
+
+* added `filter` option to Foxx HTTP API for running tests.
+
+* added function `db.<collection>.getResponsibleShard()` to find out which is the
+  responsible shard for a given document. Note that this function is only available
+  in a cluster coordinator.
+
+* updated bundled version of jemalloc memory allocator to 5.2.0.
+
+* don't create per-database system collection `_frontend` automatically.
+  This collection is only needed by the web UI, and it can be created lazily 
+  when needed.
+
+* added logging option `--log.time-format` to configure the time format used
+  in log output. The possible values for this option are:
+
+  - timestamp: unix timestamps, in seconds
+  - timestamp-millis: unix timestamps, in seconds, with millisecond precision
+  - timestamp-micros: unix timestamps, in seconds, with microsecond precision
+  - uptime: seconds since server start
+  - uptime-millis: seconds since server start, with millisecond precision
+  - uptime-micros: seconds since server start, with microsecond precision
+  - utc-datestring: UTC-based date and time in format YYYY-MM-DDTHH:MM:SSZ 
+  - utc-datestring-millis: UTC-based date and time in format YYYY-MM-DDTHH:MM:SS.FFFZ 
+  - local-datestring: local date and time in format YYYY-MM-DDTHH:MM:SS
+
+  This change deprecates the existing options `--log.use-microtime` and 
+  `--log.use-localtime`, because the functionality provided by these options
+  is covered by `--log.time-format` too.
+
+* added "smart joins" to the ArangoDB Enterprise Edition that allows running cluster
+  joins between two certain sharded collections with performance close to that of a 
+  local join operation. 
+
+* fixed internal issue #3815: fixed the removal of connected edges when
+  removing a vertex graph node in a smart graph environment.
+
 * show startup warning in case kernel setting `vm.overcommit_memory` is set  
   to a value of 2 and the jemalloc memory allocator is in use. This combination
   does not play well together.
@@ -393,6 +432,12 @@ devel
 * fix log spam in agency supervision when leader resigned
 
 * make AddFollower less aggressive
+
+* lots of agency performance improvements, mostly avoiding copying
+
+* priority queue for maintenance jobs
+
+* do not wait for replication after each job execution in Supervision
 
 v3.4.1 (XXXX-XX-XX)
 -------------------

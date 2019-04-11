@@ -48,7 +48,7 @@ class AqlItemBlockManager {
   TEST_VIRTUAL AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
 
   /// @brief return a block to the manager
-  void returnBlock(AqlItemBlock*& block) noexcept;
+  TEST_VIRTUAL void returnBlock(AqlItemBlock*& block) noexcept;
 
   /// @brief return a block to the manager
   void returnBlock(std::unique_ptr<AqlItemBlock> block) noexcept {
