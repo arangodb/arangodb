@@ -103,7 +103,7 @@ void ConstantWeightKShortestPathsFinder::computeNeighbourhoodOfVertex(
       edgeCursor.reset(_options.nextCursor(vertex));
       break;
     default:
-      TRI_ASSERT(true);
+      TRI_ASSERT(false);
   }
 
   // TODO: This is a bit of a hack
