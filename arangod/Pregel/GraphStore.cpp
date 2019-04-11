@@ -616,7 +616,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config, std::function<void()> 
       } catch(basics::Exception const& e) {
         LOG_TOPIC("e22c8", ERR, Logger::PREGEL) << "Storing vertex data failed: '" << e.message() << "'";
       } catch (...) {
-        LOG_TOPIC("e22c8", ERR, Logger::PREGEL) << "Storing vertex data failed";
+        LOG_TOPIC("51b87", ERR, Logger::PREGEL) << "Storing vertex data failed";
       }
       _runningThreads--;
       if (_runningThreads == 0) {
