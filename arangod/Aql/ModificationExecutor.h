@@ -233,7 +233,12 @@ class ModificationExecutor : public ModificationExecutorBase<FetcherType> {
    * This executor immedieately  returns every actually consumed row
    * All other rows belong to the fetcher.
    */
-  inline size_t numberOfRowsInFlight() const { return 0; }
+  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Logic_error, prefetching number fo rows not supported");
+  }
 
  private:
   Modifier _modifier;

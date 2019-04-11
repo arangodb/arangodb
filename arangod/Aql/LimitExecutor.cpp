@@ -108,3 +108,33 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
 
   return {ExecutionState::DONE, stats};
 }
+
+std::pair<ExecutionState, size_t> LimitExecutor::expectedNumberOfRows(size_t atMost) const {
+  switch (currentState()) {
+    case LimitState::LIMIT_REACHED:
+      // We are done with our rows!
+      return {ExecutionState::DONE, 0};
+    case LimitState::COUNTING:
+      // We are actually done with our rows,
+      // BUt we need to make sure that we get asked more
+      return {ExecutionState::DONE, 1};
+    case LimitState::RETURNING_LAST_ROW:
+    case LimitState::SKIPPING:
+    case LimitState::RETURNING: {
+      auto res = _fetcher.preFetchNumberOfRows(maxRowsLeftToFetch());
+      if (res.first == ExecutionState::WAITING) {
+        return res;
+      }
+      // Note on fullCount we might get more lines from upstream then required.
+      size_t leftOver = (std::min)(infos().getLimitPlusOffset() - _counter, res.second);
+      if (_infos.isFullCountEnabled() && leftOver < atMost) {
+        // Add one for the fullcount.
+        leftOver++;
+      }
+      if (leftOver > 0) {
+        return {ExecutionState::HASMORE, leftOver};
+      }
+      return {ExecutionState::DONE, 0};
+    }
+  }
+}

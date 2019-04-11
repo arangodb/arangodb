@@ -92,16 +92,12 @@ class SubqueryExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
-  /**
-   * @brief This executor is working on at most one input row at a time
-   * And it gurantees to produce eactly 1 output for every one input row.
-   */
-  inline size_t numberOfRowsInFlight() const {
-    if (_input) {
-      return 1;
-    } else {
-      return 0;
-    }
+  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
+    // Passthrough does not need to implement this!
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Logic_error, prefetching number fo rows not supported");
   }
 
  private:
