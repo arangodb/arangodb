@@ -2,10 +2,11 @@
 
 # Background
 
-A concept of value "analysis" that is meant to break up a given value into
-a set of sub-values internally tied together by metadata which influences both
-the search and sort stages to provide the most appropriate match for the
-specified conditions, similar to queries to web search engines.
+The concept of value "analysis" refers to the process of breaking up a given
+value into a set of sub-values, which are internally tied together by metadata,
+which in turn influences both the search and sort stages to provide the most
+appropriate match for the specified conditions, similar to queries to web
+search engines.
 
 In plain terms this means a user can for example:
 
