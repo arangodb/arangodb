@@ -172,6 +172,94 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
       irs::index_utils::consolidation_policy(options), std::move(properties)};
 }
 
+bool parseDirection(VPackSlice slice, bool& direction) {
+  if (slice.isString()) {
+    std::string value = arangodb::iresearch::getStringRef(slice);
+    arangodb::basics::StringUtils::tolowerInPlace(&value);
+
+    if (value == "asc") {
+      direction = true;
+      return true;
+    }
+
+    if (value == "desc") {
+      direction = false;
+      return true;
+    }
+
+    return false;
+  }
+
+  if (slice.isBool()) {
+    // true - asc
+    // false - desc
+    direction = slice.getBool();
+    return true;
+  }
+
+  // unsupported value type
+  return false;
+}
+
+bool parseSort(VPackSlice slice,
+               arangodb::iresearch::IResearchViewMeta::Sort& sort,
+               std::string& error) {
+  static std::string const sortFieldName = "sort";
+  static std::string const primarySortFieldName = "primary";
+  static std::string const directionFieldName = "direction";
+  static std::string const fieldName = "field";
+
+  if (!slice.isObject()) {
+    error = sortFieldName;
+    return false;
+  }
+
+  slice = slice.get(primarySortFieldName);
+
+  if (!slice.isArray()) {
+    error = sortFieldName + "=>" + primarySortFieldName;
+    return false;
+  }
+
+  sort.clear();
+  for (VPackSlice sortSlice : arangodb::velocypack::ArrayIterator(slice)) {
+    if (!sortSlice.isObject()) {
+      error = sortFieldName + "=>" + primarySortFieldName + "[" + std::to_string(sort.size()) + "]";
+      return false;
+    }
+
+    bool direction;
+
+    if (!parseDirection(sortSlice.get(directionFieldName), direction)) {
+      error = sortFieldName + "=>" + primarySortFieldName + "[" + std::to_string(sort.size()) + "]=>" + directionFieldName;
+      return false;
+    }
+
+    auto const fieldSlice = sortSlice.get(fieldName);
+
+    if (!fieldSlice.isString()) {
+      error = sortFieldName + "=>" + primarySortFieldName + "[" + std::to_string(sort.size()) + "]=>" + fieldName;
+      return false;
+    }
+
+    std::vector<arangodb::basics::AttributeName> field;
+
+    try {
+      arangodb::basics::TRI_ParseAttributeString(
+        arangodb::iresearch::getStringRef(fieldSlice), field,  false
+      );
+    } catch (...) {
+      // FIXME why doesn't 'TRI_ParseAttributeString' return bool?
+      error = sortFieldName + "=>" + primarySortFieldName + "[" + std::to_string(sort.size()) + "]=>" + fieldName;
+      return false;
+    }
+
+    sort.emplace_back(std::move(field), direction);
+  }
+
+  return true;
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -186,7 +274,9 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
       _version(mask),
       _writebufferActive(mask),
       _writebufferIdle(mask),
-      _writebufferSizeMax(mask) {}
+      _writebufferSizeMax(mask),
+      _primarySort(mask) {
+}
 
 IResearchViewMeta::IResearchViewMeta()
     : _cleanupIntervalStep(10),
@@ -229,6 +319,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
     _writebufferActive = std::move(other._writebufferActive);
     _writebufferIdle = std::move(other._writebufferIdle);
     _writebufferSizeMax = std::move(other._writebufferSizeMax);
+    _primarySort = std::move(other._primarySort);
   }
 
   return *this;
@@ -245,6 +336,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
     _writebufferActive = other._writebufferActive;
     _writebufferIdle = other._writebufferIdle;
     _writebufferSizeMax = other._writebufferSizeMax;
+    _primarySort = other._primarySort;
   }
 
   return *this;
@@ -290,6 +382,10 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
   }
 
   if (_writebufferSizeMax != other._writebufferSizeMax) {
+    return false;  // values do not match
+  }
+
+  if (_primarySort != other._primarySort) {
     return false;  // values do not match
   }
 
@@ -547,6 +643,19 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
     }
   }
 
+  {
+    static VPackStringRef const fieldName("sort");
+
+    auto const field = slice.get(fieldName);
+    mask->_primarySort = !field.isNone();
+
+    if (!mask->_primarySort) {
+      _primarySort = defaults._primarySort;
+    } else if (!parseSort(field, _primarySort, errorField)) {
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -605,6 +714,21 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
   if ((!ignoreEqual || _writebufferSizeMax != ignoreEqual->_writebufferSizeMax) &&
       (!mask || mask->_writebufferSizeMax)) {
     builder.add("writebufferSizeMax", arangodb::velocypack::Value(_writebufferSizeMax));
+  }
+
+  if ((!ignoreEqual || _primarySort != ignoreEqual->_primarySort) && (!mask || mask->_primarySort)) {
+    arangodb::velocypack::ObjectBuilder sortBuilder(&builder, "sort");
+    arangodb::velocypack::ArrayBuilder primarySortBulder(&builder, "primary");
+
+    std::string fieldName;
+    for (auto const& sortEntry : _primarySort) {
+      fieldName.clear();
+      basics::TRI_AttributeNamesToString(sortEntry.first, fieldName, true);
+
+      arangodb::velocypack::ObjectBuilder sortEntryBuilder(&builder);
+      builder.add("field", VPackValue(fieldName));
+      builder.add("direction", VPackValue(sortEntry.second));
+    }
   }
 
   return true;

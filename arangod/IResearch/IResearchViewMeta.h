@@ -27,6 +27,7 @@
 #include <locale>
 #include <unordered_set>
 
+#include "Basics/AttributeNameParser.h"
 #include "VocBase/voc-types.h"
 #include "index/index_writer.hpp"
 #include "velocypack/Builder.h"
@@ -72,6 +73,11 @@ struct IResearchViewMeta {
     arangodb::velocypack::Builder _properties;  // normalized policy definition
   };
 
+  // first - attribute name
+  // second - asc
+  typedef std::pair<std::vector<basics::AttributeName>, bool> SortEntry;
+  typedef std::vector<SortEntry> Sort;
+
   struct Mask {
     bool _cleanupIntervalStep;
     bool _commitIntervalMsec;
@@ -82,6 +88,7 @@ struct IResearchViewMeta {
     bool _writebufferActive;
     bool _writebufferIdle;
     bool _writebufferSizeMax;
+    bool _primarySort;
     explicit Mask(bool mask = false) noexcept;
   };
 
@@ -94,6 +101,7 @@ struct IResearchViewMeta {
   size_t _writebufferActive; // maximum number of concurrent segments before segment aquisition blocks, e.g. max number of concurrent transacitons) (0 == unlimited)
   size_t _writebufferIdle; // maximum number of segments cached in the pool
   size_t _writebufferSizeMax; // maximum memory byte size per segment before a segment flush is triggered (0 == unlimited)
+  Sort _primarySort;
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!

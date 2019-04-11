@@ -28,6 +28,7 @@
 #include "utils/locale_utils.hpp"
 
 #include "IResearch/IResearchViewMeta.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
@@ -78,6 +79,7 @@ SECTION("test_defaults") {
   CHECK((0 == meta._writebufferActive));
   CHECK((64 == meta._writebufferIdle));
   CHECK((32*(size_t(1)<<20) == meta._writebufferSizeMax));
+  CHECK(meta._primarySort.empty());
 }
 
 SECTION("test_inheritDefaults") {
@@ -100,6 +102,17 @@ SECTION("test_inheritDefaults") {
   defaults._writebufferActive = 10;
   defaults._writebufferIdle = 11;
   defaults._writebufferSizeMax = 12;
+  defaults._primarySort.emplace_back(
+    std::vector<arangodb::basics::AttributeName>{
+      arangodb::basics::AttributeName(VPackStringRef("nested")),
+      arangodb::basics::AttributeName(VPackStringRef("field"))
+    }, true);
+  defaults._primarySort.emplace_back(
+    std::vector<arangodb::basics::AttributeName>{
+      arangodb::basics::AttributeName(VPackStringRef("another")),
+      arangodb::basics::AttributeName(VPackStringRef("nested")),
+      arangodb::basics::AttributeName(VPackStringRef("field"))
+    }, true);
 
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
@@ -117,6 +130,7 @@ SECTION("test_inheritDefaults") {
     CHECK((10 == meta._writebufferActive));
     CHECK((11 == meta._writebufferIdle));
     CHECK((12 == meta._writebufferSizeMax));
+    CHECK(meta._primarySort == defaults._primarySort);
   }
 }
 
@@ -141,6 +155,7 @@ SECTION("test_readDefaults") {
     CHECK((0 == meta._writebufferActive));
     CHECK((64 == meta._writebufferIdle));
     CHECK((32*(size_t(1)<<20) == meta._writebufferSizeMax));
+    CHECK(meta._primarySort.empty());
   }
 }
 
@@ -240,6 +255,62 @@ SECTION("test_readCustomizedValues") {
     CHECK((std::string("version") == errorField));
   }
 
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": [] }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("sort" == errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": { } } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("sort=>primary" == errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": [ 1 ] } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("sort=>primary[0]" == errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": [ { \"field\":{ }, \"direction\":\"aSc\" } ] } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("sort=>primary[0]=>field" == errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": [ { \"field\":\"nested.field\", \"direction\":\"xxx\" }, 4 ] } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("sort=>primary[0]=>direction" == errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": [ { \"field\":\"nested.field\", \"direction\":\"aSc\" }, 4 ] } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("sort=>primary[1]" == errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": [ { \"field\":\"nested.field\", \"direction\": true }, { \"field\":1, \"direction\":\"aSc\" } ] } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("sort=>primary[1]=>field" == errorField);
+  }
+
   // .............................................................................
   // test valid value
   // .............................................................................
@@ -256,7 +327,15 @@ SECTION("test_readCustomizedValues") {
         \"version\": 9, \
         \"writebufferActive\": 10, \
         \"writebufferIdle\": 11, \
-        \"writebufferSizeMax\": 12 \
+        \"writebufferSizeMax\": 12, \
+        \"sort\" : { \
+          \"primary\" : [ \
+            { \"field\": \"nested.field\", \"direction\": \"desc\" }, \
+            { \"field\": \"another.nested.field\", \"direction\": \"asc\" }, \
+            { \"field\": \"field\", \"direction\": false }, \
+            { \"field\": \".field\", \"direction\": true } \
+          ] \
+        } \
     }");
   CHECK(true == meta.init(json->slice(), errorField));
   CHECK((true == metaState.init(json->slice(), errorField)));
@@ -279,6 +358,53 @@ SECTION("test_readCustomizedValues") {
   CHECK((10 == meta._writebufferActive));
   CHECK((11 == meta._writebufferIdle));
   CHECK((12 == meta._writebufferSizeMax));
+
+  {
+    CHECK(4 == meta._primarySort.size());
+    {
+      auto& sort = meta._primarySort[0];
+      auto& field = sort.first;
+      CHECK(2 == field.size());
+      CHECK("nested" == field[0].name);
+      CHECK(false == field[0].shouldExpand);
+      CHECK("field" == field[1].name);
+      CHECK(false == field[1].shouldExpand);
+      CHECK(false == sort.second);
+    }
+
+    {
+      auto& sort = meta._primarySort[1];
+      auto& field = sort.first;
+      CHECK(3 == field.size());
+      CHECK("another" == field[0].name);
+      CHECK(false == field[0].shouldExpand);
+      CHECK("nested" == field[1].name);
+      CHECK(false == field[1].shouldExpand);
+      CHECK("field" == field[2].name);
+      CHECK(false == field[2].shouldExpand);
+      CHECK(true == sort.second);
+    }
+
+    {
+      auto& sort = meta._primarySort[2];
+      auto& field = sort.first;
+      CHECK(1 == field.size());
+      CHECK("field" == field[0].name);
+      CHECK(false == field[0].shouldExpand);
+      CHECK(false == sort.second);
+    }
+
+    {
+      auto& sort = meta._primarySort[3];
+      auto& field = sort.first;
+      CHECK(2 == field.size());
+      CHECK("" == field[0].name);
+      CHECK(false == field[0].shouldExpand);
+      CHECK("field" == field[1].name);
+      CHECK(false == field[1].shouldExpand);
+      CHECK(true == sort.second);
+    }
+  }
 }
 
 SECTION("test_writeDefaults") {
@@ -295,7 +421,7 @@ SECTION("test_writeDefaults") {
 
   auto slice = builder.slice();
 
-  CHECK((9U == slice.length()));
+  CHECK((10U == slice.length()));
   tmpSlice = slice.get("collections");
   CHECK((true == tmpSlice.isArray() && 0 == tmpSlice.length()));
   tmpSlice = slice.get("cleanupIntervalStep");
@@ -318,6 +444,11 @@ SECTION("test_writeDefaults") {
   CHECK((true == tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("writebufferSizeMax");
   CHECK((true == tmpSlice.isNumber<size_t>() && 32*(size_t(1)<<20) == tmpSlice.getNumber<size_t>()));
+  tmpSlice = slice.get("sort");
+  CHECK(true == slice.isObject());
+  tmpSlice = tmpSlice.get("primary");
+  CHECK(true == tmpSlice.isArray());
+  CHECK(0 == tmpSlice.length());
 }
 
 SECTION("test_writeCustomizedValues") {
@@ -373,6 +504,17 @@ SECTION("test_writeCustomizedValues") {
   meta._writebufferActive = 10;
   meta._writebufferIdle = 11;
   meta._writebufferSizeMax = 12;
+  meta._primarySort.emplace_back(
+    std::vector<arangodb::basics::AttributeName>{
+      arangodb::basics::AttributeName(VPackStringRef("nested")),
+      arangodb::basics::AttributeName(VPackStringRef("field"))
+    }, true);
+  meta._primarySort.emplace_back(
+    std::vector<arangodb::basics::AttributeName>{
+      arangodb::basics::AttributeName(VPackStringRef("another")),
+      arangodb::basics::AttributeName(VPackStringRef("nested")),
+      arangodb::basics::AttributeName(VPackStringRef("field"))
+    }, false);
 
   std::unordered_set<TRI_voc_cid_t> expectedCollections = { 42, 52, 62 };
   arangodb::velocypack::Builder builder;
@@ -386,7 +528,7 @@ SECTION("test_writeCustomizedValues") {
 
   auto slice = builder.slice();
 
-  CHECK((9U == slice.length()));
+  CHECK((10U == slice.length()));
   tmpSlice = slice.get("collections");
   CHECK((true == tmpSlice.isArray() && 3 == tmpSlice.length()));
 
@@ -416,6 +558,27 @@ SECTION("test_writeCustomizedValues") {
   CHECK((true == tmpSlice.isNumber<size_t>() && 11 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("writebufferSizeMax");
   CHECK((true == tmpSlice.isNumber<size_t>() && 12 == tmpSlice.getNumber<size_t>()));
+
+  tmpSlice = slice.get("sort");
+  CHECK(true == slice.isObject());
+  tmpSlice = tmpSlice.get("primary");
+  CHECK(true == tmpSlice.isArray());
+  CHECK(2 == tmpSlice.length());
+
+  auto begin = meta._primarySort.begin();
+  for (auto const sortSlice : arangodb::velocypack::ArrayIterator(tmpSlice)) {
+    CHECK(sortSlice.isObject());
+    auto const fieldSlice = sortSlice.get("field");
+    CHECK(fieldSlice.isString());
+    auto const directionSlice = sortSlice.get("direction");
+    CHECK(directionSlice.isBoolean());
+
+    std::string expectedName;
+    arangodb::basics::TRI_AttributeNamesToString(begin->first, expectedName, false);
+    CHECK(expectedName == arangodb::iresearch::getStringRef(fieldSlice));
+    CHECK(begin->second == directionSlice.getBoolean());
+    ++begin;
+  }
 }
 
 SECTION("test_readMaskAll") {
@@ -488,7 +651,7 @@ SECTION("test_writeMaskAll") {
 
   auto slice = builder.slice();
 
-  CHECK((9U == slice.length()));
+  CHECK((10U == slice.length()));
   CHECK(true == slice.hasKey("collections"));
   CHECK(true == slice.hasKey("cleanupIntervalStep"));
   CHECK((true == slice.hasKey("commitIntervalMsec")));
@@ -499,6 +662,8 @@ SECTION("test_writeMaskAll") {
   CHECK((true == slice.hasKey("writebufferActive")));
   CHECK((true == slice.hasKey("writebufferIdle")));
   CHECK((true == slice.hasKey("writebufferSizeMax")));
+  CHECK((true == slice.hasKey("sort")));
+  CHECK((true == slice.get("sort").hasKey("primary")));
 }
 
 SECTION("test_writeMaskNone") {
