@@ -61,7 +61,7 @@ bool ServerSecurityFeature::isFoxxApiDisabled() const {
 }
 
 bool ServerSecurityFeature::isFoxxStoreDisabled() const {
-  return !_enableFoxxStore;
+  return !_enableFoxxStore || !_enableFoxxApi;
 }
 
 bool ServerSecurityFeature::isRestApiHardened() const {
