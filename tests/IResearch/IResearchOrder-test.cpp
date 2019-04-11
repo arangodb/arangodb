@@ -82,7 +82,7 @@ void assertOrder(
   );
 
   auto const parseResult = query.parse();
-  REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+  REQUIRE(parseResult.result.ok());
 
   auto* ast = query.ast();
   REQUIRE(ast);
@@ -206,7 +206,7 @@ void assertOrderParseFail(std::string const& queryString, size_t parseCode) {
   );
 
   auto const parseResult = query.parse();
-  REQUIRE(parseCode == parseResult.code);
+  REQUIRE(parseCode == parseResult.result.errorNumber());
 }
 
 }

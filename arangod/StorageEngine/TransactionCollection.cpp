@@ -103,3 +103,28 @@ int TransactionCollection::unlockRecursive(AccessMode::Type accessType, int nest
 
   return doUnlock(accessType, nestingLevel);
 }
+
+Result TransactionCollection::updateUsage(AccessMode::Type accessType, 
+                                          int nestingLevel) {
+  if (AccessMode::isWriteOrExclusive(accessType) &&
+      !AccessMode::isWriteOrExclusive(_accessType)) {
+    if (nestingLevel > 0) {
+      // trying to write access a collection that is only marked with
+      // read-access
+      return Result(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+                    std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + collectionName() + 
+                    " [" + AccessMode::typeString(accessType) + "]");
+    }
+
+    TRI_ASSERT(nestingLevel == 0);
+
+    // upgrade collection type to write-access
+    _accessType = accessType;
+  }
+    
+  adjustNestingLevel(nestingLevel); 
+
+  // all correct
+  return {};
+}
+

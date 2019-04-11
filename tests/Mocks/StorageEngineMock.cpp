@@ -1330,7 +1330,7 @@ int StorageEngineMock::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice c
 TransactionCollectionMock::TransactionCollectionMock(arangodb::TransactionState* state,
                                                      TRI_voc_cid_t cid,
                                                      arangodb::AccessMode::Type accessType)
-    : TransactionCollection(state, cid, accessType) {}
+    : TransactionCollection(state, cid, accessType, 0) {}
 
 bool TransactionCollectionMock::canAccess(arangodb::AccessMode::Type accessType) const {
   return nullptr != _collection;  // collection must have be opened previously
@@ -1353,29 +1353,6 @@ void TransactionCollectionMock::release() {
     }
     _collection = nullptr;
   }
-}
-
-int TransactionCollectionMock::updateUsage(arangodb::AccessMode::Type accessType,
-                                           int nestingLevel) {
-  if (arangodb::AccessMode::isWriteOrExclusive(accessType) &&
-      !arangodb::AccessMode::isWriteOrExclusive(_accessType)) {
-    if (nestingLevel > 0) {
-      // trying to write access a collection that is only marked with
-      // read-access
-      return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
-    }
-
-    TRI_ASSERT(nestingLevel == 0);
-
-    // upgrade collection type to write-access
-    _accessType = accessType;
-  }
-
-  // if (nestingLevel < _nestingLevel) {
-  //   _nestingLevel = nestingLevel;
-  // }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 void TransactionCollectionMock::unuse(int nestingLevel) {

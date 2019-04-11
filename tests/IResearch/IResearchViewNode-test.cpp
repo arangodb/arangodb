@@ -1240,7 +1240,6 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
       std::vector<std::string> const EMPTY;
 
       arangodb::OperationOptions opt;
-      TRI_voc_tick_t tick;
       arangodb::ManagedDocumentResult mmdoc;
 
       arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -1253,11 +1252,11 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
       CHECK(res.ok());
 
       CHECK((trx.commit().ok()));
-      CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(
+      CHECK((arangodb::tests::executeQuery(
                                        vocbase,
                                        "FOR d IN testView SEARCH 1 ==1 OPTIONS "
                                        "{ waitForSync: true } RETURN d")
-                                       .code));  // commit
+                                       .result.ok()));  // commit
     }
 
     // dummy query

@@ -1,5 +1,5 @@
 /*jshint strict: false, sub: true */
-/*global print, arango, assertTrue, assertNotNull, assertNotUndefined, assertNotEqual */
+/*global arango, assertTrue, assertNotNull, assertNotUndefined, assertNotEqual */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////

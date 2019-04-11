@@ -681,7 +681,7 @@ SECTION("Analyzer") {
   // simple analyzer
   {
     irs::Or expected;
-    expected.add<irs::by_term>().field(mangleString("foo", "testVocbase::test_analyzer")).term("bar");
+    expected.add<irs::by_term>().field(mangleString("foo", "test_analyzer")).term("bar");
 
     assertFilterSuccess(
       "FOR d IN collection FILTER ANALYZER(d.foo == 'bar', 'test_analyzer') RETURN d",
@@ -706,7 +706,7 @@ SECTION("Analyzer") {
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue("test_")));
 
     irs::Or expected;
-    expected.add<irs::by_term>().field(mangleString("foo", "testVocbase::test_analyzer")).term("bar");
+    expected.add<irs::by_term>().field(mangleString("foo", "test_analyzer")).term("bar");
 
     assertFilterSuccess(
       "LET x='test_' FOR d IN collection FILTER ANALYZER(d.foo == 'bar', CONCAT(x, 'analyzer')) RETURN d",
@@ -1274,7 +1274,7 @@ SECTION("Exists") {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleString("name", "testVocbase::test_analyzer")).prefix_match(false);
+    exists.field(mangleString("name", "test_analyzer")).prefix_match(false);
 
     assertFilterSuccess("FOR d IN myView FILTER analyzer(exists(d.name, 'analyzer'), 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN myView FILTER exists(d.name, 'analyzer', 'test_analyzer') RETURN d", expected);
@@ -1310,7 +1310,7 @@ SECTION("Exists") {
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleString("name", "testVocbase::test_analyzer")).prefix_match(false);
+    exists.field(mangleString("name", "test_analyzer")).prefix_match(false);
 
     assertFilterSuccess("LET type='analyz' LET anl='test_' FOR d IN myView FILTER analyzer(exists(d.name, CONCAT(type,'er')), CONCAT(anl,'analyzer')) RETURN d", expected, &ctx);
     assertFilterSuccess("LET type='analyz' LET anl='test_' FOR d IN myView FILTER analyzer(eXists(d.name, CONCAT(type,'er')), CONCAT(anl,'analyzer')) RETURN d", expected, &ctx);
@@ -1322,7 +1322,7 @@ SECTION("Exists") {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleString("name", "testVocbase::test_analyzer")).prefix_match(false);
+    exists.field(mangleString("name", "test_analyzer")).prefix_match(false);
 
     assertFilterSuccess("FOR d IN myView FILTER analyzer(exists(d['name'], 'analyzer'), 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN myView FILTER analyzer(eXists(d['name'], 'analyzer'), 'test_analyzer') RETURN d", expected);
@@ -1413,7 +1413,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("name", "testVocbase::test_analyzer"));
+    phrase.field(mangleString("name", "test_analyzer"));
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
 
     assertFilterSuccess("FOR d IN myView FILTER Analyzer(phrase(d.name, 'quick'), 'test_analyzer') RETURN d", expected);
@@ -1463,7 +1463,7 @@ SECTION("Phrase") {
 
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("a.b.c.e[4].f[5].g[3].g.a", "testVocbase::test_analyzer"));
+    phrase.field(mangleString("a.b.c.e[4].f[5].g[3].g.a", "test_analyzer"));
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
 
     assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER analyzer(phrase(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')], 'quick'), 'test_analyzer') RETURN d", expected, &ctx);
@@ -1511,7 +1511,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("[42]", "testVocbase::test_analyzer"));
+    phrase.field(mangleString("[42]", "test_analyzer"));
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
 
     assertFilterSuccess("FOR d IN myView FILTER AnalYZER(phrase(d[42], 'quick'), 'test_analyzer') RETURN d", expected);
@@ -1529,7 +1529,7 @@ SECTION("Phrase") {
 
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("name", "testVocbase::test_analyzer"));
+    phrase.field(mangleString("name", "test_analyzer"));
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
 
     assertFilterSuccess("LET value='qui' LET analyzer='test_' FOR d IN myView FILTER AnAlYzEr(phrase(d.name, CONCAT(value,'ck')), CONCAT(analyzer, 'analyzer')) RETURN d", expected, &ctx);
@@ -1581,7 +1581,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("name", "testVocbase::test_analyzer"));
+    phrase.field(mangleString("name", "test_analyzer"));
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
     phrase.push_back("b").push_back("r").push_back("o").push_back("w").push_back("n");
 
@@ -1616,7 +1616,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("obj.name", "testVocbase::test_analyzer"));
+    phrase.field(mangleString("obj.name", "test_analyzer"));
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
     phrase.push_back("b", 5).push_back("r").push_back("o").push_back("w").push_back("n");
 
@@ -1651,7 +1651,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("obj.name", "testVocbase::test_analyzer")).boost(3.0f);
+    phrase.field(mangleString("obj.name", "test_analyzer")).boost(3.0f);
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
     phrase.push_back("b", 5).push_back("r").push_back("o").push_back("w").push_back("n");
 
@@ -1668,7 +1668,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("obj[3].name[1]", "testVocbase::test_analyzer"));
+    phrase.field(mangleString("obj[3].name[1]", "test_analyzer"));
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
     phrase.push_back("b", 5).push_back("r").push_back("o").push_back("w").push_back("n");
 
@@ -1703,7 +1703,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("[5].obj.name[100]", "testVocbase::test_analyzer"));
+    phrase.field(mangleString("[5].obj.name[100]", "test_analyzer"));
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
     phrase.push_back("b", 5).push_back("r").push_back("o").push_back("w").push_back("n");
 
@@ -1738,7 +1738,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("obj.properties.id.name", "testVocbase::test_analyzer"));
+    phrase.field(mangleString("obj.properties.id.name", "test_analyzer"));
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
     phrase.push_back("b", 3).push_back("r").push_back("o").push_back("w").push_back("n");
     phrase.push_back("f", 2).push_back("o").push_back("x");
@@ -1813,7 +1813,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("obj.properties.id.name", "testVocbase::test_analyzer"));
+    phrase.field(mangleString("obj.properties.id.name", "test_analyzer"));
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
     phrase.push_back("b", 3).push_back("r").push_back("o").push_back("w").push_back("n");
     phrase.push_back("f", 2).push_back("o").push_back("x");
@@ -2112,7 +2112,7 @@ SECTION("StartsWith") {
   {
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field(mangleString("obj[400].properties[3].name", "testVocbase::test_analyzer")).term("abc");
+    prefix.field(mangleString("obj[400].properties[3].name", "test_analyzer")).term("abc");
     prefix.scored_terms_limit(128);
 
     assertFilterSuccess("FOR d IN myView FILTER Analyzer(starts_with(d['obj'][400]['properties'][3]['name'], 'abc'), 'test_analyzer') RETURN d", expected);
@@ -2225,7 +2225,7 @@ SECTION("StartsWith") {
 
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field(mangleString("obj[400].properties[3].name", "testVocbase::test_analyzer")).term("abc");
+    prefix.field(mangleString("obj[400].properties[3].name", "test_analyzer")).term("abc");
     prefix.scored_terms_limit(6);
 
     assertFilterSuccess("LET scoringLimit=5 LET prefix='ab' LET analyzer='analyzer' FOR d IN myView FILTER analyzer(starts_with(d['obj'][400]['properties'][3]['name'], CONCAT(prefix, 'c'), (scoringLimit + 1.5)), CONCAT('test_',analyzer)) RETURN d", expected, &ctx);
@@ -2315,7 +2315,7 @@ SECTION("IN_RANGE") {
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
     range.boost(1.5);
-    range.field(mangleString("name", "testVocbase::test_analyzer"))
+    range.field(mangleString("name", "test_analyzer"))
          .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("a")
          .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("z");
 
