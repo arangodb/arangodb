@@ -55,22 +55,50 @@ const testPaths = {
 };
 
 function permissions_server(options) {
+  let results = {};
+  let filtered = {};
+  const tests = tu.scanTestPaths(testPaths.permissions_server);
 
-  // pass on JWT secret
-  let clonedOpts = _.clone(options);
-  let serverOptions = {};
-  if (serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
-    clonedOpts['server.jwt-secret'] = serverOptions['server.jwt-secret'];
-  }
+  tests.forEach(function (testFile, i) {
+    if (tu.filterTestcaseByOptions(testFile, options, filtered)) {
+      // pass on JWT secret
+      let clonedOpts = _.clone(options);
+      let serverOptions = {};
+      if (serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
+        clonedOpts['server.jwt-secret'] = serverOptions['server.jwt-secret'];
+      }
 
-  let paramsFistRun = {};
-  let paramsSecondRun = {'javascript.allow-port-testing':false };
+      let paramsFistRun = {};
+      let paramsSecondRun;
 
-  let instanceInfo = pu.startInstance(options.protocol, options, paramsFistRun, "permissions_server"); // fist start
-  pu.shutdownInstance(instanceInfo, clonedOpts, false);                                     // stop
-  pu.reStartInstance(options, instanceInfo, paramsSecondRun);      // restart with restricted permissions
-  pu.shutdownInstance(instanceInfo, clonedOpts, false);
-  return { failed: 0 };
+      let instanceInfo = pu.startInstance(options.protocol, options, paramsFistRun, "permissions_server"); // fist start
+      
+      try {
+        let content = fs.read(testFile);
+        content = `(function(){ const getOptions = true; ${content} 
+}())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
+
+        paramsSecondRun = executeScript(content, true, testFile);
+      } catch (ex) {
+        results[testFile] = {
+          status: false,
+          messages: 'Warmup of system failed: ' + ex
+        };
+        pu.shutdownInstance(instanceInfo, clonedOpts, false);                                     // stop
+        return;
+      }
+
+      pu.shutdownInstance(instanceInfo, clonedOpts, false);                                     // stop
+      pu.reStartInstance(options, instanceInfo, paramsSecondRun);      // restart with restricted permissions
+      results[testFile] = tu.runInLocalArangosh(options, instanceInfo, testFile, {});
+      pu.shutdownInstance(instanceInfo, clonedOpts, false);
+    } else {
+      if (options.extremeVerbosity) {
+        print('Skipped ' + testFile + ' because of ' + filtered.filter);
+      }
+    }
+  });
+  return results;
 }
 
 function doxx_xxx(options) {
