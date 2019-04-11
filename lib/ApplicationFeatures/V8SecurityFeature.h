@@ -43,11 +43,12 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
   void start() override final;
 
   /// @brief tests if in the current security context it is allowed to
-  /// execute external binaries
-  bool isAllowedToExecuteExternalBinaries(v8::Isolate* isolate) const;
+  /// start, collect and kill external processes
+  bool isAllowedToControlProcesses(v8::Isolate* isolate) const;
   bool isAllowedToTestPorts(v8::Isolate* isolate) const;
 
   /// @brief tests if in the current security context it is allowed to

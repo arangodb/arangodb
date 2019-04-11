@@ -21,8 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
-
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
@@ -61,12 +59,6 @@ void TempFeature::prepare() {
   if (!_path.empty()) {
     TRI_SetTempPath(_path);
   }
-
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-
-  v8security->addToInternalReadWhiteList(TRI_GetTempPath().c_str());
 }
 
 void TempFeature::start() {

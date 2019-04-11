@@ -4138,10 +4138,10 @@ static void JS_GetExternalSpawned(v8::FunctionCallbackInfo<v8::Value> const& arg
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
+  if (!v8security->isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
-        "not allowed to execute or modify state of external binaries");
+        "not allowed to execute or modify state of external processes");
   }
 
   v8::Handle<v8::Array> spawnedProcesses =
@@ -4178,10 +4178,10 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
+  if (!v8security->isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
-        "not allowed to execute or modify state of external binaries");
+        "not allowed to execute or modify state of external processes");
   }
 
   TRI_Utf8ValueNFC name(isolate, args[0]);
@@ -4262,10 +4262,10 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
+  if (!v8security->isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
-        "not allowed to execute or modify state of external binaries");
+        "not allowed to execute or modify state of external processes");
   }
 
   ExternalId pid;
@@ -4327,10 +4327,10 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
+  if (!v8security->isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
-        "not allowed to execute or modify state of external binaries");
+        "not allowed to execute or modify state of external processes");
   }
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
@@ -4411,10 +4411,10 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
+  if (!v8security->isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
-        "not allowed to execute or modify state of external binaries");
+        "not allowed to execute or modify state of external processes");
   }
 
   int signal = SIGTERM;
@@ -4469,10 +4469,10 @@ static void JS_SuspendExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
+  if (!v8security->isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
-        "not allowed to execute or modify state of external binaries");
+        "not allowed to execute or modify state of external processes");
   }
 
   ExternalId pid;
@@ -4509,10 +4509,10 @@ static void JS_ContinueExternal(v8::FunctionCallbackInfo<v8::Value> const& args)
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToExecuteExternalBinaries(isolate)) {
+  if (!v8security->isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
-        "not allowed to execute or modify state of external binaries");
+        "not allowed to execute or modify state of external processes");
   }
 
   ExternalId pid;

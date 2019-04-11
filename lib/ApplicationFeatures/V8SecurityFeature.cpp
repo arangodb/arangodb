@@ -45,6 +45,7 @@ V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& se
       _allowProcessControl(false),
       _allowPortTesting(false) {
   setOptional(false);
+  startsAfter("Temp");
   startsAfter("V8Platform");
 }
 
@@ -298,6 +299,14 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   }
 }
 
+void V8SecurityFeature::prepare() { 
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+
+  v8security->addToInternalReadWhiteList(TRI_GetTempPath().c_str());
+}
+
 void V8SecurityFeature::start() {
   // initialize regexes for filtering options. the regexes must have been validated before
   _startupOptionsWhiteListRegex =
@@ -321,7 +330,7 @@ void V8SecurityFeature::start() {
       std::regex(_filesBlackList, std::regex::nosubs | std::regex::ECMAScript);
 }
 
-bool V8SecurityFeature::isAllowedToExecuteExternalBinaries(v8::Isolate* isolate) const {
+bool V8SecurityFeature::isAllowedToControlProcesses(v8::Isolate* isolate) const {
   TRI_GET_GLOBALS();
   // v8g may be a nullptr when we are in arangosh
   if (v8g != nullptr) {

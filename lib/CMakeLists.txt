@@ -162,7 +162,6 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/V8PlatformFeature.cpp
-  ApplicationFeatures/V8SecurityFeature.cpp
   ApplicationFeatures/VersionFeature.cpp
   Basics/ArangoGlobalContext.cpp
   Basics/AttributeNameParser.cpp
@@ -320,6 +319,7 @@ endif()
 ################################################################################
 
 add_library(${LIB_ARANGO_V8} STATIC
+  ApplicationFeatures/V8SecurityFeature.cpp
   V8/JavaScriptSecurityContext.cpp
   V8/JSLoader.cpp
   V8/V8LineEditor.cpp
