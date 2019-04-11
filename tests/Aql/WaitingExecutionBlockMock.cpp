@@ -43,8 +43,7 @@ WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
       _data(std::move(data)),
       _resourceMonitor(),
       _inflight(0),
-      _hasWaited(false),
-      _engine(engine) {}
+      _hasWaited(false) {}
 
 std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlockMock::initializeCursor(
     arangodb::aql::InputAqlItemRow const& input) {

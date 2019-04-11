@@ -230,6 +230,8 @@ std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlock
   _upstreamState = res.first;
 
   if (res.second != nullptr) {
+    _buffer.emplace_back(res.second.get());
+    res.second.release();
     return {res.first, true};
   }
 

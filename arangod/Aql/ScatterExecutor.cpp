@@ -128,6 +128,8 @@ std::pair<ExecutionState, bool> ExecutionBlockImpl<ScatterExecutor>::getBlock(si
   _upstreamState = res.first;
 
   if (res.second != nullptr) {
+    _buffer.emplace_back(res.second.get());
+    res.second.release();
     return {res.first, true};
   }
 
