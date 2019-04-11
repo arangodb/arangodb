@@ -1,6 +1,9 @@
 v3.3.23 (XXXX-XX-XX)
 --------------------
 
+* fixed internal issue #2946: create graph autocomplete was not working under
+  certain circumstances.
+
 * fixed a crash (SIGSEGV) when opening a RocksDB database directory that
   contained an empty (0 bytes filesize) journal file and encryption was in use.
 
