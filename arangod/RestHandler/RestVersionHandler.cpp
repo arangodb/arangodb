@@ -51,7 +51,7 @@ RestStatus RestVersionHandler::execute() {
           "ServerSecurity");
   TRI_ASSERT(security != nullptr);
   
-  bool const allowInfo = (!security->canAccessHardenedApi());
+  bool const allowInfo = security->canAccessHardenedApi();
 
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
