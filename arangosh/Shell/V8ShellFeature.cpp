@@ -1064,6 +1064,7 @@ void V8ShellFeature::initGlobals() {
 
   if (_currentModuleDirectory) {
     modules += sep + FileUtils::currentDirectory().result();
+    v8security->addToInternalReadWhiteList(FileUtils::currentDirectory().result().c_str());
   }
 
   // we take the last entry in _startupDirectory as global path;
