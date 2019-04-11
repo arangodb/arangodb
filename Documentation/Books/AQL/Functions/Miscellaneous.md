@@ -128,9 +128,18 @@ of a database document as argument.
 - returns **details** (object|null): object with two attributes
   *date* (string in ISO 8601 format) and *count* (integer number),
   or *null*
-  
+
 If the input revision ID is not a string or cannot be processed, the function
 issues a warning and returns *null*.
+
+Please note that the result structure may change in future versions of
+ArangoDB in case the internal format of revision strings is modified. Please 
+also note that the *date* value in the current result provides the date and
+time of when the document record was put together on the server, but not
+necessarily the time of insertion into the underlying storage engine. Therefore
+in case of concurrent document operations the exact document storage order 
+cannot be derived unambiguously from the revision value. It should thus be
+treated as a rough estimate of when a document was created or last updated.
 
 ```js
 DECODE_REV( "_YU0HOEG---" )
