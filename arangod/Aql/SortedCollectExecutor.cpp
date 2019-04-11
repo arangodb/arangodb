@@ -356,3 +356,22 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
     }
   }
 }
+
+std::pair<ExecutionState, size_t> SortedCollectExecutor::expectedNumberOfRows(size_t atMost) const {
+  if (!_fetcherDone) {
+    ExecutionState state;
+    size_t expectedRows;
+    std::tie(state, expectedRows) = _fetcher.preFetchNumberOfRows(atMost);
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(expectedRows == 0);
+      return {state, 0};
+    }
+    return {ExecutionState::HASMORE, expectedRows + 1};
+  }
+  // The fetcher will NOT send anything any more
+  // We will at most return the current oepn group
+  if (_currentGroup.isValid()) {
+    return {ExecutionState::HASMORE, 1};
+  }
+  return {ExecutionState::DONE, 0};
+}
