@@ -30,7 +30,6 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
-const internal = require("internal");
 const gm = require("@arangodb/general-graph");
 const _ = require("underscore");
 
@@ -38,10 +37,10 @@ const graphName = "UnitTestGraph";
 const vName = "UnitTestVertices";
 const e1Name = "UnitTestEdges1";
 const e2Name = "UnitTestEdges2";
-const source = "UnitTestVertices/source";
-const target = "UnitTestVertices/target";
-const badTarget = "UnitTestVertices/badTarget";
-const looper = "UnitTestVertices/lopper";
+const source = `${vName}/source`;
+const target = `${vName}/target`;
+const badTarget = `${vName}/badTarget`;
+const looper = `${vName}/lopper`;
 
 const isPathValid = (path, length, expectedWeight, allowInbound = false) => {
   assertTrue(_.isObject(path));
@@ -152,7 +151,8 @@ const createGraph = () => {
   }
 
 
-  for (let pathNum = 0; pathNum < 12; ++pathNum) {
+  // for (let pathNum = 0; pathNum < 12; ++pathNum) {
+  for (let pathNum = 0; pathNum < 3; ++pathNum) {
     const weight = (pathNum + 1) * (pathNum + 1);
     for (let step = 0; step < 3; ++step) {
       const key = `vertex_${pathNum}_${step}`;
@@ -174,22 +174,22 @@ const createGraph = () => {
         }
         case 1: {
           // connect to step 0
-          e1s.push({ _from: `${vName}/vertex_${pathNum}_1`, _to: `${vName}/${key}`, weight });
+          e1s.push({ _from: `${vName}/vertex_${pathNum}_0`, _to: `${vName}/${key}`, weight });
           const mod = pathNum % 3;
           if (mod !== 0) {
             // Connect to the path before
-            e1s.push({ _from: `${vName}/vertex_${pathNum - 1}_1`, _to: `${vName}/${key}`, weight });
+            e1s.push({ _from: `${vName}/vertex_${pathNum - 1}_0`, _to: `${vName}/${key}`, weight });
           }
           if (mod !== 2) {
             // Connect to the path after
-            e1s.push({ _from: `${vName}/vertex_${pathNum + 1}_1`, _to: `${vName}/${key}`, weight });
+            e1s.push({ _from: `${vName}/vertex_${pathNum + 1}_0`, _to: `${vName}/${key}`, weight });
           }
-          if (mod === 2 && pathNum === 3) {
+          if (mod === 2 && pathNum === 2) {
             // Add a path loop and a duplicate edge
             // duplicate edge
-            e1s.push({ _from: `${vName}/vertex_${pathNum}_1`, _to: `${vName}/${key}`, weight: weight + 1 });
-            e1s.push({ _from: `${vName}/vertex_${pathNum}_1`, _to: looper, weight });
-            e1s.push({ _from: looper, _to: `${vName}/vertex_${pathNum}_1`, weight });
+            e1s.push({ _from: `${vName}/vertex_${pathNum}_0`, _to: `${vName}/${key}`, weight: weight + 1 });
+            e1s.push({ _from: `${vName}/${key}`, _to: looper, weight });
+            e1s.push({ _from: looper, _to: `${vName}/vertex_${pathNum}_0`, weight });
           }
           break;
         }
@@ -202,14 +202,13 @@ const createGraph = () => {
               e1s.push({ _from: `${vName}/vertex_${pathNum}_3`, _to: target, weight });
             } else {
               e1s.push({ _from: `${vName}/${key}`, _to: target, weight });
-
             }
           }
           // Always connect to source:
           // 1 -> 2 is connected in e2
           e2s.push({ _from: `${vName}/vertex_${pathNum}_1`, _to: `${vName}/${key}`, weight });
           // Add INBOUND shortcut 0 <- 2 in e2
-          e2s.push({ _from: `${vName}/${key}`, _to: `${vName}/vertex_${pathNum}_2`, weight });
+          e2s.push({ _from: `${vName}/${key}`, _to: `${vName}/vertex_${pathNum}_0`, weight });
           break;
         }
       }
@@ -365,7 +364,7 @@ function kConstantWeightShortestPathTestSuite() {
 
     testMultiDirections: function () {
       const query = `
-        WITH "${vName}"
+        WITH ${vName}
         FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" ${e1Name}, INBOUND ${e2Name}
           RETURN path
       `;
@@ -390,7 +389,7 @@ function kAttributeWeightShortestPathTestSuite() {
     },
     tearDownAll,
 
-    testPathsExistsLimit: function () {
+    testWeightPathsExistsLimit: function () {
       const query = `
         FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
           LIMIT 6
@@ -408,7 +407,7 @@ function kAttributeWeightShortestPathTestSuite() {
       isPathValid(result[5], 4, 30);
     },
 
-    testNoPathExistsLimit: function () {
+    testWeightNoPathExistsLimit: function () {
       const query = `
         FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${badTarget}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
           LIMIT 6
@@ -418,7 +417,7 @@ function kAttributeWeightShortestPathTestSuite() {
       assertEqual(result.length, 0);
     },
 
-    testFewerPathsThanLimit: function () {
+    testWeightFewerPathsThanLimit: function () {
       const query = `
         FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
           LIMIT 1000
@@ -438,7 +437,7 @@ function kAttributeWeightShortestPathTestSuite() {
       isPathValid(result[5], 4, 37);
     },
 
-    testPathsExistsNoLimit: function () {
+    testWeightPathsExistsNoLimit: function () {
       const query = `
         FOR source IN ${vName}
           FILTER source._id == "${source}"
@@ -461,7 +460,7 @@ function kAttributeWeightShortestPathTestSuite() {
       isPathValid(result[5], 4, 37);
     },
 
-    testNoPathsExistsNoLimit: function () {
+    testWeightNoPathsExistsNoLimit: function () {
       const query = `
         FOR source IN ${vName}
           FILTER source._id == "${source}"
@@ -474,7 +473,7 @@ function kAttributeWeightShortestPathTestSuite() {
       assertEqual(result.length, 0);
     },
 
-    testPathsSkip: function () {
+    testWeightPathsSkip: function () {
       const query = `
         FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
           LIMIT 3, 3
@@ -490,7 +489,7 @@ function kAttributeWeightShortestPathTestSuite() {
 
     },
 
-    testPathsSkipMoreThanExists: function () {
+    testWeightPathsSkipMoreThanExists: function () {
       const query = `
         FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
           LIMIT 1000, 2
@@ -500,9 +499,9 @@ function kAttributeWeightShortestPathTestSuite() {
       assertEqual(result.length, 0);
     },
 
-    testMultiDirections: function () {
+    testWeightMultiDirections: function () {
       const query = `
-        WITH "${vName}"
+        WITH ${vName}
         FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" ${e1Name}, INBOUND ${e2Name} OPTIONS {weightAttribute: "weight"}
           RETURN path
       `;
