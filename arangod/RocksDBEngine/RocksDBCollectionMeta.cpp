@@ -195,6 +195,9 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
   TRI_ASSERT(appliedSeq != UINT64_MAX);
   
   Result res;
+  if (coll.deleted()) {
+    return res;
+  }
 
   bool didWork = false;
   // maxCommitSeq is == UINT64_MAX without any blockers
@@ -229,10 +232,6 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
     }
   }
 
-  if (coll.deleted()) {
-    return Result();
-  }
-
   // Step 2. store the key generator
   KeyGenerator* keyGen = coll.keyGenerator();
   if ((didWork || force) && keyGen->hasDynamicState()) {
@@ -254,10 +253,6 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
     }
   }
 
-  if (coll.deleted()) {
-    return Result();
-  }
-
   // Step 3. store the index estimates
   std::string output;
   auto indexes = coll.getIndexes();
@@ -266,9 +261,6 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
     RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
     if (est == nullptr) {  // does not have an estimator
       continue;
-    }
-    if (coll.deleted()) {
-      return Result();
     }
 
     if (est->needToPersist() || force) {

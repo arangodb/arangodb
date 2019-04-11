@@ -41,7 +41,6 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Recovery.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -967,18 +966,19 @@ void HeartbeatThread::runCoordinator() {
           }
           ClusterInfo::instance()->setFailedServers(failedServers);
 
-          std::shared_ptr<pregel::PregelFeature> prgl = pregel::PregelFeature::instance();
-          if (prgl != nullptr && failedServers.size() > 0) {
-            pregel::RecoveryManager* mngr = prgl->recoveryManager();
-            if (mngr != nullptr) {
-              try {
-                mngr->updatedFailedServers(failedServers);
-              } catch (std::exception const& e) {
-                LOG_TOPIC("f5603", ERR, Logger::HEARTBEAT)
-                    << "Got an exception in coordinator heartbeat: " << e.what();
-              }
-            }
-          }
+//          std::shared_ptr<pregel::PregelFeature> prgl = pregel::PregelFeature::instance();
+//          if (prgl != nullptr && failedServers.size() > 0) {
+//            prgl->
+//            pregel::RecoveryManager* mngr = prgl->recoveryManager();
+//            if (mngr != nullptr) {
+//              try {
+//                mngr->updatedFailedServers(failedServers);
+//              } catch (std::exception const& e) {
+//                LOG_TOPIC("f5603", ERR, Logger::HEARTBEAT)
+//                    << "Got an exception in coordinator heartbeat: " << e.what();
+//              }
+//            }
+//          }
         } else {
           LOG_TOPIC("cd95f", WARN, Logger::HEARTBEAT)
               << "FailedServers is not an object. ignoring for now";

@@ -31,7 +31,6 @@
 #include "Cluster/ServerState.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor.h"
-#include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker.h"
 #include "Scheduler/Scheduler.h"
@@ -215,9 +214,9 @@ PregelFeature::PregelFeature(application_features::ApplicationServer& server)
 }
 
 PregelFeature::~PregelFeature() {
-  if (_recoveryManager) {
+  /*if (_recoveryManager) {
     _recoveryManager.reset();
-  }
+  }*/
   cleanupAll();
 }
 
@@ -237,9 +236,9 @@ void PregelFeature::start() {
     return;
   }
 
-  if (ServerState::instance()->isCoordinator()) {
+  /*if (ServerState::instance()->isCoordinator()) {
     _recoveryManager.reset(new RecoveryManager());
-  }
+  }*/
 }
 
 void PregelFeature::beginShutdown() { cleanupAll(); }
@@ -337,9 +336,9 @@ void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice c
     co->finishedWorkerStartup(body);
   } else if (path == Utils::finishedWorkerStepPath) {
     outBuilder = co->finishedWorkerStep(body);
-  } else if (path == Utils::finishedRecoveryPath) {
+  }/* else if (path == Utils::finishedRecoveryPath) {
     co->finishedRecoveryStep(body);
-  }
+  }*/
 }
 
 /*static*/ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
