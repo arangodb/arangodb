@@ -181,12 +181,13 @@ void ConstantWeightKShortestPathsFinder::reconstructPath(const Ball& left, const
                                                          const VertexRef& join,
                                                          Path& result) {
   result.clear();
-
+  TRI_ASSERT(!join.empty());
   result._vertices.emplace_back(join);
   auto it = left._vertices.find(join);
   VertexRef next;
   while (it != left._vertices.end() && !it->second._startOrEnd) {
     next = it->second._pred;
+    TRI_ASSERT(!next.empty());
     result._vertices.push_front(next);
     result._edges.push_front(it->second._edge);
     it = left._vertices.find(next);
@@ -194,6 +195,7 @@ void ConstantWeightKShortestPathsFinder::reconstructPath(const Ball& left, const
   it = right._vertices.find(join);
   while (it != right._vertices.end() && !it->second._startOrEnd) {
     next = it->second._pred;
+    TRI_ASSERT(!next.empty());
     result._vertices.emplace_back(next);
     result._edges.emplace_back(it->second._edge);
     it = right._vertices.find(next);
@@ -267,6 +269,7 @@ bool ConstantWeightKShortestPathsFinder::getNextPath(arangodb::graph::ShortestPa
   // TODO: this looks a bit ugly
   if (_shortestPaths.empty()) {
     if (_start == _end) {
+      TRI_ASSERT(!_start.empty());
       kShortestPath._vertices.emplace_back(_start);
       available = true;
     } else {
