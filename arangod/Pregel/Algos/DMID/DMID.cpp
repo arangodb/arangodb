@@ -616,13 +616,17 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
       if (communities.empty()) {
         b.add(_resultField, VPackSlice::nullSlice());
       } else if (_maxCommunities == 1) {
-        b.add(_resultField, VPackValue(communities[0].first.key));
+        b.add(_resultField, VPackValuePair(communities[0].first.key.data(),
+                                           communities[0].first.key.size(),
+                                           VPackValueType::String));
       } else {
         // Output for DMID modularity calculator
         b.add(_resultField, VPackValue(VPackValueType::Array));
         for (std::pair<PregelID, float> const& pair : ptr->membershipDegree) {
+          size_t i = arangodb::basics::StringUtils::uint64_trusted(pair.first.key.data(),
+                                                                   pair.first.key.size());
           b.openArray();
-          b.add(VPackValue(arangodb::basics::StringUtils::int64(pair.first.key)));
+          b.add(VPackValue(i));
           b.add(VPackValue(pair.second));
           b.close();
         }
@@ -711,7 +715,7 @@ struct DMIDMasterContext : public MasterContext {
 
     if (LOG_AGGS) {
       if (globalSuperstep() <= RW_ITERATIONBOUND + 4) {
-        VertexSumAggregator* convergedDA = (VertexSumAggregator*)getAggregator(DA_AGG);
+        VertexSumAggregator* convergedDA = getAggregator<VertexSumAggregator>(DA_AGG);
 
         LOG_TOPIC("db510", INFO, Logger::PREGEL) << "Aggregator DA at step: " << globalSuperstep();
         convergedDA->forEach([&](PregelID const& _id, double entry) {
@@ -719,8 +723,7 @@ struct DMIDMasterContext : public MasterContext {
         });
       }
       if (globalSuperstep() == RW_ITERATIONBOUND + 6) {
-        VertexSumAggregator* leadershipVector =
-            (VertexSumAggregator*)getAggregator(LS_AGG);
+        VertexSumAggregator* leadershipVector = getAggregator<VertexSumAggregator>(LS_AGG);
         leadershipVector->forEach([&](PregelID const& _id, double entry) {
           LOG_TOPIC("c82d2", INFO, Logger::PREGEL) << "Aggregator LS:" << _id.key;
         });
@@ -734,8 +737,8 @@ struct DMIDMasterContext : public MasterContext {
    */
   void initializeGL() {
     /** set Global Leader aggregator */
-    VertexSumAggregator* initGL = (VertexSumAggregator*)getAggregator(GL_AGG);
-    VertexSumAggregator* vecFD = (VertexSumAggregator*)getAggregator(FD_AGG);
+    VertexSumAggregator* initGL = getAggregator<VertexSumAggregator>(GL_AGG);
+    VertexSumAggregator* vecFD = getAggregator<VertexSumAggregator>(FD_AGG);
 
     double averageFD = 0.0;
     int numLocalLeader = 0;

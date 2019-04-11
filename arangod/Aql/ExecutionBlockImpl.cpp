@@ -495,12 +495,11 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
     // The SortExecutor should refetch a block to save memory in case if only few elements to sort
     ExecutionState state;
     size_t expectedRows = 0;
-    std::tie(state, expectedRows) = _rowFetcher.preFetchNumberOfRows(nrItems);
+    // Note: this might trigger a prefetch on the rowFetcher!
+    std::tie(state, expectedRows) = _executor.expectedNumberOfRows(nrItems);
     if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(expectedRows == 0);
-      return {state, nullptr};
+      return {state, 0};
     }
-    expectedRows += _executor.numberOfRowsInFlight();
     nrItems = (std::min)(expectedRows, nrItems);
     if (nrItems == 0) {
       TRI_ASSERT(state == ExecutionState::DONE);

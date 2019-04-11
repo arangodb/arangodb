@@ -41,8 +41,8 @@ const graphName = "UnitTest_pregel";
 var vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
 function testAlgo(a, p) {
-  var pid = pregel.start(a, graphName, p);
-  var i = 10000;
+  let pid = pregel.start(a, graphName, p);
+  let i = 10000;
   let stats = pregel.status(pid);
   console.debug("topic=pregel", "initial stats: " + JSON.stringify(stats));
   do {
@@ -96,24 +96,24 @@ function basicTestSuite () {
                                shardKeys:["vertex"],
                                distributeShardsLike:vColl});
       
-      var rel = graph_module._relation(eColl, [vColl], [vColl]);
+      let rel = graph_module._relation(eColl, [vColl], [vColl]);
       graph._extendEdgeDefinitions(rel);
       
-      var vertices = db[vColl];
-      var edges = db[eColl];
+      let vertices = db[vColl];
+      let edges = db[eColl];
     
     
-      var A = vertices.insert({_key:'A', sssp:3, pagerank:0.027645934})._id;
-      var B = vertices.insert({_key:'B', sssp:2, pagerank:0.3241496})._id;
-      var C = vertices.insert({_key:'C', sssp:3, pagerank:0.289220})._id;
-      var D = vertices.insert({_key:'D', sssp:2, pagerank:0.0329636})._id;
-      var E = vertices.insert({_key:'E', sssp:1, pagerank:0.0682141})._id;
-      var F = vertices.insert({_key:'F', sssp:2, pagerank:0.0329636})._id;
-      var G = vertices.insert({_key:'G', sssp:-1, pagerank:0.0136363})._id;
-      var H = vertices.insert({_key:'H', sssp:-1, pagerank:0.01363636})._id;
-      var I = vertices.insert({_key:'I', sssp:-1, pagerank:0.01363636})._id;
-      var J = vertices.insert({_key:'J', sssp:-1, pagerank:0.01363636})._id;
-      var K = vertices.insert({_key:'K', sssp:0, pagerank:0.013636363})._id;
+      let A = vertices.insert({_key:'A', sssp:3, pagerank:0.027645934})._id;
+      let B = vertices.insert({_key:'B', sssp:2, pagerank:0.3241496})._id;
+      let C = vertices.insert({_key:'C', sssp:3, pagerank:0.289220})._id;
+      let D = vertices.insert({_key:'D', sssp:2, pagerank:0.0329636})._id;
+      let E = vertices.insert({_key:'E', sssp:1, pagerank:0.0682141})._id;
+      let F = vertices.insert({_key:'F', sssp:2, pagerank:0.0329636})._id;
+      let G = vertices.insert({_key:'G', sssp:-1, pagerank:0.0136363})._id;
+      let H = vertices.insert({_key:'H', sssp:-1, pagerank:0.01363636})._id;
+      let I = vertices.insert({_key:'I', sssp:-1, pagerank:0.01363636})._id;
+      let J = vertices.insert({_key:'J', sssp:-1, pagerank:0.01363636})._id;
+      let K = vertices.insert({_key:'K', sssp:0, pagerank:0.013636363})._id;
 
       edges.insert({_from:B, _to:C, vertex:'B'});
       edges.insert({_from:C, _to:B, vertex:'C'});
@@ -164,8 +164,8 @@ function basicTestSuite () {
 
     // test the PREGEL_RESULT AQL function
     testPageRankAQLResult: function() {
-      var pid = pregel.start("pagerank", graphName, {threshold:EPS / 10, store:false});
-      var i = 10000;
+      let pid = pregel.start("pagerank", graphName, {threshold:EPS / 10, store:false});
+      let i = 10000;
       let stats = pregel.status(pid);
       console.debug("topic=pregel", "initial stats: " + JSON.stringify(stats));
       do {
