@@ -341,18 +341,28 @@ TEST_CASE("ConstantWeightKShortestPathsFinder", "[graph]") {
   };
   auto finder = new ConstantWeightKShortestPathsFinder(*spo);
 
+
   SECTION("path from vertex to itself") {
     auto start = velocypack::Parser::fromJson("\"v/0\"");
     auto end = velocypack::Parser::fromJson("\"v/0\"");
+    ShortestPathResult result;
 
     finder->startKShortestPathsTraversal(start->slice(), end->slice());
+
+    REQUIRE(true == finder->getNextPath(result));
+    REQUIRE(false == finder->getNextPath(result));
   }
+
 
   SECTION("no path exists") {
     auto start = velocypack::Parser::fromJson("\"v/0\"");
     auto end = velocypack::Parser::fromJson("\"v/1\"");
+    ShortestPathResult result;
 
     finder->startKShortestPathsTraversal(start->slice(), end->slice());
+    REQUIRE(false == finder->getNextPath(result));
+    // Repeat to see that we keep returning false and don't crash
+    REQUIRE(false == finder->getNextPath(result));
   }
 
   SECTION("path of length 1") {
@@ -361,6 +371,9 @@ TEST_CASE("ConstantWeightKShortestPathsFinder", "[graph]") {
     ShortestPathResult result;
 
     finder->startKShortestPathsTraversal(start->slice(), end->slice());
+
+    REQUIRE(true == finder->getNextPath(result));
+    REQUIRE(checkPath(result, {"1", "2"}, {{}, {"v/1", "v/2"}}));
   }
 
   SECTION("path of length 4") {
@@ -369,27 +382,69 @@ TEST_CASE("ConstantWeightKShortestPathsFinder", "[graph]") {
     ShortestPathResult result;
 
     finder->startKShortestPathsTraversal(start->slice(), end->slice());
+
+    REQUIRE(true == finder->getNextPath(result));
+    REQUIRE(checkPath(result, {"1", "2", "3", "4"},
+                      {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}));
   }
 
   SECTION("path of length 5 with loops to start/end") {
     auto start = velocypack::Parser::fromJson("\"v/30\"");
     auto end = velocypack::Parser::fromJson("\"v/35\"");
+    ShortestPathResult result;
 
     finder->startKShortestPathsTraversal(start->slice(), end->slice());
+
+    REQUIRE(true == finder->getNextPath(result));
+    REQUIRE(result.length() == 5);
   }
 
   SECTION("two paths of length 5") {
     auto start = velocypack::Parser::fromJson("\"v/21\"");
     auto end = velocypack::Parser::fromJson("\"v/25\"");
+    ShortestPathResult result;
 
     finder->startKShortestPathsTraversal(start->slice(), end->slice());
-  }
+
+    REQUIRE(true == finder->getNextPath(result));
+    CHECK((checkPath(result, {"21", "22", "23", "24", "25"},
+                     {{},
+                      {"v/21", "v/22"},
+                      {"v/22", "v/23"},
+                      {"v/23", "v/24"},
+                      {"v/24", "v/25"}}) ||
+           checkPath(result, {"21", "26", "27", "28", "25"},
+                     {{},
+                      {"v/21", "v/26"},
+                      {"v/26", "v/27"},
+                      {"v/27", "v/28"},
+                      {"v/28", "v/25"}})));
+    REQUIRE(true == finder->getNextPath(result));
+    CHECK((checkPath(result, {"21", "22", "23", "24", "25"},
+                     {{},
+                      {"v/21", "v/22"},
+                      {"v/22", "v/23"},
+                      {"v/23", "v/24"},
+                      {"v/24", "v/25"}}) ||
+           checkPath(result, {"21", "26", "27", "28", "25"},
+                     {{},
+                      {"v/21", "v/26"},
+                      {"v/26", "v/27"},
+                      {"v/27", "v/28"},
+                      {"v/28", "v/25"}})));
+}
 
   SECTION("many edges between two nodes") {
     auto start = velocypack::Parser::fromJson("\"v/70\"");
     auto end = velocypack::Parser::fromJson("\"v/71\"");
+    ShortestPathResult result;
 
     finder->startKShortestPathsTraversal(start->slice(), end->slice());
+
+    REQUIRE(true == finder->getNextPath(result));
+    REQUIRE(true == finder->getNextPath(result));
+    REQUIRE(true == finder->getNextPath(result));
+    REQUIRE(false == finder->getNextPath(result));
   }
 
   delete finder;

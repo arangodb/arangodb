@@ -74,6 +74,14 @@ struct EdgeDocumentToken {
 #endif
   }
 
+  EdgeDocumentToken& operator=(EdgeDocumentToken const& edtkn) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _type = edtkn._type;
+#endif
+    _data = edtkn._data;
+    return *this;
+  }
+
   EdgeDocumentToken& operator=(EdgeDocumentToken&& edtkn) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _type = edtkn._type;

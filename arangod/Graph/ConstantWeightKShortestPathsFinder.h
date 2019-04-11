@@ -54,6 +54,7 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
   typedef arangodb::graph::EdgeDocumentToken Edge;
   enum Direction { FORWARD, BACKWARD };
 
+  // TODO: This could be merged with ShortestPathResult
   struct Path {
     std::deque<VertexRef> _vertices;
     std::deque<Edge> _edges;
@@ -64,34 +65,26 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
     };
     size_t length() const { return _vertices.size(); };
     void append(const Path& p, size_t a, size_t b) {
-      if (a == b) {
+      if (this->length() == 0) {
         _vertices.emplace_back(p._vertices.at(a));
-      } else if (this->length() == 0) {
-        for (size_t i = a; i < b; ++i) {
-          _vertices.emplace_back(p._vertices.at(i));
-          _edges.emplace_back(p._edges.at(i));
-        }
-        _vertices.emplace_back(p._vertices.at(b));
-      } else {
-        if (this->_vertices.back().equals(p._vertices.front())) {
-          _edges.emplace_back(p._edges.at(a));
-
-          for (size_t i = a + 1; i < b; ++i) {
-            _vertices.emplace_back(p._vertices.at(i));
-            _edges.emplace_back(p._edges.at(i));
-          }
-          _vertices.emplace_back(p._vertices.at(b));
-        } else {
-        }
       }
-    }
+      // Only append paths where the first vertex of p
+      // is the same as the last vertex of this.
+      TRI_ASSERT((this->_vertices.back().equals(p._vertices.front())));
+
+      while(a < b) {
+        _edges.emplace_back(p._edges.at(a));
+        a++;
+        _vertices.emplace_back(p._vertices.at(a));
+      }
+    };
     void print(const std::string& pre) const {
       LOG_DEVEL << pre << " vertices " << _vertices.size();
       LOG_DEVEL << pre << " edges    " << _edges.size();
       for (auto& v : _vertices) {
         LOG_DEVEL << pre << "  v " << v.toString();
       }
-    }
+    };
   };
 
   struct FoundVertex {
@@ -101,11 +94,10 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
 
     FoundVertex(VertexRef const& pred, Edge&& edge)
         : _startOrEnd(false), _pred(pred), _edge(std::move(edge)){};
-    FoundVertex(bool startOrEnd)  // _npaths is 1 for start/end vertices
+    FoundVertex(bool startOrEnd)
         : _startOrEnd(startOrEnd){};
   };
   typedef std::deque<VertexRef> Frontier;
-  typedef std::deque<VertexRef> Trace;
 
   // Contains the vertices that were found while searching
   // for a shortest path between start and end together with
@@ -118,7 +110,6 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
     Direction _direction;
     FoundVertices _vertices;
     Frontier _frontier;
-    Trace _trace;
 
     Ball(void){};
     Ball(const VertexRef& centre, Direction direction)
@@ -130,7 +121,6 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
     void clear() {
       _vertices.clear();
       _frontier.clear();
-      _trace.clear();
     };
     void setCentre(const VertexRef& centre) {
       _centre = centre;

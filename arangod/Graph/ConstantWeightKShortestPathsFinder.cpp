@@ -52,10 +52,6 @@ ConstantWeightKShortestPathsFinder::~ConstantWeightKShortestPathsFinder() {}
 // Returns number of currently known paths
 bool ConstantWeightKShortestPathsFinder::startKShortestPathsTraversal(
     arangodb::velocypack::Slice const& start, arangodb::velocypack::Slice const& end) {
-  // TODO: ?
-  if (start == end) {
-    return true;
-  }
   _start = arangodb::velocypack::StringRef(start);
   _end = arangodb::velocypack::StringRef(end);
   _pathAvailable = true;
@@ -268,10 +264,20 @@ bool ConstantWeightKShortestPathsFinder::getNextPath(arangodb::graph::ShortestPa
   bool available = false;
   Path kShortestPath;
 
+  // TODO: this looks a bit ugly
   if (_shortestPaths.empty()) {
-    available = computeShortestPath(_start, _end, {}, {}, kShortestPath);
+    if (_start == _end) {
+      kShortestPath._vertices.emplace_back(_start);
+      available = true;
+    } else {
+      available = computeShortestPath(_start, _end, {}, {}, kShortestPath);
+    }
   } else {
-    available = computeNextShortestPath(kShortestPath);
+    if (_start == _end) {
+      available = false;
+    } else {
+      available = computeNextShortestPath(kShortestPath);
+    }
   }
 
   if (available) {
@@ -279,10 +285,7 @@ bool ConstantWeightKShortestPathsFinder::getNextPath(arangodb::graph::ShortestPa
 
     result.clear();
     result._vertices = kShortestPath._vertices;
-    // WHUPS. Fix.
-    for (auto& e : kShortestPath._edges) {
-      result._edges.emplace_back(std::move(e));
-    }
+    result._edges = kShortestPath._edges;
 
     _options.fetchVerticesCoordinator(result._vertices);
 
