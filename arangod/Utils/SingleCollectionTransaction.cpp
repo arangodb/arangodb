@@ -41,7 +41,10 @@ SingleCollectionTransaction::SingleCollectionTransaction(
       _documentCollection(nullptr),
       _accessType(accessType) {
   // add the (sole) data-source
-  addCollection(dataSource.id(), dataSource.name(), _accessType);
+  Result res = addCollection(dataSource.id(), dataSource.name(), _accessType);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
   addHint(transaction::Hints::Hint::NO_DLD);
 }
 
@@ -56,7 +59,10 @@ SingleCollectionTransaction::SingleCollectionTransaction(
       _accessType(accessType) {
   // add the (sole) collection
   _cid = resolver()->getCollectionId(name);
-  addCollection(_cid, name.c_str(), _accessType);
+  Result res = addCollection(_cid, name.c_str(), _accessType);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
   addHint(transaction::Hints::Hint::NO_DLD);
 }
 

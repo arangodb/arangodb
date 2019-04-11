@@ -1,6 +1,19 @@
 devel
 -----
 
+* fixed internal issue #536: ArangoSearch may crash server during term lookup
+
+* fixed internal issue #2946: Create graph autocomplete was not working under
+  certain circumstances.
+
+* added `filter` option to Foxx HTTP API for running tests.
+
+* added function `db.<collection>.getResponsibleShard()` to find out which is the
+  responsible shard for a given document. Note that this function is only available
+  in a cluster coordinator.
+
+* updated bundled version of jemalloc memory allocator to 5.2.0.
+
 * don't create per-database system collection `_frontend` automatically.
   This collection is only needed by the web UI, and it can be created lazily 
   when needed.
@@ -32,6 +45,9 @@ devel
 * show startup warning in case kernel setting `vm.overcommit_memory` is set  
   to a value of 2 and the jemalloc memory allocator is in use. This combination
   does not play well together.
+
+* added AQL function DECODE_REV for decomposing `_rev` values into their
+  individual parts
 
 * added AQL functions CRC32 and FNV64 for hashing data
 
@@ -418,6 +434,12 @@ devel
 * fix log spam in agency supervision when leader resigned
 
 * make AddFollower less aggressive
+
+* lots of agency performance improvements, mostly avoiding copying
+
+* priority queue for maintenance jobs
+
+* do not wait for replication after each job execution in Supervision
 
 v3.4.1 (XXXX-XX-XX)
 -------------------

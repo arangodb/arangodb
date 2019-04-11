@@ -146,7 +146,7 @@ Result RocksDBSettingsManager::sync(bool force) {
 
   // fetch the seq number prior to any writes; this guarantees that we save
   // any subsequent updates in the WAL to replay if we crash in the middle
-  auto maxSeqNr = _db->GetLatestSequenceNumber();
+  auto const maxSeqNr = _db->GetLatestSequenceNumber();
   auto minSeqNr = maxSeqNr;
 
   rocksdb::TransactionOptions opts;
@@ -158,6 +158,7 @@ Result RocksDBSettingsManager::sync(bool force) {
 
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
   auto dbfeature = arangodb::DatabaseFeature::DATABASE;
+  TRI_ASSERT(!engine->inRecovery()); // just don't
 
   bool didWork = false;
   auto mappings = engine->collectionMappings();
@@ -180,7 +181,7 @@ Result RocksDBSettingsManager::sync(bool force) {
     TRI_DEFER(vocbase->releaseCollection(coll.get()));
 
     auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
-    rocksdb::SequenceNumber appliedSeq = minSeqNr;
+    rocksdb::SequenceNumber appliedSeq = maxSeqNr;
     Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder, appliedSeq);
     minSeqNr = std::min(minSeqNr, appliedSeq);
 
@@ -201,14 +202,14 @@ Result RocksDBSettingsManager::sync(bool force) {
     batch.Clear();
   }
 
+  TRI_ASSERT(_lastSync <= minSeqNr);
   if (!didWork) {
-    WRITE_LOCKER(guard, _rwLock);
     _lastSync = minSeqNr;
     return Result();  // nothing was written
   }
 
   _tmpBuilder.clear();
-  Result res = writeSettings(batch, _tmpBuilder, std::max(_lastSync, minSeqNr));
+  Result res = writeSettings(batch, _tmpBuilder, std::max(_lastSync.load(), minSeqNr));
   if (res.fail()) {
     LOG_TOPIC("8a5e6", WARN, Logger::ENGINES)
         << "could not store metadata settings " << res.errorMessage();
@@ -218,8 +219,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   // we have to commit all counters in one batch
   auto s = _db->Write(wo, &batch);
   if (s.ok()) {
-    WRITE_LOCKER(guard, _rwLock);
-    _lastSync = std::max(_lastSync, minSeqNr);
+    _lastSync = std::max(_lastSync.load(), minSeqNr);
   }
 
   return rocksutils::convertStatus(s);
@@ -240,7 +240,6 @@ void RocksDBSettingsManager::loadSettings() {
     LOG_TOPIC("7458b", TRACE, Logger::ENGINES) << "read initial settings: " << slice.toJson();
 
     if (!result.empty()) {
-      WRITE_LOCKER(guard, _rwLock);
       try {
         if (slice.hasKey("tick")) {
           uint64_t lastTick =
@@ -278,7 +277,6 @@ void RocksDBSettingsManager::loadSettings() {
 
 /// earliest safe sequence number to throw away from wal
 rocksdb::SequenceNumber RocksDBSettingsManager::earliestSeqNeeded() const {
-  READ_LOCKER(guard, _rwLock);
   return _lastSync;
 }
 

@@ -30,6 +30,7 @@
 
 const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
+var analyzers = require("@arangodb/analyzers");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const db = arangodb.db;
 const _ = require('lodash');
@@ -50,11 +51,13 @@ const sysCn = '_UnitTestsReplication';
 const connectToMaster = function () {
   arango.reconnect(masterEndpoint, db._name(), 'root', '');
   db._flushCache();
+  analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
 };
 
 const connectToSlave = function () {
   arango.reconnect(slaveEndpoint, db._name(), 'root', '');
   db._flushCache();
+  analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
 };
 
 const collectionChecksum = function (name) {

@@ -56,7 +56,7 @@ SingleRowFetcher<passBlocksThrough>::fetchBlock(size_t atMost) {
 
 template <bool passBlocksThrough>
 SingleRowFetcher<passBlocksThrough>::SingleRowFetcher()
-    : _blockFetcher(nullptr), _currentRow{CreateInvalidInputRowHint{}} {}
+    : _blockFetcher(nullptr), _rowIndex(0), _currentRow{CreateInvalidInputRowHint{}} {}
 
 template <bool passBlocksThrough>
 std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>

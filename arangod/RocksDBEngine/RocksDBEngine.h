@@ -346,6 +346,7 @@ class RocksDBEngine final : public StorageEngine {
   void prepareEnterprise();
   void startEnterprise();
   void configureEnterpriseRocksDBOptions(rocksdb::Options& options);
+  void validateJournalFiles() const;
 
   enterprise::RocksDBEngineEEData _eeData;
 #endif

@@ -84,12 +84,13 @@ struct VertexSumAggregator : public IAggregator {
     }
   }
 
-  void serialize(PregelKey const& key, VPackBuilder& builder) const override {
+  void serialize(std::string const& key, VPackBuilder& builder) const override {
     builder.add(key, VPackValue(VPackValueType::Object));
     for (auto const& pair1 : _entries) {
       builder.add(std::to_string(pair1.first), VPackValue(VPackValueType::Array));
       for (auto const& pair2 : pair1.second) {
-        builder.add(VPackValue(pair2.first));
+        builder.add(VPackValuePair(pair2.first.data(), pair2.first.size(),
+                                   VPackValueType::String));
         builder.add(VPackValue(pair2.second));
       }
       builder.close();
@@ -127,8 +128,8 @@ struct VertexSumAggregator : public IAggregator {
   void forEach(std::function<void(PregelID const& _id, double value)> func) const {
     for (auto const& pair : _entries) {
       PregelShard shard = pair.first;
-      std::unordered_map<std::string, double> const& vertexMap = pair.second;
-      for (auto& vertexMessage : vertexMap) {
+      std::unordered_map<PregelKey, double> const& vertexMap = pair.second;
+      for (std::pair<PregelKey, double> const& vertexMessage : vertexMap) {
         func(PregelID(shard, vertexMessage.first), vertexMessage.second);
       }
     }

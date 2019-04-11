@@ -268,16 +268,17 @@ RestStatus RestCursorHandler::processQuery() {
 }
 
 RestStatus RestCursorHandler::handleQueryResult() {
-  if (_queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (_queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (_queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
+  if (_queryResult.result.fail()) {
+    if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+        (_queryResult.result.is(TRI_ERROR_QUERY_KILLED) && wasCanceled())) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
 
-    THROW_ARANGO_EXCEPTION_MESSAGE(_queryResult.code, _queryResult.details);
+    THROW_ARANGO_EXCEPTION(_queryResult.result);
   }
 
-  VPackSlice qResult = _queryResult.result->slice();
+  VPackSlice qResult = _queryResult.data->slice();
+
   if (qResult.isNone()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -346,7 +347,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
     // result is bigger than batchSize, and a cursor will be created
     CursorRepository* cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
-    TRI_ASSERT(_queryResult.result.get() != nullptr);
+    TRI_ASSERT(_queryResult.data.get() != nullptr);
     // steal the query result, cursor will take over the ownership
     Cursor* cursor =
         cursors->createFromQueryResult(std::move(_queryResult), batchSize, ttl, count);

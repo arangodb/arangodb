@@ -106,7 +106,12 @@ class CalculationExecutor {
    */
   inline std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
-  inline size_t numberOfRowsInFlight() const { return 0; }
+  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Logic_error, prefetching number fo rows not supported");
+  }
 
  private:
   // specialized implementations

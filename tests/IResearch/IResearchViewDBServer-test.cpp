@@ -52,6 +52,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
@@ -122,6 +123,7 @@ struct IResearchViewDBServerSetup {
     buildFeatureEntry(new arangodb::FlushFeature(server), false); // do not start the thread
     buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false); // required for TRI_vocbase_t instantiation
     buildFeatureEntry(new arangodb::ShardingFeature(server), false); // required for TRI_vocbase_t instantiation
+    buildFeatureEntry(new arangodb::SystemDatabaseFeature(server), true); // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::ViewTypesFeature(server), false); // required for TRI_vocbase_t::createView(...)
     buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(server), false); // required for IResearchLinkMeta::init(...)
     buildFeatureEntry(new arangodb::iresearch::IResearchFeature(server), false); // required for instantiating IResearchView*
@@ -145,6 +147,12 @@ struct IResearchViewDBServerSetup {
         f->forceDisable();
       }
     }
+
+    auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature
+    >("Database");
+    dbFeature->loadDatabases(databases->slice());
 
     for (auto& f : orderedFeatures) {
       if (features.at(f->name()).second) {
@@ -491,7 +499,7 @@ SECTION("test_open") {
 
     static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
     CHECK((true == impl->visitCollections(visitor)));
-    CHECK((true == impl->link(asyncLinkPtr)));
+    CHECK((true == impl->link(asyncLinkPtr).ok()));
     CHECK((false == impl->visitCollections(visitor)));
     wiew->open();
   }
@@ -644,11 +652,10 @@ SECTION("test_query") {
       CHECK((trx.begin().ok()));
 
       arangodb::ManagedDocumentResult inserted;
-      TRI_voc_tick_t tick;
       arangodb::OperationOptions options;
       for (size_t i = 1; i <= 12; ++i) {
         auto doc = arangodb::velocypack::Parser::fromJson(std::string("{ \"key\": ") + std::to_string(i) + " }");
-        logicalCollection->insert(&trx, doc->slice(), inserted, options, tick, false);
+        logicalCollection->insert(&trx, doc->slice(), inserted, options, false);
       }
 
       CHECK((trx.commit().ok()));
@@ -684,11 +691,10 @@ SECTION("test_query") {
       CHECK((trx.begin().ok()));
 
       arangodb::ManagedDocumentResult inserted;
-      TRI_voc_tick_t tick;
       arangodb::OperationOptions options;
       for (size_t i = 13; i <= 24; ++i) {
         auto doc = arangodb::velocypack::Parser::fromJson(std::string("{ \"key\": ") + std::to_string(i) + " }");
-        logicalCollection->insert(&trx, doc->slice(), inserted, options, tick, false);
+        logicalCollection->insert(&trx, doc->slice(), inserted, options, false);
       }
 
       CHECK(trx.commit().ok());
@@ -821,7 +827,7 @@ SECTION("test_rename") {
       Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col): IResearchLink(id, col) {}
     } link(42, *logicalCollection);
     auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
-    CHECK((true == impl->link(asyncLinkPtr)));
+    CHECK((true == impl->link(asyncLinkPtr).ok()));
   }
 
   // rename non-empty
@@ -843,7 +849,7 @@ SECTION("test_rename") {
       Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col): IResearchLink(id, col) {}
     } link(42, *logicalCollection);
     auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
-    CHECK((true == impl->link(asyncLinkPtr)));
+    CHECK((true == impl->link(asyncLinkPtr).ok()));
 
     {
       arangodb::velocypack::Builder builder;
@@ -1493,7 +1499,7 @@ SECTION("test_visitCollections") {
       Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col): IResearchLink(id, col) {}
     } link(42, *logicalCollection);
     auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
-    CHECK((true == impl->link(asyncLinkPtr)));
+    CHECK((true == impl->link(asyncLinkPtr).ok()));
 
     std::set<TRI_voc_cid_t> cids = { logicalCollection->id() };
     static auto visitor = [&cids](TRI_voc_cid_t cid)->bool { return 1 == cids.erase(cid); };

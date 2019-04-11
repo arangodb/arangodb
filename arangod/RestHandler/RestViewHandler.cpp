@@ -249,7 +249,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     return;
   }
 
-  std::string const& name = suffixes[0];
+  auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
   CollectionNameResolver resolver(_vocbase);
   auto view = resolver.getView(name);
 
@@ -398,7 +398,7 @@ void RestViewHandler::deleteView() {
     return;
   }
 
-  std::string const& name = suffixes[0];
+  auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
   auto allowDropSystem = _request->parsedValue("isSystem", false);
   auto view = CollectionNameResolver(_vocbase).getView(name);
 
@@ -458,7 +458,9 @@ void RestViewHandler::getViews() {
 
   // /_api/view/<name>[/properties]
   if (!suffixes.empty()) {
-    getView(suffixes[0], suffixes.size() > 1);
+    auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
+
+    getView(name, suffixes.size() > 1);
 
     return;
   }

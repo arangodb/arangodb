@@ -109,7 +109,7 @@ class QueryRegistry {
    *        information.
    */
   void setNoLockHeaders(ExecutionEngine* engine) const;
-
+  
  private:
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo {

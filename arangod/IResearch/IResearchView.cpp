@@ -642,15 +642,21 @@ arangodb::Result IResearchView::dropImpl() {
   return factory;
 }
 
-bool IResearchView::link(AsyncLinkPtr const& link) {
+arangodb::Result IResearchView::link(AsyncLinkPtr const& link) {
   if (!link) {
-    return false; // invalid link
+    return arangodb::Result( // result
+      TRI_ERROR_BAD_PARAMETER, // code
+      std::string("invalid link parameter while emplacing collection into arangosearch View '") + name() + "'"
+    );
   }
 
   SCOPED_LOCK(link->mutex()); // prevent the link from being deallocated
 
   if (!link->get()) {
-    return false; // invalid link
+    return arangodb::Result( // result
+      TRI_ERROR_BAD_PARAMETER, // code
+      std::string("failed to aquire link while emplacing collection into arangosearch View '") + name() + "'"
+    );
   }
 
   auto cid = link->get()->collection().id();
@@ -665,14 +671,17 @@ bool IResearchView::link(AsyncLinkPtr const& link) {
     _links[cid] = link;
     link->get()->properties(_meta);
 
-    return true; // single-server persisted cid placeholder substituted with actual link
+    return arangodb::Result(); // single-server persisted cid placeholder substituted with actual link
   } else if (itr->second && !itr->second->get()) {
     _links[cid] = link;
     link->get()->properties(_meta);
 
-    return true; // a previous link instance was unload()ed and a new instance is linking
+    return arangodb::Result(); // a previous link instance was unload()ed and a new instance is linking
   } else {
-    return false; // link already present
+    return arangodb::Result( // result
+      TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, // code
+      std::string("duplicate entry while emplacing collection '") + std::to_string(cid) + "' into arangosearch View '" + name() + "'"
+    );
   }
 
   auto res = arangodb::ServerState::instance()->isSingleServer()
@@ -682,43 +691,37 @@ bool IResearchView::link(AsyncLinkPtr const& link) {
 
   if (!res.ok()) {
     _links.erase(cid); // undo meta modification
-    LOG_TOPIC("faae3", WARN, arangodb::iresearch::TOPIC)
-      << "failed to persist logical view while emplacing collection '" << cid << "' into arangosearch View '" << name() << "': " << res.errorMessage();
 
-    return false;
+    return res;
   }
 
   link->get()->properties(_meta);
 
-  return true;
+  return arangodb::Result();
 }
 
 arangodb::Result IResearchView::commit() {
-  ReadMutex mutex(_mutex);  // '_links' can be asynchronously updated
+  ReadMutex mutex(_mutex); // '_links' can be asynchronously updated
   SCOPED_LOCK(mutex);
 
-  for (auto& entry : _links) {
+  for (auto& entry: _links) {
     auto cid = entry.first;
 
     if (!entry.second) {
-      return arangodb::Result(
-          TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
-          std::string("failed to find an arangosearch link in collection '") +
-              std::to_string(cid) + "' while syncing arangosearch view '" +
-              name() + "'");
+      return arangodb::Result( // result
+        TRI_ERROR_ARANGO_INDEX_HANDLE_BAD, // code
+        std::string("failed to find an arangosearch link in collection '") + std::to_string(cid) + "' while syncing arangosearch view '" + name() + "'"
+      );
     }
 
-    SCOPED_LOCK(entry.second->mutex());  // ensure link is not deallocated for
-                                         // the duration of the operation
+    SCOPED_LOCK(entry.second->mutex()); // ensure link is not deallocated for the duration of the operation
     auto* link = entry.second->get();
 
     if (!link) {
-      return arangodb::Result(
-          TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
-          std::string(
-              "failed to find a loaded arangosearch link in collection '") +
-              std::to_string(cid) + "' while syncing arangosearch view '" +
-              name() + "'");
+      return arangodb::Result( // result
+        TRI_ERROR_ARANGO_INDEX_HANDLE_BAD, // code
+        std::string("failed to find a loaded arangosearch link in collection '") + std::to_string(cid) + "' while syncing arangosearch view '" + name() + "'"
+      );
     }
 
     auto res = link->commit();
