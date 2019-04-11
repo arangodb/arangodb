@@ -21,8 +21,6 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO: callback
-
 #ifndef ARANGODB_GRAPH_CONSTANT_WEIGHT_K_SHORTEST_PATHS_FINDER_H
 #define ARANGODB_GRAPH_CONSTANT_WEIGHT_K_SHORTEST_PATHS_FINDER_H 1
 
@@ -59,8 +57,6 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
   struct Path {
     std::deque<VertexRef> _vertices;
     std::deque<Edge> _edges;
-    std::deque<double> _weights; // weight of path to vertex
-    double _weight;
 
     // weight of path to vertex
     // where _weights.front() == 0 and
@@ -75,7 +71,7 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
       _weight = 0;
     };
     size_t length() const { return _vertices.size(); };
-    void append(const Path& p, size_t a, size_t b) {
+    void append(Path const& p, size_t a, size_t b) {
       if (this->length() == 0) {
         _vertices.emplace_back(p._vertices.at(a));
         _weights.emplace_back(0);
@@ -94,13 +90,6 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
       }
       _weight = _weights.back();
     };
-    void print(const std::string& pre) const {
-      LOG_DEVEL << pre << " vertices " << _vertices.size();
-      LOG_DEVEL << pre << " edges    " << _edges.size();
-      for (auto& v : _vertices) {
-        LOG_DEVEL << pre << "  v " << v.toString();
-      }
-    };
   };
 
   struct Step {
@@ -108,7 +97,7 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
     VertexRef _vertex;
     double _weight;
 
-    Step(const Edge& edge, const VertexRef& vertex, double weight)
+    Step(Edge const& edge, VertexRef const& vertex, double weight)
         : _edge(edge), _vertex(vertex), _weight(weight){};
   };
 
@@ -141,7 +130,7 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
     Frontier _frontier;
 
     Ball(void){};
-    Ball(const VertexRef& centre, Direction direction)
+    Ball(VertexRef const& centre, Direction direction)
         : _centre(centre), _direction(direction) {
       auto v = new FoundVertex(centre);
       _frontier.insert(centre, v);
@@ -180,22 +169,22 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
   bool isPathAvailable(void) { return _pathAvailable; };
 
  private:
-  bool computeShortestPath(const VertexRef& start, const VertexRef& end,
-                           const std::unordered_set<VertexRef>& forbiddenVertices,
-                           const std::unordered_set<Edge>& forbiddenEdges, Path& result);
+  bool computeShortestPath(VertexRef const& start, VertexRef const& end,
+                           std::unordered_set<VertexRef> const& forbiddenVertices,
+                           std::unordered_set<Edge> const& forbiddenEdges, Path& result);
   bool computeNextShortestPath(Path& result);
 
-  void reconstructPath(const Ball& left, const Ball& right,
-                       const VertexRef& join, Path& result);
+  void reconstructPath(Ball const& left, Ball const& right,
+                       VertexRef const& join, Path& result);
 
   void computeNeighbourhoodOfVertex(VertexRef vertex, Direction direction,
                                     std::vector<Step>& steps);
 
   // returns the number of paths found
   // TODO: check why target can't be const
-  bool advanceFrontier(Ball& source, Ball& target,
-                       const std::unordered_set<VertexRef>& forbiddenVertices,
-                       const std::unordered_set<Edge>& forbiddenEdges, VertexRef& join);
+  bool advanceFrontier(Ball& source, Ball const& target,
+                       std::unordered_set<VertexRef> const& forbiddenVertices,
+                       std::unordered_set<Edge> const& forbiddenEdges, VertexRef& join);
 
  private:
   bool _pathAvailable;

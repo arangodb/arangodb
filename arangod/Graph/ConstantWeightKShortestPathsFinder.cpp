@@ -65,9 +65,9 @@ bool ConstantWeightKShortestPathsFinder::startKShortestPathsTraversal(
 }
 
 bool ConstantWeightKShortestPathsFinder::computeShortestPath(
-    const VertexRef& start, const VertexRef& end,
-    const std::unordered_set<VertexRef>& forbiddenVertices,
-    const std::unordered_set<Edge>& forbiddenEdges, Path& result) {
+    VertexRef const& start, VertexRef const& end,
+    std::unordered_set<VertexRef> const& forbiddenVertices,
+    std::unordered_set<Edge> const& forbiddenEdges, Path& result) {
   bool found = false;
   Ball left(start, FORWARD);
   Ball right(end, BACKWARD);
@@ -151,18 +151,9 @@ void ConstantWeightKShortestPathsFinder::computeNeighbourhoodOfVertex(
 }
 
 bool ConstantWeightKShortestPathsFinder::advanceFrontier(
-    Ball& source, Ball& target, const std::unordered_set<VertexRef>& forbiddenVertices,
-    const std::unordered_set<Edge>& forbiddenEdges, VertexRef& join) {
+    Ball& source, Ball const& target, std::unordered_set<VertexRef> const& forbiddenVertices,
+    std::unordered_set<Edge> const& forbiddenEdges, VertexRef& join) {
   std::vector<Step> neighbours;
-
-  // TODO: this could be moved into the callback for computeNeighbourhoodOfVertex
-  auto isEdgeForbidden = [forbiddenEdges](const Edge& e) -> bool {
-    return forbiddenEdges.find(e) != forbiddenEdges.end();
-  };
-  auto isVertexForbidden = [forbiddenVertices](const VertexRef& v) -> bool {
-    return forbiddenVertices.find(v) != forbiddenVertices.end();
-  };
-
   VertexRef vr;
   FoundVertex *v;
 
@@ -175,7 +166,8 @@ bool ConstantWeightKShortestPathsFinder::advanceFrontier(
   computeNeighbourhoodOfVertex(vr, source._direction, neighbours);
 
   for (auto& s : neighbours) {
-    if (!isEdgeForbidden(s._edge) && !isVertexForbidden(s._vertex)) {
+    if (forbiddenEdges.find(s._edge) == forbiddenEdges.end() &&
+        forbiddenVertices.find(s._vertex) == forbiddenVertices.end()) {
       double weight = v->weight() + s._weight;
 
       auto lookup = source._frontier.find(s._vertex);
@@ -199,8 +191,8 @@ bool ConstantWeightKShortestPathsFinder::advanceFrontier(
   return false;
 }
 
-void ConstantWeightKShortestPathsFinder::reconstructPath(const Ball& left, const Ball& right,
-                                                         const VertexRef& join,
+void ConstantWeightKShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
+                                                         VertexRef const& join,
                                                          Path& result) {
   result.clear();
   TRI_ASSERT(!join.empty());
@@ -284,11 +276,11 @@ bool ConstantWeightKShortestPathsFinder::computeNextShortestPath(Path& result) {
     // TODO: hack
     // TODO: candidates should also be a priority queue
     if (_options.useWeight()) {
-      std::sort(candidates.begin(), candidates.end(), [](const Path& p1, const Path& p2) {
+      std::sort(candidates.begin(), candidates.end(), [](Path const& p1, Path const& p2) {
                                                         return p1._weight < p2._weight;
                                                       });
     } else {
-      std::sort(candidates.begin(), candidates.end(), [](const Path& p1, const Path& p2) {
+      std::sort(candidates.begin(), candidates.end(), [](Path const& p1, Path const& p2) {
                                                         return p1._vertices.size() < p2._vertices.size();
                                                       });
     }
