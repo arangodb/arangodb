@@ -129,8 +129,6 @@ class BlockWithClients : public ExecutionBlock { // TODO: ask Tobias
 
  private:
   bool _wasShutdown;
-
- protected:
 };
 
 }  // namespace aql
