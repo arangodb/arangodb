@@ -209,22 +209,27 @@ void ConstantWeightKShortestPathsFinder::reconstructPath(const Ball& left, const
   FoundVertex *it;
   it = left._frontier.find(join);
   TRI_ASSERT(it != nullptr);
-  result._weight = it->weight();
+  double startToJoin = it->weight();
+  result._weight = startToJoin;
   while (it != nullptr && it->_weight > 0) {
     result._vertices.push_front(it->_pred);
     result._edges.push_front(it->_edge);
     result._weights.push_front(it->_weight);
     it = left._frontier.find(it->_pred);
   }
+  // Initial vertex has weight 0
+  result._weights.push_front(0);
+
   it = right._frontier.find(join);
   TRI_ASSERT(it != nullptr);
-  result._weight += it->weight();
-  double wp = it->_weight;
+  double joinToEnd = it->_weight;
+  result._weight += joinToEnd;
   while (it != nullptr && it->_weight > 0) {
     result._vertices.emplace_back(it->_pred);
     result._edges.emplace_back(it->_edge);
-    result._weights.emplace_back(wp - it->_weight);
     it = right._frontier.find(it->_pred);
+    TRI_ASSERT(it != nullptr); // should run into 0 weight before
+    result._weights.emplace_back(startToJoin + (joinToEnd - it->_weight));
   }
 
   TRI_IF_FAILURE("TraversalOOMPath") {
@@ -276,9 +281,17 @@ bool ConstantWeightKShortestPathsFinder::computeNextShortestPath(Path& result) {
   }
 
   if (!candidates.empty()) {
-    std::sort(candidates.begin(), candidates.end(), [](const Path& p1, const Path& p2) {
-      return p1._vertices.size() < p2._vertices.size();
-    });
+    // TODO: hack
+    // TODO: candidates should also be a priority queue
+    if (_options.useWeight()) {
+      std::sort(candidates.begin(), candidates.end(), [](const Path& p1, const Path& p2) {
+                                                        return p1._weight < p2._weight;
+                                                      });
+    } else {
+      std::sort(candidates.begin(), candidates.end(), [](const Path& p1, const Path& p2) {
+                                                        return p1._vertices.size() < p2._vertices.size();
+                                                      });
+    }
 
     auto const& p = candidates.front();
     result.clear();

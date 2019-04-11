@@ -62,24 +62,37 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
     std::deque<double> _weights; // weight of path to vertex
     double _weight;
 
+    // weight of path to vertex
+    // where _weights.front() == 0 and
+    //       _weights.back() == _weight.
+    std::deque<double> _weights;
+    double _weight;
+
     void clear() {
       _vertices.clear();
       _edges.clear();
+      _weights.clear();
+      _weight = 0;
     };
     size_t length() const { return _vertices.size(); };
     void append(const Path& p, size_t a, size_t b) {
       if (this->length() == 0) {
         _vertices.emplace_back(p._vertices.at(a));
+        _weights.emplace_back(0);
       }
       // Only append paths where the first vertex of p
       // is the same as the last vertex of this.
-      TRI_ASSERT((this->_vertices.back().equals(p._vertices.front())));
+      TRI_ASSERT((_vertices.back().equals(p._vertices.front())));
 
+      double ew = _weights.back();
+      double pw = p._weights.at(a);
       while(a < b) {
         _edges.emplace_back(p._edges.at(a));
         a++;
         _vertices.emplace_back(p._vertices.at(a));
+        _weights.emplace_back(ew + (p._weights.at(a) - pw));
       }
+      _weight = _weights.back();
     };
     void print(const std::string& pre) const {
       LOG_DEVEL << pre << " vertices " << _vertices.size();
