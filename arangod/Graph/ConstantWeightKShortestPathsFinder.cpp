@@ -44,14 +44,13 @@ using namespace arangodb::graph;
 
 //
 ConstantWeightKShortestPathsFinder::ConstantWeightKShortestPathsFinder(ShortestPathOptions& options)
-    : ShortestPathFinder(options), _pathAvailable(false) { }
+    : ShortestPathFinder(options), _pathAvailable(false) {}
 ConstantWeightKShortestPathsFinder::~ConstantWeightKShortestPathsFinder() {}
 
 // Sets up k-shortest-paths traversal from start to end
 // Returns number of currently known paths
 bool ConstantWeightKShortestPathsFinder::startKShortestPathsTraversal(
     arangodb::velocypack::Slice const& start, arangodb::velocypack::Slice const& end) {
-
   _start = arangodb::velocypack::StringRef(start);
   _end = arangodb::velocypack::StringRef(end);
   _pathAvailable = true;
@@ -92,7 +91,7 @@ bool ConstantWeightKShortestPathsFinder::computeShortestPath(
 }
 
 void ConstantWeightKShortestPathsFinder::computeNeighbourhoodOfVertex(
-  VertexRef vertex, Direction direction, std::vector<Step>& steps) {
+    VertexRef vertex, Direction direction, std::vector<Step>& steps) {
   std::unique_ptr<EdgeCursor> edgeCursor;
 
   switch (direction) {
@@ -107,45 +106,45 @@ void ConstantWeightKShortestPathsFinder::computeNeighbourhoodOfVertex(
   }
 
   // TODO: This is a bit of a hack
-  if(_options.useWeight()) {
+  if (_options.useWeight()) {
     auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
-                      if (edge.isString()) {
-                        VPackSlice doc = _options.cache()->lookupToken(eid);
-                        double weight = _options.weightEdge(doc);
-                        if (edge.compareString(vertex.data(), vertex.length()) != 0) {
-                          VertexRef id = _options.cache()->persistString(VertexRef(edge));
-                          steps.emplace_back(std::move(eid), id, weight);
-                        }
-                      } else {
-                        VertexRef other(transaction::helpers::extractFromFromDocument(edge));
-                        if (other == vertex) {
-                          other = VertexRef(transaction::helpers::extractToFromDocument(edge));
-                        }
-                        if (other != vertex) {
-                          VertexRef id = _options.cache()->persistString(other);
-                          steps.emplace_back(std::move(eid), id, _options.weightEdge(edge));
-                        }
-                      }
-                    };
+      if (edge.isString()) {
+        VPackSlice doc = _options.cache()->lookupToken(eid);
+        double weight = _options.weightEdge(doc);
+        if (edge.compareString(vertex.data(), vertex.length()) != 0) {
+          VertexRef id = _options.cache()->persistString(VertexRef(edge));
+          steps.emplace_back(std::move(eid), id, weight);
+        }
+      } else {
+        VertexRef other(transaction::helpers::extractFromFromDocument(edge));
+        if (other == vertex) {
+          other = VertexRef(transaction::helpers::extractToFromDocument(edge));
+        }
+        if (other != vertex) {
+          VertexRef id = _options.cache()->persistString(other);
+          steps.emplace_back(std::move(eid), id, _options.weightEdge(edge));
+        }
+      }
+    };
     edgeCursor->readAll(callback);
   } else {
     auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
-                      if (edge.isString()) {
-                        if (edge.compareString(vertex.data(), vertex.length()) != 0) {
-                          VertexRef id = _options.cache()->persistString(VertexRef(edge));
-                          steps.emplace_back(std::move(eid), id, 1);
-                        }
-                      } else {
-                        VertexRef other(transaction::helpers::extractFromFromDocument(edge));
-                        if (other == vertex) {
-                          other = VertexRef(transaction::helpers::extractToFromDocument(edge));
-                        }
-                        if (other != vertex) {
-                          VertexRef id = _options.cache()->persistString(other);
-                          steps.emplace_back(std::move(eid), id, 1);
-                        }
-                      }
-                    };
+      if (edge.isString()) {
+        if (edge.compareString(vertex.data(), vertex.length()) != 0) {
+          VertexRef id = _options.cache()->persistString(VertexRef(edge));
+          steps.emplace_back(std::move(eid), id, 1);
+        }
+      } else {
+        VertexRef other(transaction::helpers::extractFromFromDocument(edge));
+        if (other == vertex) {
+          other = VertexRef(transaction::helpers::extractToFromDocument(edge));
+        }
+        if (other != vertex) {
+          VertexRef id = _options.cache()->persistString(other);
+          steps.emplace_back(std::move(eid), id, 1);
+        }
+      }
+    };
     edgeCursor->readAll(callback);
   }
 }
@@ -155,10 +154,10 @@ bool ConstantWeightKShortestPathsFinder::advanceFrontier(
     std::unordered_set<Edge> const& forbiddenEdges, VertexRef& join) {
   std::vector<Step> neighbours;
   VertexRef vr;
-  FoundVertex *v;
+  FoundVertex* v;
 
   bool success = source._frontier.popMinimal(vr, v, true);
-  if(!success) {
+  if (!success) {
     return false;
   }
 
@@ -178,7 +177,8 @@ bool ConstantWeightKShortestPathsFinder::advanceFrontier(
           lookup->_edge = s._edge;
         }
       } else {
-        source._frontier.insert(s._vertex, new FoundVertex(s._vertex, vr, std::move(s._edge), weight));
+        source._frontier.insert(s._vertex,
+                                new FoundVertex(s._vertex, vr, std::move(s._edge), weight));
 
         auto found = target._frontier.find(s._vertex);
         if (found != nullptr) {
@@ -198,7 +198,7 @@ void ConstantWeightKShortestPathsFinder::reconstructPath(Ball const& left, Ball 
   TRI_ASSERT(!join.empty());
   result._vertices.emplace_back(join);
 
-  FoundVertex *it;
+  FoundVertex* it;
   it = left._frontier.find(join);
   TRI_ASSERT(it != nullptr);
   double startToJoin = it->weight();
@@ -220,7 +220,7 @@ void ConstantWeightKShortestPathsFinder::reconstructPath(Ball const& left, Ball 
     result._vertices.emplace_back(it->_pred);
     result._edges.emplace_back(it->_edge);
     it = right._frontier.find(it->_pred);
-    TRI_ASSERT(it != nullptr); // should run into 0 weight before
+    TRI_ASSERT(it != nullptr);  // should run into 0 weight before
     result._weights.emplace_back(startToJoin + (joinToEnd - it->_weight));
   }
 
@@ -277,12 +277,12 @@ bool ConstantWeightKShortestPathsFinder::computeNextShortestPath(Path& result) {
     // TODO: candidates should also be a priority queue
     if (_options.useWeight()) {
       std::sort(candidates.begin(), candidates.end(), [](Path const& p1, Path const& p2) {
-                                                        return p1._weight < p2._weight;
-                                                      });
+        return p1._weight < p2._weight;
+      });
     } else {
       std::sort(candidates.begin(), candidates.end(), [](Path const& p1, Path const& p2) {
-                                                        return p1._vertices.size() < p2._vertices.size();
-                                                      });
+        return p1._vertices.size() < p2._vertices.size();
+      });
     }
 
     auto const& p = candidates.front();
@@ -360,7 +360,7 @@ bool ConstantWeightKShortestPathsFinder::getNextPathAql(arangodb::velocypack::Bu
       _options.cache()->insertVertexIntoResult(it, result);
     }
     result.close();  // Array
-    if(_options.useWeight()) {
+    if (_options.useWeight()) {
       result.add("weight", VPackValue(path._weight));
     }
     result.close();  // Object

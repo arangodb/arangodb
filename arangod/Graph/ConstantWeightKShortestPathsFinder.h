@@ -82,7 +82,7 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
 
       double ew = _weights.back();
       double pw = p._weights.at(a);
-      while(a < b) {
+      while (a < b) {
         _edges.emplace_back(p._edges.at(a));
         a++;
         _vertices.emplace_back(p._vertices.at(a));
@@ -110,19 +110,19 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
     // Using negative weight to signifiy start/end vertex
     FoundVertex(VertexRef const& vertex) : _vertex(vertex), _weight(0){};
     FoundVertex(VertexRef const& vertex, VertexRef const& pred, Edge&& edge, double weight)
-      : _vertex(vertex), _pred(pred), _edge(std::move(edge)), _weight(weight){};
+        : _vertex(vertex), _pred(pred), _edge(std::move(edge)), _weight(weight){};
     double weight() { return _weight; };
-    void setWeight(double weight ) { _weight = weight; };
+    void setWeight(double weight) { _weight = weight; };
     VertexRef const& getKey() { return _vertex; };
   };
-//  typedef std::deque<VertexRef> Frontier;
+  //  typedef std::deque<VertexRef> Frontier;
   typedef ShortestPathPriorityQueue<VertexRef, FoundVertex, double> Frontier;
 
   // Contains the vertices that were found while searching
   // for a shortest path between start and end together with
   // the number of paths leading to that vertex and information
   // how to trace paths from the vertex from start/to end.
-  typedef std::unordered_map<VertexRef, FoundVertex *> FoundVertices;
+  typedef std::unordered_map<VertexRef, FoundVertex*> FoundVertices;
 
   struct Ball {
     VertexRef _centre;
