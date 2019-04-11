@@ -95,8 +95,11 @@ struct PRComputation : public VertexComputation<float, float, float> {
     float diff = fabs(copy - *ptr);
     aggregate<float>(kConvergence, diff);
 
-    float val = *ptr / getEdgeCount();
-    sendMessageToAllNeighbours(val);
+    size_t numEdges = getEdgeCount();
+    if (numEdges > 0) {
+      float val = *ptr / numEdges;
+      sendMessageToAllNeighbours(val);
+    }
   }
 };
 

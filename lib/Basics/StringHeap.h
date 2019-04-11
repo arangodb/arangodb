@@ -40,6 +40,11 @@ class StringHeap {
 
   /// @brief register a string
   StringRef registerString(char const* ptr, size_t length);
+  arangodb::StringRef registerString(arangodb::StringRef const& str) {
+    return registerString(str.data(), str.size());
+  }
+  
+  void merge(StringHeap&& heap);
 
  private:
   /// @brief allocate a new block of memory

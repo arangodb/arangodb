@@ -20,7 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Pregel/Conductor.h"
+#include "Conductor.h"
+
 #include "Pregel/Aggregator.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
@@ -81,12 +82,14 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
   if (_asyncMode) {
     LOG_TOPIC(DEBUG, Logger::PREGEL) << "Running in async mode";
   }
-  VPackSlice lazy = _userParams.slice().get("lazyLoading");
+  VPackSlice lazy = _userParams.slice().get( Utils::lazyLoadingKey);
   _lazyLoading = _algorithm->supportsLazyLoading();
   _lazyLoading = _lazyLoading && (lazy.isNone() || lazy.getBoolean());
   if (_lazyLoading) {
     LOG_TOPIC(DEBUG, Logger::PREGEL) << "Enabled lazy loading";
   }
+  _useMemoryMaps = VelocyPackHelper::readBooleanValue(_userParams.slice(),
+                                                      Utils::useMemoryMaps, _useMemoryMaps);
   VPackSlice storeSlice = config.get("store");
   _storeResults = !storeSlice.isBool() || storeSlice.getBool();
   if (!_storeResults) {
@@ -548,6 +551,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
     b.add(Utils::asyncModeKey, VPackValue(_asyncMode));
     b.add(Utils::lazyLoadingKey, VPackValue(_lazyLoading));
+    b.add(Utils::useMemoryMaps, VPackValue(_useMemoryMaps));
     if (additional.isObject()) {
       for (auto const& pair : VPackObjectIterator(additional)) {
         b.add(pair.key.copyString(), pair.value);

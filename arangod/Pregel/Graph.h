@@ -27,10 +27,12 @@
 #include <functional>
 #include <string>
 
+#include "Basics/StringRef.h"
+
 namespace arangodb {
 namespace pregel {
 
-typedef std::string PregelKey;
+typedef arangodb::StringRef PregelKey;
 // typedef uint64_t PregelKey;
 typedef uint16_t PregelShard;
 const PregelShard InvalidPregelShard = -1;
@@ -67,8 +69,8 @@ class Edge {
   friend class GraphStore;
 
   // PregelShard _sourceShard;
-  PregelShard _targetShard;
   PregelKey _toKey;
+  PregelShard _targetShard;
   E _data;
 
  public:
