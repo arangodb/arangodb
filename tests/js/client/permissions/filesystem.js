@@ -42,7 +42,7 @@ const intoTopLevelForbidden = fs.join(topLevelAllowed, 'into_forbidden.txt');
 const topLevelAllowedUnZip = fs.join(rootDir, 'allowed_unzip');
 const topLevelAllowedRecursive = fs.join(rootDir, 'allowed_recursive');
 const allowedZipFileName = fs.join(topLevelAllowedRecursive, 'allowed.zip');
-const intoTopLevelAllowed = fs.join(intoTopLevelForbidden, 'into_allowed.txt');
+const intoTopLevelAllowed = fs.join(topLevelForbidden, 'into_allowed.txt');
 
 const topLevelAllowedFile = fs.join(topLevelAllowed, 'allowed.txt');
 const topLevelForbiddenFile = fs.join(topLevelForbidden, 'forbidden.txt');
