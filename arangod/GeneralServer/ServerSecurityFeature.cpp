@@ -24,6 +24,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -61,9 +62,23 @@ bool ServerSecurityFeature::isFoxxApiDisabled() const {
 }
 
 bool ServerSecurityFeature::isFoxxStoreDisabled() const {
-  return !_enableFoxxStore;
+  return !_enableFoxxStore || !_enableFoxxApi;
 }
 
 bool ServerSecurityFeature::isRestApiHardened() const {
   return _hardenedRestApi;
+}
+
+bool ServerSecurityFeature::canAccessHardenedApi() const {
+  bool allowAccess = !isRestApiHardened();
+
+  if (!allowAccess) {
+    ExecContext const* exec = ExecContext::CURRENT;
+    if (exec == nullptr || exec->isAdminUser()) {
+      // also allow access if there is not authentication
+      // enabled or when the user is an administrator
+      allowAccess = true;
+    }
+  }
+  return allowAccess;
 }

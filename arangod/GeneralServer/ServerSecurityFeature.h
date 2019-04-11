@@ -36,6 +36,7 @@ class ServerSecurityFeature final : public application_features::ApplicationFeat
   bool isRestApiHardened() const;
   bool isFoxxApiDisabled() const;
   bool isFoxxStoreDisabled() const;
+  bool canAccessHardenedApi() const;
 
  private:
   bool _enableFoxxApi;

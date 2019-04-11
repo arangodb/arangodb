@@ -13,16 +13,16 @@ The following security options are available:
   If this option is set to `true` and authentication is enabled, non-admin users
   will be denied access to the following REST APIs:
   
+  * `/_admin/log`
+  * `/_admin/log/level`
   * `/_admin/status`
   * `/_admin/statistics`
   * `/_admin/statistics-description`
+  * `/_api/engine`
  
   Additionally, no version or platform details will be revealed by the version
   API at `/_api/version`.
   `
-  Furthermore, they will not be able to change the server's log level via the 
-  REST API at `/_admin/log/level`. 
-  
   The default value for this option is `false`.
 
 ## JavaScript security options

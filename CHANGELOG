@@ -2,7 +2,7 @@ devel
 -----
 
 * added options to make server more secure:
-  `--server.harden`: denies version and changing log levels via rest api
+  `--server.harden`: denies access to certain REST APIs that return server internals
   `--foxx.api`: set to false disables Foxx management API
   `--foxx.store`: set to false disables Foxx UI
   `--javascript.allow-port-testing`: enables internal.testPort()
@@ -18,6 +18,11 @@ devel
 * removed support for undocumented HTTP header `x-arango-v8-context`, which
   allowed controlling in which particular V8 context number a JavaScript-based
   action was executed. This header was only used internally for testing.
+
+* fixed internal issue #536: ArangoSearch may crash server during term lookup
+
+* fixed internal issue #2946: Create graph autocomplete was not working under
+  certain circumstances.
 
 * added `filter` option to Foxx HTTP API for running tests.
 
@@ -444,6 +449,12 @@ devel
 * fix log spam in agency supervision when leader resigned
 
 * make AddFollower less aggressive
+
+* lots of agency performance improvements, mostly avoiding copying
+
+* priority queue for maintenance jobs
+
+* do not wait for replication after each job execution in Supervision
 
 v3.4.1 (XXXX-XX-XX)
 -------------------

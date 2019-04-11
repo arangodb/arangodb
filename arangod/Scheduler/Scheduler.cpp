@@ -93,7 +93,7 @@ void Scheduler::shutdown() {
   // At this point the cron thread has been stopped
   // And there will be no other people posting on the queue
   // Lets make sure that all items on the queue are disabled
-  while (_cronQueue.size() > 0) {
+  while (!_cronQueue.empty()) {
     auto const& top = _cronQueue.top();
     auto item = top.second.lock();
     if (item) {
@@ -111,7 +111,7 @@ void Scheduler::runCronThread() {
     auto now = clock::now();
     clock::duration sleepTime = std::chrono::milliseconds(50);
 
-    while (_cronQueue.size() > 0) {
+    while (!_cronQueue.empty()) {
       // top is a reference to a tuple containing the timepoint and a shared_ptr to the work item
       auto const& top = _cronQueue.top();
 
@@ -120,7 +120,11 @@ void Scheduler::runCronThread() {
         // If this fails a default WorkItem is constructed which has disabled == true
         auto item = top.second.lock();
         if (item) {
-          item->run();
+          try {
+            item->run();
+          } catch (std::exception const& ex) {
+            LOG_TOPIC("6d997", WARN, Logger::THREADS) << "caught exception in runCronThread: " << ex.what();
+          }
         }
         _cronQueue.pop();
       } else {

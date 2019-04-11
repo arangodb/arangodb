@@ -32,7 +32,6 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
-#include "Utils/ExecContext.h"
 
 #if defined(TRI_HAVE_POSIX_THREADS)
 #include <unistd.h>
@@ -57,18 +56,8 @@ RestStatus RestStatusHandler::execute() {
       application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
           "ServerSecurity");
   TRI_ASSERT(security != nullptr);
-
-  bool hardened = security->isRestApiHardened();
-  bool allowInfo = !hardened;  // allow access if harden flag was not given
-
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec == nullptr || exec->isAdminUser()) {
-    // also allow access if there is not authentication
-    // enabled or when the user is an administrator
-    allowInfo = true;
-  }
-
-  if (!allowInfo) {
+  
+  if (!security->canAccessHardenedApi()) {
     // dont leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN); 
     return RestStatus::DONE;
