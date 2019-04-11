@@ -37,12 +37,11 @@ namespace arangodb {
 
 class RocksDBHotBackup {
 public:
-  static std::shared_ptr<RocksDBHotBackup> operationFactory(arangodb::rest::RequestType const type,
-                                                            std::vector<std::string> const& suffixes,
-                                                            VPackSlice body);
+  static std::shared_ptr<RocksDBHotBackup> operationFactory(
+    std::string const& suffixes, VPackSlice const body, VPackBuilder& report);
 
   RocksDBHotBackup() = delete;
-  explicit RocksDBHotBackup(VPackSlice body);
+  explicit RocksDBHotBackup(VPackSlice body, VPackBuilder& result);
   virtual ~RocksDBHotBackup() = default;
 
   bool valid() const {return _valid;}
@@ -87,7 +86,7 @@ protected:
   rest::ResponseCode _respCode;
   int _respError;
   std::string _errorMessage;
-  VPackBuilder _result;
+  VPackBuilder& _result;
   bool _isSingle;       // is single db server (not cluster)
 
   unsigned _timeoutSeconds; // used to stop transaction, used again to stop rocksdb
@@ -113,7 +112,7 @@ public:
 
   RocksDBHotBackupCreate() = delete;
   virtual ~RocksDBHotBackupCreate() = default;
-  explicit RocksDBHotBackupCreate(VPackSlice body);
+  explicit RocksDBHotBackupCreate(VPackSlice body, VPackBuilder& report);
 
   // @brief Validate and extract parameters appropriate to the operation type
   void parseParameters(rest::RequestType) override;
@@ -150,7 +149,7 @@ class RocksDBHotBackupRestore : public RocksDBHotBackup {
 public:
 
   RocksDBHotBackupRestore() = delete;
-  explicit RocksDBHotBackupRestore(VPackSlice body);
+  explicit RocksDBHotBackupRestore(VPackSlice body, VPackBuilder& report);
 
   // @brief Validate and extract parameters appropriate to the operation type
   void parseParameters(rest::RequestType) override;
@@ -185,7 +184,7 @@ class RocksDBHotBackupList : public RocksDBHotBackup {
 public:
 
   RocksDBHotBackupList() = delete;
-  explicit RocksDBHotBackupList(VPackSlice body);
+  explicit RocksDBHotBackupList(VPackSlice body, VPackBuilder& report);
 
   void parseParameters(rest::RequestType) override;
   void execute() override;
@@ -201,7 +200,7 @@ class RocksDBHotBackupLock : public RocksDBHotBackup {
 public:
 
   RocksDBHotBackupLock() = delete;
-  RocksDBHotBackupLock(const VPackSlice body);
+  RocksDBHotBackupLock(const VPackSlice body, VPackBuilder& report);
   ~RocksDBHotBackupLock();
 
   void parseParameters(rest::RequestType const) override;

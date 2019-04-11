@@ -31,32 +31,82 @@ namespace arangodb {
 
 HotBackup::HotBackup() {
   if (ServerState::instance()->isCoordinator()) {
-    _engine = HotBackup::CULSTER;
+    _engine = BACKUP_ENGINE::CLUSTER;
   } else if (EngineSelectorFeature::isRocksDB()) {
-    _engine = HotBackup::ROCKSDB;
+    _engine = BACKUP_ENGINE::ROCKSDB;
   } else {
-    _engine = HotBackup::MMFILES;
+    _engine = BACKUP_ENGINE::MMFILES;
   }
 }
 
-arangodb::Result HotBackup::rocksDB    std::shared_ptr<RocksDBHotBackup> operation(parseHotBackupParams(type, suffixes));
 
+arangodb::Result HotBackup::execute (
+  std::string const& command, VPackSlice const payload, VPackBuilder& report) {
 
-arangodb::Result HotBackup::lock(VPackSlice const payload) {
   switch (_engine) {
-  case HotBackup::ROCKSDB:
-    LOG_DEBUG(DEBUG, Logger::HOTBACKUP) << "hotbackup lock RocksDB";
-    return rocksDB(payload)
-      break;
-  case HotBackup::MMFILES:
-    return arangodb::Result(
-      TRI_ERROR_NOT_IMPLEMENTED, "hotback feature not implemented on MMFiles engine");
-    break;
-  case HotBackup::CLUSTER:
-    return arangodb::Result(
-      TRI_ERROR_NOT_IMPLEMENTED, "hotback locks not implemented on coordinators");
-    break;    
+  case BACKUP_ENGINE::ROCKSDB:
+    return executeRocksDB(command, payload, report);
+  case BACKUP_ENGINE::MMFILES:
+    return executeMMFiles(command, payload, report);
+  case BACKUP_ENGINE::CLUSTER:
+    return executeCoordinator(command, payload, report);
   }
-
+  
+  return arangodb::Result();
+  
 }
 
+
+arangodb::Result HotBackup::executeRocksDB(
+  std::string const& command, VPackSlice const payload, VPackBuilder& report) {
+
+  std::shared_ptr<RocksDBHotBackup> operation;
+  operation = RocksDBHotBackup::operationFactory(command, payload, report);
+  
+  if (operation->valid()) {
+    operation->execute();
+  } // if
+  
+  // if !valid() then !success() already set
+  if (!operation->success()) {
+    return arangodb::Result(operation->restResponseError());
+  } // if
+
+  return arangodb::Result();
+  
+}
+
+
+arangodb::Result HotBackup::executeCoordinator(
+  std::string const& command, VPackSlice const payload, VPackBuilder& report) {
+
+  if (command == "create") {
+    return hotBackupCoordinator(payload);
+  } else if (command == "lock") {
+    return arangodb::Result(
+      TRI_ERROR_NOT_IMPLEMENTED, "backup locks not implemented on coordinators");
+  } else if (command == "restore") {
+    return hotRestoreCoordinator(payload);
+  } else if (command == "list") {
+    return listHotBakupsOnCoordinator(payload);
+  } else if (command == "upload") {
+    return uploadHotBakupsOnCoordinator(payload);
+  } else if (command == "download") {
+    return uploadHotBakupsOnCoordinator(payload);
+  } else {
+    return arangodb::Result(
+      TRI_ERROR_NOT_IMPLEMENTED, command + " is not implemented on coordinators"); 
+  }
+
+  // We'll never get here
+  return arangodb::Result();
+  
+}
+
+arangodb::Result HotBackup::executeMMFiles(
+  std::string const& command, VPackSlice const payload, VPackBuilder& report) {
+  return arangodb::Result(
+    TRI_ERROR_NOT_IMPLEMENTED, "hot backup not implemented on MMFiles");
+}
+
+}

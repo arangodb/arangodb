@@ -17,6 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestHotBackupHandler.h"
@@ -40,87 +41,69 @@ RestHotBackupHandler::RestHotBackupHandler(GeneralRequest* request, GeneralRespo
 }
 
 RestStatus RestHotBackupHandler::execute() {
-  if (verifyPermitted()) {
-    // extract the request specifics
-    RequestType const type = _request->requestType();
-    std::vector<std::string> const& suffixes = _request->suffixes();
-    std::shared_ptr<RocksDBHotBackup> operation(parseHotBackupParams(type, suffixes));
 
-    if (operation) {
-      if (operation->valid()) {
-        operation->execute();
-      } // if
+  auto const result = verifyPermitted();
+  if (!result.ok()) {
+    return generateError(rest::ResponseCode::FORBIDDEN, result);
+  }
 
-      // if !valid() then !success() already set
-      if (operation->success()) {
-        if (operation->result().isEmpty()) {
-          generateOk(rest::ResponseCode::OK, velocypack::Slice::emptyObjectSlice());
-        } else {
-          generateOk(rest::ResponseCode::OK, operation->resultSlice());
-        } // else
-      } else {
-        if (!operation->result().isEmpty()) {
-          std::string msg = "Error, details: ";
-          msg += operation->resultSlice().toJson();
-          generateError(operation->restResponseCode(),
-                        operation->restResponseError(), msg);
-        } else if (operation->errorMessage().empty()) {
-          generateError(operation->restResponseCode(),
-                        operation->restResponseError());
-        } else {
-          generateError(operation->restResponseCode(),
-                        operation->restResponseError(),
-                        operation->errorMessage());
-        } // else
-      } // else
-    } else {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-    } // else
-  } // if
+  RequestType const type = _request->requestType();
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  VPackSlice payload;
+  result = parseHotBackupParams(type, suffixes, payload);
+  if (!result.ok()) {
+    return generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, result);
+  }
+  
+  HotBackup hotbackup;
+  VPackBuilder report;
+  result = hotbackup.execute(suffixes.front(), payload, report);
+  if (!result.ok()) {
+    generateError(rest::ResponseCode::BAD, result);
+  }
 
-  return RestStatus::DONE;
+  return generateResult(rest::ResponseCode::OK, body.slice());
 
 } // RestHotBackupHandler::execute
 
 
 /// @brief check for administrator rights and rocksdb storage engine
 ///        generate the error response if issues found
-bool RestHotBackupHandler::verifyPermitted() {
-  bool retFlag{true};
+arangodb::Result RestHotBackupHandler::verifyPermitted() {
 
-  // first test:  do we have admin rights (if rights are active)
+  // do we have admin rights (if rights are active)
   if (nullptr != ExecContext::CURRENT && !ExecContext::CURRENT->isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "you need admin rights for hotbackup operations");
-    retFlag = false;
+    return arangodb::Result(
+      rest::ResponseCode::FORBIDDEN, "you need admin rights for hotbackup operations");
   } // if
 
-  // second test:  is rocksdb the storage engine
-  if (retFlag) {
-    // test for rocksdb engine
-    if (!EngineSelectorFeature::isRocksDB()) {
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
-                    "hotbackup current supports only the rocksdb storage engine");
-      retFlag = false;
-    } // if
-  } // if
-
-  return retFlag;
+  return arangodb::Result();
 
 } // RestHotBackupHandler::verifyPermitted
 
 
-std::shared_ptr<RocksDBHotBackup> RestHotBackupHandler::parseHotBackupParams(
-  RequestType const type, std::vector<std::string> const & suffixes) {
+arangodb::Result RestHotBackupHandler::parseHotBackupParams(
+  RequestType const type, std::vector<std::string> const & suffixes,
+  VPackSlice slice) {
 
-  std::shared_ptr<RocksDBHotBackup> operation;
-  bool parseSuccess;
+  if (type != Request::POST) {
+    return arangodb::Result(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+      "backup endpoint only handles POST requests");
+  }
 
-  VPackSlice body = this->parseVPackBody(parseSuccess);
-  if (parseSuccess) {
-    operation = RocksDBHotBackup::operationFactory(type, suffixes, body);
-  } // if
+  if (suffixes.size() != 1) {
+    return arangodb::Result(
+      TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+      "backup API only takes a single additional suffix out of "
+      "[create, delet, list, upload, download]");
+  
+  slice = this->parseVPackBody(parseSuccess);
 
-  return operation;
+  if (!parseSuccess) {
+    return arangodb::Result(
+      TRI_ERROR_HTTP_CORRUPTED_JSON, "failed to parse backup body");
+  }
 
+  return arangodb::Result();
+  
 } // RestHotBackupHander::parseHotBackupParams

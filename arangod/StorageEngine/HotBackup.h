@@ -41,44 +41,46 @@ enum BACKUP_ENGINE {ROCKSDB, MMFILES, CLUSTER};
 class HotBackup {
 public:
 
-  HotBackup() = delete;
   HotBackup();
   virtual ~HotBackup() = default;
+
+  /**
+   * @brief execute storage engine's command with payload and report back
+   * @param  command  backup command [create, delete, list, upload, download]
+   * @param  payload  JSON payload
+   * @param  report   operation's report
+   * @return 
+   */
+  arangodb::Result execute (
+    std::string const& command, VPackSlice const payload, VPackBuilder& report);
+  
+private:
 
   /**
    * @brief select engine and lock transactions
    * @param  body  rest handling body
    */
-  arangodb::Result lock(VPackSlice const payload);
+  arangodb::Result executeRocksDB(
+    std::string const& command, VPackSlice const payload, VPackBuilder& report);
 
   /**
    * @brief select engine and create backup
    * @param  payload  rest handling payload
    */
-  arangodb::Result create(VPackSlice const payload);
-
+  arangodb::Result executeCoordinator(
+    std::string const& command, VPackSlice const payload, VPackBuilder& report);
+  
   /**
-   * @brief select engine and delete specific backup
+   * @brief select engine and create backup
    * @param  payload  rest handling payload
    */
-  arangodb::Result del(VPackSlice const payload);
-
-  /**
-   * @brief upload backup to remote
-   * @param  payload  rest handling payload
-   */
-  arangodb::Result upload(VPackSlice const payload);
-
-  /**
-   * @brief download backup from
-   * @param  payload  rest handling payload
-   */
-  arangodb::Result download(VPackSlice const payload);
-
-private:
-
+  arangodb::Result executeMMFiles(
+    std::string const& command, VPackSlice const payload, VPackBuilder& report);
+  
   BACKUP_ENGINE _engine;
   
 };// class HotBackup
 
 }
+
+#endif

@@ -253,41 +253,39 @@ enum HotBackupMode {CONSISTENT, DIRTY};
  * @param mode    Backup mode: consistent, dirty
  * @param timeout Wait for this attempt and bail out if not met
  */
-arangodb::Result hotBackupCoordinator(
-  HotBackupMode const& mode, double const& timeout);
+arangodb::Result hotBackupCoordinator(VPackSlice const payload);
 
 /**
  * @brief Restore specific hot backup on coordinators
  * @param mode    Backup mode: consistent, dirty
  * @param timeout Wait for this attempt and bail out if not met
  */
-arangodb::Result hotRestoreCoordinator(std::string const& backupId);
+arangodb::Result hotRestoreCoordinator(VPackSlice const payload);
   
 /**
  * @brief List all 
  * @param mode    Backup mode: consistent, dirty
  * @param timeout Wait for this attempt and bail out if not met
  */
-arangodb::Result listHotBakupsOnCoordinator(
-  std::string const& backupId = std::string());
+arangodb::Result listHotBakupsOnCoordinator(VPackSlice const payload);
   
 /**
  * @brief Delete specific hot backup
  * @param backupId  BackupId to delete
  */
-arangodb::Result deleteHotBakupsOnCoordinator(std::string const& backupId);
+arangodb::Result deleteHotBakupsOnCoordinator(VPackSlice const payload);
   
 /**
  * @brief Delete specific hot backup
  * @param backupId  BackupId to delete
  */
-arangodb::Result uploadHotBakupsOnCoordinator(std::string const& backupId);
+arangodb::Result uploadHotBakupsOnCoordinator(VPackSlice const payload);
   
 /**
  * @brief Delete specific hot backup
  * @param backupId  BackupId to delete
  */
-arangodb::Result downloadHotBakupsOnCoordinator(std::string const& backupId);
+arangodb::Result downloadHotBakupsOnCoordinator(VPackSlice const payload);
 
 
 /**

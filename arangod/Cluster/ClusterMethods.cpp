@@ -3153,7 +3153,7 @@ arangodb::Result findLocalBackup(
   
 }
 
-arangodb::Result hotRestoreCoordinator(std::string const& backupId) {
+arangodb::Result hotRestoreCoordinator(VPackSlice const payload) {
 
   // 1. Find local backup with id
   //    - fail if not found
@@ -3164,6 +3164,13 @@ arangodb::Result hotRestoreCoordinator(std::string const& backupId) {
   // 4. Stop maintenance feature on all db servers
   // 5. a. Replay agency
   //    b. Initiate DB server restores
+
+  if (!payload.isObject() || !payload.hasKey("id") || !payload.get("id").isString()) {
+    return arangodb::Result(TRI_ERROR_BAD_PARAMETER,
+      "restore payload must be an object with string attribute 'id'");
+  }
+
+  std::string const backupId = payload.get("id").copyString();
 
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<ServerID> dbServers = ci->getCurrentDBServers();
@@ -3354,11 +3361,8 @@ arangodb::Result unlockDBServerTransactions(
 
 
 arangodb::Result hotBackupDBServers(
-  std::string const& backupId, std::vector<ServerID> dbServers,
-  VPackSlice agencyDump) {
-
-  std::string const timeStamp =
-    timepointToString(std::chrono::system_clock::now());
+  std::string const& backupId, std::string const& timeStamp,
+  std::vector<ServerID> dbServers, VPackSlice agencyDump) {
 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -3371,7 +3375,7 @@ arangodb::Result hotBackupDBServers(
     VPackObjectBuilder b(&builder);
     builder.add("id", VPackValue(backupId));
     builder.add("agency-dump", agencyDump);
-    builder.add("timeStamp", VPackValue(timeStamp));
+    builder.add("timestamp", VPackValue(timeStamp));
   }
   auto body = std::make_shared<std::string>(builder.toJson());
   
@@ -3498,8 +3502,8 @@ arangodb::Result removeLocalBackups(
 
 }
 
-arangodb::Result hotBackupCoordinator(
-  HotBackupMode const& mode, double const& timeout) {
+arangodb::Result hotBackupCoordinator(VPackSlice const payload) {
+  HotBackupMode const mode = CONSISTENT;
 
   /*
     Suggestion for procedure for cluster hotbackup:
@@ -3508,7 +3512,7 @@ arangodb::Result hotBackupCoordinator(
     2. Stop Supervision, remember if it was on or not.
     3. Check that ToDo and Pending are empty, if not, start Supervision again,
        back to 1.
-    4. Get Plan, will have no resigned leaders.
+       4. Get Plan, will have no resigned leaders.
     5. Stop Transactions, if this does not work in time, restore Supervision
        and give up.
     6. Take hotbackups everywhere, if any fails, all failed.
@@ -3517,104 +3521,125 @@ arangodb::Result hotBackupCoordinator(
     9. Keep Maintenance on dbservers on all the time.
   */
 
-  using namespace std::chrono;
+  try {
 
-  std::string const backupId = to_string(boost::uuids::random_generator()());
-  auto end = steady_clock::now() + milliseconds(static_cast<uint64_t>(1000*timeout));
-  ClusterInfo* ci = ClusterInfo::instance();
-
-  // Go to backup mode for *timeoute* if and only if not already in
-  // backup mode. Otherwise we cannot know, why backup mode was activated
-  // We specifically want to make sure that no other backup is going on.
-  bool supervisionOff = false;
-  auto result = ci->agencyHotBackupLock(backupId, timeout, supervisionOff);
-  if (!result.ok()) {
-    // Failed to go to backup mode
-    result.reset(
-      TRI_ERROR_HOT_BACKUP_INTERNAL,
-      std::string("agency lock operation resulted in ") + result.errorMessage());
-    LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
-    return result;
-  }
-
-  if (end < steady_clock::now()) {
-    LOG_TOPIC(INFO, Logger::HOTBACKUP)
-      << "hot backup didn't get to locking phase in within timeout " << timeout
-      << "s. Unlocking hot backups in agency.";
-    auto hlRes = ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
-    return arangodb::Result(
-      TRI_ERROR_CLUSTER_TIMEOUT, "hot backup timeout before locking phase");
-  }
-
-  // acquire agency dump
-  auto agency = std::make_shared<VPackBuilder>();
-  result = ci->agencyPlan(agency);
-  if (!result.ok()) {
-    ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
-    result.reset(
-      TRI_ERROR_HOT_BACKUP_INTERNAL,
-      std::string ("failed to acquire agency dump: ") + result.errorMessage());
-    LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
-    return result;
-  }
-
-  // Call lock on all database servers 
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr happens only during controlled shutdown
-    return Result(TRI_ERROR_SHUTTING_DOWN, "server is shutting down");
-  }
-  std::vector<ServerID> dbServers = ci->getCurrentDBServers();
-  std::vector<ServerID> lockedServers;
-  double lockWait = 1.0;
+    if (!(payload.isObject() || payload.isEmptySlice() ) ||
+        (payload.hasKey("label") && !payload.get("label").isString()) ||
+        (payload.hasKey("timeout") && !payload.get("timeout").isNumber())) {
+      return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        "backup payload must be an object defining an optional string attribute 'label'");
+    }
   
-  while(cc != nullptr && steady_clock::now() < end) {
-    auto end = steady_clock::now() + duration<double>(lockWait);
-    result = lockDBServerTransactions(backupId, dbServers, lockWait, lockedServers);
+    std::string const backupId = payload.hasKey("label") ?
+      payload.get("label").copyString() : to_string(boost::uuids::random_generator()());
+    std::string const timeStamp = timepointToString(std::chrono::system_clock::now());
+
+    double timeout = payload.hasKey("timeout") :
+      payload.get("timeout").getNumber<double> : 120.;
+  
+    using namespace std::chrono;
+    auto end = steady_clock::now() + milliseconds(static_cast<uint64_t>(1000*timeout));
+    ClusterInfo* ci = ClusterInfo::instance();
+
+    // Go to backup mode for *timeoute* if and only if not already in
+    // backup mode. Otherwise we cannot know, why backup mode was activated
+    // We specifically want to make sure that no other backup is going on.
+    bool supervisionOff = false;
+    auto result = ci->agencyHotBackupLock(backupId, timeout, supervisionOff);
     if (!result.ok()) {
-      unlockDBServerTransactions(backupId, lockedServers);
-      if (result.is(TRI_ERROR_LOCAL_LOCK_FAILED)) { // Unrecoverable
-        ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
-        return result;
-      }
-    } else {
-      break;
+      // Failed to go to backup mode
+      result.reset(
+        TRI_ERROR_HOT_BACKUP_INTERNAL,
+        std::string("agency lock operation resulted in ") + result.errorMessage());
+      LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
+      return result;
     }
-    if (lockWait < 5.0) {
-      lockWait *= 1.1;
+
+    if (end < steady_clock::now()) {
+      LOG_TOPIC(INFO, Logger::HOTBACKUP)
+        << "hot backup didn't get to locking phase in within timeout " << timeout
+        << "s. Unlocking hot backups in agency.";
+      auto hlRes = ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      return arangodb::Result(
+        TRI_ERROR_CLUSTER_TIMEOUT, "hot backup timeout before locking phase");
     }
-    double tmp = duration<double>(end - steady_clock::now()).count();
-    if (tmp > 0) {
-      std::this_thread::sleep_for(duration<double>(tmp));
+
+    // acquire agency dump
+    auto agency = std::make_shared<VPackBuilder>();
+    result = ci->agencyPlan(agency);
+    if (!result.ok()) {
+      ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      result.reset(
+        TRI_ERROR_HOT_BACKUP_INTERNAL,
+        std::string ("failed to acquire agency dump: ") + result.errorMessage());
+      LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
+      return result;
     }
-  }
+
+    // Call lock on all database servers 
+    auto cc = ClusterComm::instance();
+    if (cc == nullptr) {
+      // nullptr happens only during controlled shutdown
+      return Result(TRI_ERROR_SHUTTING_DOWN, "server is shutting down");
+    }
+    std::vector<ServerID> dbServers = ci->getCurrentDBServers();
+    std::vector<ServerID> lockedServers;
+    double lockWait = 1.0;
   
-  if (!result.ok()) {
+    while(cc != nullptr && steady_clock::now() < end) {
+      auto end = steady_clock::now() + duration<double>(lockWait);
+      result = lockDBServerTransactions(backupId, dbServers, lockWait, lockedServers);
+      if (!result.ok()) {
+        unlockDBServerTransactions(backupId, lockedServers);
+        if (result.is(TRI_ERROR_LOCAL_LOCK_FAILED)) { // Unrecoverable
+          ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+          return result;
+        }
+      } else {
+        break;
+      }
+      if (lockWait < 5.0) {
+        lockWait *= 1.1;
+      }
+      double tmp = duration<double>(end - steady_clock::now()).count();
+      if (tmp > 0) {
+        std::this_thread::sleep_for(duration<double>(tmp));
+      }
+    }
+  
+    if (!result.ok()) {
+      unlockDBServerTransactions(backupId, dbServers);
+      ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      result.reset(
+        TRI_ERROR_HOT_BACKUP_INTERNAL,
+        std::string ("failed to acquire global transaction log on all db servers: ") + result.errorMessage());
+      LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
+      return result;
+    }
+
+    result = hotBackupDBServers(backupId, timeStamp, dbServers, agency->slice());
+    if (!result.ok()) {
+      unlockDBServerTransactions(backupId, dbServers);
+      ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      result.reset(
+        TRI_ERROR_HOT_BACKUP_INTERNAL,
+        std::string ("failed to hot backup on all db servers: ") + result.errorMessage());
+      LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
+      removeLocalBackups(backupId, dbServers);
+      return result;
+    }
+
     unlockDBServerTransactions(backupId, dbServers);
     ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
-    result.reset(
-      TRI_ERROR_HOT_BACKUP_INTERNAL,
-      std::string ("failed to acquire global transaction log on all db servers: ") + result.errorMessage());
-    LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
-    return result;
+    return arangodb::Result();
+
+  } catch (std::exception const& e) {
+    TRI_ASSERT(false);
+    return arangodb::Result(
+      ERROR_HOT_BACKUP_INTERNAL,
+      std::string("caught exception cretaing cluster backup: ") + e.what());
   }
-
-  result = hotBackupDBServers(backupId, dbServers, agency->slice());
-  if (!result.ok()) {
-    unlockDBServerTransactions(backupId, dbServers);
-    ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
-    result.reset(
-      TRI_ERROR_HOT_BACKUP_INTERNAL,
-      std::string ("failed to hot backup on all db servers: ") + result.errorMessage());
-    LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
-    removeLocalBackups(backupId, dbServers);
-    return result;
-  }
-
-  unlockDBServerTransactions(backupId, dbServers);
-  ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
-  return arangodb::Result();
-
 }
 
 }  // namespace arangodb
