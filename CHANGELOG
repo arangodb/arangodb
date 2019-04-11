@@ -49,13 +49,15 @@ v3.3.23 (XXXX-XX-XX)
 
 * do not wait for replication after each job execution in Supervision
 
+
 v3.3.22 (2019-02-01)
 --------------------
 
 * data masking: better documentation, fixed default phone number,
   changed default range to -100 and 100 for integer masking function
 
-* added configurable masking of dumped data via `arangodump` tool to obfuscate exported sensible data
+* added configurable masking of dumped data via `arangodump` tool to 
+  obfuscate exported sensible data
 
 * updated velocypack library
 
