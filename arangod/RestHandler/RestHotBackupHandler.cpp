@@ -53,7 +53,8 @@ RestStatus RestHotBackupHandler::execute() {
   result = parseHotBackupParams(type, suffixes, payload);
   if (!result.ok()) {
     generateError(
-      rest::ResponseCode::METHOD_NOT_ALLOWED, result.errorNumber(), result.errorMessage());
+      rest::ResponseCode::METHOD_NOT_ALLOWED, result.errorNumber(),
+      result.errorMessage());
     return RestStatus::DONE;
   }
   
@@ -66,7 +67,14 @@ RestStatus RestHotBackupHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateResult(rest::ResponseCode::OK, report.slice());
+  VPackBuilder display;
+  {
+    VPackObjectBuilder o(&display);
+    display.add("error", VPackValue(false));
+    display.add("code", VPackValue((suffixes.front() == "create") ? 201 : 200));
+    display.add("result", report.slice());
+  }
+  generateResult(rest::ResponseCode::OK, display.slice());
   return RestStatus::DONE;
 
 } // RestHotBackupHandler::execute
@@ -100,7 +108,7 @@ arangodb::Result RestHotBackupHandler::parseHotBackupParams(
     return arangodb::Result(
       TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
       "backup API only takes a single additional suffix out of "
-      "[create, delet, list, upload, download]");
+      "[create, delete, list, upload, download]");
   }
   
   bool parseSuccess = false;
