@@ -657,7 +657,6 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     seq = db->GetLatestSequenceNumber() - 1;  // post commit sequence
 
     uint64_t numDocs = _numberDocuments.exchange(0);
-
     _meta.adjustNumberDocuments(seq, /*revision*/ newRevisionId(),
                                 -static_cast<int64_t>(numDocs));
 

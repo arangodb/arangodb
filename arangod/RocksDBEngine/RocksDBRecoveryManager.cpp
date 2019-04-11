@@ -423,14 +423,15 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         cc._committedSeq = _currentSequence;
         cc._added = 0;
         cc._removed = 0;
-      }
-      
-      for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
-        RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-        RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
-        if (est && est->appliedSeq() <= _currentSequence) {
-          est->clear();
-          est->setAppliedSeq(_currentSequence);
+        
+        for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
+          RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
+          RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
+          TRI_ASSERT(ridx->type() != Index::TRI_IDX_TYPE_EDGE_INDEX || est);
+          if (est) {
+            est->clear();
+            est->setAppliedSeq(_currentSequence);
+          }
         }
       }
     }

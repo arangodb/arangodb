@@ -3,6 +3,9 @@ devel
 
 * fixed internal issue #536: ArangoSearch may crash server during term lookup
 
+* fixed internal issue #2946: Create graph autocomplete was not working under
+  certain circumstances.
+
 * added `filter` option to Foxx HTTP API for running tests.
 
 * added function `db.<collection>.getResponsibleShard()` to find out which is the
@@ -428,6 +431,12 @@ devel
 * fix log spam in agency supervision when leader resigned
 
 * make AddFollower less aggressive
+
+* lots of agency performance improvements, mostly avoiding copying
+
+* priority queue for maintenance jobs
+
+* do not wait for replication after each job execution in Supervision
 
 v3.4.1 (XXXX-XX-XX)
 -------------------
