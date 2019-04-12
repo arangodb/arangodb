@@ -39,7 +39,7 @@ class DistributeExecutor {};
  * @brief See ExecutionBlockImpl.h for documentation.
  */
 template <>
-class ExecutionBlockImpl<DistributeExecutor> : public BlockWithClients {
+class ExecutionBlockImpl<DistributeExecutor> : public ClusterBlocks {
  public:
   // TODO Even if it's not strictly necessary here, for consistency's sake the
   // non-standard arguments (shardIds, collection) should probably be moved into
@@ -63,11 +63,6 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlockWithClients {
                                                      std::string const& shardId) override;
 
  private:
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> traceGetSomeEnd(
-      ExecutionState state, std::unique_ptr<AqlItemBlock> result);
-
-  std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
-
   /// @brief getSomeForShard
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShardWithoutTrace(
       size_t atMost, std::string const& shardId);
@@ -91,8 +86,6 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlockWithClients {
   /// @brief getBlockForClient: try to get at atMost pairs into
   /// _distBuffer.at(clientId).
   std::pair<ExecutionState, bool> getBlockForClient(size_t atMost, size_t clientId);
-
-  std::pair<ExecutionState, bool> getBlock(size_t atMost);
 
   /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
   /// attributes <shardKeys> of the register <id> to determine to which shard

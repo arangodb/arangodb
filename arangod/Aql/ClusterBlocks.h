@@ -51,28 +51,18 @@ class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
 
-class BlockWithClients : public ExecutionBlock {
+class ClusterBlocks : public ExecutionBlock {
  public:
-  BlockWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
+  ClusterBlocks(ExecutionEngine* engine, ExecutionNode const* ep,
                    std::vector<std::string> const& shardIds);
 
-  ~BlockWithClients() override = default;
+  ~ClusterBlocks() override = default;
 
  public:
-  /// @brief initializeCursor
-  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
-
-  /// @brief return aql item block
-  void returnBlock(AqlItemBlock*& block) noexcept;
-
-  /// @brief hasMoreState
-  ExecutionState getHasMoreState();
-
-  /// @brief moved shutdown function from ExecutionBlock
-  std::pair<ExecutionState, Result> internalShutdown(int);
-
   /// @brief shutdown
   std::pair<ExecutionState, Result> shutdown(int) override;
+
+  std::pair<ExecutionState, bool> getBlock(size_t atMost);
 
   /// @brief getSome: shouldn't be used, use skipSomeForShard
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final {
@@ -104,27 +94,6 @@ class BlockWithClients : public ExecutionBlock {
 
   /// @brief _nrClients: total number of clients
   size_t _nrClients;
-
- public:
-  /// @brief the execution engine
-  ExecutionEngine* _engine;
-
-  /// @brief the transaction for this query
-  transaction::Methods* _trx;
-
-  /// @brief this is our buffer for the items, it is a deque of AqlItemBlocks.
-  /// We keep the following invariant between this and the other two variables
-  /// _pos and _done: If _buffer.size() != 0, then 0 <= _pos <
-  /// _buffer[0]->size()
-  /// and _buffer[0][_pos] is the next item to be handed on. If _done is true,
-  /// then no more documents will ever be returned. _done will be set to
-  /// true if and only if we have no more data ourselves (i.e.
-  /// _buffer.size()==0)
-  /// and we have unsuccessfully tried to get another block from our dependency.
-  std::deque<AqlItemBlock*> _buffer;
-
-  /// @brief current working position in the first entry of _buffer
-  size_t _pos;
 
  private:
   bool _wasShutdown;

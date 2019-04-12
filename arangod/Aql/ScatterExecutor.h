@@ -38,7 +38,7 @@ class ScatterExecutor {};
  * @brief See ExecutionBlockImpl.h for documentation.
  */
 template <>
-class ExecutionBlockImpl<ScatterExecutor> : public BlockWithClients {
+class ExecutionBlockImpl<ScatterExecutor> : public ClusterBlocks {
  public:
   // TODO Even if it's not strictly necessary here, for consistency's sake the
   // non-standard argument (shardIds) should probably be moved into some
@@ -59,13 +59,6 @@ class ExecutionBlockImpl<ScatterExecutor> : public BlockWithClients {
                                                      std::string const& shardId) override;
 
  private:
-  void traceGetSomeBegin(size_t atMost);
-
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> traceGetSomeEnd(
-      ExecutionState state, std::unique_ptr<AqlItemBlock> result);
-
-  std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
-
   /// @brief getSomeForShard
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShardWithoutTrace(
       size_t atMost, std::string const& shardId);
@@ -73,8 +66,6 @@ class ExecutionBlockImpl<ScatterExecutor> : public BlockWithClients {
   /// @brief skipSomeForShard
   std::pair<ExecutionState, size_t> skipSomeForShardWithoutTrace(size_t atMost,
                                                                  std::string const& shardId);
-
-  std::pair<ExecutionState, bool> getBlock(size_t atMost);
 
   std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
       size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,

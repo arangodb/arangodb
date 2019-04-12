@@ -24,10 +24,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionBlock.h"
-#include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/BlockCollector.h"
-#include "Aql/ExecutionEngine.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
@@ -35,142 +33,89 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-
-std::string const doneString = "DONE";
-std::string const hasMoreString = "HASMORE";
-std::string const waitingString = "WAITING";
-
-static std::string const& stateToString(ExecutionState state) {
-  switch (state) {
-    case ExecutionState::DONE:
-      return doneString;
-    case ExecutionState::HASMORE:
-      return hasMoreString;
-    case ExecutionState::WAITING:
-      return waitingString;
-  }
-}
-
-}  // namespace
-
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
-    _trx(engine->getQuery()->trx()),
+      _trx(engine->getQuery()->trx()),
       _shutdownResult(TRI_ERROR_NO_ERROR),
       _done(false),
       _exeNode(ep),
+      _dependencyPos(_dependencies.end()),
       _profile(engine->getQuery()->queryOptions().getProfileLevel()),
       _getSomeBegin(0.0),
       _upstreamState(ExecutionState::HASMORE),
-      _dependencyPos(_dependencies.end()),
+      _pos(0),
       _collector(&engine->itemBlockManager()) {}
 
-ExecutionBlock::~ExecutionBlock() = default;
+ExecutionBlock::~ExecutionBlock() {
+  for (auto& it : _buffer) {
+    delete it;
+  }
+}
 
-void ExecutionBlock::throwIfKilled() { // TODO Scatter & DistributeExecutor still using
+void ExecutionBlock::throwIfKilled() {  // TODO Scatter & DistributeExecutor still using
   if (_engine->getQuery()->killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 }
 
-// Trace the start of a getSome call
-void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    if (_getSomeBegin <= 0.0) {
-      _getSomeBegin = TRI_microtime();
-    }
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
-      auto node = getPlanNode();
-      LOG_TOPIC("ca7db", INFO, Logger::QUERIES)
-      << "getSome type=" << node->getTypeString() << " atMost = " << atMost
-      << " this=" << (uintptr_t)this << " id=" << node->id();
+std::pair<ExecutionState, Result> ExecutionBlock::initializeCursor(InputAqlItemRow const& input) {
+  if (_dependencyPos == _dependencies.end()) {
+    // We need to start again.
+    _dependencyPos = _dependencies.begin();
+  }
+  for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
+    auto res = (*_dependencyPos)->initializeCursor(input);
+    if (res.first == ExecutionState::WAITING || !res.second.ok()) {
+      // If we need to wait or get an error we return as is.
+      return res;
     }
   }
+
+  for (auto& it : _buffer) {
+    returnBlock(it);
+  }
+  _buffer.clear();
+
+  _done = false;
+  _upstreamState = ExecutionState::HASMORE;
+  _pos = 0;
+  _collector.clear();
+
+  TRI_ASSERT(getHasMoreState() == ExecutionState::HASMORE);
+  TRI_ASSERT(_dependencyPos == _dependencies.end());
+  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-// Trace the end of a getSome call, potentially with result
-void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState state) {
-  TRI_ASSERT(result != nullptr || state != ExecutionState::HASMORE);
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    ExecutionNode const* en = getPlanNode();
-    ExecutionStats::Node stats;
-    stats.calls = 1;
-    stats.items = result != nullptr ? result->size() : 0;
-    if (state != ExecutionState::WAITING) {
-      stats.runtime = TRI_microtime() - _getSomeBegin;
-      _getSomeBegin = 0.0;
-    }
+std::pair<ExecutionState, Result> ExecutionBlock::shutdown(int errorCode) {
+  if (_dependencyPos == _dependencies.end()) {
+    _shutdownResult.reset(TRI_ERROR_NO_ERROR);
+    _dependencyPos = _dependencies.begin();
+  }
 
-    auto it = _engine->_stats.nodes.find(en->id());
-    if (it != _engine->_stats.nodes.end()) {
-      it->second += stats;
-    } else {
-      _engine->_stats.nodes.emplace(en->id(), stats);
-    }
-
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
-      ExecutionNode const* node = getPlanNode();
-      LOG_TOPIC("07a60", INFO, Logger::QUERIES)
-      << "getSome done type=" << node->getTypeString() << " this=" << (uintptr_t)this
-      << " id=" << node->id() << " state=" << ::stateToString(state);
-
-      if (_profile >= PROFILE_LEVEL_TRACE_2) {
-        if (result == nullptr) {
-          LOG_TOPIC("daa64", INFO, Logger::QUERIES)
-          << "getSome type=" << node->getTypeString() << " result: nullptr";
-        } else {
-          VPackBuilder builder;
-          {
-            VPackObjectBuilder guard(&builder);
-            result->toVelocyPack(transaction(), builder);
-          }
-          LOG_TOPIC("fcd9c", INFO, Logger::QUERIES) << "getSome type=" << node->getTypeString()
-                                                    << " result: " << builder.toJson();
-        }
+  for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
+    Result res;
+    ExecutionState state;
+    try {
+      std::tie(state, res) = (*_dependencyPos)->shutdown(errorCode);
+      if (state == ExecutionState::WAITING) {
+        return {state, TRI_ERROR_NO_ERROR};
       }
+    } catch (...) {
+      _shutdownResult.reset(TRI_ERROR_INTERNAL);
+    }
+
+    if (res.fail()) {
+      _shutdownResult = res;
     }
   }
-}
 
-void ExecutionBlock::traceSkipSomeBegin(size_t atMost) {
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    if (_getSomeBegin <= 0.0) {
-      _getSomeBegin = TRI_microtime();
+  if (!_buffer.empty()) {
+    for (auto& it : _buffer) {
+      delete it;
     }
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
-      auto node = getPlanNode();
-      LOG_TOPIC("dba8a", INFO, Logger::QUERIES)
-      << "skipSome type=" << node->getTypeString() << " atMost = " << atMost
-      << " this=" << (uintptr_t)this << " id=" << node->id();
-    }
+    _buffer.clear();
   }
-}
 
-void ExecutionBlock::traceSkipSomeEnd(size_t skipped, ExecutionState state) {
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    ExecutionNode const* en = getPlanNode();
-    ExecutionStats::Node stats;
-    stats.calls = 1;
-    stats.items = skipped;
-    if (state != ExecutionState::WAITING) {
-      stats.runtime = TRI_microtime() - _getSomeBegin;
-      _getSomeBegin = 0.0;
-    }
-
-    auto it = _engine->_stats.nodes.find(en->id());
-    if (it != _engine->_stats.nodes.end()) {
-      it->second += stats;
-    } else {
-      _engine->_stats.nodes.emplace(en->id(), stats);
-    }
-
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
-      ExecutionNode const* node = getPlanNode();
-      LOG_TOPIC("d1950", INFO, Logger::QUERIES)
-      << "skipSome done type=" << node->getTypeString() << " this=" << (uintptr_t)this
-      << " id=" << node->id() << " state=" << ::stateToString(state);
-    }
-  }
+  return {ExecutionState::DONE, _shutdownResult};
 }
 

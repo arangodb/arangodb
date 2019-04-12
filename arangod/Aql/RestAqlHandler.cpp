@@ -733,7 +733,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
             return RestStatus::WAITING;
           }
         } else {
-          auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
+          auto block = dynamic_cast<ClusterBlocks*>(query->engine()->root());
           if (block == nullptr) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "unexpected node type");
@@ -766,7 +766,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
           }
           skipped = tmpRes.second;
         } else {
-          auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
+          auto block = dynamic_cast<ClusterBlocks*>(query->engine()->root());
           if (block == nullptr) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "unexpected node type");

@@ -187,30 +187,10 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::pair<ExecutionState, Result> shutdown(int) override;
 
  private:
-  ExecutionState getHasMoreState();
-
-  /**
-   * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
-   *        arguments compatible to getSome's return type.
-   */
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> traceGetSomeEnd(
-      ExecutionState state, std::unique_ptr<AqlItemBlock> result);
-
-  /**
-   * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
-   *        arguments compatible to skipSome's return type.
-   */
-  std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
   /**
    * @brief Inner getSome() part, without the tracing calls.
    */
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutTrace(size_t atMost);
-
-  /// @brief request an AqlItemBlock
-  AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
-
-  /// @brief return an AqlItemBlock to the memory manager
-  void returnBlock(AqlItemBlock*& block) noexcept;
 
   /**
    * @brief Allocates a new AqlItemBlock and returns it in a shell, with the
@@ -253,37 +233,12 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    *        to produce a single row from the upstream information.
    */
   Infos _infos;
+
   Executor _executor;
 
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;
 
   Query const& _query;
-
-  /// moved from ExecutionBlock
-  /// @brief the execution engine
-  ExecutionEngine* _engine;
-
-  /// @brief the transaction for this query
-  transaction::Methods* _trx;
-
-  /// @brief our corresponding ExecutionNode node
-  ExecutionNode const* _exeNode;
-
-  /// @brief this is our buffer for the items, it is a deque of AqlItemBlocks.
-  /// We keep the following invariant between this and the other two variables
-  /// _pos and _done: If _buffer.size() != 0, then 0 <= _pos <
-  /// _buffer[0]->size()
-  /// and _buffer[0][_pos] is the next item to be handed on. If _done is true,
-  /// then no more documents will ever be returned. _done will be set to
-  /// true if and only if we have no more data ourselves (i.e.
-  /// _buffer.size()==0)
-  /// and we have unsuccessfully tried to get another block from our dependency.
-  std::deque<AqlItemBlock*> _buffer;
-
-  /// @brief current working position in the first entry of _buffer
-  size_t _pos;
-
- protected:
 };
 
 }  // namespace aql

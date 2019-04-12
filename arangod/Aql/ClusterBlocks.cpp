@@ -62,13 +62,10 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
 
-BlockWithClients::BlockWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
+ClusterBlocks::ClusterBlocks(ExecutionEngine* engine, ExecutionNode const* ep,
                                    std::vector<std::string> const& shardIds)
     : ExecutionBlock(engine, ep),
       _nrClients(shardIds.size()),
-      _engine(engine),
-      _trx(engine->getQuery()->trx()),
-      _pos(0),
       _wasShutdown(false) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
@@ -76,88 +73,35 @@ BlockWithClients::BlockWithClients(ExecutionEngine* engine, ExecutionNode const*
   }
 }
 
-std::pair<ExecutionState, Result> BlockWithClients::initializeCursor(InputAqlItemRow const& input) {
-  if (_dependencyPos == _dependencies.end()) {
-    // We need to start again.
-    _dependencyPos = _dependencies.begin();
-  }
-  for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
-    auto res = (*_dependencyPos)->initializeCursor(input);
-    if (res.first == ExecutionState::WAITING || !res.second.ok()) {
-      // If we need to wait or get an error we return as is.
-      return res;
-    }
+std::pair<ExecutionState, bool> ClusterBlocks::getBlock(size_t atMost) {
+  ExecutionBlock::throwIfKilled();  // check if we were aborted
+
+  auto res = _dependencies[0]->getSome(atMost);
+  if (res.first == ExecutionState::WAITING) {
+    return {res.first, false};
   }
 
-  for (auto& it : _buffer) {
-    returnBlock(it);
-  }
-  _buffer.clear();
-
-  _done = false;
-  _upstreamState = ExecutionState::HASMORE;
-  _pos = 0;
-  _collector.clear();
-
-  TRI_ASSERT(getHasMoreState() == ExecutionState::HASMORE);
-  TRI_ASSERT(_dependencyPos == _dependencies.end());
-  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-}
-
-void BlockWithClients::returnBlock(AqlItemBlock*& block) noexcept {
-  _engine->itemBlockManager().returnBlock(block);
-}
-
-ExecutionState BlockWithClients::getHasMoreState() {
-  if (_done) {
-    return ExecutionState::DONE;
-  }
-  if (_buffer.empty() && _upstreamState == ExecutionState::DONE) {
-    _done = true;
-    return ExecutionState::DONE;
-  }
-  return ExecutionState::HASMORE;
-}
-
-std::pair<ExecutionState, Result> BlockWithClients::internalShutdown(int errorCode) {
-  if (_dependencyPos == _dependencies.end()) {
-    _shutdownResult.reset(TRI_ERROR_NO_ERROR);
-    _dependencyPos = _dependencies.begin();
+  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
-    Result res;
-    ExecutionState state;
-    try {
-      std::tie(state, res) = (*_dependencyPos)->shutdown(errorCode);
-      if (state == ExecutionState::WAITING) {
-        return {state, TRI_ERROR_NO_ERROR};
-      }
-    } catch (...) {
-      _shutdownResult.reset(TRI_ERROR_INTERNAL);
-    }
+  _upstreamState = res.first;
 
-    if (res.fail()) {
-      _shutdownResult = res;
-    }
+  if (res.second != nullptr) {
+    _buffer.emplace_back(res.second.get());
+    res.second.release();
+    return {res.first, true};
   }
 
-  if (!_buffer.empty()) {
-    for (auto& it : _buffer) {
-      delete it;
-    }
-    _buffer.clear();
-  }
-
-  return {ExecutionState::DONE, _shutdownResult};
+  return {res.first, false};
 }
 
 /// @brief shutdown
-std::pair<ExecutionState, Result> BlockWithClients::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> ClusterBlocks::shutdown(int errorCode) {
   if (_wasShutdown) {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
-  auto res = internalShutdown(errorCode);
+  auto res = ExecutionBlock::shutdown(errorCode);
   if (res.first == ExecutionState::WAITING) {
     return res;
   }
@@ -167,7 +111,7 @@ std::pair<ExecutionState, Result> BlockWithClients::shutdown(int errorCode) {
 
 /// @brief getClientId: get the number <clientId> (used internally)
 /// corresponding to <shardId>
-size_t BlockWithClients::getClientId(std::string const& shardId) const {
+size_t ClusterBlocks::getClientId(std::string const& shardId) const {
   if (shardId.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "got empty shard id");
   }
@@ -180,4 +124,3 @@ size_t BlockWithClients::getClientId(std::string const& shardId) const {
   }
   return ((*it).second);
 }
-

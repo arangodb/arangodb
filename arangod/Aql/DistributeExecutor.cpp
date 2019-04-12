@@ -36,7 +36,7 @@ ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
     std::vector<std::string> const& shardIds, Collection const* collection,
     RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys,
     bool allowKeyConversionToObject, bool createKeys)
-    : BlockWithClients(engine, node, shardIds),
+    : ClusterBlocks(engine, node, shardIds),
       _infos(std::move(infos)),
       _query(*engine->getQuery()),
       _collection(collection),
@@ -47,18 +47,6 @@ ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
       _allowKeyConversionToObject(allowKeyConversionToObject),
       _createKeys(createKeys) {
   _usesDefaultSharding = collection->usesDefaultSharding();
-}
-
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<DistributeExecutor>::traceGetSomeEnd(
-    ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
-  ExecutionBlock::traceGetSomeEnd(result.get(), state);
-  return {state, std::move(result)};
-}
-
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::traceSkipSomeEnd(
-    ExecutionState state, size_t skipped) {
-  ExecutionBlock::traceSkipSomeEnd(skipped, state);
-  return {state, skipped};
 }
 
 /// @brief initializeCursor
@@ -72,7 +60,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<DistributeExecutor>::initia
     _distBuffer.emplace_back();
   }
 
-  return BlockWithClients::initializeCursor(input);
+  return ExecutionBlock::initializeCursor(input);
 }
 
 /// @brief getSomeForShard
@@ -212,29 +200,6 @@ bool ExecutionBlockImpl<DistributeExecutor>::hasMoreForClientId(size_t clientId)
     return true;
   }
   return _upstreamState == ExecutionState::HASMORE;
-}
-
-std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlock(size_t atMost) {
-  ExecutionBlock::throwIfKilled();  // check if we were aborted
-
-  auto res = _dependencies[0]->getSome(atMost);
-  if (res.first == ExecutionState::WAITING) {
-    return {res.first, false};
-  }
-
-  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  _upstreamState = res.first;
-
-  if (res.second != nullptr) {
-    _buffer.emplace_back(res.second.get());
-    res.second.release();
-    return {res.first, true};
-  }
-
-  return {res.first, false};
 }
 
 /// @brief getBlockForClient: try to get atMost pairs into

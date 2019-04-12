@@ -29,29 +29,13 @@ ExecutionBlockImpl<ScatterExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                         ScatterNode const* node,
                                                         ExecutorInfos&& infos,
                                                         std::vector<std::string> const& shardIds)
-    : BlockWithClients(engine, node, shardIds),
+    : ClusterBlocks(engine, node, shardIds),
       _infos(std::move(infos)),
       _query(*engine->getQuery()) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.emplace(std::make_pair(shardIds[i], i));
   }
-}
-
-void ExecutionBlockImpl<ScatterExecutor>::traceGetSomeBegin(size_t atMost) {
-  ExecutionBlock::traceGetSomeBegin(atMost);
-}
-
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<ScatterExecutor>::traceGetSomeEnd(
-    ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
-  ExecutionBlock::traceGetSomeEnd(result.get(), state);
-  return {state, std::move(result)};
-}
-
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::traceSkipSomeEnd(
-    ExecutionState state, size_t skipped) {
-  ExecutionBlock::traceSkipSomeEnd(skipped, state);
-  return {state, skipped};
 }
 
 /// @brief initializeCursor
@@ -64,13 +48,13 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<ScatterExecutor>::initializ
     _posForClient.emplace_back(0, 0);
   }
 
-  return BlockWithClients::initializeCursor(input);
+  return ExecutionBlock::initializeCursor(input);
 }
 
 /// @brief getSomeForShard
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<ScatterExecutor>::getSomeForShard(
     size_t atMost, std::string const& shardId) {
-  ExecutionBlock::traceGetSomeBegin(atMost);
+  traceGetSomeBegin(atMost);
   auto result = getSomeForShardWithoutTrace(atMost, shardId);
   return traceGetSomeEnd(result.first, std::move(result.second));
 }
@@ -92,10 +76,11 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Scat
 /// @brief skipSomeForShard
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::skipSomeForShard(
     size_t atMost, std::string const& shardId) {
-  ExecutionBlock::traceSkipSomeBegin(atMost);
+  traceSkipSomeBegin(atMost);
   auto result = skipSomeForShardWithoutTrace(atMost, shardId);
   return traceSkipSomeEnd(result.first, result.second);
 }
+
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::skipSomeForShardWithoutTrace(
     size_t atMost, std::string const& shardId) {
   // NOTE: We do not need to retain these, the getOrSkipSome is required to!
@@ -112,29 +97,6 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::skipSomeF
   return {out.first, skipped};
 }
 
-std::pair<ExecutionState, bool> ExecutionBlockImpl<ScatterExecutor>::getBlock(size_t atMost) {
-  ExecutionBlock::throwIfKilled();  // check if we were aborted
-
-  auto res = _dependencies[0]->getSome(atMost);
-  if (res.first == ExecutionState::WAITING) {
-    return {res.first, false};
-  }
-
-  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  _upstreamState = res.first;
-
-  if (res.second != nullptr) {
-    _buffer.emplace_back(res.second.get());
-    res.second.release();
-    return {res.first, true};
-  }
-
-  return {res.first, false};
-}
-
 /// @brief getOrSkipSomeForShard
 std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<ScatterExecutor>::getOrSkipSomeForShard(
     size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
@@ -142,7 +104,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<ScatterExecutor>:
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
-  size_t const clientId = getClientId(shardId);
+ size_t const clientId = getClientId(shardId);
 
   if (!hasMoreForClientId(clientId)) {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
