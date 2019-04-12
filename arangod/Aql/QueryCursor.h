@@ -26,6 +26,7 @@
 #define ARANGOD_AQL_QUERY_CURSOR_H 1
 
 #include "Aql/QueryResult.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/Common.h"
 #include "Transaction/Methods.h"
 #include "Utils/Cursor.h"
@@ -37,6 +38,7 @@ namespace aql {
 class AqlItemBlock;
 enum class ExecutionState;
 class Query;
+class SharedAqlItemBlockPtr;
 
 /// Cursor managing an entire query result in-memory
 /// Should be used in conjunction with the RestCursorHandler
@@ -123,7 +125,7 @@ class QueryStreamCursor final : public arangodb::Cursor {
   /// current query
   std::unique_ptr<aql::Query> _query;
   /// buffered results
-  std::deque<std::unique_ptr<AqlItemBlock>> _queryResults;
+  std::deque<SharedAqlItemBlockPtr> _queryResults;
   /// index of the next to-be-returned row in _queryResults.front()
   size_t _queryResultPos;
   /// used when cursor is owned by V8 transaction

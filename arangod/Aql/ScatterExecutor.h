@@ -51,8 +51,8 @@ class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClients {
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   /// @brief getSomeForShard
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShard(
-      size_t atMost, std::string const& shardId) override;
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(size_t atMost,
+                                                                   std::string const& shardId) override;
 
   /// @brief skipSomeForShard
   std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost,
@@ -60,7 +60,7 @@ class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClients {
 
  private:
   /// @brief getSomeForShard
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShardWithoutTrace(
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShardWithoutTrace(
       size_t atMost, std::string const& shardId);
 
   /// @brief skipSomeForShard
@@ -68,7 +68,7 @@ class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClients {
                                                                  std::string const& shardId);
 
   std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
-      size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
+      size_t atMost, bool skipping, SharedAqlItemBlockPtr& result,
       size_t& skipped, std::string const& shardId);
 
   bool hasMoreForClientId(size_t clientId) const;

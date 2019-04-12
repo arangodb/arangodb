@@ -53,7 +53,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   ~ExecutionBlockImpl() override = default;
 
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override;
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
 
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
@@ -73,7 +73,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 #endif
 
  private:
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutTrace(size_t atMost);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
 
   std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
 

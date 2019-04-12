@@ -43,7 +43,6 @@ namespace aql {
 template <bool>
 class SingleRowFetcher;
 
-class AqlItemBlockShell;
 class AqlItemMatrix;
 class ConstrainedLessThan;
 class ExecutorInfos;
@@ -96,7 +95,7 @@ class ConstrainedSortExecutor {
   size_t _returnNext;
   std::vector<uint32_t> _rows;
   size_t _rowsPushed;
-  std::shared_ptr<arangodb::aql::AqlItemBlockShell> _heapBuffer;
+  SharedAqlItemBlockPtr _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid
   OutputAqlItemRow _heapOutputRow;
 };

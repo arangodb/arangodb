@@ -171,7 +171,7 @@ SET(ARANGOD_SOURCES
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
-  Aql/AqlItemBlockShell.cpp
+  Aql/AqlItemBlockUtils.cpp
   Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
@@ -265,6 +265,7 @@ SET(ARANGOD_SOURCES
   Aql/ReturnExecutor.cpp
   Aql/ScatterExecutor.cpp
   Aql/Scopes.cpp
+  Aql/SharedAqlItemBlockPtr.cpp
   Aql/SharedQueryState.cpp
   Aql/ShortStringStorage.cpp
   Aql/ShortestPathExecutor.cpp

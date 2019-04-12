@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,22 +20,23 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AqlItemBlockShell.h"
-#include "InputAqlItemRow.h"
+#include "SharedAqlItemBlockPtr.h"
 
+#include "Aql/AqlItemBlockManager.h"
+
+using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlItemBlockShell::AqlItemBlockShell(AqlItemBlockManager& manager,
-                                     std::unique_ptr<AqlItemBlock> block)
-    : _block(block.release(), AqlItemBlockDeleter{manager}) {
-  // An AqlItemBlockShell instance is assumed to be responsible for *exactly*
-  // one AqlItemBlock. _block may never be null!
-  TRI_ASSERT(_block != nullptr);
+void SharedAqlItemBlockPtr::decrRefCount() noexcept {
+  if (_aqlItemBlock != nullptr) {
+    _aqlItemBlock->decrRefCount();
+    if (_aqlItemBlock->getRefCount() == 0) {
+      itemBlockManager().returnBlock(_aqlItemBlock);
+      TRI_ASSERT(_aqlItemBlock == nullptr);
+    }
+  }
 }
 
-void AqlItemBlockShell::forRowInBlock(std::function<void(InputAqlItemRow&&)> callback) {
-    TRI_ASSERT(_block);
-    for (std::size_t index = 0; index < block().size(); ++index) {
-      callback(InputAqlItemRow{ shared_from_this(), index});
-    }
+AqlItemBlockManager& SharedAqlItemBlockPtr::itemBlockManager() const noexcept {
+  return _aqlItemBlock->aqlItemBlockManager();
 }

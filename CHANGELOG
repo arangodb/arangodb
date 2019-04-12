@@ -3,6 +3,8 @@ devel
 
 * added req.auth property to Foxx
 
+* added collection.documentId method to derive document id from key
+
 * fixed internal issue #536: ArangoSearch may crash server during term lookup
 
 * fixed internal issue #2946: Create graph autocomplete was not working under

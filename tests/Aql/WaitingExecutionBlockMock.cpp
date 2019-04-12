@@ -38,7 +38,7 @@ using namespace arangodb::tests::aql;
 
 WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
                                                      ExecutionNode const* node,
-                                                     std::deque<std::unique_ptr<AqlItemBlock>>&& data)
+                                                     std::deque<SharedAqlItemBlockPtr>&& data)
     : ExecutionBlock(engine, node),
       _data(std::move(data)),
       _resourceMonitor(),
@@ -62,8 +62,7 @@ std::pair<arangodb::aql::ExecutionState, Result> WaitingExecutionBlockMock::shut
   return std::make_pair(state, res);
 }
 
-std::pair<arangodb::aql::ExecutionState, std::unique_ptr<arangodb::aql::AqlItemBlock>>
-WaitingExecutionBlockMock::getSome(size_t atMost) {
+std::pair<arangodb::aql::ExecutionState, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::getSome(size_t atMost) {
   if (!_hasWaited) {
     _hasWaited = true;
     if (_returnedDone) {
