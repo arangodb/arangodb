@@ -191,7 +191,7 @@ class Builder {
     if (!that.isClosed()) {
       throw Exception(Exception::InternalError, "Cannot move an open Builder");
     }
-    _buffer = std::move(that._buffer);
+    _buffer = that._buffer;
     _bufferPtr = _buffer.get();
     _start = _bufferPtr->data();
     _pos = that._pos;
@@ -210,7 +210,7 @@ class Builder {
       throw Exception(Exception::InternalError, "Cannot move an open Builder");
     }
     if (this != &that) {
-      _buffer = std::move(that._buffer);
+      _buffer = that._buffer;
       _bufferPtr = _buffer.get();
       _start = _bufferPtr->data();
       _pos = that._pos;
