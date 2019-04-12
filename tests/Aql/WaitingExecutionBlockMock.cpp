@@ -93,13 +93,13 @@ std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skip
   traceSkipSomeBegin(atMost);
   if (!_hasWaited) {
     _hasWaited = true;
-    traceSkipSomeEnd(0, ExecutionState::WAITING);
+    traceSkipSomeEnd(ExecutionState::WAITING, 0);
     return {ExecutionState::WAITING, 0};
   }
   _hasWaited = false;
 
   if (_data.empty()) {
-    traceSkipSomeEnd(0, ExecutionState::DONE);
+    traceSkipSomeEnd(ExecutionState::DONE, 0);
     return {ExecutionState::DONE, 0};
   }
 
@@ -107,10 +107,10 @@ std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skip
   _data.pop_front();
 
   if (_data.empty()) {
-    traceSkipSomeEnd(skipped, ExecutionState::DONE);
+    traceSkipSomeEnd(ExecutionState::DONE, skipped);
     return {ExecutionState::DONE, skipped};
   } else {
-    traceSkipSomeEnd(skipped, ExecutionState::HASMORE);
+    traceSkipSomeEnd(ExecutionState::HASMORE, skipped);
     return {ExecutionState::HASMORE, skipped};
   }
 }
