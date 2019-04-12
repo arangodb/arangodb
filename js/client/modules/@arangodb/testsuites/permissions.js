@@ -55,11 +55,13 @@ const testPaths = {
 };
 
 function permissions_server(options) {
+  let count = 0;
   let results = {};
   let filtered = {};
   const tests = tu.scanTestPaths(testPaths.permissions_server);
 
   tests.forEach(function (testFile, i) {
+    count += 1;
     if (tu.filterTestcaseByOptions(testFile, options, filtered)) {
       // pass on JWT secret
       let clonedOpts = _.clone(options);
@@ -70,9 +72,9 @@ function permissions_server(options) {
 
       let paramsFistRun = {};
       let paramsSecondRun;
-
-      let instanceInfo = pu.startInstance(options.protocol, options, paramsFistRun, "permissions_server"); // fist start
-      
+      let rootDir = fs.join(fs.getTempPath(), count.toString());
+      let instanceInfo = pu.startInstance(options.protocol, options, paramsFistRun, "permissions_server", rootDir); // fist start
+      pu.cleanupDBDirectoriesAppend(instanceInfo.rootDir);      
       try {
         let content = fs.read(testFile);
         content = `(function(){ const getOptions = true; ${content} 
@@ -92,6 +94,13 @@ function permissions_server(options) {
       pu.reStartInstance(options, instanceInfo, paramsSecondRun);      // restart with restricted permissions
       results[testFile] = tu.runInLocalArangosh(options, instanceInfo, testFile, {});
       pu.shutdownInstance(instanceInfo, clonedOpts, false);
+      if (!results[testFile].status) {
+        print("Not cleaning up " + instanceInfo.rootDir);
+        results.status = false;
+      }
+      else {
+        pu.cleanupLastDirectory(options);
+      }
     } else {
       if (options.extremeVerbosity) {
         print('Skipped ' + testFile + ' because of ' + filtered.filter);
