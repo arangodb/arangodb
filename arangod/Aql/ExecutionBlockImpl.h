@@ -183,7 +183,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   /// Special implementation for all Executors that need to implement Shutdown
   /// Most do not, we might be able to move their shutdown logic to a more
   /// central place.
-  std::pair<ExecutionState, Result> internalShutdown(int);
   std::pair<ExecutionState, Result> shutdown(int) override;
 
  private:
