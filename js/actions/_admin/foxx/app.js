@@ -128,6 +128,7 @@ if(!require("internal").isFoxxApiDisabled()){
 actions.defineHttp({
   url: '_admin/foxx/setup',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -146,6 +147,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/teardown',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -164,6 +166,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/install',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -185,6 +188,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/uninstall',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -205,6 +209,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/replace',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -226,6 +231,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/upgrade',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -247,6 +253,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/configure',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -269,6 +276,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/configuration',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -286,6 +294,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/set-dependencies',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -308,6 +317,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/dependencies',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -337,6 +347,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/development',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -359,6 +370,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/tests',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -377,6 +389,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/script',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,

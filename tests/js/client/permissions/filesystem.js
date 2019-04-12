@@ -31,7 +31,7 @@
 const fs = require('fs');
 const internal = require('internal');
 
-const rootDir = fs.join(fs.getTempPath(),  'permissions');
+const rootDir = fs.join(fs.getTempPath(), 'permissions');
 const testresults = fs.join(rootDir, 'testresult.json'); // where we want to put our results ;-)
 const topLevelForbidden = fs.join(rootDir, 'forbidden');
 const forbiddenZipFileName = fs.join(topLevelForbidden, 'forbidden.zip');

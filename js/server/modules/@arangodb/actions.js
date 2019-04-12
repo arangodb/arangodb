@@ -1311,8 +1311,13 @@ function defineHttp (options) {
 
   let parameters = {
     prefix: true,
-    allowUseDatabase: false
+    allowUseDatabase: false,
+    isSystem: false
   };
+  
+  if (options.hasOwnProperty('isSystem')) {
+    parameters.isSystem = options.isSystem;
+  }
 
   if (options.hasOwnProperty('prefix')) {
     parameters.prefix = options.prefix;

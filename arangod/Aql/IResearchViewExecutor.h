@@ -23,6 +23,7 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_EXECUTOR_H
 #define ARANGOD_IRESEARCH__IRESEARCH_EXECUTOR_H
 
+#include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"

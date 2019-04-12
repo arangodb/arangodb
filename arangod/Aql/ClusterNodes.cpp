@@ -25,7 +25,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
-#include "Aql/ClusterBlocks.h"
+#include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/DistributeExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"

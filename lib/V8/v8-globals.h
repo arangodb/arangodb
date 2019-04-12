@@ -740,9 +740,6 @@ struct TRI_v8_global_t {
   /// @brief the current security context
   arangodb::JavaScriptSecurityContext _securityContext;
 
-  /// @brief whether or not useDatabase() is allowed
-  bool _allowUseDatabase;
-
  private:
   /// @brief shared pointer mapping for weak pointers, holds shared pointers so
   ///        they don't get deallocated while in use by V8

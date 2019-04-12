@@ -51,19 +51,18 @@ class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
 
-class BlockWithClients : public ExecutionBlock {
+class BlocksWithClients : public ExecutionBlock {
  public:
-  BlockWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
+  BlocksWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
                    std::vector<std::string> const& shardIds);
 
-  ~BlockWithClients() override = default;
+  ~BlocksWithClients() override = default;
 
  public:
-  /// @brief initializeCursor
-  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
-
   /// @brief shutdown
   std::pair<ExecutionState, Result> shutdown(int) override;
+
+  std::pair<ExecutionState, bool> getBlock(size_t atMost);
 
   /// @brief getSome: shouldn't be used, use skipSomeForShard
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final {
@@ -90,7 +89,6 @@ class BlockWithClients : public ExecutionBlock {
   /// corresponding to <shardId>
   size_t getClientId(std::string const& shardId) const;
 
- protected:
   /// @brief _shardIdMap: map from shardIds to clientNrs
   std::unordered_map<std::string, size_t> _shardIdMap;
 

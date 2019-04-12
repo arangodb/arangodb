@@ -24,8 +24,10 @@
 #define ARANGODB_TESTS_WAITING_EXECUTION_BLOCK_MOCK_H 1
 
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionState.h"
 #include "Aql/ResourceUsage.h"
 
+#include <arangod/Aql/ExecutionState.h>
 #include <velocypack/Builder.h>
 
 namespace arangodb {
@@ -54,6 +56,8 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   WaitingExecutionBlockMock(arangodb::aql::ExecutionEngine* engine,
                             arangodb::aql::ExecutionNode const* node,
                             std::deque<std::unique_ptr<arangodb::aql::AqlItemBlock>>&& data);
+
+  virtual std::pair<arangodb::aql::ExecutionState, Result> shutdown(int errorCode) override;
 
   /**
    * @brief Initialize the cursor. Return values will be alternating.

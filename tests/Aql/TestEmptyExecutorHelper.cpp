@@ -55,6 +55,7 @@ std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRow(Outpu
   // must be included due template scheme.
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
   std::tie(state, input) = _fetcher.fetchRow();
+  return {state, stats};
 }
 
 TestEmptyExecutorHelperInfos::TestEmptyExecutorHelperInfos(

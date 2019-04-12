@@ -184,7 +184,7 @@ SET(ARANGOD_SOURCES
   Aql/BlockCollector.cpp
   Aql/BlockFetcher.cpp
   Aql/CalculationExecutor.cpp
-  Aql/ClusterBlocks.cpp
+  Aql/BlocksWithClients.cpp
   Aql/ClusterNodes.cpp
   Aql/CollectNode.cpp
   Aql/CollectOptions.cpp
