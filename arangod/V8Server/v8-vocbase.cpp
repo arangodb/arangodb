@@ -799,13 +799,15 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // we have options! yikes!
     if (!args[2]->IsObject()) {
       events::QueryDocument(vocbase.name(), queryString,
-                            bindVars->slice().toJson(), TRI_ERROR_BAD_PARAMETER);
+                            (bindVars ? bindVars->slice().toJson() : ""),
+                            TRI_ERROR_BAD_PARAMETER);
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
 
     int res = TRI_V8ToVPack(isolate, *options, args[2], false);
     if (res != TRI_ERROR_NO_ERROR) {
-      events::QueryDocument(vocbase.name(), queryString, bindVars->slice().toJson(), res);
+      events::QueryDocument(vocbase.name(), queryString,
+                            (bindVars ? bindVars->slice().toJson() : ""), res);
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
@@ -834,11 +836,13 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_GET_GLOBALS();
       v8g->_canceled = true;
       events::QueryDocument(vocbase.name(), queryString,
-                            bindVars->slice().toJson(), TRI_ERROR_REQUEST_CANCELED);
+                            (bindVars ? bindVars->slice().toJson() : ""),
+                            TRI_ERROR_REQUEST_CANCELED);
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
 
-    events::QueryDocument(vocbase.name(), queryString, bindVars->slice().toJson(),
+    events::QueryDocument(vocbase.name(), queryString,
+                          (bindVars ? bindVars->slice().toJson() : ""),
                           queryResult.result.errorNumber());
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(), queryResult.result.errorMessage());
   }
@@ -874,8 +878,8 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   result->Set(TRI_V8_ASCII_STRING(isolate, "cached"),
               v8::Boolean::New(isolate, queryResult.cached));
 
-  events::QueryDocument(vocbase.name(), queryString, bindVars->slice().toJson(),
-                        TRI_ERROR_NO_ERROR);
+  events::QueryDocument(vocbase.name(), queryString,
+                        (bindVars ? bindVars->slice().toJson() : ""), TRI_ERROR_NO_ERROR);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

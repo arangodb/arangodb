@@ -139,6 +139,8 @@ bool RestCursorHandler::cancel() {
 }
 
 void RestCursorHandler::handleError(basics::Exception const& ex) {
+  TRI_DEFER(RestVocbaseBaseHandler::handleError(ex));
+
   if (!_isValidForFinalize || _auditLogged) {
     return;
   }
