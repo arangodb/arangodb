@@ -838,8 +838,8 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
 
-    events::QueryDocument(vocbase.name(), queryString,
-                          bindVars->slice().toJson(), queryResult.result.errorMessage());
+    events::QueryDocument(vocbase.name(), queryString, bindVars->slice().toJson(),
+                          queryResult.result.errorNumber());
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(), queryResult.result.errorMessage());
   }
 

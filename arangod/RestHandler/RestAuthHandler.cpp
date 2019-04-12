@@ -122,5 +122,5 @@ void RestAuthHandler::shutdownExecute(bool isFinalized) noexcept {
     }
   } catch (...) {
   }
-  RestVocbaseBaseHandler::shutdownExecute(isFinalized)
+  RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
