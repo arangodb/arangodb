@@ -1433,7 +1433,7 @@ static void JS_GetTempPath(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToAccessPath(isolate, path, FSAccessType::WRITE)) {
+  if (!v8security->isAllowedToAccessPath(isolate, path, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to modify files in this path");
   }

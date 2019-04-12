@@ -168,7 +168,7 @@ bool checkBlackAndWhiteList(std::string const& value, bool hasWhiteList,
   if (!hasBlacklist) {
     // must be white listed
     bool rv = std::regex_search(value, whiteList);
-    if(log) { LOG_DEVEL << "whitelist only" << std::boolalpha << rv; };
+    if(log) { LOG_DEVEL << "white-list only" << std::boolalpha << rv; };
     return rv;
   }
 
@@ -179,14 +179,25 @@ bool checkBlackAndWhiteList(std::string const& value, bool hasWhiteList,
     return !std::regex_search(value, blackList);
   }
 
-  if (std::regex_search(value, whiteList)) {
-    return true;  // white-list wins - simple implementation
-    if(log) { LOG_DEVEL << "white-list" << std::boolalpha << true; };
-  } else {
-    bool rv = !std::regex_search(value, blackList);
-    if(log) { LOG_DEVEL << "black-list" << std::boolalpha << rv; };
-    return rv;
+  std::smatch white_result{};
+  std::smatch black_result{};
+  bool white = std::regex_search(value, white_result, whiteList);
+  bool black = std::regex_search(value, black_result, blackList);
+
+  if(white && !black) {
+    if(log) { LOG_DEVEL << "only white machtched"; };
+    return true;
+  } else if(!white && black) {
+    if(log) { LOG_DEVEL << "only black machtched"; };
+    return false;
+  } else if(!white && !black) {
+    if(log) { LOG_DEVEL << "none matched - denied"; };
+    return false;
   }
+
+  bool rv = white_result[0].length() > black_result[0].length();
+  if (log) { LOG_DEVEL << "white match is longer" << std::boolalpha << rv; }
+  return rv;
 }
 }  // namespace
 
@@ -402,6 +413,12 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string 
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* pathPtr,
                                               FSAccessType access, bool log) const {
+
+  if(_filesWhiteList.empty(), _filesBlackList.empty()) {
+    return true;
+  }
+
+  log = true;
   // check security context first
   TRI_GET_GLOBALS();
 
@@ -416,7 +433,6 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
     return true;  // context may read / write without restrictions
   }
 
-  //
   std::string path = TRI_ResolveSymbolicLink(pathPtr);
 
   // make absolute
@@ -435,16 +451,17 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
     path += TRI_DIR_SEPARATOR_STR;
   };
 
+  if (access == FSAccessType::READ && std::regex_search(path, _readWhiteListRegex)) {
+    // even in restricted contexts we may read module paths
+    if(log) { LOG_DEVEL << "internal match: " << true; };
+    return true;
+  }
+
   if (log) {
     LOG_DEVEL << "@@   access: " << path;
     LOG_DEVEL << "@@ internal: " << _readWhiteList;
     LOG_DEVEL << "@@    white: " << _filesWhiteList;
     LOG_DEVEL << "@@    black: " << _filesBlackList;
-  }
-  if (access == FSAccessType::READ && std::regex_search(path, _readWhiteListRegex)) {
-    // even in restricted contexts we may read module paths
-    if(log) { LOG_DEVEL << "internal match: " << true; };
-    return true;
   }
 
   return checkBlackAndWhiteList(path, !_filesWhiteList.empty(), _filesWhiteListRegex,
