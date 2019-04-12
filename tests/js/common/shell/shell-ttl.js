@@ -583,7 +583,12 @@ function TtlSuite () {
 
       // both number of runs and deletions must have changed
       assertNotEqual(stats.runs, oldStats.runs);
-      assertEqual(stats.documentsRemoved, oldStats.documentsRemoved + 1000);
+      assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
+
+      let tries = 0;
+      while (++tries < 20 && db._collection(cn).count() !== 1000) {
+        internal.wait(1, false);
+      }
       
       assertEqual(1000, db._collection(cn).count());
     },
@@ -625,7 +630,12 @@ function TtlSuite () {
 
       // both number of runs and deletions must have changed
       assertNotEqual(stats.runs, oldStats.runs);
-      assertEqual(stats.documentsRemoved, oldStats.documentsRemoved + 1000);
+      assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
+      
+      let tries = 0;
+      while (++tries < 20 && db._collection(cn).count() !== 1000) {
+        internal.wait(1, false);
+      }
       
       assertEqual(1000, db._collection(cn).count());
     },
