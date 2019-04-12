@@ -2412,6 +2412,70 @@ function DatabaseDocumentSuiteReturnStuff () {
       }
     }
 */
+
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: document keys
+////////////////////////////////////////////////////////////////////////////////
+
+function CollectionDocumentSuiteIdFromKey () {
+  'use strict';
+  var cn = "UnitTestsCollectionBasics";
+  var collection = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn);
+      collection = db._create(cn, { waitForSync : false });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      if (collection) {
+        collection.unload();
+        collection.drop();
+        collection = null;
+      }
+      wait(0.0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test document key qualification
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentIdThrowsIfInvalid () {
+      let error;
+      for (const key of ["/", "", undefined, "{invalid}"]) {
+        try {
+          collection.documentId(key);
+        } catch (e) {
+          error = e;
+        }
+        assertTrue(error);
+        assertEqual(error.errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test document key qualification
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentId () {
+      for (const key of ["yolo", "__special__", "my-key", "-_!$%'()*+,.:;=@"]) {
+        assertEqual(collection.documentId(key), `${collection.name()}/${key}`);
+      }
+    }
+
   };
 }
 
@@ -2427,5 +2491,6 @@ jsunity.run(DatabaseDocumentSuite);
 
 jsunity.run(DatabaseDocumentSuiteReturnStuff);
 
-return jsunity.done();
+jsunity.run(CollectionDocumentSuiteIdFromKey);
 
+return jsunity.done();
