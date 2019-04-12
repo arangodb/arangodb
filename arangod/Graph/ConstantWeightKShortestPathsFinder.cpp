@@ -274,6 +274,7 @@ bool ConstantWeightKShortestPathsFinder::computeNextShortestPath(Path& result) {
 
   if (!_candidatePaths.empty()) {
     // TODO: hack, _candidatePaths should be a priority queue
+    //       indeed one that removes duplicates automatically
     // Sorted in reverse to have pop_back
     if (_options.useWeight()) {
       std::sort(_candidatePaths.begin(), _candidatePaths.end(), [](Path const& p1, Path const& p2) {
@@ -284,6 +285,10 @@ bool ConstantWeightKShortestPathsFinder::computeNextShortestPath(Path& result) {
         return p1._vertices.size() > p2._vertices.size();
       });
     }
+
+    // FIXME: this is of course bad.
+    _candidatePaths.erase(std::unique(_candidatePaths.begin(), _candidatePaths.end()),
+                          _candidatePaths.end());
 
     auto const& p = _candidatePaths.back();
     result.clear();

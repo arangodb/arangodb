@@ -90,8 +90,26 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
       }
       _weight = _weights.back();
     };
+    // TODO: implement == for EdgeDocumentToken and VertexRef
+    // so these things become less cluttery
+    bool operator==(Path const& rhs) const {
+      if (_edges.size() != rhs._edges.size() ||
+          _vertices.size() != rhs._vertices.size()) {
+        return false;
+      }
+      for (size_t i = 0; i < _vertices.size(); ++i ) {
+        if(!_vertices.at(i).equals(rhs._vertices.at(i))) {
+          return false;
+        }
+      }
+      for (size_t i = 0; i < _edges.size(); ++i ) {
+        if(!_edges.at(i).equals(rhs._edges.at(i))) {
+          return false;
+        }
+      }
+      return true;
+    };
   };
-
   struct Step {
     Edge _edge;
     VertexRef _vertex;
