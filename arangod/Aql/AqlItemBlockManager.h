@@ -62,6 +62,14 @@ class AqlItemBlockManager {
 
   TEST_VIRTUAL ResourceMonitor* resourceMonitor() const noexcept { return _resourceMonitor; }
 
+#ifdef ARANGODB_USE_CATCH_TESTS
+  // Only used for the mocks in the catch tests. Other code should always use
+  // SharedAqlItemBlockPtr which in turn call returnBlock()!
+  static void deleteBlock(AqlItemBlock* block) {
+    delete block;
+  }
+#endif
+
  private:
   ResourceMonitor* _resourceMonitor;
 

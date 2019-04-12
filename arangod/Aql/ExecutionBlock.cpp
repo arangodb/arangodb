@@ -78,11 +78,7 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
   }
 }
 
-ExecutionBlock::~ExecutionBlock() {
-  for (auto& it : _buffer) {
-    delete it;
-  }
-}
+ExecutionBlock::~ExecutionBlock() = default;
 
 /// @brief returns the register id for a variable id
 /// will return ExecutionNode::MaxRegisterId for an unknown variable
@@ -133,9 +129,6 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(Inp
     }
   }
 
-  for (auto& it : _buffer) {
-    returnBlock(it);
-  }
   _buffer.clear();
 
   _done = false;
@@ -173,12 +166,7 @@ std::pair<ExecutionState, Result> ExecutionBlock::shutdown(int errorCode) {
     }
   }
 
-  if (!_buffer.empty()) {
-    for (auto& it : _buffer) {
-      delete it;
-    }
-    _buffer.clear();
-  }
+  _buffer.clear();
 
   return {ExecutionState::DONE, _shutdownResult};
 }
@@ -347,7 +335,7 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
   _upstreamState = res.first;
 
   if (res.second != nullptr) {
-    _buffer.emplace_back(res.second.get());
+    _buffer.emplace_back(std::move(res.second));
     return {res.first, true};
   }
 
@@ -391,26 +379,6 @@ ExecutionBlock::BufferState ExecutionBlock::getBlockIfNeeded(size_t atMost) {
   }
 
   return BufferState::NO_MORE_BLOCKS;
-}
-
-// TODO should better be split in two methods advanceInputCursor and
-// advanceOutputCursor.
-AqlItemBlock* ExecutionBlock::advanceCursor(size_t numInputRowsConsumed,
-                                            size_t numOutputRowsCreated) {
-  AqlItemBlock* cur = _buffer.front();
-  TRI_ASSERT(cur != nullptr);
-
-  _skipped += numOutputRowsCreated;
-  _pos += numInputRowsConsumed;
-
-  if (_pos >= cur->size()) {
-    _buffer.pop_front();
-    _pos = 0;
-
-    return cur;
-  }
-
-  return nullptr;
 }
 
 ExecutionState ExecutionBlock::getHasMoreState() {

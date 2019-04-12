@@ -69,13 +69,17 @@ class AqlItemBlock {
   /// @brief create the block
   AqlItemBlock(AqlItemBlockManager&, size_t nrItems, RegisterId nrRegs);
 
+  void initFromSlice(arangodb::velocypack::Slice);
+
+ protected:
   /// @brief destroy the block
+  /// Should only ever be deleted by AqlItemManager::returnBlock, so the
+  /// destructor is protected.
   ~AqlItemBlock() {
+    TRI_ASSERT(_refCount == 0);
     destroy();
     decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * _nrRegs);
   }
-
-  void initFromSlice(arangodb::velocypack::Slice);
 
  private:
   void destroy() noexcept;
@@ -323,23 +327,23 @@ class AqlItemBlock {
   void clearRegisters(std::unordered_set<RegisterId> const& toClear);
 
   /// @brief slice/clone, this does a deep copy of all entries
-  AqlItemBlock* slice(size_t from, size_t to) const;
+  SharedAqlItemBlockPtr slice(size_t from, size_t to) const;
 
   /// @brief create an AqlItemBlock with a single row, with copies of the
   /// specified registers from the current block
-  AqlItemBlock* slice(size_t row, std::unordered_set<RegisterId> const& registers,
+  SharedAqlItemBlockPtr slice(size_t row, std::unordered_set<RegisterId> const& registers,
                       size_t newNrRegs) const;
 
   /// @brief slice/clone chosen rows for a subset, this does a deep copy
   /// of all entries
-  AqlItemBlock* slice(std::vector<size_t> const& chosen, size_t from, size_t to) const;
+  SharedAqlItemBlockPtr slice(std::vector<size_t> const& chosen, size_t from, size_t to) const;
 
   /// @brief steal for a subset, this does not copy the entries, rather,
   /// it remembers which it has taken. This is stored in the
   /// this AqlItemBlock. It is highly recommended to delete it right
   /// after this operation, because it is unclear, when the values
   /// to which our AqlValues point will vanish.
-  AqlItemBlock* steal(std::vector<size_t> const& chosen, size_t from, size_t to);
+  SharedAqlItemBlockPtr steal(std::vector<size_t> const& chosen, size_t from, size_t to);
 
   /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor

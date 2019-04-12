@@ -193,7 +193,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
 
     query.prepare(arangodb::QueryRegistryFeature::registry());
 
-    arangodb::aql::AqlItemBlock data(itemBlockManager, 100, 4);
+    arangodb::aql::SharedAqlItemBlockPtr data = itemBlockManager.requestBlock(100, 4);
 
     // build simple chain
     // Singleton <- MockBlock
@@ -207,7 +207,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     rootBlock.initializeCursor(input);
 
     ExecutionNodeMock node;
-    ExecutionBlockMock block(data, *query.engine(), node);
+    ExecutionBlockMock block(*data, *query.engine(), node);
     block.addDependency(&rootBlock);
 
     // retrieve first 10 items
@@ -246,7 +246,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
 
     query.prepare(arangodb::QueryRegistryFeature::registry());
 
-    arangodb::aql::AqlItemBlock data(itemBlockManager, 100, 4);
+    arangodb::aql::SharedAqlItemBlockPtr data = itemBlockManager.requestBlock(100, 4);
 
     // build simple chain
     // Singleton <- MockBlock
@@ -259,7 +259,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     rootBlock.initializeCursor(input);
 
     ExecutionNodeMock node;
-    ExecutionBlockMock block(data, *query.engine(), node);
+    ExecutionBlockMock block(*data, *query.engine(), node);
     block.addDependency(&rootBlock);
 
     // retrieve first 10 items
@@ -295,7 +295,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
 
     query.prepare(arangodb::QueryRegistryFeature::registry());
 
-    arangodb::aql::AqlItemBlock data(itemBlockManager, 100, 4);
+    arangodb::aql::SharedAqlItemBlockPtr data = itemBlockManager.requestBlock(100, 4);
 
     // build simple chain
     // Singleton <- MockBlock
@@ -306,7 +306,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
         query.engine(), &rootNode, std::move(infos));
 
     ExecutionNodeMock node;
-    ExecutionBlockMock block(data, *query.engine(), node);
+    ExecutionBlockMock block(*data, *query.engine(), node);
     block.addDependency(&rootBlock);
     arangodb::aql::InputAqlItemRow input{arangodb::aql::CreateInvalidInputRowHint{}};
     rootBlock.initializeCursor(input);
@@ -363,16 +363,16 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor<arangodb::aql::ConstFetcher>> rootBlock(
         query.engine(), &rootNode, std::move(infos));
 
-    arangodb::aql::AqlItemBlock data0(itemBlockManager, 2, 2);
+    arangodb::aql::SharedAqlItemBlockPtr data0 = itemBlockManager.requestBlock(2, 2);
     ExecutionNodeMock node0;
-    ExecutionBlockMock block0(data0, *query.engine(), node0);
+    ExecutionBlockMock block0(*data0, *query.engine(), node0);
     block0.addDependency(&rootBlock);
     arangodb::aql::InputAqlItemRow input{arangodb::aql::CreateInvalidInputRowHint{}};
     rootBlock.initializeCursor(input);
 
-    arangodb::aql::AqlItemBlock data1(itemBlockManager, 100, 4);
+    arangodb::aql::SharedAqlItemBlockPtr data1 = itemBlockManager.requestBlock(100, 4);
     ExecutionNodeMock node1;
-    ExecutionBlockMock block1(data1, *query.engine(), node1);
+    ExecutionBlockMock block1(*data1, *query.engine(), node1);
     block1.addDependency(&block0);
 
     // retrieve first 10 items
@@ -430,14 +430,14 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     arangodb::aql::InputAqlItemRow input{arangodb::aql::CreateInvalidInputRowHint{}};
     rootBlock.initializeCursor(input);
 
-    arangodb::aql::AqlItemBlock data0(itemBlockManager, 2, 2);
+    arangodb::aql::SharedAqlItemBlockPtr data0 = itemBlockManager.requestBlock(2, 2);
     ExecutionNodeMock node0;
-    ExecutionBlockMock block0(data0, *query.engine(), node0);
+    ExecutionBlockMock block0(*data0, *query.engine(), node0);
     block0.addDependency(&rootBlock);
 
-    arangodb::aql::AqlItemBlock data1(itemBlockManager, 100, 4);
+    arangodb::aql::SharedAqlItemBlockPtr data1 = itemBlockManager.requestBlock(100, 4);
     ExecutionNodeMock node1;
-    ExecutionBlockMock block1(data1, *query.engine(), node1);
+    ExecutionBlockMock block1(*data1, *query.engine(), node1);
     block1.addDependency(&block0);
 
     // retrieve first 10 items
@@ -493,14 +493,14 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     arangodb::aql::InputAqlItemRow input{arangodb::aql::CreateInvalidInputRowHint{}};
     rootBlock.initializeCursor(input);
 
-    arangodb::aql::AqlItemBlock data0(itemBlockManager, 2, 2);
+    arangodb::aql::SharedAqlItemBlockPtr data0 = itemBlockManager.requestBlock(2, 2);
     ExecutionNodeMock node0;
-    ExecutionBlockMock block0(data0, *query.engine(), node0);
+    ExecutionBlockMock block0(*data0, *query.engine(), node0);
     block0.addDependency(&rootBlock);
 
-    arangodb::aql::AqlItemBlock data1(itemBlockManager, 100, 4);
+    arangodb::aql::SharedAqlItemBlockPtr data1 = itemBlockManager.requestBlock(100, 4);
     ExecutionNodeMock node1;
-    ExecutionBlockMock block1(data1, *query.engine(), node1);
+    ExecutionBlockMock block1(*data1, *query.engine(), node1);
     block1.addDependency(&block0);
 
     {

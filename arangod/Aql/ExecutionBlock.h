@@ -178,12 +178,6 @@ class ExecutionBlock {
   enum class BufferState { NO_MORE_BLOCKS, HAS_BLOCKS, HAS_NEW_BLOCK, WAITING };
   BufferState getBlockIfNeeded(size_t atMost);
 
-  /// @brief Updates _skipped and _pos; removes the first item from the
-  /// buffer if necessary. If a block was removed it is returned, and nullptr
-  /// otherwise. The caller then owns the block (and therefore is responsible
-  /// for calling returnBlock()).
-  AqlItemBlock* advanceCursor(size_t numInputRowsConsumed, size_t numOutputRowsCreated);
-
  protected:
   /// @brief the execution engine
   ExecutionEngine* _engine;
@@ -215,7 +209,7 @@ class ExecutionBlock {
   /// true if and only if we have no more data ourselves (i.e.
   /// _buffer.size()==0)
   /// and we have unsuccessfully tried to get another block from our dependency.
-  std::deque<AqlItemBlock*> _buffer;
+  std::deque<SharedAqlItemBlockPtr> _buffer;
 
   /// @brief current working position in the first entry of _buffer
   size_t _pos;

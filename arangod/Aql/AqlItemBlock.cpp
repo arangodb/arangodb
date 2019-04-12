@@ -381,13 +381,13 @@ void AqlItemBlock::clearRegisters(std::unordered_set<RegisterId> const& toClear)
 }
 
 /// @brief slice/clone, this does a deep copy of all entries
-AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
+SharedAqlItemBlockPtr AqlItemBlock::slice(size_t from, size_t to) const {
   TRI_ASSERT(from < to && to <= _nrItems);
 
   std::unordered_set<AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
-  auto res = std::make_unique<AqlItemBlock>(_manager, to - from, _nrRegs);
+  SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _nrRegs)};
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
@@ -417,17 +417,18 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
     }
   }
 
-  return res.release();
+  return res;
 }
 
 /// @brief slice/clone, this does a deep copy of all entries
-AqlItemBlock* AqlItemBlock::slice(size_t row, std::unordered_set<RegisterId> const& registers,
-                                  size_t newNrRegs) const {
+SharedAqlItemBlockPtr AqlItemBlock::slice(size_t row,
+                                          std::unordered_set<RegisterId> const& registers,
+                                          size_t newNrRegs) const {
   TRI_ASSERT(_nrRegs <= newNrRegs);
 
   std::unordered_set<AqlValue> cache;
 
-  auto res = std::make_unique<AqlItemBlock>(_manager, 1, newNrRegs);
+  SharedAqlItemBlockPtr res{_manager.requestBlock(1, newNrRegs)};
 
   for (RegisterId col = 0; col < _nrRegs; col++) {
     if (registers.find(col) == registers.end()) {
@@ -458,19 +459,19 @@ AqlItemBlock* AqlItemBlock::slice(size_t row, std::unordered_set<RegisterId> con
     }
   }
 
-  return res.release();
+  return res;
 }
 
 /// @brief slice/clone chosen rows for a subset, this does a deep copy
 /// of all entries
-AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen,
-                                  size_t from, size_t to) const {
+SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
+                                          size_t from, size_t to) const {
   TRI_ASSERT(from < to && to <= chosen.size());
 
   std::unordered_set<AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
-  auto res = std::make_unique<AqlItemBlock>(_manager, to - from, _nrRegs);
+  SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _nrRegs)};
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
@@ -498,7 +499,7 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen,
     }
   }
 
-  return res.release();
+  return res;
 }
 
 /// @brief steal for a subset, this does not copy the entries, rather,
@@ -508,10 +509,11 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen,
 /// operation, because it is unclear, when the values to which our
 /// AqlValues point will vanish! In particular, do not use setValue
 /// any more.
-AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from, size_t to) {
+SharedAqlItemBlockPtr AqlItemBlock::steal(std::vector<size_t> const& chosen,
+                                          size_t from, size_t to) {
   TRI_ASSERT(from < to && to <= chosen.size());
 
-  auto res = std::make_unique<AqlItemBlock>(_manager, to - from, _nrRegs);
+  SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _nrRegs)};
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
@@ -529,7 +531,7 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from
     }
   }
 
-  return res.release();
+  return res;
 }
 
 /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can

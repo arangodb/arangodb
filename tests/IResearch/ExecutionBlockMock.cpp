@@ -96,7 +96,7 @@ ExecutionBlockMock::getSome(size_t atMost) {
   }
 
   bool needMore;
-  arangodb::aql::AqlItemBlock* cur = nullptr;
+  arangodb::aql::SharedAqlItemBlockPtr cur = nullptr;
   arangodb::aql::SharedAqlItemBlockPtr res;
 
   do {
@@ -136,14 +136,14 @@ ExecutionBlockMock::getSome(size_t atMost) {
     }
   } while (needMore);
 
-  TRI_ASSERT(cur);
+  TRI_ASSERT(cur != nullptr);
 
   auto const from = std::min(_pos_in_data, _data->size());
   auto const to = std::min(_pos_in_data + atMost, _data->size());
-  res.reset(_data->slice(from, to));
+  res = _data->slice(from, to);
 
   // only copy 1st row of registers inherited from previous frame(s)
-  inheritRegisters(cur, res.get(), _pos);
+  inheritRegisters(cur.get(), res.get(), _pos);
 
   throwIfKilled();  // check if we were aborted
 
@@ -192,7 +192,7 @@ std::pair<arangodb::aql::ExecutionState, size_t> ExecutionBlockMock::skipSome(si
     }
 
     TRI_ASSERT(!_buffer.empty());
-    arangodb::aql::AqlItemBlock* cur = _buffer.front();
+    arangodb::aql::SharedAqlItemBlockPtr cur = _buffer.front();
 
     TRI_ASSERT(_data->size() >= _pos_in_data);
     _inflight += std::min(_data->size() - _pos_in_data, atMost - _inflight);
@@ -202,7 +202,6 @@ std::pair<arangodb::aql::ExecutionState, size_t> ExecutionBlockMock::skipSome(si
       // not skipped enough re-initialize fetching of documents
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
-        returnBlock(cur);
         _pos = 0;
       } else {
         // we have exhausted this cursor

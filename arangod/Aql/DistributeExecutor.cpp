@@ -175,7 +175,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<DistributeExecuto
       }
     }
 
-    SharedAqlItemBlockPtr more(_buffer[n]->slice(chosen, 0, chosen.size()));
+    SharedAqlItemBlockPtr more{_buffer[n]->slice(chosen, 0, chosen.size())};
     collector.add(std::move(more));
 
     chosen.clear();
@@ -245,7 +245,7 @@ std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlock
       }
     }
 
-    AqlItemBlock* cur = _buffer[_index];
+    SharedAqlItemBlockPtr cur = _buffer[_index];
 
     while (_pos < cur->size()) {
       // this may modify the input item buffer in place
@@ -268,7 +268,7 @@ std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlock
 /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
 /// attributes <shardKeys> of the Aql value <val> to determine to which shard
 /// the row should be sent and return its clientId
-size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(AqlItemBlock* cur) {
+size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(SharedAqlItemBlockPtr cur) {
   // inspect cur in row _pos and check to which shard it should be sent . .
   AqlValue val = cur->getValueReference(_pos, _regId);
 

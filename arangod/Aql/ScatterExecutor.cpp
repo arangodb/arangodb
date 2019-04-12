@@ -144,7 +144,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<ScatterExecutor>:
   skipped = (std::min)(available, atMost);  // nr rows in outgoing block
 
   if (!skipping) {
-    result.reset(blockForClient->slice(pos.second, pos.second + skipped));
+    result = blockForClient->slice(pos.second, pos.second + skipped);
   }
 
   // increment the position . . .
@@ -164,7 +164,6 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<ScatterExecutor>:
       }
     }
     if (popit) {
-      delete _buffer.front();
       _buffer.pop_front();
       // update the values in first coord of _posForClient
       for (size_t i = 0; i < _nrClients; i++) {

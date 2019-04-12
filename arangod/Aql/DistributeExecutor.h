@@ -95,7 +95,7 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlockWithClients {
   /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
   /// attributes <shardKeys> of the register <id> to determine to which shard
   /// the row should be sent.
-  size_t sendToClient(AqlItemBlock*);
+  size_t sendToClient(SharedAqlItemBlockPtr);
 
   /// @brief create a new document key
   std::string createKey(arangodb::velocypack::Slice) const;
