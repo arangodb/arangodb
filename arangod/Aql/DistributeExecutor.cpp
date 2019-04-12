@@ -36,7 +36,7 @@ ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
     std::vector<std::string> const& shardIds, Collection const* collection,
     RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys,
     bool allowKeyConversionToObject, bool createKeys)
-    : ClusterBlocks(engine, node, shardIds),
+    : BlocksWithClients(engine, node, shardIds),
       _infos(std::move(infos)),
       _query(*engine->getQuery()),
       _collection(collection),

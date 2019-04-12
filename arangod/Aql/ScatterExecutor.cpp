@@ -29,7 +29,7 @@ ExecutionBlockImpl<ScatterExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                         ScatterNode const* node,
                                                         ExecutorInfos&& infos,
                                                         std::vector<std::string> const& shardIds)
-    : ClusterBlocks(engine, node, shardIds),
+    : BlocksWithClients(engine, node, shardIds),
       _infos(std::move(infos)),
       _query(*engine->getQuery()) {
   _shardIdMap.reserve(_nrClients);

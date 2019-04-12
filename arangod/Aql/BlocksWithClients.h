@@ -51,12 +51,12 @@ class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
 
-class ClusterBlocks : public ExecutionBlock {
+class BlocksWithClients : public ExecutionBlock {
  public:
-  ClusterBlocks(ExecutionEngine* engine, ExecutionNode const* ep,
+  BlocksWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
                    std::vector<std::string> const& shardIds);
 
-  ~ClusterBlocks() override = default;
+  ~BlocksWithClients() override = default;
 
  public:
   /// @brief shutdown

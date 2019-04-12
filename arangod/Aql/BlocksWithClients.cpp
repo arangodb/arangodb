@@ -21,7 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterBlocks.h"
+#include "BlocksWithClients.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlTransaction.h"
@@ -62,7 +62,7 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
 
-ClusterBlocks::ClusterBlocks(ExecutionEngine* engine, ExecutionNode const* ep,
+BlocksWithClients::BlocksWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
                                    std::vector<std::string> const& shardIds)
     : ExecutionBlock(engine, ep),
       _nrClients(shardIds.size()),
@@ -73,7 +73,7 @@ ClusterBlocks::ClusterBlocks(ExecutionEngine* engine, ExecutionNode const* ep,
   }
 }
 
-std::pair<ExecutionState, bool> ClusterBlocks::getBlock(size_t atMost) {
+std::pair<ExecutionState, bool> BlocksWithClients::getBlock(size_t atMost) {
   ExecutionBlock::throwIfKilled();  // check if we were aborted
 
   auto res = _dependencies[0]->getSome(atMost);
@@ -97,7 +97,7 @@ std::pair<ExecutionState, bool> ClusterBlocks::getBlock(size_t atMost) {
 }
 
 /// @brief shutdown
-std::pair<ExecutionState, Result> ClusterBlocks::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> BlocksWithClients::shutdown(int errorCode) {
   if (_wasShutdown) {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
@@ -111,7 +111,7 @@ std::pair<ExecutionState, Result> ClusterBlocks::shutdown(int errorCode) {
 
 /// @brief getClientId: get the number <clientId> (used internally)
 /// corresponding to <shardId>
-size_t ClusterBlocks::getClientId(std::string const& shardId) const {
+size_t BlocksWithClients::getClientId(std::string const& shardId) const {
   if (shardId.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "got empty shard id");
   }

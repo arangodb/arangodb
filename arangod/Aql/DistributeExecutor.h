@@ -23,7 +23,7 @@
 #ifndef ARANGOD_AQL_DISTRIBUTE_EXECUTOR_H
 #define ARANGOD_AQL_DISTRIBUTE_EXECUTOR_H
 
-#include "Aql/ClusterBlocks.h"
+#include "Aql/BlocksWithClients.h"
 #include "Aql/ExecutionBlockImpl.h"
 
 namespace arangodb {
@@ -39,7 +39,7 @@ class DistributeExecutor {};
  * @brief See ExecutionBlockImpl.h for documentation.
  */
 template <>
-class ExecutionBlockImpl<DistributeExecutor> : public ClusterBlocks {
+class ExecutionBlockImpl<DistributeExecutor> : public BlocksWithClients {
  public:
   // TODO Even if it's not strictly necessary here, for consistency's sake the
   // non-standard arguments (shardIds, collection) should probably be moved into

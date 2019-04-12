@@ -76,6 +76,7 @@ class ExecutionBlock {
   virtual ~ExecutionBlock();
 
   ExecutionBlock(ExecutionBlock const&) = delete;
+  ExecutionBlock &operator=(ExecutionBlock const&) = delete;
 
  public:
   /// @brief batch size value
