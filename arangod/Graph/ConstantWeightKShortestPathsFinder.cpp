@@ -55,6 +55,7 @@ bool ConstantWeightKShortestPathsFinder::startKShortestPathsTraversal(
   _end = arangodb::velocypack::StringRef(end);
   _pathAvailable = true;
   _shortestPaths.clear();
+  _candidatePaths.clear();
 
   TRI_IF_FAILURE("TraversalOOMInitialize") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -232,7 +233,6 @@ void ConstantWeightKShortestPathsFinder::reconstructPath(Ball const& left, Ball 
 bool ConstantWeightKShortestPathsFinder::computeNextShortestPath(Path& result) {
   std::unordered_set<VertexRef> forbiddenVertices;
   std::unordered_set<Edge> forbiddenEdges;
-  std::vector<Path> candidates;
   Path tmpPath, candidate;
   TRI_ASSERT(!_shortestPaths.empty());
   auto& lastShortestPath = _shortestPaths.back();
@@ -268,26 +268,27 @@ bool ConstantWeightKShortestPathsFinder::computeNextShortestPath(Path& result) {
       candidate.clear();
       candidate.append(lastShortestPath, 0, i);
       candidate.append(tmpPath, 0, tmpPath.length() - 1);
-      candidates.emplace_back(candidate);
+      _candidatePaths.emplace_back(candidate);
     }
   }
 
-  if (!candidates.empty()) {
-    // TODO: hack
-    // TODO: candidates should also be a priority queue
+  if (!_candidatePaths.empty()) {
+    // TODO: hack, _candidatePaths should be a priority queue
+    // Sorted in reverse to have pop_back
     if (_options.useWeight()) {
-      std::sort(candidates.begin(), candidates.end(), [](Path const& p1, Path const& p2) {
-        return p1._weight < p2._weight;
+      std::sort(_candidatePaths.begin(), _candidatePaths.end(), [](Path const& p1, Path const& p2) {
+        return p1._weight > p2._weight;
       });
     } else {
-      std::sort(candidates.begin(), candidates.end(), [](Path const& p1, Path const& p2) {
-        return p1._vertices.size() < p2._vertices.size();
+      std::sort(_candidatePaths.begin(), _candidatePaths.end(), [](Path const& p1, Path const& p2) {
+        return p1._vertices.size() > p2._vertices.size();
       });
     }
 
-    auto const& p = candidates.front();
+    auto const& p = _candidatePaths.back();
     result.clear();
     result.append(p, 0, p.length() - 1);
+    _candidatePaths.pop_back();
     available = true;
   }
   return available;
