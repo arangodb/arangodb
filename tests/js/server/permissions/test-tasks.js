@@ -46,7 +46,7 @@ if (getOptions === true) {
 
 
 const internal = require('internal');
-const db = internal.db
+const db = internal.db;
 const sleep = internal.sleep;
 
 const jsunity = require('jsunity');
@@ -54,17 +54,25 @@ const tasks = require('@arangodb/tasks');
 
 const collName = "testTasks";
 
+const print = internal.print;
 
-function waitForState(state, time) {
-  if(time === undefined) {
-    time = 2;
+function waitForState(state, coll, time = 10, explain = true) {
+  if (!Array.isArray(state)) {
+    state = [ state ];
   }
 
   while(time > 0) {
-      const query = "FOR x IN @@name FILTER x.state == @state RETURN x";
-      let bind = {"@name": collName, "state" : state };
-      rv = db._query(query, bind);
-      found = rv.toArray().length > 0
+      const query = "FOR x IN @@name FILTER x.state IN @state RETURN x";
+      let bind = {"@name": coll, "state" : state };
+
+      if (explain) {
+        print(state);
+        db._explain(query, bind);
+        explain = false;
+      }
+
+      let rv = db._query(query, bind).toArray();
+      let found = ( rv.length > 0 );
       if (found) {
         return true;
       }
@@ -96,12 +104,12 @@ function testSuite() {
           const collName = "testTasks";
           const db = require("internal").db;
           db._collection(collName).save({state : "started"});
+          db._collection(collName).save({state : "done"});
         }
       });
 
-      waitForState("started");
-      //require("internal").sleep(2);
-      //print(db._collection(collName).toArray());
+      waitForState("started", collName);
+      waitForState(["done" , "failed"], collName);
 
     },
 
