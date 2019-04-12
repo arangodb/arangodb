@@ -273,11 +273,68 @@ describe('SyntheticRequest', function () {
   describe('headers', function () {
     it('exposes the headers of the native request', function () {
       const headers = {};
-      const rawReq = createNativeRequest({
-        headers: headers
-      });
+      const rawReq = createNativeRequest({ headers });
       const req = new SyntheticRequest(rawReq, {});
       expect(req.headers).to.equal(headers);
+    });
+  });
+
+  describe('auth', function () {
+    function btoa (str) {
+      return new Buffer(str).toString("base64");
+    }
+    it('recognizes no auth', function () {
+      const rawReq = createNativeRequest({ headers: {} });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.auth).to.eql(null);
+    });
+    it('recognizes bearer auth', function () {
+      const headers = {authorization: "Bearer deadbeef"};
+      const rawReq = createNativeRequest({ headers });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.auth).to.eql({bearer: "deadbeef"});
+    });
+    it('recognizes empty basic auth', function () {
+      const headers = {authorization: `Basic ${btoa("")}`};
+      const rawReq = createNativeRequest({ headers });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.auth).to.eql({basic: {}});
+    });
+    it('recognizes malformed basic auth', function () {
+      const headers = {authorization: `Basic deadbeef`};
+      const rawReq = createNativeRequest({ headers });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.auth).to.eql({basic: {}});
+    });
+    it('recognizes basic with no password', function () {
+      const username = "hello";
+      const headers = {authorization: `Basic ${btoa(username)}`};
+      const rawReq = createNativeRequest({ headers });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.auth).to.eql({basic: {username}});
+    });
+    it('recognizes basic with empty password', function () {
+      const username = "hello";
+      const headers = {authorization: `Basic ${btoa(`${username}:`)}`};
+      const rawReq = createNativeRequest({ headers });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.auth).to.eql({basic: {username, password: ""}});
+    });
+    it('recognizes basic with password', function () {
+      const username = "hello";
+      const password = "world";
+      const headers = {authorization: `Basic ${btoa(`${username}:${password}`)}`};
+      const rawReq = createNativeRequest({ headers });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.auth).to.eql({basic: {username, password}});
+    });
+    it('recognizes basic with colons in password', function () {
+      const username = "hello";
+      const password = "w:o:r:l:d";
+      const headers = {authorization: `Basic ${btoa(`${username}:${password}`)}`};
+      const rawReq = createNativeRequest({ headers });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.auth).to.eql({basic: {username, password}});
     });
   });
 

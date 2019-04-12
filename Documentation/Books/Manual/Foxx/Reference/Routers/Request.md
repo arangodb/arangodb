@@ -19,6 +19,18 @@ The request object specifies the following properties:
   of the ArangoDB server (e.g. `30102` for version 3.1.2) if no valid header
   was provided.
 
+* **auth**: `object | null`
+
+  The credentials supplied in the `authorization` header if any.
+
+  If the request uses basic authentication, the value is an object like
+  `{basic: {username: string}}` or
+  `{basic: {username: string, password: string}}` or
+  `{basic: {}}` (if the credentials were malformed or empty).
+
+  If the request uses bearer authentication, the value is an object like
+  `{bearer: string}`.
+
 * **baseUrl**: `string`
 
   Root-relative base URL of the service, i.e. the prefix `"/_db/"` followed
