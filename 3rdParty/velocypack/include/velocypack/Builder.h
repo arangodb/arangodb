@@ -101,7 +101,7 @@ class Builder {
  
   // create an empty Builder, using default Options 
   Builder()
-      : _buffer(new Buffer<uint8_t>()),
+      : _buffer(std::make_shared<Buffer<uint8_t>>()),
         _bufferPtr(_buffer.get()),
         _start(_bufferPtr->data()),
         _pos(0),
@@ -110,7 +110,7 @@ class Builder {
  
   // create an empty Builder, with custom Options 
   explicit Builder(Options const* options)
-      : _buffer(new Buffer<uint8_t>()),
+      : _buffer(std::make_shared<Buffer<uint8_t>>()),
         _bufferPtr(_buffer.get()),
         _start(_bufferPtr->data()),
         _pos(0),
@@ -161,7 +161,7 @@ class Builder {
   ~Builder() {}
 
   Builder(Builder const& that)
-      : _buffer(new Buffer<uint8_t>(*that._buffer)),
+      : _buffer(std::make_shared<Buffer<uint8_t>>(*that._buffer)),
         _bufferPtr(_buffer.get()),
         _start(_bufferPtr->data()),
         _pos(that._pos),
@@ -174,7 +174,7 @@ class Builder {
 
   Builder& operator=(Builder const& that) {
     if (this != &that) {
-      _buffer.reset(new Buffer<uint8_t>(*that._buffer));
+      _buffer = std::make_shared<Buffer<uint8_t>>(*that._buffer);
       _bufferPtr = _buffer.get();
       _start = _bufferPtr->data();
       _pos = that._pos;
