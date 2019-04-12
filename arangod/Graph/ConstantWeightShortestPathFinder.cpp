@@ -54,7 +54,7 @@ ConstantWeightShortestPathFinder::~ConstantWeightShortestPathFinder() {
 
 bool ConstantWeightShortestPathFinder::shortestPath(
     arangodb::velocypack::Slice const& s, arangodb::velocypack::Slice const& e,
-    arangodb::graph::ShortestPathResult& result, std::function<void()> const& callback) {
+    arangodb::graph::ShortestPathResult& result) {
   result.clear();
   TRI_ASSERT(s.isString());
   TRI_ASSERT(e.isString());
@@ -81,7 +81,7 @@ bool ConstantWeightShortestPathFinder::shortestPath(
 
   arangodb::velocypack::StringRef n;
   while (!_leftClosure.empty() && !_rightClosure.empty()) {
-    callback();
+    options().isQueryKilledCallback();
 
     if (_leftClosure.size() < _rightClosure.size()) {
       if (expandClosure(_leftClosure, _leftFound, _rightFound, false, n)) {
