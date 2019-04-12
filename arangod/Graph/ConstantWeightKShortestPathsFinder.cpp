@@ -362,6 +362,9 @@ bool ConstantWeightKShortestPathsFinder::getNextPathAql(arangodb::velocypack::Bu
     result.close();  // Array
     if (_options.useWeight()) {
       result.add("weight", VPackValue(path._weight));
+    } else {
+      // If not using weight, weight is defined as 1 per edge
+      result.add("weight", VPackValue(path._edges.size()));
     }
     result.close();  // Object
     TRI_ASSERT(result.isClosed());
