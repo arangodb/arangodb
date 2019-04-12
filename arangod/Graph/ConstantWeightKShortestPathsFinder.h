@@ -192,6 +192,8 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
   VertexRef _start;
   VertexRef _end;
   std::vector<Path> _shortestPaths;
+  // TODO: This should be a priority queue
+  std::vector<Path> _candidatePaths;
 };
 
 }  // namespace graph
