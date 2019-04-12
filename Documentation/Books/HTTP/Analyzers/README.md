@@ -35,6 +35,8 @@ A successful result will be an object with the fields:
 - *properties*
 - *features*
 
+@startDocuBlock get_api_analyzer
+
 ### Get all Analyzers
 
 The *list* operation is accessible via the *GET* method on the URL:
