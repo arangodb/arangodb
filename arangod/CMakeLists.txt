@@ -229,6 +229,8 @@ SET(ARANGOD_SOURCES
   Aql/IndexHint.cpp
   Aql/IndexNode.cpp
   Aql/InputAqlItemRow.cpp
+  Aql/KShortestPathsExecutor.cpp
+  Aql/KShortestPathsNode.cpp
   Aql/LimitExecutor.cpp
   Aql/ModificationExecutor.cpp
   Aql/ModificationExecutorTraits.cpp
@@ -378,6 +380,7 @@ SET(ARANGOD_SOURCES
   Graph/Graph.cpp
   Graph/GraphManager.cpp
   Graph/GraphOperations.cpp
+  Graph/KShortestPathsFinder.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/PathEnumerator.cpp
   Graph/ShortestPathFinder.cpp

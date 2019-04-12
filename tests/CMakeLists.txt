@@ -172,6 +172,7 @@ set(ARANGODB_TESTS_SOURCES
   Geo/ShapeContainerTest.cpp
   Graph/ClusterTraverserCacheTest.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
+  Graph/KShortestPathsFinder.cpp
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
