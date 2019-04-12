@@ -141,4 +141,41 @@ analyzer.features()
 
 ### RESTful API
 
-See [Analyzers](../../HTTP/Analyzers/index.html) in the HTTP book.
+The *create* operation is accessible via the *POST* method on the URL:
+
+    /_api/analyzer
+
+With the Analyzer configuration passed via the body as an object with
+attributes:
+
+- *name*: string (required)
+- *type*: string (required)
+- *properties*: string or object or null (optional) default: `null`
+- *features*: array of strings (optional) default: empty array
+
+The *get* operation is accessible via the *GET* method on the URL:
+
+    /_api/analyzer/{analyzer-name}
+
+A successful result will be an object with the fields:
+- *name*
+- *type*
+- *properties*
+- *features*
+
+The *list* operation is accessible via the *GET* method on the URL:
+
+    /_api/analyzer
+
+A successful result will be an array of object with the fields:
+- *name*
+- *type*
+- *properties*
+- *features*
+
+The *remove* operation is accessible via the *DELETE* method on the URL:
+
+    /_api/analyzer/{analyzer-name}[?force=true]
+
+Also see [Analyzers](../../HTTP/Analyzers/index.html) in the HTTP book
+including a list of available [Analyzer Types](../../HTTP/Analyzers/index.html#analyzer-types).

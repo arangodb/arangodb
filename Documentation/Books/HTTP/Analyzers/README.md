@@ -7,59 +7,15 @@ HTTP requests.
 Analyzer Operations
 -------------------
 
-### Create Analyzer
-
-The *create* operation is accessible via the *POST* method on the URL:
-
-    /_api/analyzer
-
-With the Analyzer configuration passed via the body as an object with
-attributes:
-
-- *name*: string (required)
-- *type*: string (required)
-- *properties*: string or object or null (optional) default: `null`
-- *features*: array of strings (optional) default: empty array
-
 @startDocuBlock post_api_analyzer
-
-### Get an Analyzer
-
-The *get* operation is accessible via the *GET* method on the URL:
-
-    /_api/analyzer/{analyzer-name}
-
-A successful result will be an object with the fields:
-- *name*
-- *type*
-- *properties*
-- *features*
 
 @startDocuBlock get_api_analyzer
 
-### Get all Analyzers
-
-The *list* operation is accessible via the *GET* method on the URL:
-
-    /_api/analyzer
-
-A successful result will be an array of object with the fields:
-- *name*
-- *type*
-- *properties*
-- *features*
-
 @startDocuBlock get_api_analyzers
-
-### Remove Analyzer
-
-The *remove* operation is accessible via the *DELETE* method on the URL:
-
-    /_api/analyzer/{analyzer-name}[?force=true]
 
 @startDocuBlock delete_api_analyzer
 
-Analyzer types
+Analyzer Types
 --------------
 
 The currently implemented Analyzer types are:
