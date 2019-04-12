@@ -47,6 +47,7 @@ namespace {
 std::string const doneString = "DONE";
 std::string const hasMoreString = "HASMORE";
 std::string const waitingString = "WAITING";
+std::string const unknownString = "UNKNOWN";
 
 static std::string const& stateToString(aql::ExecutionState state) {
   switch (state) {
@@ -56,6 +57,9 @@ static std::string const& stateToString(aql::ExecutionState state) {
       return hasMoreString;
     case aql::ExecutionState::WAITING:
       return waitingString;
+    default:
+      // just to suppress a warning ..
+      return unknownString;
   }
 }
 
