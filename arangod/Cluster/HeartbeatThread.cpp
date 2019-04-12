@@ -943,7 +943,7 @@ void HeartbeatThread::runCoordinator() {
                 << " which is newer than " << lastCurrentVersionNoticed;
             lastCurrentVersionNoticed = currentVersion;
 
-            ClusterInfo::instance()->invalidateCurrent();
+            ClusterInfo::instance()->loadCurrent();
             invalidateCoordinators = false;
           }
         }
@@ -1221,10 +1221,10 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   // First invalidate the caches in ClusterInfo:
   auto ci = ClusterInfo::instance();
   if (_desiredVersions->plan > ci->getPlanVersion()) {
-    ci->invalidatePlan();
+    ci->loadPlan();
   }
   if (_desiredVersions->current > ci->getCurrentVersion()) {
-    ci->invalidateCurrent();
+    ci->loadCurrent();
   }
 
   // schedule a job for the change:
