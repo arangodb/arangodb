@@ -65,13 +65,16 @@ function waitForState(state, coll, time = 10, explain = true) {
       const query = "FOR x IN @@name FILTER x.state IN @state RETURN x";
       let bind = {"@name": coll, "state" : state };
 
+      let rv = db._query(query, bind).toArray();
       if (explain) {
-        print(state);
+        print("#########################################################################");
         db._explain(query, bind);
+        print("RESULT as Array:");
+        print(rv);
         explain = false;
+        print("#########################################################################");
       }
 
-      let rv = db._query(query, bind).toArray();
       let found = ( rv.length > 0 );
       if (found) {
         return true;
@@ -82,34 +85,40 @@ function waitForState(state, coll, time = 10, explain = true) {
   return false;
 }
 
-
-print("#########################################################################");
-print("#########################################################################");
-print("#########################################################################");
-
+let counter = 0;
+let currentCollection;
+let currentTask;
 function testSuite() {
   return {
     setUp: function() {
-      db._drop(collName);
-      db._create(collName);
+      counter = counter + 1;
+      currentCollection = collName + String(counter);
+      currentTask = collName + String(counter);
+      db._drop(currentCollection);
+      db._create(currentCollection);
     },
-    tearDown: function() {},
+    tearDown: function() {
+      tasks.unregister(currentTask);
+      db._drop(currentCollection);
+    },
     testFrist : function() {
 
       tasks.register({
-        id: "task1",
+        id: currentTask,
         name: "this just tests task ex<cution",
         period: 1,
-        command: function() {
-          const collName = "testTasks";
+        command: function(params) {
           const db = require("internal").db;
-          db._collection(collName).save({state : "started"});
-          db._collection(collName).save({state : "done"});
-        }
+          db._collection(params.coll).save({state : "started"});
+          db._collection(params.coll).save({state : "done"});
+        },
+        params : { coll : currentCollection }
       });
 
-      waitForState("started", collName);
-      waitForState(["done" , "failed"], collName);
+
+
+      waitForState("started", currentCollection);
+      waitForState(["done" , "failed"], currentCollection);
 
     },
 
