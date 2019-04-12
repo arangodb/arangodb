@@ -42,10 +42,10 @@ class RestHotBackupHandler : public RestBaseHandler {
   RestStatus execute() override;
 
  protected:
-  bool verifyPermitted();
+  arangodb::Result  verifyPermitted();
 
-  std::shared_ptr<RocksDBHotBackup> parseHotBackupParams(RequestType const,
-                                                         std::vector<std::string> const &);
+  arangodb::Result parseHotBackupParams(
+    RequestType const, std::vector<std::string> const&, VPackSlice& slice);
 };
 }  // namespace arangodb
 

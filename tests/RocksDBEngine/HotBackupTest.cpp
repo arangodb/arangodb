@@ -45,8 +45,9 @@ static uint64_t counter = 0;
 class RocksDBHotBackupTest : public RocksDBHotBackup {
 public:
 
-  RocksDBHotBackupTest() : RocksDBHotBackup(VPackSlice()) {};
-  RocksDBHotBackupTest(const VPackSlice body) : RocksDBHotBackup(body) {};
+  RocksDBHotBackupTest() = delete;
+  RocksDBHotBackupTest(const VPackSlice body, VPackBuilder& report)
+    : RocksDBHotBackup(body, report) {};
 
   std::string getDatabasePath() override {return "/var/db";};
 
@@ -64,7 +65,11 @@ public:
 
 /// @brief test RocksDBHotBackup::buildDirectoryPath
 TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel]") {
-  RocksDBHotBackupTest testee;
+
+  VPackSlice config;
+  VPackBuilder report;
+  
+  RocksDBHotBackupTest testee(config, report);
 
   SECTION("test_override") {
     CHECK(0 == testee.getPersistedId().compare("SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe"));
@@ -103,7 +108,8 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
 
   SECTION("test_defaults") {
     const VPackSlice slice;
-    RocksDBHotBackupCreate testee(slice);
+    VPackBuilder report;
+    RocksDBHotBackupCreate testee(slice, report);
     CHECK(true == testee.isCreate());
     CHECK(testee.getTimestamp() == "");
     CHECK(10 == testee.getTimeout());
@@ -114,17 +120,20 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
     VPackBuilder opBuilder;
     { VPackObjectBuilder a(&opBuilder);
       opBuilder.add("timeout", VPackValue(12345));
-      opBuilder.add("directory", VPackValue("2017-08-01T09:00:00Z"));
-      opBuilder.add("userString", VPackValue("first day"));
+      opBuilder.add("id", VPackValue("2017-08-01T09:00:00Z"));
+      opBuilder.add("label", VPackValue("first day"));
     }
 
-    RocksDBHotBackupCreate testee(opBuilder.slice());
-    testee.parseParameters(rest::RequestType::DELETE_REQ);
+    /*
+    VPackBuilder report;
+    RocksDBHotBackupCreate testee(opBuilder.slice(), report);
+    testee.parseParameters();
     CHECK(testee.valid());
     CHECK(false == testee.isCreate());
     CHECK(12345 == testee.getTimeout());
     CHECK(testee.getDirectory() == "2017-08-01T09:00:00Z");
     CHECK(testee.getUserString() == "first day");
+    */
   }
 
   SECTION("test_timestamp_exception") {
@@ -132,13 +141,14 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
     { VPackObjectBuilder a(&opBuilder);
       opBuilder.add("timeout", VPackValue("12345"));
       opBuilder.add("timestamp", VPackValue("2017-08-01T09:00:00Z"));   // needed for exception
-      opBuilder.add("userString", VPackValue("makes timeoutMS throw")); //  to happen
+      opBuilder.add("label", VPackValue("makes timeoutMS throw")); //  to happen
     }
 
-    RocksDBHotBackupCreate testee(opBuilder.slice());
+/*    VPackBuilder report;
+    RocksDBHotBackupCreate testee(opBuilder.slice(), report);
     testee.parseParameters(rest::RequestType::DELETE_REQ);
     CHECK(!testee.valid());
-    CHECK((testee.resultSlice().isObject() && testee.resultSlice().hasKey("timeout")));
+    CHECK((testee.resultSlice().isObject() && testee.resultSlice().hasKey("timeout")));*/
   }
 
 }
@@ -149,9 +159,9 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
 ////////////////////////////////////////////////////////////////////////////////
 class RocksDBHotBackupRestoreTest : public RocksDBHotBackupRestore {
 public:
-  RocksDBHotBackupRestoreTest() : RocksDBHotBackupRestore(VPackSlice()),
-                                  _pauseRocksDBReturn(true), _restartRocksDBReturn(true),
-                                  _holdTransactionsReturn(true) {
+  RocksDBHotBackupRestoreTest(VPackSlice const slice, VPackBuilder& report) :
+    RocksDBHotBackupRestore(slice, report), _pauseRocksDBReturn(true),
+    _restartRocksDBReturn(true), _holdTransactionsReturn(true) {
     long systemError;
     std::string errorMessage;
 
@@ -160,23 +170,23 @@ public:
       arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
     }
 
-    _directory = TRI_GetTempPath();
-    _directory += TRI_DIR_SEPARATOR_CHAR;
-    _directory += "arangotest-";
-    _directory += std::to_string(TRI_microtime());
-    _directory += std::to_string(arangodb::RandomGenerator::interval(UINT32_MAX));
+    _id = TRI_GetTempPath();
+    _id += TRI_DIR_SEPARATOR_CHAR;
+    _id += "arangotest-";
+    _id += std::to_string(TRI_microtime());
+    _id += std::to_string(arangodb::RandomGenerator::interval(UINT32_MAX));
 
-    TRI_CreateDirectory(_directory.c_str(), systemError, errorMessage);
+    TRI_CreateDirectory(_id.c_str(), systemError, errorMessage);
 
-    _directoryRestore = "SNGL-9231534b-e1aa-4eb6-881a-0b6c798c6677_2019-02-15T20.51.13Z";
+    _idRestore = "SNGL-9231534b-e1aa-4eb6-881a-0b6c798c6677_2019-02-15T20.51.13Z";
   }
 
   //RocksDBHotBackupRestoreTest(const VPackSlice body) : RocksDBHotBackup(body) {};
 
-  std::string getDatabasePath() override {return _directory;};
+  std::string getDatabasePath() override {return _id;};
 
-  std::string buildDirectoryPath(const std::string & time, const std::string & userString) override
-    {return RocksDBHotBackup::buildDirectoryPath(time, userString);};
+  std::string buildDirectoryPath(const std::string & time, const std::string & label) override
+    {return RocksDBHotBackup::buildDirectoryPath(time, label);};
 
   std::string getPersistedId() override
     {return "SNGL-9231534b-e1aa-4eb6-881a-0b6c798c6677";};
@@ -187,14 +197,14 @@ public:
 
   ~RocksDBHotBackupRestoreTest () {
     // let's be sure we delete the right stuff
-    TRI_ASSERT(_directory.length() > 10);
+    TRI_ASSERT(_id.length() > 10);
 
-    TRI_RemoveDirectory(_directory.c_str());
+    TRI_RemoveDirectory(_id.c_str());
   }
 
   StringBuffer* writeFile (const char* blob) {
     StringBuffer* filename = new StringBuffer(true);
-    filename->appendText(_directory);
+    filename->appendText(_id);
     filename->appendChar(TRI_DIR_SEPARATOR_CHAR);
     filename->appendText("tmp-");
     filename->appendInteger(++counter);
@@ -268,7 +278,7 @@ public:
     pathname += TRI_DIR_SEPARATOR_CHAR;
     pathname += "hotbackups";
     pathname += TRI_DIR_SEPARATOR_CHAR;
-    pathname += _directoryRestore;
+    pathname += _idRestore;
     retVal = TRI_CreateRecursiveDirectory(pathname.c_str(), systemError,
                                           systemErrorStr);
 
@@ -285,9 +295,9 @@ public:
     writeFile(pathname.c_str(), "000333.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash", "");
   } // createHotDirectory
 
-  void startGlobalShutdown() {};
+  void startGlobalShutdown() override {};
 
-  std::string _directory;
+  std::string _id;
   bool _pauseRocksDBReturn;
   bool _restartRocksDBReturn;
   bool _holdTransactionsReturn;
@@ -301,7 +311,8 @@ TEST_CASE("RocksDBHotBackupRestore directories", "[rocksdb][devel]") {
   bool retBool;
 
   SECTION("test createRestoringDirectory") {
-    RocksDBHotBackupRestoreTest testee;
+    VPackBuilder report;
+    RocksDBHotBackupRestoreTest testee(VPackSlice(), report);
     testee.createHotDirectory();
 
     retBool = testee.createRestoringDirectory(restoringDir);
@@ -344,7 +355,8 @@ TEST_CASE("RocksDBHotBackupRestore directories", "[rocksdb][devel]") {
 
 
   SECTION("test execute() normal directory path") {
-    RocksDBHotBackupRestoreTest testee;
+    VPackBuilder report; 
+    RocksDBHotBackupRestoreTest testee(VPackSlice(), report);
     testee.createDBDirectory();
     testee.createHotDirectory();
 

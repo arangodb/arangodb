@@ -20,7 +20,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBHotBackup.h"
-#include "RocksDBHotBackupCoord.h"
 
 #include <ctype.h>
 #include <thread>
@@ -82,46 +81,33 @@ static uint64_t getSerialNumber() {
 //        parse parameters
 //
 std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
-  rest::RequestType type,
-  std::vector<std::string> const& suffixes,
-  VPackSlice body) {
+  std::string const& command, VPackSlice body, VPackBuilder& report) {
   std::shared_ptr<RocksDBHotBackup> operation;
-  bool isCoord(ServerState::instance()->isCoordinator());
 
-  // initial implementation only has single suffix verbs
-  if (1 == suffixes.size()) {
-    if (0 == suffixes[0].compare("create")) {
-      operation.reset((isCoord ? toHotBackup(new RocksDBHotBackupCreateCoord(body))
-                       : toHotBackup(new RocksDBHotBackupCreate(body))));
-    } else if (0 == suffixes[0].compare("restore")) {
-      operation.reset((isCoord ? toHotBackup(new RocksDBHotBackupRestoreCoord(body))
-                       : toHotBackup(new RocksDBHotBackupRestore(body))));
-    } else if (0 == suffixes[0].compare("list")) {
-      operation.reset((isCoord ? toHotBackup(new RocksDBHotBackupListCoord(body))
-                       : toHotBackup(new RocksDBHotBackupList(body))));
-    } else if (0 == suffixes[0].compare("lock")) {
-      operation.reset((isCoord ? toHotBackup(new RocksDBHotBackupLockCoord(body))
-                       : toHotBackup(new RocksDBHotBackupLock(body))));
-    }
-#if USE_ENTERPRISE
-    else if (0 == suffixes[0].compare("upload")) {
-      operation.reset((isCoord ? toHotBackup(new RocksDBHotBackupUploadCoord(body))
-                       : toHotBackup(new RocksDBHotBackupUpload(body))));
-    }
-    else if (0 == suffixes[0].compare("download")) {
-      operation.reset((isCoord ? toHotBackup(new RocksDBHotBackupDownloadCoord(body))
-                       : toHotBackup(new RocksDBHotBackupDownload(body))));
-    }
-#endif   // USE_ENTERPRISE
-
+  if (0 == command.compare("create")) {
+    operation.reset(toHotBackup(new RocksDBHotBackupCreate(body, report)));
+  } else if (0 == command.compare("restore")) {
+    operation.reset(toHotBackup(new RocksDBHotBackupRestore(body, report)));
+  } else if (0 == command.compare("list")) {
+    operation.reset(toHotBackup(new RocksDBHotBackupList(body, report)));
+  } else if (0 == command.compare("lock")) {
+    operation.reset(toHotBackup(new RocksDBHotBackupLock(body, report)));
   }
+#if USE_ENTERPRISE
+  else if (0 == command.compare("upload")) {
+    operation.reset(toHotBackup(new RocksDBHotBackupUpload(body, report)));
+  }
+  else if (0 == command.compare("download")) {
+    operation.reset(toHotBackup(new RocksDBHotBackupDownload(body, report)));
+  }
+#endif   // USE_ENTERPRISE
 
   // check the parameter once operation selected
   if (operation) {
-    operation->parseParameters(type);
+    operation->parseParameters();
   } else {
     // if no operation selected, give base class which defaults to "bad"
-    operation.reset(new RocksDBHotBackup(body));
+    operation.reset(new RocksDBHotBackup(body, report));
   } // if
 
   return operation;
@@ -132,23 +118,23 @@ std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
 //
 // @brief Setup the base object, default is "bad parameters"
 //
-RocksDBHotBackup::RocksDBHotBackup(VPackSlice body)
+RocksDBHotBackup::RocksDBHotBackup(VPackSlice body, VPackBuilder& report)
   : _body(body), _valid(false), _success(false), _respCode(rest::ResponseCode::BAD),
-    _respError(TRI_ERROR_HTTP_BAD_PARAMETER), _timeoutSeconds(10)
+    _respError(TRI_ERROR_HTTP_BAD_PARAMETER), _result(report), _timeoutSeconds(10)
 {
   _isSingle = ServerState::instance()->isSingleServer();
   return;
 }
 
-std::string RocksDBHotBackup::buildDirectoryPath(std::string const& timestamp, std::string const& userString) {
+std::string RocksDBHotBackup::buildDirectoryPath(std::string const& timestamp, std::string const& label) {
   std::string suffix = getPersistedId();
   suffix += "_";
   suffix += timestamp;
 
-  if (0 != userString.length()) {
+  if (0 != label.length()) {
     // limit directory name to 254 characters
     suffix += "_";
-    suffix.append(userString, 0, 254 - suffix.size());
+    suffix.append(label, 0, 254 - suffix.size());
   }
 
   // clean up directory name
@@ -175,7 +161,7 @@ std::string RocksDBHotBackup::buildDirectoryPath(std::string const& timestamp, s
 std::string RocksDBHotBackup::rebuildPathPrefix() {
   std::string ret_string = getDatabasePath();
   ret_string += TRI_DIR_SEPARATOR_CHAR;
-  ret_string += "hotbackups";
+  ret_string += "backups";
 
   // This prefix path must exist, ignore errors
   long sysError;
@@ -304,7 +290,6 @@ void RocksDBHotBackup::getParamValue(char const* key, unsigned& value, bool requ
 } // RocksDBHotBackup::getParamValue (unsigned)
 
 void RocksDBHotBackup::getParamValue(char const* key, VPackSlice& value, bool required) {
-  VPackSlice tempSlice;
 
   try {
     if (_body.isObject() && _body.hasKey(key)) {
@@ -402,19 +387,13 @@ void RocksDBHotBackup::startGlobalShutdown() {
 ///        POST:  Initiate rocksdb checkpoint on local server
 ///        DELETE:  Remove an existing rocksdb checkpoint from local server
 ////////////////////////////////////////////////////////////////////////////////
-RocksDBHotBackupCreate::RocksDBHotBackupCreate(VPackSlice body)
-  : RocksDBHotBackup(body), _isCreate(true), _forceBackup(false), _agencyDump(VPackSlice::noneSlice()) {}
+RocksDBHotBackupCreate::RocksDBHotBackupCreate(VPackSlice body, VPackBuilder& report)
+  : RocksDBHotBackup(body, report), _isCreate(true), _forceBackup(false), _agencyDump(VPackSlice::noneSlice()) {}
 
+void RocksDBHotBackupCreate::parseParameters() {
 
-void RocksDBHotBackupCreate::parseParameters(rest::RequestType type) {
-
-  _isCreate = (rest::RequestType::POST == type);
-  _valid = _isCreate || (rest::RequestType::DELETE_REQ == type);
-
-  if (!_valid) {
-    _result.add(VPackValue(VPackValueType::Object));
-    _result.add("httpMethod", VPackValue("only POST and DELETE allowed"));
-  } // if
+  _isCreate = true;
+  _valid = _isCreate;
 
   // single server create, we generate the timestamp
   if (_isSingle && _isCreate) {
@@ -423,14 +402,14 @@ void RocksDBHotBackupCreate::parseParameters(rest::RequestType type) {
     getParamValue("timestamp", _timestamp, true);
     getParamValue("agency-dump", _agencyDump, false);
   } else {
-    getParamValue("directory", _directory, true);
+    getParamValue("id", _id, true);
   } // else
 
   // remaining params are optional
   getParamValue("timeout", _timeoutSeconds, false);
-  getParamValue("userString", _userString, false);
+  getParamValue("label", _label, false);
   getParamValue("forceBackup", _forceBackup, false);
-
+  
   //
   // extra validation
   //
@@ -474,7 +453,7 @@ static basics::FileUtils::TRI_copy_recursive_e linkShaFiles(std::string const & 
 } // linkShaFiles
 
 
-/// @brief /_admin/hotbackup/create with POST method comes here, initiates
+/// @brief /_admin/backup/create with POST method comes here, initiates
 ///       a rocksdb checkpoint
 void RocksDBHotBackupCreate::executeCreate() {
 
@@ -483,7 +462,7 @@ void RocksDBHotBackupCreate::executeCreate() {
   // attempt iResearch flush
   // time remaining, or flag to continue anyway
 
-  std::string dirPathFinal = buildDirectoryPath(_timestamp, _userString);
+  std::string dirPathFinal = buildDirectoryPath(_timestamp, _label);
   std::string dirPathTemp = rebuildPath(dirCreatingString);
   bool flag = clearPath(dirCreatingString);
 
@@ -565,7 +544,7 @@ void RocksDBHotBackupCreate::executeCreate() {
     // velocypack loves to throw. wrap it.
     try {
       _result.add(VPackValue(VPackValueType::Object));
-      _result.add("directory", VPackValue(TRI_Basename(dirPathFinal.c_str())));
+      _result.add("id", VPackValue(TRI_Basename(dirPathFinal.c_str())));
       _result.add("forced", VPackValue(!gotLock));
       _result.close();
     } catch (...) {
@@ -586,14 +565,14 @@ void RocksDBHotBackupCreate::executeCreate() {
 } // RocksDBHotBackupCreate::executeCreate
 
 
-/// @brief /_admin/hotbackup/create with DELETE method comes here, deletes
+/// @brief /_admin/backup/create with DELETE method comes here, deletes
 ///        a directory if it exists
 ///        NOTE: returns success if the requested directory does not exist
 ///              (was previously deleted)
 void RocksDBHotBackupCreate::executeDelete() {
   std::string dirToDelete;
 
-  dirToDelete = rebuildPath(_directory);
+  dirToDelete = rebuildPath(_id);
   _success = clearPath(dirToDelete);
 
   // set response codes
@@ -613,14 +592,14 @@ void RocksDBHotBackupCreate::executeDelete() {
 /// @brief RocksDBHotBackupRestore
 ///        POST:  Initiate restore of rocksdb snapshot in place of working directory
 ////////////////////////////////////////////////////////////////////////////////
-RocksDBHotBackupRestore::RocksDBHotBackupRestore(VPackSlice body)
-  : RocksDBHotBackup(body), _saveCurrent(false) {}
+RocksDBHotBackupRestore::RocksDBHotBackupRestore(VPackSlice body, VPackBuilder& report)
+  : RocksDBHotBackup(body, report), _saveCurrent(false) {}
 
 
 /// @brief convert the message payload into class variable options
-void RocksDBHotBackupRestore::parseParameters(rest::RequestType type) {
+void RocksDBHotBackupRestore::parseParameters() {
 
-  _valid = (rest::RequestType::POST == type);
+  _valid = true; //(rest::RequestType::POST == type);
 
   if (!_valid) {
     _result.add(VPackValue(VPackValueType::Object));
@@ -632,7 +611,7 @@ void RocksDBHotBackupRestore::parseParameters(rest::RequestType type) {
   _timestampCurrent = timepointToString(std::chrono::system_clock::now());
 
   // full directory name of database image to restore (required)
-  getParamValue("directory", _directoryRestore, true);
+  getParamValue("id", _idRestore, true);
 
   // remaining params are optional
   getParamValue("saveCurrent", _saveCurrent, false);
@@ -748,7 +727,7 @@ void RocksDBHotBackupRestore::execute() {
       } else {
         // keep for now in FAILSAFE directory
         failsafeName = dirFailsafeString;
-        if (0 == failsafeName.compare(_directoryRestore)) {
+        if (0 == failsafeName.compare(_idRestore)) {
           failsafeName += ".1";
         } // if
         restoreFailsafePath = rebuildPath(failsafeName);
@@ -790,7 +769,7 @@ void RocksDBHotBackupRestore::execute() {
 ///        restoreDirOutput is created and passed to caller
 bool RocksDBHotBackupRestore::createRestoringDirectory(std::string& restoreDirOutput) {
   bool retFlag = true;
-  std::string errors, fullDirectoryRestore = rebuildPath(_directoryRestore);
+  std::string errors, fullDirectoryRestore = rebuildPath(_idRestore);
 
   try {
     // create path name (used here and returned)
@@ -842,12 +821,12 @@ bool RocksDBHotBackupRestore::createRestoringDirectory(std::string& restoreDirOu
 /// @brief RocksDBHotBackupList
 ///        POST:  Returns array of Hotbackup directory names
 ////////////////////////////////////////////////////////////////////////////////
-RocksDBHotBackupList::RocksDBHotBackupList(VPackSlice body)
-  : RocksDBHotBackup(body) {}
+RocksDBHotBackupList::RocksDBHotBackupList(VPackSlice body, VPackBuilder& report)
+  : RocksDBHotBackup(body, report) {}
 
-void RocksDBHotBackupList::parseParameters(rest::RequestType type) {
+void RocksDBHotBackupList::parseParameters() {
 
-  _valid = (rest::RequestType::POST == type);
+  _valid = true; //(rest::RequestType::POST == type);
 
   if (!_valid) {
     try {
@@ -905,7 +884,7 @@ void RocksDBHotBackupList::execute() {
   try {
     _result.add(VPackValue(VPackValueType::Object));
     _result.add("server", VPackValue(getPersistedId()));
-    _result.add("hotbackups", VPackValue(VPackValueType::Array));  // open
+    _result.add("backups", VPackValue(VPackValueType::Array));  // open
     for (auto const& dir : hotbackups) {
       _result.add(VPackValue(dir.c_str()));
     } // for
@@ -964,18 +943,18 @@ struct LockCleaner {
 ///        POST:  Initiate lock on transactions within rocksdb
 ///      DELETE:  Remove lock on transactions
 ////////////////////////////////////////////////////////////////////////////////
-RocksDBHotBackupLock::RocksDBHotBackupLock(const VPackSlice body)
-  : RocksDBHotBackup(body), _isLock(false), _unlockTimeoutSeconds(5)
+RocksDBHotBackupLock::RocksDBHotBackupLock(VPackSlice const body, VPackBuilder& report)
+  : RocksDBHotBackup(body, report), _isLock(false), _unlockTimeoutSeconds(5)
 {
 }
 
 RocksDBHotBackupLock::~RocksDBHotBackupLock() {
 }
 
-void RocksDBHotBackupLock::parseParameters(rest::RequestType const type) {
+void RocksDBHotBackupLock::parseParameters() {
 
-  _isLock = (rest::RequestType::POST == type);
-  _valid = _isLock || (rest::RequestType::DELETE_REQ == type);
+  _isLock = true; //(rest::RequestType::POST == type);
+  _valid = _isLock;// || (rest::RequestType::DELETE_REQ == type);
 
   getParamValue("timeout", _timeoutSeconds, false);
   getParamValue("unlockTimeout", _unlockTimeoutSeconds, false);

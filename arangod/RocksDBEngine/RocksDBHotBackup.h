@@ -37,12 +37,11 @@ namespace arangodb {
 
 class RocksDBHotBackup {
 public:
-  static std::shared_ptr<RocksDBHotBackup> operationFactory(arangodb::rest::RequestType const type,
-                                                            std::vector<std::string> const& suffixes,
-                                                            VPackSlice body);
+  static std::shared_ptr<RocksDBHotBackup> operationFactory(
+    std::string const& suffixes, VPackSlice const body, VPackBuilder& report);
 
   RocksDBHotBackup() = delete;
-  explicit RocksDBHotBackup(VPackSlice body);
+  explicit RocksDBHotBackup(VPackSlice body, VPackBuilder& result);
   virtual ~RocksDBHotBackup() = default;
 
   bool valid() const {return _valid;}
@@ -53,7 +52,7 @@ public:
   std::string const& errorMessage() const {return _errorMessage;}
 
   /// @brief Validate and extract parameters appropriate to the operation type
-  virtual void parseParameters(rest::RequestType) {}
+  virtual void parseParameters() {}
 
   /// @brief Execute the operation
   virtual void execute() {}
@@ -64,7 +63,7 @@ public:
   std::string getRocksDBPath();
   unsigned getTimeout() const {return _timeoutSeconds;}
 
-  /// @brief Build "/user/database/path/hotbackups"
+  /// @brief Build "/user/database/path/backups"
   std::string rebuildPathPrefix();
 
   /// @brief Build rebuildPathPrefix() + "/" + suffix
@@ -87,7 +86,7 @@ protected:
   rest::ResponseCode _respCode;
   int _respError;
   std::string _errorMessage;
-  VPackBuilder _result;
+  VPackBuilder& _result;
   bool _isSingle;       // is single db server (not cluster)
 
   unsigned _timeoutSeconds; // used to stop transaction, used again to stop rocksdb
@@ -113,10 +112,10 @@ public:
 
   RocksDBHotBackupCreate() = delete;
   virtual ~RocksDBHotBackupCreate() = default;
-  explicit RocksDBHotBackupCreate(VPackSlice body);
+  explicit RocksDBHotBackupCreate(VPackSlice body, VPackBuilder& report);
 
   // @brief Validate and extract parameters appropriate to the operation type
-  void parseParameters(rest::RequestType) override;
+  void parseParameters() override;
 
   // @brief Execute an operation
   void execute() override;
@@ -124,8 +123,8 @@ public:
   // @brief accessors to the parameters
   bool isCreate() const {return _isCreate;}
   const std::string & getTimestamp() const {return _timestamp;}
-  const std::string & getUserString() const {return _userString;}
-  const std::string & getDirectory() const {return _directory;}
+  const std::string & getUserString() const {return _label;}
+  const std::string & getDirectory() const {return _id;}
 protected:
   // @brief Execute the create operation
   void executeCreate();
@@ -136,8 +135,8 @@ protected:
   bool _isCreate;
   bool _forceBackup;
   std::string _timestamp;   // required for Create from Coordinator
-  std::string _userString;
-  std::string _directory;   // required for Delete
+  std::string _label;
+  std::string _id;   // required for Delete
   VPackSlice _agencyDump;   // required for Create from Coordinator
 
 };// class RocksDBHotBackupCreate
@@ -151,17 +150,17 @@ class RocksDBHotBackupRestore : public RocksDBHotBackup {
 public:
 
   RocksDBHotBackupRestore() = delete;
-  explicit RocksDBHotBackupRestore(VPackSlice body);
+  explicit RocksDBHotBackupRestore(VPackSlice body, VPackBuilder& report);
 
   // @brief Validate and extract parameters appropriate to the operation type
-  void parseParameters(rest::RequestType) override;
+  void parseParameters() override;
 
   // @brief Execute an operation
   void execute() override;
 
   // @brief accessors to the parameters
   std::string const& getTimestampCurrent() const {return _timestampCurrent;}
-  std::string const& getDirectoryRestore() const {return _directoryRestore;}
+  std::string const& getDirectoryRestore() const {return _idRestore;}
 
   bool createRestoringDirectory(std::string& nameOutput);
 
@@ -169,7 +168,7 @@ public:
 
   bool _saveCurrent;
   std::string _timestampCurrent;
-  std::string _directoryRestore;
+  std::string _idRestore;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The following wrapper routines simplify unit testing
@@ -186,9 +185,9 @@ class RocksDBHotBackupList : public RocksDBHotBackup {
 public:
 
   RocksDBHotBackupList() = delete;
-  explicit RocksDBHotBackupList(VPackSlice body);
+  explicit RocksDBHotBackupList(VPackSlice body, VPackBuilder& report);
 
-  void parseParameters(rest::RequestType) override;
+  void parseParameters() override;
   void execute() override;
 
 };// class RocksDBHotBackupList
@@ -202,10 +201,10 @@ class RocksDBHotBackupLock : public RocksDBHotBackup {
 public:
 
   RocksDBHotBackupLock() = delete;
-  RocksDBHotBackupLock(const VPackSlice body);
+  RocksDBHotBackupLock(const VPackSlice body, VPackBuilder& report);
   ~RocksDBHotBackupLock();
 
-  void parseParameters(rest::RequestType const) override;
+  void parseParameters() override;
   void execute() override;
 
 protected:
