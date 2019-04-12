@@ -38,41 +38,60 @@ Key-value-store API
 The agency should be up and running within a couple of seconds, during which the instances have gossiped their way into knowing the other agents and elected a leader. The public API can be checked for the state of the configuration:
 
 ```
-curl -s localhost:8529/_api/agency/config
+curl -s localhost:8531/_api/agency/config
 ```
 
 ```js
 {
   "term": 1,
-  "leaderId": "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98",
-  "lastCommitted": 1,
+  "leaderId": "AGNT-cec78b63-f098-4b4e-a157-a7bebf7947ba",
+  "commitIndex": 1,
+  "lastCompactionAt": 0,
+  "nextCompactionAfter": 1000,
   "lastAcked": {
-    "ac129027-b440-4c4f-84e9-75c042942171": 0.21,
-    "c54dbb8a-723d-4c82-98de-8c841a14a112": 0.21,
-    "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98": 0
+    "AGNT-cec78b63-f098-4b4e-a157-a7bebf7947ba": {
+      "lastAckedTime": 0,
+      "lastAckedIndex": 1
+    },
+    "AGNT-5c8d92ed-3fb5-4886-8990-742ddb4482fa": {
+      "lastAckedTime": 0.167,
+      "lastAckedIndex": 1,
+      "lastAppend": 15.173
+    },
+    "AGNT-f6e79b6f-d55f-4ae5-a5e2-4c2d6272b0b8": {
+      "lastAckedTime": 0.167,
+      "lastAckedIndex": 1,
+      "lastAppend": 15.173
+    }
   },
   "configuration": {
     "pool": {
-      "ac129027-b440-4c4f-84e9-75c042942171": "tcp://localhost:8531",
-      "c54dbb8a-723d-4c82-98de-8c841a14a112": "tcp://localhost:8530",
-      "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98": "tcp://localhost:8529"
+      "AGNT-f6e79b6f-d55f-4ae5-a5e2-4c2d6272b0b8": "tcp://localhost:8551",
+      "AGNT-cec78b63-f098-4b4e-a157-a7bebf7947ba": "tcp://localhost:8531",
+      "AGNT-5c8d92ed-3fb5-4886-8990-742ddb4482fa": "tcp://localhost:8541"
     },
     "active": [
-      "ac129027-b440-4c4f-84e9-75c042942171",
-      "c54dbb8a-723d-4c82-98de-8c841a14a112",
-      "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98"
+      "AGNT-f6e79b6f-d55f-4ae5-a5e2-4c2d6272b0b8",
+      "AGNT-5c8d92ed-3fb5-4886-8990-742ddb4482fa",
+      "AGNT-cec78b63-f098-4b4e-a157-a7bebf7947ba"
     ],
-    "id": "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98",
+    "id": "AGNT-cec78b63-f098-4b4e-a157-a7bebf7947ba",
     "agency size": 3,
     "pool size": 3,
-    "endpoint": "tcp://localhost:8529",
-    "min ping": 0.5,
-    "max ping": 2.5,
+    "endpoint": "tcp://localhost:8531",
+    "min ping": 1,
+    "max ping": 5,
+    "timeoutMult": 1,
     "supervision": false,
-    "supervision frequency": 5,
+    "supervision frequency": 1,
     "compaction step size": 1000,
-    "supervision grace period": 120
-  }
+    "compaction keep size": 50000,
+    "supervision grace period": 10,
+    "version": 4,
+    "startup": "origin"
+  },
+  "engine": "rocksdb",
+  "version": "3.4.3"
 }
 ```
 
