@@ -81,6 +81,10 @@ class SharedAqlItemBlockPtr {
 
 arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(arangodb::aql::AqlItemBlock* aqlItemBlock) noexcept
     : _aqlItemBlock(aqlItemBlock) {
+  // This constructor should only be used for fresh AqlItemBlocks in the
+  // AqlItemBlockManager. All other places should already have a
+  // SharedAqlItemBlockPtr.
+  TRI_ASSERT(aqlItemBlock->getRefCount() == 0);
   incrRefCount();
 }
 
@@ -96,15 +100,18 @@ SharedAqlItemBlockPtr::~SharedAqlItemBlockPtr() noexcept {
 
 SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(SharedAqlItemBlockPtr const& other) noexcept
     : _aqlItemBlock(other._aqlItemBlock) {
+  TRI_ASSERT(this != &other);
   incrRefCount();
 }
 
 SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(SharedAqlItemBlockPtr&& other) noexcept
     : _aqlItemBlock(other._aqlItemBlock) {
+  TRI_ASSERT(this != &other);
   other._aqlItemBlock = nullptr;
 }
 
 SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(SharedAqlItemBlockPtr const& other) noexcept {
+  TRI_ASSERT(this != &other);
   decrRefCount();
   _aqlItemBlock = other._aqlItemBlock;
   incrRefCount();
@@ -112,6 +119,7 @@ SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(SharedAqlItemBlockPtr co
 }
 
 SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(SharedAqlItemBlockPtr&& other) noexcept {
+  TRI_ASSERT(this != &other);
   decrRefCount();
   _aqlItemBlock = other._aqlItemBlock;
   other._aqlItemBlock = nullptr;
@@ -176,6 +184,7 @@ AqlItemBlock* SharedAqlItemBlockPtr::get() const noexcept {
 }
 
 void SharedAqlItemBlockPtr::reset(AqlItemBlock* other) noexcept {
+  TRI_ASSERT(_aqlItemBlock != other);
   decrRefCount();
   _aqlItemBlock = other;
   incrRefCount();
