@@ -46,17 +46,6 @@ RestStatus RestEngineHandler::execute() {
     return RestStatus::DONE;
   }
   
-  ServerSecurityFeature* security =
-      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-          "ServerSecurity");
-  TRI_ASSERT(security != nullptr);
-
-  if (!security->canAccessHardenedApi()) {
-    // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN); 
-    return RestStatus::DONE;
-  }
-
   handleGet();
   return RestStatus::DONE;
 }
@@ -70,11 +59,24 @@ void RestEngineHandler::handleGet() {
     return;
   }
 
-  if (suffixes.size() == 0) {
+  if (suffixes.empty()) {
     getCapabilities();
-  } else {
-    getStats();
+    return;
   }
+
+  ServerSecurityFeature* security =
+      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
+          "ServerSecurity");
+  TRI_ASSERT(security != nullptr);
+
+  if (!security->canAccessHardenedApi()) {
+    // dont leak information about server internals here
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    return; 
+  }
+
+  // access to engine stats is disallowed in hardened mode
+  getStats();
 }
 
 void RestEngineHandler::getCapabilities() {

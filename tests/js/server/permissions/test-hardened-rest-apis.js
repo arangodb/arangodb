@@ -56,6 +56,7 @@ function testSuite() {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_api/version");
       assertTrue(result.hasOwnProperty("version"));
+      assertTrue(result.hasOwnProperty("license"));
       assertMatch(/^\d+\.\d+/, result.version);
     },
 
@@ -63,6 +64,7 @@ function testSuite() {
       arango.reconnect(endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_api/version");
       assertFalse(result.hasOwnProperty("version"));
+      assertTrue(result.hasOwnProperty("license"));
     },
     
     testCanAccessEngineRw : function() {
@@ -74,9 +76,7 @@ function testSuite() {
     testCanAccessEngineRo : function() {
       arango.reconnect(endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_api/engine");
-      assertTrue(result.error);
-      assertEqual(403, result.code);
-      assertFalse(result.hasOwnProperty("name"));
+      assertTrue(result.hasOwnProperty("name"));
     },
     
     testCanAccessEngineStatsRw : function() {
