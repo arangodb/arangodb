@@ -68,6 +68,7 @@ static std::string const& stateToString(aql::ExecutionState state) {
 namespace aql {
 class InputAqlItemRow;
 class ExecutionEngine;
+class SharedAqlItemBlockPtr;
 
 class ExecutionBlock {
  public:
@@ -76,7 +77,7 @@ class ExecutionBlock {
   virtual ~ExecutionBlock();
 
   ExecutionBlock(ExecutionBlock const&) = delete;
-  ExecutionBlock &operator=(ExecutionBlock const&) = delete;
+  ExecutionBlock& operator=(ExecutionBlock const&) = delete;
 
  public:
   /// @brief batch size value
@@ -107,7 +108,7 @@ class ExecutionBlock {
   /// if it returns an actual block, it must contain at least one item.
   /// getSome() also takes care of tracing and clearing registers; don't do it
   /// in getOrSkipSome() implementations.
-  virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) = 0;
+  virtual std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) = 0;
 
   // Trace the start of a getSome call
   inline void traceGetSomeBegin(size_t atMost) {
@@ -125,8 +126,8 @@ class ExecutionBlock {
   }
 
   // Trace the end of a getSome call, potentially with result
-  inline std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> traceGetSomeEnd(
-      ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
+  inline std::pair<ExecutionState, SharedAqlItemBlockPtr> traceGetSomeEnd(
+      ExecutionState state, SharedAqlItemBlockPtr result) {
     TRI_ASSERT(result != nullptr || state != ExecutionState::HASMORE);
     if (_profile >= PROFILE_LEVEL_BLOCKS) {
       ExecutionNode const* en = getPlanNode();
@@ -248,16 +249,6 @@ class ExecutionBlock {
     return true;
   }
 
-  /// @brief return an AqlItemBlock to the memory manager
-  void returnBlock(AqlItemBlock*& block) noexcept {
-    _engine->itemBlockManager().returnBlock(block);
-  }
-
-  /// @brief request an AqlItemBlock
-  AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs) {
-    return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
-  }
-
   /// @brief add a dependency
   void addDependency(ExecutionBlock* ep) {
     TRI_ASSERT(ep != nullptr);
@@ -312,7 +303,7 @@ class ExecutionBlock {
   /// true if and only if we have no more data ourselves (i.e.
   /// _buffer.size()==0)
   /// and we have unsuccessfully tried to get another block from our dependency.
-  std::deque<AqlItemBlock*> _buffer;
+  std::deque<SharedAqlItemBlockPtr> _buffer;
 
   /// @brief current working position in the first entry of _buffer
   size_t _pos;

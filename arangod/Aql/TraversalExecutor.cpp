@@ -154,8 +154,8 @@ TraversalExecutor::~TraversalExecutor() {
       // The InAndOutRowExpressionContext in the PruneExpressionEvaluator holds
       // an InputAqlItemRow. As the Plan holds the PruneExpressionEvaluator and
       // is destroyed after the Engine, this must be deleted by
-      // unPrepareContext() - otherwise, the AqlItemBlockShell referenced by the
-      // row will return its AqlItemBlock to an already destroyed
+      // unPrepareContext() - otherwise, the SharedAqlItemBlockPtr referenced by
+      // the row will return its AqlItemBlock to an already destroyed
       // AqlItemBlockManager.
       evaluator->unPrepareContext();
     }

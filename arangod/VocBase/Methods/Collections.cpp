@@ -716,8 +716,8 @@ Result Collections::revisionId(Context& ctxt, TRI_voc_rid_t& rid) {
 }
 
 /// @brief Helper implementation similar to ArangoCollection.all() in v8
-/*static*/ arangodb::Result Collections::all(TRI_vocbase_t& vocbase,
-                                             std::string const& cname, DocCallback cb) {
+/*static*/ arangodb::Result Collections::all(TRI_vocbase_t& vocbase, std::string const& cname,
+                                             DocCallback const& cb) {
   // Implement it like this to stay close to the original
   if (ServerState::instance()->isCoordinator()) {
     auto empty = std::make_shared<VPackBuilder>();

@@ -38,7 +38,6 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-class AqlItemBlockShell;
 template <bool>
 class BlockFetcher;
 
@@ -84,7 +83,7 @@ class SingleBlockFetcher {
   // there are no executors that could use this and not better use
   // SingleRowFetcher instead.
 
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock(
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(
       std::size_t limit = ExecutionBlock::DefaultBatchSize(), bool prefetch = false) {
     if (_prefetched) {
       TRI_ASSERT(!prefetch);
@@ -101,43 +100,41 @@ class SingleBlockFetcher {
     _upstreamState = res.first;
     _currentBlock = res.second;
 
-    if (prefetch && _currentBlock && _currentBlock->hasBlock()) {
+    if (prefetch && _currentBlock != nullptr) {
       _prefetched = prefetch;
     }
 
     return res;
   }
 
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForModificationExecutor(
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForModificationExecutor(
       std::size_t limit = ExecutionBlock::DefaultBatchSize()) {
     return fetchBlock(limit);
   }
 
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t) {
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   };
 
   std::pair<ExecutionState, std::size_t> preFetchNumberOfRows(std::size_t) {
     fetchBlock(true);
-    return {_upstreamState, _currentBlock != nullptr ? _currentBlock->block().size() : 0};
+    return {_upstreamState, _currentBlock != nullptr ? _currentBlock->size() : 0};
   }
 
   InputAqlItemRow accessRow(std::size_t index) {
-    TRI_ASSERT(_currentBlock);
-    TRI_ASSERT(index < _currentBlock->block().size());
+    TRI_ASSERT(_currentBlock != nullptr);
+    TRI_ASSERT(index < _currentBlock->size());
     return InputAqlItemRow{_currentBlock, index};
   }
 
   ExecutionState upstreamState() const { return _upstreamState; }
-  std::shared_ptr<AqlItemBlockShell> currentBlock() const {
-    return _currentBlock;
-  }
+  SharedAqlItemBlockPtr currentBlock() const { return _currentBlock; }
 
   bool _prefetched;
 
  private:
   BlockFetcher<pass>* _blockFetcher;
-  std::shared_ptr<AqlItemBlockShell> _currentBlock;
+  SharedAqlItemBlockPtr _currentBlock;
   ExecutionState _upstreamState;
 
  private:

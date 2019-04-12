@@ -134,8 +134,7 @@ std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRow(OutputAqlItemRow
           // Error during initialize cursor
           THROW_ARANGO_EXCEPTION(initRes.second);
         }
-        _subqueryResults =
-            std::make_unique<std::vector<std::unique_ptr<AqlItemBlock>>>();
+        _subqueryResults = std::make_unique<std::vector<SharedAqlItemBlockPtr>>();
       }
       // on const subquery we can retoggle init as soon as we have new input.
       _subqueryInitialized = true;

@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,47 +17,34 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_BLOCK_COLLECTOR_H
-#define ARANGOD_AQL_BLOCK_COLLECTOR_H 1
+#ifndef ARANGOD_AQL_AQLITEMBLOCKUTILS_H
+#define ARANGOD_AQL_AQLITEMBLOCKUTILS_H
 
 #include "Aql/SharedAqlItemBlockPtr.h"
-#include "Aql/types.h"
-#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
-class AqlItemBlock;
 class AqlItemBlockManager;
+class BlockCollector;
+class InputAqlItemRow;
 
-class BlockCollector {
-  friend class AqlItemBlock;
+namespace itemBlock {
 
- public:
-  BlockCollector(BlockCollector const&) = delete;
-  BlockCollector& operator=(BlockCollector const&) = delete;
+/// @brief concatenate multiple blocks, note that the new block now owns all
+/// AqlValue pointers in the old blocks, therefore, the latter are all
+/// set to nullptr, just to be sure.
+SharedAqlItemBlockPtr concatenate(AqlItemBlockManager&,
+                                  std::vector<SharedAqlItemBlockPtr>& blocks);
 
-  explicit BlockCollector(AqlItemBlockManager*);
-  ~BlockCollector();
+void forRowInBlock(SharedAqlItemBlockPtr const& block,
+                   std::function<void(InputAqlItemRow&&)> const& callback);
 
-  size_t totalSize() const;
-  RegisterId nrRegs() const;
-
-  void clear();
-
-  void add(SharedAqlItemBlockPtr block);
-
-  SharedAqlItemBlockPtr steal();
-
- private:
-  AqlItemBlockManager* _blockManager;
-  std::vector<SharedAqlItemBlockPtr> _blocks;
-  size_t _totalSize;
-};
+}  // namespace itemBlock
 
 }  // namespace aql
 }  // namespace arangodb
 
-#endif
+#endif  // ARANGOD_AQL_AQLITEMBLOCKUTILS_H

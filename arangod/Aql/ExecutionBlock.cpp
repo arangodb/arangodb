@@ -46,11 +46,7 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _pos(0),
       _collector(&engine->itemBlockManager()) {}
 
-ExecutionBlock::~ExecutionBlock() {
-  for (auto& it : _buffer) {
-    delete it;
-  }
-}
+ExecutionBlock::~ExecutionBlock() = default;
 
 void ExecutionBlock::throwIfKilled() {  // TODO Scatter & DistributeExecutor still using
   if (_engine->getQuery()->killed()) {
@@ -71,9 +67,6 @@ std::pair<ExecutionState, Result> ExecutionBlock::initializeCursor(InputAqlItemR
     }
   }
 
-  for (auto& it : _buffer) {
-    returnBlock(it);
-  }
   _buffer.clear();
 
   _done = false;
@@ -109,12 +102,7 @@ std::pair<ExecutionState, Result> ExecutionBlock::shutdown(int errorCode) {
     }
   }
 
-  if (!_buffer.empty()) {
-    for (auto& it : _buffer) {
-      delete it;
-    }
-    _buffer.clear();
-  }
+  _buffer.clear();
 
   return {ExecutionState::DONE, _shutdownResult};
 }
