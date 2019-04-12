@@ -189,7 +189,7 @@ equal to the current number of _DBServers_ minus one. For the pupose of
 cleaning out `DBServer004` for example would work as follows, when
 issued to any _Coordinator_ of the cluster:
 
-`curl <coord-ip:coord-port>/_admin/cluster/cleanOutServer -d '{"id":"DBServer004"}'`
+`curl <coord-ip:coord-port>/_admin/cluster/cleanOutServer -d '{"server":"DBServer004"}'`
 
 After the _DBServer_ has been cleaned out, you will find a trash bin
 icon to the right of the name of the _DBServer_ on any _Coordinators_'
