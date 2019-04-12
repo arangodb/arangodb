@@ -798,14 +798,9 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
                                 newDocumentId, newDoc, mode);
   }
   
-  bool equal = true;
-  for (std::vector<basics::AttributeName> const& path : _fields) {
-    if (!::attributesEqual(oldDoc, newDoc, path.begin(), path.end())) {
-      equal = false;
-      break;
-    }
-  }
-  if (!equal) {
+  if (!std::all_of(_fields.cbegin(), _fields.cend(), [&](auto const& path) {
+    return ::attributesEqual(oldDoc, newDoc, path.begin(), path.end());
+  })) {
     // we can only use in-place updates if no indexed attributes changed
     return RocksDBIndex::update(trx, mthds, oldDocumentId, oldDoc,
                                 newDocumentId, newDoc, mode);

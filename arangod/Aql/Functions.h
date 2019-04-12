@@ -442,7 +442,8 @@ struct Functions {
                        VPackFunctionParameters const&);
   static AqlValue Fail(arangodb::aql::ExpressionContext*, transaction::Methods*,
                        VPackFunctionParameters const&);
-
+  static AqlValue DecodeRev(arangodb::aql::ExpressionContext*,
+                            transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue CurrentUser(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
 

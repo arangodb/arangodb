@@ -1139,9 +1139,6 @@ ptrdiff_t term_iterator::seek_cached(
 bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
   assert(owner_->fst_ && owner_->fst_->GetImpl());
 
-  // ensure final state has no weight assigned
-  assert(owner_->fst_->Final(fst_byte_builder::final).Empty());
-
   const auto& fst = *owner_->fst_->GetImpl();
 
   prefix = 0; // number of current symbol to process
@@ -1183,6 +1180,12 @@ bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
     if (!weight.Empty()) {
       cur_block_ = push_block(fst::Times(weight_, weight), prefix);
     } else if (fst_byte_builder::final == arc.nextstate) {
+      // ensure final state has no weight assigned
+      // the only case when it's wrong is degerated FST composed of only
+      // 'fst_byte_builder::final' state.
+      // in that case we'll never get there due to the loop condition above.
+      assert(fst.FinalRef(fst_byte_builder::final).Empty());
+
       cur_block_ = push_block(std::move(weight_), prefix);
     }
 
