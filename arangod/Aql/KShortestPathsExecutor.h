@@ -38,7 +38,7 @@ class Slice;
 }
 
 namespace graph {
-class ConstantWeightKShortestPathsFinder;
+class KShortestPathsFinder;
 class ShortestPathFinder;
 class ShortestPathResult;
 class TraverserCache;
@@ -71,7 +71,7 @@ class KShortestPathsExecutorInfos : public ExecutorInfos {
                               RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                               std::unordered_set<RegisterId> registersToClear,
                               std::unordered_set<RegisterId> registersToKeep,
-                              std::unique_ptr<graph::ConstantWeightKShortestPathsFinder>&& finder,
+                              std::unique_ptr<graph::KShortestPathsFinder>&& finder,
                               InputVertex&& source, InputVertex&& target);
 
   KShortestPathsExecutorInfos() = delete;
@@ -80,7 +80,7 @@ class KShortestPathsExecutorInfos : public ExecutorInfos {
   KShortestPathsExecutorInfos(KShortestPathsExecutorInfos const&) = delete;
   ~KShortestPathsExecutorInfos();
 
-  arangodb::graph::ConstantWeightKShortestPathsFinder& finder() const;
+  arangodb::graph::KShortestPathsFinder& finder() const;
 
   /**
    * @brief test if we use a register or a constant input
@@ -112,7 +112,7 @@ class KShortestPathsExecutorInfos : public ExecutorInfos {
 
  private:
   /// @brief the shortest path finder.
-  std::unique_ptr<arangodb::graph::ConstantWeightKShortestPathsFinder> _finder;
+  std::unique_ptr<arangodb::graph::KShortestPathsFinder> _finder;
 
   /// @brief Information about the source vertex
   InputVertex const _source;
@@ -190,7 +190,7 @@ class KShortestPathsExecutor {
   InputAqlItemRow _input;
   ExecutionState _rowState;
   /// @brief the shortest path finder.
-  arangodb::graph::ConstantWeightKShortestPathsFinder& _finder;
+  arangodb::graph::KShortestPathsFinder& _finder;
 
   /// @brief temporary memory mangement for source id
   arangodb::velocypack::Builder _sourceBuilder;

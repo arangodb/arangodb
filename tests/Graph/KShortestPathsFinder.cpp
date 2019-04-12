@@ -29,7 +29,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "Graph/ConstantWeightKShortestPathsFinder.h"
+#include "Graph/KShortestPathsFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Random/RandomGenerator.h"
@@ -289,7 +289,7 @@ namespace arangodb {
 namespace tests {
 namespace graph {
 
-TEST_CASE("ConstantWeightKShortestPathsFinder", "[graph]") {
+TEST_CASE("KShortestPathsFinder", "[graph]") {
   Setup s;
   UNUSED(s);
   MockGraphDatabase gdb("testVocbase");
@@ -339,7 +339,7 @@ TEST_CASE("ConstantWeightKShortestPathsFinder", "[graph]") {
     }
     return res;
   };
-  auto finder = new ConstantWeightKShortestPathsFinder(*spo);
+  auto finder = new KShortestPathsFinder(*spo);
 
 
   SECTION("path from vertex to itself") {

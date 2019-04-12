@@ -374,12 +374,12 @@ SET(ARANGOD_SOURCES
   Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp
   Graph/ClusterTraverserCache.cpp
-  Graph/ConstantWeightKShortestPathsFinder.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/EdgeCollectionInfo.cpp
   Graph/Graph.cpp
   Graph/GraphManager.cpp
   Graph/GraphOperations.cpp
+  Graph/KShortestPathsFinder.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/PathEnumerator.cpp
   Graph/ShortestPathFinder.cpp

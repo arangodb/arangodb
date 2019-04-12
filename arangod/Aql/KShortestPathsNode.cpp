@@ -33,7 +33,7 @@
 #include "Aql/KShortestPathsExecutor.h"
 #include "Aql/Query.h"
 #include "Graph/AttributeWeightShortestPathFinder.h"
-#include "Graph/ConstantWeightKShortestPathsFinder.h"
+#include "Graph/KShortestPathsFinder.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
@@ -272,8 +272,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
   KShortestPathsExecutorInfos::InputVertex sourceInput = ::prepareVertexInput(this, false);
   KShortestPathsExecutorInfos::InputVertex targetInput = ::prepareVertexInput(this, true);
 
-  std::unique_ptr<ConstantWeightKShortestPathsFinder> finder;
-  finder.reset(new graph::ConstantWeightKShortestPathsFinder(*opts));
+  std::unique_ptr<KShortestPathsFinder> finder;
+  finder.reset(new graph::KShortestPathsFinder(*opts));
 
   TRI_ASSERT(finder != nullptr);
   KShortestPathsExecutorInfos infos(inputRegisters, outputRegisters,

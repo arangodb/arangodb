@@ -21,7 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ConstantWeightKShortestPathsFinder.h"
+#include "KShortestPathsFinder.h"
 
 #include "Aql/AqlValue.h"
 #include "Cluster/ServerState.h"
@@ -43,13 +43,13 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 //
-ConstantWeightKShortestPathsFinder::ConstantWeightKShortestPathsFinder(ShortestPathOptions& options)
+KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
     : ShortestPathFinder(options), _pathAvailable(false) {}
-ConstantWeightKShortestPathsFinder::~ConstantWeightKShortestPathsFinder() {}
+KShortestPathsFinder::~KShortestPathsFinder() {}
 
 // Sets up k-shortest-paths traversal from start to end
 // Returns number of currently known paths
-bool ConstantWeightKShortestPathsFinder::startKShortestPathsTraversal(
+bool KShortestPathsFinder::startKShortestPathsTraversal(
     arangodb::velocypack::Slice const& start, arangodb::velocypack::Slice const& end) {
   _start = arangodb::velocypack::StringRef(start);
   _end = arangodb::velocypack::StringRef(end);
@@ -64,7 +64,7 @@ bool ConstantWeightKShortestPathsFinder::startKShortestPathsTraversal(
   return true;
 }
 
-bool ConstantWeightKShortestPathsFinder::computeShortestPath(
+bool KShortestPathsFinder::computeShortestPath(
     VertexRef const& start, VertexRef const& end,
     std::unordered_set<VertexRef> const& forbiddenVertices,
     std::unordered_set<Edge> const& forbiddenEdges, Path& result) {
@@ -91,7 +91,7 @@ bool ConstantWeightKShortestPathsFinder::computeShortestPath(
   return found;
 }
 
-void ConstantWeightKShortestPathsFinder::computeNeighbourhoodOfVertex(
+void KShortestPathsFinder::computeNeighbourhoodOfVertex(
     VertexRef vertex, Direction direction, std::vector<Step>& steps) {
   std::unique_ptr<EdgeCursor> edgeCursor;
 
@@ -150,7 +150,7 @@ void ConstantWeightKShortestPathsFinder::computeNeighbourhoodOfVertex(
   }
 }
 
-bool ConstantWeightKShortestPathsFinder::advanceFrontier(
+bool KShortestPathsFinder::advanceFrontier(
     Ball& source, Ball const& target, std::unordered_set<VertexRef> const& forbiddenVertices,
     std::unordered_set<Edge> const& forbiddenEdges, VertexRef& join) {
   std::vector<Step> neighbours;
@@ -192,7 +192,7 @@ bool ConstantWeightKShortestPathsFinder::advanceFrontier(
   return false;
 }
 
-void ConstantWeightKShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
+void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
                                                          VertexRef const& join,
                                                          Path& result) {
   result.clear();
@@ -230,7 +230,7 @@ void ConstantWeightKShortestPathsFinder::reconstructPath(Ball const& left, Ball 
   }
 }
 
-bool ConstantWeightKShortestPathsFinder::computeNextShortestPath(Path& result) {
+bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
   std::unordered_set<VertexRef> forbiddenVertices;
   std::unordered_set<Edge> forbiddenEdges;
   Path tmpPath, candidate;
@@ -299,7 +299,7 @@ bool ConstantWeightKShortestPathsFinder::computeNextShortestPath(Path& result) {
   return available;
 }
 
-bool ConstantWeightKShortestPathsFinder::getNextPath(Path& result) {
+bool KShortestPathsFinder::getNextPath(Path& result) {
   bool available = false;
   result.clear();
 
@@ -333,7 +333,7 @@ bool ConstantWeightKShortestPathsFinder::getNextPath(Path& result) {
   return available;
 }
 
-bool ConstantWeightKShortestPathsFinder::getNextPathShortestPathResult(ShortestPathResult& result) {
+bool KShortestPathsFinder::getNextPathShortestPathResult(ShortestPathResult& result) {
   Path path;
 
   result.clear();
@@ -346,7 +346,7 @@ bool ConstantWeightKShortestPathsFinder::getNextPathShortestPathResult(ShortestP
   }
 }
 
-bool ConstantWeightKShortestPathsFinder::getNextPathAql(arangodb::velocypack::Builder& result) {
+bool KShortestPathsFinder::getNextPathAql(arangodb::velocypack::Builder& result) {
   Path path;
 
   if (getNextPath(path)) {

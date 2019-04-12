@@ -46,13 +46,13 @@ namespace graph {
 
 class AttributeWeightShortestPathFinder;
 class ConstantWeightShortestPathFinder;
-class ConstantWeightKShortestPathsFinder;
+class KShortestPathsFinder;
 class TraverserCache;
 
 class ShortestPathResult {
   friend class arangodb::graph::AttributeWeightShortestPathFinder;
   friend class arangodb::graph::ConstantWeightShortestPathFinder;
-  friend class arangodb::graph::ConstantWeightKShortestPathsFinder;
+  friend class arangodb::graph::KShortestPathsFinder;
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Constructor. This is an abstract only class.

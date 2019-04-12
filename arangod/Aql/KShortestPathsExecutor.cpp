@@ -26,7 +26,7 @@
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
-#include "Graph/ConstantWeightKShortestPathsFinder.h"
+#include "Graph/KShortestPathsFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Transaction/Helpers.h"
@@ -63,7 +63,7 @@ KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
     std::unordered_set<RegisterId> registersToKeep,
-    std::unique_ptr<graph::ConstantWeightKShortestPathsFinder>&& finder,
+    std::unique_ptr<graph::KShortestPathsFinder>&& finder,
     InputVertex&& source, InputVertex&& target)
     : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
                     nrInputRegisters, nrOutputRegisters,
@@ -76,7 +76,7 @@ KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(
 KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(KShortestPathsExecutorInfos&&) = default;
 KShortestPathsExecutorInfos::~KShortestPathsExecutorInfos() = default;
 
-arangodb::graph::ConstantWeightKShortestPathsFinder& KShortestPathsExecutorInfos::finder() const {
+arangodb::graph::KShortestPathsFinder& KShortestPathsExecutorInfos::finder() const {
   TRI_ASSERT(_finder);
   return *_finder.get();
 }

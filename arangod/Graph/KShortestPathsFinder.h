@@ -46,7 +46,7 @@ struct ShortestPathOptions;
 // again.
 // TODO: Traverser.h has destroyEngines as well (the code for the two functions
 //       is identical), refactor?
-class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
+class KShortestPathsFinder : public ShortestPathFinder {
  private:
   // Mainly for readability
   typedef arangodb::velocypack::StringRef VertexRef;
@@ -159,8 +159,8 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
   };
 
  public:
-  explicit ConstantWeightKShortestPathsFinder(ShortestPathOptions& options);
-  ~ConstantWeightKShortestPathsFinder();
+  explicit KShortestPathsFinder(ShortestPathOptions& options);
+  ~KShortestPathsFinder();
 
   // This is here because we inherit from ShortestPathFinder (to get the destroyEngines function)
   // TODO: Remove
