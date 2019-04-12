@@ -43,6 +43,10 @@ static bool canExpose(v8::Isolate* isolate, v8::Local<v8::Name> property) {
   v8::String::Utf8Value const key(isolate, property);
   std::string utf8String(*key, key.length());
 
+  if (utf8String == "hasOwnProperty") {
+    return true;
+  }
+
   arangodb::V8SecurityFeature* v8security =
       arangodb::application_features::ApplicationServer::getFeature<arangodb::V8SecurityFeature>(
           "V8Security");

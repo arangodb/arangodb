@@ -28,16 +28,16 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var env = require('process').env;
+let env = require('process').env;
 if (getOptions === true) {
   env['PATHTT'] = 'whitelist';
   return {
     'javascript.environment-variables-black-list': 'PATH',
-    'javascript.environment-variables-white-list': 'PATHTT'
+    'javascript.environment-variables-white-list': '^MIAU-DERFUCHS$|PATHTT|^INSTANCEINFO$'
   };
 }
 
-var jsunity = require('jsunity');
+let jsunity = require('jsunity');
 
 function testSuite() {
   return {

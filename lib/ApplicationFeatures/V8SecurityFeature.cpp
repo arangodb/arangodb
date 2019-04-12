@@ -112,50 +112,52 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
 }
 
 namespace {
-std::string canonicalpath(std::string&& path)
-  {
-  #ifdef _WIN32
-    return std::move(path);
-  #else
-    auto realPath = std::unique_ptr<char, void (*)(void*)>(
-      ::realpath(path.c_str(), nullptr), &free);
-    if (realPath) {
-      path = std::string(realPath.get());
-    }
-    return std::move(path); // must be moved as it passed with && into the function
-                            // usually no move required
-  #endif
-  }
 
+std::string canonicalpath(std::string&& path) {
+#ifdef _WIN32
+  return std::move(path);
+#else
+  auto realPath = std::unique_ptr<char, void (*)(void*)>(
+    ::realpath(path.c_str(), nullptr), &free);
+  if (realPath) {
+    path = std::string(realPath.get());
+  }
+  return std::move(path); // must be moved as it passed with && into the function
+                          // usually no move required
+#endif
+}
 
 void convertToRe(std::vector<std::string>& files, std::string& target_re) {
-  if (!files.empty()) {
-    std::stringstream ss;
-    std::string last = std::move(files.back());
-    files.pop_back();
-
-    for (auto const& f : files) {
-      ss << f << "|";
-    }
-    ss << last;
-    target_re = ss.str();
+  if (files.empty()) {
+    return;
   }
-};
+
+  std::string last = std::move(files.back());
+  files.pop_back();
+
+  std::stringstream ss;
+  for (auto const& f : files) {
+    ss << f << "|";
+  }
+  ss << last;
+  target_re = ss.str();
+}
 
 void convertToRe(std::unordered_set<std::string>& files, std::string& target_re) {
   //does not delete from the set
-  if (!files.empty()) {
-    std::stringstream ss;
-    auto last = *files.cbegin();
-
-    for(auto fileIt = std::next(files.cbegin()); fileIt != files.cend(); ++fileIt){
-      ss << *fileIt << "|";
-    }
-
-    ss << last;
-    target_re = ss.str();
+  if (files.empty()) {
+    return;
   }
-};
+  auto last = *files.cbegin();
+
+  std::stringstream ss;
+  for (auto fileIt = std::next(files.cbegin()); fileIt != files.cend(); ++fileIt){
+    ss << *fileIt << "|";
+  }
+
+  ss << last;
+  target_re = ss.str();
+}
 
 bool checkBlackAndWhiteList(std::string const& value, bool hasWhiteList,
                             std::regex const& whiteList, bool hasBlacklist,
@@ -198,6 +200,7 @@ bool checkBlackAndWhiteList(std::string const& value, bool hasWhiteList,
   bool rv = white_result[0].length() > black_result[0].length();
   if (log) { LOG_DEVEL << "white match is longer" << std::boolalpha << rv; }
   return rv;
+
 }
 }  // namespace
 
