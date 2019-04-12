@@ -23,13 +23,12 @@
 #ifndef ARANGODB_IN_MESSAGE_CACHE_H
 #define ARANGODB_IN_MESSAGE_CACHE_H 1
 
-#include <velocypack/velocypack-aliases.h>
-#include <velocypack/vpack.h>
+#include <velocypack/Slice.h>
 #include <atomic>
 #include <string>
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
+#include "Basics/StringHeap.h"
 
 #include "Pregel/GraphStore.h"
 #include "Pregel/Iterators.h"
@@ -47,10 +46,13 @@ processing */
 template <typename M>
 class InCache {
  protected:
-  mutable std::map<PregelShard, arangodb::Mutex> _bucketLocker;
+  mutable std::map<PregelShard, std::mutex> _bucketLocker;
   std::atomic<uint64_t> _containedMessageCount;
   MessageFormat<M> const* _format;
-
+  
+  std::mutex _keyMutex;
+  StringHeap _keyHeap;
+  
   /// Initialize format and mutex map.
   /// @param config can be null if you don't want locks
   explicit InCache(MessageFormat<M> const* format);
@@ -113,7 +115,8 @@ class CombiningInCache : public InCache<M> {
   std::map<PregelShard, HMap> _shardMap;
 
  protected:
-  void _set(PregelShard shard, PregelKey const& vertexId, M const& data) override;
+  void _set(PregelShard shard, PregelKey const& vertexId,
+            M const& data) override;
 
  public:
   CombiningInCache(WorkerConfig const* config, MessageFormat<M> const* format,

@@ -531,6 +531,7 @@ RestStatus RestAgencyHandler::handleRead() {
 }
 
 RestStatus RestAgencyHandler::handleConfig() {
+  LOG_TOPIC("eda22", DEBUG, Logger::AGENCY) << "handleConfig start";
   // Update endpoint of peer
   if (_request->requestType() == rest::RequestType::POST) {
     try {
@@ -543,6 +544,7 @@ RestStatus RestAgencyHandler::handleConfig() {
 
   // Respond with configuration
   auto last = _agent->lastCommitted();
+  LOG_TOPIC("55412", DEBUG, Logger::AGENCY) << "handleConfig after lastCommitted";
   Builder body;
   {
     VPackObjectBuilder b(&body);
@@ -550,13 +552,16 @@ RestStatus RestAgencyHandler::handleConfig() {
     body.add("leaderId", Value(_agent->leaderID()));
     body.add("commitIndex", Value(last));
     _agent->lastAckedAgo(body);
+    LOG_TOPIC("ddeea", DEBUG, Logger::AGENCY) << "handleConfig after lastAckedAgo";
     body.add("configuration", _agent->config().toBuilder()->slice());
     body.add("engine", VPackValue(EngineSelectorFeature::engineName()));
     body.add("version", VPackValue(ARANGODB_VERSION));
   }
 
+  LOG_TOPIC("76543", DEBUG, Logger::AGENCY) << "handleConfig after before generateResult";
   generateResult(rest::ResponseCode::OK, body.slice());
 
+  LOG_TOPIC("77891", DEBUG, Logger::AGENCY) << "handleConfig after before done";
   return RestStatus::DONE;
 }
 

@@ -617,7 +617,9 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b) const {
   for (VertexEntry const* vertexEntry : it) {
     V* data = _graphStore->mutableVertexData(vertexEntry);
     b.openObject();
-    b.add(StaticStrings::KeyString, VPackValue(vertexEntry->key()));
+    b.add(StaticStrings::KeyString, VPackValuePair(vertexEntry->key().data(),
+                                                   vertexEntry->key().size(),
+                                                   VPackValueType::String));
     // bool store =
     _graphStore->graphFormat()->buildVertexDocument(b, data, sizeof(V));
     b.close();
@@ -718,6 +720,12 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
   LOG_TOPIC("17f3c", INFO, Logger::PREGEL) << "Recovery finished";
 }
 
+class WorkerCb : public arangodb::ClusterCommCallback {
+  bool operator()(ClusterCommResult*) override {
+    return true;
+  }
+};
+
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const& message) {
   if (ServerState::instance()->isRunningInCluster() == false) {
@@ -734,11 +742,10 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
     std::unordered_map<std::string, std::string> headers;
     auto body = std::make_shared<std::string const>(message.toJson());
     cc->asyncRequest(coordinatorTransactionID, "server:" + _config.coordinatorId(),
-                     rest::RequestType::POST, baseUrl + path, body, headers, nullptr,
+                     rest::RequestType::POST, baseUrl + path, body, headers,
+                     std::make_shared<WorkerCb>(), // noop callback
                      120.0,  // timeout
                      true);  // single request, no answer expected
-    // Forget about it
-    cc->drop(coordinatorTransactionID, 0, "");
   }
 }
 

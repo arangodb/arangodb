@@ -61,7 +61,7 @@ class ConstrainedSortExecutor {
   struct Properties {
     static const bool preservesOrder = false;
     static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = SortExecutorInfos;
@@ -78,7 +78,11 @@ class ConstrainedSortExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
-  inline size_t numberOfRowsInFlight() const { return 0; }
+  /**
+   * @brief This Executor knows how many rows it will produce and most by itself
+   *        It also knows that it could produce less if the upstream only has fewer rows.
+   */
+  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
   bool compareInput(uint32_t const& rosPos, InputAqlItemRow& row) const;
