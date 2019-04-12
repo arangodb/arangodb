@@ -76,8 +76,8 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
 
   /// @brief tests if the path (or path component) shall be accessible for the
   /// calling JavaScript code
-  bool isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path, FSAccessType access) const;
-  bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, FSAccessType access) const;
+  bool isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path, FSAccessType access, bool log = false) const;
+  bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, FSAccessType access, bool log = false) const;
   bool isInternalContext(v8::Isolate* isolate) const;
 
   void addToInternalReadWhiteList(char const* item);
