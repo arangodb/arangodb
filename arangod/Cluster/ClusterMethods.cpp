@@ -3637,7 +3637,6 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload) {
     return arangodb::Result();
 
   } catch (std::exception const& e) {
-    TRI_ASSERT(false);
     return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_INTERNAL,
       std::string("caught exception cretaing cluster backup: ") + e.what());
