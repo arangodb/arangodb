@@ -18,10 +18,10 @@ The following security options are available:
   * `/_admin/status`
   * `/_admin/statistics`
   * `/_admin/statistics-description`
-  * `/_api/engine`
+  * `/_api/engine/stats`
  
-  Additionally, no version or platform details will be revealed by the version
-  API at `/_api/version`.
+  Additionally, no version details will be revealed by the version REST API at 
+  `/_api/version`.
   `
   The default value for this option is `false`.
 

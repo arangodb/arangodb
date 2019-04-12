@@ -137,4 +137,9 @@ std::pair<ExecutionState, size_t> LimitExecutor::expectedNumberOfRows(size_t atM
       return {ExecutionState::DONE, 0};
     }
   }
+  TRI_ASSERT(false);
+  // This should not be reached, (the switch case is covering all enum values)
+  // Nevertheless if it is reached this will fall back to the non.optimal, but
+  // working variant
+  return {ExecutionState::DONE, atMost};
 }
