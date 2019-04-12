@@ -42,8 +42,7 @@ class ShortestPathFinder {
 
   virtual bool shortestPath(arangodb::velocypack::Slice const& start,
                             arangodb::velocypack::Slice const& target,
-                            arangodb::graph::ShortestPathResult& result,
-                            std::function<void()> const& callback) = 0;
+                            arangodb::graph::ShortestPathResult& result) = 0;
 
   void destroyEngines();
 

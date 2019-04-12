@@ -160,9 +160,9 @@ AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(ShortestPat
 
 AttributeWeightShortestPathFinder::~AttributeWeightShortestPathFinder() {}
 
-bool AttributeWeightShortestPathFinder::shortestPath(
-    arangodb::velocypack::Slice const& st, arangodb::velocypack::Slice const& ta,
-    ShortestPathResult& result, std::function<void()> const& callback) {
+bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice const& st,
+                                                     arangodb::velocypack::Slice const& ta,
+                                                     ShortestPathResult& result) {
   // For the result:
   result.clear();
   _highscoreSet = false;
@@ -205,7 +205,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(
 
     if (++counter == 10) {
       // check for abortion
-      callback();
+      options().isQueryKilledCallback();
       counter = 0;
     }
   }
