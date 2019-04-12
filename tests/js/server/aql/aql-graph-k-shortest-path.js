@@ -222,15 +222,16 @@ const createGraph = () => {
   // we have 1 path source -> target of length 8 (S,V1_0,V2_1,Loop,V2_0,V1_1,V1_2,V1_3,T)
   // The weights are defined as (1 + pathNum)^2 on every edge (the duplicate on path2 is 10 instead of 9).
   // So we end up with weight on the following paths:
-  // * 4 on path0
-  // * 10 on path1->path0 (5 edges)
-  // * 14 on path0->path1
-  // * 20 on path1 (5 edges)
-  // * 26 on path1 -> path2 (5edges)
-  // * 30 on path2 -> path1
-  // * 36 on path2
-  // * 37 on path2 alternative
-  // * 43 on loop path (8 edges)
+
+  // * 4 on path0 (4 edges)
+  // * 7 path1->path0 (4 edges)
+  // * 17 path0->path1 (5 edges)
+  // * 20 path1 (5edges)
+  // * 25 path2->path1 (5 edges)
+  // * 31 path1->path2 (4 edges)
+  // * 36 path2 (4 edges)
+  // * 37 path2 alt(4 edges)
+  // * 47 on loop path (8 edges) 
 
 
   // We hav no paths source -> badTarget
@@ -239,10 +240,10 @@ const createGraph = () => {
   // source -e1> loop -e1> 0_2 <e2- t of length 6
 
   // So we end up with weight on the following paths:
-  // * 3 on path0
-  // * 16 on path1
-  // * 27 on path2
-  // * 44 on loop
+  // * 51 on path0
+  // * 72 on path1
+  // * 99 on path2
+  // * 121 on loop
 };
 
 function kConstantWeightShortestPathTestSuite() {
@@ -404,11 +405,11 @@ function kAttributeWeightShortestPathTestSuite() {
       assertEqual(result.length, 6);
       allPathsAreSorted(result);
       isPathValid(result[0], 4, 4);
-      isPathValid(result[1], 5, 10);
-      isPathValid(result[2], 4, 14);
+      isPathValid(result[1], 4, 7);
+      isPathValid(result[2], 5, 17);
       isPathValid(result[3], 5, 20);
-      isPathValid(result[4], 5, 26);
-      isPathValid(result[5], 4, 30);
+      isPathValid(result[4], 5, 25);
+      isPathValid(result[5], 4, 31);
     },
 
     testWeightNoPathExistsLimit: function () {
@@ -429,17 +430,17 @@ function kAttributeWeightShortestPathTestSuite() {
       `;
       const result = db._query(query).toArray();
       allPathsDiffer(result);
-      assertEqual(result.length, 8);
+      assertEqual(result.length, 9);
       allPathsAreSorted(result);
       isPathValid(result[0], 4, 4);
-      isPathValid(result[1], 5, 10);
-      isPathValid(result[2], 4, 14);
+      isPathValid(result[1], 4, 7);
+      isPathValid(result[2], 5, 17);
       isPathValid(result[3], 5, 20);
-      isPathValid(result[4], 5, 26);
-      isPathValid(result[5], 4, 30);
+      isPathValid(result[4], 5, 25);
+      isPathValid(result[5], 4, 31);
       isPathValid(result[6], 4, 36);
       isPathValid(result[7], 4, 37);
-      isPathValid(result[8], 8, 43);
+      isPathValid(result[8], 8, 47);
     },
 
     testWeightPathsExistsNoLimit: function () {
@@ -453,17 +454,17 @@ function kAttributeWeightShortestPathTestSuite() {
       `;
       const result = db._query(query).toArray();
       allPathsDiffer(result);
-      assertEqual(result.length, 8);
+      assertEqual(result.length, 9);
       allPathsAreSorted(result);
       isPathValid(result[0], 4, 4);
-      isPathValid(result[1], 5, 10);
-      isPathValid(result[2], 4, 14);
+      isPathValid(result[1], 4, 7);
+      isPathValid(result[2], 5, 17);
       isPathValid(result[3], 5, 20);
-      isPathValid(result[4], 5, 26);
-      isPathValid(result[5], 4, 30);
+      isPathValid(result[4], 5, 25);
+      isPathValid(result[5], 4, 31);
       isPathValid(result[6], 4, 36);
       isPathValid(result[7], 4, 37);
-      isPathValid(result[8], 8, 43);
+      isPathValid(result[8], 8, 47);
     },
 
     testWeightNoPathsExistsNoLimit: function () {
@@ -490,8 +491,8 @@ function kAttributeWeightShortestPathTestSuite() {
       assertEqual(result.length, 3);
       allPathsAreSorted(result);
       isPathValid(result[0], 5, 20);
-      isPathValid(result[1], 5, 26);
-      isPathValid(result[2], 4, 30);
+      isPathValid(result[1], 5, 25);
+      isPathValid(result[2], 4, 31);
     },
 
     testWeightPathsSkipMoreThanExists: function () {
@@ -514,10 +515,10 @@ function kAttributeWeightShortestPathTestSuite() {
       allPathsDiffer(result);
       assertEqual(result.length, 4);
       allPathsAreSorted(result);
-      isPathValid(result[0], 3, 3);
-      isPathValid(result[1], 4, 16);
-      isPathValid(result[2], 3, 27);
-      isPathValid(result[3], 8, 44);
+      isPathValid(result[0], 3, 51, true);
+      isPathValid(result[1], 3, 72, true);
+      isPathValid(result[2], 3, 99, true);
+      isPathValid(result[3], 6, 121, true);
     }
   };
 
