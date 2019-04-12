@@ -378,7 +378,7 @@ function kConstantWeightShortestPathTestSuite() {
       for (let i = 0; i < 3; ++i) {
         isPathValid(result[i], 3, 3, true);
       }
-      isPathValid(result[i], 6, 6, true);
+      isPathValid(result[3], 6, 6, true);
     }
 
   };
@@ -519,7 +519,6 @@ function kAttributeWeightShortestPathTestSuite() {
       isPathValid(result[2], 3, 27);
       isPathValid(result[3], 8, 44);
     }
-
   };
 
 }
