@@ -45,11 +45,39 @@ if (getOptions === true) {
 }
 
 
+const internal = require('internal');
+const db = internal.db
+const sleep = internal.sleep;
+
 const jsunity = require('jsunity');
-const db = require("internal").db;
 const tasks = require('@arangodb/tasks');
 
 const collName = "testTasks";
+
+
+function waitForState(state, time) {
+  if(time === undefined) {
+    time = 2;
+  }
+
+  while(time > 0) {
+      const query = "FOR x IN @@name FILTER x.state == @state RETURN x";
+      let bind = {"@name": collName, "state" : state };
+      rv = db._query(query, bind);
+      found = rv.toArray().length > 0
+      if (found) {
+        return true;
+      }
+      time = time - 1;
+      sleep(1);
+  }
+  return false;
+}
+
+
+print("#########################################################################");
+print("#########################################################################");
+print("#########################################################################");
 
 function testSuite() {
   return {
@@ -67,10 +95,11 @@ function testSuite() {
         command: function() {
           const collName = "testTasks";
           const db = require("internal").db;
-          db._collection(collName).save({taskStarted : "true"});
+          db._collection(collName).save({state : "started"});
         }
       });
 
+      waitForState("started");
       //require("internal").sleep(2);
       //print(db._collection(collName).toArray());
 
