@@ -301,7 +301,7 @@ describe('SyntheticRequest', function () {
       expect(req.auth).to.eql({basic: {}});
     });
     it('recognizes malformed basic auth', function () {
-      const headers = {authorization: `Basic deadbeef`};
+      const headers = {authorization: `Basic \x00\x01`};
       const rawReq = createNativeRequest({ headers });
       const req = new SyntheticRequest(rawReq, {});
       expect(req.auth).to.eql({basic: {}});

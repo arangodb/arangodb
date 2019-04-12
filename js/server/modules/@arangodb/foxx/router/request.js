@@ -203,12 +203,12 @@ module.exports =
     }
 
     get auth () {
-      const header = this.get("authorization");
-      let match = header.match(/^Bearer (.+)$/);
+      const header = this.get("authorization") || "";
+      let match = header.match(/^Bearer (.*)$/);
       if (match) {
         return {bearer: match[1]};
       }
-      match = header.match(/^Basic (.+)$/);
+      match = header.match(/^Basic (.*)$/);
       if (match) {
         let credentials = "";
         try {
