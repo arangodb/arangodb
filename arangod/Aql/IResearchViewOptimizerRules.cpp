@@ -195,7 +195,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     
     // check if all sort conditions match
     for (size_t i = 0; i < sortElements.size(); ++i) {
-      if (sortElements[i].ascending != primarySort.directon(i)) {
+      if (sortElements[i].ascending != primarySort.direction(i)) {
         // view is sorted in different order than requested in SORT condition
         return false;
       }
@@ -228,7 +228,6 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       }
     }
   
-    LOG_TOPIC("affe4", WARN, arangodb::Logger::FIXME) << "found a SORT statement (#" << sortNode->id() << ") to optimize away";
     plan->unlinkNode(sortNode); 
     return true;
   }

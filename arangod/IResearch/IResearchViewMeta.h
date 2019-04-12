@@ -139,7 +139,7 @@ struct IResearchViewMeta {
       return _fields[i];
     }
 
-    bool directon(size_t i) const noexcept {
+    bool direction(size_t i) const noexcept {
       TRI_ASSERT(i < this->size());
 
       return _directions[i];

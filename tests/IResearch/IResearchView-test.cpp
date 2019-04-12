@@ -3022,7 +3022,7 @@ SECTION("test_overwrite_immutable_properties") {
       CHECK(false == field[1].shouldExpand);
       CHECK("field" == field[2].name);
       CHECK(false == field[2].shouldExpand);
-      CHECK(true == meta._primarySort.directon(0));
+      CHECK(true == meta._primarySort.direction(0));
     }
     {
       auto& field = meta._primarySort.field(1);
@@ -3031,7 +3031,7 @@ SECTION("test_overwrite_immutable_properties") {
       CHECK(false == field[0].shouldExpand);
       CHECK("field" == field[1].name);
       CHECK(false == field[1].shouldExpand);
-      CHECK(false == meta._primarySort.directon(1));
+      CHECK(false == meta._primarySort.direction(1));
     }
   }
 
@@ -3071,7 +3071,7 @@ SECTION("test_overwrite_immutable_properties") {
       CHECK(false == field[1].shouldExpand);
       CHECK("field" == field[2].name);
       CHECK(false == field[2].shouldExpand);
-      CHECK(true == meta._primarySort.directon(0));
+      CHECK(true == meta._primarySort.direction(0));
     }
     {
       auto& field = meta._primarySort.field(1);
@@ -3080,7 +3080,7 @@ SECTION("test_overwrite_immutable_properties") {
       CHECK(false == field[0].shouldExpand);
       CHECK("field" == field[1].name);
       CHECK(false == field[1].shouldExpand);
-      CHECK(false == meta._primarySort.directon(1));
+      CHECK(false == meta._primarySort.direction(1));
     }
   }
 }

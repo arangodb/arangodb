@@ -368,7 +368,7 @@ SECTION("test_readCustomizedValues") {
       CHECK(false == field[0].shouldExpand);
       CHECK("field" == field[1].name);
       CHECK(false == field[1].shouldExpand);
-      CHECK(false == meta._primarySort.directon(0));
+      CHECK(false == meta._primarySort.direction(0));
     }
 
     {
@@ -380,7 +380,7 @@ SECTION("test_readCustomizedValues") {
       CHECK(false == field[1].shouldExpand);
       CHECK("field" == field[2].name);
       CHECK(false == field[2].shouldExpand);
-      CHECK(true == meta._primarySort.directon(1));
+      CHECK(true == meta._primarySort.direction(1));
     }
 
     {
@@ -388,7 +388,7 @@ SECTION("test_readCustomizedValues") {
       CHECK(1 == field.size());
       CHECK("field" == field[0].name);
       CHECK(false == field[0].shouldExpand);
-      CHECK(false == meta._primarySort.directon(2));
+      CHECK(false == meta._primarySort.direction(2));
     }
 
     {
@@ -398,7 +398,7 @@ SECTION("test_readCustomizedValues") {
       CHECK(false == field[0].shouldExpand);
       CHECK("field" == field[1].name);
       CHECK(false == field[1].shouldExpand);
-      CHECK(true == meta._primarySort.directon(3));
+      CHECK(true == meta._primarySort.direction(3));
     }
   }
 }
@@ -572,7 +572,7 @@ SECTION("test_writeCustomizedValues") {
     std::string expectedName;
     arangodb::basics::TRI_AttributeNamesToString(meta._primarySort.field(i), expectedName, false);
     CHECK(expectedName == arangodb::iresearch::getStringRef(fieldSlice));
-    CHECK(meta._primarySort.directon(i) == directionSlice.getBoolean());
+    CHECK(meta._primarySort.direction(i) == directionSlice.getBoolean());
     ++i;
   }
 }
