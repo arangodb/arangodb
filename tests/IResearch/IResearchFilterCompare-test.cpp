@@ -270,7 +270,7 @@ SECTION("BinaryEq") {
   // complex attribute with offset, string, analyzer
   {
     irs::Or expected;
-    expected.add<irs::by_term>().field(mangleString("a.b[23].c", "testVocbase::test_analyzer")).term("1");
+    expected.add<irs::by_term>().field(mangleString("a.b[23].c", "test_analyzer")).term("1");
 
     assertFilterSuccess("FOR d IN collection FILTER analyzer(d.a.b[23].c == '1', 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER analyzer(d.a['b'][23].c == '1', 'test_analyzer')  RETURN d", expected);
@@ -283,7 +283,7 @@ SECTION("BinaryEq") {
   // complex attribute with offset, string, analyzer, boost
   {
     irs::Or expected;
-    expected.add<irs::by_term>().field(mangleString("a.b[23].c", "testVocbase::test_analyzer")).term("1").boost(0.5);
+    expected.add<irs::by_term>().field(mangleString("a.b[23].c", "test_analyzer")).term("1").boost(0.5);
 
     assertFilterSuccess("FOR d IN collection FILTER analyzer(boost(d.a.b[23].c == '1', 0.5), 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER boost(analyzer(d.a['b'][23].c == '1', 'test_analyzer'), 0.5)  RETURN d", expected);
@@ -884,7 +884,7 @@ SECTION("BinaryNotEq") {
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
-    expected.add<irs::Not>().filter<irs::by_term>().field(mangleString("a.b[23].c", "testVocbase::test_analyzer")).term("42").boost(42);
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleString("a.b[23].c", "test_analyzer")).term("42").boost(42);
 
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER analyzer(boost(d.a.b[23].c != TO_STRING(c+1), c+1), 'test_analyzer') RETURN d", expected, &ctx);
   }
@@ -1448,7 +1448,7 @@ SECTION("BinaryGE") {
 
     irs::Or expected;
     expected.add<irs::by_range>()
-            .field(mangleString("a.b[23].c", "testVocbase::test_analyzer"))
+            .field(mangleString("a.b[23].c", "test_analyzer"))
             .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("42")
             .boost(42);
 
@@ -2021,7 +2021,7 @@ SECTION("BinaryGT") {
 
     irs::Or expected;
     expected.add<irs::by_range>()
-            .field(mangleString("a.b[23].c", "testVocbase::test_analyzer"))
+            .field(mangleString("a.b[23].c", "test_analyzer"))
             .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("42")
             .boost(42);
 
@@ -2612,7 +2612,7 @@ SECTION("BinaryLE") {
 
     irs::Or expected;
     expected.add<irs::by_range>()
-            .field(mangleString("a.b[23].c", "testVocbase::test_analyzer"))
+            .field(mangleString("a.b[23].c", "test_analyzer"))
             .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("42")
             .boost(42);
 
@@ -3187,7 +3187,7 @@ SECTION("BinaryLT") {
 
     irs::Or expected;
     expected.add<irs::by_range>()
-            .field(mangleString("a.b[23].c", "testVocbase::test_analyzer"))
+            .field(mangleString("a.b[23].c", "test_analyzer"))
             .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("42")
             .boost(42);
 

@@ -124,14 +124,14 @@ void RocksDBCollectionMeta::removeBlocker(TRI_voc_tid_t trxId) {
 }
 
 /// @brief returns the largest safe seq to squash updates against
-rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq() const {
+rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq(rocksdb::SequenceNumber maxCommitSeq) const {
   READ_LOCKER(locker, _blockerLock);
   // if we have a blocker use the lowest counter
   if (!_blockersBySeq.empty()) {
     auto it = _blockersBySeq.begin();
-    return it->first;
+    return std::min(it->first, maxCommitSeq);
   }
-  return std::numeric_limits<rocksdb::SequenceNumber>::max();
+  return maxCommitSeq;
 }
 
 rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::SequenceNumber commitSeq,
@@ -172,8 +172,9 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
 
 /// @brief get the current count
 RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::loadCount() {
+  auto maxxSeq = std::numeric_limits<rocksdb::SequenceNumber>::max();
   bool didWork = false;
-  const rocksdb::SequenceNumber commitSeq = committableSeq();
+  const rocksdb::SequenceNumber commitSeq = committableSeq(maxxSeq);
   applyAdjustments(commitSeq, didWork);
   return _count;
 }
@@ -191,14 +192,26 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
                                             LogicalCollection& coll, bool force,
                                             VPackBuilder& tmp,
                                             rocksdb::SequenceNumber& appliedSeq) {
+  TRI_ASSERT(appliedSeq != UINT64_MAX);
+  
   Result res;
+  if (coll.deleted()) {
+    return res;
+  }
 
   bool didWork = false;
   // maxCommitSeq is == UINT64_MAX without any blockers
-  const rocksdb::SequenceNumber maxCommitSeq = std::min(appliedSeq, committableSeq());
+  const rocksdb::SequenceNumber maxCommitSeq = committableSeq(appliedSeq);
   const rocksdb::SequenceNumber commitSeq = applyAdjustments(maxCommitSeq, didWork);
   TRI_ASSERT(commitSeq <= appliedSeq);
-  appliedSeq = commitSeq;
+  TRI_ASSERT(commitSeq <= maxCommitSeq);
+  TRI_ASSERT(maxCommitSeq <= appliedSeq);
+  TRI_ASSERT(maxCommitSeq != UINT64_MAX);
+  if (didWork) {
+    appliedSeq = commitSeq;
+  } else {
+    appliedSeq = maxCommitSeq;
+  }
 
   RocksDBKey key;
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
@@ -217,10 +230,6 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
           << rcoll->objectId() << "' failed: " << s.ToString();
       return res.reset(rocksutils::convertStatus(s));
     }
-  }
-
-  if (coll.deleted()) {
-    return Result();
   }
 
   // Step 2. store the key generator
@@ -244,10 +253,6 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
     }
   }
 
-  if (coll.deleted()) {
-    return Result();
-  }
-
   // Step 3. store the index estimates
   std::string output;
   auto indexes = coll.getIndexes();
@@ -256,9 +261,6 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
     RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
     if (est == nullptr) {  // does not have an estimator
       continue;
-    }
-    if (coll.deleted()) {
-      return Result();
     }
 
     if (est->needToPersist() || force) {

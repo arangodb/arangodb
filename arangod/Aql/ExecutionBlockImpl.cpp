@@ -38,8 +38,6 @@
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/EnumerateCollectionExecutor.h"
-#include "Aql/ModificationExecutor.h"
-#include "Aql/ModificationExecutorTraits.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/IResearchViewExecutor.h"
@@ -48,12 +46,14 @@
 #include "Aql/IndexExecutor.h"
 #include "Aql/KShortestPathsExecutor.h"
 #include "Aql/LimitExecutor.h"
+#include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutorTraits.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathExecutor.h"
+#include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
-#include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SortedCollectExecutor.h"
 #include "Aql/SortingGatherExecutor.h"
 #include "Aql/SubqueryExecutor.h"
@@ -388,12 +388,11 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
     // The SortExecutor should refetch a block to save memory in case if only few elements to sort
     ExecutionState state;
     size_t expectedRows = 0;
-    std::tie(state, expectedRows) = _rowFetcher.preFetchNumberOfRows(nrItems);
+    // Note: this might trigger a prefetch on the rowFetcher!
+    std::tie(state, expectedRows) = _executor.expectedNumberOfRows(nrItems);
     if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(expectedRows == 0);
-      return {state, nullptr};
+      return {state, 0};
     }
-    expectedRows += _executor.numberOfRowsInFlight();
     nrItems = (std::min)(expectedRows, nrItems);
     if (nrItems == 0) {
       TRI_ASSERT(state == ExecutionState::DONE);

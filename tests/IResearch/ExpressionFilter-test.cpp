@@ -465,7 +465,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -546,7 +546,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -627,7 +627,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -724,7 +724,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -821,7 +821,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -918,7 +918,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -999,7 +999,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -1075,7 +1075,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -1212,7 +1212,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -1341,7 +1341,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);

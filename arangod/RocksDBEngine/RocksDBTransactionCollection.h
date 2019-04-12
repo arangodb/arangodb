@@ -49,7 +49,6 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   void freeOperations(transaction::Methods* activeTrx, bool mustRollback) override;
 
   bool canAccess(AccessMode::Type accessType) const override;
-  int updateUsage(AccessMode::Type accessType, int nestingLevel) override;
   int use(int nestingLevel) override;
   void unuse(int nestingLevel) override;
   void release() override;
@@ -118,7 +117,6 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   int doUnlock(AccessMode::Type, int nestingLevel) override;
 
  private:
-  int _nestingLevel;  // the transaction level that added this collection
   uint64_t _initialNumberDocuments;
   TRI_voc_rid_t _revision;
   uint64_t _numInserts;

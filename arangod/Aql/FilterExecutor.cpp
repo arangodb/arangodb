@@ -86,3 +86,11 @@ std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemR
     TRI_ASSERT(state == ExecutionState::HASMORE);
   }
 }
+
+
+std::pair<ExecutionState, size_t> FilterExecutor::expectedNumberOfRows(size_t atMost) const {
+  // This block cannot know how many elements will be returned exactly.
+  // but it is upper bounded by the input.
+  return _fetcher.preFetchNumberOfRows(atMost);
+}
+

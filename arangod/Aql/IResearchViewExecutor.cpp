@@ -262,7 +262,8 @@ bool IResearchViewExecutor<ordered>::writeRow(ReadContext& ctx, IndexReadBufferE
   LocalDocumentId const& documentId = _indexReadBuffer.getId(bufferEntry);
   TRI_ASSERT(documentId.isSet());
 
-  std::shared_ptr<arangodb::LogicalCollection> const& collection = _indexReadBuffer.getCollection();
+  std::shared_ptr<arangodb::LogicalCollection> const& collection =
+      _indexReadBuffer.getCollection();
   TRI_ASSERT(collection != nullptr);
 
   // read document from underlying storage engine, if we got an id
@@ -567,13 +568,6 @@ void IResearchViewExecutor<ordered>::reset() {
 
     _isInitialized = true;
   }
-}
-
-template <bool ordered>
-size_t IResearchViewExecutor<ordered>::numberOfRowsInFlight() const {
-  // not implemented
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
 template class ::arangodb::aql::IResearchViewExecutor<false>;

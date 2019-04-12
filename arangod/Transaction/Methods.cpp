@@ -859,14 +859,24 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
     : transaction::Methods(ctx, options) {
   addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
+  Result res;
   for (auto const& it : exclusiveCollections) {
-    addCollection(it, AccessMode::Type::EXCLUSIVE);
+    res = addCollection(it, AccessMode::Type::EXCLUSIVE);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
   }
   for (auto const& it : writeCollections) {
-    addCollection(it, AccessMode::Type::WRITE);
+    res = addCollection(it, AccessMode::Type::WRITE);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
   }
   for (auto const& it : readCollections) {
-    addCollection(it, AccessMode::Type::READ);
+    res = addCollection(it, AccessMode::Type::READ);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
   }
 }
 
@@ -1179,16 +1189,9 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(TRI_voc_cid_t cid,
   auto collection = trxCollection(cid);
 
   if (collection == nullptr) {
-    int res = _state->addCollection(cid, cname, type, _state->nestingLevel(), true);
+    Result res = _state->addCollection(cid, cname, type, _state->nestingLevel(), true);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
-        // special error message to indicate which collection was undeclared
-        THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) +
-                                                ": " + cname + " [" +
-                                                AccessMode::typeString(type) +
-                                                "]");
-      }
+    if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -1198,10 +1201,10 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(TRI_voc_cid_t cid,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
-    auto result = applyDataSourceRegistrationCallbacks(*dataSource, *this);
+    res = applyDataSourceRegistrationCallbacks(*dataSource, *this);
 
-    if (!result.ok()) {
-      THROW_ARANGO_EXCEPTION(result.errorNumber());
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     _state->ensureCollections(_state->nestingLevel());
@@ -3125,33 +3128,19 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
     throwCollectionNotFound(cname.c_str());
   }
 
-  auto addCollection = [this, &cname, type](TRI_voc_cid_t cid) -> void {
+  auto addCollectionCallback = [this, &cname, type](TRI_voc_cid_t cid) -> void {
     auto res = _state->addCollection(cid, cname, type, _state->nestingLevel(), false);
 
-    if (TRI_ERROR_NO_ERROR == res) {
-      return;
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
-
-    if (TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION == res) {
-      // special error message to indicate which collection was undeclared
-      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) +
-                                              ": " + cname + " [" +
-                                              AccessMode::typeString(type) +
-                                              "]");
-    }
-
-    if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == res) {
-      throwCollectionNotFound(cname.c_str());
-    }
-
-    THROW_ARANGO_EXCEPTION(res);
   };
 
   Result res;
   bool visited = false;
   std::function<bool(LogicalCollection&)> visitor(
-      [this, &addCollection, &res, cid, &visited](LogicalCollection& col) -> bool {
-        addCollection(col.id());  // will throw on error
+      [this, &addCollectionCallback, &res, cid, &visited](LogicalCollection& col) -> bool {
+        addCollectionCallback(col.id());  // will throw on error
         res = applyDataSourceRegistrationCallbacks(col, *this);
         visited |= cid == col.id();
 
@@ -3161,10 +3150,10 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
   if (!resolver()->visitCollections(visitor, cid) || res.fail()) {
     // trigger exception as per the original behaviour (tests depend on this)
     if (res.ok() && !visited) {
-      addCollection(cid);  // will throw on error
+      addCollectionCallback(cid);  // will throw on error
     }
-
-    return res.ok() ? Result(TRI_ERROR_INTERNAL) : res;  // return first error
+        
+    return res.ok() ? Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) : res;  // return first error
   }
 
   // skip provided 'cid' if it was already done by the visitor

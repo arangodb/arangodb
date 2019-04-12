@@ -95,7 +95,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto* cursors = vocbase.cursorRepository();  // create a cursor
   arangodb::aql::QueryResult result(TRI_ERROR_NO_ERROR);
 
-  result.result = builder;
+  result.data = builder;
   result.cached = false;
   result.context = transaction::V8Context::Create(vocbase, false);
 

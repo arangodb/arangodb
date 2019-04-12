@@ -121,8 +121,7 @@ class FakePathFinder : public ShortestPathFinder {
   }
 
   bool shortestPath(VPackSlice const& source, VPackSlice const& target,
-                    arangodb::graph::ShortestPathResult& result,
-                    std::function<void()> const& callback) override {
+                    arangodb::graph::ShortestPathResult& result) override {
     REQUIRE(source.isString());
     REQUIRE(target.isString());
     _calledWith.emplace_back(std::make_pair(source.copyString(), target.copyString()));

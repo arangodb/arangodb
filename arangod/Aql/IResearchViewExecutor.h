@@ -142,8 +142,12 @@ class IResearchViewExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
-  // not implemented!
-  size_t numberOfRowsInFlight() const;
+  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Logic_error, prefetching number fo rows not supported");
+  }
 
  private:
   class ReadContext {
@@ -163,7 +167,6 @@ class IResearchViewExecutor {
     OutputAqlItemRow& outputRow;
     IndexIterator::DocumentCallback const callback;
   };  // ReadContext
-
 
   class IndexReadBuffer;
   class IndexReadBufferEntry {
@@ -241,9 +244,7 @@ class IResearchViewExecutor {
       _scoreBuffer.emplace_back(AqlValueHintDouble{scoreValue});
     }
 
-    inline void pushScoreNone() {
-      _scoreBuffer.emplace_back();
-    }
+    inline void pushScoreNone() { _scoreBuffer.emplace_back(); }
 
     inline void setCollectionAndReset(std::shared_ptr<arangodb::LogicalCollection>&& collection) {
       // Should only be called after everything was consumed

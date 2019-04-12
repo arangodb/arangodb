@@ -1151,7 +1151,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     timeout *= 2;
   }
 
-  if ((toShutdown.length > 0) && (options.cluster === true)) {
+  if ((toShutdown.length > 0) && (options.cluster === true) && (options.dumpAgencyOnError === true)) {
     dumpAgency(instanceInfo, options);
   }
   var shutdownTime = internal.time();
