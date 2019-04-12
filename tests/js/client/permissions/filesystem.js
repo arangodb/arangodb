@@ -447,7 +447,7 @@ function testSuite() {
   }
   function tryGetTempFileAllowed(dn) {
     let tfn = fs.getTempFile(dn, true); // tmp/arangosh_2jWmj9/tmp/arangosh_2jWmj9/permissions/allowed/tmp-20987-2830837392 
-    print("@@@@@ FIXME @@@@@" + tfn)
+    //print("@@@@@ FIXME @@@@@" + tfn);
     //assertTrue(fs.isFile(tfn));
     //fs.remove(tfn);
   }
