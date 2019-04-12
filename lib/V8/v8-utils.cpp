@@ -1461,20 +1461,30 @@ static void JS_GetTempFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     p = path.c_str();
   }
 
+  bool create = false;
+  if (args.Length() > 1) {
+    create = TRI_ObjectToBoolean(isolate, args[1]);
+  }
+
   V8SecurityFeature* v8security =
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToAccessPath(isolate, path, FSAccessType::WRITE)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+  std::string dir = FileUtils::buildFilename(TRI_GetTempPath(),path,"");
+
+  if (create) {
+    if (!v8security->isAllowedToAccessPath(isolate, dir, FSAccessType::WRITE)) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                     "not allowed to read files in this path");
+    }
+  } else {
+    if (!v8security->isAllowedToAccessPath(isolate, dir, FSAccessType::READ)) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                     "not allowed to read files in this path");
+    }
   }
 
-  bool create = false;
-  if (args.Length() > 1) {
-    create = TRI_ObjectToBoolean(isolate, args[1]);
-  }
 
   std::string result;
   long systemError;
