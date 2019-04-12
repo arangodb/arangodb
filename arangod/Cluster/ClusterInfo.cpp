@@ -3658,7 +3658,7 @@ std::string const maintenanceKey = "/arango/Supervision/Maintenance";
 std::string const toDoKey = "/arango/Target/ToDo";
 std::string const pendingKey = "/arango/Target/Pending";
 std::string const writeURL = "_api/agency/write";
-std::vector<std::string> modepv = {"Supervision","State","Mode"};
+std::vector<std::string> modepv = {"arango","Supervision","State","Mode"};
 
 
 arangodb::Result ClusterInfo::agencyHotBackupLock(
@@ -3799,7 +3799,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
   while (!application_features::ApplicationServer::isStopping() &&
          std::chrono::steady_clock::now() < endTime) {
 
-    result = _agency.getValues("/arango/Supervision/State/Mode");
+    result = _agency.getValues("Supervision/State/Mode");
     if (result.successful()) {
       if (!result.slice().isArray() || result.slice().length() != 1) {
         return arangodb::Result(
@@ -3815,6 +3815,9 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
       }
     }
 
+    LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "agency hot backup lock waiting: "
+                                        << result.slice().toJson();
+    
     if (wait < 2.0) {
       wait *= 1.1;
     }
