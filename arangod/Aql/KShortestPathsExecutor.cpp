@@ -54,7 +54,6 @@ static RegisterId selectOutputRegister(
   TRI_ASSERT(outputRegisters->size() == 1);
   RegisterId reg = *(outputRegisters->begin());
   TRI_ASSERT(reg != ExecutionNode::MaxRegisterId);
-  LOG_DEVEL << "OUTPUT to register" << reg;
   return reg;
 }
 }  // namespace
