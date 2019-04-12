@@ -36,6 +36,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/AqlHelper.h"
+#include "IResearch/IResearchView.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "Utils/CollectionNameResolver.h"
@@ -163,6 +164,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     auto* sortNode = ExecutionNode::castTo<SortNode*>(current);
     auto const& sortElements = sortNode->elements();
 
+    sorts.reserve(sortElements.size());
     for (auto& it : sortElements) {
       // note: in contrast to regular indexes, views support sorting in different 
       // directions for multiple fields (e.g. SORT doc.a ASC, doc.b DESC). 
@@ -179,30 +181,13 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       // unusable sort condition
       return false;
     }
+
+    auto& view = arangodb::LogicalView::cast<IResearchView>(*viewNode.view());
+    auto& primarySort = view.primarySort();
     
     // sort condition found, and sorting only by attributes!
 
-    // TODO: get the view's sort fields and orders from the actual view here.
-    // for now, there are hard-coded to value1 ASC, value2 DESC
-    std::vector<std::vector<arangodb::basics::AttributeName>> viewSortFields;
-      
-    // vector<bool> is not nice, but will do the job here
-    std::vector<bool> viewSortOrders;
-
-    {
-      // auto const& view = viewNode.view();
-      viewSortFields.emplace_back();
-      viewSortFields.back().emplace_back(arangodb::basics::AttributeName("value1", false));
-      viewSortFields.emplace_back();
-      viewSortFields.back().emplace_back(arangodb::basics::AttributeName("value2", false));
-  
-      viewSortOrders.push_back(true); // ascending
-      viewSortOrders.push_back(false); // descending
-    }
-
-    TRI_ASSERT(viewSortFields.size() == viewSortOrders.size());
-
-    if (sortCondition.numAttributes() > viewSortFields.size()) {
+    if (sortCondition.numAttributes() > primarySort.size()) {
       // the SORT condition in the query has more attributes than the view
       // is sorted by. we cannot optimize in this case
       return false;
@@ -210,7 +195,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     
     // check if all sort conditions match
     for (size_t i = 0; i < sortElements.size(); ++i) {
-      if (sortElements[i].ascending != viewSortOrders[i]) {
+      if (sortElements[i].ascending != primarySort.directon(i)) {
         // view is sorted in different order than requested in SORT condition
         return false;
       }
@@ -218,7 +203,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 
     // all sort orders equal!
     // now finally check how many of the SORT conditions attributes we cover
-    size_t numCovered = sortCondition.coveredAttributes(&viewNode.outVariable(), viewSortFields);
+    size_t numCovered = sortCondition.coveredAttributes(&viewNode.outVariable(), primarySort.fields());
 
     if (numCovered < sortNode->elements().size()) {
       // the sort is not covered by the view
@@ -297,14 +282,13 @@ void handleViewsRule(arangodb::aql::Optimizer* opt,
   for (auto* node : nodes) {
     TRI_ASSERT(node && EN::ENUMERATE_IRESEARCH_VIEW == node->getType());
     auto& viewNode = *EN::castTo<IResearchViewNode*>(node);
-    
-    if (!viewNode.isInInnerLoop()) {
-      // check if we can optimize away a sort that follows the EnumerateView node
-      // this is only possible if the view node itself is not contained in another loop
-      if (optimizeSort(viewNode, plan.get())) {
-        modified = true;
-      }
-    }
+
+    //FIXME uncomment
+    //if (!viewNode.isInInnerLoop()) {
+    //  // check if we can optimize away a sort that follows the EnumerateView node
+    //  // this is only possible if the view node itself is not contained in another loop
+    //  modified = optimizeSort(viewNode, plan.get());
+    //}
 
     if (!optimizeSearchCondition(viewNode, query, *plan)) {
       continue;

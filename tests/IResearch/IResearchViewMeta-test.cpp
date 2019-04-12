@@ -362,19 +362,17 @@ SECTION("test_readCustomizedValues") {
   {
     CHECK(4 == meta._primarySort.size());
     {
-      auto& sort = meta._primarySort[0];
-      auto& field = sort.first;
+      auto& field = meta._primarySort.field(0);
       CHECK(2 == field.size());
       CHECK("nested" == field[0].name);
       CHECK(false == field[0].shouldExpand);
       CHECK("field" == field[1].name);
       CHECK(false == field[1].shouldExpand);
-      CHECK(false == sort.second);
+      CHECK(false == meta._primarySort.directon(0));
     }
 
     {
-      auto& sort = meta._primarySort[1];
-      auto& field = sort.first;
+      auto& field = meta._primarySort.field(1);
       CHECK(3 == field.size());
       CHECK("another" == field[0].name);
       CHECK(false == field[0].shouldExpand);
@@ -382,27 +380,25 @@ SECTION("test_readCustomizedValues") {
       CHECK(false == field[1].shouldExpand);
       CHECK("field" == field[2].name);
       CHECK(false == field[2].shouldExpand);
-      CHECK(true == sort.second);
+      CHECK(true == meta._primarySort.directon(1));
     }
 
     {
-      auto& sort = meta._primarySort[2];
-      auto& field = sort.first;
+      auto& field = meta._primarySort.field(2);
       CHECK(1 == field.size());
       CHECK("field" == field[0].name);
       CHECK(false == field[0].shouldExpand);
-      CHECK(false == sort.second);
+      CHECK(false == meta._primarySort.directon(2));
     }
 
     {
-      auto& sort = meta._primarySort[3];
-      auto& field = sort.first;
+      auto& field = meta._primarySort.field(3);
       CHECK(2 == field.size());
       CHECK("" == field[0].name);
       CHECK(false == field[0].shouldExpand);
       CHECK("field" == field[1].name);
       CHECK(false == field[1].shouldExpand);
-      CHECK(true == sort.second);
+      CHECK(true == meta._primarySort.directon(3));
     }
   }
 }
@@ -565,7 +561,7 @@ SECTION("test_writeCustomizedValues") {
   CHECK(true == tmpSlice.isArray());
   CHECK(2 == tmpSlice.length());
 
-  auto begin = meta._primarySort.begin();
+  size_t i = 0;
   for (auto const sortSlice : arangodb::velocypack::ArrayIterator(tmpSlice)) {
     CHECK(sortSlice.isObject());
     auto const fieldSlice = sortSlice.get("field");
@@ -574,10 +570,10 @@ SECTION("test_writeCustomizedValues") {
     CHECK(directionSlice.isBoolean());
 
     std::string expectedName;
-    arangodb::basics::TRI_AttributeNamesToString(begin->first, expectedName, false);
+    arangodb::basics::TRI_AttributeNamesToString(meta._primarySort.field(i), expectedName, false);
     CHECK(expectedName == arangodb::iresearch::getStringRef(fieldSlice));
-    CHECK(begin->second == directionSlice.getBoolean());
-    ++begin;
+    CHECK(meta._primarySort.directon(i) == directionSlice.getBoolean());
+    ++i;
   }
 }
 

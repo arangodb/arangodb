@@ -222,6 +222,8 @@ bool parseSort(VPackSlice slice,
   }
 
   sort.clear();
+  sort.reserve(slice.length());
+
   for (VPackSlice sortSlice : arangodb::velocypack::ArrayIterator(slice)) {
     if (!sortSlice.isObject()) {
       error = sortFieldName + "=>" + primarySortFieldName + "[" + std::to_string(sort.size()) + "]";
@@ -644,6 +646,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
   }
 
   {
+    // optional object
     static VPackStringRef const fieldName("sort");
 
     auto const field = slice.get(fieldName);
@@ -721,14 +724,18 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
     arangodb::velocypack::ArrayBuilder primarySortBulder(&builder, "primary");
 
     std::string fieldName;
-    for (auto const& sortEntry : _primarySort) {
+    auto visitor = [&builder, &fieldName](std::vector<basics::AttributeName> const& field, bool direction) {
       fieldName.clear();
-      basics::TRI_AttributeNamesToString(sortEntry.first, fieldName, true);
+      basics::TRI_AttributeNamesToString(field, fieldName, true);
 
       arangodb::velocypack::ObjectBuilder sortEntryBuilder(&builder);
       builder.add("field", VPackValue(fieldName));
-      builder.add("direction", VPackValue(sortEntry.second));
-    }
+      builder.add("direction", VPackValue(direction));
+
+      return true;
+    };
+
+    _primarySort.visit(visitor);
   }
 
   return true;
