@@ -82,14 +82,21 @@ class KShortestPathsNode : public GraphNode {
                        bool withProperties) const override final;
 
   bool usesPathOutVariable() const { return _pathOutVariable != nullptr; }
-  Variable const* pathOutVariable() const { return _pathOutVariable; }
+  Variable const& pathOutVariable() const {
+    TRI_ASSERT(_pathOutVariable != nullptr);
+    return *_pathOutVariable;
+  }
+
   void setPathOutput(Variable const* outVar) { _pathOutVariable = outVar; }
 
   /// @brief Test if this node uses an in variable or constant for start
   bool usesStartInVariable() const { return _inStartVariable != nullptr; }
 
   /// @brief return the start variable
-  Variable const* startInVariable() const { return _inStartVariable; }
+  Variable const& startInVariable() const {
+    TRI_ASSERT(_inStartVariable != nullptr);
+    return *_inStartVariable;
+  }
 
   std::string const getStartVertex() const { return _startVertexId; }
 
@@ -97,16 +104,18 @@ class KShortestPathsNode : public GraphNode {
   bool usesTargetInVariable() const { return _inTargetVariable != nullptr; }
 
   /// @brief return the target variable
-  Variable const* targetInVariable() const { return _inTargetVariable; }
+  Variable const& targetInVariable() const {
+    TRI_ASSERT(_inTargetVariable != nullptr);
+    return *_inTargetVariable;
+  }
 
   std::string const getTargetVertex() const { return _targetVertexId; }
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final {
     std::vector<Variable const*> vars;
-    if (usesPathOutVariable()) {
-      vars.emplace_back(pathOutVariable());
-    }
+    TRI_ASSERT(_pathOutVariable != nullptr);
+    vars.emplace_back(_pathOutVariable);
     return vars;
   }
 

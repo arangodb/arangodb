@@ -76,7 +76,7 @@ static KShortestPathsExecutorInfos::InputVertex prepareVertexInput(KShortestPath
   using InputVertex = KShortestPathsExecutorInfos::InputVertex;
   if (isTarget) {
     if (node->usesTargetInVariable()) {
-      auto it = node->getRegisterPlan()->varInfo.find(node->targetInVariable()->id);
+      auto it = node->getRegisterPlan()->varInfo.find(node->targetInVariable().id);
       TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
       return InputVertex{it->second.registerId};
     } else {
@@ -84,7 +84,7 @@ static KShortestPathsExecutorInfos::InputVertex prepareVertexInput(KShortestPath
     }
   } else {
     if (node->usesStartInVariable()) {
-      auto it = node->getRegisterPlan()->varInfo.find(node->startInVariable()->id);
+      auto it = node->getRegisterPlan()->varInfo.find(node->startInVariable().id);
       TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
       return InputVertex{it->second.registerId};
     } else {
@@ -165,11 +165,10 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan,
       _inTargetVariable(nullptr),
       _fromCondition(nullptr),
       _toCondition(nullptr) {
-
   // Path out variable
   if (base.hasKey("pathOutVariable")) {
     _pathOutVariable =
-      Variable::varFromVPack(plan->getAst(), base, "pathOutVariable");
+        Variable::varFromVPack(plan->getAst(), base, "pathOutVariable");
   }
 
   // Start Vertex
@@ -220,20 +219,20 @@ void KShortestPathsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags)
   // Out variables
   if (usesPathOutVariable()) {
     nodes.add(VPackValue("pathOutVariable"));
-    pathOutVariable()->toVelocyPack(nodes);
+    pathOutVariable().toVelocyPack(nodes);
   }
 
   // In variables
   if (usesStartInVariable()) {
     nodes.add(VPackValue("startInVariable"));
-    startInVariable()->toVelocyPack(nodes);
+    startInVariable().toVelocyPack(nodes);
   } else {
     nodes.add("startVertexId", VPackValue(_startVertexId));
   }
 
   if (usesTargetInVariable()) {
     nodes.add(VPackValue("targetInVariable"));
-    targetInVariable()->toVelocyPack(nodes);
+    targetInVariable().toVelocyPack(nodes);
   } else {
     nodes.add("targetVertexId", VPackValue(_targetVertexId));
   }
@@ -257,27 +256,16 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  auto& varInfo = getRegisterPlan()->varInfo;
   if (usesStartInVariable()) {
-    auto it = varInfo.find(startInVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
-    inputRegisters->emplace(it->second.registerId);
+    inputRegisters->emplace(varToRegUnchecked(startInVariable()));
   }
   if (usesTargetInVariable()) {
-    auto it = varInfo.find(targetInVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
-    inputRegisters->emplace(it->second.registerId);
+    inputRegisters->emplace(varToRegUnchecked(targetInVariable()));
   }
 
   auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  std::unordered_map<KShortestPathsExecutorInfos::OutputName, RegisterId, KShortestPathsExecutorInfos::OutputNameHash> outputRegisterMapping;
-  if (usesPathOutVariable()) {
-    auto it = varInfo.find(pathOutVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
-    outputRegisterMapping.emplace(KShortestPathsExecutorInfos::OutputName::PATH,
-                                  it->second.registerId);
-    outputRegisters->emplace(it->second.registerId);
-  }
+  TRI_ASSERT(usesPathOutVariable());  // This node always produces the path!
+  outputRegisters->emplace(varToRegUnchecked(pathOutVariable()));
 
   auto opts = static_cast<ShortestPathOptions*>(options());
 
@@ -291,8 +279,7 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
   KShortestPathsExecutorInfos infos(inputRegisters, outputRegisters,
                                     getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                     getRegisterPlan()->nrRegs[getDepth()],
-                                    getRegsToClear(), calcRegsToKeep(),
-                                    std::move(finder), std::move(outputRegisterMapping),
+                                    getRegsToClear(), calcRegsToKeep(), std::move(finder),
                                     std::move(sourceInput), std::move(targetInput));
   return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor>>(&engine, this,
                                                                       std::move(infos));

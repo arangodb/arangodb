@@ -66,20 +66,13 @@ class KShortestPathsExecutorInfos : public ExecutorInfos {
         : type(REGISTER), reg(reg), value("") {}
   };
 
-  enum OutputName { PATH };
-  struct OutputNameHash {
-    size_t operator()(OutputName v) const noexcept { return size_t(v); }
-  };
-
-  KShortestPathsExecutorInfos(
-      std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-      std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
-      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-      std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep,
-      std::unique_ptr<graph::ConstantWeightKShortestPathsFinder>&& finder,
-      std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
-      InputVertex&& source, InputVertex&& target);
+  KShortestPathsExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
+                              std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
+                              RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                              std::unordered_set<RegisterId> registersToClear,
+                              std::unordered_set<RegisterId> registersToKeep,
+                              std::unique_ptr<graph::ConstantWeightKShortestPathsFinder>&& finder,
+                              InputVertex&& source, InputVertex&& target);
 
   KShortestPathsExecutorInfos() = delete;
 
@@ -111,34 +104,23 @@ class KShortestPathsExecutorInfos : public ExecutorInfos {
   std::string const& getInputValue(bool isTarget) const;
 
   /**
-   * @brief test if we have an output register for this type
-   *
-   * @param type: PATH
-   */
-  bool usesOutputRegister(OutputName type) const;
-
-  /**
    * @brief get the output register for the given type
    */
-  RegisterId getOutputRegister(OutputName type) const;
+  RegisterId getOutputRegister() const;
 
   graph::TraverserCache* cache() const;
 
  private:
-  RegisterId findRegisterChecked(OutputName type) const;
-
- private:
   /// @brief the shortest path finder.
   std::unique_ptr<arangodb::graph::ConstantWeightKShortestPathsFinder> _finder;
-
-  /// @brief Mapping outputType => register
-  std::unordered_map<OutputName, RegisterId, OutputNameHash> _registerMapping;
 
   /// @brief Information about the source vertex
   InputVertex const _source;
 
   /// @brief Information about the target vertex
   InputVertex const _target;
+
+  RegisterId const _outputRegister;
 };
 
 /**

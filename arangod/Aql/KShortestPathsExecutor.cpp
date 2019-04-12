@@ -48,6 +48,15 @@ static bool isValidId(VPackSlice id) {
   arangodb::velocypack::StringRef tester(id);
   return tester.find('/') != std::string::npos;
 }
+static RegisterId selectOutputRegister(
+    std::shared_ptr<std::unordered_set<RegisterId> const> const& outputRegisters) {
+  TRI_ASSERT(outputRegisters != nullptr);
+  TRI_ASSERT(outputRegisters->size() == 1);
+  RegisterId reg = *(outputRegisters->begin());
+  TRI_ASSERT(reg != ExecutionNode::MaxRegisterId);
+  LOG_DEVEL << "OUTPUT to register" << reg;
+  return reg;
+}
 }  // namespace
 
 KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(
@@ -56,15 +65,14 @@ KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(
     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
     std::unordered_set<RegisterId> registersToKeep,
     std::unique_ptr<graph::ConstantWeightKShortestPathsFinder>&& finder,
-    std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
     InputVertex&& source, InputVertex&& target)
     : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _finder(std::move(finder)),
-      _registerMapping(std::move(registerMapping)),
       _source(std::move(source)),
-      _target(std::move(target)) {}
+      _target(std::move(target)),
+      _outputRegister(::selectOutputRegister(_outRegs)) {}
 
 KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(KShortestPathsExecutorInfos&&) = default;
 KShortestPathsExecutorInfos::~KShortestPathsExecutorInfos() = default;
@@ -97,32 +105,9 @@ std::string const& KShortestPathsExecutorInfos::getInputValue(bool isTarget) con
   return _source.value;
 }
 
-bool KShortestPathsExecutorInfos::usesOutputRegister(OutputName type) const {
-  return _registerMapping.find(type) != _registerMapping.end();
-}
-
-static std::string typeToString(KShortestPathsExecutorInfos::OutputName type) {
-  switch (type) {
-    case KShortestPathsExecutorInfos::PATH:
-      return std::string{"PATH"};
-    default:
-      return std::string{"<INVALID("} + std::to_string(type) + ")>";
-  }
-}
-
-RegisterId KShortestPathsExecutorInfos::findRegisterChecked(OutputName type) const {
-  auto const& it = _registerMapping.find(type);
-  if (ADB_UNLIKELY(it == _registerMapping.end())) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Logic error: requested unused register type " + typeToString(type));
-  }
-  return it->second;
-}
-
-RegisterId KShortestPathsExecutorInfos::getOutputRegister(OutputName type) const {
-  TRI_ASSERT(usesOutputRegister(type));
-  return findRegisterChecked(type);
+RegisterId KShortestPathsExecutorInfos::getOutputRegister() const {
+  TRI_ASSERT(_outputRegister != ExecutionNode::MaxRegisterId);
+  return _outputRegister;
 }
 
 graph::TraverserCache* KShortestPathsExecutorInfos::cache() const {
@@ -170,8 +155,7 @@ std::pair<ExecutionState, NoStats> KShortestPathsExecutor::produceRow(OutputAqlI
     if (_finder.getNextPathAql(*tmp.builder())) {
       AqlValue path = AqlValue(*tmp.builder());
       AqlValueGuard guard{path, true};
-      output.moveValueInto(_infos.getOutputRegister(KShortestPathsExecutorInfos::PATH),
-                           _input, guard);
+      output.moveValueInto(_infos.getOutputRegister(), _input, guard);
       return {computeState(), s};
     }
   }
