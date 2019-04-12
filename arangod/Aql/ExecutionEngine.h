@@ -25,7 +25,6 @@
 #define ARANGOD_AQL_EXECUTION_ENGINE_H 1
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/Query.h"
@@ -34,6 +33,7 @@
 namespace arangodb {
 namespace aql {
 class AqlItemBlock;
+class ExecutionBlock;
 class QueryRegistry;
 
 class ExecutionEngine {

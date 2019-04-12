@@ -23,7 +23,7 @@
 #ifndef ARANGOD_AQL_SCATTER_EXECUTOR_H
 #define ARANGOD_AQL_SCATTER_EXECUTOR_H
 
-#include "Aql/ClusterBlocks.h"
+#include "Aql/BlocksWithClients.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
 
@@ -38,7 +38,7 @@ class ScatterExecutor {};
  * @brief See ExecutionBlockImpl.h for documentation.
  */
 template <>
-class ExecutionBlockImpl<ScatterExecutor> : public BlockWithClients {
+class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClients {
  public:
   // TODO Even if it's not strictly necessary here, for consistency's sake the
   // non-standard argument (shardIds) should probably be moved into some
@@ -59,11 +59,6 @@ class ExecutionBlockImpl<ScatterExecutor> : public BlockWithClients {
                                                      std::string const& shardId) override;
 
  private:
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> traceGetSomeEnd(
-      ExecutionState state, std::unique_ptr<AqlItemBlock> result);
-
-  std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
-
   /// @brief getSomeForShard
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShardWithoutTrace(
       size_t atMost, std::string const& shardId);
