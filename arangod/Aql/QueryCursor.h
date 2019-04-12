@@ -26,6 +26,7 @@
 #define ARANGOD_AQL_QUERY_CURSOR_H 1
 
 #include "Aql/QueryResult.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/Common.h"
 #include "Transaction/Methods.h"
 #include "Utils/Cursor.h"
