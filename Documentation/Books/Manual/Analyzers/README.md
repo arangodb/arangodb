@@ -185,6 +185,17 @@ The *properties* allowed for this analyzer are either: <br/>
 * an object with the attribute *delimiter* containing the string encoded
   delimiter to use
 
+### ngram
+
+An analyzer capable of producing ngrams from a specified input in a range of
+[min_gram;max_gram]. Can optionally preserve the original input.
+
+The *properties* allowed for this analyzer are an object with the following
+attributes: <br/>
+- *max*: unsigned integer (required) max ngram
+- *min*: unsigned integer (required) min ngram
+- *preserveOriginal*: boolean (required) output the original value as well
+
 ### text
 
 An analyzer capable of breaking up strings into individual words while also
