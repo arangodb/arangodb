@@ -97,7 +97,7 @@ arangodb::Result RestHotBackupHandler::verifyPermitted() {
 
 arangodb::Result RestHotBackupHandler::parseHotBackupParams(
   RequestType const type, std::vector<std::string> const & suffixes,
-  VPackSlice slice) {
+  VPackSlice& slice) {
 
   if (type != RequestType::POST) {
     return arangodb::Result(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,

@@ -45,7 +45,7 @@ class RestHotBackupHandler : public RestBaseHandler {
   arangodb::Result  verifyPermitted();
 
   arangodb::Result parseHotBackupParams(
-    RequestType const, std::vector<std::string> const&, VPackSlice slice);
+    RequestType const, std::vector<std::string> const&, VPackSlice& slice);
 };
 }  // namespace arangodb
 
