@@ -29,25 +29,13 @@ ExecutionBlockImpl<ScatterExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                         ScatterNode const* node,
                                                         ExecutorInfos&& infos,
                                                         std::vector<std::string> const& shardIds)
-    : BlockWithClients(engine, node, shardIds),
+    : BlocksWithClients(engine, node, shardIds),
       _infos(std::move(infos)),
       _query(*engine->getQuery()) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.emplace(std::make_pair(shardIds[i], i));
   }
-}
-
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<ScatterExecutor>::traceGetSomeEnd(
-    ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
-  ExecutionBlock::traceGetSomeEnd(result.get(), state);
-  return {state, std::move(result)};
-}
-
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::traceSkipSomeEnd(
-    ExecutionState state, size_t skipped) {
-  ExecutionBlock::traceSkipSomeEnd(skipped, state);
-  return {state, skipped};
 }
 
 /// @brief initializeCursor
@@ -60,7 +48,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<ScatterExecutor>::initializ
     _posForClient.emplace_back(0, 0);
   }
 
-  return BlockWithClients::initializeCursor(input);
+  return ExecutionBlock::initializeCursor(input);
 }
 
 /// @brief getSomeForShard
@@ -92,6 +80,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::skipSomeF
   auto result = skipSomeForShardWithoutTrace(atMost, shardId);
   return traceSkipSomeEnd(result.first, result.second);
 }
+
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::skipSomeForShardWithoutTrace(
     size_t atMost, std::string const& shardId) {
   // NOTE: We do not need to retain these, the getOrSkipSome is required to!
@@ -115,7 +104,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<ScatterExecutor>:
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
-  size_t const clientId = getClientId(shardId);
+ size_t const clientId = getClientId(shardId);
 
   if (!hasMoreForClientId(clientId)) {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};

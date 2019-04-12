@@ -28,7 +28,6 @@
 #include "Basics/Common.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
@@ -40,8 +39,8 @@
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
-#include "Aql/IResearchViewExecutor.h"
 #include "Aql/HashedCollectExecutor.h"
+#include "Aql/IResearchViewExecutor.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexExecutor.h"
 #include "Aql/LimitExecutor.h"
@@ -68,16 +67,22 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
                                                  typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
-      _blockFetcher(_dependencies, _engine->itemBlockManager(),
+      _blockFetcher(_dependencies, engine->itemBlockManager(),
                     infos.getInputRegisters(), infos.numberOfInputRegisters()),
       _rowFetcher(_blockFetcher),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
       _outputItemRow(),
-      _query(*engine->getQuery()) {}
+      _query(*engine->getQuery()) {
+
+  // already insert ourselves into the statistics results
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
+  }
+}
 
 template <class Executor>
-ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {}
+ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
 
 template <class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
@@ -208,20 +213,6 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
 }
 
 template <class Executor>
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::traceGetSomeEnd(
-    ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
-  ExecutionBlock::traceGetSomeEnd(result.get(), state);
-  return {state, std::move(result)};
-}
-
-template <class Executor>
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::traceSkipSomeEnd(
-    ExecutionState state, size_t skipped) {
-  ExecutionBlock::traceSkipSomeEnd(skipped, state);
-  return {state, skipped};
-}
-
-template <class Executor>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
   // destroy and re-create the BlockFetcher
   _blockFetcher.~BlockFetcher();
@@ -283,6 +274,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   _executor.~IdExecutor<ConstFetcher>();
   new (&_executor) IdExecutor<ConstFetcher>(_rowFetcher, _infos);
 
+  // end of default initializeCursor
   return ExecutionBlock::initializeCursor(input);
 }
 
@@ -292,6 +284,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<TraversalExecutor>::shutdow
   Result result;
 
   std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+
   if (state == ExecutionState::WAITING) {
     return {state, result};
   }

@@ -200,18 +200,6 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWi
   return {ExecutionState::WAITING, 0};
 }
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<RemoteExecutor>::traceGetSomeEnd(
-    ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
-  ExecutionBlock::traceGetSomeEnd(result.get(), state);
-  return {state, std::move(result)};
-}
-
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeEnd(
-    ExecutionState state, size_t skipped) {
-  ExecutionBlock::traceSkipSomeEnd(skipped, state);
-  return {state, skipped};
-}
-
 std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initializeCursor(
     InputAqlItemRow const& input) {
   // For every call we simply forward via HTTP

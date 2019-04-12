@@ -26,6 +26,7 @@
 #ifndef ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
 #define ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
 
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"

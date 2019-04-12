@@ -31,6 +31,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlResult.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
