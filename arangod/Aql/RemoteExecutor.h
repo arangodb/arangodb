@@ -104,7 +104,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   ExecutorInfos _infos;
 
-  Query & _query; // TODO tobias: RE-ADD const&
+  Query const& _query;
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
   std::string const _server;
