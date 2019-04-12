@@ -418,7 +418,6 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
     return true;
   }
 
-  log = true;
   // check security context first
   TRI_GET_GLOBALS();
 
@@ -451,11 +450,6 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
     path += TRI_DIR_SEPARATOR_STR;
   };
 
-  if (access == FSAccessType::READ && std::regex_search(path, _readWhiteListRegex)) {
-    // even in restricted contexts we may read module paths
-    if(log) { LOG_DEVEL << "internal match: " << true; };
-    return true;
-  }
 
   if (log) {
     LOG_DEVEL << "@@   access: " << path;
@@ -464,7 +458,20 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
     LOG_DEVEL << "@@    black: " << _filesBlackList;
   }
 
-  return checkBlackAndWhiteList(path, !_filesWhiteList.empty(), _filesWhiteListRegex,
+  bool rv = checkBlackAndWhiteList(path, !_filesWhiteList.empty(), _filesWhiteListRegex,
                                 !_filesBlackList.empty(), _filesBlackListRegex, log);
 
+  if(rv) { return true; }
+
+  if (access == FSAccessType::READ && std::regex_search(path, _readWhiteListRegex)) {
+    // even in restricted contexts we may read module paths
+    if(!_filesBlackList.empty() && std::regex_search(path, _filesBlackListRegex)) {
+      if(log) { LOG_DEVEL << "internal match - but blacklisted " << false; };
+      return false;
+    }
+    if(log) { LOG_DEVEL << "internal match: " << true; };
+    return true;
+  }
+
+  return rv;
 }
