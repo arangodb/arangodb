@@ -40,7 +40,7 @@ const e2Name = "UnitTestEdges2";
 const source = `${vName}/source`;
 const target = `${vName}/target`;
 const badTarget = `${vName}/badTarget`;
-const looper = `${vName}/lopper`;
+const looper = `${vName}/looper`;
 
 const isPathValid = (path, length, expectedWeight, allowInbound = false) => {
   assertTrue(_.isObject(path));
@@ -144,15 +144,7 @@ const createGraph = () => {
   // Pathnum 6 - 8 are noise on the target vertex
   // Pathnum 9 - 11 are noise on the isolated vertex
 
-  for (let pathNum = 0; pathNum < 3; ++pathNum) {
-    for (let step = 0; step < 4; ++step) {
-      vertices.push({ _key: `vertex_${pathNum}_${step}` });
-    }
-  }
-
-
-  // for (let pathNum = 0; pathNum < 12; ++pathNum) {
-  for (let pathNum = 0; pathNum < 3; ++pathNum) {
+  for (let pathNum = 0; pathNum < 12; ++pathNum) {
     const weight = (pathNum + 1) * (pathNum + 1);
     for (let step = 0; step < 3; ++step) {
       const key = `vertex_${pathNum}_${step}`;
@@ -163,6 +155,10 @@ const createGraph = () => {
           if (pathNum < 6) {
             // source -> v
             e1s.push({ _from: source, _to: `${vName}/${key}`, weight });
+            if (pathNum < 3) {
+              // Add INBOUND shortcut 0 <- 2 in e2 (we intentionally go to path 6-8 to not interfer with the original paths)
+              e2s.push({ _from: `${vName}/vertex_${pathNum + 6}_2`, _to: `${vName}/${key}`, weight });
+            }
           } else if (pathNum < 9) {
             // v -> target
             e1s.push({ _from: `${vName}/${key}`, _to: target, weight });
@@ -197,9 +193,11 @@ const createGraph = () => {
           if (pathNum < 3) {
             // These are the valid paths we care for
             if (pathNum === 1) {
+              const additional = `vertex_${pathNum}_3`;
+              vertices.push({ _key: additional });
               // Add an aditional step only on the second path to have differnt path lengths
-              e1s.push({ _from: `${vName}/${key}`, _to: `${vName}/vertex_${pathNum}_3`, weight });
-              e1s.push({ _from: `${vName}/vertex_${pathNum}_3`, _to: target, weight });
+              e1s.push({ _from: `${vName}/${key}`, _to: `${vName}/${additional}`, weight });
+              e1s.push({ _from: `${vName}/${additional}`, _to: target, weight });
             } else {
               e1s.push({ _from: `${vName}/${key}`, _to: target, weight });
             }
@@ -207,8 +205,6 @@ const createGraph = () => {
           // Always connect to source:
           // 1 -> 2 is connected in e2
           e2s.push({ _from: `${vName}/vertex_${pathNum}_1`, _to: `${vName}/${key}`, weight });
-          // Add INBOUND shortcut 0 <- 2 in e2
-          e2s.push({ _from: `${vName}/${key}`, _to: `${vName}/vertex_${pathNum}_0`, weight });
           break;
         }
       }
@@ -219,9 +215,11 @@ const createGraph = () => {
   db[e1Name].save(e1s);
   db[e2Name].save(e2s);
 
+
   // This graph has the following features:
   // we have 5 paths source -> target of length 4 (via postfix of path0 and path2)
   // we have 3 paths source -> target of length 5 (via postfix of path1)
+  // we have 1 path source -> target of length 8 (S,V1_0,V2_1,Loop,V2_0,V1_1,V1_2,V1_3,T)
   // The weights are defined as (1 + pathNum)^2 on every edge (the duplicate on path2 is 10 instead of 9).
   // So we end up with weight on the following paths:
   // * 4 on path0
@@ -232,16 +230,19 @@ const createGraph = () => {
   // * 30 on path2 -> path1
   // * 36 on path2
   // * 37 on path2 alternative
+  // * 43 on loop path (8 edges)
 
 
   // We hav no paths source -> badTarget
-  // We have 3 paths when e2 is traversed inbound instead of outbound
+  // We have 4 paths when e2 is traversed inbound instead of outbound
   // source -e1> <e2- target of length 3
+  // source -e1> loop -e1> 0_2 <e2- t of length 6
 
   // So we end up with weight on the following paths:
   // * 3 on path0
   // * 16 on path1
   // * 27 on path2
+  // * 44 on loop
 };
 
 function kConstantWeightShortestPathTestSuite() {
@@ -289,7 +290,7 @@ function kConstantWeightShortestPathTestSuite() {
       `;
       const result = db._query(query).toArray();
       allPathsDiffer(result);
-      assertEqual(result.length, 8);
+      assertEqual(result.length, 9);
       allPathsAreSorted(result);
       for (let i = 0; i < 5; ++i) {
         isPathValid(result[i], 4, 4);
@@ -297,6 +298,7 @@ function kConstantWeightShortestPathTestSuite() {
       for (let i = 5; i < 8; ++i) {
         isPathValid(result[i], 5, 5);
       }
+      isPathValid(result[8], 8, 8);
     },
 
     testPathsExistsNoLimit: function () {
@@ -310,7 +312,7 @@ function kConstantWeightShortestPathTestSuite() {
       `;
       const result = db._query(query).toArray();
       allPathsDiffer(result);
-      assertEqual(result.length, 8);
+      assertEqual(result.length, 9);
       allPathsAreSorted(result);
       for (let i = 0; i < 5; ++i) {
         isPathValid(result[i], 4, 4);
@@ -318,6 +320,7 @@ function kConstantWeightShortestPathTestSuite() {
       for (let i = 5; i < 8; ++i) {
         isPathValid(result[i], 5, 5);
       }
+      isPathValid(result[8], 8, 8);
     },
 
     testNoPathsExistsNoLimit: function () {
@@ -370,11 +373,12 @@ function kConstantWeightShortestPathTestSuite() {
       `;
       const result = db._query(query).toArray();
       allPathsDiffer(result);
-      assertEqual(result.length, 3);
+      assertEqual(result.length, 4);
       allPathsAreSorted(result);
       for (let i = 0; i < 3; ++i) {
         isPathValid(result[i], 3, 3, true);
       }
+      isPathValid(result[i], 6, 6, true);
     }
 
   };
@@ -433,8 +437,9 @@ function kAttributeWeightShortestPathTestSuite() {
       isPathValid(result[3], 5, 20);
       isPathValid(result[4], 5, 26);
       isPathValid(result[5], 4, 30);
-      isPathValid(result[5], 4, 36);
-      isPathValid(result[5], 4, 37);
+      isPathValid(result[6], 4, 36);
+      isPathValid(result[7], 4, 37);
+      isPathValid(result[8], 8, 43);
     },
 
     testWeightPathsExistsNoLimit: function () {
@@ -456,8 +461,9 @@ function kAttributeWeightShortestPathTestSuite() {
       isPathValid(result[3], 5, 20);
       isPathValid(result[4], 5, 26);
       isPathValid(result[5], 4, 30);
-      isPathValid(result[5], 4, 36);
-      isPathValid(result[5], 4, 37);
+      isPathValid(result[6], 4, 36);
+      isPathValid(result[7], 4, 37);
+      isPathValid(result[8], 8, 43);
     },
 
     testWeightNoPathsExistsNoLimit: function () {
@@ -486,7 +492,6 @@ function kAttributeWeightShortestPathTestSuite() {
       isPathValid(result[0], 5, 20);
       isPathValid(result[1], 5, 26);
       isPathValid(result[2], 4, 30);
-
     },
 
     testWeightPathsSkipMoreThanExists: function () {
@@ -507,11 +512,12 @@ function kAttributeWeightShortestPathTestSuite() {
       `;
       const result = db._query(query).toArray();
       allPathsDiffer(result);
-      assertEqual(result.length, 3);
+      assertEqual(result.length, 4);
       allPathsAreSorted(result);
       isPathValid(result[0], 3, 3);
       isPathValid(result[1], 4, 16);
       isPathValid(result[2], 3, 27);
+      isPathValid(result[3], 8, 44);
     }
 
   };
