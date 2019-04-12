@@ -76,8 +76,6 @@ RestStatus RestDocumentHandler::execute() {
 }
 
 void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
-  TRI_DEFER(RestVocbaseBaseHandler::shutdownExecute(isFinalized));
-
   try {
     GeneralRequest const* request = _request.get();
     auto const type = request->requestType();
@@ -97,6 +95,7 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
     }
   } catch (...) {
   }
+  RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
 /// @brief returns the short id of the server which should handle this request

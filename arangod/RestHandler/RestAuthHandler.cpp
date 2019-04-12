@@ -114,7 +114,6 @@ RestStatus RestAuthHandler::badRequest() {
 }
 
 void RestAuthHandler::shutdownExecute(bool isFinalized) noexcept {
-  TRI_DEFER(RestVocbaseBaseHandler::shutdownExecute(isFinalized));
   try {
     if (_isValid) {
       events::LoggedIn(*_request, _username);
@@ -123,4 +122,5 @@ void RestAuthHandler::shutdownExecute(bool isFinalized) noexcept {
     }
   } catch (...) {
   }
+  RestVocbaseBaseHandler::shutdownExecute(isFinalized)
 }
