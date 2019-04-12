@@ -97,13 +97,13 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
           _vertices.size() != rhs._vertices.size()) {
         return false;
       }
-      for (size_t i = 0; i < _vertices.size(); ++i ) {
-        if(!_vertices.at(i).equals(rhs._vertices.at(i))) {
+      for (size_t i = 0; i < _vertices.size(); ++i) {
+        if (!_vertices.at(i).equals(rhs._vertices.at(i))) {
           return false;
         }
       }
-      for (size_t i = 0; i < _edges.size(); ++i ) {
-        if(!_edges.at(i).equals(rhs._edges.at(i))) {
+      for (size_t i = 0; i < _edges.size(); ++i) {
+        if (!_edges.at(i).equals(rhs._edges.at(i))) {
           return false;
         }
       }
@@ -166,8 +166,7 @@ class ConstantWeightKShortestPathsFinder : public ShortestPathFinder {
   // TODO: Remove
   bool shortestPath(arangodb::velocypack::Slice const& start,
                     arangodb::velocypack::Slice const& target,
-                    arangodb::graph::ShortestPathResult& result,
-                    std::function<void()> const& callback) {
+                    arangodb::graph::ShortestPathResult& result) {
     TRI_ASSERT(false);
     return false;
   };
