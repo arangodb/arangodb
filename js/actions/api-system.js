@@ -37,6 +37,7 @@ var actions = require('@arangodb/actions');
 actions.defineHttp({
   url: '',
   prefix: true,
+  isSystem: false,
 
   callback: function (req, res) {
     req.absoluteUrl = function (url) {

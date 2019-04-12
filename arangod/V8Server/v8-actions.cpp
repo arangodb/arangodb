@@ -112,8 +112,9 @@ class v8_action_t final : public TRI_action_t {
     bool allowUseDatabase = _allowUseDatabase || ActionFeature::ACTION->allowUseDatabase();
 
     // get a V8 context
-    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
-    V8ContextGuard guard(vocbase, securityContext);
+    V8ContextGuard guard(vocbase, _isSystem ? 
+        JavaScriptSecurityContext::createInternalContext() : 
+        JavaScriptSecurityContext::createRestActionContext(allowUseDatabase));
 
     // locate the callback
     READ_LOCKER(readLocker, _callbacksLock);
@@ -221,6 +222,14 @@ static void ParseActionOptions(v8::Isolate* isolate, TRI_v8_global_t* v8g,
         TRI_ObjectToBoolean(isolate, options->Get(AllowUseDatabaseKey));
   } else {
     action->_allowUseDatabase = false;
+  }
+
+  TRI_GET_GLOBAL_STRING(IsSystemKey);
+  if (TRI_HasProperty(context, isolate, options, IsSystemKey)) {
+    action->_isSystem =
+        TRI_ObjectToBoolean(isolate, options->Get(IsSystemKey));
+  } else {
+    action->_isSystem = false;
   }
 }
 
