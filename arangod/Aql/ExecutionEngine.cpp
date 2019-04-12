@@ -25,7 +25,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlResult.h"
-#include "Aql/ClusterBlocks.h"
+#include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServer.h"

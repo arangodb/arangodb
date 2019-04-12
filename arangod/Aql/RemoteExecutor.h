@@ -73,11 +73,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 #endif
 
  private:
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> traceGetSomeEnd(ExecutionState state,
-                                                                   SharedAqlItemBlockPtr result);
-
-  std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
-
   std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
 
   std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);

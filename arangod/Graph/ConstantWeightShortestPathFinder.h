@@ -59,8 +59,7 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
 
   bool shortestPath(arangodb::velocypack::Slice const& start,
                     arangodb::velocypack::Slice const& end,
-                    arangodb::graph::ShortestPathResult& result,
-                    std::function<void()> const& callback) override;
+                    arangodb::graph::ShortestPathResult& result) override;
 
  private:
   void expandVertex(bool backward, arangodb::velocypack::StringRef vertex);

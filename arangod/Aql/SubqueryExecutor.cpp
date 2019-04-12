@@ -20,6 +20,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ExecutionBlock.h"
 #include "SubqueryExecutor.h"
 
 #include "Aql/OutputAqlItemRow.h"

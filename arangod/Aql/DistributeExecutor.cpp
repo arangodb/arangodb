@@ -36,7 +36,7 @@ ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
     std::vector<std::string> const& shardIds, Collection const* collection,
     RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys,
     bool allowKeyConversionToObject, bool createKeys)
-    : BlockWithClients(engine, node, shardIds),
+    : BlocksWithClients(engine, node, shardIds),
       _infos(std::move(infos)),
       _query(*engine->getQuery()),
       _collection(collection),
@@ -47,18 +47,6 @@ ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
       _allowKeyConversionToObject(allowKeyConversionToObject),
       _createKeys(createKeys) {
   _usesDefaultSharding = collection->usesDefaultSharding();
-}
-
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<DistributeExecutor>::traceGetSomeEnd(
-    ExecutionState state, SharedAqlItemBlockPtr result) {
-  ExecutionBlock::traceGetSomeEnd(result.get(), state);
-  return {state, std::move(result)};
-}
-
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::traceSkipSomeEnd(
-    ExecutionState state, size_t skipped) {
-  ExecutionBlock::traceSkipSomeEnd(skipped, state);
-  return {state, skipped};
 }
 
 /// @brief initializeCursor
@@ -72,7 +60,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<DistributeExecutor>::initia
     _distBuffer.emplace_back();
   }
 
-  return BlockWithClients::initializeCursor(input);
+  return ExecutionBlock::initializeCursor(input);
 }
 
 /// @brief getSomeForShard
@@ -231,7 +219,7 @@ std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlock
 
   while (buf.size() < atMost) {
     if (_index == _buffer.size()) {
-      auto res = ExecutionBlock::getBlock(atMost);
+      auto res = getBlock(atMost);
       if (res.first == ExecutionState::WAITING) {
         return {res.first, false};
       }

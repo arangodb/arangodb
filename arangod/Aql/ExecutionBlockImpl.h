@@ -41,6 +41,7 @@
 #include "Aql/Stats.h"
 #include "OutputAqlItemRow.h"
 
+
 namespace arangodb {
 namespace aql {
 
@@ -177,19 +178,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
  private:
   /**
-   * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
-   *        arguments compatible to getSome's return type.
-   */
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> traceGetSomeEnd(ExecutionState state,
-                                                                   SharedAqlItemBlockPtr result);
-
-  /**
-   * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
-   *        arguments compatible to skipSome's return type.
-   */
-  std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
-
-  /**
    * @brief Inner getSome() part, without the tracing calls.
    */
   std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
@@ -235,6 +223,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    *        to produce a single row from the upstream information.
    */
   Infos _infos;
+
   Executor _executor;
 
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;
