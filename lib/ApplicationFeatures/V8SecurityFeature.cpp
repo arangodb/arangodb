@@ -159,25 +159,33 @@ void convertToRe(std::unordered_set<std::string>& files, std::string& target_re)
 
 bool checkBlackAndWhiteList(std::string const& value, bool hasWhiteList,
                             std::regex const& whiteList, bool hasBlacklist,
-                            std::regex const& blackList) {
+                            std::regex const& blackList, bool log = false) {
   if (!hasWhiteList && !hasBlacklist) {
+    if(log) { LOG_DEVEL << "no lists"; };
     return true;
   }
 
   if (!hasBlacklist) {
     // must be white listed
-    return std::regex_search(value, whiteList);
+    bool rv = std::regex_search(value, whiteList);
+    if(log) { LOG_DEVEL << "whitelist only" << std::boolalpha << rv; };
+    return rv;
   }
 
   if (!hasWhiteList) {
     // must be white listed
+    bool rv = !std::regex_search(value, blackList);
+    if(log) { LOG_DEVEL << "black-list only" << std::boolalpha << rv; };
     return !std::regex_search(value, blackList);
   }
 
   if (std::regex_search(value, whiteList)) {
     return true;  // white-list wins - simple implementation
+    if(log) { LOG_DEVEL << "white-list" << std::boolalpha << true; };
   } else {
-    return !std::regex_search(value, blackList);
+    bool rv = !std::regex_search(value, blackList);
+    if(log) { LOG_DEVEL << "black-list" << std::boolalpha << rv; };
+    return rv;
   }
 }
 }  // namespace
@@ -299,7 +307,7 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   }
 }
 
-void V8SecurityFeature::prepare() { 
+void V8SecurityFeature::prepare() {
   V8SecurityFeature* v8security =
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
@@ -388,12 +396,12 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
 }
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string const&  path,
-                                              FSAccessType access) const {
-  return V8SecurityFeature::isAllowedToAccessPath(isolate, path.c_str(), access);
+                                              FSAccessType access, bool log) const {
+  return V8SecurityFeature::isAllowedToAccessPath(isolate, path.c_str(), access, log);
 }
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* pathPtr,
-                                              FSAccessType access) const {
+                                              FSAccessType access, bool log) const {
   // check security context first
   TRI_GET_GLOBALS();
 
@@ -427,20 +435,19 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
     path += TRI_DIR_SEPARATOR_STR;
   };
 
-  //LOG_DEVEL << "@@ try to access " << path;
-
+  if (log) {
+    LOG_DEVEL << "@@   access: " << path;
+    LOG_DEVEL << "@@ internal: " << _readWhiteList;
+    LOG_DEVEL << "@@    white: " << _filesWhiteList;
+    LOG_DEVEL << "@@    black: " << _filesBlackList;
+  }
   if (access == FSAccessType::READ && std::regex_search(path, _readWhiteListRegex)) {
     // even in restricted contexts we may read module paths
-    //LOG_DEVEL << "internal match: " << _readWhiteList;
+    if(log) { LOG_DEVEL << "internal match: " << true; };
     return true;
   }
 
-  //LOG_DEVEL << "             internal: " << _readWhiteList;
-  //LOG_DEVEL << "                white: " << _filesWhiteList;
-  //LOG_DEVEL << "                black: " << _filesBlackList;
-  //LOG_DEVEL << " black and white list: " << std::boolalpha << checkBlackAndWhiteList(path, !_filesWhiteList.empty(), _filesWhiteListRegex,
-  //                              !_filesBlackList.empty(), _filesBlackListRegex);
   return checkBlackAndWhiteList(path, !_filesWhiteList.empty(), _filesWhiteListRegex,
-                                !_filesBlackList.empty(), _filesBlackListRegex);
+                                !_filesBlackList.empty(), _filesBlackListRegex, log);
 
 }

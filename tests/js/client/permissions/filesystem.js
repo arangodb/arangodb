@@ -35,6 +35,7 @@ const rootDir = fs.join(fs.getTempPath(),  'permissions');
 const testresults = fs.join(rootDir, 'testresult.json'); // where we want to put our results ;-)
 const topLevelForbidden = fs.join(rootDir, 'forbidden');
 const forbiddenZipFileName = fs.join(topLevelForbidden, 'forbidden.zip');
+const forbiddenJSFileName = fs.join(topLevelForbidden, 'forbidden.js');
 const topLevelForbiddenRecursive = fs.join(rootDir, 'forbidden_recursive');
 
 const topLevelAllowed = fs.join(rootDir, 'allowed');
@@ -42,6 +43,7 @@ const intoTopLevelForbidden = fs.join(topLevelAllowed, 'into_forbidden.txt');
 const topLevelAllowedUnZip = fs.join(rootDir, 'allowed_unzip');
 const topLevelAllowedRecursive = fs.join(rootDir, 'allowed_recursive');
 const allowedZipFileName = fs.join(topLevelAllowedRecursive, 'allowed.zip');
+const allowedJSFileName = fs.join(topLevelAllowedRecursive, 'allowed.js');
 const intoTopLevelAllowed = fs.join(topLevelForbidden, 'into_allowed.txt');
 
 const topLevelAllowedFile = fs.join(topLevelAllowed, 'allowed.txt');
@@ -92,6 +94,10 @@ if (getOptions === true) {
   fs.write(topLevelForbiddenFile, 'forbidden fruits are tasty!\n');
   fs.write(subLevelAllowedFile, 'this file is allowed.\n');
    // N/A fs.write(subLevelForbiddenFile, 'forbidden fruits are tasty!\n');
+
+  fs.write(forbiddenJSFileName, `print('hello world');\n`);
+  fs.write(allowedJSFileName, `print('hello world');\n`);
+
 
   fs.write(topLevelAllowedCopyFile, 'this file is allowed.\n');
   fs.write(topLevelForbiddenCopyFile, 'forbidden fruits are tasty!\n');
@@ -581,6 +587,38 @@ function testSuite() {
     }
   }
 
+  function tryJSParseFileForbidden(fn) {
+    try {
+      require("internal").parseFile(fn);
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, "wasn't forbidden to parse: " + fn);
+    }
+  }
+  function tryJSParseFileAllowed(fn) {
+    try {
+      require("internal").parseFile(fn);
+    } catch (err) {
+      assertTrue(false, "was forbidden to parse: " + fn + " - " + err);
+    }
+  }
+
+  function tryJSEvalFileForbidden(fn) {
+    try {
+      require("internal").load(fn);
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, "wasn't forbidden to load: " + fn);
+    }
+  }
+  function tryJSEvalFileAllowed(fn) {
+    try {
+      require("internal").load(fn);
+    } catch (err) {
+      assertTrue(false, "was forbidden to load: " + fn + " - " + err);
+    }
+  }
+
   return {
     testGetTempFile : function() {
       tryGetTempFileForbidden('/etc/');
@@ -805,7 +843,19 @@ function testSuite() {
       tryUnZipFileForbidden(allowedZipFileName, topLevelForbidden);
       
       tryUnZipFileAllowed(allowedZipFileName, topLevelAllowedUnZip);
+    },
+    testEval : function() {
+      tryJSParseFileForbidden(forbiddenJSFileName);
+      tryJSParseFileAllowed(allowedJSFileName);
+      tryJSEvalFileForbidden(forbiddenJSFileName);
+      tryJSEvalFileAllowed(allowedJSFileName);
+
+      // we can not forbid snippet evaluation.
+      // Access is file access based for now.
+      require("internal").parse(`print('hello world')`);
     }
+
+
   };
 }
 jsunity.run(testSuite);
