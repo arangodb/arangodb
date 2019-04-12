@@ -54,12 +54,6 @@ class AqlItemBlockManager {
   /// @brief return a block to the manager
   TEST_VIRTUAL void returnBlock(AqlItemBlock*& block) noexcept;
 
-  /// @brief return a block to the manager
-  void returnBlock(std::unique_ptr<AqlItemBlock> block) noexcept {
-    AqlItemBlock* b = block.release();
-    returnBlock(b);
-  }
-
   TEST_VIRTUAL ResourceMonitor* resourceMonitor() const noexcept { return _resourceMonitor; }
 
 #ifdef ARANGODB_USE_CATCH_TESTS

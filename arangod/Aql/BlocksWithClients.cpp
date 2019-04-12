@@ -88,8 +88,7 @@ std::pair<ExecutionState, bool> BlocksWithClients::getBlock(size_t atMost) {
   _upstreamState = res.first;
 
   if (res.second != nullptr) {
-    _buffer.emplace_back(res.second.get());
-    res.second.release();
+    _buffer.emplace_back(std::move(res.second));
     return {res.first, true};
   }
 

@@ -204,6 +204,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   Executor& executor() { return _executor; }
 
+  /// @brief request an AqlItemBlock from the memory manager
+  SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterId nrRegs);
+
  private:
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this

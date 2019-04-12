@@ -126,8 +126,8 @@ class ExecutionBlock {
   }
 
   // Trace the end of a getSome call, potentially with result
-  inline std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> traceGetSomeEnd(
-      ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
+  inline std::pair<ExecutionState, SharedAqlItemBlockPtr> traceGetSomeEnd(
+      ExecutionState state, SharedAqlItemBlockPtr result) {
     TRI_ASSERT(result != nullptr || state != ExecutionState::HASMORE);
     if (_profile >= PROFILE_LEVEL_BLOCKS) {
       ExecutionNode const* en = getPlanNode();
