@@ -647,8 +647,6 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  // TODO -- allow connect?
-
   std::string const signature = "download(<url>, <body>, <options>, <outfile>)";
 
   if (args.Length() < 1) {
@@ -658,8 +656,11 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string url = TRI_ObjectToString(isolate, args[0]);
   std::vector<std::string> endpoints;
 
+  bool isLocalUrl = false;
+
   if (!url.empty() && url[0] == '/') {
     // check if we are a server
+    isLocalUrl = true;
     try {
       HttpEndpointProvider* server =
           ApplicationServer::getFeature<HttpEndpointProvider>("Endpoint");
@@ -938,7 +939,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     LOG_TOPIC("d6bdb", TRACE, arangodb::Logger::FIXME)
         << "downloading file. endpoint: " << endpoint << ", relative URL: " << url;
 
-    if (!v8security->isAllowedToConnectToEndpoint(isolate, endpoint)) {
+    if (!isLocalUrl && !v8security->isAllowedToConnectToEndpoint(isolate, endpoint)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "not allowed to connect to this endpoint");
     }
@@ -1008,6 +1009,10 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
         numRedirects++;
 
+        isLocalUrl = false;
+        if (!url.empty() && url[0] == '/') {
+          isLocalUrl = true;
+        }
         if (url.substr(0, 5) == "http:" || url.substr(0, 6) == "https:") {
           lastEndpoint = GetEndpointFromUrl(url);
         }
