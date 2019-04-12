@@ -68,11 +68,23 @@ namespace arangodb {
 Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
+    : ApplicationFeature(server, "Scheduler"),
+      _scheduler(nullptr), _enableSignals(true) {
   setOptional(false);
   startsAfter("GreetingsPhase");
   startsAfter("FileDescriptors");
 }
+  
+#ifdef ARANGODB_USE_CATCH_TESTS
+  SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& server,
+                                     bool enableSignalsV8)
+    : ApplicationFeature(server, "Scheduler"),
+      _scheduler(nullptr), _enableSignals(enableSignalsV8) {
+    setOptional(false);
+    startsAfter("GreetingsPhase");
+    startsAfter("FileDescriptors");
+  }
+#endif
 
 SchedulerFeature::~SchedulerFeature() {}
 
@@ -168,7 +180,9 @@ void SchedulerFeature::prepare() {
 }
 
 void SchedulerFeature::start() {
-  signalStuffInit();
+  if (_enableSignals) {
+    signalStuffInit();
+  }
 
   bool ok = _scheduler->start();
   if (!ok) {
@@ -178,12 +192,16 @@ void SchedulerFeature::start() {
   }
   LOG_TOPIC("14e6f", DEBUG, Logger::STARTUP) << "scheduler has started";
 
-  initV8Stuff();
+  if (_enableSignals) {
+    initV8Stuff();
+  }
 }
 
 void SchedulerFeature::stop() {
-  signalStuffDeinit();
-  deinitV8Stuff();
+  if (_enableSignals) {
+    signalStuffDeinit();
+    deinitV8Stuff();
+  }
 
   _scheduler->shutdown();
 }

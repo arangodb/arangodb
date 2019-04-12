@@ -1045,8 +1045,7 @@ std::unique_ptr<arangodb::transaction::ContextData> StorageEngineMock::createTra
 }
 
 std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransactionManager() {
-  TRI_ASSERT(false);
-  return nullptr;
+  return std::make_unique<arangodb::transaction::Manager>(/*keepData*/ false);
 }
 
 std::unique_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
@@ -1055,7 +1054,7 @@ std::unique_ptr<arangodb::TransactionState> StorageEngineMock::createTransaction
     arangodb::transaction::Options const& options
 ) {
   return std::unique_ptr<arangodb::TransactionState>(
-    new TransactionStateMock(vocbase, options)
+    new TransactionStateMock(vocbase, tid, options)
   );
 }
 
@@ -1388,7 +1387,7 @@ int TransactionCollectionMock::use(int nestingLevel) {
     }
   }
 
-  return _collection ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL;
+  return _collection ? TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
 }
 
 int TransactionCollectionMock::doLock(arangodb::AccessMode::Type type, int nestingLevel) {
@@ -1417,8 +1416,9 @@ size_t TransactionStateMock::commitTransactionCount;
 
 // ensure each transaction state has a unique ID
 TransactionStateMock::TransactionStateMock(TRI_vocbase_t& vocbase,
+                                           TRI_voc_tid_t tid,
                                            arangodb::transaction::Options const& options)
-    : TransactionState(vocbase, 0, options) {}
+    : TransactionState(vocbase, tid, options) {}
 
 arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::Methods* trx) {
   ++abortTransactionCount;

@@ -136,7 +136,7 @@ class TransactionStateMock: public arangodb::TransactionState {
   static size_t beginTransactionCount;
   static size_t commitTransactionCount;
 
-  TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::transaction::Options const& options);
+  TransactionStateMock(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, arangodb::transaction::Options const& options);
   virtual arangodb::Result abortTransaction(arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result beginTransaction(arangodb::transaction::Hints hints) override;
   virtual arangodb::Result commitTransaction(arangodb::transaction::Methods* trx) override;

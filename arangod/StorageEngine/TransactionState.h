@@ -183,8 +183,9 @@ class TransactionState {
 
   TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
 
-  void setType(AccessMode::Type type);
-
+  /// @brief make a exclusive transaction, only valid before begin
+  void setExclusiveAccessType();
+  
   /// @brief whether or not a transaction is read-only
   bool isReadOnlyTransaction() const {
     return (_type == AccessMode::Type::READ);
