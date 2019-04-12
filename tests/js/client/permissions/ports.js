@@ -38,7 +38,8 @@ if (getOptions === true) {
       'http://127.0.0.1:9999'            // won't match at all.
     ],
     'javascript.endpoints-white-list': [
-      'white.arangodb.org'
+      'white.arangodb.org',
+      'arangodb.com',             // will match https + http
     ]
   };
 }
@@ -80,17 +81,17 @@ function testSuite() {
       downloadForbidden('http://127.0.0.1:8899/testbla', 'GET');
       downloadForbidden('https://127.0.0.1:7777/testbla', 'GET');
       downloadForbidden('https://127.0.0.1:7777', 'GET');
-      downloadPermitted('https://127.0.0.1:777/testbla', 'GET');
+      downloadForbidden('https://127.0.0.1:777/testbla', 'GET');
       downloadForbidden('http://arangodb.org/testbla', 'GET');
       downloadForbidden('https://arangodb.org/testbla', 'GET');
-      
+      downloadForbidden('http://heise.de', 'GET');
+      downloadForbidden('http://127.0.0.1:9999', 'POST');
+
       downloadPermitted('https://white.arangodb.org/bla', 'GET');
       downloadPermitted('http://white.arangodb.org/bla', 'GET');
+      downloadPermitted('https://arangodb.com/blog', 'GET');
       downloadPermitted('http://arangodb.com/blog', 'GET');
-      downloadPermitted('http://arangodb.com/blog', 'GET');
-      downloadPermitted('http://heise.de', 'GET');
 
-      downloadPermitted('http://127.0.0.1:9999', 'POST');
     }
   };
 }
