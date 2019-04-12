@@ -402,7 +402,6 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
     return true;
   }
 
-  LOG_DEVEL << "name" << name;
   return checkBlackAndWhiteList(name, !_endpointsWhiteList.empty(), _endpointsWhiteListRegex,
                                 !_endpointsBlackList.empty(), _endpointsBlackListRegex);
 }
