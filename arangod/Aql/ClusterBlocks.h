@@ -126,7 +126,6 @@ class BlockWithClients : public ExecutionBlock {
   /// @brief current working position in the first entry of _buffer
   size_t _pos;
 
-
  private:
   bool _wasShutdown;
 };

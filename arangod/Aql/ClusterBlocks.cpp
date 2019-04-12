@@ -66,10 +66,10 @@ BlockWithClients::BlockWithClients(ExecutionEngine* engine, ExecutionNode const*
                                    std::vector<std::string> const& shardIds)
     : ExecutionBlock(engine, ep),
       _nrClients(shardIds.size()),
-      _wasShutdown(false),
       _engine(engine),
       _trx(engine->getQuery()->trx()),
-      _pos(0) {
+      _pos(0),
+      _wasShutdown(false) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.emplace(std::make_pair(shardIds[i], i));
