@@ -43,7 +43,7 @@ namespace {
 
 void eraseRow(AqlItemBlockShell& shell, size_t row) {
   arangodb::aql::RegisterId const nrRegs = shell.block().getNrRegs();
-  for (size_t i = 0; i < nrRegs; i++) {
+  for (arangodb::aql::RegisterId i = 0; i < nrRegs; i++) {
     shell.block().destroyValue(row, i);
   }
 }

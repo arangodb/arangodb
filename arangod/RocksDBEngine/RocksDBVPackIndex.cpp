@@ -770,7 +770,7 @@ namespace {
         return true;
       }
       
-      int dist = std::distance(begin, end);
+      auto dist = std::distance(begin, end);
       bool notF1 = first.isNone() || (dist == 1 && !first.isObject());
       bool notF2 = second.isNone() || (dist == 1 && !second.isObject());
       if (notF1 != notF2) {
