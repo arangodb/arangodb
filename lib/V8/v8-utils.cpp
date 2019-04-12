@@ -854,7 +854,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      "invalid value provided for outfile");
     }
 
-    if (!v8security->isAllowedToAccessPath(isolate, outfile, FSAccessType::WRITE)) {
+    if (!v8security->isAllowedToAccessPath(isolate, outfile, FSAccessType::WRITE, true)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(
           TRI_ERROR_FORBIDDEN, "not allowed to modify files in this path");
     }
