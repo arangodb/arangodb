@@ -164,7 +164,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
   };
 
  public:
-  explicit KShortestPathsFinder(ShortestPathOptions const& options);
+  explicit KShortestPathsFinder(ShortestPathOptions& options);
   ~KShortestPathsFinder();
 
   // This is here because we inherit from ShortestPathFinder (to get the destroyEngines function)

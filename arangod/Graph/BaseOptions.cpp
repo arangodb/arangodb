@@ -397,7 +397,7 @@ double BaseOptions::costForLookupInfoList(std::vector<BaseOptions::LookupInfo> c
 }
 
 EdgeCursor* BaseOptions::nextCursorLocal(arangodb::velocypack::StringRef vid,
-                                         std::vector<LookupInfo>& list) {
+                                         std::vector<LookupInfo> const& list) {
   auto allCursor = std::make_unique<SingleServerEdgeCursor>(this, list.size());
   auto& opCursors = allCursor->getCursors();
   for (auto& info : list) {
@@ -412,7 +412,7 @@ EdgeCursor* BaseOptions::nextCursorLocal(arangodb::velocypack::StringRef vid,
       auto idNode = dirCmp->getMemberUnchecked(1);
       TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
       TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-      // must edit node inplace; TODO replace node?
+      // must edit node in place; TODO replace node?
       TEMPORARILY_UNLOCK_NODE(idNode);
       idNode->setStringValue(vid.data(), vid.length());
     }
@@ -420,6 +420,7 @@ EdgeCursor* BaseOptions::nextCursorLocal(arangodb::velocypack::StringRef vid,
     csrs.reserve(info.idxHandles.size());
     IndexIteratorOptions opts;
     for (auto const& it : info.idxHandles) {
+      // the emplace_back cannot throw here, as we reserved enough space before
       csrs.emplace_back(new OperationCursor(_trx->indexScanForCondition(it, node, _tmpVar, opts)));
     }
     opCursors.emplace_back(std::move(csrs));

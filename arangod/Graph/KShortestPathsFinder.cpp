@@ -43,7 +43,7 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 //
-KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions const& options)
+KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
     : ShortestPathFinder(options), _pathAvailable(false) {}
 KShortestPathsFinder::~KShortestPathsFinder() {}
 

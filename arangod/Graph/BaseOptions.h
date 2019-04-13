@@ -153,7 +153,7 @@ struct BaseOptions {
                               std::string const& attributeName, aql::AstNode* condition);
 
   EdgeCursor* nextCursorLocal(arangodb::velocypack::StringRef vid,
-                              std::vector<LookupInfo>&);
+                              std::vector<LookupInfo> const&);
 
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
