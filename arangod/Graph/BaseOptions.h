@@ -68,6 +68,7 @@ struct BaseOptions {
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&);
+    LookupInfo& operator=(LookupInfo const&) = delete;
 
     LookupInfo(arangodb::aql::Query*, arangodb::velocypack::Slice const&,
                arangodb::velocypack::Slice const&);
@@ -88,6 +89,7 @@ struct BaseOptions {
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
   explicit BaseOptions(BaseOptions const&);
+  BaseOptions& operator=(BaseOptions const&) = delete;
 
   BaseOptions(arangodb::aql::Query*, arangodb::velocypack::Slice, arangodb::velocypack::Slice);
 

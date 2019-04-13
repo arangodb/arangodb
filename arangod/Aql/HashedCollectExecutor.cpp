@@ -231,8 +231,8 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
   // produce output
   if (_currentGroup != _allGroups.end()) {
     writeCurrentGroupToOutput(output);
-    _currentGroup++;
-    _returnedGroups++;
+    ++_currentGroup;
+    ++_returnedGroups;
     TRI_ASSERT(_returnedGroups <= _allGroups.size());
   }
 

@@ -43,7 +43,7 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 //
-KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
+KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions const& options)
     : ShortestPathFinder(options), _pathAvailable(false) {}
 KShortestPathsFinder::~KShortestPathsFinder() {}
 
@@ -153,7 +153,6 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(
 bool KShortestPathsFinder::advanceFrontier(
     Ball& source, Ball const& target, std::unordered_set<VertexRef> const& forbiddenVertices,
     std::unordered_set<Edge> const& forbiddenEdges, VertexRef& join) {
-  std::vector<Step> neighbours;
   VertexRef vr;
   FoundVertex* v;
 
@@ -162,7 +161,7 @@ bool KShortestPathsFinder::advanceFrontier(
     return false;
   }
 
-  neighbours.clear();
+  std::vector<Step> neighbours;
   computeNeighbourhoodOfVertex(vr, source._direction, neighbours);
 
   for (auto& s : neighbours) {
@@ -193,8 +192,8 @@ bool KShortestPathsFinder::advanceFrontier(
 }
 
 void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
-                                                         VertexRef const& join,
-                                                         Path& result) {
+                                           VertexRef const& join,
+                                           Path& result) {
   result.clear();
   TRI_ASSERT(!join.empty());
   result._vertices.emplace_back(join);
