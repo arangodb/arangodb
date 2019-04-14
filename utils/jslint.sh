@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 if [ "x$@" == "x" ] ; then
   JAVASCRIPT_JSLINT="\
