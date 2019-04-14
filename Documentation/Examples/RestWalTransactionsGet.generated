@@ -5,7 +5,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"runningTransactions"</span> : <span class="hljs-number">5</span>, 
-  <span class="hljs-string">"minLastCollected"</span> : <span class="hljs-number">90</span>, 
+  <span class="hljs-string">"runningTransactions"</span> : <span class="hljs-number">3</span>, 
+  <span class="hljs-string">"minLastCollected"</span> : <span class="hljs-number">38</span>, 
   <span class="hljs-string">"minLastSealed"</span> : <span class="hljs-literal">null</span> 
 }

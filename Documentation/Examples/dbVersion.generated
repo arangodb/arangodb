@@ -1,2 +1,2 @@
 arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb"</span>).db._version();
-<span class="hljs-number">3.3</span><span class="hljs-number">.22</span>
+<span class="hljs-number">3.3</span><span class="hljs-number">.23</span>

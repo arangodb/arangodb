@@ -1,18 +1,18 @@
 shell> curl -X PUT --header 'accept: application/json' --dump - http://localhost:8529/_api/collection/products/load
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
-content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 location: <span class="hljs-regexp">/_api/</span>collection/products/load
 
 { 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
-  <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h4C587EE44394/10244"</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10244"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
-  <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span> 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hC4367649D210/10254"</span>, 
+  <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10254"</span>, 
+  <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span> 
 }

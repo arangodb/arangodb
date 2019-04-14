@@ -21,9 +21,9 @@ shell> curl -X POST --header 'accept: application/json' --data-binary @- --dump 
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
-content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _YX0k9GS--_
 x-content-type-options: nosniff
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+etag: _YfzGeSm--_
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -41,12 +41,12 @@ x-content-type-options: nosniff
       } 
     ], 
     <span class="hljs-string">"orphanCollections"</span> : [ ], 
-    <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">9</span>, 
+    <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
+    <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
-    <span class="hljs-string">"smartGraphAttribute"</span> : <span class="hljs-string">"region"</span>, 
+    <span class="hljs-string">"smartGraphAttribute"</span> : <span class="hljs-string">""</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/myGraph"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YX0k9GS--_"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YfzGeSm--_"</span> 
   }, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }

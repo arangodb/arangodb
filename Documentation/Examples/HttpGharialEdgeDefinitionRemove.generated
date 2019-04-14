@@ -1,9 +1,9 @@
 shell> curl -X DELETE --header 'accept: application/json' --dump - http://localhost:8529/_api/gharial/social/edge/relation
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
-content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _YX0k9Y---_
 x-content-type-options: nosniff
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+etag: _YfzGfTm--_
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -19,7 +19,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"smartGraphAttribute"</span> : <span class="hljs-string">""</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/social"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YX0k9Y---_"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YfzGfTm--_"</span> 
   }, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }

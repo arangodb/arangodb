@@ -1,9 +1,9 @@
 shell> curl -X PUT --header 'x-arango-async: store' --header 'accept: application/json' --dump - http://localhost:8529/_api/version
 
 HTTP/1.1 202 Accepted
-content-type: text/plain; charset=utf-8
 x-content-type-options: nosniff
-x-arango-async-id: 9593
+x-arango-async-id: 9602
+content-type: text/plain; charset=utf-8
 
 shell> curl --header 'accept: application/json' --dump - http://localhost:8529/_api/job/pending
 

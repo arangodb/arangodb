@@ -5,17 +5,17 @@ shell> curl -X PATCH --header 'accept: application/json' --data-binary @- --dump
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
-content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _YX0l-AC--_
 x-content-type-options: nosniff
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+etag: _YfzGiDy--_
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"vertex"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YX0l-AC--_"</span>, 
-    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_YX0l-_e--_"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YfzGiDy--_"</span>, 
+    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_YfzGiDi--B"</span> 
   }, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }

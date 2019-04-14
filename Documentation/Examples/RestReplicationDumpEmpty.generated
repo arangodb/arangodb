@@ -1,8 +1,8 @@
 shell> curl --header 'accept: application/json' --dump - http://localhost:8529/_api/replication/dump?collection=testCollection
 
 HTTP/1.1 204 No Content
-content-type: application/x-arango-dump; charset=utf-8
 x-content-type-options: nosniff
-x-arango-replication-lastincluded: 0
+content-type: application/x-arango-dump; charset=utf-8
 x-arango-replication-checkmore: false
+x-arango-replication-lastincluded: 0
 

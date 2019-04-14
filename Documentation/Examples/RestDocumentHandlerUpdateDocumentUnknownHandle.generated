@@ -1,4 +1,4 @@
-shell> curl -X PUT --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/document/products/10772 &lt;&lt;EOF
+shell> curl -X PUT --header 'accept: application/json' --data-binary @- --dump - http://localhost:8529/_api/document/products/10786 &lt;&lt;EOF
 {}
 EOF
 

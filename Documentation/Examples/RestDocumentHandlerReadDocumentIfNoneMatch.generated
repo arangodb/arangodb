@@ -1,2 +1,2 @@
-shell> curl --header 'If-None-Match: "_YX0lEni--_"' --header 'accept: application/json' --dump - http://localhost:8529/_api/document/products/10741
+shell> curl --header 'If-None-Match: "_YfzGsZO--_"' --header 'accept: application/json' --dump - http://localhost:8529/_api/document/products/10755
 

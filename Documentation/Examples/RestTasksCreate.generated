@@ -15,9 +15,9 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"12053"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"12076"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"SampleTask"</span>, 
-  <span class="hljs-string">"created"</span> : <span class="hljs-number">1553128175.270617</span>, 
+  <span class="hljs-string">"created"</span> : <span class="hljs-number">1555269475.0286784</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
   <span class="hljs-string">"period"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"offset"</span> : <span class="hljs-number">0</span>, 
@@ -26,5 +26,5 @@ x-content-type-options: nosniff
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }
-shell> curl -X DELETE --header 'accept: application/json' --dump - http://localhost:8529/_api/tasks/12053
+shell> curl -X DELETE --header 'accept: application/json' --dump - http://localhost:8529/_api/tasks/12076
 

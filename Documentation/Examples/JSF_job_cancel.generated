@@ -5,9 +5,9 @@ shell> curl -X POST --header 'x-arango-async: store' --header 'accept: applicati
 EOF
 
 HTTP/1.1 202 Accepted
-content-type: text/plain; charset=utf-8
 x-content-type-options: nosniff
-x-arango-async-id: 9585
+x-arango-async-id: 9594
+content-type: text/plain; charset=utf-8
 
 shell> curl --header 'accept: application/json' --dump - http://localhost:8529/_api/job/pending
 
@@ -16,9 +16,9 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 [ 
-  <span class="hljs-string">"9585"</span> 
+  <span class="hljs-string">"9594"</span> 
 ]
-shell> curl -X PUT --header 'accept: application/json' --dump - http://localhost:8529/_api/job/9585/cancel
+shell> curl -X PUT --header 'accept: application/json' --dump - http://localhost:8529/_api/job/9594/cancel
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
@@ -34,5 +34,5 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 [ 
-  <span class="hljs-string">"9585"</span> 
+  <span class="hljs-string">"9594"</span> 
 ]
