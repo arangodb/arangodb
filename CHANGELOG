@@ -1,5 +1,7 @@
-v3.3.23 (XXXX-XX-XX)
+v3.3.23 (2019-04-14)
 --------------------
+
+* upgraded arangosync version to 0.6.3
 
 * fixed internal issue #2946: create graph autocomplete was not working under
   certain circumstances.
