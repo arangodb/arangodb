@@ -5,7 +5,7 @@ arangosh&gt; db.ids.ensureIndex({ <span class="hljs-attr">type</span>: <span cla
     <span class="hljs-string">"name.first"</span>, 
     <span class="hljs-string">"name.last"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"ids/16370"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"ids/16352"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"persistent"</span>, 
@@ -14,21 +14,21 @@ arangosh&gt; db.ids.ensureIndex({ <span class="hljs-attr">type</span>: <span cla
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span class="hljs-string">"first"</span> : <span class="hljs-string">"hans"</span>, <span class="hljs-string">"last"</span>: <span class="hljs-string">"hansen"</span> }});
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16373"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16373"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YfzG39---_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16355"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16355"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yf1NIBi--_"</span> 
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span class="hljs-string">"first"</span> : <span class="hljs-string">"jens"</span>, <span class="hljs-string">"last"</span>: <span class="hljs-string">"jensen"</span> }});
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16377"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16377"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YfzG39---B"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16359"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16359"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yf1NIBi--B"</span> 
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span class="hljs-string">"first"</span> : <span class="hljs-string">"hans"</span>, <span class="hljs-string">"last"</span>: <span class="hljs-string">"jensen"</span> }});
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16380"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16380"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YfzG39---D"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16362"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16362"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yf1NIBm--_"</span> 
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span class="hljs-string">"first"</span> : <span class="hljs-string">"hans"</span>, <span class="hljs-string">"last"</span>: <span class="hljs-string">"hansen"</span> }});
-[ArangoError <span class="hljs-number">1210</span>: unique constraint violated - <span class="hljs-keyword">in</span> index <span class="hljs-number">16370</span> <span class="hljs-keyword">of</span> type persistent over [<span class="hljs-string">"name.first"</span>,<span class="hljs-string">"name.last"</span>]; conflicting key: <span class="hljs-number">16373</span>]
+[ArangoError <span class="hljs-number">1210</span>: unique constraint violated - <span class="hljs-keyword">in</span> index <span class="hljs-number">16352</span> <span class="hljs-keyword">of</span> type persistent over [<span class="hljs-string">"name.first"</span>,<span class="hljs-string">"name.last"</span>]; conflicting key: <span class="hljs-number">16355</span>]

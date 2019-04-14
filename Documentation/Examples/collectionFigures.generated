@@ -17,7 +17,7 @@ arangosh&gt; db.demo.figures()
   }, 
   <span class="hljs-string">"compactionStatus"</span> : { 
     <span class="hljs-string">"message"</span> : <span class="hljs-string">"skipped compaction because collection has no datafiles"</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-04-14T19:17:56Z"</span>, 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-04-14T21:44:31Z"</span>, 
     <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"filesCombined"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"bytesRead"</span> : <span class="hljs-number">0</span>, 

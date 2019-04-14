@@ -1,2 +1,2 @@
-shell> curl -X HEAD --header 'accept: application/json' --dump - http://localhost:8529/_api/document/products/10746
+shell> curl -X HEAD --header 'accept: application/json' --dump - http://localhost:8529/_api/document/products/10737
 

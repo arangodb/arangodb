@@ -1,7 +1,7 @@
 arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/users"</span>).all();
 [ 
   { 
-    <span class="hljs-string">"user"</span> : <span class="hljs-string">"admin"</span>, 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"my-user"</span>, 
     <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"extra"</span> : { 
     } 
@@ -13,7 +13,7 @@ arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string
     } 
   }, 
   { 
-    <span class="hljs-string">"user"</span> : <span class="hljs-string">"my-user"</span>, 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"admin"</span>, 
     <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"extra"</span> : { 
     } 

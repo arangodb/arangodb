@@ -6,20 +6,20 @@ arangosh&gt; myGraph.v1 = db.vertex.insert({ <span class="hljs-attr">name</span>
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertex/7501"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7501"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YfzGbzO--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yf1MyMe--_"</span> 
 }
 arangosh&gt; myGraph.v2 = db.vertex.insert({ <span class="hljs-attr">name</span> : <span class="hljs-string">"vertex 2"</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertex/7505"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7505"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YfzGbzO--B"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yf1MyMe--B"</span> 
 }
 arangosh&gt; myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2,
 ........&gt; { <span class="hljs-attr">label</span> : <span class="hljs-string">"knows"</span>});
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/7508"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7508"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YfzGbzO--D"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yf1MyMi--_"</span> 
 }
 arangosh&gt; db._document(myGraph.e1);
 { 
@@ -27,7 +27,7 @@ arangosh&gt; db._document(myGraph.e1);
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/7508"</span>, 
   <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertex/7501"</span>, 
   <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertex/7505"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YfzGbzO--D"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yf1MyMi--_"</span>, 
   <span class="hljs-string">"label"</span> : <span class="hljs-string">"knows"</span> 
 }
 arangosh&gt; db.relation.outEdges(myGraph.v1._id);
@@ -37,7 +37,7 @@ arangosh&gt; db.relation.outEdges(myGraph.v1._id);
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/7508"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertex/7501"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertex/7505"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YfzGbzO--D"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yf1MyMi--_"</span>, 
     <span class="hljs-string">"label"</span> : <span class="hljs-string">"knows"</span> 
   } 
 ]

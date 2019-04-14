@@ -13,7 +13,7 @@ arangosh&gt; db.example.ensureIndex({ <span class="hljs-attr">type</span>: <span
     <span class="hljs-string">"home"</span> 
   ], 
   <span class="hljs-string">"geoJson"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/15423"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/15404"</span>, 
   <span class="hljs-string">"ignoreNull"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
@@ -25,5 +25,5 @@ arangosh&gt; items = db.example.getIndexes().map(<span class="hljs-function"><sp
 ........&gt; db.example.index(items[<span class="hljs-number">1</span>]);
 [ 
   <span class="hljs-string">"example/0"</span>, 
-  <span class="hljs-string">"example/15423"</span> 
+  <span class="hljs-string">"example/15404"</span> 
 ]

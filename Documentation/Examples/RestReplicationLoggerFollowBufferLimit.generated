@@ -1,13 +1,13 @@
-shell> curl --header 'accept: application/json' --dump - http://localhost:8529/_api/replication/logger-follow?from=11335&chunkSize=400
+shell> curl --header 'accept: application/json' --dump - http://localhost:8529/_api/replication/logger-follow?from=11333&chunkSize=400
 
 HTTP/1.1 200 OK
 x-arango-replication-frompresent: true
-x-arango-replication-lastscanned: 11337
+x-arango-replication-lastscanned: 11335
 x-content-type-options: nosniff
-x-arango-replication-lastincluded: 11337
+x-arango-replication-lastincluded: 11335
 content-type: application/x-arango-dump; charset=utf-8
 x-arango-replication-checkmore: true
-x-arango-replication-lasttick: 11348
+x-arango-replication-lasttick: 11346
 x-arango-replication-active: true
 
-"{\"tick\":\"11337\",\"type\":2000,\"database\":\"1\",\"cid\":\"11336\",\"cname\":\"products\",\"data\":{\"allowUserKeys\":true,\"cid\":\"11336\",\"count\":0,\"deleted\":false,\"doCompact\":true,\"globallyUniqueId\":\"hC4367649D210/11336\",\"id\":\"11336\",\"indexBuckets\":8,\"indexes\":[{\"fields\":[\"_key\"],\"id\":\"0\",\"selectivityEstimate\":1,\"sparse\":false,\"type\":\"primary\",\"unique\":true}],\"isSmart\":false,\"isSystem\":false,\"isVolatile\":false,\"journalSize\":33554432,\"keyOptions\":{\"allowUserKeys\":true,\"lastValue\":0,\"type\":\"traditional\"},\"name\":\"products\",\"numberOfShards\":1,\"planId\":\"11336\",\"replicationFactor\":1,\"shardKeys\":[\"_key\"],\"shards\":{},\"status\":3,\"type\":2,\"version\":6,\"waitForSync\":false}}\n"
+"{\"tick\":\"11335\",\"type\":2000,\"database\":\"1\",\"cid\":\"11334\",\"cname\":\"products\",\"data\":{\"allowUserKeys\":true,\"cid\":\"11334\",\"count\":0,\"deleted\":false,\"doCompact\":true,\"globallyUniqueId\":\"hDDAE96189BE5/11334\",\"id\":\"11334\",\"indexBuckets\":8,\"indexes\":[{\"fields\":[\"_key\"],\"id\":\"0\",\"selectivityEstimate\":1,\"sparse\":false,\"type\":\"primary\",\"unique\":true}],\"isSmart\":false,\"isSystem\":false,\"isVolatile\":false,\"journalSize\":33554432,\"keyOptions\":{\"allowUserKeys\":true,\"lastValue\":0,\"type\":\"traditional\"},\"name\":\"products\",\"numberOfShards\":1,\"planId\":\"11334\",\"replicationFactor\":1,\"shardKeys\":[\"_key\"],\"shards\":{},\"status\":3,\"type\":2,\"version\":6,\"waitForSync\":false}}\n"

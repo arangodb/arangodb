@@ -2,8 +2,8 @@ arangosh&gt; <span class="hljs-keyword">var</span> graph_module = <span class="h
 arangosh&gt; graph_module._drop(<span class="hljs-string">"social"</span>);
 <span class="hljs-literal">true</span>
 arangosh&gt; db._collection(<span class="hljs-string">"female"</span>);
-[ArangoCollection <span class="hljs-number">16778</span>, <span class="hljs-string">"female"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+[ArangoCollection <span class="hljs-number">16760</span>, <span class="hljs-string">"female"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
 arangosh&gt; db._collection(<span class="hljs-string">"male"</span>);
-[ArangoCollection <span class="hljs-number">16781</span>, <span class="hljs-string">"male"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+[ArangoCollection <span class="hljs-number">16763</span>, <span class="hljs-string">"male"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
 arangosh&gt; db._collection(<span class="hljs-string">"relation"</span>);
-[ArangoCollection <span class="hljs-number">16784</span>, <span class="hljs-string">"relation"</span> (type edge, status loaded)]
+[ArangoCollection <span class="hljs-number">16766</span>, <span class="hljs-string">"relation"</span> (type edge, status loaded)]

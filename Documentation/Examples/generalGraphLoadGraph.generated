@@ -1,7 +1,7 @@
 arangosh&gt; <span class="hljs-keyword">var</span> graph_module = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/general-graph"</span>);
 arangosh&gt; graph = graph_module._graph(<span class="hljs-string">"social"</span>);
 {[Graph] 
-  <span class="hljs-string">"relation"</span> : [ArangoCollection <span class="hljs-number">17320</span>, <span class="hljs-string">"relation"</span> (type edge, status loaded)], 
-  <span class="hljs-string">"female"</span> : [ArangoCollection <span class="hljs-number">17314</span>, <span class="hljs-string">"female"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
-  <span class="hljs-string">"male"</span> : [ArangoCollection <span class="hljs-number">17317</span>, <span class="hljs-string">"male"</span> (type <span class="hljs-built_in">document</span>, status loaded)] 
+  <span class="hljs-string">"relation"</span> : [ArangoCollection <span class="hljs-number">17302</span>, <span class="hljs-string">"relation"</span> (type edge, status loaded)], 
+  <span class="hljs-string">"female"</span> : [ArangoCollection <span class="hljs-number">17296</span>, <span class="hljs-string">"female"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
+  <span class="hljs-string">"male"</span> : [ArangoCollection <span class="hljs-number">17299</span>, <span class="hljs-string">"male"</span> (type <span class="hljs-built_in">document</span>, status loaded)] 
 }

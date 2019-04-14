@@ -28,10 +28,10 @@ x-content-type-options: nosniff
   }, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hC4367649D210/9875"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hDDAE96189BE5/9874"</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9875"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9874"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"journalSize"</span> : <span class="hljs-number">33554432</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span> 

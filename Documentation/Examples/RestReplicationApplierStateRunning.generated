@@ -13,7 +13,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"lastAvailableContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"safeResumeTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"progress"</span> : { 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-04-14T19:17:49Z"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-04-14T21:44:27Z"</span>, 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"fetching master state information"</span>, 
       <span class="hljs-string">"failedConnects"</span> : <span class="hljs-number">0</span> 
     }, 
@@ -25,11 +25,11 @@ x-content-type-options: nosniff
     <span class="hljs-string">"lastError"</span> : { 
       <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">0</span> 
     }, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-04-14T19:17:49Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-04-14T21:44:27Z"</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
     <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.3.23"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"215738191827472"</span> 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"243741912243173"</span> 
   }, 
   <span class="hljs-string">"endpoint"</span> : <span class="hljs-string">"tcp://127.0.0.1:8529"</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
