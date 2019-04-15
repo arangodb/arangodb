@@ -37,93 +37,221 @@ if (getOptions === true) {
   //users.save("test_ro", "testi");
   //users.grantDatabase("test_ro", "_system", "ro");
 
-
   return {
     'server.harden': 'true',
     'server.authentication': 'true',
+    'javascript.harden' : 'true',
+    'javascript.files-black-list': [
+      '^/etc/',
+    ],
   };
 }
 
+const jsunity = require('jsunity');
 
 const internal = require('internal');
 const db = internal.db;
 const sleep = internal.sleep;
-
-const jsunity = require('jsunity');
 const tasks = require('@arangodb/tasks');
 
-const collName = "testTasks";
 
+//TODO - delete when done 
 const print = internal.print;
 
-function waitForState(state, coll, time = 10, explain = true) {
+// HELPER FUNCTIONS
+function waitForState(state, coll, time = 10, explain = false) {
   if (!Array.isArray(state)) {
     state = [ state ];
   }
 
   while(time > 0) {
-      const query = "FOR x IN @@name FILTER x.state IN @state RETURN x";
-      let bind = {"@name": coll, "state" : state };
+    const query = "FOR x IN @@name FILTER x.state IN @state RETURN x";
+    let bind = {"@name": coll, "state" : state };
 
-      let rv = db._query(query, bind).toArray();
-      if (explain) {
-        print("#########################################################################");
-        db._explain(query, bind);
-        print("RESULT as Array:");
-        print(rv);
-        explain = false;
-        print("#########################################################################");
-      }
+    let rv = db._query(query, bind).toArray();
+    if (explain) {
+      print("#########################################################################");
+      db._explain(query, bind);
+      print("RESULT as Array:");
+      print(rv);
+      explain = false;
+      print("#########################################################################");
+    }
 
-      let found = ( rv.length > 0 );
-      if (found) {
-        return true;
-      }
-      time = time - 1;
-      sleep(1);
+    let found = ( rv.length > 0 );
+    if (found) {
+      return true;
+    }
+    time = time - 1;
+    sleep(1);
   }
   return false;
 }
 
+//get first document in collection that has one of the given states
+function getFirstOfState(state, coll) {
+  if (!Array.isArray(state)) {
+    state = [ state ];
+  }
+
+  const query = "FOR x IN @@name FILTER x.state IN @state RETURN x";
+  let bind = {"@name": coll, "state" : state };
+  return rv = db._query(query, bind).toArray()[0];
+}
+
+//check if document has "content" attribute containing "ArangoError `num` ....."
+function contentHasArangoError(doc, num) {
+  let content = doc['content'];
+  if(typeof content === 'string') {
+    if (content.startsWith("ArangoError " + String(num))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function debug(coll) {
+  internal.print("UUUUUUUUUUUUUUUUUUUUULLLLLLLLLLLLLLLFFFFFFFFFFFFFFFFFFF");
+  if (waitForState(["done", "failed"], coll)) {
+    let first = getFirstOfState(["done", "failed"], coll);
+    internal.print(first)
+  }
+}
+
+// HELPER FUNCTIONS - END
+
+const collName = "testTasks";
 let counter = 0;
 let currentCollection;
+let currentCollectionName;
 let currentTask;
+
 function testSuite() {
   return {
     setUp: function() {
       counter = counter + 1;
-      currentCollection = collName + String(counter);
+      currentCollectionName = collName + String(counter);
       currentTask = collName + String(counter);
-      db._drop(currentCollection);
-      db._create(currentCollection);
+      db._drop(currentCollectionName);
+      currentCollection = db._create(currentCollectionName);
     },
+
     tearDown: function() {
       tasks.unregister(currentTask);
-      db._drop(currentCollection);
+      db._drop(currentCollectionName);
     },
-    testFrist : function() {
 
+
+    testFramework : function() {
       tasks.register({
         id: currentTask,
-        name: "this just tests task ex<cution",
-        period: 1,
+        name: "test task-test-framework",
+        period: 30,
         command: function(params) {
-          const db = require("internal").db;
+          const internal = require("internal");
+          const db = internal.db;
           db._collection(params.coll).save({state : "started"});
           db._collection(params.coll).save({state : "done"});
         },
-        params : { coll : currentCollection }
+        params : { coll : currentCollectionName }
       });
 
+      assertTrue(waitForState("started", currentCollectionName));
+      assertTrue(waitForState(["done" , "failed"], currentCollectionName));
+    },
 
+    testPasswd : function() {
+      tasks.register({
+        id: currentTask,
+        name: "try to read passwd",
+        period: 30,
+        command: function(params) {
+          const internal = require("internal");
+          const db = internal.db;
+          db._collection(params.coll).save({state : "started"});
 
-      waitForState("started", currentCollection);
-      waitForState(["done" , "failed"], currentCollection);
+          let state = "done";
+          let content;
+          try {
+              content = require("fs").read('/etc/passwd')
+          } catch (ex) {
+              content = String(ex);
+              state = "failed";
+          }
+          db._collection(params.coll).save({state, content});
+        },
+        params : { coll : currentCollectionName }
+      });
 
+      assertTrue(waitForState("started", currentCollectionName));
+      //debug(currentCollectionName)
+      assertTrue(waitForState("failed", currentCollectionName));
+      let first = getFirstOfState("failed", currentCollectionName);
+      assertTrue(contentHasArangoError(first, 11));
+    },
+
+    testGetPid : function() {
+      tasks.register({
+        id: currentTask,
+        name: "get pid",
+        period: 30,
+        command: function(params) {
+          const internal = require("internal");
+          const db = internal.db;
+          db._collection(params.coll).save({state : "started"});
+
+          let state = "done";
+          let content;
+          try {
+              content = internal.getPid()
+          } catch (ex) {
+              content = String(ex);
+              state = "failed";
+          }
+          db._collection(params.coll).save({state, content});
+        },
+        params : { coll : currentCollectionName }
+      });
+
+      assertTrue(waitForState("started", currentCollectionName), "task not started");
+      //debug(currentCollectionName)
+      assertTrue(waitForState("failed", currentCollectionName));
+      let first = getFirstOfState("failed", currentCollectionName);
+      assertTrue(contentHasArangoError(first, 11));
     },
 
 
+    testGetPid : function() {
+      tasks.register({
+        id: currentTask,
+        name: "get pid",
+        period: 30,
+        command: function(params) {
+          const internal = require("internal");
+          const db = internal.db;
+          db._collection(params.coll).save({state : "started"});
+
+          let state = "done";
+          let content;
+          try {
+              content = internal.getPid()
+          } catch (ex) {
+              content = String(ex);
+              state = "failed";
+          }
+          db._collection(params.coll).save({state, content});
+        },
+        params : { coll : currentCollectionName }
+      });
+
+      assertTrue(waitForState("started", currentCollectionName), "task not started");
+      //debug(currentCollectionName)
+      assertTrue(waitForState("failed", currentCollectionName));
+      let first = getFirstOfState("failed", currentCollectionName);
+      assertTrue(contentHasArangoError(first, 11));
+    },
   };
 }
+
 jsunity.run(testSuite);
 return jsunity.done();
