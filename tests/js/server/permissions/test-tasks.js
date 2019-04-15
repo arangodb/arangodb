@@ -99,7 +99,7 @@ function getFirstOfState(state, coll) {
 
   const query = "FOR x IN @@name FILTER x.state IN @state RETURN x";
   let bind = {"@name": coll, "state" : state };
-  return rv = db._query(query, bind).toArray()[0];
+  return db._query(query, bind).toArray()[0];
 }
 
 //check if document has "content" attribute containing "ArangoError `num` ....."
@@ -117,7 +117,7 @@ function debug(coll) {
   internal.print("UUUUUUUUUUUUUUUUUUUUULLLLLLLLLLLLLLLFFFFFFFFFFFFFFFFFFF");
   if (waitForState(["done", "failed"], coll)) {
     let first = getFirstOfState(["done", "failed"], coll);
-    internal.print(first)
+    internal.print(first);
   }
 }
 
@@ -176,7 +176,7 @@ function testSuite() {
           let state = "done";
           let content;
           try {
-              content = require("fs").read('/etc/passwd')
+              content = require("fs").read('/etc/passwd');
           } catch (ex) {
               content = String(ex);
               state = "failed";
@@ -206,38 +206,7 @@ function testSuite() {
           let state = "done";
           let content;
           try {
-              content = internal.getPid()
-          } catch (ex) {
-              content = String(ex);
-              state = "failed";
-          }
-          db._collection(params.coll).save({state, content});
-        },
-        params : { coll : currentCollectionName }
-      });
-
-      assertTrue(waitForState("started", currentCollectionName), "task not started");
-      //debug(currentCollectionName)
-      assertTrue(waitForState("failed", currentCollectionName));
-      let first = getFirstOfState("failed", currentCollectionName);
-      assertTrue(contentHasArangoError(first, 11));
-    },
-
-
-    testGetPid : function() {
-      tasks.register({
-        id: currentTask,
-        name: "get pid",
-        period: 30,
-        command: function(params) {
-          const internal = require("internal");
-          const db = internal.db;
-          db._collection(params.coll).save({state : "started"});
-
-          let state = "done";
-          let content;
-          try {
-              content = internal.getPid()
+              content = internal.getPid();
           } catch (ex) {
               content = String(ex);
               state = "failed";
@@ -268,7 +237,7 @@ function testSuite() {
           let state = "done";
           let content;
           try {
-              content = internal.download("https://heise:443/foo/bar")
+              content = internal.download("https://heise:443/foo/bar");
           } catch (ex) {
               content = String(ex);
               state = "failed";
