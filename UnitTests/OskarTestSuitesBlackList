@@ -8,3 +8,5 @@ upgrade_data_3.3.*
 upgrade_data_3.4.*
 dump_multiple
 permissions
+audit_client
+audit_server
