@@ -95,7 +95,7 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
     }
 
     uint64_t seq = 42;
-    uint64_t applied = est.serialize(serialization, 1);
+    uint64_t applied = est.serialize(serialization, 0);
     CHECK(applied == 0);
 
     // Test that the serialization first reports the correct length

@@ -88,6 +88,9 @@ NS_BEGIN(burst_trie)
 
 NS_BEGIN(detail)
 
+// mininum size of string weight we store in FST
+CONSTEXPR const size_t MIN_WEIGHT_SIZE = 2;
+
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct block_meta
 /// @brief Provides set of helper functions to work with block metadata
@@ -519,7 +522,10 @@ class term_iterator final : public irs::seek_term_iterator {
   }
 
   inline block_iterator* push_block(byte_weight&& out, size_t prefix) {
-    assert(out.Size());
+    if (out.Size() < MIN_WEIGHT_SIZE) {
+      return nullptr;
+    }
+
     block_stack_.emplace_back(std::move(out), prefix, this);
     return &block_stack_.back();
   }
@@ -1013,12 +1019,68 @@ ptrdiff_t term_iterator::seek_cached(
   return cmp;
 }
 
+//bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
+//  assert(owner_->fst_);
+//
+//  typedef fst_t::Weight weight_t;
+//
+//  const auto& fst = *owner_->fst_;
+//
+//  prefix = 0; // number of current symbol to process
+//  arc::stateid_t state = fst.Start(); // start state
+//  weight_.Clear(); // clear aggregated fst output
+//
+//  if (cur_block_) {
+//    const auto cmp = seek_cached(prefix, state, weight_, term);
+//    if (cmp > 0) {
+//      // target term is before the current term
+//      cur_block_->reset();
+//    } else if (0 == cmp) {
+//      // we're already at current term
+//      return true;
+//    }
+//  } else {
+//    cur_block_ = push_block(fst.Final(state), prefix);
+//  }
+//
+//  term_.oversize(term.size());
+//  term_.reset(prefix); // reset to common seek prefix
+//  sstate_.resize(prefix); // remove invalid cached arcs
+//
+//  bool found = fst_byte_builder::final != state;
+//  while (found && prefix < term.size()) {
+//    matcher_.SetState(state);
+//    if (found = matcher_.Find(term[prefix])) {
+//      const auto& arc = matcher_.Value();
+//      term_ += byte_type(arc.ilabel);
+//      fst_utils::append(weight_, arc.weight);
+//      ++prefix;
+//
+//      const auto weight = fst.Final(state = arc.nextstate);
+//      if (weight_t::One() != weight && weight_t::Zero() != weight) {
+//        cur_block_ = push_block(fst::Times(weight_, weight), prefix);
+//      } else if (fst_byte_builder::final == state) {
+//        cur_block_ = push_block(std::move(weight_), prefix);
+//        found = false;
+//      }
+//
+//      // cache found arcs, we can reuse it in further seeks
+//      // avoiding relatively expensive FST lookups
+//      sstate_.emplace_back(state, arc.weight, cur_block_);
+//    }
+//  }
+//
+//  assert(cur_block_);
+//  sstate_.resize(cur_block_->prefix());
+//  cur_block_->scan_to_block(term);
+//
+//  return false;
+//}
+
 bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
-  assert(owner_->fst_);
+  assert(owner_->fst_ && owner_->fst_->GetImpl());
 
-  typedef fst_t::Weight weight_t;
-
-  const auto& fst = *owner_->fst_;
+  const auto& fst = *owner_->fst_->GetImpl();
 
   prefix = 0; // number of current symbol to process
   arc::stateid_t state = fst.Start(); // start state
@@ -1035,33 +1097,60 @@ bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
     }
   } else {
     cur_block_ = push_block(fst.Final(state), prefix);
+
+    if (!cur_block_) {
+      // stepped on invalid weight
+      return false;
+    }
   }
 
   term_.oversize(term.size());
   term_.reset(prefix); // reset to common seek prefix
   sstate_.resize(prefix); // remove invalid cached arcs
 
-  bool found = fst_byte_builder::final != state;
-  while (found && prefix < term.size()) {
+  while (fst_byte_builder::final != state && prefix < term.size()) {
     matcher_.SetState(state);
-    if (found = matcher_.Find(term[prefix])) {
-      const auto& arc = matcher_.Value();
-      term_ += byte_type(arc.ilabel);
-      fst_utils::append(weight_, arc.weight);
-      ++prefix;
 
-      const auto weight = fst.Final(state = arc.nextstate);
-      if (weight_t::One() != weight && weight_t::Zero() != weight) {
-        cur_block_ = push_block(fst::Times(weight_, weight), prefix);
-      } else if (fst_byte_builder::final == state) {
-        cur_block_ = push_block(std::move(weight_), prefix);
-        found = false;
-      }
-
-      // cache found arcs, we can reuse it in further seeks
-      // avoiding relatively expensive FST lookups
-      sstate_.emplace_back(state, arc.weight, cur_block_);
+    if (!matcher_.Find(term[prefix])) {
+      break;
     }
+
+    const auto& arc = matcher_.Value();
+
+    term_ += byte_type(arc.ilabel); // aggregate arc label
+    weight_.PushBack(arc.weight); // aggregate arc weight
+    ++prefix;
+
+    const auto& weight = fst.FinalRef(arc.nextstate);
+
+    if (!weight.Empty()) {
+      cur_block_ = push_block(fst::Times(weight_, weight), prefix);
+
+      if (!cur_block_) {
+        // stepped on invalid weight
+        return false;
+      }
+    } else if (fst_byte_builder::final == arc.nextstate) {
+      // ensure final state has no weight assigned
+      // the only case when it's wrong is degerated FST composed of only
+      // 'fst_byte_builder::final' state.
+      // in that case we'll never get there due to the loop condition above.
+      assert(fst.FinalRef(fst_byte_builder::final).Empty());
+
+      cur_block_ = push_block(std::move(weight_), prefix);
+
+      if (!cur_block_) {
+        // stepped on invalid weight
+        return false;
+      }
+    }
+
+    // cache found arcs, we can reuse it in further seeks
+    // avoiding relatively expensive FST lookups
+    sstate_.emplace_back(arc.nextstate, arc.weight, cur_block_);
+
+    // proceed to the next state
+    state = arc.nextstate;
   }
 
   assert(cur_block_);
@@ -1077,7 +1166,9 @@ SeekResult term_iterator::seek_equal(const bytes_ref& term) {
     return SeekResult::FOUND;
   }
 
-  assert(cur_block_);
+  if (!cur_block_) {
+    return SeekResult::NOT_FOUND;
+  }
 
   if (!block_meta::terms(cur_block_->meta())) {
     // current block has no terms
@@ -1096,7 +1187,9 @@ SeekResult term_iterator::seek_ge(const bytes_ref& term) {
   }
   UNUSED(prefix);
 
-  assert(cur_block_);
+  if (!cur_block_) {
+    return SeekResult::END;
+  }
 
   cur_block_->load();
   switch (cur_block_->scan_to_term(term)) {
