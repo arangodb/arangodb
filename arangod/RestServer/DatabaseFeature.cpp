@@ -446,6 +446,8 @@ void DatabaseFeature::stop() {
         << ", keys: " << currentKeysCount
         << ", queries: " << currentQueriesCount;
 #endif
+    vocbase->stop();
+
     vocbase->processCollections(
         [](LogicalCollection* collection) {
           // no one else must modify the collection's status while we are in

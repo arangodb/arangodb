@@ -1,6 +1,10 @@
 devel
 -----
 
+* added req.auth property to Foxx
+
+* added collection.documentId method to derive document id from key
+
 * Indexes can be created with the 'inBackground' will be created without an
   exclusive collection lock (rocksdb only)
 

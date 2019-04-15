@@ -911,6 +911,7 @@ void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
   }
 #else
   // other platforms support unaligned writes
+  // cppcheck-suppress *
   *reinterpret_cast<double*>(p + 1) = value;
 #endif
 }

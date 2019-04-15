@@ -27,6 +27,7 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/TraversalStats.h"
+#include "Aql/Variable.h"
 
 namespace arangodb {
 

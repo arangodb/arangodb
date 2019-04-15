@@ -24,7 +24,6 @@
 #include "catch.hpp"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
@@ -47,18 +46,15 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
 
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager(&monitor);
-  auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 1)};
   auto outputRegisters = make_shared_unordered_set();
   auto registersToClear = make_shared_unordered_set();
   auto registersToKeep = make_shared_unordered_set();
-  auto blockShell =
-      std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
 
   RegisterId inputRegister(0);
   ExecutorInfos infos(make_shared_unordered_set({inputRegister}), outputRegisters,
                       1 /*nr in*/, 1 /*nr out*/, *registersToClear, *registersToKeep);
-  OutputAqlItemRow result{std::move(blockShell), outputRegisters,
-                          registersToKeep, registersToClear};
+  OutputAqlItemRow result{std::move(block), outputRegisters, registersToKeep, registersToClear};
 
   GIVEN("there are no rows upstream") {
     VPackBuilder input;

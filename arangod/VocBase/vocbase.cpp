@@ -698,7 +698,6 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       unregisterCollection(collection);
 
       locker.unlock();
-
       writeLocker.unlock();
 
       TRI_ASSERT(engine != nullptr);
@@ -744,19 +743,29 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   return TRI_ERROR_NO_ERROR;
 }
 
+/// @brief stop operations in this vocbase. must be called prior to
+/// shutdown to clean things up
+void TRI_vocbase_t::stop() {
+  try {
+    // stop replication
+    if (_replicationApplier != nullptr) {
+      _replicationApplier->stopAndJoin();
+    }
+
+    // mark all cursors as deleted so underlying collections can be freed soon
+    _cursorRepository->garbageCollect(true);
+
+    // mark all collection keys as deleted so underlying collections can be freed
+    // soon
+    _collectionKeys->garbageCollect(true);
+  } catch (...) {
+    // we are calling this on shutdown, and always want to go on from here
+  }
+}
+
 /// @brief closes a database and all collections
 void TRI_vocbase_t::shutdown() {
-  // stop replication
-  if (_replicationApplier != nullptr) {
-    _replicationApplier->stopAndJoin();
-  }
-
-  // mark all cursors as deleted so underlying collections can be freed soon
-  _cursorRepository->garbageCollect(true);
-
-  // mark all collection keys as deleted so underlying collections can be freed
-  // soon
-  _collectionKeys->garbageCollect(true);
+  this->stop();
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
 
@@ -1528,7 +1537,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
 
     if (!res.ok()) {
       unregisterView(*view);
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      THROW_ARANGO_EXCEPTION(res);
     }
   } catch (...) {
     unregisterView(*view);

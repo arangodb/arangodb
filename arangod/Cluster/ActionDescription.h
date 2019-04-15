@@ -68,7 +68,7 @@ struct ActionDescription {
   explicit ActionDescription(
       std::map<std::string, std::string> const& desc,
       int priority,
-      std::shared_ptr<VPackBuilder> const suppl = std::make_shared<VPackBuilder>());
+      std::shared_ptr<VPackBuilder> const& properties = std::make_shared<VPackBuilder>());
 
   /**
    * @brief Clean up

@@ -121,11 +121,11 @@ GeneralServer::IoContext::~IoContext() { stop(); }
 void GeneralServer::IoContext::stop() { _asioIoContext.stop(); }
 
 GeneralServer::IoContext& GeneralServer::selectIoContext() {
-  uint32_t low = _contexts[0]._clients.load();
+  uint64_t low = _contexts[0]._clients.load();
   size_t lowpos = 0;
 
   for (size_t i = 1; i < _contexts.size(); ++i) {
-    uint32_t x = _contexts[i]._clients.load();
+    uint64_t x = _contexts[i]._clients.load();
     if (x < low) {
       low = x;
       lowpos = i;

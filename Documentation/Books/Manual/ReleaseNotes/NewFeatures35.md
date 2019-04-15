@@ -253,6 +253,8 @@ when using the RocksDB engine, so there is no need to offer them all.
 JavaScript
 ----------
 
+### V8 updated
+
 The bundled version of the V8 JavaScript engine has been upgraded from 5.7.492.77 to 
 7.1.302.28.
 
@@ -293,6 +295,26 @@ always be honored:
 Mon Apr 01 2019 02:00:00 GMT+0200 (Central European Summer Time)
 > new Date("2019-04-01T00:00:00Z");
 Mon Apr 01 2019 02:00:00 GMT+0200 (Central European Summer Time)
+```
+
+### API improvements
+
+Collections now provide the `documentId` method to derive document ids from keys.
+
+Before:
+
+```js
+const collection = context.collection("users");
+const documentKey = "my-document-key";
+const documentId = `${collection.name()}/${documentKey}`;
+```
+
+After:
+
+```js
+const collection = context.collection("users");
+const documentKey = "my-document-key";
+const documentId = collection.documentId(documentKey);
 ```
 
 
@@ -426,3 +448,19 @@ The bundled JEMalloc memory allocator used in ArangoDB release packages has been
 upgraded from version 5.0.1 to version 5.2.0.
 
 The bundled version of the RocksDB library has been upgraded from 5.16 to 6.0.
+
+
+Foxx
+----
+
+Request credentials are now exposed via the `auth` property:
+
+```js
+const tokens = context.collection("tokens");
+router.get("/authorized", (req, res) => {
+    if (!req.auth || !req.auth.bearer || !tokens.exists(req.auth.bearer)) {
+        res.throw(403, "Not authenticated");
+    }
+    // ...
+});
+```

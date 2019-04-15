@@ -24,7 +24,6 @@
 #define ARANGOD_AQL_BLOCK_FETCHER_H
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
@@ -45,8 +44,7 @@ template <bool allowBlockPassthrough>
 class BlockFetcher {
  public:
   /**
-   * @brief Interface to fetch AqlItemBlocks from upstream with getSome that
-   *        wraps them into InputAqlItemBlockShells.
+   * @brief Interface to fetch AqlItemBlocks from upstream with getSome.
    * @param dependencies Dependencies of the current ExecutionBlock. Must
    *                     contain EXACTLY ONE element. Otherwise, BlockFetcher
    *                     may be instantiated, but never used. It is allowed to
@@ -74,35 +72,35 @@ class BlockFetcher {
         _itemBlockManager(itemBlockManager),
         _inputRegisters(std::move(inputRegisters)),
         _nrInputRegisters(nrInputRegisters),
-        _blockShellQueue(),
-        _blockShellPassThroughQueue(),
+        _blockQueue(),
+        _blockPassThroughQueue(),
         _currentDependency(0) {}
 
   TEST_VIRTUAL ~BlockFetcher() = default;
 
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
-  TEST_VIRTUAL std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock(
+  TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(
       size_t atMost = ExecutionBlock::DefaultBatchSize());
 
   // This fetches a block from the given dependency.
   // NOTE: It is not allowed to be used in conjunction with prefetching
-  // of blocks and will work around the blockShellQueue
+  // of blocks and will work around the blockQueue
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
-  TEST_VIRTUAL std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForDependency(
+  TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(
       size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize());
 
   // TODO enable_if<allowBlockPassthrough>
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t atMost);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
   TEST_VIRTUAL inline RegisterId getNrInputRegisters() const {
     return _nrInputRegisters;
   }
 
   // Tries to fetch a block from upstream and push it, wrapped, onto
-  // _blockShellQueue. If it succeeds, it returns HASMORE (the returned state
-  // regards the _blockShellQueue). If it doesn't it's either because
+  // _blockQueue. If it succeeds, it returns HASMORE (the returned state
+  // regards the _blockQueue). If it doesn't it's either because
   //  - upstream returned WAITING - then so does prefetchBlock().
   //  - or upstream returned a nullptr with DONE - then so does prefetchBlock().
   ExecutionState prefetchBlock(size_t atMost = ExecutionBlock::DefaultBatchSize());
@@ -140,9 +138,9 @@ class BlockFetcher {
   AqlItemBlockManager& _itemBlockManager;
   std::shared_ptr<std::unordered_set<RegisterId> const> const _inputRegisters;
   RegisterId const _nrInputRegisters;
-  std::queue<std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>> _blockShellQueue;
+  std::queue<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockQueue;
   // only used in case of allowBlockPassthrough:
-  std::queue<std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>> _blockShellPassThroughQueue;
+  std::queue<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockPassThroughQueue;
   // only modified in case of multiple dependencies + Passthrough otherwise always 0
   size_t _currentDependency;
 };
