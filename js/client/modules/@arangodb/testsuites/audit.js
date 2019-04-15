@@ -74,7 +74,7 @@ function auditLog(onServer) {
     let testCases = tu.scanTestPaths(testPaths['audit_' + (onServer ? 'server' : 'client')]);
 
     return tu.performTests(options, testCases, 'audit', onServer ? tu.runThere : tu.runInArangosh);
-  }
+  };
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
