@@ -24,6 +24,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionBlock.h"
+
 #include "Aql/Ast.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/InputAqlItemRow.h"
@@ -47,12 +48,6 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _collector(&engine->itemBlockManager()) {}
 
 ExecutionBlock::~ExecutionBlock() = default;
-
-void ExecutionBlock::throwIfKilled() {  // TODO Scatter & DistributeExecutor still using
-  if (_engine->getQuery()->killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-}
 
 std::pair<ExecutionState, Result> ExecutionBlock::initializeCursor(InputAqlItemRow const& input) {
   if (_dependencyPos == _dependencies.end()) {

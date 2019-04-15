@@ -33,6 +33,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -267,6 +268,7 @@ void RestCollectionHandler::handleCommandPost() {
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
+    events::CreateCollection(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
 
@@ -274,6 +276,7 @@ void RestCollectionHandler::handleCommandPost() {
   if (!body.isObject() || !(nameSlice = body.get("name")).isString() ||
       nameSlice.getStringLength() == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    events::CreateCollection(_vocbase.name(), "", TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return;
   }
 
@@ -505,6 +508,7 @@ void RestCollectionHandler::handleCommandDelete() {
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected DELETE /_api/collection/<collection-name>");
+    events::DropCollection(_vocbase.name(), "", TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
@@ -526,6 +530,7 @@ void RestCollectionHandler::handleCommandDelete() {
       });
 
   if (found.fail()) {
+    events::DropCollection(_vocbase.name(), name, found.errorNumber());
     generateError(found);
   } else if (res.fail()) {
     generateError(res);

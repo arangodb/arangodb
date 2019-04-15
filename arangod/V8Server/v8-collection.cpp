@@ -51,6 +51,7 @@
 #include "Transaction/Hints.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -873,14 +874,15 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
-
   if (vocbase.isDangling()) {
+    events::DropCollection(vocbase.name(), "", TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
+    events::DropCollection(vocbase.name(), "", TRI_ERROR_INTERNAL);
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -907,10 +909,17 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  auto res = methods::Collections::drop(*collection, allowDropSystem, timeout);
-
-  if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
+  try {
+    auto res = methods::Collections::drop(*collection, allowDropSystem, timeout);
+    if (res.fail()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  } catch (basics::Exception const& ex) {
+    events::DropCollection(vocbase.name(), collection->name(), ex.code());
+    throw;
+  } catch (...) {
+    events::DropCollection(vocbase.name(), collection->name(), TRI_ERROR_INTERNAL);
+    throw;
   }
 
   TRI_V8_RETURN_UNDEFINED();

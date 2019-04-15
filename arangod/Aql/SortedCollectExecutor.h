@@ -163,9 +163,6 @@ class SortedCollectExecutor {
   struct Properties {
     static const bool preservesOrder = false;
     static const bool allowsBlockPassthrough = false;
-    // TODO This should be true, but the current implementation in
-    // ExecutionBlockImpl and the fetchers does not work with this.
-    // It will however always only overfetch if activated, never underfetch
     static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;

@@ -237,7 +237,7 @@ void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& build
 }
 
 void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output) {
-  // Thanks to the edge case that we have to emmit a row even if we have no
+  // Thanks to the edge case that we have to emit a row even if we have no
   // input We cannot assert here that the input row is valid ;(
   size_t i = 0;
   for (auto& it : infos.getGroupRegisters()) {
@@ -263,7 +263,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
   if (infos.getCollectRegister() != ExecutionNode::MaxRegisterId) {
     if (infos.getCount()) {
       // only set group count in result register
-      output.cloneValueInto(infos.getCollectRegister(), _lastInputRow,  // TODO check move
+      output.cloneValueInto(infos.getCollectRegister(), _lastInputRow,
                             AqlValue(AqlValueHintUInt(static_cast<uint64_t>(this->groupLength))));
     } else {
       TRI_ASSERT(_builder.isOpenArray());

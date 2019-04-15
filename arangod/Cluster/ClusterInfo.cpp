@@ -1550,6 +1550,7 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
                                                          StaticStrings::Empty);
 
   if (name.empty() || !json.isObject() || !json.get("shards").isObject()) {
+    events::CreateCollection(databaseName, name, TRI_ERROR_BAD_PARAMETER);
     return Result(TRI_ERROR_BAD_PARAMETER);  // must not be empty
   }
 
@@ -1566,8 +1567,7 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
 
         if (it2 != (*it).second.end()) {
           // collection already exists!
-          events::CreateCollection(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
-
+          events::CreateCollection(databaseName, name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
           return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME);
         }
       }
@@ -1580,8 +1580,7 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
 
         if (it2 != (*it).second.end()) {
           // view already exists!
-          events::CreateView(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
-
+          events::CreateCollection(databaseName, name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
           return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME);
         }
       }
@@ -1592,14 +1591,12 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
 
   // mop: why do these ask the agency instead of checking cluster info?
   if (!ac.exists("Plan/Databases/" + databaseName)) {
-    events::CreateCollection(name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-
+    events::CreateCollection(databaseName, name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   if (ac.exists("Plan/Collections/" + databaseName + "/" + collectionID)) {
-    events::CreateCollection(name, TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS);
-
+    events::CreateCollection(databaseName, name, TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS);
     return Result(TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS);
   }
 
@@ -1723,7 +1720,8 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
           << "Timeout in _create collection"
           << ": database: " << databaseName << ", collId:" << collectionID
           << "\njson: " << json.toString() << "\ncould not send transaction to agency.";
-
+      events::CreateCollection(databaseName, name,
+                               TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
       return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
     }
     std::vector<AgencyOperation> opers(
@@ -1769,6 +1767,8 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
 
               if (!tres.hasKey(std::vector<std::string>(
                       {AgencyCommManager::path(), "Supervision"}))) {
+                events::CreateCollection(databaseName, name,
+                                         TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
                 return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
               }
 
@@ -1783,6 +1783,8 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
                 errorMsg += s.value.copyString();
               }
 
+              events::CreateCollection(databaseName, name,
+                                       TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
               return Result(  // result
                   TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,  // code
                   errorMsg  // message
@@ -1807,8 +1809,8 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
           continue;
         }
 
-        events::CreateCollection(name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
-
+        events::CreateCollection(databaseName, name,
+                                 TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
         return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,  // code
                       std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
                           " HTTP code: " + std::to_string(res.httpCode()) +
@@ -1833,7 +1835,7 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
 
   if (numberOfShards == 0 || isSmart) {
     loadCurrent();
-    events::CreateCollection(name, TRI_ERROR_NO_ERROR);
+    events::CreateCollection(databaseName, name, TRI_ERROR_NO_ERROR);
 
     return Result(TRI_ERROR_NO_ERROR);
   }
@@ -1846,7 +1848,7 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
         CONDITION_LOCKER(locker, agencyCallback->_cv);
         cbGuard.fire();  // unregister cb before accessing errMsg
         loadCurrent();
-        events::CreateCollection(name, *dbServerResult);
+        events::CreateCollection(databaseName, name, *dbServerResult);
 
         return Result(tmpRes, *errMsg);
       }
@@ -1877,14 +1879,12 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
         // This is a best effort, in the worst case the collection stays:
         ac.sendTransactionWithFailover(transaction);
 
-        events::CreateCollection(name, TRI_ERROR_CLUSTER_TIMEOUT);
-
+        events::CreateCollection(databaseName, name, TRI_ERROR_CLUSTER_TIMEOUT);
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
 
       if (application_features::ApplicationServer::isStopping()) {
-        events::CreateCollection(name, TRI_ERROR_SHUTTING_DOWN);
-
+        events::CreateCollection(databaseName, name, TRI_ERROR_SHUTTING_DOWN);
         return Result(TRI_ERROR_SHUTTING_DOWN);
       }
 
@@ -1894,6 +1894,7 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
       }
 
       if (!application_features::ApplicationServer::isRetryOK()) {
+        events::CreateCollection(databaseName, name, TRI_ERROR_CLUSTER_TIMEOUT);
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -1911,6 +1912,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     double timeout  // request timeout
 ) {
   if (dbName.empty() || (dbName[0] > '0' && dbName[0] < '9')) {
+    events::DropCollection(dbName, collectionID, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
@@ -1939,6 +1941,8 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
     errorMsg += ".";
 
+    events::DropCollection(dbName, collectionID,
+                           TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE);
     return Result(  // result
         TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE,  // code
         errorMsg  // message
@@ -1985,6 +1989,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       LOG_TOPIC("d340d", ERR, Logger::CLUSTER)
           << "Missing shards information on dropping " << dbName << "/" << collectionID;
 
+      events::DropCollection(dbName, collectionID, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
       return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
   }
@@ -2014,6 +2019,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       LOG_TOPIC("f1bfb", ERR, Logger::CLUSTER) << "Could not get agency dump!";
     }
 
+    events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION);
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION);
   }
 
@@ -2022,8 +2028,8 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
   if (numberOfShards == 0) {
     loadCurrent();
-    events::DropCollection(collectionID, TRI_ERROR_NO_ERROR);
 
+    events::DropCollection(dbName, collectionID, TRI_ERROR_NO_ERROR);
     return Result(TRI_ERROR_NO_ERROR);
   }
 
@@ -2036,8 +2042,8 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
         // ...remove the entire directory for the collection
         ac.removeValues("Current/Collections/" + dbName + "/" + collectionID, true);
         loadCurrent();
-        events::DropCollection(collectionID, *dbServerResult);
 
+        events::DropCollection(dbName, collectionID, *dbServerResult);
         return Result(*dbServerResult);
       }
 
@@ -2055,14 +2061,14 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
           LOG_TOPIC("37297", ERR, Logger::CLUSTER) << "Could not get agency dump!";
         }
 
-        events::DropCollection(collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
-
+        events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
 
       if (!application_features::ApplicationServer::isRetryOK()) {
+        events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -2136,6 +2142,12 @@ Result ClusterInfo::createViewCoordinator(  // create view
   auto const typeSlice = json.get(arangodb::StaticStrings::DataSourceType);
 
   if (!typeSlice.isString()) {
+    std::string name;
+    if (json.isObject()) {
+      name = basics::VelocyPackHelper::getStringValue(json, StaticStrings::DataSourceName,
+                                                      "");
+    }
+    events::CreateView(databaseName, name, TRI_ERROR_BAD_PARAMETER);
     return Result(TRI_ERROR_BAD_PARAMETER);
   }
 
@@ -2144,6 +2156,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
                                                StaticStrings::Empty);
 
   if (name.empty()) {
+    events::CreateView(databaseName, name, TRI_ERROR_BAD_PARAMETER);
     return Result(TRI_ERROR_BAD_PARAMETER);  // must not be empty
   }
 
@@ -2158,8 +2171,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
 
         if (it2 != (*it).second.end()) {
           // view already exists!
-          events::CreateView(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
-
+          events::CreateView(databaseName, name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
           return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME);
         }
       }
@@ -2172,8 +2184,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
 
         if (it2 != (*it).second.end()) {
           // collection already exists!
-          events::CreateCollection(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
-
+          events::CreateCollection(databaseName, name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
           return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME);
         }
       }
@@ -2184,14 +2195,12 @@ Result ClusterInfo::createViewCoordinator(  // create view
 
   // mop: why do these ask the agency instead of checking cluster info?
   if (!ac.exists("Plan/Databases/" + databaseName)) {
-    events::CreateView(name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-
+    events::CreateView(databaseName, name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   if (ac.exists("Plan/Views/" + databaseName + "/" + viewID)) {
-    events::CreateView(name, TRI_ERROR_CLUSTER_VIEW_ID_EXISTS);
-
+    events::CreateView(databaseName, name, TRI_ERROR_CLUSTER_VIEW_ID_EXISTS);
     return Result(TRI_ERROR_CLUSTER_VIEW_ID_EXISTS);
   }
 
@@ -2217,14 +2226,14 @@ Result ClusterInfo::createViewCoordinator(  // create view
         LOG_TOPIC("69f86", ERR, Logger::CLUSTER) << "Could not get agency dump!";
       }
 
+      events::CreateView(databaseName, name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN);
       return Result(                                        // result
           TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN,  // code
           std::string("Precondition that view ") + name + " with ID " + viewID +
               " does not yet exist failed. Cannot create view.");
     }
 
-    events::CreateView(name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN);
-
+    events::CreateView(databaseName, name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN);
     return Result(                                        // result
         TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN,  // code
         std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
@@ -2236,6 +2245,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
   // Update our cache:
   loadPlan();
 
+  events::CreateView(databaseName, name, TRI_ERROR_NO_ERROR);
   return Result(TRI_ERROR_NO_ERROR);
 }
 
@@ -2290,7 +2300,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
     }
   }
 
-  events::DropView(viewID, result.errorNumber());
+  events::DropView(databaseName, viewID, result.errorNumber());
 
   return result;
 }
@@ -2861,7 +2871,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   AgencyCommResult previous = ac.getValues(planCollKey);
 
   if (!previous.successful()) {
-    events::DropIndex(collectionID, idString, TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
+    events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
 
     return Result(TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
   }
@@ -2869,7 +2879,8 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   velocypack::Slice collection = previous.slice()[0].get(std::vector<std::string>(
       {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
   if (!collection.isObject()) {
-    events::DropIndex(collectionID, idString, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    events::DropIndex(databaseName, collectionID, idString,
+                      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
@@ -2883,6 +2894,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   if (!indexes.isArray()) {
     LOG_TOPIC("63178", DEBUG, Logger::CLUSTER) << "Failed to find index " << databaseName
                                       << "/" << collectionID << "/" << iid;
+    events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   }
 
@@ -2900,6 +2912,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
       Index::IndexType type = Index::type(typeSlice.copyString());
 
       if (type == Index::TRI_IDX_TYPE_PRIMARY_INDEX || type == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_FORBIDDEN);
         return Result(TRI_ERROR_FORBIDDEN);
       }
 
@@ -2912,6 +2925,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   if (!indexToRemove.isObject()) {
     LOG_TOPIC("95fe6", DEBUG, Logger::CLUSTER) << "Failed to find index " << databaseName
                                       << "/" << collectionID << "/" << iid;
+    events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
 
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   }
@@ -2978,7 +2992,8 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
   if (!result.successful()) {
-    events::DropIndex(collectionID, idString, TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN);
+    events::DropIndex(databaseName, collectionID, idString,
+                      TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN);
 
     return Result(                                       // result
         TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN,  // code
@@ -3002,13 +3017,13 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
       if (*dbServerResult >= 0) {
         cbGuard.fire();  // unregister cb
         loadCurrent();
-        events::DropIndex(collectionID, idString, *dbServerResult);
+        events::DropIndex(databaseName, collectionID, idString, *dbServerResult);
 
         return Result(*dbServerResult);
       }
 
       if (TRI_microtime() > endTime) {
-        events::DropIndex(collectionID, idString, TRI_ERROR_CLUSTER_TIMEOUT);
+        events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_CLUSTER_TIMEOUT);
 
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
