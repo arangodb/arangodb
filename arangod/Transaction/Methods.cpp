@@ -203,14 +203,12 @@ static bool indexSupportsSort(Index const* idx, arangodb::aql::Variable const* r
 /// @brief Insert an error reported instead of the new document
 static void createBabiesError(VPackBuilder& builder,
                               std::unordered_map<int, size_t>& countErrorCodes,
-                              Result error, bool silent) {
-  if (!silent) {
-    builder.openObject();
-    builder.add(StaticStrings::Error, VPackValue(true));
-    builder.add(StaticStrings::ErrorNum, VPackValue(error.errorNumber()));
-    builder.add(StaticStrings::ErrorMessage, VPackValue(error.errorMessage()));
-    builder.close();
-  }
+                              Result const& error) {
+  builder.openObject();
+  builder.add(StaticStrings::Error, VPackValue(true));
+  builder.add(StaticStrings::ErrorNum, VPackValue(error.errorNumber()));
+  builder.add(StaticStrings::ErrorMessage, VPackValue(error.errorMessage()));
+  builder.close();
 
   auto it = countErrorCodes.find(error.errorNumber());
   if (it == countErrorCodes.end()) {
@@ -1304,7 +1302,7 @@ Result transaction::Methods::documentFastPathLocal(std::string const& collection
   return res;
 }
 
-static OperationResult errorCodeFromClusterResult(std::shared_ptr<VPackBuilder> const& resultBody,
+static Result resultFromClusterResult(std::shared_ptr<VPackBuilder> const& resultBody,
                                                   int defaultErrorCode) {
   // read the error number from the response and use it if present
   if (resultBody != nullptr) {
@@ -1315,21 +1313,23 @@ static OperationResult errorCodeFromClusterResult(std::shared_ptr<VPackBuilder> 
       if (num.isNumber()) {
         if (msg.isString()) {
           // found an error number and an error message, so let's use it!
-          return OperationResult(Result(num.getNumericValue<int>(), msg.copyString()));
+          return Result(Result(num.getNumericValue<int>(), msg.copyString()));
         }
         // we found an error number, so let's use it!
-        return OperationResult(num.getNumericValue<int>());
+        return Result(num.getNumericValue<int>());
       }
     }
   }
 
-  return OperationResult(defaultErrorCode);
+  return Result(defaultErrorCode);
 }
 
 /// @brief Create Cluster Communication result for document
 OperationResult transaction::Methods::clusterResultDocument(
     rest::ResponseCode const& responseCode, std::shared_ptr<VPackBuilder> const& resultBody,
     std::unordered_map<int, size_t> const& errorCounter) const {
+  int errorCode = TRI_ERROR_INTERNAL;
+
   switch (responseCode) {
     case rest::ResponseCode::OK:
     case rest::ResponseCode::PRECONDITION_FAILED:
@@ -1338,10 +1338,15 @@ OperationResult transaction::Methods::clusterResultDocument(
                                         : TRI_ERROR_ARANGO_CONFLICT),
                              resultBody->steal(), nullptr, OperationOptions{}, errorCounter);
     case rest::ResponseCode::NOT_FOUND:
-      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-    default:
-      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
+      errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+      break;
+    default: {
+      // will remain at TRI_ERROR_INTERNAL
+      TRI_ASSERT(errorCode == TRI_ERROR_INTERNAL);
+    }
   }
+  
+  return OperationResult(resultFromClusterResult(resultBody, errorCode));
 }
 
 /// @brief Create Cluster Communication result for insert
@@ -1349,26 +1354,36 @@ OperationResult transaction::Methods::clusterResultInsert(
     rest::ResponseCode const& responseCode,
     std::shared_ptr<VPackBuilder> const& resultBody, OperationOptions const& options,
     std::unordered_map<int, size_t> const& errorCounter) const {
+  int errorCode = TRI_ERROR_INTERNAL;
+
   switch (responseCode) {
     case rest::ResponseCode::ACCEPTED:
     case rest::ResponseCode::CREATED: {
       OperationOptions copy = options;
       copy.waitForSync =
-          (responseCode == rest::ResponseCode::CREATED);  // wait for sync is abused herea
+          (responseCode == rest::ResponseCode::CREATED);  // wait for sync is abused here
                                                           // operationResult should get a return code.
       return OperationResult(Result(), resultBody->steal(), nullptr, copy, errorCounter);
     }
-    case rest::ResponseCode::PRECONDITION_FAILED:
-      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_CONFLICT);
     case rest::ResponseCode::BAD:
-      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
+      errorCode = TRI_ERROR_INTERNAL;
+      break;
+    case rest::ResponseCode::PRECONDITION_FAILED:
+      errorCode = TRI_ERROR_ARANGO_CONFLICT;
+      break;
     case rest::ResponseCode::NOT_FOUND:
-      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      errorCode = TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+      break;
     case rest::ResponseCode::CONFLICT:
-      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
-    default:
-      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
+      errorCode = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+      break;
+    default: {
+      // will remain at TRI_ERROR_INTERNAL
+      TRI_ASSERT(errorCode == TRI_ERROR_INTERNAL);
+    }
   }
+  
+  return OperationResult(resultFromClusterResult(resultBody, errorCode));
 }
 
 /// @brief Create Cluster Communication result for modify
@@ -1376,6 +1391,7 @@ OperationResult transaction::Methods::clusterResultModify(
     rest::ResponseCode const& responseCode, std::shared_ptr<VPackBuilder> const& resultBody,
     std::unordered_map<int, size_t> const& errorCounter) const {
   int errorCode = TRI_ERROR_NO_ERROR;
+
   switch (responseCode) {
     case rest::ResponseCode::CONFLICT:
       errorCode = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
@@ -1389,22 +1405,29 @@ OperationResult transaction::Methods::clusterResultModify(
     case rest::ResponseCode::CREATED: {
       OperationOptions options;
       options.waitForSync = (responseCode == rest::ResponseCode::CREATED);
-      return OperationResult(Result(errorCode), resultBody->steal(), nullptr,
+      Result r(resultFromClusterResult(resultBody, errorCode));
+      return OperationResult(std::move(r), resultBody->steal(), nullptr,
                              options, errorCounter);
     }
     case rest::ResponseCode::BAD:
-      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
+      errorCode = TRI_ERROR_INTERNAL; 
+      break;
     case rest::ResponseCode::NOT_FOUND:
-      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-    default:
-      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
+      errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+      break;
+    default: {
+    }
   }
+  
+  return OperationResult(resultFromClusterResult(resultBody, errorCode));
 }
 
 /// @brief Helper create a Cluster Communication remove result
 OperationResult transaction::Methods::clusterResultRemove(
     rest::ResponseCode const& responseCode, std::shared_ptr<VPackBuilder> const& resultBody,
     std::unordered_map<int, size_t> const& errorCounter) const {
+  int errorCode = TRI_ERROR_INTERNAL;
+
   switch (responseCode) {
     case rest::ResponseCode::OK:
     case rest::ResponseCode::ACCEPTED:
@@ -1417,12 +1440,18 @@ OperationResult transaction::Methods::clusterResultRemove(
                              resultBody->steal(), nullptr, options, errorCounter);
     }
     case rest::ResponseCode::BAD:
-      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
+      errorCode = TRI_ERROR_INTERNAL;
+      break;
     case rest::ResponseCode::NOT_FOUND:
-      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-    default:
-      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
+      errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+      break;
+    default: {
+      // will remain at TRI_ERROR_INTERNAL
+      TRI_ASSERT(errorCode == TRI_ERROR_INTERNAL);
+    }
   }
+  
+  return OperationResult(resultFromClusterResult(resultBody, errorCode));
 }
 
 /// @brief return one or multiple documents from a collection
@@ -1537,7 +1566,7 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
     for (VPackSlice s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
       if (res.fail()) {
-        createBabiesError(resultBuilder, countErrorCodes, res, options.silent);
+        createBabiesError(resultBuilder, countErrorCodes, res);
       }
     }
     res = TRI_ERROR_NO_ERROR;
@@ -1820,7 +1849,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     for (auto const& s : VPackArrayIterator(value)) {
       res = workForOneDocument(s);
       if (res.fail()) {
-        createBabiesError(resultBuilder, countErrorCodes, res, options.silent);
+        createBabiesError(resultBuilder, countErrorCodes, res);
       }
     }
     // With babies the reporting is handled in the body of the result
@@ -1850,11 +1879,11 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
-  if (options.silent) {
+  if (options.silent && countErrorCodes.empty()) {
     // We needed the results, but do not want to report:
     resultBuilder.clear();
   }
-
+    
   return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, countErrorCodes);
 }
 
@@ -2134,8 +2163,7 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
       while (it.valid()) {
         res = workForOneDocument(it.value(), true);
         if (!res.ok()) {
-          createBabiesError(resultBuilder, errorCounter, res.errorNumber(),
-                            options.silent);
+          createBabiesError(resultBuilder, errorCounter, res);
         }
         ++it;
       }
@@ -2175,7 +2203,7 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
     EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
-  if (options.silent) {
+  if (options.silent && errorCounter.empty()) {
     // We needed the results, but do not want to report:
     resultBuilder.clear();
   }
@@ -2397,7 +2425,7 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
     for (auto const& s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
       if (!res.ok()) {
-        createBabiesError(resultBuilder, countErrorCodes, res, options.silent);
+        createBabiesError(resultBuilder, countErrorCodes, res);
       }
     }
     // With babies the reporting is handled somewhere else.
@@ -2430,7 +2458,7 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
     EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
-  if (options.silent) {
+  if (options.silent && countErrorCodes.empty()) {
     // We needed the results, but do not want to report:
     resultBuilder.clear();
   }

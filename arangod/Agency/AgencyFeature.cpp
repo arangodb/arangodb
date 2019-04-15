@@ -263,7 +263,6 @@ void AgencyFeature::prepare() {
     arangodb::consensus::Supervision::setAgencyPrefix(std::string("/") +
                                                       feature->agencyPrefix());
     arangodb::consensus::Job::agencyPrefix = feature->agencyPrefix();
-    ;
   }
 
   std::string endpoint;
