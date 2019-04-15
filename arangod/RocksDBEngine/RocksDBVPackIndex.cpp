@@ -1012,9 +1012,9 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
   return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
-                                                                node, reference,
-                                                                itemsInIndex, estimatedItems,
-                                                                estimatedCost);
+                                                              node, reference,
+                                                              itemsInIndex, estimatedItems,
+                                                              estimatedCost);
 }
 
 bool RocksDBVPackIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
@@ -1022,8 +1022,8 @@ bool RocksDBVPackIndex::supportsSortCondition(arangodb::aql::SortCondition const
                                               size_t itemsInIndex, double& estimatedCost,
                                               size_t& coveredAttributes) const {
   return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
-                                                              itemsInIndex, estimatedCost,
-                                                              coveredAttributes);
+                                                            itemsInIndex, estimatedCost,
+                                                            coveredAttributes);
 }
 
 /// @brief specializes the condition for use with the index

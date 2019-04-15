@@ -453,6 +453,12 @@ Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
 Result IndexFactory::enhanceJsonIndexTtl(VPackSlice definition,
                                          VPackBuilder& builder, bool create) {
   Result res = processIndexFields(definition, builder, 1, 1, create, false);
+  
+  auto value = definition.get(arangodb::StaticStrings::IndexUnique);
+  if (value.isBoolean() && value.getBoolean()) {
+    return Result(TRI_ERROR_BAD_PARAMETER,
+                  "a TTL index cannot be unique");
+  }
 
   if (res.ok()) {
     // a TTL index is always non-unique but sparse!
