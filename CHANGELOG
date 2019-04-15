@@ -5,8 +5,8 @@ devel
 
 * added collection.documentId method to derive document id from key
 
-* Indexes can be created with the 'inBackground' will be created without an
-  exclusive collection lock (rocksdb only)
+* Indexes created with the 'inBackground', will not hold an
+  exclusive collection lock for the entire index creation period (rocksdb only)
 
 * fixed internal issue #536: ArangoSearch may crash server during term lookup
 
