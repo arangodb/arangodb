@@ -291,7 +291,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
           } else {
             LOG_TOPIC("9b0b3", DEBUG, Logger::MAINTENANCE)
                 << "Invalidating current in ClusterInfo";
-            clusterInfo->invalidateCurrent();
+            _heartbeat->pleaseLoadCurrent();
           }
         }
       }

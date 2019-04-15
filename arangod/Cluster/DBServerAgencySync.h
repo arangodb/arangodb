@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 
 namespace arangodb {
+
 class HeartbeatThread;
 
 struct DBServerAgencySyncResult {
