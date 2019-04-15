@@ -44,6 +44,9 @@ if (getOptions === true) {
     'javascript.files-black-list': [
       '^/etc/',
     ],
+    'javascript.endpoints-white-list' : [
+      'ssl://arangodb.com:443'
+    ],
   };
 }
 
@@ -235,6 +238,37 @@ function testSuite() {
           let content;
           try {
               content = internal.getPid()
+          } catch (ex) {
+              content = String(ex);
+              state = "failed";
+          }
+          db._collection(params.coll).save({state, content});
+        },
+        params : { coll : currentCollectionName }
+      });
+
+      assertTrue(waitForState("started", currentCollectionName), "task not started");
+      //debug(currentCollectionName)
+      assertTrue(waitForState("failed", currentCollectionName));
+      let first = getFirstOfState("failed", currentCollectionName);
+      assertTrue(contentHasArangoError(first, 11));
+    },
+
+
+    testDownload : function() {
+      tasks.register({
+        id: currentTask,
+        name: "download",
+        period: 30,
+        command: function(params) {
+          const internal = require("internal");
+          const db = internal.db;
+          db._collection(params.coll).save({state : "started"});
+
+          let state = "done";
+          let content;
+          try {
+              content = internal.download("https://heise:443/foo/bar")
           } catch (ex) {
               content = String(ex);
               state = "failed";
