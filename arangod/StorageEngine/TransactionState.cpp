@@ -290,7 +290,7 @@ void TransactionState::setExclusiveAccessType() {
   if (_status != transaction::Status::CREATED) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        "cannot make a running read transaction a write transaction");
+        "cannot change the type of a running transaction");
   }
   _type = AccessMode::Type::EXCLUSIVE;
 }

@@ -1431,7 +1431,6 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
 }
 
 arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::Hints hints) {
-//  static std::atomic<TRI_voc_tid_t> lastId(0);
   ++beginTransactionCount;
   _hints = hints;
 
@@ -1439,14 +1438,12 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
 
   if (!res.ok()) {
     updateStatus(arangodb::transaction::Status::ABORTED);
-    const_cast<TRI_voc_tid_t&>(_id) =
-        0;  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-
+    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+    const_cast<TRI_voc_tid_t&>(_id) = 0;
     return res;
   }
 
   if (nestingLevel() == 0) {
-//    const_cast<TRI_voc_tid_t&>(_id) = ++lastId;  // ensure each transaction state has a unique ID
     updateStatus(arangodb::transaction::Status::RUNNING);
   }
 
