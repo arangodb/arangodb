@@ -112,8 +112,8 @@ class v8_action_t final : public TRI_action_t {
     bool allowUseDatabase = _allowUseDatabase || ActionFeature::ACTION->allowUseDatabase();
 
     // get a V8 context
-    V8ContextGuard guard(vocbase, _isSystem ? 
-        JavaScriptSecurityContext::createInternalContext() : 
+    V8ContextGuard guard(vocbase, _isSystem ?
+        JavaScriptSecurityContext::createInternalContext() :
         JavaScriptSecurityContext::createRestActionContext(allowUseDatabase));
 
     // locate the callback
@@ -1087,14 +1087,6 @@ static void JS_ExecuteGlobalContextFunction(v8::FunctionCallbackInfo<v8::Value> 
     TRI_V8_THROW_TYPE_ERROR("<definition> must be a UTF-8 function definition");
   }
 
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-
-  if (!v8security->isInternalContext(isolate)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "not allowed for restricted contexts");
-  }
-
   std::string const def = std::string(*utf8def, utf8def.length());
 
   // and pass it to the V8 contexts
@@ -1685,26 +1677,26 @@ static void JS_RunInRestrictedContext(v8::FunctionCallbackInfo<v8::Value> const&
     TRI_V8_THROW_EXCEPTION_USAGE(
         "runInRestrictedContext(<function>)");
   }
-  
+
   v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(args[0]);
   if (action.IsEmpty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot cannot function instance for runInRestrictedContext");
   }
 
-  TRI_GET_GLOBALS(); 
+  TRI_GET_GLOBALS();
 
   {
     // take a copy of the previous security context
     auto oldContext = v8g->_securityContext;
-    
-    // patch security context 
+
+    // patch security context
     v8g->_securityContext = JavaScriptSecurityContext::createRestrictedContext();
 
     // make sure the old context will be restored
     auto guard = scopeGuard([&oldContext, &v8g]() {
       v8g->_securityContext = oldContext;
     });
-        
+
     v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
     v8::Handle<v8::Value> callArgs[] = {v8::Null(isolate)};
     v8::Handle<v8::Value> rv = action->Call(current, 0, callArgs);
@@ -1721,7 +1713,7 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_STORE_DISABLED"), JS_IsFoxxStoreDisabled, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_RUN_IN_RESTRICTED_CONTEXT"), JS_RunInRestrictedContext, true);
-  
+
   // debugging functions
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
