@@ -366,6 +366,9 @@ class Ast {
   /// @brief create an AST shortest path node 
   AstNode* createNodeShortestPath(AstNode const*, AstNode const*);
 
+  /// @brief create an AST k-shortest paths node
+  AstNode* createNodeKShortestPaths(AstNode const*, AstNode const*);
+
   /// @brief create an AST function call node
   AstNode* createNodeFunctionCall(char const* functionName, AstNode const* arguments) {
     return createNodeFunctionCall(functionName, strlen(functionName), arguments);

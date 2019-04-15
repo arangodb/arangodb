@@ -1037,6 +1037,10 @@ function shutdownArangod (arangod, options, forceTerminate) {
   if (options.valgrind) {
     waitOnServerForGC(arangod, options, 60);
   }
+  if (options.rr && forceTerminate) {
+    forceTerminate = false;
+    options.useKillExternal = true;
+  }
   if ((!arangod.hasOwnProperty('exitStatus')) ||
       (arangod.exitStatus.status === 'RUNNING')) {
     if (forceTerminate) {

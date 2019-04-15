@@ -1011,6 +1011,7 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
     meta._writebufferActive = _meta._writebufferActive;
     meta._writebufferIdle = _meta._writebufferIdle;
     meta._writebufferSizeMax = _meta._writebufferSizeMax;
+    meta._primarySort = _meta._primarySort;
 
     _meta = std::move(meta);
 

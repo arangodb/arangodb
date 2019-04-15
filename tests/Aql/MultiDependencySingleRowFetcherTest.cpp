@@ -48,6 +48,7 @@ namespace aql {
 
 SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
   ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager{&monitor};
   ExecutionState state;
 
   GIVEN("there are no blocks upstream, single dependency") {
@@ -104,7 +105,7 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
     MultiBlockFetcherMock<false> blockFetcherMock{monitor, 1, 1};
     InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
-    std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
+    SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
 
     WHEN("the producer returns DONE immediately") {
       blockFetcherMock.getDependencyMock(0).shouldReturn(ExecutionState::DONE,
@@ -227,10 +228,10 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
     InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
     // three 1-column matrices with 3, 2 and 1 rows, respectively
-    std::unique_ptr<AqlItemBlock> block1 =
-                                      buildBlock<1>(&monitor, {{{1}}, {{2}}, {{3}}}),
-                                  block2 = buildBlock<1>(&monitor, {{{4}}, {{5}}}),
-                                  block3 = buildBlock<1>(&monitor, {{{6}}});
+    SharedAqlItemBlockPtr block1 =
+                              buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
+                          block2 = buildBlock<1>(itemBlockManager, {{{4}}, {{5}}}),
+                          block3 = buildBlock<1>(itemBlockManager, {{{6}}});
 
     WHEN("the producer does not wait") {
       blockFetcherMock.getDependencyMock(0)
@@ -420,9 +421,9 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
     MultiBlockFetcherMock<false> blockFetcherMock{monitor, 1, numDeps};
     InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
-    std::unique_ptr<AqlItemBlock> blockDep1 = buildBlock<1>(&monitor, {{42}});
-    std::unique_ptr<AqlItemBlock> blockDep2 = buildBlock<1>(&monitor, {{23}});
-    std::unique_ptr<AqlItemBlock> blockDep3 = buildBlock<1>(&monitor, {{1337}});
+    SharedAqlItemBlockPtr blockDep1 = buildBlock<1>(itemBlockManager, {{42}});
+    SharedAqlItemBlockPtr blockDep2 = buildBlock<1>(itemBlockManager, {{23}});
+    SharedAqlItemBlockPtr blockDep3 = buildBlock<1>(itemBlockManager, {{1337}});
 
     WHEN("the producer returns DONE immediately") {
       blockFetcherMock.getDependencyMock(0).shouldReturn(ExecutionState::DONE,
@@ -610,18 +611,18 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
     InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
     // three 1-column matrices with 3, 2 and 1 rows, respectively
-    std::unique_ptr<AqlItemBlock> block1Dep1 =
-                                      buildBlock<1>(&monitor, {{{1}}, {{2}}, {{3}}}),
-                                  block2Dep1 = buildBlock<1>(&monitor, {{{4}}, {{5}}}),
-                                  block3Dep1 = buildBlock<1>(&monitor, {{{6}}});
+    SharedAqlItemBlockPtr block1Dep1 =
+                              buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
+                          block2Dep1 = buildBlock<1>(itemBlockManager, {{{4}}, {{5}}}),
+                          block3Dep1 = buildBlock<1>(itemBlockManager, {{{6}}});
 
     // two 1-column matrices with 1 and 2 rows, respectively
-    std::unique_ptr<AqlItemBlock> block1Dep2 = buildBlock<1>(&monitor, {{{7}}}),
-                                  block2Dep2 = buildBlock<1>(&monitor, {{{8}}, {{9}}});
+    SharedAqlItemBlockPtr block1Dep2 = buildBlock<1>(itemBlockManager, {{{7}}}),
+                          block2Dep2 = buildBlock<1>(itemBlockManager, {{{8}}, {{9}}});
 
     // single 1-column matrices with 2 rows
-    std::unique_ptr<AqlItemBlock> block1Dep3 =
-        buildBlock<1>(&monitor, {{{10}}, {{11}}});
+    SharedAqlItemBlockPtr block1Dep3 =
+        buildBlock<1>(itemBlockManager, {{{10}}, {{11}}});
 
     WHEN("the producer does not wait") {
       blockFetcherMock.getDependencyMock(0)

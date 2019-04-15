@@ -23,7 +23,11 @@
 #include "WaitingExecutionBlockMock.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/ExecutionStats.h"
+#include "Aql/ExecutorInfos.h"
+#include "Aql/QueryOptions.h"
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -34,7 +38,7 @@ using namespace arangodb::tests::aql;
 
 WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
                                                      ExecutionNode const* node,
-                                                     std::deque<std::unique_ptr<AqlItemBlock>>&& data)
+                                                     std::deque<SharedAqlItemBlockPtr>&& data)
     : ExecutionBlock(engine, node),
       _data(std::move(data)),
       _resourceMonitor(),
@@ -52,8 +56,13 @@ std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlock
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::pair<arangodb::aql::ExecutionState, std::unique_ptr<arangodb::aql::AqlItemBlock>>
-WaitingExecutionBlockMock::getSome(size_t atMost) {
+std::pair<arangodb::aql::ExecutionState, Result> WaitingExecutionBlockMock::shutdown(int errorCode) {
+  ExecutionState state;
+  Result res;
+  return std::make_pair(state, res);
+}
+
+std::pair<arangodb::aql::ExecutionState, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::getSome(size_t atMost) {
   if (!_hasWaited) {
     _hasWaited = true;
     if (_returnedDone) {
@@ -83,13 +92,13 @@ std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skip
   traceSkipSomeBegin(atMost);
   if (!_hasWaited) {
     _hasWaited = true;
-    traceSkipSomeEnd(0, ExecutionState::WAITING);
+    traceSkipSomeEnd(ExecutionState::WAITING, 0);
     return {ExecutionState::WAITING, 0};
   }
   _hasWaited = false;
 
   if (_data.empty()) {
-    traceSkipSomeEnd(0, ExecutionState::DONE);
+    traceSkipSomeEnd(ExecutionState::DONE, 0);
     return {ExecutionState::DONE, 0};
   }
 
@@ -97,10 +106,10 @@ std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skip
   _data.pop_front();
 
   if (_data.empty()) {
-    traceSkipSomeEnd(skipped, ExecutionState::DONE);
+    traceSkipSomeEnd(ExecutionState::DONE, skipped);
     return {ExecutionState::DONE, skipped};
   } else {
-    traceSkipSomeEnd(skipped, ExecutionState::HASMORE);
+    traceSkipSomeEnd(ExecutionState::HASMORE, skipped);
     return {ExecutionState::HASMORE, skipped};
   }
 }

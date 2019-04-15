@@ -23,7 +23,7 @@
 #ifndef ARANGOD_AQL_SCATTER_EXECUTOR_H
 #define ARANGOD_AQL_SCATTER_EXECUTOR_H
 
-#include "Aql/ClusterBlocks.h"
+#include "Aql/BlocksWithClients.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
 
@@ -38,7 +38,7 @@ class ScatterExecutor {};
  * @brief See ExecutionBlockImpl.h for documentation.
  */
 template <>
-class ExecutionBlockImpl<ScatterExecutor> : public BlockWithClients {
+class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClients {
  public:
   // TODO Even if it's not strictly necessary here, for consistency's sake the
   // non-standard argument (shardIds) should probably be moved into some
@@ -51,21 +51,16 @@ class ExecutionBlockImpl<ScatterExecutor> : public BlockWithClients {
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   /// @brief getSomeForShard
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShard(
-      size_t atMost, std::string const& shardId) override;
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(size_t atMost,
+                                                                   std::string const& shardId) override;
 
   /// @brief skipSomeForShard
   std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost,
                                                      std::string const& shardId) override;
 
  private:
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> traceGetSomeEnd(
-      ExecutionState state, std::unique_ptr<AqlItemBlock> result);
-
-  std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
-
   /// @brief getSomeForShard
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShardWithoutTrace(
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShardWithoutTrace(
       size_t atMost, std::string const& shardId);
 
   /// @brief skipSomeForShard
@@ -73,7 +68,7 @@ class ExecutionBlockImpl<ScatterExecutor> : public BlockWithClients {
                                                                  std::string const& shardId);
 
   std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
-      size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
+      size_t atMost, bool skipping, SharedAqlItemBlockPtr& result,
       size_t& skipped, std::string const& shardId);
 
   bool hasMoreForClientId(size_t clientId) const;

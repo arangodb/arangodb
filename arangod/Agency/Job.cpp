@@ -294,13 +294,13 @@ size_t Job::countGoodOrBadServersInList(Node const& snap, std::vector<std::strin
 /// @brief Check if a server is cleaned or to be cleaned out:
 bool Job::isInServerList(Node const& snap, std::string const& prefix, std::string const& server, bool isArray) {
   VPackSlice slice;
-  bool has;
   bool found = false;
   if (isArray) {
+    bool has;
     std::tie(slice, has) = snap.hasAsSlice(prefix);
     if (has && slice.isArray()) {
       for (auto const& srv : VPackArrayIterator(slice)) {
-        if (srv.copyString() == server) {
+        if (srv.isEqualString(server)) {
           found = true;
           break;
         }
@@ -331,11 +331,10 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
   }
 
   auto excludePrefix = [&ret, &snapshot](std::string const& prefix, bool isArray) {
-
-    bool has;
     VPackSlice slice;
 
     if (isArray) {
+      bool has;
       std::tie(slice, has) = snapshot.hasAsSlice(prefix);
       if (has) {
         for (auto const& srv : VPackArrayIterator(slice)) {

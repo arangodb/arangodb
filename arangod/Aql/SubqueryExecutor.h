@@ -127,7 +127,7 @@ class SubqueryExecutor {
   ExecutionBlock& _subquery;
 
   // Place where the current subquery can store intermediate results.
-  std::unique_ptr<std::vector<std::unique_ptr<AqlItemBlock>>> _subqueryResults;
+  std::unique_ptr<std::vector<SharedAqlItemBlockPtr>> _subqueryResults;
 
   // Cache for the input row we are currently working on
   InputAqlItemRow _input;

@@ -138,7 +138,7 @@ class ShortestPathPriorityQueue {
   /// than via lowerWeight, otherwise the queue order could be violated.
   //////////////////////////////////////////////////////////////////////////////
 
-  Value* find(Key const& k) {
+  Value* find(Key const& k) const {
     auto it = _lookup.find(k);
 
     if (it == _lookup.end()) {
