@@ -128,15 +128,12 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
     _outputItemRow = createOutputRow(newBlock);
   }
 
-  // TODO It's not very obvious that `state` will be initialized, because
-  // it's not obvious that the loop will run at least once (e.g. after a
-  // WAITING). It should, but I'd like that to be clearer. Initializing here
-  // won't help much because it's unclear whether the value will be correct.
   ExecutionState state = ExecutionState::HASMORE;
   ExecutorStats executorStats{};
 
   TRI_ASSERT(atMost > 0);
 
+  // The loop has to be entered at least once!
   TRI_ASSERT(!_outputItemRow->isFull());
   while (!_outputItemRow->isFull()) {
     std::tie(state, executorStats) = _executor.produceRow(*_outputItemRow);
@@ -152,10 +149,6 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
     }
 
     if (state == ExecutionState::DONE) {
-      // TODO Does this work as expected when there was no row produced, or
-      // we were DONE already, so we didn't build a single row?
-      // We must return nullptr then, because empty AqlItemBlocks are not
-      // allowed!
       auto outputBlock = _outputItemRow->stealBlock();
       // This is not strictly necessary here, as we shouldn't be called again
       // after DONE.
@@ -174,7 +167,6 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
   auto outputBlock = _outputItemRow->stealBlock();
   // we guarantee that we do return a valid pointer in the HASMORE case.
   TRI_ASSERT(outputBlock != nullptr);
-  // TODO OutputAqlItemRow could get "reset" and "isValid" methods and be reused
   _outputItemRow.reset();
   return {state, std::move(outputBlock)};
 }

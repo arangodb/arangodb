@@ -91,13 +91,6 @@ class SortCondition {
   /// the sort order is ascending (true) or descending (false)
   std::tuple<Variable const*, AstNode const*, bool> field(size_t position) const;
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const;
-
-  static std::shared_ptr<SortCondition> fromVelocyPack(ExecutionPlan const* plan,
-                                                       arangodb::velocypack::Slice const& base,
-                                                       std::string const& name);
-
  private:
   struct SortField {
     Variable const* variable;
