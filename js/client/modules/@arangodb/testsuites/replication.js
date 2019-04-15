@@ -130,7 +130,8 @@ function replicationFuzz (options) {
 
   };
 
-  return tu.performTests(options, testCases, 'replication_fuzz', tu.runInArangosh, {}, startStopHandlers);
+  return tu.performTests(options, testCases, 'replication_fuzz', tu.runInArangosh,
+                         {"rocksdb.wal-file-timeout-initial": "7200"}, startStopHandlers);
 }
 
 // //////////////////////////////////////////////////////////////////////////////

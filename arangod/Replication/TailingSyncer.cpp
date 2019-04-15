@@ -1375,6 +1375,8 @@ retry:
         // necessary to reset the state here, because otherwise running the
         // InitialSyncer may fail with "applier is running" errors
         _applier->_state._phase = ReplicationApplierState::ActivityPhase::INITIAL;
+        _applier->_state._stopInitialSynchronization = false;
+        _applier->_state._preventStart = false;
       }
 
       // start initial synchronization
@@ -2085,6 +2087,7 @@ Result TailingSyncer::handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
         "of historic logfiles/WAL file timeout or archive size on the master.";
   if (_requireFromPresent) {  // hard fail
     abortOngoingTransactions();
+    setProgress(msg);
     return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, msg);
   }
 
