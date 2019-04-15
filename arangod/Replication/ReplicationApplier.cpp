@@ -454,7 +454,7 @@ Result ReplicationApplier::resetState(bool reducedSet) {
   }
 
   LOG_TOPIC("87584", DEBUG, Logger::REPLICATION)
-    << "stopped replication applier for database '" << _state.databaseName
+    << "stopped replication applier for database '" << _databaseName
     << "' with lastProcessedContinuousTick: " << _state._lastProcessedContinuousTick
     << ", lastAppliedContinuousTick: " << _state._lastAppliedContinuousTick
     << ", safeResumeTick: " << _state._safeResumeTick;
