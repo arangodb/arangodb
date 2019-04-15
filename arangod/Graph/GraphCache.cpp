@@ -115,22 +115,22 @@ const std::shared_ptr<const Graph> GraphCache::getGraph(std::shared_ptr<transact
   // This must be addressed as soon as it is activated.
   /*
   if (typeid(Success) == cacheResult.type()) {
-    LOG_TOPIC(TRACE, Logger::GRAPHS) << "GraphCache::getGraph('" << name
+    LOG_TOPIC("ed03d", TRACE, Logger::GRAPHS) << "GraphCache::getGraph('" << name
                                      << "'): Found entry in cache";
 
     return boost::get<Success>(cacheResult).graph;
   } else if (typeid(Outdated) == cacheResult.type()) {
-    LOG_TOPIC(TRACE, Logger::GRAPHS) << "GraphCache::getGraph('" << name
+    LOG_TOPIC("3e274", TRACE, Logger::GRAPHS) << "GraphCache::getGraph('" << name
                                      << "'): Cached entry outdated";
   } else if (typeid(NotFound) == cacheResult.type()) {
-    LOG_TOPIC(TRACE, Logger::GRAPHS) << "GraphCache::getGraph('" << name
+    LOG_TOPIC("d8748", TRACE, Logger::GRAPHS) << "GraphCache::getGraph('" << name
                                      << "'): No cache entry";
   } else if (typeid(Exception) == cacheResult.type()) {
-    LOG_TOPIC(ERR, Logger::GRAPHS)
+    LOG_TOPIC("3f9f2", ERR, Logger::GRAPHS)
         << "GraphCache::getGraph('" << name
         << "'): An exception occured during cache lookup";
   } else {
-    LOG_TOPIC(FATAL, Logger::GRAPHS) << "GraphCache::getGraph('" << name
+    LOG_TOPIC("eed91", FATAL, Logger::GRAPHS) << "GraphCache::getGraph('" << name
                                      << "'): Unhandled result type "
                                      << cacheResult.type().name();
 

@@ -29,7 +29,6 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
-const console = require('console');
 const actions = require('@arangodb/actions');
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -47,48 +46,3 @@ actions.defineHttp({
     res.body = JSON.stringify(req);
   }
 });
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_get_admin_time
-// //////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: '_admin/time',
-  prefix: false,
-
-  callback: function (req, res) {
-    actions.resultOk(req, res, actions.HTTP_OK, { time: internal.time() });
-  }
-});
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_post_admin_execute
-// //////////////////////////////////////////////////////////////////////////////
-
-if (global.ALLOW_ADMIN_EXECUTE) {
-  actions.defineHttp({
-    url: '_admin/execute',
-    prefix: false,
-
-    callback: function (req, res) {
-      /* jshint evil: true */
-      var body = req.requestBody;
-      var result;
-
-      console.warn("about to execute: '%s'", body);
-
-      if (body !== '') {
-        result = eval('(function() {' + body + '}());');
-      }
-
-      if (req.parameters.hasOwnProperty('returnAsJSON') &&
-        req.parameters.returnAsJSON === 'true') {
-        actions.resultOk(req, res, actions.HTTP_OK, result);
-      } else {
-        actions.resultOk(req, res, actions.HTTP_OK, JSON.stringify(result));
-      }
-    }
-  });
-}
-
-delete global.ALLOW_ADMIN_EXECUTE;

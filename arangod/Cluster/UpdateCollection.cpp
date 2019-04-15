@@ -78,7 +78,7 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
   TRI_ASSERT(desc.has(FOLLOWERS_TO_DROP));
 
   if (!error.str().empty()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "UpdateCollection: " << error.str();
+    LOG_TOPIC("a6e4c", ERR, Logger::MAINTENANCE) << "UpdateCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -152,7 +152,7 @@ bool UpdateCollection::first() {
     Result found = methods::Collections::lookup(
         vocbase, shard, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
           TRI_ASSERT(coll);
-          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          LOG_TOPIC("60543", DEBUG, Logger::MAINTENANCE)
               << "Updating local collection " + shard;
 
           // We adjust local leadership, note that the planned
@@ -163,7 +163,7 @@ bool UpdateCollection::first() {
           _result = Collections::updateProperties(*coll, props, false);  // always a full-update
 
           if (!_result.ok()) {
-            LOG_TOPIC(ERR, Logger::MAINTENANCE)
+            LOG_TOPIC("c3733", ERR, Logger::MAINTENANCE)
                 << "failed to update properties"
                    " of collection "
                 << shard << ": " << _result.errorMessage();
@@ -173,14 +173,14 @@ bool UpdateCollection::first() {
     if (found.fail()) {
       std::stringstream error;
       error << "failed to lookup local collection " << shard << "in database " + database;
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str();
+      LOG_TOPIC("620fb", ERR, Logger::MAINTENANCE) << error.str();
       _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
     }
   } catch (std::exception const& e) {
     std::stringstream error;
 
     error << "action " << _description << " failed with exception " << e.what();
-    LOG_TOPIC(WARN, Logger::MAINTENANCE) << "UpdateCollection: " << error.str();
+    LOG_TOPIC("79442", WARN, Logger::MAINTENANCE) << "UpdateCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
   }
 

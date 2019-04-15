@@ -33,6 +33,8 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesTransactionCollection.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -56,7 +58,8 @@ MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t& vocbase, TRI_voc
     : TransactionState(vocbase, tid, options),
       _rocksTransaction(nullptr),
       _beginWritten(false),
-      _hasOperations(false) {}
+      _hasOperations(false),
+      _lastWrittenOperationTick(0) {}
 
 /// @brief free a transaction container
 MMFilesTransactionState::~MMFilesTransactionState() {
@@ -74,7 +77,7 @@ rocksdb::Transaction* MMFilesTransactionState::rocksTransaction() {
 
 /// @brief start a transaction
 Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
-  LOG_TRX(this, nestingLevel())
+  LOG_TRX("a3ebb", TRACE, this, nestingLevel())
       << "beginning " << AccessMode::typeString(_type) << " transaction";
   Result result;
 
@@ -140,7 +143,7 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
 
 /// @brief commit a transaction
 Result MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX(this, nestingLevel())
+  LOG_TRX("f787c", TRACE, this, nestingLevel())
       << "committing " << AccessMode::typeString(_type) << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
@@ -185,7 +188,7 @@ Result MMFilesTransactionState::commitTransaction(transaction::Methods* activeTr
 
 /// @brief abort and rollback a transaction
 Result MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX(this, nestingLevel()) << "aborting " << AccessMode::typeString(_type) << " transaction";
+  LOG_TRX("f7af1", TRACE, this, nestingLevel()) << "aborting " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
@@ -285,7 +288,8 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
       }
     }
 
-    operation.setTick(slotInfo.tick);
+    _lastWrittenOperationTick = slotInfo.tick;
+
     fid = slotInfo.logfileId;
     position = slotInfo.mem;
   } else {
@@ -405,15 +409,15 @@ int MMFilesTransactionState::writeBeginMarker() {
     }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("640b6", WARN, arangodb::Logger::ENGINES)
         << "could not save transaction begin marker in log: " << ex.what();
   } catch (std::exception const& ex) {
     res = TRI_ERROR_INTERNAL;
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("e9cff", WARN, arangodb::Logger::ENGINES)
         << "could not save transaction begin marker in log: " << ex.what();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("04c8b", WARN, arangodb::Logger::ENGINES)
         << "could not save transaction begin marker in log: unknown exception";
   }
 
@@ -451,15 +455,15 @@ int MMFilesTransactionState::writeAbortMarker() {
     }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("fa996", WARN, arangodb::Logger::ENGINES)
         << "could not save transaction abort marker in log: " << ex.what();
   } catch (std::exception const& ex) {
     res = TRI_ERROR_INTERNAL;
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("62a0d", WARN, arangodb::Logger::ENGINES)
         << "could not save transaction abort marker in log: " << ex.what();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("42c41", WARN, arangodb::Logger::ENGINES)
         << "could not save transaction abort marker in log: unknown exception";
   }
 
@@ -469,6 +473,10 @@ int MMFilesTransactionState::writeAbortMarker() {
 /// @brief write WAL commit marker
 int MMFilesTransactionState::writeCommitMarker() {
   if (!needWriteMarker(false)) {
+    if (_options.waitForSync && _lastWrittenOperationTick > 0 &&
+        isSingleOperation()) { // we do the waitForSync in the end
+      EngineSelectorFeature::ENGINE->waitForSyncTick(_lastWrittenOperationTick);
+    }
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -526,15 +534,15 @@ int MMFilesTransactionState::writeCommitMarker() {
     }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("7f663", WARN, arangodb::Logger::ENGINES)
         << "could not save transaction commit marker in log: " << ex.what();
   } catch (std::exception const& ex) {
     res = TRI_ERROR_INTERNAL;
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("de87f", WARN, arangodb::Logger::ENGINES)
         << "could not save transaction commit marker in log: " << ex.what();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("0106b", WARN, arangodb::Logger::ENGINES)
         << "could not save transaction commit marker in log: unknown exception";
   }
 

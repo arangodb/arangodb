@@ -23,7 +23,7 @@
 
 #include "v8-replication.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseInitialSyncer.h"
@@ -234,7 +234,7 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
     Result r = syncer->run(configuration._incremental);
 
     if (r.fail()) {
-      LOG_TOPIC(ERR, Logger::REPLICATION)
+      LOG_TOPIC("3d58b", ERR, Logger::REPLICATION)
           << "initial sync failed for database '" << vocbase.name()
           << "': " << r.errorMessage();
       TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(),
@@ -387,7 +387,7 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
   }
 
   if (r.fail()) {
-    LOG_TOPIC(ERR, Logger::REPLICATION)
+    LOG_TOPIC("f5995", ERR, Logger::REPLICATION)
         << "syncCollectionFinalize failed: " << r.errorMessage();
     std::string errorMsg = std::string("cannot sync data for shard '") + collection +
                            "' from remote endpoint: " + r.errorMessage();

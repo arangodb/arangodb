@@ -29,7 +29,6 @@
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/InputAqlItemRow.h"
@@ -99,10 +98,10 @@ SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
       for (RegisterId i = 0; i < nrRegs; i++) {
         inputRegisters->emplace(i);
       }
-      auto block = std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
-      _itemBlock = std::make_shared<AqlItemBlockShell>(_itemBlockManager, std::move(block));
+      _itemBlock =
+          SharedAqlItemBlockPtr{new AqlItemBlock(_itemBlockManager, _nrItems, nrRegs)};
       // std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
-      VPackToAqlItemBlock(_data, nrRegs, _itemBlock->block());
+      VPackToAqlItemBlock(_data, nrRegs, *_itemBlock);
     }
   }
 };
@@ -170,17 +169,15 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>>
     VPackSlice oneRow = _data.at(0);
     REQUIRE(oneRow.isArray());
     _nrRegs = oneRow.length();
-    auto itemBlock = std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, _nrRegs);
+    SharedAqlItemBlockPtr itemBlock{new AqlItemBlock(_itemBlockManager, _nrItems, _nrRegs)};
     VPackToAqlItemBlock(_data, _nrRegs, *itemBlock);
     // Add all registers as valid input registers:
     auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
     for (RegisterId i = 0; i < _nrRegs; i++) {
       inputRegisters->emplace(i);
     }
-    auto blockShell =
-        std::make_shared<AqlItemBlockShell>(_itemBlockManager, std::move(itemBlock));
     _matrix = std::make_unique<AqlItemMatrix>(_nrRegs);
-    _matrix->addBlock(std::move(blockShell));
+    _matrix->addBlock(itemBlock);
   }
   if (_matrix == nullptr) {
     _matrix = std::make_unique<AqlItemMatrix>(_nrRegs);
@@ -213,12 +210,9 @@ std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcherHelper::fetchAllRo
 // - SECTION CONSTFETCHER              -
 // -----------------------------------------
 
-ConstFetcherHelper::ConstFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer)
-    : ConstFetcher(),
-      _vPackBuffer(std::move(vPackBuffer)),
-      _resourceMonitor(),
-      _itemBlockManager(&_resourceMonitor),
-      _lastReturnedRow{CreateInvalidInputRowHint{}} {
+ConstFetcherHelper::ConstFetcherHelper(AqlItemBlockManager& itemBlockManager,
+                                       std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer)
+    : ConstFetcher(), _vPackBuffer(std::move(vPackBuffer)) {
   if (_vPackBuffer != nullptr) {
     _data = VPackSlice(_vPackBuffer->data());
   } else {
@@ -234,11 +228,9 @@ ConstFetcherHelper::ConstFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>> vPa
       for (RegisterId i = 0; i < nrRegs; i++) {
         inputRegisters->emplace(i);
       }
-      auto block = std::make_unique<AqlItemBlock>(&_resourceMonitor, nrItems, nrRegs);
-      auto shell =
-          std::make_shared<AqlItemBlockShell>(_itemBlockManager, std::move(block));
-      VPackToAqlItemBlock(_data, nrRegs, shell->block());
-      this->injectBlock(shell);
+      SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, nrItems, nrRegs)};
+      VPackToAqlItemBlock(_data, nrRegs, *block);
+      this->injectBlock(block);
     }
   }
 };

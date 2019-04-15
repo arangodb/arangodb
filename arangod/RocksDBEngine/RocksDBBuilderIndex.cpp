@@ -147,7 +147,7 @@ Result RocksDBBuilderIndex::remove(transaction::Methods& trx, RocksDBMethods* mt
 }
 
 // fast mode assuming exclusive access locked from outside
-template <typename WriteBatchType, typename MethodsType>
+template <typename WriteBatchType, typename MethodsType, bool foreground>
 static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
                                   rocksdb::Snapshot const* snap) {
   // fillindex can be non transactional, we just need to clean up
@@ -189,8 +189,8 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
   RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();
   // write batch will be reset every x documents
   MethodsType batched(state, &batch);
-
-  auto commitLambda = [&](rocksdb::SequenceNumber seq) {
+  
+  auto commitLambda = [&] {
     if (batch.GetWriteBatch()->Count() > 0) {
       s = rootDB->Write(wo, batch.GetWriteBatch());
       if (!s.ok()) {
@@ -204,8 +204,19 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
       TRI_ASSERT(ridx.hasSelectivityEstimate() && ops.size() == 1);
       auto it = ops.begin();
       TRI_ASSERT(ridx.id() == it->first);
-      ridx.estimator()->bufferUpdates(seq, std::move(it->second.inserts),
-                                      std::move(it->second.removals));
+      
+      if (foreground) {
+        for (uint64_t hash : it->second.inserts) {
+          ridx.estimator()->insert(hash);
+        }
+        for (uint64_t hash : it->second.removals) {
+          ridx.estimator()->remove(hash);
+        }
+      } else {
+        // since cuckoo estimator uses a map with seq as key we need to 
+        ridx.estimator()->bufferUpdates(1, std::move(it->second.inserts),
+                                           std::move(it->second.removals));
+      }
     }
   };
 
@@ -224,7 +235,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
     numDocsWritten++;
 
     if (numDocsWritten % 200 == 0) {  // commit buffered writes
-      commitLambda(rootDB->GetLatestSequenceNumber());
+      commitLambda();
       if (res.fail()) {
         break;
       }
@@ -236,19 +247,19 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
   }
 
   if (res.ok()) {
-    commitLambda(rootDB->GetLatestSequenceNumber());
+    commitLambda();
   }
 
   if (res.ok()) {  // required so iresearch commits
     res = trx.commit();
 
     if (ridx.estimator() != nullptr) {
-      ridx.estimator()->setCommitSeq(rootDB->GetLatestSequenceNumber());
+      ridx.estimator()->setAppliedSeq(rootDB->GetLatestSequenceNumber());
     }
   }
 
   // if an error occured drop() will be called
-  LOG_TOPIC(DEBUG, Logger::ENGINES)
+  LOG_TOPIC("dfa3b", DEBUG, Logger::ENGINES)
       << "SNAPSHOT CAPTURED " << numDocsWritten << " " << res.errorMessage();
 
   return res;
@@ -266,12 +277,12 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
     // unique index. we need to keep track of all our changes because we need to
     // avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
-    res = ::fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(*internal, batch, snap);
+    res = ::fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods, true>(*internal, batch, snap);
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap WriteBatch
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
-    res = ::fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods>(*internal, batch, snap);
+    res = ::fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods, true>(*internal, batch, snap);
   }
 
   return res;
@@ -457,7 +468,7 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
     }
   };
 
-  LOG_TOPIC(DEBUG, Logger::ENGINES) << "Scanning from " << startingFrom;
+  LOG_TOPIC("fa362", DEBUG, Logger::ENGINES) << "Scanning from " << startingFrom;
 
   for (; iterator->Valid(); iterator->Next()) {
     rocksdb::BatchResult batch = iterator->GetBatch();
@@ -485,20 +496,16 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
   }
 
   if (!iterator->status().ok() && res.ok()) {
-    LOG_TOPIC(ERR, Logger::ENGINES) << "iterator error " << iterator->status().ToString();
+    LOG_TOPIC("8e3a4", ERR, Logger::ENGINES) << "iterator error " << iterator->status().ToString();
     res = rocksutils::convertStatus(iterator->status());
   }
 
   if (res.ok()) {
     numScanned = replay.numInserted + replay.numRemoved;
     res = trx.commit();  // important for iresearch
-    
-    if (ridx.estimator() != nullptr) {
-      ridx.estimator()->setCommitSeq(rootDB->GetLatestSequenceNumber());
-    }
   }
 
-  LOG_TOPIC(DEBUG, Logger::ENGINES) << "WAL REPLAYED insertions: " << replay.numInserted
+  LOG_TOPIC("5796c", DEBUG, Logger::ENGINES) << "WAL REPLAYED insertions: " << replay.numInserted
                                     << "; deletions: " << replay.numRemoved
                                     << "; lastScannedTick " << lastScannedTick;
 
@@ -544,19 +551,20 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   });
 
   locker.unlock();
+  // Step 1. Capture with snapshot
   if (internal->unique()) {
     const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
     // unique index. we need to keep track of all our changes because we need to
     // avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
-    res = ::fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(*internal, batch, snap);
+    res = ::fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods, false>(*internal, batch, snap);
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap WriteBatch
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
-    res = ::fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods>(*internal, batch, snap);
+    res = ::fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods, false>(*internal, batch, snap);
   }
-
+  
   if (res.fail()) {
     return res;
   }
@@ -565,6 +573,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   rootDB->ReleaseSnapshot(snap);
   snap = nullptr;
 
+  // Step 2. Scan the WAL for documents without lock
   int maxCatchups = 3;
   rocksdb::SequenceNumber lastScanned = 0;
   uint64_t numScanned = 0;
@@ -589,7 +598,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     if (res.fail()) {
       return res;
     }
-
+    
     scanFrom = lastScanned;
   } while (maxCatchups-- > 0 && numScanned > 5000);
 
@@ -597,6 +606,8 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     return res.reset(TRI_ERROR_LOCK_TIMEOUT);
   }
 
+  // Step 3. Scan the WAL for documents with a lock
+  
   scanFrom = lastScanned;
   if (internal->unique()) {
     const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();

@@ -32,9 +32,7 @@
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
-#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 
 using namespace arangodb;
 
@@ -46,7 +44,7 @@ ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase,
 
 /// @brief start a transaction
 Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
-  LOG_TRX(this, nestingLevel())
+  LOG_TRX("03dec", TRACE, this, nestingLevel())
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
@@ -109,7 +107,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
 /// @brief commit a transaction
 Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX(this, nestingLevel())
+  LOG_TRX("927c0", TRACE, this, nestingLevel())
       << "committing " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
@@ -128,7 +126,7 @@ Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTr
 
 /// @brief abort and rollback a transaction
 Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX(this, nestingLevel()) << "aborting " << AccessMode::typeString(_type) << " transaction";
+  LOG_TRX("fc653", TRACE, this, nestingLevel()) << "aborting " << AccessMode::typeString(_type) << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   Result res;
   if (nestingLevel() == 0) {

@@ -56,7 +56,7 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
+    LOG_TOPIC("4d260", ERR, Logger::SUPERVISION) << err.str();
     finish("", tmp_shard.first, false, err.str());
     _status = FAILED;
   }
@@ -67,7 +67,7 @@ AddFollower::~AddFollower() {}
 void AddFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("8f72c", INFO, Logger::SUPERVISION)
       << "Todo: AddFollower(s) "
       << " to shard " << _shard << " in collection " << _collection;
 
@@ -107,7 +107,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   _jb->close();  // transaction object
   _jb->close();  // close array
 
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
@@ -115,7 +115,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
 
   _status = NOTFOUND;
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
+  LOG_TOPIC("02cef", INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
   return false;
 }
 
@@ -128,7 +128,7 @@ bool AddFollower::start(bool&) {
     finish("", "", true, "collection has been dropped in the meantime");
     return false;
   }
-  Node collection =
+  Node const& collection =
       _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection).first;
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
@@ -180,7 +180,7 @@ bool AddFollower::start(bool&) {
 
   // Check that the shard is not locked:
   if (_snapshot.has(blockedShardsPrefix + _shard)) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("1de2b", DEBUG, Logger::SUPERVISION)
         << "shard " << _shard
         << " is currently locked, not starting AddFollower job " << _jobId;
     return false;
@@ -205,7 +205,7 @@ bool AddFollower::start(bool&) {
 
   // Check that we have enough:
   if (available.size() < desiredReplFactor - actualReplFactor) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("50086", DEBUG, Logger::SUPERVISION)
         << "shard " << _shard
         << " does not have enough candidates to add followers, waiting, jobId=" << _jobId;
     return false;
@@ -241,7 +241,7 @@ bool AddFollower::start(bool&) {
       if (!tmp_todo.second) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
-        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
+        LOG_TOPIC("24c50", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
                                                     " from agency snapshot";
         return false;
       }
@@ -251,7 +251,7 @@ bool AddFollower::start(bool&) {
       } catch (std::exception const& e) {
         // Just in case, this is never going to happen, since when _jb is
         // set, then the current job is stored under ToDo.
-        LOG_TOPIC(WARN, Logger::SUPERVISION)
+        LOG_TOPIC("15c37", WARN, Logger::SUPERVISION)
             << e.what() << ": " << __FILE__ << ":" << __LINE__;
         return false;
       }
@@ -298,16 +298,16 @@ bool AddFollower::start(bool&) {
   }    // array for transaction done
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, trx);
+  write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     _status = FINISHED;
-    LOG_TOPIC(INFO, Logger::SUPERVISION) << "Finished: Addfollower(s) to shard "
+    LOG_TOPIC("961a4", INFO, Logger::SUPERVISION) << "Finished: Addfollower(s) to shard "
                                          << _shard << " in collection " << _collection;
     return true;
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("63ba4", INFO, Logger::SUPERVISION)
       << "Start precondition failed for AddFollower " + _jobId;
   return false;
 }

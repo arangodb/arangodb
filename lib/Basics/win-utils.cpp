@@ -99,13 +99,13 @@ static void InvalidParameterHandler(const wchar_t* expression,  // expression se
   buf[sizeof(buf) - 1] = '\0';
 #endif
 
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Invalid handle parameter passed"
+  LOG_TOPIC("e4644", ERR, arangodb::Logger::FIXME) << "Invalid handle parameter passed"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
                                           << buf;
 
   std::string bt;
   TRI_GetBacktrace(bt);
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+  LOG_TOPIC("967e6", ERR, arangodb::Logger::FIXME)
       << "Invalid handle parameter Invoked from: " << bt
 #endif
       ;
@@ -140,7 +140,7 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* dat
       if (!SymInitialize(hProcess, NULL, true)) {
         // SymInitialize failed
         error = GetLastError();
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("62b0a", ERR, arangodb::Logger::FIXME)
             << "SymInitialize returned error :" << error;
       }
 #endif
@@ -166,14 +166,14 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* dat
       errorCode = WSAStartup(wVersionRequested, &wsaData);
 
       if (errorCode != 0) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("10456", ERR, arangodb::Logger::FIXME)
             << "Could not find a usable Winsock DLL. WSAStartup returned "
                "an error.";
         return -1;
       }
 
       if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("dbaa4", ERR, arangodb::Logger::FIXME)
             << "Could not find a usable Winsock DLL. WSAStartup did not "
                "return version 2.2.";
         WSACleanup();
@@ -183,7 +183,7 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* dat
     }
 
     default: {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("90c63", ERR, arangodb::Logger::FIXME)
           << "Invalid windows initialization called";
       return -1;
     }

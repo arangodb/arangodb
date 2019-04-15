@@ -26,7 +26,6 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
 
 #include "Basics/MutexLocker.h"
@@ -79,18 +78,20 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
   VPackSlice async = _userParams.slice().get("async");
   _asyncMode = _algorithm->supportsAsyncMode() && async.isBool() && async.getBoolean();
   if (_asyncMode) {
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Running in async mode";
+    LOG_TOPIC("1b1c2", DEBUG, Logger::PREGEL) << "Running in async mode";
   }
-  VPackSlice lazy = _userParams.slice().get("lazyLoading");
+  VPackSlice lazy = _userParams.slice().get( Utils::lazyLoadingKey);
   _lazyLoading = _algorithm->supportsLazyLoading();
   _lazyLoading = _lazyLoading && (lazy.isNone() || lazy.getBoolean());
   if (_lazyLoading) {
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Enabled lazy loading";
+    LOG_TOPIC("464dd", DEBUG, Logger::PREGEL) << "Enabled lazy loading";
   }
+  _useMemoryMaps = VelocyPackHelper::readBooleanValue(_userParams.slice(),
+                                                      Utils::useMemoryMaps, _useMemoryMaps);
   VPackSlice storeSlice = config.get("store");
   _storeResults = !storeSlice.isBool() || storeSlice.getBool();
   if (!_storeResults) {
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Will keep results in-memory";
+    LOG_TOPIC("f3817", DEBUG, Logger::PREGEL) << "Will keep results in-memory";
   }
 }
 
@@ -111,11 +112,11 @@ void Conductor::start() {
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
 
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Telling workers to load the data";
+  LOG_TOPIC("3a255", DEBUG, Logger::PREGEL) << "Telling workers to load the data";
   int res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::CANCELED;
-    LOG_TOPIC(ERR, Logger::PREGEL) << "Not all DBServers started the execution";
+    LOG_TOPIC("30171", ERR, Logger::PREGEL) << "Not all DBServers started the execution";
   }
 }
 
@@ -147,7 +148,7 @@ bool Conductor::_startGlobalStep() {
   });
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
-    LOG_TOPIC(ERR, Logger::PREGEL)
+    LOG_TOPIC("04189", ERR, Logger::PREGEL)
         << "Seems there is at least one worker out of order";
     // the recovery mechanisms should take care of this
     return false;
@@ -161,7 +162,7 @@ bool Conductor::_startGlobalStep() {
     _masterContext->_enterNextGSS = false;
     proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
-      LOG_TOPIC(DEBUG, Logger::PREGEL) << "Master context ended execution";
+      LOG_TOPIC("0aa8e", DEBUG, Logger::PREGEL) << "Master context ended execution";
     }
   }
 
@@ -175,7 +176,7 @@ bool Conductor::_startGlobalStep() {
       _finalizeWorkers();
     } else {  // just stop the timer
       _endTimeSecs = TRI_microtime();
-      LOG_TOPIC(INFO, Logger::PREGEL)
+      LOG_TOPIC("9e82c", INFO, Logger::PREGEL)
           << "Done execution took" << totalRuntimeSecs() << " s";
     }
     return false;
@@ -195,16 +196,16 @@ bool Conductor::_startGlobalStep() {
   b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
   _aggregators->serializeValues(b);
   b.close();
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << b.toString();
+  LOG_TOPIC("d98de", DEBUG, Logger::PREGEL) << b.toString();
 
   // start vertex level operations, does not get a response
   res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
-    LOG_TOPIC(ERR, Logger::PREGEL) << "Conductor could not start GSS " << _globalSuperstep;
+    LOG_TOPIC("f34bb", ERR, Logger::PREGEL) << "Conductor could not start GSS " << _globalSuperstep;
     // the recovery mechanisms should take care od this
   } else {
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Conductor started new gss " << _globalSuperstep;
+    LOG_TOPIC("411a5", DEBUG, Logger::PREGEL) << "Conductor started new gss " << _globalSuperstep;
   }
   return res == TRI_ERROR_NO_ERROR;
 }
@@ -214,7 +215,7 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
   if (_state != ExecutionState::RUNNING) {
-    LOG_TOPIC(WARN, Logger::PREGEL)
+    LOG_TOPIC("10f48", WARN, Logger::PREGEL)
         << "We are not in a state where we expect a response";
     return;
   }
@@ -225,7 +226,7 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
     return;
   }
 
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Running pregel with " << _totalVerticesCount
+  LOG_TOPIC("76631", INFO, Logger::PREGEL) << "Running pregel with " << _totalVerticesCount
                                   << " vertices, " << _totalEdgesCount << " edges";
   if (_masterContext) {
     _masterContext->_globalSuperstep = 0;
@@ -236,15 +237,7 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   }
 
   _computationStartTimeSecs = TRI_microtime();
-
-  if (_startGlobalStep()) {
-    // listens for changing primary DBServers on each collection shard
-    RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
-
-    if (mngr) {
-      mngr->monitorCollections(_vocbaseGuard.database().name(), _vertexCollections, this);
-    }
-  }
+  _startGlobalStep();
 }
 
 /// Will optionally send a response, to notify the worker of converging
@@ -257,7 +250,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   uint64_t gss = data.get(Utils::globalSuperstepKey).getUInt();
   if (gss != _globalSuperstep ||
       !(_state == ExecutionState::RUNNING || _state == ExecutionState::CANCELED)) {
-    LOG_TOPIC(WARN, Logger::PREGEL)
+    LOG_TOPIC("dc904", WARN, Logger::PREGEL)
         << "Conductor did received a callback from the wrong superstep";
     return VPackBuilder();
   }
@@ -288,7 +281,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     return response;
   }
 
-  LOG_TOPIC(DEBUG, Logger::PREGEL)
+  LOG_TOPIC("39385", DEBUG, Logger::PREGEL)
       << "Finished gss " << _globalSuperstep << " in "
       << (TRI_microtime() - _computationStartTimeSecs) << "s";
   //_statistics.debugOutput();
@@ -304,22 +297,22 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     if (_state == ExecutionState::RUNNING) {
       _startGlobalStep();  // trigger next superstep
     } else if (_state == ExecutionState::CANCELED) {
-      LOG_TOPIC(WARN, Logger::PREGEL)
+      LOG_TOPIC("dd721", WARN, Logger::PREGEL)
           << "Execution was canceled, results will be discarded.";
       _finalizeWorkers();  // tells workers to store / discard results
     } else {  // this prop shouldn't occur unless we are recovering or in error
-      LOG_TOPIC(WARN, Logger::PREGEL)
+      LOG_TOPIC("923db", WARN, Logger::PREGEL)
           << "No further action taken after receiving all responses";
     }
   });
   return VPackBuilder();
 }
 
-void Conductor::finishedRecoveryStep(VPackSlice const& data) {
+/*void Conductor::finishedRecoveryStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
   if (_state != ExecutionState::RECOVERING) {
-    LOG_TOPIC(WARN, Logger::PREGEL)
+    LOG_TOPIC("23d8b", WARN, Logger::PREGEL)
         << "We are not in a state where we expect a recovery response";
     return;
   }
@@ -353,7 +346,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
     res = _sendToAllDBServers(Utils::continueRecoveryPath, b);
 
   } else {
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Recovery finished. Proceeding normally";
+    LOG_TOPIC("6ecf2", INFO, Logger::PREGEL) << "Recovery finished. Proceeding normally";
 
     // build the message, works for all cases
     VPackBuilder b;
@@ -369,9 +362,9 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
   }
   if (res != TRI_ERROR_NO_ERROR) {
     cancelNoLock();
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Recovery failed";
+    LOG_TOPIC("7f97e", INFO, Logger::PREGEL) << "Recovery failed";
   }
-}
+}*/
 
 void Conductor::cancel() {
   MUTEX_LOCKER(guard, _callbackMutex);
@@ -386,14 +379,16 @@ void Conductor::cancelNoLock() {
     _state = ExecutionState::CANCELED;
     _finalizeWorkers();
   }
-}
 
+  _workHandle.reset();
+}
+/*
 void Conductor::startRecovery() {
   MUTEX_LOCKER(guard, _callbackMutex);
   if (_state != ExecutionState::RUNNING && _state != ExecutionState::IN_ERROR) {
     return;  // maybe we are already in recovery mode
   } else if (_algorithm->supportsCompensation() == false) {
-    LOG_TOPIC(ERR, Logger::PREGEL) << "Algorithm does not support recovery";
+    LOG_TOPIC("12e0e", ERR, Logger::PREGEL) << "Algorithm does not support recovery";
     cancelNoLock();
     return;
   }
@@ -414,7 +409,7 @@ void Conductor::startRecovery() {
         std::vector<ServerID> goodServers;
         int res = PregelFeature::instance()->recoveryManager()->filterGoodServers(_dbServers, goodServers);
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_TOPIC(ERR, Logger::PREGEL) << "Recovery proceedings failed";
+          LOG_TOPIC("3d08b", ERR, Logger::PREGEL) << "Recovery proceedings failed";
           cancelNoLock();
           return;
         }
@@ -450,10 +445,10 @@ void Conductor::startRecovery() {
         res = _initializeWorkers(Utils::startRecoveryPath, additionalKeys.slice());
         if (res != TRI_ERROR_NO_ERROR) {
           cancelNoLock();
-          LOG_TOPIC(ERR, Logger::PREGEL) << "Compensation failed";
+          LOG_TOPIC("fefc6", ERR, Logger::PREGEL) << "Compensation failed";
         }
       });
-}
+}*/
 
 // resolves into an ordered list of shards for each collection on each server
 static void resolveInfo(TRI_vocbase_t* vocbase, CollectionID const& collectionID,
@@ -545,6 +540,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
     b.add(Utils::asyncModeKey, VPackValue(_asyncMode));
     b.add(Utils::lazyLoadingKey, VPackValue(_lazyLoading));
+    b.add(Utils::useMemoryMaps, VPackValue(_useMemoryMaps));
     if (additional.isObject()) {
       for (auto const& pair : VPackObjectIterator(additional)) {
         b.add(pair.key.copyString(), pair.value);
@@ -581,10 +577,13 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     b.close();
     b.close();
 
-    // hack for singke serveronly on single server
+    // hack for single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
       TRI_ASSERT(vertexMap.size() == 1);
-      PregelFeature* feature = PregelFeature::instance();
+      std::shared_ptr<PregelFeature> feature = PregelFeature::instance();
+      if (!feature) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
       std::shared_ptr<IWorker> worker = feature->worker(_executionNumber);
 
       if (worker) {
@@ -596,8 +595,8 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
       auto created = AlgoRegistry::createWorker(_vocbaseGuard.database(), b.slice());
 
       TRI_ASSERT(created.get() != nullptr);
-      PregelFeature::instance()->addWorker(std::move(created), _executionNumber);
-      worker = PregelFeature::instance()->worker(_executionNumber);
+      feature->addWorker(std::move(created), _executionNumber);
+      worker = feature->worker(_executionNumber);
       TRI_ASSERT(worker);
       worker->setupWorker();
 
@@ -605,7 +604,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     } else {
       auto body = std::make_shared<std::string const>(b.toJson());
       requests.emplace_back("server:" + server, rest::RequestType::POST, path, body);
-      LOG_TOPIC(DEBUG, Logger::PREGEL) << "Initializing Server " << server;
+      LOG_TOPIC("6ae66", DEBUG, Logger::PREGEL) << "Initializing Server " << server;
     }
   }
 
@@ -626,13 +625,18 @@ int Conductor::_finalizeWorkers() {
   if (_masterContext) {
     _masterContext->postApplication();
   }
+      
+  std::shared_ptr<PregelFeature> feature = PregelFeature::instance();
+  if (!feature) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
   // stop monitoring shards
-  RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
+  /*RecoveryManager* mngr = feature->recoveryManager();
   if (mngr) {
     mngr->stopMonitoring(this);
-  }
+  }*/
 
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Finalizing workers";
+  LOG_TOPIC("fc187", DEBUG, Logger::PREGEL) << "Finalizing workers";
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -650,14 +654,14 @@ int Conductor::_finalizeWorkers() {
   _aggregators->serializeValues(debugOut);
   debugOut.close();
 
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Done. We did " << _globalSuperstep << " rounds";
-  LOG_TOPIC(DEBUG, Logger::PREGEL)
+  LOG_TOPIC("063b5", INFO, Logger::PREGEL) << "Done. We did " << _globalSuperstep << " rounds";
+  LOG_TOPIC("3cfa8", DEBUG, Logger::PREGEL)
       << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
-  LOG_TOPIC(DEBUG, Logger::PREGEL)
+  LOG_TOPIC("d43cb", DEBUG, Logger::PREGEL)
       << "Computation Time: " << compEnd - _computationStartTimeSecs << "s";
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Storage Time: " << TRI_microtime() - compEnd << "s";
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Stats: " << debugOut.toString();
+  LOG_TOPIC("74e05", DEBUG, Logger::PREGEL) << "Storage Time: " << TRI_microtime() - compEnd << "s";
+  LOG_TOPIC("06f03", INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
+  LOG_TOPIC("03f2e", DEBUG, Logger::PREGEL) << "Stats: " << debugOut.toString();
   return res;
 }
 
@@ -687,16 +691,15 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder) {
 }
 
 VPackBuilder Conductor::toVelocyPack() const {
+  MUTEX_LOCKER(guard, _callbackMutex);
+
   VPackBuilder result;
   result.openObject();
   result.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
   result.add("gss", VPackValue(_globalSuperstep));
   result.add("totalRuntime", VPackValue(totalRuntimeSecs()));
   _aggregators->serializeValues(result);
-  {
-    MUTEX_LOCKER(guard, _callbackMutex);
-    _statistics.serializeValues(result);
-  }
+  _statistics.serializeValues(result);
   if (_state != ExecutionState::RUNNING) {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));
@@ -739,7 +742,7 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
   std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
 
   if (_dbServers.size() == 0) {
-    LOG_TOPIC(WARN, Logger::PREGEL) << "No servers registered";
+    LOG_TOPIC("a14fa", WARN, Logger::PREGEL) << "No servers registered";
     return TRI_ERROR_FAILED;
   }
 
@@ -753,7 +756,7 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
 
   size_t nrGood = cc->performRequests(requests, 5.0 * 60.0,
                                       LogTopic("Pregel Conductor"), false);
-  LOG_TOPIC(TRACE, Logger::PREGEL) << "Send " << path << " to " << nrGood << " servers";
+  LOG_TOPIC("9de62", TRACE, Logger::PREGEL) << "Send " << path << " to " << nrGood << " servers";
   Utils::printResponses(requests);
   if (handle && nrGood == requests.size()) {
     for (ClusterCommRequest const& req : requests) {
@@ -769,7 +772,7 @@ void Conductor::_ensureUniqueResponse(VPackSlice body) {
   // check if this the only time we received this
   ServerID sender = body.get(Utils::senderKey).copyString();
   if (_respondedServers.find(sender) != _respondedServers.end()) {
-    LOG_TOPIC(ERR, Logger::PREGEL) << "Received response already from " << sender;
+    LOG_TOPIC("c38b8", ERR, Logger::PREGEL) << "Received response already from " << sender;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CONFLICT);
   }
   _respondedServers.insert(sender);

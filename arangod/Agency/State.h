@@ -26,8 +26,6 @@
 
 #include "Agency/Store.h"
 #include "AgencyCommon.h"
-#include "Basics/MutexLocker.h"
-#include "Cluster/ClusterComm.h"
 #include "Utils/OperationOptions.h"
 
 #include <velocypack/vpack.h>

@@ -236,8 +236,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
 
   // check for serverId
-  TRI_server_id_t serverId =
-      _request->parsedValue("serverId", static_cast<TRI_server_id_t>(0));
+  std::string const& clientId = _request->value("serverId");
   // check if a barrier id was specified in request
   TRI_voc_tid_t barrierId =
       _request->parsedValue("barrier", static_cast<TRI_voc_tid_t>(0));
@@ -301,7 +300,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
                          dumper.dump(marker);
                          buffer.appendChar('\n');
-                         // LOG_TOPIC(INFO, Logger::REPLICATION) <<
+                         // LOG_TOPIC("cda47", INFO, Logger::REPLICATION) <<
                          // marker.toJson(&opts);
                        });
   }
@@ -333,19 +332,19 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
   if (length > 0) {
     _response->setResponseCode(rest::ResponseCode::OK);
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    LOG_TOPIC("078ad", DEBUG, Logger::REPLICATION)
         << "WAL tailing after " << filter.tickStart << ", lastIncludedTick "
         << result.lastIncludedTick() << ", fromTickIncluded "
         << result.fromTickIncluded();
   } else {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    LOG_TOPIC("29624", DEBUG, Logger::REPLICATION)
         << "No more data in WAL after " << filter.tickStart;
     _response->setResponseCode(rest::ResponseCode::NO_CONTENT);
   }
 
   DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
-    vocbase.updateReplicationClient(serverId, filter.tickStart,
-                                    replutils::BatchInfo::DefaultTimeout);
+    vocbase.replicationClients().track(clientId, filter.tickStart,
+                                       replutils::BatchInfo::DefaultTimeout);
   });
 }
 

@@ -24,7 +24,6 @@
 #include "DumpFeature.h"
 
 #include <chrono>
-#include <iostream>
 #include <thread>
 
 #include <velocypack/Builder.h>
@@ -57,7 +56,7 @@ namespace {
 
 /// @brief fake client id we will send to the server. the server keeps
 /// track of all connected clients
-static uint64_t clientId = 0;
+static std::string clientId;
 
 /// @brief name of the feature to report to application server
 constexpr auto FeatureName = "Dump";
@@ -123,7 +122,7 @@ std::pair<arangodb::Result, std::vector<std::string>> getDatabases(arangodb::htt
       client.request(arangodb::rest::RequestType::GET, url, "", 0));
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
-    LOG_TOPIC(ERR, arangodb::Logger::DUMP)
+    LOG_TOPIC("47882", ERR, arangodb::Logger::DUMP)
         << "An error occurred while trying to determine list of databases: " << check.errorMessage();
     return {check, databases};
   }
@@ -168,8 +167,8 @@ std::pair<arangodb::Result, uint64_t> startBatch(arangodb::httpclient::SimpleHtt
   using arangodb::basics::VelocyPackHelper;
   using arangodb::basics::StringUtils::uint64;
 
-  std::string url = "/_api/replication/batch?serverId=" + std::to_string(clientId);
-  std::string const body = "{\"ttl\":300}";
+  std::string url = "/_api/replication/batch?serverId=" + clientId;
+  std::string const body = "{\"ttl\":600}";
   std::string urlExt;
   if (!DBserver.empty()) {
     url += "&DBserver=" + DBserver;
@@ -179,7 +178,7 @@ std::pair<arangodb::Result, uint64_t> startBatch(arangodb::httpclient::SimpleHtt
       client.request(arangodb::rest::RequestType::POST, url, body.c_str(), body.size()));
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
-    LOG_TOPIC(ERR, arangodb::Logger::DUMP)
+    LOG_TOPIC("34dbf", ERR, arangodb::Logger::DUMP)
         << "An error occurred while creating dump context: " << check.errorMessage();
     return {check, 0};
   }
@@ -206,8 +205,8 @@ void extendBatch(arangodb::httpclient::SimpleHttpClient& client,
   TRI_ASSERT(batchId > 0);
 
   std::string url = "/_api/replication/batch/" + itoa(batchId) +
-                    "?serverId=" + std::to_string(clientId);
-  std::string const body = "{\"ttl\":300}";
+                    "?serverId=" + clientId;
+  std::string const body = "{\"ttl\":600}";
   if (!DBserver.empty()) {
     url += "&DBserver=" + DBserver;
   }
@@ -224,7 +223,7 @@ void endBatch(arangodb::httpclient::SimpleHttpClient& client,
   TRI_ASSERT(batchId > 0);
 
   std::string url = "/_api/replication/batch/" + itoa(batchId) +
-                    "?serverId=" + std::to_string(clientId);
+                    "?serverId=" + clientId;
   if (!DBserver.empty()) {
     url += "&DBserver=" + DBserver;
   }
@@ -247,7 +246,7 @@ void flushWal(arangodb::httpclient::SimpleHttpClient& client) {
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
     // TODO should we abort early here?
-    LOG_TOPIC(ERR, arangodb::Logger::DUMP)
+    LOG_TOPIC("9ad6e", ERR, arangodb::Logger::DUMP)
         << "Got invalid response from server when flushing WAL: " + check.errorMessage();
   }
 }
@@ -258,7 +257,7 @@ bool isIgnoredHiddenEnterpriseCollection(arangodb::DumpFeature::Options const& o
   if (!options.force && name[0] == '_') {
     if (strncmp(name.c_str(), "_local_", 7) == 0 ||
         strncmp(name.c_str(), "_from_", 6) == 0 || strncmp(name.c_str(), "_to_", 4) == 0) {
-      LOG_TOPIC(INFO, arangodb::Logger::DUMP)
+      LOG_TOPIC("d921a", INFO, arangodb::Logger::DUMP)
           << "Dump is ignoring collection '" << name
           << "'. Will be created via SmartGraphs of a full dump. If you want "
              "to "
@@ -331,7 +330,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
         client.request(arangodb::rest::RequestType::GET, url, nullptr, 0));
     auto check = ::checkHttpResponse(client, response);
     if (check.fail()) {
-      LOG_TOPIC(ERR, arangodb::Logger::DUMP)
+      LOG_TOPIC("ac972", ERR, arangodb::Logger::DUMP)
           << "An error occurred while dumping collection '" << name
           << "': " << check.errorMessage();
       return check;
@@ -431,7 +430,7 @@ arangodb::Result handleCollectionCluster(arangodb::httpclient::SimpleHttpClient&
     std::string DBserver = it.value[0].copyString();
 
     if (jobData.options.progress) {
-      LOG_TOPIC(INFO, arangodb::Logger::DUMP)
+      LOG_TOPIC("a27be", INFO, arangodb::Logger::DUMP)
           << "# Dumping shard '" << shardName << "' from DBserver '" << DBserver
           << "' ...";
     }
@@ -470,7 +469,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
 
   if (!dumpStructure) {
     if (jobData.options.progress) {
-      LOG_TOPIC(INFO, arangodb::Logger::DUMP)
+      LOG_TOPIC("a9ec1", INFO, arangodb::Logger::DUMP)
           << "# Dumping collection '" << jobData.name << "'...";
     }
 
@@ -482,7 +481,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
 
   // found a collection!
   if (jobData.options.progress) {
-    LOG_TOPIC(INFO, arangodb::Logger::DUMP)
+    LOG_TOPIC("5239e", INFO, arangodb::Logger::DUMP)
         << "# Dumping collection '" << jobData.name << "'...";
   }
   ++(jobData.stats.totalCollections);
@@ -657,7 +656,7 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
   if (1 == n) {
     _options.outputPath = positionals[0];
   } else if (1 < n) {
-    LOG_TOPIC(FATAL, arangodb::Logger::DUMP)
+    LOG_TOPIC("a62e0", FATAL, arangodb::Logger::DUMP)
         << "expecting at most one directory, got " +
                arangodb::basics::StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
@@ -670,14 +669,14 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
       boost::algorithm::clamp(_options.maxChunkSize, _options.initialChunkSize, ::MaxChunkSize);
 
   if (_options.tickEnd < _options.tickStart) {
-    LOG_TOPIC(FATAL, arangodb::Logger::DUMP)
+    LOG_TOPIC("25a0a", FATAL, arangodb::Logger::DUMP)
         << "invalid values for --tick-start or --tick-end";
     FATAL_ERROR_EXIT();
   }
   
   if (options->processingResult().touched("server.database") &&
       _options.allDatabases) {
-    LOG_TOPIC(FATAL, arangodb::Logger::DUMP)
+    LOG_TOPIC("17e2b", FATAL, arangodb::Logger::DUMP)
         << "cannot use --server.database and --all-databases at the same time";
     FATAL_ERROR_EXIT();
   }
@@ -693,7 +692,7 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
       boost::algorithm::clamp(_options.threadCount, 1,
                               4 * static_cast<uint32_t>(TRI_numberProcessors()));
   if (_options.threadCount != clamped) {
-    LOG_TOPIC(WARN, Logger::DUMP) << "capping --threads value to " << clamped;
+    LOG_TOPIC("0460e", WARN, Logger::DUMP) << "capping --threads value to " << clamped;
     _options.threadCount = clamped;
   }
 }
@@ -719,7 +718,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
       client.request(rest::RequestType::GET, url, nullptr, 0));
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
-    LOG_TOPIC(ERR, arangodb::Logger::DUMP)
+    LOG_TOPIC("cb826", ERR, arangodb::Logger::DUMP)
         << "An error occurred while fetching inventory: " << check.errorMessage();
     return check;
   }
@@ -843,7 +842,7 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
       client.request(rest::RequestType::GET, url, nullptr, 0));
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
-    LOG_TOPIC(ERR, arangodb::Logger::DUMP)
+    LOG_TOPIC("eb7f4", ERR, arangodb::Logger::DUMP)
         << "An error occurred while fetching inventory: " << check.errorMessage();
     return check;
   }
@@ -978,7 +977,7 @@ Result DumpFeature::storeDumpJson(VPackSlice const& body, std::string const& dbN
   if (tickString == "") {
     return ::ErrorMalformedJsonResponse;
   }
-  LOG_TOPIC(INFO, Logger::DUMP) << "Last tick provided by server is: " << tickString;
+  LOG_TOPIC("e4134", INFO, Logger::DUMP) << "Last tick provided by server is: " << tickString;
 
   try {
     VPackBuilder meta;
@@ -1054,7 +1053,7 @@ void DumpFeature::start() {
     maskings::MaskingsResult m = maskings::Maskings::fromFile(_options.maskingsFile);
 
     if (m.status != maskings::MaskingsResult::VALID) {
-      LOG_TOPIC(FATAL, Logger::CONFIG)
+      LOG_TOPIC("cabd7", FATAL, Logger::CONFIG)
           << m.message << " in maskings file '" << _options.maskingsFile << "'";
       FATAL_ERROR_EXIT();
     }
@@ -1064,8 +1063,11 @@ void DumpFeature::start() {
 
   _exitCode = EXIT_SUCCESS;
 
-  // generate a fake client id that we sent to the server
-  ::clientId = RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL));
+  // generate a fake client id that we send to the server
+  // TODO: convert this into a proper string "arangodump-<numeric id>"
+  // in the future, if we are sure the server is an ArangoDB 3.5 or
+  // higher
+  ::clientId = std::to_string(RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL)));
 
   double const start = TRI_microtime();
 
@@ -1075,18 +1077,18 @@ void DumpFeature::start() {
   if (_directory->status().fail()) {
     switch (_directory->status().errorNumber()) {
       case TRI_ERROR_FILE_EXISTS:
-        LOG_TOPIC(FATAL, Logger::DUMP) << "cannot write to output directory '"
+        LOG_TOPIC("efed0", FATAL, Logger::DUMP) << "cannot write to output directory '"
                                        << _options.outputPath << "'";
 
         break;
       case TRI_ERROR_CANNOT_OVERWRITE_FILE:
-        LOG_TOPIC(FATAL, Logger::DUMP)
+        LOG_TOPIC("bd7fe", FATAL, Logger::DUMP)
             << "output directory '" << _options.outputPath
             << "' already exists. use \"--overwrite true\" to "
                "overwrite data in it";
         break;
       default:
-        LOG_TOPIC(ERR, Logger::DUMP) << _directory->status().errorMessage();
+        LOG_TOPIC("8f227", ERR, Logger::DUMP) << _directory->status().errorMessage();
         break;
     }
     FATAL_ERROR_EXIT();
@@ -1105,19 +1107,19 @@ void DumpFeature::start() {
   std::tie(result, role) = _clientManager.getArangoIsCluster(*httpClient);
   _options.clusterMode = (role == "COORDINATOR");
   if (result.fail()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::DUMP)
+    LOG_TOPIC("8ba2f", FATAL, arangodb::Logger::DUMP)
         << "Error: could not detect ArangoDB instance type: " << result.errorMessage();
     FATAL_ERROR_EXIT();
   }
 
   if (role == "DBSERVER" || role == "PRIMARY") {
-    LOG_TOPIC(WARN, arangodb::Logger::DUMP) << "You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator. This is an unsupported operation!";
+    LOG_TOPIC("eeabc", WARN, arangodb::Logger::DUMP) << "You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator. This is an unsupported operation!";
   }
 
   // special cluster-mode parameter checks
   if (_options.clusterMode) {
     if (_options.tickStart != 0 || _options.tickEnd != 0) {
-      LOG_TOPIC(ERR, Logger::DUMP)
+      LOG_TOPIC("38f26", ERR, Logger::DUMP)
           << "Error: cannot use tick-start or tick-end on a cluster";
       FATAL_ERROR_EXIT();
     }
@@ -1127,11 +1129,11 @@ void DumpFeature::start() {
   _clientTaskQueue.spawnWorkers(_clientManager, _options.threadCount);
 
   if (_options.progress) {
-    LOG_TOPIC(INFO, Logger::DUMP)
+    LOG_TOPIC("f3a1f", INFO, Logger::DUMP)
         << "Connected to ArangoDB '" << client->endpoint() << "', database: '"
         << client->databaseName() << "', username: '" << client->username() << "'";
 
-    LOG_TOPIC(INFO, Logger::DUMP)
+    LOG_TOPIC("5e989", INFO, Logger::DUMP)
         << "Writing dump to output directory '" << _directory->path()
         << "' with " << _options.threadCount << " thread(s)";
   }
@@ -1152,7 +1154,7 @@ void DumpFeature::start() {
     for (auto const& db : databases) {
       if (_options.allDatabases) {
         // inject current database
-        LOG_TOPIC(INFO, Logger::DUMP) << "Dumping database '" << db << "'";
+        LOG_TOPIC("4af42", INFO, Logger::DUMP) << "Dumping database '" << db << "'";
         client->setDatabaseName(db);
         httpClient = _clientManager.getConnectedClient(_options.force, false, true);
   
@@ -1161,7 +1163,7 @@ void DumpFeature::start() {
   
         if (_directory->status().fail()) {
           res = _directory->status();
-          LOG_TOPIC(ERR, Logger::DUMP) << _directory->status().errorMessage();
+          LOG_TOPIC("94201", ERR, Logger::DUMP) << _directory->status().errorMessage();
           break;
         }
       }
@@ -1173,13 +1175,13 @@ void DumpFeature::start() {
           res = runClusterDump(*httpClient, db);
         }
       } catch (basics::Exception const& ex) {
-        LOG_TOPIC(ERR, Logger::DUMP) << "caught exception: " << ex.what();
+        LOG_TOPIC("771d0", ERR, Logger::DUMP) << "caught exception: " << ex.what();
         res = {ex.code(), ex.what()};
       } catch (std::exception const& ex) {
-        LOG_TOPIC(ERR, Logger::DUMP) << "caught exception: " << ex.what();
+        LOG_TOPIC("ad866", ERR, Logger::DUMP) << "caught exception: " << ex.what();
         res = {TRI_ERROR_INTERNAL, ex.what()};
       } catch (...) {
-        LOG_TOPIC(ERR, Logger::DUMP) << "caught unknown exception";
+        LOG_TOPIC("7d8c3", ERR, Logger::DUMP) << "caught unknown exception";
         res = {TRI_ERROR_INTERNAL};
       }
 
@@ -1190,7 +1192,7 @@ void DumpFeature::start() {
   }
   
   if (res.fail()) {
-    LOG_TOPIC(ERR, Logger::DUMP) << "An error occurred: " + res.errorMessage();
+    LOG_TOPIC("f7ff5", ERR, Logger::DUMP) << "An error occurred: " + res.errorMessage();
     _exitCode = EXIT_FAILURE;
   }
 
@@ -1198,13 +1200,13 @@ void DumpFeature::start() {
     double totalTime = TRI_microtime() - start;
 
     if (_options.dumpData) {
-      LOG_TOPIC(INFO, Logger::DUMP)
+      LOG_TOPIC("66c0e", INFO, Logger::DUMP)
           << "Processed " << _stats.totalCollections.load()
           << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s,"
           << " wrote " << _stats.totalWritten.load() << " byte(s) into datafiles, sent "
           << _stats.totalBatches.load() << " batch(es)";
     } else {
-      LOG_TOPIC(INFO, Logger::DUMP)
+      LOG_TOPIC("aaa17", INFO, Logger::DUMP)
           << "Processed " << _stats.totalCollections.load()
           << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s";
     }

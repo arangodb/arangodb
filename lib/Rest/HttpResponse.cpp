@@ -44,18 +44,14 @@ using namespace arangodb::basics;
 
 bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 
-HttpResponse::HttpResponse(ResponseCode code)
-    : HttpResponse(code, new StringBuffer(false)) {}
-
 HttpResponse::HttpResponse(ResponseCode code, basics::StringBuffer* buffer)
     : GeneralResponse(code), _isHeadResponse(false), _body(buffer), _bodySize(0) {
-  TRI_ASSERT(buffer);
+  TRI_ASSERT(buffer != nullptr);
   _generateBody = false;
   _contentType = ContentType::TEXT;
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
 
-  TRI_ASSERT(_body != nullptr);
-  if (_body->c_str() == nullptr) {
+  if (_body == nullptr || _body->c_str() == nullptr) {
     // no buffer could be reserved. out of memory!
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }

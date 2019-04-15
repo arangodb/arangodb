@@ -175,7 +175,7 @@ Result checkTransactionResult(TRI_voc_tid_t desiredTid,
                         VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage,
                                                          msg));
   }
-  LOG_TOPIC(DEBUG, Logger::TRANSACTIONS)
+  LOG_TOPIC("fb343", DEBUG, Logger::TRANSACTIONS)
       << " failed to begin transaction on " << result.endpoint;
 
   return res.reset(TRI_ERROR_TRANSACTION_INTERNAL);  // unspecified error
@@ -196,11 +196,11 @@ Result checkTransactionResult(TRI_voc_tid_t desiredTid,
         if (cc) {
           if (cc->followers()->remove(follower)) {
             // TODO: what happens if a server is re-added during a transaction ?
-            LOG_TOPIC(WARN, Logger::REPLICATION)
+            LOG_TOPIC("ea508", WARN, Logger::REPLICATION)
             << "synchronous replication: dropping follower " << follower
             << " for shard " << tc.collectionName();
           } else {
-            LOG_TOPIC(ERR, Logger::REPLICATION)
+            LOG_TOPIC("1b077", ERR, Logger::REPLICATION)
             << "synchronous replication: could not drop follower "
             << follower << " for shard " << tc.collectionName();
             res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
@@ -252,7 +252,7 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
   std::shared_ptr<std::string> body;
   std::vector<ClusterCommRequest> requests;
   for (std::string const& server : state.knownServers()) {
-    LOG_TOPIC(DEBUG, Logger::TRANSACTIONS) << "Leader "
+    LOG_TOPIC("d8457", DEBUG, Logger::TRANSACTIONS) << "Leader "
     << transaction::statusString(status) << " on " << server;
     requests.emplace_back("server:" + server, rtype, path, body);
   }
@@ -286,11 +286,11 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
           if (cc) {
             if (cc->followers()->remove(follower)) {
               // TODO: what happens if a server is re-added during a transaction ?
-              LOG_TOPIC(WARN, Logger::REPLICATION)
+              LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
               << "synchronous replication: dropping follower " << follower
               << " for shard " << tc.collectionName();
             } else {
-              LOG_TOPIC(ERR, Logger::REPLICATION)
+              LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
               << "synchronous replication: could not drop follower "
               << follower << " for shard " << tc.collectionName();
               res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
@@ -391,15 +391,15 @@ Result ClusterTrxMethods::beginTransactionOnFollowers(transaction::Methods& trx,
       Result r =
           ::checkTransactionResult(tid, transaction::Status::RUNNING, requests[i].result);
       if (r.fail()) {
-        LOG_TOPIC(INFO, Logger::REPLICATION)
+        LOG_TOPIC("217e3", INFO, Logger::REPLICATION)
                   << "dropping follower because it did not start trx "
                   << state.id() << ", error: '" << r.errorMessage() << "'";
         if (info.remove(followers[i])) {
           // TODO: what happens if a server is re-added during a transaction ?
-          LOG_TOPIC(WARN, Logger::REPLICATION)
+          LOG_TOPIC("c70a6", WARN, Logger::REPLICATION)
               << "synchronous replication: dropping follower " << followers[i];
         } else {
-          LOG_TOPIC(ERR, Logger::REPLICATION)
+          LOG_TOPIC("fe8e1", ERR, Logger::REPLICATION)
               << "synchronous replication: could not drop follower " << followers[i];
           res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
         }
@@ -435,20 +435,18 @@ void ClusterTrxMethods::addTransactionHeader(transaction::Methods const& trx,
 
   const bool addBegin = !state.knowsServer(server);
   if (addBegin) {
-    if (state.isCoordinator()) {
-      TRI_ASSERT(state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+    if (state.isCoordinator() &&
+        state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
       return;  // do not add header to servers without a snippet
-    } else if (transaction::isLeaderTransactionId(state.id())) {
-      TRI_ASSERT(state.isDBServer());
-      transaction::BuilderLeaser builder(trx.transactionContextPtr());
-      ::buildTransactionBody(state, server, *builder.get());
-      headers.emplace(StaticStrings::TransactionBody, builder->toJson());
-      headers.emplace(arangodb::StaticStrings::TransactionId,
-                      std::to_string(tidPlus).append(" begin"));
-      state.addKnownServer(server);  // remember server
-    } else {                         // broken logic
-      TRI_ASSERT(false);
     }
+    TRI_ASSERT(state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
+               transaction::isLeaderTransactionId(state.id()));
+    transaction::BuilderLeaser builder(trx.transactionContextPtr());
+    ::buildTransactionBody(state, server, *builder.get());
+    headers.emplace(StaticStrings::TransactionBody, builder->toJson());
+    headers.emplace(arangodb::StaticStrings::TransactionId,
+                    std::to_string(tidPlus).append(" begin"));
+    state.addKnownServer(server);  // remember server
   } else {
     headers.emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus));
   }
@@ -467,7 +465,16 @@ void ClusterTrxMethods::addAQLTransactionHeader(transaction::Methods const& trx,
   std::string value = std::to_string(state.id() + 1);
   const bool addBegin = !state.knowsServer(server);
   if (addBegin) {
-    value.append(" aql");          // This is a single AQL query
+    if (state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
+      value.append(" aql"); // This is a single AQL query
+    } else if (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+      transaction::BuilderLeaser builder(trx.transactionContextPtr());
+      ::buildTransactionBody(state, server, *builder.get());
+      headers.emplace(StaticStrings::TransactionBody, builder->toJson());
+      value.append(" begin"); // part of a managed transaction
+    } else {
+      TRI_ASSERT(false);
+    }
     state.addKnownServer(server);  // remember server
   }
   headers.emplace(arangodb::StaticStrings::TransactionId, std::move(value));

@@ -46,10 +46,6 @@ class CollectNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class RedundantCalculationsReplacer;
-  friend class SortedCollectBlock;
-  friend class HashedCollectBlock;
-  friend class DistinctCollectBlock;
-  friend class CountCollectBlock;
 
  public:
   CollectNode(ExecutionPlan* plan, size_t id, CollectOptions const& options,
@@ -107,29 +103,31 @@ class CollectNode : public ExecutionNode {
   }
 
   /// @brief getOptions
-  CollectOptions const& getOptions() const { return _options; }
-
-  /// @brief getOptions
   CollectOptions& getOptions() { return _options; }
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+
+  /// @brief calculate the expression register
+  void calcExpressionRegister(RegisterId& expressionRegister,
+                              std::unordered_set<RegisterId>& writeableOutputRegisters) const;
 
   /// @brief calculate the collect register
   void calcCollectRegister(RegisterId& collectRegister,
                            std::unordered_set<RegisterId>& writeableOutputRegisters) const;
 
   /// @brief calculate the group registers
-  void calcGroupRegisters(
-      std::vector<std::pair<RegisterId, RegisterId>>& groupRegisters,
-      std::unordered_set<RegisterId>& readableInputRegisters,
-      std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+  void calcGroupRegisters(std::vector<std::pair<RegisterId, RegisterId>>& groupRegisters,
+                          std::unordered_set<RegisterId>& readableInputRegisters,
+                          std::unordered_set<RegisterId>& writeableOutputRegisters) const;
 
   /// @brief calculate the aggregate registers
-  void calcAggregateRegisters(
-      std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
-      std::unordered_set<RegisterId>& readableInputRegisters,
-      std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+  void calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
+                              std::unordered_set<RegisterId>& readableInputRegisters,
+                              std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+
+  void calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
+  void calcVariableNames(std::vector<std::pair<std::string, RegisterId>>& variableNames) const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

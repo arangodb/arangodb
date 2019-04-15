@@ -157,7 +157,7 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
   if (details.isArray()) {
     for (VPackSlice const& detail : VPackArrayIterator(details)) {
       if (detail.isString()) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << detail.copyString();
+        LOG_TOPIC("e5a29", WARN, arangodb::Logger::FIXME) << "" << detail.copyString();
       }
     }
   }

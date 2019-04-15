@@ -742,7 +742,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
     int hash = o->GetIdentityHash();
 
     if (seenHashes.find(hash) != seenHashes.end()) {
-      // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found hash " << hash;
+      // LOG_TOPIC("a6d3e", TRACE, arangodb::Logger::FIXME) << "found hash " << hash;
 
       for (auto it : seenObjects) {
         if (parameter->StrictEquals(it)) {
@@ -1976,13 +1976,13 @@ void TRI_ExpireFoxxQueueDatabaseCache(TRI_vocbase_t* vocbase) {
 
     auto hash = GetKeySpace(vocbase, name);
     if (hash == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find keyspace");
     }
 
     result = hash->keySet(key, 0);
   }
   if (!result) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to set key");
   }
 }
 

@@ -35,6 +35,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -54,6 +55,7 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
+#include "V8Server/V8DealerFeature.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
@@ -71,29 +73,33 @@
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct IResearchFilterSetup {
+struct IResearchFilterInSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchFilterSetup(): engine(server), server(nullptr, nullptr) {
+  IResearchFilterInSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
     arangodb::tests::init();
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
+
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
     features.emplace_back(new arangodb::AuthenticationFeature(server), true);
     features.emplace_back(new arangodb::DatabaseFeature(server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ViewTypesFeature(server), false); // required for IResearchFeature
     features.emplace_back(new arangodb::AqlFeature(server), true);
     features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
@@ -104,6 +110,11 @@ struct IResearchFilterSetup {
       features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
+    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
+    arangodb::application_features::ApplicationServer::server->addFeature(
+      new arangodb::ClusterFeature(server)
+    );
+
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
     }
@@ -111,6 +122,12 @@ struct IResearchFilterSetup {
     for (auto& f : features) {
       f.first->prepare();
     }
+
+    auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature
+    >("Database");
+    dbFeature->loadDatabases(databases->slice());
 
     for (auto& f : features) {
       if (f.second) {
@@ -146,17 +163,20 @@ struct IResearchFilterSetup {
         return params[0];
     }});
 
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    TRI_vocbase_t* vocbase;
+
+    dbFeature->createDatabase(1, "testVocbase", vocbase); // required for IResearchAnalyzerFeature::emplace(...)
+    analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
   }
 
-  ~IResearchFilterSetup() {
-    system.reset(); // destroy before reseting the 'ENGINE'
+  ~IResearchFilterInSetup() {
     arangodb::AqlFeature(server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f : features) {
@@ -170,6 +190,7 @@ struct IResearchFilterSetup {
     }
 
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 }; // IResearchFilterSetup
 
@@ -182,7 +203,7 @@ struct IResearchFilterSetup {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_CASE("IResearchFilterTestIn", "[iresearch][iresearch-filter]") {
-  IResearchFilterSetup s;
+  IResearchFilterInSetup s;
   UNUSED(s);
 
 SECTION("BinaryIn") {
@@ -566,7 +587,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -674,7 +695,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -782,7 +803,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -889,7 +910,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -997,7 +1018,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -1100,7 +1121,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2438,7 +2459,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2552,7 +2573,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2666,7 +2687,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2780,7 +2801,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2895,7 +2916,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -3008,7 +3029,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -3114,7 +3135,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);

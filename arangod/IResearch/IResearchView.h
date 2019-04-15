@@ -127,7 +127,7 @@ class IResearchView final: public arangodb::LogicalView {
   ///        also track 'cid' via the persisted list of tracked collection IDs
   /// @return the 'link' was newly added to the IResearch View
   //////////////////////////////////////////////////////////////////////////////
-  bool link(AsyncLinkPtr const& link);
+  arangodb::Result link(AsyncLinkPtr const& link);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link
@@ -176,6 +176,13 @@ class IResearchView final: public arangodb::LogicalView {
   /// @return 'visitor' success
   ///////////////////////////////////////////////////////////////////////////////
   bool visitCollections(CollectionVisitor const& visitor) const override;
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @return primary sorting order of a view, empty -> use system order
+  ///////////////////////////////////////////////////////////////////////////////
+  IResearchViewMeta::Sort const& primarySort() const noexcept {
+    return _meta._primarySort;
+  }
 
  protected:
 

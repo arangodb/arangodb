@@ -1,5 +1,5 @@
 Log Levels
-----------
+==========
 
 In this section we define and describe the meaning of the log levels
 in ArangoDB's log messages. The log levels are, from most to least severe:

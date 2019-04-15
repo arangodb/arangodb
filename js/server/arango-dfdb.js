@@ -47,7 +47,7 @@ function UnloadCollection (collection) {
     if (++tries >= 20) {
       break;
     }
-    if (tries == 1) {
+    if (tries === 1) {
       printf("Trying to unload collection '%s', current status: %s\n", collection.name(), collection.status());
     }
 
@@ -465,7 +465,7 @@ function CheckCollection (collection, issues, details) {
   printf("  identifier: %s\n", collection._id);
   printf("\n");
 
-  var datafiles = collection.datafiles();
+  let datafiles = collection.datafiles();
 
   printf("Datafiles\n");
   printf("  # of journals: %d\n", datafiles.journals.length);
@@ -473,15 +473,15 @@ function CheckCollection (collection, issues, details) {
   printf("  # of datafiles: %d\n", datafiles.datafiles.length);
   printf("\n");
 
-  for (var i = 0;  i < datafiles.journals.length;  ++i) {
+  for (let i = 0;  i < datafiles.journals.length;  ++i) {
     CheckDatafile(collection, "journal", datafiles.journals[i], issues, details);
   }
 
-  for (var i = 0;  i < datafiles.datafiles.length;  ++i) {
+  for (let i = 0;  i < datafiles.datafiles.length;  ++i) {
     CheckDatafile(collection, "datafile", datafiles.datafiles[i], issues, details);
   }
 
-  for (var i = 0;  i < datafiles.compactors.length;  ++i) {
+  for (let i = 0;  i < datafiles.compactors.length;  ++i) {
     CheckDatafile(collection, "compactor", datafiles.compactors[i], issues, details);
   }
 }
@@ -524,7 +524,7 @@ function main (argv) {
     return s;
   };
 
-  if (databases.length == 0) {
+  if (databases.length === 0) {
     printf("No databases available. Exiting\n");
     return;
   }
@@ -542,12 +542,12 @@ function main (argv) {
   while (true) {
     line = console.getline();
 
-    if (line == "") {
+    if (line === "") {
       printf("Exiting. Please wait.\n");
       return;
     }
     else {
-      var l = parseInt(line);
+      let l = parseInt(line);
 
       if (l < 0 || l >= databases.length || l === null || l === undefined || isNaN(l)) {
         printf("Please select a number between 0 and %d: ", databases.length - 1);
@@ -563,7 +563,7 @@ function main (argv) {
 
 
   var collections = internal.db._collections();
-  if (collections.length == 0) {
+  if (collections.length === 0) {
     printf("No collections available. Exiting\n");
     return;
   }
@@ -587,7 +587,7 @@ function main (argv) {
   while (true) {
     line = console.getline();
 
-    if (line == "") {
+    if (line === "") {
       printf("Exiting. Please wait.\n");
       return;
     }
@@ -600,7 +600,7 @@ function main (argv) {
       break;
     }
     else {
-      var l = parseInt(line);
+      let l = parseInt(line);
 
       if (l < 0 || l >= collections.length || l === null || l === undefined || isNaN(l)) {
         printf("Please select a number between 0 and %d: ", collections.length - 1);

@@ -511,7 +511,7 @@ void ConsoleFeature::startPager() {
     _toPager = popen(_pagerCommand.c_str(), "w");
 
     if (_toPager == nullptr) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("25033", ERR, arangodb::Logger::FIXME)
           << "popen() for pager failed! Using stdout instead!";
       _toPager = stdout;
       _pager = false;

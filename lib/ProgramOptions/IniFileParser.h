@@ -116,7 +116,7 @@ class IniFileParser {
           include += ".conf";
         }
         if (_seen.find(include) != _seen.end()) {
-          LOG_TOPIC(FATAL, Logger::CONFIG)
+          LOG_TOPIC("cc815", FATAL, Logger::CONFIG)
               << "recursive include of file '" << include << "'";
           FATAL_ERROR_EXIT();
         }
@@ -128,7 +128,7 @@ class IniFileParser {
           include = basics::FileUtils::buildFilename(dn, include);
         }
 
-        LOG_TOPIC(DEBUG, Logger::CONFIG) << "reading include file '" << include << "'";
+        LOG_TOPIC("36d6b", DEBUG, Logger::CONFIG) << "reading include file '" << include << "'";
 
         parse(include, false);
       } else if (std::regex_match(line, match, _matchers.assignment)) {

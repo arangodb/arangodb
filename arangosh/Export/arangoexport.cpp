@@ -77,12 +77,12 @@ int main(int argc, char* argv[]) {
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::STARTUP)
+      LOG_TOPIC("c2ae7", ERR, Logger::STARTUP)
           << "arangoexport terminated because of an unhandled exception: "
           << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
-      LOG_TOPIC(ERR, Logger::STARTUP)
+      LOG_TOPIC("dce1f", ERR, Logger::STARTUP)
           << "arangoexport terminated because of an unhandled exception of "
              "unknown type";
       ret = EXIT_FAILURE;

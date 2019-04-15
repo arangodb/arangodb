@@ -93,7 +93,7 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& re
 
       if (buffer) {
         // std::string script(buffer->c_str(), buffer->length());
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("98afd", ERR, arangodb::Logger::FIXME)
             << details << " " << Logger::CHARS(buffer->c_str(), buffer->length());
         details += "\nSee log for more details";
       }
@@ -119,7 +119,7 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& re
     }
     if (buffer) {
       // std::string script(buffer->c_str(), buffer->length());
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("477ee", ERR, arangodb::Logger::FIXME)
           << msg << " " << Logger::CHARS(buffer->c_str(), buffer->length());
       msg += " See log for details";
     }

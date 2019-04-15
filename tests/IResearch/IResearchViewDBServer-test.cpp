@@ -52,6 +52,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
@@ -92,7 +93,8 @@ struct IResearchViewDBServerSetup {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // suppress INFO {cluster} Starting up with role PRIMARY
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::WARN);
@@ -121,6 +123,7 @@ struct IResearchViewDBServerSetup {
     buildFeatureEntry(new arangodb::FlushFeature(server), false); // do not start the thread
     buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false); // required for TRI_vocbase_t instantiation
     buildFeatureEntry(new arangodb::ShardingFeature(server), false); // required for TRI_vocbase_t instantiation
+    buildFeatureEntry(new arangodb::SystemDatabaseFeature(server), true); // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::ViewTypesFeature(server), false); // required for TRI_vocbase_t::createView(...)
     buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(server), false); // required for IResearchLinkMeta::init(...)
     buildFeatureEntry(new arangodb::iresearch::IResearchFeature(server), false); // required for instantiating IResearchView*
@@ -144,6 +147,12 @@ struct IResearchViewDBServerSetup {
         f->forceDisable();
       }
     }
+
+    auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature
+    >("Database");
+    dbFeature->loadDatabases(databases->slice());
 
     for (auto& f : orderedFeatures) {
       if (features.at(f->name()).second) {
@@ -490,7 +499,7 @@ SECTION("test_open") {
 
     static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
     CHECK((true == impl->visitCollections(visitor)));
-    CHECK((true == impl->link(asyncLinkPtr)));
+    CHECK((true == impl->link(asyncLinkPtr).ok()));
     CHECK((false == impl->visitCollections(visitor)));
     wiew->open();
   }
@@ -643,11 +652,10 @@ SECTION("test_query") {
       CHECK((trx.begin().ok()));
 
       arangodb::ManagedDocumentResult inserted;
-      TRI_voc_tick_t tick;
       arangodb::OperationOptions options;
       for (size_t i = 1; i <= 12; ++i) {
         auto doc = arangodb::velocypack::Parser::fromJson(std::string("{ \"key\": ") + std::to_string(i) + " }");
-        logicalCollection->insert(&trx, doc->slice(), inserted, options, tick, false);
+        logicalCollection->insert(&trx, doc->slice(), inserted, options, false);
       }
 
       CHECK((trx.commit().ok()));
@@ -683,11 +691,10 @@ SECTION("test_query") {
       CHECK((trx.begin().ok()));
 
       arangodb::ManagedDocumentResult inserted;
-      TRI_voc_tick_t tick;
       arangodb::OperationOptions options;
       for (size_t i = 13; i <= 24; ++i) {
         auto doc = arangodb::velocypack::Parser::fromJson(std::string("{ \"key\": ") + std::to_string(i) + " }");
-        logicalCollection->insert(&trx, doc->slice(), inserted, options, tick, false);
+        logicalCollection->insert(&trx, doc->slice(), inserted, options, false);
       }
 
       CHECK(trx.commit().ok());
@@ -820,7 +827,7 @@ SECTION("test_rename") {
       Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col): IResearchLink(id, col) {}
     } link(42, *logicalCollection);
     auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
-    CHECK((true == impl->link(asyncLinkPtr)));
+    CHECK((true == impl->link(asyncLinkPtr).ok()));
   }
 
   // rename non-empty
@@ -842,7 +849,7 @@ SECTION("test_rename") {
       Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col): IResearchLink(id, col) {}
     } link(42, *logicalCollection);
     auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
-    CHECK((true == impl->link(asyncLinkPtr)));
+    CHECK((true == impl->link(asyncLinkPtr).ok()));
 
     {
       arangodb::velocypack::Builder builder;
@@ -910,7 +917,7 @@ SECTION("test_toVelocyPack") {
     wiew->properties(builder, true, false);
     builder.close();
     auto slice = builder.slice();
-    CHECK((12U == slice.length()));
+    CHECK((13U == slice.length()));
     CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     CHECK((slice.hasKey("id") && slice.get("id").isString() && std::string("2") == slice.get("id").copyString()));
     CHECK((slice.hasKey("name") && slice.get("name").isString() && std::string("testView") == slice.get("name").copyString()));
@@ -1108,7 +1115,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
@@ -1128,7 +1135,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1149,7 +1156,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1165,7 +1172,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((16U == slice.length()));
+      CHECK((17U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1198,7 +1205,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
@@ -1218,7 +1225,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1238,7 +1245,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1254,7 +1261,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((16U == slice.length()));
+      CHECK((17U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1296,7 +1303,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1316,7 +1323,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1332,7 +1339,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1348,7 +1355,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((16U == slice.length()));
+      CHECK((17U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1393,7 +1400,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1413,7 +1420,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1429,7 +1436,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1445,7 +1452,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((16U == slice.length()));
+      CHECK((17U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 2 == slice.get("collections").length())); // list of links is not modified after link drop
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1492,7 +1499,7 @@ SECTION("test_visitCollections") {
       Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col): IResearchLink(id, col) {}
     } link(42, *logicalCollection);
     auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
-    CHECK((true == impl->link(asyncLinkPtr)));
+    CHECK((true == impl->link(asyncLinkPtr).ok()));
 
     std::set<TRI_voc_cid_t> cids = { logicalCollection->id() };
     static auto visitor = [&cids](TRI_voc_cid_t cid)->bool { return 1 == cids.erase(cid); };

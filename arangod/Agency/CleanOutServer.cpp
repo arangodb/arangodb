@@ -50,7 +50,7 @@ CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
+    LOG_TOPIC("38962", ERR, Logger::SUPERVISION) << err.str();
     finish(tmp_server.first, "", false, err.str());
     _status = FAILED;
   }
@@ -65,8 +65,8 @@ JOB_STATUS CleanOutServer::status() {
     return _status;
   }
 
-  Node::Children const todos = _snapshot.hasAsChildren(toDoPrefix).first;
-  Node::Children const pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  Node::Children const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
   size_t found = 0;
 
   for (auto const& subJob : todos) {
@@ -94,7 +94,7 @@ JOB_STATUS CleanOutServer::status() {
     return PENDING;
   }
 
-  Node::Children const failed = _snapshot.hasAsChildren(failedPrefix).first;
+  Node::Children const& failed = _snapshot.hasAsChildren(failedPrefix).first;
   size_t failedFound = 0;
   for (auto const& subJob : failed) {
     if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
@@ -136,21 +136,21 @@ JOB_STATUS CleanOutServer::status() {
   }
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, reportTrx);
+  write_ret_t res = singleWriteTransaction(_agent, reportTrx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0] != 0) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("dd49e", DEBUG, Logger::SUPERVISION)
         << "Have reported " << _server << " in /Target/CleanedServers";
     return FINISHED;
   }
 
-  LOG_TOPIC(ERR, Logger::SUPERVISION)
+  LOG_TOPIC("21acb", ERR, Logger::SUPERVISION)
       << "Failed to report " << _server << " in /Target/CleanedServers";
   return FAILED;
 }
 
 bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("8a94c", DEBUG, Logger::SUPERVISION)
       << "Todo: Clean out server " + _server + " for shrinkage";
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
@@ -184,7 +184,7 @@ bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
     return true;
   }
 
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
@@ -192,7 +192,7 @@ bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
 
   _status = NOTFOUND;
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
+  LOG_TOPIC("525fa", INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
   return false;
 }
 
@@ -208,7 +208,7 @@ bool CleanOutServer::start(bool& aborts) {
 
   // Check that the server is not locked:
   if (_snapshot.has(blockedServersPrefix + _server)) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("7a453", DEBUG, Logger::SUPERVISION)
         << "server " << _server
         << " is currently locked, not starting CleanOutServer job " << _jobId;
     return false;
@@ -217,7 +217,7 @@ bool CleanOutServer::start(bool& aborts) {
   // Check that the server is in state "GOOD":
   std::string health = checkServerHealth(_snapshot, _server);
   if (health != "GOOD") {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("a7580", DEBUG, Logger::SUPERVISION)
         << "server " << _server << " is currently " << health
         << ", not starting CleanOutServer job " << _jobId;
     return false;
@@ -225,7 +225,7 @@ bool CleanOutServer::start(bool& aborts) {
 
   // Check that _to is not in `Target/CleanedServers`:
   VPackBuilder cleanedServersBuilder;
-  auto cleanedServersNode = _snapshot.hasAsNode(cleanedPrefix);
+  auto const& cleanedServersNode = _snapshot.hasAsNode(cleanedPrefix);
   if (cleanedServersNode.second) {
     cleanedServersNode.first.toBuilder(cleanedServersBuilder);
   } else {
@@ -248,7 +248,7 @@ bool CleanOutServer::start(bool& aborts) {
   //   so that hasAsNode does not generate a warning log message)
   VPackBuilder failedServersBuilder;
   if (_snapshot.has(failedServersPrefix)) {
-    auto failedServersNode = _snapshot.hasAsNode(failedServersPrefix);
+    auto const& failedServersNode = _snapshot.hasAsNode(failedServersPrefix);
     if (failedServersNode.second) {
       failedServersNode.first.toBuilder(failedServersBuilder);
     } else {
@@ -288,7 +288,7 @@ bool CleanOutServer::start(bool& aborts) {
       if (!tmp_todo.second) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
-        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
+        LOG_TOPIC("1e9a9", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
                                                     " from agency snapshot";
         return false;
       }
@@ -298,7 +298,7 @@ bool CleanOutServer::start(bool& aborts) {
       } catch (std::exception const& e) {
         // Just in case, this is never going to happen, since when _jb is
         // set, then the current job is stored under ToDo.
-        LOG_TOPIC(WARN, Logger::SUPERVISION)
+        LOG_TOPIC("7b79a", WARN, Logger::SUPERVISION)
             << e.what() << ": " << __FILE__ << ":" << __LINE__;
         return false;
       }
@@ -344,15 +344,15 @@ bool CleanOutServer::start(bool& aborts) {
   }  // array for transaction done
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, *pending);
+  write_ret_t res = singleWriteTransaction(_agent, *pending, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Pending: Clean out server " + _server;
+    LOG_TOPIC("e341c", DEBUG, Logger::SUPERVISION) << "Pending: Clean out server " + _server;
 
     return true;
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("3a348", INFO, Logger::SUPERVISION)
       << "Precondition failed for starting CleanOutServer job " + _jobId;
 
   return false;
@@ -408,7 +408,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
           } else {
             // Intentionally do nothing. RemoveServer will remove the failed follower
-            LOG_TOPIC(DEBUG, Logger::SUPERVISION) <<
+            LOG_TOPIC("22ca1", DEBUG, Logger::SUPERVISION) <<
               "Do nothing for cleanout of follower of the satellite collection " << collection.hasAsString("id").first;
             continue ;
           }
@@ -425,7 +425,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           // Among those a random destination:
           std::string toServer;
           if (serversCopy.empty()) {
-            LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+            LOG_TOPIC("3c316", DEBUG, Logger::SUPERVISION)
                 << "No servers remain as target for MoveShard";
             return false;
           }
@@ -452,7 +452,7 @@ bool CleanOutServer::checkFeasibility() {
 
   // Minimum 1 DB server must remain:
   if (availServers.size() == 1) {
-    LOG_TOPIC(ERR, Logger::SUPERVISION)
+    LOG_TOPIC("ac9b8", ERR, Logger::SUPERVISION)
         << "DB server " << _server << " is the last standing db server.";
     return false;
   }
@@ -493,7 +493,7 @@ bool CleanOutServer::checkFeasibility() {
       factors << std::to_string(factor) << " ";
     }
 
-    LOG_TOPIC(ERR, Logger::SUPERVISION)
+    LOG_TOPIC("e598a", ERR, Logger::SUPERVISION)
         << "Cannot accomodate shards " << collections.str() << "with replication factors "
         << factors.str() << "after cleaning out server " << _server;
     return false;

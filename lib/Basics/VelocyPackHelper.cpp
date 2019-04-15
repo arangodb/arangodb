@@ -157,12 +157,12 @@ static int8_t const typeWeights[256] = {
 // custom types are encountered during Slice.toJson() and family
 struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
   void dump(VPackSlice const&, VPackDumper* dumper, VPackSlice const&) override {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("723df", WARN, arangodb::Logger::FIXME)
         << "DefaultCustomTypeHandler called";
     dumper->appendString("hello from CustomTypeHandler");
   }
   std::string toString(VPackSlice const&, VPackOptions const*, VPackSlice const&) override {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("a01a7", WARN, arangodb::Logger::FIXME)
         << "DefaultCustomTypeHandler called";
     return "hello from CustomTypeHandler";
   }
@@ -194,7 +194,7 @@ struct SystemAttributeExcludeHandler final : public VPackAttributeExcludeHandler
 
 /// @brief static initializer for all VPack values
 void VelocyPackHelper::initialize() {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "initializing vpack";
+  LOG_TOPIC("bbce8", TRACE, arangodb::Logger::FIXME) << "initializing vpack";
 
   // initialize attribute translator
   ::translator.reset(new VPackAttributeTranslator);
@@ -644,7 +644,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
 
   if (fd < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("35198", ERR, arangodb::Logger::FIXME)
         << "cannot create json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     return false;
   }
@@ -652,19 +652,19 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
   if (!PrintVelocyPack(fd, slice, true)) {
     TRI_CLOSE(fd);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("549f4", ERR, arangodb::Logger::FIXME)
         << "cannot write to json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp.c_str());
     return false;
   }
 
   if (syncFile) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "syncing tmp file '" << tmp << "'";
+    LOG_TOPIC("0acab", TRACE, arangodb::Logger::FIXME) << "syncing tmp file '" << tmp << "'";
 
     if (!TRI_fsync(fd)) {
       TRI_CLOSE(fd);
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("fd628", ERR, arangodb::Logger::FIXME)
           << "cannot sync saved json '" << tmp << "': " << TRI_LAST_ERROR_STR;
       TRI_UnlinkFile(tmp.c_str());
       return false;
@@ -675,7 +675,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
 
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("3f835", ERR, arangodb::Logger::FIXME)
         << "cannot close saved file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp.c_str());
     return false;
@@ -685,7 +685,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("7f5c9", ERR, arangodb::Logger::FIXME)
         << "cannot rename saved file '" << tmp << "' to '" << filename
         << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp.c_str());
@@ -911,6 +911,7 @@ void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
   }
 #else
   // other platforms support unaligned writes
+  // cppcheck-suppress *
   *reinterpret_cast<double*>(p + 1) = value;
 #endif
 }

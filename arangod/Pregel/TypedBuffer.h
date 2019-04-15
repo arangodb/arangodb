@@ -142,9 +142,9 @@ class MappedFileBuffer : public TypedBuffer<T> {
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_set_errno(res);
 
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("1e540", ERR, arangodb::Logger::FIXME)
           << "cannot memory map anonymous region: " << TRI_last_error();
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("342b6", ERR, arangodb::Logger::FIXME)
           << "The database directory might reside on a shared folder "
              "(VirtualBox, VMWare) or an NFS "
              "mounted volume which does not allow memory mapped files.";
@@ -183,10 +183,10 @@ class MappedFileBuffer : public TypedBuffer<T> {
       // remove empty file
       TRI_UnlinkFile(filename.c_str());
 
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("54dfb", ERR, arangodb::Logger::FIXME)
           << "cannot memory map file '" << filename << "': '"
           << TRI_errno_string(res) << "'";
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("1a034", ERR, arangodb::Logger::FIXME)
           << "The database directory might reside on a shared folder "
              "(VirtualBox, VMWare) or an NFS-mounted volume which does not "
              "allow memory mapped files.";
@@ -230,13 +230,13 @@ class MappedFileBuffer : public TypedBuffer<T> {
     int res = TRI_UNMMFile(this->_ptr, _mappedSize, _fd, &_mmHandle);
     if (res != TRI_ERROR_NO_ERROR) {
       // leave file open here as it will still be memory-mapped
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "munmap failed with: " << res;
+      LOG_TOPIC("ab7be", ERR, arangodb::Logger::FIXME) << "munmap failed with: " << res;
     }
     if (isPhysical()) {
       TRI_ASSERT(_fd >= 0);
       int res = TRI_CLOSE(_fd);
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("00e1d", ERR, arangodb::Logger::FIXME)
             << "unable to close pregel mapped file '" << _filename << "': " << res;
       }
     }
@@ -275,11 +275,11 @@ class MappedFileBuffer : public TypedBuffer<T> {
       return;
     }
     if (errno == ENOMEM) {
-      LOG_TOPIC(DEBUG, Logger::MMAP) << "out of memory in mmap";
+      LOG_TOPIC("eba80", DEBUG, Logger::MMAP) << "out of memory in mmap";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY_MMAP);
     } else {
       // preserve errno value while we're logging
-      LOG_TOPIC(WARN, Logger::MMAP) << "memory-mapping failed";
+      LOG_TOPIC("47e98", WARN, Logger::MMAP) << "memory-mapping failed";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
     }
 #else
@@ -287,7 +287,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
     if (_size < newSize || newSize * sizeof(T) <= _mappedSize) {
       _size = newSize;
     } else {
-      LOG_TOPIC(ERR, Logger::MMAP)
+      LOG_TOPIC("bbc76", ERR, Logger::MMAP)
           << "Resizing mmap not supported on this platform";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
     }

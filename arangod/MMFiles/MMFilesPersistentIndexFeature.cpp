@@ -98,7 +98,7 @@ void MMFilesPersistentIndexFeature::start() {
       ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _path = database->subdirectoryName("rocksdb");
 
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+  LOG_TOPIC("73d58", TRACE, arangodb::Logger::ENGINES)
       << "initializing rocksdb for persistent indexes, path: " << _path;
 
   _comparator = new MMFilesPersistentIndexKeyComparator();
@@ -148,7 +148,7 @@ void MMFilesPersistentIndexFeature::start() {
           "; Maybe your filesystem doesn't provide required features? (Cifs? "
           "NFS?)";
     }
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("388bc", FATAL, arangodb::Logger::ENGINES)
         << "unable to initialize RocksDB engine for persistent indexes: "
         << status.ToString() << error;
     FATAL_ERROR_EXIT();
@@ -160,7 +160,7 @@ void MMFilesPersistentIndexFeature::unprepare() {
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+  LOG_TOPIC("63cab", TRACE, arangodb::Logger::ENGINES)
       << "shutting down RocksDB for persistent indexes";
 
   // flush
@@ -169,7 +169,7 @@ void MMFilesPersistentIndexFeature::unprepare() {
   rocksdb::Status status = _db->GetBaseDB()->Flush(options);
 
   if (!status.ok()) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("5a6af", ERR, arangodb::Logger::ENGINES)
         << "error flushing data to RocksDB for persistent indexes: "
         << status.ToString();
   }
@@ -188,13 +188,13 @@ int MMFilesPersistentIndexFeature::syncWal() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+  LOG_TOPIC("d2ca2", TRACE, arangodb::Logger::ENGINES)
       << "syncing RocksDB WAL for persistent indexes";
 
   rocksdb::Status status = Instance->db()->GetBaseDB()->SyncWAL();
 
   if (!status.ok()) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("bc5ad", ERR, arangodb::Logger::ENGINES)
         << "error syncing RocksDB WAL for persistent indexes: " << status.ToString();
     return TRI_ERROR_INTERNAL;
   }
@@ -206,7 +206,7 @@ int MMFilesPersistentIndexFeature::dropDatabase(TRI_voc_tick_t databaseId) {
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
-  // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "dropping RocksDB database:
+  // LOG_TOPIC("64ec2", TRACE, arangodb::Logger::ENGINES) << "dropping RocksDB database:
   // " << databaseId;
   return Instance->dropPrefix(MMFilesPersistentIndex::buildPrefix(databaseId));
 }
@@ -216,7 +216,7 @@ int MMFilesPersistentIndexFeature::dropCollection(TRI_voc_tick_t databaseId,
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
-  // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "dropping RocksDB database:
+  // LOG_TOPIC("b4060", TRACE, arangodb::Logger::ENGINES) << "dropping RocksDB database:
   // " << databaseId << ", collection: " << collectionId;
   return Instance->dropPrefix(MMFilesPersistentIndex::buildPrefix(databaseId, collectionId));
 }
@@ -227,7 +227,7 @@ int MMFilesPersistentIndexFeature::dropIndex(TRI_voc_tick_t databaseId,
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
-  // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "dropping RocksDB database:
+  // LOG_TOPIC("c0f11", TRACE, arangodb::Logger::ENGINES) << "dropping RocksDB database:
   // " << databaseId << ", collection: " << collectionId << ", index: " <<
   // indexId;
   return Instance->dropPrefix(
@@ -287,7 +287,7 @@ int MMFilesPersistentIndexFeature::dropPrefix(std::string const& prefix) {
       if (!status.ok()) {
         // if file deletion failed, we will still iterate over the remaining
         // keys, so we don't need to abort and raise an error here
-        LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+        LOG_TOPIC("2b36d", WARN, arangodb::Logger::ENGINES)
             << "RocksDB file deletion failed";
       }
     }
@@ -319,22 +319,22 @@ int MMFilesPersistentIndexFeature::dropPrefix(std::string const& prefix) {
     rocksdb::Status status = db->Write(rocksdb::WriteOptions(), &batch);
 
     if (!status.ok()) {
-      LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+      LOG_TOPIC("8f9df", WARN, arangodb::Logger::ENGINES)
           << "RocksDB key deletion failed: " << status.ToString();
       return TRI_ERROR_INTERNAL;
     }
 
     return TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("1b7a2", ERR, arangodb::Logger::ENGINES)
         << "caught exception during RocksDB key prefix deletion: " << ex.what();
     return ex.code();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("4b089", ERR, arangodb::Logger::ENGINES)
         << "caught exception during RocksDB key prefix deletion: " << ex.what();
     return TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("1a74f", ERR, arangodb::Logger::ENGINES)
         << "caught unknown exception during RocksDB key prefix deletion";
     return TRI_ERROR_INTERNAL;
   }

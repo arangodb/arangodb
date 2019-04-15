@@ -131,25 +131,25 @@ void AQLStandaloneContext::unregisterTransaction() noexcept {
   mgr->unregisterAQLTrx(_globalId);
 }
   
-// ============= SimpleSmartContext =============
+// ============= StandaloneSmartContext =============
   
   
-SimpleSmartContext::SimpleSmartContext(TRI_vocbase_t& vocbase)
+StandaloneSmartContext::StandaloneSmartContext(TRI_vocbase_t& vocbase)
   : SmartContext(vocbase, Context::makeTransactionId(), nullptr) {}
   
 /// @brief get parent transaction (if any)
-TransactionState* SimpleSmartContext::getParentTransaction() const {
+TransactionState* StandaloneSmartContext::getParentTransaction() const {
   return _state;
 }
 
 /// @brief register the transaction,
-void SimpleSmartContext::registerTransaction(TransactionState* state) {
+void StandaloneSmartContext::registerTransaction(TransactionState* state) {
   TRI_ASSERT(_state == nullptr);
   _state = state;
 }
 
 /// @brief unregister the transaction
-void SimpleSmartContext::unregisterTransaction() noexcept {
+void StandaloneSmartContext::unregisterTransaction() noexcept {
   TRI_ASSERT(_state != nullptr);
   _state = nullptr;
 }

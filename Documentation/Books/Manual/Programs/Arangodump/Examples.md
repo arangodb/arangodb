@@ -15,20 +15,32 @@ directory, you can use the parameter *--overwrite true* to confirm this:
     arangodump --output-directory "dump" --overwrite true
 
 _arangodump_ will by default connect to the *_system* database using the default
-endpoint. If you want to connect to a different database or a different endpoint,
-or use authentication, you can use the following command-line options:
+endpoint. To override the endpoint, or specify a different user, use one of the
+following startup options:
 
-- `--server.database <string>`: name of the database to connect to
 - `--server.endpoint <string>`: endpoint to connect to
 - `--server.username <string>`: username
 - `--server.password <string>`: password to use (omit this and you'll be prompted for the
   password)
 - `--server.authentication <bool>`: whether or not to use authentication
 
+If you want to connect to a different database or dump all databases you can additionaly
+use the following startup options:
+
+- `--all-databases true`: must have access to all databases, and not specify a database.
+- `--server.database <string>`: name of the database to connect to
+
+Note that the specified user must have access to the databases.
+
 Here's an example of dumping data from a non-standard endpoint, using a dedicated
 [database name](../../Appendix/Glossary.md#database-name):
 
     arangodump --server.endpoint tcp://192.168.173.13:8531 --server.username backup --server.database mydb --output-directory "dump"
+
+In contrast to the above call `--server.database` must not be specified when dumping
+all databases using `--all-databases true`:
+
+    arangodump --server.endpoint tcp://192.168.173.13:8531 --server.username backup --all-databases true --output-directory "dump-multiple"
 
 When finished, _arangodump_ will print out a summary line with some aggregate
 statistics about what it did, e.g.:

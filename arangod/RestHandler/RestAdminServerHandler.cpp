@@ -189,7 +189,7 @@ void RestAdminServerHandler::handleMode() {
     if (res.fail()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SERVER_ERROR,
                     "couldn't set requested mode");
-      LOG_TOPIC(ERR, Logger::FIXME)
+      LOG_TOPIC("02050", ERR, Logger::FIXME)
           << "Couldn't set requested mode: " << res.errorMessage();
       return;
     }

@@ -48,7 +48,7 @@ void EnvironmentFeature::prepare() {
     if (basics::FileUtils::exists("/proc/version")) {
       std::string value =
           basics::StringUtils::trim(basics::FileUtils::slurp("/proc/version"));
-      LOG_TOPIC(INFO, Logger::FIXME) << "detected operating system: " << value;
+      LOG_TOPIC("75ddc", INFO, Logger::FIXME) << "detected operating system: " << value;
     }
   } catch (...) {
     // ignore any errors as the log output is just informational
@@ -57,7 +57,7 @@ void EnvironmentFeature::prepare() {
 
   if (sizeof(void*) == 4) {
     // 32 bit build
-    LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
+    LOG_TOPIC("ae57c", WARN, arangodb::Logger::MEMORY)
         << "this is a 32 bit build of ArangoDB, which is unsupported. "
         << "it is recommended to run a 64 bit build instead because it can "
         << "address significantly bigger regions of memory";
@@ -69,7 +69,7 @@ void EnvironmentFeature::prepare() {
 
     if (v != nullptr) {
       // report value of MALLOC_CONF environment variable
-      LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
+      LOG_TOPIC("d89f7", WARN, arangodb::Logger::MEMORY)
           << "found custom MALLOC_CONF environment value '" << v << "'";
     }
   }
@@ -81,6 +81,14 @@ void EnvironmentFeature::prepare() {
     uint64_t v = basics::StringUtils::uint64(value);
 
     if (v == 2) {
+#ifdef ARANGODB_HAVE_JEMALLOC
+      LOG_TOPIC("fadc5", WARN, arangodb::Logger::MEMORY)
+          << "/proc/sys/vm/overcommit_memory is set to a value of 2. this setting has been found to be problematic";
+      LOG_TOPIC("d08d6", WARN, Logger::MEMORY)
+              << "execute 'sudo bash -c \"echo 0 > "
+              << "/proc/sys/vm/overcommit_memory\"'";
+#endif
+
       // from https://www.kernel.org/doc/Documentation/sysctl/vm.txt:
       //
       //   When this flag is 0, the kernel attempts to estimate the amount
@@ -105,7 +113,7 @@ void EnvironmentFeature::prepare() {
         double ram = static_cast<double>(TRI_PhysicalMemory);
         double rr = (ram >= swapSpace) ? 100.0 * ((ram - swapSpace) / ram) : 0.0;
         if (static_cast<double>(r) < 0.99 * rr) {
-          LOG_TOPIC(WARN, Logger::MEMORY)
+          LOG_TOPIC("b0a75", WARN, Logger::MEMORY)
               << "/proc/sys/vm/overcommit_ratio is set to '" << r
               << "'. It is recommended to set it to at least '" << std::llround(rr)
               << "' (100 * (max(0, (RAM - Swap Space)) / RAM)) to utilize all "
@@ -113,7 +121,7 @@ void EnvironmentFeature::prepare() {
               << "usage, but may result in more out-of-memory errors, while "
               << "setting it to 100 will allow the system to use both all "
               << "available RAM and swap space.";
-          LOG_TOPIC(WARN, Logger::MEMORY)
+          LOG_TOPIC("1041e", WARN, Logger::MEMORY)
               << "execute 'sudo bash -c \"echo " << std::llround(rr) << " > "
               << "/proc/sys/vm/overcommit_ratio\"'";
         }
@@ -126,7 +134,7 @@ void EnvironmentFeature::prepare() {
   // test local ipv6 support
   try {
     if (!basics::FileUtils::exists("/proc/net/if_inet6")) {
-      LOG_TOPIC(INFO, arangodb::Logger::COMMUNICATION)
+      LOG_TOPIC("0f48d", INFO, arangodb::Logger::COMMUNICATION)
           << "IPv6 support seems to be disabled";
     }
   } catch (...) {
@@ -144,11 +152,11 @@ void EnvironmentFeature::prepare() {
       uint64_t upper = basics::StringUtils::uint64(parts[1]);
 
       if (lower > upper || (upper - lower) < 16384) {
-        LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
+        LOG_TOPIC("721da", WARN, arangodb::Logger::COMMUNICATION)
             << "local port range for ipv4/ipv6 ports is " << lower << " - " << upper
             << ", which does not look right. it is recommended to make at "
                "least 16K ports available";
-        LOG_TOPIC(WARN, Logger::MEMORY)
+        LOG_TOPIC("eb911", WARN, Logger::MEMORY)
             << "execute 'sudo bash -c \"echo -e \\\"32768\\t60999\\\" > "
                "/proc/sys/net/ipv4/ip_local_port_range\"' or use an even "
                "bigger port range";
@@ -166,11 +174,11 @@ void EnvironmentFeature::prepare() {
         basics::FileUtils::slurp("/proc/sys/net/ipv4/tcp_tw_recycle");
     uint64_t v = basics::StringUtils::uint64(value);
     if (v != 0) {
-      LOG_TOPIC(WARN, Logger::COMMUNICATION)
+      LOG_TOPIC("c277c", WARN, Logger::COMMUNICATION)
           << "/proc/sys/net/ipv4/tcp_tw_recycle is enabled (" << v << ")"
           << "'. This can lead to all sorts of \"random\" network problems. "
           << "It is advised to leave it disabled (should be kernel default)";
-      LOG_TOPIC(WARN, Logger::COMMUNICATION)
+      LOG_TOPIC("29333", WARN, Logger::COMMUNICATION)
           << "execute 'sudo bash -c \"echo 0 > "
              "/proc/sys/net/ipv4/tcp_tw_recycle\"'";
     }
@@ -185,11 +193,11 @@ void EnvironmentFeature::prepare() {
 
     if (v == nullptr) {
       // environment variable not set
-      LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
+      LOG_TOPIC("3909f", WARN, arangodb::Logger::MEMORY)
           << "environment variable GLIBCXX_FORCE_NEW' is not set. "
           << "it is recommended to set it to some value to avoid unnecessary "
              "memory pooling in glibc++";
-      LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
+      LOG_TOPIC("56d59", WARN, arangodb::Logger::MEMORY)
           << "execute 'export GLIBCXX_FORCE_NEW=1'";
     }
   }
@@ -201,10 +209,10 @@ void EnvironmentFeature::prepare() {
     uint64_t expected = MaxMapCountFeature::minimumExpectedMaxMappings();
 
     if (actual < expected) {
-      LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
+      LOG_TOPIC("118b0", WARN, arangodb::Logger::MEMORY)
           << "maximum number of memory mappings per process is " << actual
           << ", which seems too low. it is recommended to set it to at least " << expected;
-      LOG_TOPIC(WARN, Logger::MEMORY)
+      LOG_TOPIC("49528", WARN, Logger::MEMORY)
           << "execute 'sudo sysctl -w \"vm.max_map_count=" << expected << "\"'";
     }
   }
@@ -223,10 +231,10 @@ void EnvironmentFeature::prepare() {
       //    4 = Zone reclaim swaps pages
       //
       // https://www.poempelfox.de/blog/2010/03/19/
-      LOG_TOPIC(WARN, Logger::PERFORMANCE)
+      LOG_TOPIC("7a7af", WARN, Logger::PERFORMANCE)
           << "/proc/sys/vm/zone_reclaim_mode is set to '" << v
           << "'. It is recommended to set it to a value of 0";
-      LOG_TOPIC(WARN, Logger::PERFORMANCE)
+      LOG_TOPIC("11b2b", WARN, Logger::PERFORMANCE)
           << "execute 'sudo bash -c \"echo 0 > "
              "/proc/sys/vm/zone_reclaim_mode\"'";
     }
@@ -249,7 +257,7 @@ void EnvironmentFeature::prepare() {
           start < end && end - start >= 4) {
         value = value.substr(start + 1, end - start - 1);
         if (value == "always") {
-          LOG_TOPIC(WARN, Logger::MEMORY)
+          LOG_TOPIC("e8b68", WARN, Logger::MEMORY)
               << file << " is set to '" << value
               << "'. It is recommended to set it to a value of 'never' "
                  "or 'madvise'";
@@ -263,7 +271,7 @@ void EnvironmentFeature::prepare() {
 
   if (showHuge) {
     for (auto file : paths) {
-      LOG_TOPIC(WARN, Logger::MEMORY)
+      LOG_TOPIC("f3108", WARN, Logger::MEMORY)
           << "execute 'sudo bash -c \"echo madvise > " << file << "\"'";
     }
   }
@@ -281,9 +289,9 @@ void EnvironmentFeature::prepare() {
 
         if (where != std::string::npos &&
             !StringUtils::isPrefix(first.substr(where), " interleave")) {
-          LOG_TOPIC(WARN, Logger::MEMORY)
+          LOG_TOPIC("3e451", WARN, Logger::MEMORY)
               << "It is recommended to set NUMA to interleaved.";
-          LOG_TOPIC(WARN, Logger::MEMORY)
+          LOG_TOPIC("b25a4", WARN, Logger::MEMORY)
               << "put 'numactl --interleave=all' in front of your command";
         }
       }
@@ -318,7 +326,7 @@ void EnvironmentFeature::prepare() {
         break;
     }
     if (s != nullptr) {
-      LOG_TOPIC(DEBUG, Logger::FIXME) << "host ASLR is in use for " << s;
+      LOG_TOPIC("63a7a", DEBUG, Logger::FIXME) << "host ASLR is in use for " << s;
     }
   } catch (...) {
     // file not found or value not convertible into integer

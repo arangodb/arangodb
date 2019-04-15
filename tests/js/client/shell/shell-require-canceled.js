@@ -74,15 +74,7 @@ function RequireCanceledTestSuite() {
                                 'x-arango-v8-context': 0
                               });
 
-      var d;
-
-      try {
-        d = VPACK_TO_V8(c.body);
-      } catch (err) {
-        require("internal").print(c.body);
-        throw err;
-      }
-
+      var d = VPACK_TO_V8(c.body);
       assertEqual(2, d.length);
     }
   };

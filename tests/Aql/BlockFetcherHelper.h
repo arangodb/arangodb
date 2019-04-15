@@ -45,6 +45,7 @@ namespace arangodb {
 
 namespace aql {
 class AqlItemBlock;
+class AqlItemBlockManager;
 class InputAqlItemRow;
 class AqlItemMatrix;
 }  // namespace aql
@@ -68,7 +69,7 @@ class SingleRowFetcherHelper
       size_t atMost = ::arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
   uint64_t nrCalled() { return _nrCalled; }
 
-  std::shared_ptr<arangodb::aql::AqlItemBlockShell> getItemBlockShell() {
+  ::arangodb::aql::SharedAqlItemBlockPtr getItemBlock() {
     return _itemBlock;
   }
 
@@ -84,7 +85,7 @@ class SingleRowFetcherHelper
   bool _didWait;
   arangodb::aql::ResourceMonitor _resourceMonitor;
   arangodb::aql::AqlItemBlockManager _itemBlockManager;
-  std::shared_ptr<arangodb::aql::AqlItemBlockShell> _itemBlock;
+  arangodb::aql::SharedAqlItemBlockPtr _itemBlock;
   arangodb::aql::InputAqlItemRow _lastReturnedRow;
 };
 
@@ -114,7 +115,8 @@ class AllRowsFetcherHelper : public ::arangodb::aql::AllRowsFetcher {
 
 class ConstFetcherHelper : public arangodb::aql::ConstFetcher {
  public:
-  explicit ConstFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer);
+  ConstFetcherHelper(arangodb::aql::AqlItemBlockManager& itemBlockManager,
+                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer);
   virtual ~ConstFetcherHelper();
 
   std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::InputAqlItemRow> fetchRow() override;
@@ -122,9 +124,6 @@ class ConstFetcherHelper : public arangodb::aql::ConstFetcher {
  private:
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;
   arangodb::velocypack::Slice _data;
-  arangodb::aql::ResourceMonitor _resourceMonitor;
-  arangodb::aql::AqlItemBlockManager _itemBlockManager;
-  arangodb::aql::InputAqlItemRow _lastReturnedRow;
 };
 
 }  // namespace aql

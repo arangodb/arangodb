@@ -23,13 +23,12 @@
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBLogger.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/build.h"
 #include "ClusterEngine.h"
 #include "ClusterEngine/ClusterCollection.h"
@@ -73,7 +72,7 @@ bool ClusterEngine::Mocking = false;
 // create the storage engine
 ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
     : StorageEngine(server, EngineName, FeatureName,
-                    std::unique_ptr<IndexFactory>(new ClusterIndexFactory())),
+                    std::make_unique<ClusterIndexFactory>()),
       _actualEngine(nullptr) {
   setOptional(true);
 }
@@ -171,7 +170,7 @@ void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
 // -----------------------
 
 void ClusterEngine::getDatabases(arangodb::velocypack::Builder& result) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << "getting existing databases";
+  LOG_TOPIC("4e3f9", TRACE, Logger::STARTUP) << "getting existing databases";
   // we should only ever need system here
   VPackArrayBuilder arr(&result);
   VPackObjectBuilder obj(&result);

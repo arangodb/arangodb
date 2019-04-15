@@ -132,7 +132,7 @@ DistributeShardsLikeRepairer::readCollections(const Slice& collectionsByDatabase
 
 std::vector<std::pair<CollectionID, Result>> DistributeShardsLikeRepairer::findCollectionsToFix(
     std::map<CollectionID, struct cluster_repairs::Collection> collections) {
-  LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+  LOG_TOPIC("88d36", TRACE, arangodb::Logger::CLUSTER)
       << "DistributeShardsLikeRepairer::findCollectionsToFix: started";
 
   std::vector<std::pair<CollectionID, Result>> collectionsToFix;
@@ -141,18 +141,18 @@ std::vector<std::pair<CollectionID, Result>> DistributeShardsLikeRepairer::findC
     CollectionID const& collectionId = collectionIterator.first;
     struct Collection const& collection = collectionIterator.second;
 
-    LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("2d887", TRACE, arangodb::Logger::CLUSTER)
         << "findCollectionsToFix: checking collection " << collection.fullName();
 
     if (collection.deleted) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("e900c", DEBUG, arangodb::Logger::CLUSTER)
           << "findCollectionsToFix: collection " << collection.fullName()
           << " has `deleted: true` and will be ignored.";
       continue;
     }
 
     if (collection.repairingDistributeShardsLike) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("0fc23", DEBUG, arangodb::Logger::CLUSTER)
           << "findCollectionsToFix: repairs on collection " << collection.fullName()
           << " were already started earlier, but are unfinished "
           << "(attribute repairingDistributeShardsLike exists). "
@@ -161,7 +161,7 @@ std::vector<std::pair<CollectionID, Result>> DistributeShardsLikeRepairer::findC
       continue;
     }
     if (!collection.distributeShardsLike) {
-      LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("c9d9f", TRACE, arangodb::Logger::CLUSTER)
           << "findCollectionsToFix: distributeShardsLike doesn't exist, not "
              "fixing "
           << collection.fullName();
@@ -170,7 +170,7 @@ std::vector<std::pair<CollectionID, Result>> DistributeShardsLikeRepairer::findC
 
     struct Collection& proto = collections.at(collection.distributeShardsLike.get());
 
-    LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("994ab", TRACE, arangodb::Logger::CLUSTER)
         << "findCollectionsToFix: comparing against distributeShardsLike "
            "collection "
         << proto.fullName();
@@ -181,7 +181,7 @@ std::vector<std::pair<CollectionID, Result>> DistributeShardsLikeRepairer::findC
         continue;
       }
 
-      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("20bef", ERR, arangodb::Logger::CLUSTER)
           << "DistributeShardsLikeRepairer::findCollectionsToFix: "
           << "Unequal number of shards in collection " << collection.fullName()
           << " and its distributeShardsLike collection " << proto.fullName();
@@ -199,12 +199,12 @@ std::vector<std::pair<CollectionID, Result>> DistributeShardsLikeRepairer::findC
       DBServers const& dbServers = shardIt.second;
       DBServers const& protoDbServers = protoShardIt.second;
 
-      LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("0de03", TRACE, arangodb::Logger::CLUSTER)
           << "findCollectionsToFix: comparing shards " << shardIt.first
           << " and " << protoShardIt.first;
 
       if (dbServers != protoDbServers) {
-        LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+        LOG_TOPIC("d142d", DEBUG, arangodb::Logger::CLUSTER)
             << "findCollectionsToFix: collection " << collection.fullName()
             << " needs fixing because (at least) shard " << shardIt.first
             << " differs from " << protoShardIt.first << " in " << proto.fullName();
@@ -294,7 +294,7 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixLeader(
     DBServers const& availableDbServers, struct cluster_repairs::Collection& collection,
     struct cluster_repairs::Collection const& proto, ShardID const& shardId,
     ShardID const& protoShardId) {
-  LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+  LOG_TOPIC("61262", DEBUG, arangodb::Logger::CLUSTER)
       << "DistributeShardsLikeRepairer::fixLeader("
       << "\"" << collection.database << "/" << collection.name << "\","
       << "\"" << proto.database << "/" << proto.name << "\","
@@ -351,7 +351,7 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixShard(
     DBServers const& availableDbServers, struct cluster_repairs::Collection& collection,
     struct cluster_repairs::Collection const& proto, ShardID const& shardId,
     ShardID const& protoShardId) {
-  LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+  LOG_TOPIC("d585c", DEBUG, arangodb::Logger::CLUSTER)
       << "DistributeShardsLikeRepairer::fixShard: "
       << "Called for shard " << shardId << " with prototype " << protoShardId;
 
@@ -362,7 +362,7 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixShard(
                  << " and its distributeShardsLike prototype " << proto.fullName()
                  << " have replicationFactors of " << collection.replicationFactor
                  << " and " << proto.replicationFactor << ", respectively.";
-    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("34b04", ERR, arangodb::Logger::CLUSTER)
         << "DistributeShardsLikeRepairer::fixShard: " << errorMessage.str();
 
     return Result(TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED,
@@ -392,7 +392,7 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixShard(
                  << " have " << serversOnlyOnShard.size() << " and "
                  << serversOnlyOnProto.size() << " different (mismatching) "
                  << "DBServers, respectively.";
-    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("cfc3f", ERR, arangodb::Logger::CLUSTER)
         << "DistributeShardsLikeRepairer::fixShard: " << errorMessage.str();
 
     return Result(TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED,
@@ -427,7 +427,7 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixShard(
 
 ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeShardsLikeRepairer::repairDistributeShardsLike(
     Slice const& planCollections, Slice const& supervisionHealth) {
-  LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
+  LOG_TOPIC("8f26d", INFO, arangodb::Logger::CLUSTER)
       << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
       << "Starting to collect necessary repairs";
 
@@ -454,7 +454,7 @@ ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeS
       continue;
     }
     struct Collection& collection = collectionMap.at(collectionId);
-    LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("f82b1", TRACE, arangodb::Logger::CLUSTER)
         << "DistributeShardsLikeRepairer::repairDistributeShardsLike: fixing "
            "collection "
         << collection.fullName();
@@ -477,7 +477,7 @@ ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeS
       protoId = collection.repairingDistributeShardsLike.get();
     } else {
       // This should never happen
-      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("2b82f", ERR, arangodb::Logger::CLUSTER)
           << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
           << "(repairing)distributeShardsLike missing in " << collection.fullName();
       repairOperationsByCollection.emplace(collection.id,
@@ -525,7 +525,7 @@ ResultT<boost::optional<FixServerOrderOperation>> DistributeShardsLikeRepairer::
     struct cluster_repairs::Collection& collection,
     struct cluster_repairs::Collection const& proto, ShardID const& shardId,
     ShardID const& protoShardId) {
-  LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+  LOG_TOPIC("4b432", DEBUG, arangodb::Logger::CLUSTER)
       << "DistributeShardsLikeRepairer::createFixServerOrderOperation: "
       << "Fixing DBServer order on " << collection.fullName() << "/" << shardId
       << " to match " << proto.fullName() << "/" << protoShardId;
@@ -542,7 +542,7 @@ ResultT<boost::optional<FixServerOrderOperation>> DistributeShardsLikeRepairer::
                  << dbServers.size() << " (on shard " << shardId << ") "
                  << "and " << protoDbServers.size() << " (on shard " << protoShardId << ")"
                  << ", respectively.";
-    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("daf62", ERR, arangodb::Logger::CLUSTER)
         << "DistributeShardsLikeRepairer::createFixServerOrderOperation: "
         << errorMessage.str();
     return Result(TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED,
@@ -586,7 +586,7 @@ ResultT<boost::optional<FixServerOrderOperation>> DistributeShardsLikeRepairer::
   }
 
   if (dbServers == protoDbServers) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("9e454", DEBUG, arangodb::Logger::CLUSTER)
         << "DistributeShardsLikeRepairer::createFixServerOrderOperation: "
         << "Order is already equal, doing nothing";
 
@@ -682,7 +682,7 @@ ResultT<FinishRepairsOperation> DistributeShardsLikeRepairer::createFinishRepair
                  << " and its distributeShardsLike prototype " << proto.fullName()
                  << " have replicationFactors of " << collection.replicationFactor
                  << " and " << proto.replicationFactor << ", respectively.";
-    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("b583a", ERR, arangodb::Logger::CLUSTER)
         << "DistributeShardsLikeRepairer::createFinishRepairsOperation: "
         << errorMessage.str();
 
@@ -741,7 +741,7 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixAllShardsOf
     DBServers const& protoDbServers = protoShardIterator.second;
 
     if (dbServers != protoDbServers) {
-      LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("2584a", INFO, arangodb::Logger::CLUSTER)
           << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
           << "Shard " << shardId << " of collection " << collection.fullName()
           << " does not match shard " << protoShardId << " of collection "
@@ -757,7 +757,7 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixAllShardsOf
         }
       }
       if (protoDbServersEmpty) {
-        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+        LOG_TOPIC("5942c", ERR, arangodb::Logger::CLUSTER)
             << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
             << "prototype shard " << proto.fullName() << "/" << protoShardId << " of shard "
             << collection.fullName() << "/" << shardId << " has no DBServers!";
@@ -772,7 +772,7 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixAllShardsOf
         }
       }
       if (dbServersEmpty) {
-        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+        LOG_TOPIC("ce865", ERR, arangodb::Logger::CLUSTER)
             << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
             << " shard " << collection.fullName() << "/" << shardId
             << " has no DBServers!";
@@ -787,7 +787,7 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixAllShardsOf
       std::list<RepairOperation> newRepairOperations = newRepairOperationsResult.get();
       shardRepairOperations.splice(shardRepairOperations.end(), newRepairOperations);
     } else {
-      LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("e5827", TRACE, arangodb::Logger::CLUSTER)
           << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
           << "shard " << collection.fullName() << "/" << shardId << " doesn't need fixing";
     }

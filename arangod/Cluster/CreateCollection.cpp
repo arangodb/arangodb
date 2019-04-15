@@ -93,7 +93,7 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescriptio
   TRI_ASSERT(type == TRI_COL_TYPE_DOCUMENT || type == TRI_COL_TYPE_EDGE);
 
   if (!error.str().empty()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "CreateCollection: " << error.str();
+    LOG_TOPIC("7c60f", ERR, Logger::MAINTENANCE) << "CreateCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -108,7 +108,7 @@ bool CreateCollection::first() {
   auto const& leader = _description.get(THE_LEADER);
   auto const& props = properties();
 
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC("21710", DEBUG, Logger::MAINTENANCE)
       << "CreateCollection: creating local shard '" << database << "/" << shard
       << "' for central '" << database << "/" << collection << "'";
 
@@ -139,7 +139,7 @@ bool CreateCollection::first() {
         auto const& key = i.key.copyString();
         if (key == ID || key == NAME || key == GLOB_UID || key == OBJECT_ID) {
           if (key == GLOB_UID || key == OBJECT_ID) {
-            LOG_TOPIC(WARN, Logger::MAINTENANCE)
+            LOG_TOPIC("44577", WARN, Logger::MAINTENANCE)
                 << "unexpected " << key << " in " << props.toJson();
           }
           continue;
@@ -153,7 +153,7 @@ bool CreateCollection::first() {
         Collections::create(vocbase, shard, type, docket.slice(), waitForRepl, enforceReplFact,
                             [=](std::shared_ptr<LogicalCollection> const& col) -> void {
                               TRI_ASSERT(col);
-                              LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+                              LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)
                                   << "local collection " << database << "/"
                                   << shard << " successfully created";
                               col->followers()->setTheLeader(leader);
@@ -167,7 +167,7 @@ bool CreateCollection::first() {
       std::stringstream error;
       error << "creating local shard '" << database << "/" << shard << "' for central '"
             << database << "/" << collection << "' failed: " << _result;
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str();
+      LOG_TOPIC("63687", ERR, Logger::MAINTENANCE) << error.str();
 
       _result.reset(TRI_ERROR_FAILED, error.str());
     }
@@ -176,7 +176,7 @@ bool CreateCollection::first() {
     std::stringstream error;
 
     error << "action " << _description << " failed with exception " << e.what();
-    LOG_TOPIC(WARN, Logger::MAINTENANCE) << error.str();
+    LOG_TOPIC("60514", WARN, Logger::MAINTENANCE) << error.str();
     _result.reset(TRI_ERROR_FAILED, error.str());
   }
 
@@ -184,6 +184,9 @@ bool CreateCollection::first() {
     _feature.storeShardError(database, collection, shard,
                              _description.get(SERVER_ID), _result);
   }
+
+  LOG_TOPIC("4562c", DEBUG, Logger::MAINTENANCE)
+    << "Create collection done, notifying Maintenance";
 
   notify();
 

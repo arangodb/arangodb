@@ -87,7 +87,7 @@ void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options, char co
 void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
                                    std::string const& progname, char const* binaryPath) {
   if (StringUtils::tolower(_file) == "none") {
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << "using no config file at all";
+    LOG_TOPIC("6cb22", DEBUG, Logger::CONFIG) << "using no config file at all";
     return;
   }
 
@@ -103,7 +103,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   // always prefer an explicitly given config file
   if (!_file.empty()) {
     if (!FileUtils::exists(_file)) {
-      LOG_TOPIC(FATAL, Logger::CONFIG) << "cannot read config file '" << _file << "'";
+      LOG_TOPIC("f21f9", FATAL, Logger::CONFIG) << "cannot read config file '" << _file << "'";
       FATAL_ERROR_EXIT();
     }
 
@@ -112,14 +112,14 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     IniFileParser parser(options.get());
 
     if (FileUtils::exists(local)) {
-      LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading override '" << local << "'";
+      LOG_TOPIC("9b20a", DEBUG, Logger::CONFIG) << "loading override '" << local << "'";
 
       if (!parser.parse(local, true)) {
         FATAL_ERROR_EXIT();
       }
     }
 
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << "using user supplied config file '" << _file << "'";
+    LOG_TOPIC("637c7", DEBUG, Logger::CONFIG) << "using user supplied config file '" << _file << "'";
 
     if (!parser.parse(_file, true)) {
       FATAL_ERROR_EXIT();
@@ -158,7 +158,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     // will resolve to ./build/etc/arangodb3/ in maintainer builds
     auto location = FileUtils::buildFilename(root, _SYSCONFDIR_);
 
-    LOG_TOPIC(TRACE, Logger::CONFIG) << "checking root location '" << root << "'";
+    LOG_TOPIC("f39d1", TRACE, Logger::CONFIG) << "checking root location '" << root << "'";
 
     locations.emplace_back(location);
   }
@@ -175,17 +175,17 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   for (auto const& location : locations) {
     auto name = FileUtils::buildFilename(location, basename);
-    LOG_TOPIC(TRACE, Logger::CONFIG) << "checking config file '" << name << "'";
+    LOG_TOPIC("393e7", TRACE, Logger::CONFIG) << "checking config file '" << name << "'";
 
     if (FileUtils::exists(name)) {
-      LOG_TOPIC(DEBUG, Logger::CONFIG) << "found config file '" << name << "'";
+      LOG_TOPIC("e6bd8", DEBUG, Logger::CONFIG) << "found config file '" << name << "'";
       filename = name;
       break;
     } else if (checkArangoImp) {
       name = FileUtils::buildFilename(location, "arangoimp.conf");
-      LOG_TOPIC(TRACE, Logger::CONFIG) << "checking config file '" << name << "'";
+      LOG_TOPIC("b629e", TRACE, Logger::CONFIG) << "checking config file '" << name << "'";
       if (FileUtils::exists(name)) {
-        LOG_TOPIC(DEBUG, Logger::CONFIG) << "found config file '" << name << "'";
+        LOG_TOPIC("fc54e", DEBUG, Logger::CONFIG) << "found config file '" << name << "'";
         filename = name;
         break;
       }
@@ -193,25 +193,25 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   }
 
   if (filename.empty()) {
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << "cannot find any config file";
+    LOG_TOPIC("f4964", DEBUG, Logger::CONFIG) << "cannot find any config file";
   }
 
   IniFileParser parser(options.get());
   std::string local = filename + ".local";
 
-  LOG_TOPIC(TRACE, Logger::CONFIG) << "checking override '" << local << "'";
+  LOG_TOPIC("f6420", TRACE, Logger::CONFIG) << "checking override '" << local << "'";
 
   if (FileUtils::exists(local)) {
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading override '" << local << "'";
+    LOG_TOPIC("3d2d0", DEBUG, Logger::CONFIG) << "loading override '" << local << "'";
 
     if (!parser.parse(local, true)) {
       FATAL_ERROR_EXIT();
     }
   } else {
-    LOG_TOPIC(TRACE, Logger::CONFIG) << "no override file found";
+    LOG_TOPIC("d601e", TRACE, Logger::CONFIG) << "no override file found";
   }
 
-  LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading '" << filename << "'";
+  LOG_TOPIC("02398", DEBUG, Logger::CONFIG) << "loading '" << filename << "'";
 
   if (filename.empty()) {
     if (fatal) {

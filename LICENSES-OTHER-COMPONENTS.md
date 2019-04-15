@@ -2127,16 +2127,6 @@ exception from the GPL license:
 * License: https://raw.githubusercontent.com/danvk/dygraphs/master/LICENSE.txt
 * License Comment: free as-is license
 
-#### jq-console
-
-* Name: jqconsole
-* Version: 2015
-* Project Home: http://replit.github.io/jq-console/
-* GitHub: https://github.com/replit/jq-console
-* License: https://raw.githubusercontent.com/replit/jq-console/master/README.md
-* License Name: MIT License
-* License Id: MIT
-
 #### jQuery
 
 * Name: jquery

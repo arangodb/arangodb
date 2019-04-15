@@ -226,7 +226,7 @@ void MMFilesLogfileManager::collectOptions(std::shared_ptr<ProgramOptions> optio
 void MMFilesLogfileManager::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   if (_filesize < MinFileSize()) {
     // minimum filesize per logfile
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("6a37e", FATAL, arangodb::Logger::ENGINES)
         << "invalid value for --wal.logfile-size. Please use a value of "
         << "at least " << MinFileSize();
     FATAL_ERROR_EXIT();
@@ -234,21 +234,21 @@ void MMFilesLogfileManager::validateOptions(std::shared_ptr<options::ProgramOpti
 
   if (_numberOfSlots < MinSlots() || _numberOfSlots > MaxSlots()) {
     // invalid number of slots
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("973f8", FATAL, arangodb::Logger::ENGINES)
         << "invalid value for --wal.slots. Please use a value between "
         << MinSlots() << " and " << MaxSlots();
     FATAL_ERROR_EXIT();
   }
 
   if (_throttleWhenPending > 0 && _throttleWhenPending < MinThrottleWhenPending()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("1fb3f", FATAL, arangodb::Logger::ENGINES)
         << "invalid value for --wal.throttle-when-pending. Please use a "
         << "value of at least " << MinThrottleWhenPending();
     FATAL_ERROR_EXIT();
   }
 
   if (_syncInterval < MinSyncInterval()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("8811f", FATAL, arangodb::Logger::ENGINES)
         << "invalid value for --wal.sync-interval. Please use a value "
         << "of at least " << MinSyncInterval();
     FATAL_ERROR_EXIT();
@@ -271,18 +271,18 @@ void MMFilesLogfileManager::prepare() {
   bool const shutdownFileExists = basics::FileUtils::exists(_shutdownFile);
 
   if (shutdownFileExists) {
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "shutdown file found";
+    LOG_TOPIC("d50be", TRACE, arangodb::Logger::ENGINES) << "shutdown file found";
 
     int res = readShutdownInfo();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+      LOG_TOPIC("7c0cf", FATAL, arangodb::Logger::ENGINES)
           << "could not open shutdown file '" << _shutdownFile
           << "': " << TRI_errno_string(res);
       FATAL_ERROR_EXIT();
     }
   } else {
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "no shutdown file found";
+    LOG_TOPIC("fd46e", TRACE, arangodb::Logger::ENGINES) << "no shutdown file found";
   }
 }
 
@@ -309,7 +309,7 @@ void MMFilesLogfileManager::start() {
   }
 
   if (_directory.empty()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("84854", FATAL, arangodb::Logger::ENGINES)
         << "no directory specified for WAL logfiles. Please use the "
         << "'--wal.directory' option";
     FATAL_ERROR_EXIT();
@@ -329,7 +329,7 @@ void MMFilesLogfileManager::start() {
   int res = inventory();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("3eabc", FATAL, arangodb::Logger::ENGINES)
         << "could not create WAL logfile inventory: " << TRI_errno_string(res);
     FATAL_ERROR_EXIT();
   }
@@ -337,12 +337,12 @@ void MMFilesLogfileManager::start() {
   res = inspectLogfiles();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("c3b68", FATAL, arangodb::Logger::ENGINES)
         << "could not inspect WAL logfiles: " << TRI_errno_string(res);
     FATAL_ERROR_EXIT();
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+  LOG_TOPIC("b7006", TRACE, arangodb::Logger::ENGINES)
       << "WAL logfile manager configuration: historic logfiles: " << _historicLogfiles
       << ", reserve logfiles: " << _reserveLogfiles
       << ", filesize: " << _filesize << ", sync interval: " << _syncInterval;
@@ -392,7 +392,7 @@ bool MMFilesLogfileManager::open() {
   int res = startMMFilesAllocatorThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("51461", FATAL, arangodb::Logger::ENGINES)
         << "could not start WAL allocator thread: " << TRI_errno_string(res);
     return false;
   }
@@ -400,7 +400,7 @@ bool MMFilesLogfileManager::open() {
   res = startMMFilesSynchronizerThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("d5d1f", FATAL, arangodb::Logger::ENGINES)
         << "could not start WAL synchronizer thread: " << TRI_errno_string(res);
     return false;
   }
@@ -412,7 +412,7 @@ bool MMFilesLogfileManager::open() {
   res = _recoverState->abortOpenTransactions();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("1ee72", FATAL, arangodb::Logger::ENGINES)
         << "could not abort open transactions: " << TRI_errno_string(res);
     return false;
   }
@@ -438,7 +438,7 @@ bool MMFilesLogfileManager::open() {
   res = startMMFilesCollectorThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("d856c", FATAL, arangodb::Logger::ENGINES)
         << "could not start WAL collector thread: " << TRI_errno_string(res);
     return false;
   }
@@ -448,7 +448,7 @@ bool MMFilesLogfileManager::open() {
   res = startMMFilesRemoverThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("6d3eb", FATAL, arangodb::Logger::ENGINES)
         << "could not start WAL remover thread: " << TRI_errno_string(res);
     return false;
   }
@@ -486,7 +486,7 @@ void MMFilesLogfileManager::unprepare() {
 
   _shutdown = 1;
 
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "shutting down WAL";
+  LOG_TOPIC("6e9ba", TRACE, arangodb::Logger::ENGINES) << "shutting down WAL";
 
   // set WAL to read-only mode
   allowWrites(false);
@@ -500,7 +500,7 @@ void MMFilesLogfileManager::unprepare() {
   stopMMFilesAllocatorThread();
 
   if (_allocatorThread != nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "stopping allocator thread";
+    LOG_TOPIC("17e47", TRACE, arangodb::Logger::ENGINES) << "stopping allocator thread";
     while (_allocatorThread->isRunning()) {
       std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
@@ -514,7 +514,7 @@ void MMFilesLogfileManager::unprepare() {
   }
 
   // stop other threads
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+  LOG_TOPIC("84ed0", TRACE, arangodb::Logger::ENGINES)
       << "sending shutdown request to WAL threads";
   stopMMFilesRemoverThread();
   stopMMFilesCollectorThread();
@@ -522,7 +522,7 @@ void MMFilesLogfileManager::unprepare() {
 
   // physically destroy all threads
   if (_removerThread != nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "stopping remover thread";
+    LOG_TOPIC("89e81", TRACE, arangodb::Logger::ENGINES) << "stopping remover thread";
     while (_removerThread->isRunning()) {
       std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
@@ -534,7 +534,7 @@ void MMFilesLogfileManager::unprepare() {
     WRITE_LOCKER(locker, _collectorThreadLock);
 
     if (_collectorThread != nullptr) {
-      LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+      LOG_TOPIC("1e470", TRACE, arangodb::Logger::ENGINES)
           << "stopping collector thread";
       _collectorThread->forceStop();
       while (_collectorThread->isRunning()) {
@@ -548,7 +548,7 @@ void MMFilesLogfileManager::unprepare() {
   }
 
   if (_synchronizerThread != nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+    LOG_TOPIC("f4f93", TRACE, arangodb::Logger::ENGINES)
         << "stopping synchronizer thread";
     while (_synchronizerThread->isRunning()) {
       std::this_thread::sleep_for(std::chrono::microseconds(10000));
@@ -558,7 +558,7 @@ void MMFilesLogfileManager::unprepare() {
   }
 
   // close all open logfiles
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "closing logfiles";
+  LOG_TOPIC("9b882", TRACE, arangodb::Logger::ENGINES) << "closing logfiles";
   closeLogfiles();
 
   TRI_IF_FAILURE("LogfileManagerStop") {
@@ -569,7 +569,7 @@ void MMFilesLogfileManager::unprepare() {
   int res = writeShutdownInfo(true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("41e44", ERR, arangodb::Logger::ENGINES)
         << "could not write WAL shutdown info: " << TRI_errno_string(res);
   }
 }
@@ -864,7 +864,7 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector, bool w
     return TRI_ERROR_NO_ERROR;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+  LOG_TOPIC("3c773", TRACE, arangodb::Logger::REPLICATION)
       << "about to flush active WAL logfile. currentLogfileId: " << lastOpenLogfileId
       << ", waitForSync: " << waitForSync << ", waitForCollector: " << waitForCollector
       << ", last committed tick: " << _slots->lastCommittedTick();
@@ -872,7 +872,7 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector, bool w
   int res = _slots->flush(waitForSync);
 
   if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("d4cc6", ERR, arangodb::Logger::ENGINES)
         << "unexpected error in WAL flush request: " << TRI_errno_string(res);
     return res;
   }
@@ -889,17 +889,17 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector, bool w
 
     if (res == TRI_ERROR_NO_ERROR) {
       // we need to wait for the collector...
-      LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+      LOG_TOPIC("d7042", TRACE, arangodb::Logger::ENGINES)
           << "entering waitForCollector with lastOpenLogfileId " << lastOpenLogfileId;
       res = this->waitForCollector(lastOpenLogfileId, maxWaitTime, abortWaitOnShutdown);
 
       if (res == TRI_ERROR_LOCK_TIMEOUT) {
-        LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+        LOG_TOPIC("f6b77", DEBUG, arangodb::Logger::ENGINES)
             << "got lock timeout when waiting for WAL flush. "
                "lastOpenLogfileId: "
             << lastOpenLogfileId;
       }
-      LOG_TOPIC(TRACE, Logger::ENGINES)
+      LOG_TOPIC("73165", TRACE, Logger::ENGINES)
           << "waitForCollector returned with res = " << res;
     } else if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
       // current logfile is empty and cannot be collected
@@ -910,11 +910,11 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector, bool w
         res = this->waitForCollector(lastSealedLogfileId, maxWaitTime, abortWaitOnShutdown);
 
         if (res == TRI_ERROR_LOCK_TIMEOUT) {
-          LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+          LOG_TOPIC("ca961", DEBUG, arangodb::Logger::ENGINES)
               << "got lock timeout when waiting for WAL flush. "
               << "lastSealedLogfileId: " << lastSealedLogfileId;
         }
-        LOG_TOPIC(TRACE, Logger::ENGINES)
+        LOG_TOPIC("f5cce", TRACE, Logger::ENGINES)
             << "waitForCollector returned with res = " << res;
       }
     }
@@ -1058,7 +1058,7 @@ int MMFilesLogfileManager::getLogfileDescriptor(MMFilesWalLogfile::IdType id) {
 
   if (it == _logfiles.end()) {
     // error
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "could not find logfile " << id;
+    LOG_TOPIC("78579", ERR, arangodb::Logger::ENGINES) << "could not find logfile " << id;
     return -1;
   }
 
@@ -1085,7 +1085,7 @@ void MMFilesLogfileManager::collectLogfileBarriers() {
     auto logfileBarrier = (*it).second;
 
     if (logfileBarrier->expires <= now) {
-      LOG_TOPIC(TRACE, Logger::REPLICATION)
+      LOG_TOPIC("93059", TRACE, Logger::REPLICATION)
           << "garbage-collecting expired WAL logfile barrier " << logfileBarrier->id;
 
       it = _barriers.erase(it);
@@ -1146,7 +1146,7 @@ bool MMFilesLogfileManager::removeLogfileBarrier(TRI_voc_tick_t id) {
   }
 
   TRI_ASSERT(logfileBarrier != nullptr);
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+  LOG_TOPIC("9ef77", DEBUG, Logger::REPLICATION)
       << "removing WAL logfile barrier " << logfileBarrier->id;
 
   delete logfileBarrier;
@@ -1161,7 +1161,7 @@ TRI_voc_tick_t MMFilesLogfileManager::addLogfileBarrier(TRI_voc_tick_t databaseI
   double expires = TRI_microtime() + ttl;
 
   auto logfileBarrier = std::make_unique<LogfileBarrier>(id, databaseId, expires, minTick);
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+  LOG_TOPIC("4d442", DEBUG, Logger::REPLICATION)
       << "adding WAL logfile barrier " << logfileBarrier->id << ", minTick: " << minTick;
 
   {
@@ -1192,7 +1192,7 @@ bool MMFilesLogfileManager::extendLogfileBarrier(TRI_voc_tick_t id, double ttl,
     // patch tick
     logfileBarrier->minTick = tick;
 
-    LOG_TOPIC(TRACE, Logger::REPLICATION)
+    LOG_TOPIC("f24c0", TRACE, Logger::REPLICATION)
         << "extending WAL logfile barrier " << logfileBarrier->id
         << ", minTick: " << logfileBarrier->minTick;
   }
@@ -1208,7 +1208,7 @@ TRI_voc_tick_t MMFilesLogfileManager::getMinBarrierTick() {
 
   for (auto const& it : _barriers) {
     auto logfileBarrier = it.second;
-    LOG_TOPIC(TRACE, Logger::REPLICATION)
+    LOG_TOPIC("353f3", TRACE, Logger::REPLICATION)
         << "server has WAL logfile barrier " << logfileBarrier->id
         << ", minTick: " << logfileBarrier->minTick;
 
@@ -1219,7 +1219,7 @@ TRI_voc_tick_t MMFilesLogfileManager::getMinBarrierTick() {
     }
   }
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
+  LOG_TOPIC("b11d2", TRACE, Logger::REPLICATION)
       << "min barrier tick is " << value << ", barriers: " << _barriers.size();
 
   return value;
@@ -1353,7 +1353,7 @@ int MMFilesLogfileManager::getWriteableLogfile(uint32_t size,
           // found a logfile, update the status variable and return the logfile
 
           {
-            // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "setting
+            // LOG_TOPIC("2f389", TRACE, arangodb::Logger::ENGINES) << "setting
             // lastOpenedId " << logfile->id();
             MUTEX_LOCKER(mutexLocker, _idLock);
             _lastOpenedId = logfile->id();
@@ -1402,7 +1402,7 @@ int MMFilesLogfileManager::getWriteableLogfile(uint32_t size,
   }
 
   TRI_ASSERT(result == nullptr);
-  LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+  LOG_TOPIC("2dacb", ERR, arangodb::Logger::ENGINES)
       << "unable to acquire writeable WAL logfile after " << _flushTimeout << " ms";
 
   return TRI_ERROR_LOCK_TIMEOUT;
@@ -1413,7 +1413,7 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
   // iterate over all active readers and find their minimum used logfile id
   MMFilesWalLogfile::IdType minId = UINT64_MAX;
 
-  LOG_TOPIC(DEBUG, Logger::ENGINES) << "getCollectableLogfile: called";
+  LOG_TOPIC("f2032", DEBUG, Logger::ENGINES) << "getCollectableLogfile: called";
 
   auto cb = [&minId](TRI_voc_tid_t, TransactionData const* data) {
     MMFilesWalLogfile::IdType lastWrittenId =
@@ -1441,28 +1441,28 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
       }
 
       if (logfile->id() <= minId && logfile->canBeCollected(released)) {
-        LOG_TOPIC(DEBUG, Logger::ENGINES)
+        LOG_TOPIC("19526", DEBUG, Logger::ENGINES)
             << "getCollectableLogfile: found logfile id: " << logfile->id();
         return logfile;
       }
 
       if (logfile->id() > minId) {
-        LOG_TOPIC(DEBUG, Logger::ENGINES)
+        LOG_TOPIC("c2cb6", DEBUG, Logger::ENGINES)
             << "getCollectableLogfile: abort early1 " << logfile->id()
             << " minId: " << minId;
         break;
       }
       if (!logfile->hasBeenReleased(released)) {
         // abort early
-        LOG_TOPIC(DEBUG, Logger::ENGINES)
+        LOG_TOPIC("92c06", DEBUG, Logger::ENGINES)
             << "getCollectableLogfile: abort early2 released: " << released;
         break;
       }
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::ENGINES) << "getCollectableLogfile: "
-                                    << "found no logfile to collect, minId:" << minId;
+  LOG_TOPIC("dbee0", DEBUG, Logger::ENGINES) << "getCollectableLogfile: "
+                                    << "found no logfile to collect, minId: " << minId;
 
   return nullptr;
 }
@@ -1574,7 +1574,7 @@ void MMFilesLogfileManager::setCollectionDone(MMFilesWalLogfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
   MMFilesWalLogfile::IdType id = logfile->id();
 
-  // LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "setCollectionDone setting
+  // LOG_TOPIC("b5d01", ERR, arangodb::Logger::ENGINES) << "setCollectionDone setting
   // lastCollectedId to " << id
   {
     WRITE_LOCKER(writeLocker, _logfilesLock);
@@ -1703,7 +1703,7 @@ void MMFilesLogfileManager::removeLogfile(MMFilesWalLogfile* logfile) {
   MMFilesWalLogfile::IdType const id = logfile->id();
   std::string const filename = logfileName(id);
 
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "removing logfile '" << filename << "'";
+  LOG_TOPIC("fadc2", TRACE, arangodb::Logger::ENGINES) << "removing logfile '" << filename << "'";
 
   // now close the logfile
   delete logfile;
@@ -1712,7 +1712,7 @@ void MMFilesLogfileManager::removeLogfile(MMFilesWalLogfile* logfile) {
   // now physically remove the file
 
   if (!basics::FileUtils::remove(filename, &res)) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "unable to remove logfile '" << filename
+    LOG_TOPIC("be385", ERR, arangodb::Logger::ENGINES) << "unable to remove logfile '" << filename
                                               << "': " << TRI_errno_string(res);
   }
 }
@@ -1754,7 +1754,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
     maxWaitTime = 24.0 * 3600.0;  // wait "forever"
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+  LOG_TOPIC("0e003", TRACE, arangodb::Logger::ENGINES)
       << "waiting for collector thread to collect logfile " << logfileId;
 
   // wait for the collector thread to finish the collection
@@ -1779,7 +1779,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
 
     locker.unlock();
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+    LOG_TOPIC("2c5fe", DEBUG, arangodb::Logger::ENGINES)
         << "still waiting for collector. logfileId: " << logfileId
         << " lastCollected: " << _lastCollectedId.load() << ", result: " << res;
 
@@ -1798,7 +1798,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
     // try again
   }
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+  LOG_TOPIC("6c07d", DEBUG, arangodb::Logger::ENGINES)
       << "going into lock timeout. having waited for logfile: " << logfileId
       << ", maxWaitTime: " << maxWaitTime;
   logStatus();
@@ -1812,12 +1812,12 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
 }
 
 void MMFilesLogfileManager::logStatus() {
-  LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+  LOG_TOPIC("a9666", DEBUG, arangodb::Logger::ENGINES)
       << "logfile manager status report: lastCollectedId: " << _lastCollectedId.load()
       << ", lastSealedId: " << _lastSealedId.load();
   READ_LOCKER(locker, _logfilesLock);
   for (auto logfile : _logfiles) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+    LOG_TOPIC("b1d96", DEBUG, arangodb::Logger::ENGINES)
         << "- logfile " << logfile.second->id() << ", filename '"
         << logfile.second->filename() << "', status " << logfile.second->statusText();
   }
@@ -1836,11 +1836,11 @@ int MMFilesLogfileManager::runRecovery() {
   }
 
   if (_ignoreRecoveryErrors) {
-    LOG_TOPIC(INFO, arangodb::Logger::ENGINES)
+    LOG_TOPIC("0599d", INFO, arangodb::Logger::ENGINES)
         << "running WAL recovery (" << _recoverState->logfilesToProcess.size()
         << " logfiles), ignoring recovery errors";
   } else {
-    LOG_TOPIC(INFO, arangodb::Logger::ENGINES)
+    LOG_TOPIC("b9b8e", INFO, arangodb::Logger::ENGINES)
         << "running WAL recovery (" << _recoverState->logfilesToProcess.size()
         << " logfiles)";
   }
@@ -1858,10 +1858,10 @@ int MMFilesLogfileManager::runRecovery() {
   }
 
   if (_recoverState->errorCount == 0) {
-    LOG_TOPIC(INFO, arangodb::Logger::ENGINES)
+    LOG_TOPIC("87be8", INFO, arangodb::Logger::ENGINES)
         << "WAL recovery finished successfully";
   } else {
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("a1de0", WARN, arangodb::Logger::ENGINES)
         << "WAL recovery finished, some errors ignored due to settings";
   }
 
@@ -1934,10 +1934,10 @@ int MMFilesLogfileManager::readShutdownInfo() {
       arangodb::basics::VelocyPackHelper::getStringValue(slice, "shutdownTime",
                                                          "");
   if (shutdownTime.empty()) {
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+    LOG_TOPIC("ee82e", TRACE, arangodb::Logger::ENGINES)
         << "no previous shutdown time found";
   } else {
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+    LOG_TOPIC("2f036", TRACE, arangodb::Logger::ENGINES)
         << "previous shutdown was at '" << shutdownTime << "'";
   }
 
@@ -1946,7 +1946,7 @@ int MMFilesLogfileManager::readShutdownInfo() {
     _lastCollectedId = static_cast<MMFilesWalLogfile::IdType>(lastCollectedId);
     _lastSealedId = static_cast<MMFilesWalLogfile::IdType>(lastSealedId);
 
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+    LOG_TOPIC("38f13", TRACE, arangodb::Logger::ENGINES)
         << "initial values for WAL logfile manager: tick: " << lastTick
         << ", hlc: " << hlc << ", lastCollected: " << _lastCollectedId.load()
         << ", lastSealed: " << _lastSealedId.load();
@@ -2001,12 +2001,12 @@ int MMFilesLogfileManager::writeShutdownInfo(bool writeShutdownTime) {
     }
 
     if (!ok) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("2eb4f", ERR, arangodb::Logger::ENGINES)
           << "unable to write WAL state file '" << _shutdownFile << "'";
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("09842", ERR, arangodb::Logger::ENGINES)
         << "unable to write WAL state file '" << _shutdownFile << "'";
 
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -2030,7 +2030,7 @@ int MMFilesLogfileManager::startMMFilesSynchronizerThread() {
 // stop the synchronizer thread
 void MMFilesLogfileManager::stopMMFilesSynchronizerThread() {
   if (_synchronizerThread != nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+    LOG_TOPIC("5dd5e", TRACE, arangodb::Logger::ENGINES)
         << "stopping WAL synchronizer thread";
 
     _synchronizerThread->beginShutdown();
@@ -2052,7 +2052,7 @@ int MMFilesLogfileManager::startMMFilesAllocatorThread() {
 // stop the allocator thread
 void MMFilesLogfileManager::stopMMFilesAllocatorThread() {
   if (_allocatorThread != nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+    LOG_TOPIC("d47e8", TRACE, arangodb::Logger::ENGINES)
         << "stopping WAL allocator thread";
 
     _allocatorThread->beginShutdown();
@@ -2079,7 +2079,7 @@ void MMFilesLogfileManager::stopMMFilesCollectorThread() {
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+  LOG_TOPIC("14310", TRACE, arangodb::Logger::ENGINES)
       << "stopping WAL collector thread";
 
   // wait for at most 5 seconds for the collector
@@ -2133,7 +2133,7 @@ int MMFilesLogfileManager::startMMFilesRemoverThread() {
 // stop the remover thread
 void MMFilesLogfileManager::stopMMFilesRemoverThread() {
   if (_removerThread != nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+    LOG_TOPIC("51d42", TRACE, arangodb::Logger::ENGINES)
         << "stopping WAL remover thread";
 
     _removerThread->beginShutdown();
@@ -2148,7 +2148,7 @@ int MMFilesLogfileManager::inventory() {
     return res;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+  LOG_TOPIC("ed035", TRACE, arangodb::Logger::ENGINES)
       << "scanning WAL directory: '" << _directory << "'";
 
   std::vector<std::string> files = basics::FileUtils::listFiles(_directory);
@@ -2162,7 +2162,7 @@ int MMFilesLogfileManager::inventory() {
           basics::StringUtils::uint64(file.substr(8, file.size() - 8 - 3));
 
       if (id == 0) {
-        LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+        LOG_TOPIC("dc4f6", WARN, arangodb::Logger::ENGINES)
             << "encountered invalid id for logfile '" << file << "'. ids must be > 0";
       } else {
         // update global tick
@@ -2179,7 +2179,7 @@ int MMFilesLogfileManager::inventory() {
 
 // inspect the logfiles in the log directory
 int MMFilesLogfileManager::inspectLogfiles() {
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "inspecting WAL logfiles";
+  LOG_TOPIC("972e5", TRACE, arangodb::Logger::ENGINES) << "inspecting WAL logfiles";
 
   WRITE_LOCKER(writeLocker, _logfilesLock);
 
@@ -2189,7 +2189,7 @@ int MMFilesLogfileManager::inspectLogfiles() {
     MMFilesWalLogfile* logfile = (*it).second;
 
     if (logfile != nullptr) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+      LOG_TOPIC("ca138", DEBUG, arangodb::Logger::ENGINES)
           << "logfile " << logfile->id() << ", filename '"
           << logfile->filename() << "', status " << logfile->statusText();
     }
@@ -2235,7 +2235,7 @@ int MMFilesLogfileManager::inspectLogfiles() {
       _recoverState->logfilesToProcess.push_back(logfile.get());
     }
 
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+    LOG_TOPIC("f4891", TRACE, arangodb::Logger::ENGINES)
         << "inspecting logfile " << logfile->id() << " ("
         << logfile->statusText() << ")";
 
@@ -2246,12 +2246,12 @@ int MMFilesLogfileManager::inspectLogfiles() {
     if (!TRI_IterateDatafile(df, &MMFilesWalRecoverState::InitialScanMarker,
                              static_cast<void*>(_recoverState.get()))) {
       std::string const logfileName = logfile->filename();
-      LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+      LOG_TOPIC("c04b1", WARN, arangodb::Logger::ENGINES)
           << "WAL inspection failed when scanning logfile '" << logfileName << "'";
       return TRI_ERROR_ARANGO_RECOVERY;
     }
 
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+    LOG_TOPIC("b7073", TRACE, arangodb::Logger::ENGINES)
         << "inspected logfile " << logfile->id() << " (" << logfile->statusText()
         << "), tickMin: " << df->_tickMin << ", tickMax: " << df->_tickMax;
 
@@ -2289,7 +2289,7 @@ int MMFilesLogfileManager::inspectLogfiles() {
 
   // use maximum revision value found from WAL to adjust HLC value
   // should it be lower
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+  LOG_TOPIC("21a90", TRACE, arangodb::Logger::ENGINES)
       << "setting max HLC value to " << _recoverState->maxRevisionId;
   TRI_HybridLogicalClock(_recoverState->maxRevisionId);
 
@@ -2304,7 +2304,7 @@ int MMFilesLogfileManager::createReserveLogfile(uint32_t size) {
   MMFilesWalLogfile::IdType const id = nextId();
   std::string const filename = logfileName(id);
 
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+  LOG_TOPIC("c9f68", TRACE, arangodb::Logger::ENGINES)
       << "creating empty logfile '" << filename << "' with size " << size;
 
   uint32_t realsize;
@@ -2322,7 +2322,7 @@ int MMFilesLogfileManager::createReserveLogfile(uint32_t size) {
   if (logfile == nullptr) {
     int res = TRI_errno();
 
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("e3868", ERR, arangodb::Logger::ENGINES)
         << "unable to create logfile: " << TRI_errno_string(res);
     return res;
   }
@@ -2358,12 +2358,12 @@ int MMFilesLogfileManager::ensureDirectory() {
   }
 
   if (!basics::FileUtils::isDirectory(directory)) {
-    LOG_TOPIC(INFO, arangodb::Logger::ENGINES)
+    LOG_TOPIC("ba9db", INFO, arangodb::Logger::ENGINES)
         << "WAL directory '" << directory << "' does not exist. creating it...";
 
     int res;
     if (!basics::FileUtils::createDirectory(directory, &res)) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("3cf62", ERR, arangodb::Logger::ENGINES)
           << "could not create WAL directory: '" << directory
           << "': " << TRI_last_error();
       return TRI_ERROR_SYS_ERROR;
@@ -2371,7 +2371,7 @@ int MMFilesLogfileManager::ensureDirectory() {
   }
 
   if (!basics::FileUtils::isDirectory(directory)) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("4c35d", ERR, arangodb::Logger::ENGINES)
         << "WAL directory '" << directory << "' does not exist";
     return TRI_ERROR_FILE_NOT_FOUND;
   }

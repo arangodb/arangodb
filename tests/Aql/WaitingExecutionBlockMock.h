@@ -24,8 +24,10 @@
 #define ARANGODB_TESTS_WAITING_EXECUTION_BLOCK_MOCK_H 1
 
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionState.h"
 #include "Aql/ResourceUsage.h"
 
+#include <arangod/Aql/ExecutionState.h>
 #include <velocypack/Builder.h>
 
 namespace arangodb {
@@ -51,8 +53,11 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
    * @param node Required by API.
    * @param data Must be a shared_ptr to an VPackArray.
    */
-  WaitingExecutionBlockMock(arangodb::aql::ExecutionEngine* engine, arangodb::aql::ExecutionNode const* node,
-                            std::deque<std::unique_ptr<arangodb::aql::AqlItemBlock>> &&data);
+  WaitingExecutionBlockMock(arangodb::aql::ExecutionEngine* engine,
+                            arangodb::aql::ExecutionNode const* node,
+                            std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data);
+
+  virtual std::pair<arangodb::aql::ExecutionState, Result> shutdown(int errorCode) override;
 
   /**
    * @brief Initialize the cursor. Return values will be alternating.
@@ -64,7 +69,7 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
    *         Second <DONE, TRI_ERROR_NO_ERROR>
    */
   std::pair<arangodb::aql::ExecutionState, arangodb::Result> initializeCursor(
-      arangodb::aql::AqlItemBlock* items, size_t pos) override;
+      arangodb::aql::InputAqlItemRow const& input) override;
 
   /**
    * @brief The return values are alternating. On non-WAITING case
@@ -76,9 +81,7 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
    * @return First: <WAITING, nullptr>
    *         Second: <HASMORE/DONE, _data-part>
    */
-  std::pair<arangodb::aql::ExecutionState,
-            std::unique_ptr<arangodb::aql::AqlItemBlock>>
-  getSome(size_t atMost) override;
+  std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> getSome(size_t atMost) override;
 
   /**
    * @brief The return values are alternating. On non-WAITING case
@@ -91,11 +94,10 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
    * @return First: <WAITING, 0>
    *         Second: <HASMORE/DONE, min(atMost,_data.length)>
    */
-  std::pair<arangodb::aql::ExecutionState, size_t> skipSome(
-      size_t atMost) override;
+  std::pair<arangodb::aql::ExecutionState, size_t> skipSome(size_t atMost) override;
 
  private:
-  std::deque<std::unique_ptr<arangodb::aql::AqlItemBlock>> _data;
+  std::deque<arangodb::aql::SharedAqlItemBlockPtr> _data;
   arangodb::aql::ResourceMonitor _resourceMonitor;
   size_t _inflight;
   bool _returnedDone = false;

@@ -25,7 +25,6 @@
 
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
@@ -314,9 +313,8 @@ bool RestQueryHandler::parseQuery() {
   Query query(false, _vocbase, QueryString(queryString), nullptr, nullptr, PART_MAIN);
   auto parseResult = query.parse();
 
-  if (parseResult.code != TRI_ERROR_NO_ERROR) {
-    generateError(GeneralResponse::responseCode(parseResult.code),
-                  parseResult.code, parseResult.details);
+  if (parseResult.result.fail()) {
+    generateError(parseResult.result);
     return true;
   }
 
@@ -339,7 +337,7 @@ bool RestQueryHandler::parseQuery() {
     }
     result.close();  // bindVars
 
-    result.add("ast", parseResult.result->slice());
+    result.add("ast", parseResult.data->slice());
 
     if (parseResult.extra && parseResult.extra->slice().hasKey("warnings")) {
       result.add("warnings", parseResult.extra->slice().get("warnings"));

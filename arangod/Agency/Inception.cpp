@@ -60,7 +60,7 @@ void Inception::gossip() {
     return;
   }
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Entering gossip phase ...";
+  LOG_TOPIC("7b6f3", INFO, Logger::AGENCY) << "Entering gossip phase ...";
   using namespace std::chrono;
 
   auto startTime = steady_clock::now();
@@ -97,8 +97,7 @@ void Inception::gossip() {
             continue;
           }
         }
-
-        LOG_TOPIC(DEBUG, Logger::AGENCY)
+        LOG_TOPIC("cc3fd", DEBUG, Logger::AGENCY)
             << "Sending gossip message 1: " << out->toJson() << " to peer " << p;
         if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
           return;
@@ -128,7 +127,7 @@ void Inception::gossip() {
           }
         }
         complete = false;
-        LOG_TOPIC(DEBUG, Logger::AGENCY)
+        LOG_TOPIC("07338", DEBUG, Logger::AGENCY)
             << "Sending gossip message 2: " << out->toJson()
             << " to pool member " << pair.second;
         if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
@@ -146,7 +145,7 @@ void Inception::gossip() {
     // We're done
     if (config.poolComplete()) {
       if (complete) {
-        LOG_TOPIC(INFO, Logger::AGENCY)
+        LOG_TOPIC("d04d7", INFO, Logger::AGENCY)
             << "Agent pool completed. Stopping "
                "active gossipping. Starting RAFT process.";
         _agent->activateAgency();
@@ -157,9 +156,9 @@ void Inception::gossip() {
     // Timed out? :(
     if ((steady_clock::now() - startTime) > timeout) {
       if (config.poolComplete()) {
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Stopping active gossipping!";
+        LOG_TOPIC("28033", DEBUG, Logger::AGENCY) << "Stopping active gossipping!";
       } else {
-        LOG_TOPIC(ERR, Logger::AGENCY)
+        LOG_TOPIC("5d169", ERR, Logger::AGENCY)
             << "Failed to find complete pool of agents. Giving up!";
       }
       break;
@@ -189,7 +188,7 @@ bool Inception::restartingActiveAgent() {
     return false;
   }
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Restarting agent from persistence ...";
+  LOG_TOPIC("d7476", INFO, Logger::AGENCY) << "Restarting agent from persistence ...";
 
   using namespace std::chrono;
 
@@ -219,7 +218,7 @@ bool Inception::restartingActiveAgent() {
     active.erase(std::remove(active.begin(), active.end(), ""), active.end());
 
     if (active.size() < majority) {
-      LOG_TOPIC(INFO, Logger::AGENCY)
+      LOG_TOPIC("9530f", INFO, Logger::AGENCY)
           << "Found majority of agents in agreement over active pool. "
              "Finishing startup sequence.";
       return true;
@@ -283,7 +282,7 @@ bool Inception::restartingActiveAgent() {
 
             // Found RAFT with leader
             if (!theirLeaderId.empty()) {
-              LOG_TOPIC(INFO, Logger::AGENCY)
+              LOG_TOPIC("d96f6", INFO, Logger::AGENCY)
                   << "Found active RAFTing agency lead by " << theirLeaderId
                   << ". Finishing startup sequence.";
 
@@ -341,12 +340,12 @@ bool Inception::restartingActiveAgent() {
                 std::sort(theirActVec.begin(), theirActVec.end());
                 if (!theirActVec.empty() && theirActVec != myActVec) {
                   if (!this->isStopping()) {
-                    LOG_TOPIC(FATAL, Logger::AGENCY)
+                    LOG_TOPIC("93486", FATAL, Logger::AGENCY)
                         << "Assumed active RAFT peer and I disagree on active "
                            "membership:";
-                    LOG_TOPIC(FATAL, Logger::AGENCY)
+                    LOG_TOPIC("8c9e7", FATAL, Logger::AGENCY)
                         << "Their active list is " << theirActive.toJson();
-                    LOG_TOPIC(FATAL, Logger::AGENCY)
+                    LOG_TOPIC("b7ea1", FATAL, Logger::AGENCY)
                         << "My active list is " << myActive.toJson();
                     FATAL_ERROR_EXIT();
                   }
@@ -355,19 +354,19 @@ bool Inception::restartingActiveAgent() {
                   *i = "";
                 }
               } else {
-                LOG_TOPIC(FATAL, Logger::AGENCY)
+                LOG_TOPIC("13d31", FATAL, Logger::AGENCY)
                     << "Assumed active RAFT peer and I disagree on active "
                        "agency size:";
-                LOG_TOPIC(FATAL, Logger::AGENCY)
+                LOG_TOPIC("5d11c", FATAL, Logger::AGENCY)
                     << "Their active list is " << theirActive.toJson();
-                LOG_TOPIC(FATAL, Logger::AGENCY)
+                LOG_TOPIC("568e6", FATAL, Logger::AGENCY)
                     << "My active list is " << myActive.toJson();
                 FATAL_ERROR_EXIT();
               }
             }
           } catch (std::exception const& e) {
             if (!this->isStopping()) {
-              LOG_TOPIC(FATAL, Logger::AGENCY)
+              LOG_TOPIC("e971a", FATAL, Logger::AGENCY)
                   << "Assumed active RAFT peer has no active agency list: " << e.what()
                   << ", administrative intervention needed.";
               FATAL_ERROR_EXIT();
@@ -381,9 +380,9 @@ bool Inception::restartingActiveAgent() {
     // Timed out? :(
     if ((steady_clock::now() - startTime) > timeout) {
       if (myConfig.poolComplete()) {
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Joined complete pool!";
+        LOG_TOPIC("26f6d", DEBUG, Logger::AGENCY) << "Joined complete pool!";
       } else {
-        LOG_TOPIC(ERR, Logger::AGENCY)
+        LOG_TOPIC("be8b4", ERR, Logger::AGENCY)
             << "Failed to find complete pool of agents. Giving up!";
       }
       break;
@@ -410,7 +409,7 @@ void Inception::run() {
   auto server = ServerState::instance();
   while (server->isMaintenance() && !this->isStopping() && !_agent->isStopping()) {
     std::this_thread::sleep_for(std::chrono::microseconds(1000000));
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC("1b613", DEBUG, Logger::AGENCY)
         << "Waiting for RestHandlerFactory to exit maintenance mode before we "
            " start gossip protocol...";
   }
@@ -420,11 +419,11 @@ void Inception::run() {
   // Are we starting from persisted pool?
   if (config.startup() == "persistence") {
     if (restartingActiveAgent()) {
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent.";
+      LOG_TOPIC("79fd7", INFO, Logger::AGENCY) << "Activating agent.";
       _agent->ready(true);
     } else {
       if (!this->isStopping()) {
-        LOG_TOPIC(FATAL, Logger::AGENCY)
+        LOG_TOPIC("27391", FATAL, Logger::AGENCY)
             << "Unable to restart with persisted pool. Fatal exit.";
         FATAL_ERROR_EXIT();
       }
@@ -439,13 +438,13 @@ void Inception::run() {
   config = _agent->config();
   if (!_agent->ready() && !config.poolComplete()) {
     if (!this->isStopping()) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
+      LOG_TOPIC("68763", FATAL, Logger::AGENCY)
           << "Failed to build environment for RAFT algorithm. Bailing out!";
       FATAL_ERROR_EXIT();
     }
   }
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent.";
+  LOG_TOPIC("c1d8f", INFO, Logger::AGENCY) << "Activating agent.";
   _agent->ready(true);
 }
 

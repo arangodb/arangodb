@@ -172,7 +172,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
 bool UpgradeTasks::upgradeGeoIndexes(TRI_vocbase_t& vocbase,
                                      arangodb::velocypack::Slice const& slice) {
   if (EngineSelectorFeature::engineName() != RocksDBEngine::EngineName) {
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "No need to upgrade geo indexes!";
+    LOG_TOPIC("2cb46", DEBUG, Logger::STARTUP) << "No need to upgrade geo indexes!";
     return true;
   }
 
@@ -184,13 +184,13 @@ bool UpgradeTasks::upgradeGeoIndexes(TRI_vocbase_t& vocbase,
       RocksDBIndex* rIndex = static_cast<RocksDBIndex*>(index.get());
       if (index->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
           index->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
-        LOG_TOPIC(INFO, Logger::STARTUP)
+        LOG_TOPIC("5e53d", INFO, Logger::STARTUP)
             << "Upgrading legacy geo index '" << rIndex->id() << "'";
 
         auto res = ::recreateGeoIndex(vocbase, *collection, rIndex);
 
         if (res.fail()) {
-          LOG_TOPIC(ERR, Logger::STARTUP)
+          LOG_TOPIC("5550a", ERR, Logger::STARTUP)
               << "Error upgrading geo indexes " << res.errorMessage();
           return false;
         }
@@ -234,7 +234,7 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
   if (users.isNone()) {
     return true;  // exit, no users were specified
   } else if (!users.isArray()) {
-    LOG_TOPIC(ERR, Logger::STARTUP) << "addDefaultUserOther: users is invalid";
+    LOG_TOPIC("44623", ERR, Logger::STARTUP) << "addDefaultUserOther: users is invalid";
     return false;
   }
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -253,7 +253,7 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
     VPackSlice extra = slice.get("extra");
     Result res = um->storeUser(false, user, passwd, active, VPackSlice::noneSlice());
     if (res.fail() && !res.is(TRI_ERROR_USER_DUPLICATE)) {
-      LOG_TOPIC(WARN, Logger::STARTUP) << "could not add database user " << user
+      LOG_TOPIC("b5b8a", WARN, Logger::STARTUP) << "could not add database user " << user
                                        << ": " << res.errorMessage();
     } else if (extra.isObject() && !extra.isEmptyObject()) {
       um->updateUser(user, [&](auth::User& user) {
@@ -268,7 +268,7 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
       return TRI_ERROR_NO_ERROR;
     });
     if (res.fail()) {
-      LOG_TOPIC(WARN, Logger::STARTUP)
+      LOG_TOPIC("60019", WARN, Logger::STARTUP)
           << "could not set permissions for new user " << user << ": "
           << res.errorMessage();
     }
@@ -279,11 +279,6 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
 bool UpgradeTasks::setupAqlFunctions(TRI_vocbase_t& vocbase,
                                      arangodb::velocypack::Slice const& slice) {
   return ::createSystemCollection(vocbase, "_aqlfunctions");
-}
-
-bool UpgradeTasks::createFrontend(TRI_vocbase_t& vocbase,
-                                  arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(vocbase, "_frontend");
 }
 
 bool UpgradeTasks::setupQueues(TRI_vocbase_t& vocbase,
@@ -373,12 +368,12 @@ bool UpgradeTasks::renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
     std::string const dest = arangodb::basics::FileUtils::buildFilename(
         path, "REPLICATION-APPLIER-STATE-" + std::to_string(vocbase.id()));
 
-    LOG_TOPIC(TRACE, Logger::STARTUP) << "copying replication applier file '"
+    LOG_TOPIC("75337", TRACE, Logger::STARTUP) << "copying replication applier file '"
                                       << source << "' to '" << dest << "'";
 
     std::string error;
     if (!TRI_CopyFile(source.c_str(), dest.c_str(), error)) {
-      LOG_TOPIC(WARN, Logger::STARTUP)
+      LOG_TOPIC("6c90c", WARN, Logger::STARTUP)
           << "could not copy replication applier file '" << source << "' to '"
           << dest << "'";
       result = false;

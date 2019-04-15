@@ -40,10 +40,7 @@ class RestAuthHandler : public RestVocbaseBaseHandler {
   char const* name() const override final { return "RestAuthHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
-
-#ifdef USE_ENTERPRISE
   void shutdownExecute(bool isFinalized) noexcept override;
-#endif
 
  private:
   RestStatus badRequest();

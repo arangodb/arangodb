@@ -25,7 +25,6 @@
 
 #include <lib/Logger/Logger.h>
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/types.h"
@@ -40,8 +39,6 @@ namespace aql {
  * @brief A Matrix of AqlItemRows
  */
 class AqlItemMatrix {
-  friend class AllRowsFetcher;
-
  public:
   explicit AqlItemMatrix(size_t nrRegs) : _size(0), _nrRegs(nrRegs) {}
   ~AqlItemMatrix() = default;
@@ -49,12 +46,12 @@ class AqlItemMatrix {
   /**
    * @brief Add this block of rows into the Matrix
    *
-   * @param blockShell Block of rows to append in the matrix
+   * @param blockPtr Block of rows to append in the matrix
    */
-  void addBlock(std::shared_ptr<AqlItemBlockShell> blockShell) {
-    TRI_ASSERT(blockShell->block().getNrRegs() == getNrRegisters());
-    size_t blockSize = blockShell->block().size();
-    _blocks.emplace_back(_size, std::move(blockShell));
+  void addBlock(SharedAqlItemBlockPtr blockPtr) {
+    TRI_ASSERT(blockPtr->getNrRegs() == getNrRegisters());
+    size_t blockSize = blockPtr->size();
+    _blocks.emplace_back(_size, std::move(blockPtr));
     _size += blockSize;
   }
 
@@ -125,7 +122,7 @@ class AqlItemMatrix {
         maxIndex = mostLikelyIndex;
 
         mostLikelyIndex = minIndex + (mostLikelyIndex - minIndex) / 2;
-      } else if (index >= candidate.first + candidate.second->block().size()) {
+      } else if (index >= candidate.first + candidate.second->size()) {
         minIndex = mostLikelyIndex;
         // This block ends before the requested index, go right.
         // Assert that there is a right to go to. This could only go wrong if
@@ -149,7 +146,7 @@ class AqlItemMatrix {
         mostLikelyIndex += 1 + numBlocksRightFromHere / 2;
       } else {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        LOG_TOPIC_IF(WARN, Logger::AQL, iterations > 1)
+        LOG_TOPIC_IF("c8c68", WARN, Logger::AQL, iterations > 1)
             << "Suboptimal AqlItemMatrix index lookup: Did " << iterations
             << " iterations.";
 #endif
@@ -164,8 +161,15 @@ class AqlItemMatrix {
                                    "block is reading out of bounds.");
   }
 
+  inline size_t numberOfBlocks() const { return _blocks.size(); }
+
+  inline SharedAqlItemBlockPtr getBlock(size_t index) {
+    TRI_ASSERT(index < numberOfBlocks());
+    return _blocks.at(index).second;
+  }
+
  private:
-  std::vector<std::pair<size_t, std::shared_ptr<AqlItemBlockShell>>> _blocks;
+  std::vector<std::pair<size_t, SharedAqlItemBlockPtr>> _blocks;
 
   size_t _size;
 

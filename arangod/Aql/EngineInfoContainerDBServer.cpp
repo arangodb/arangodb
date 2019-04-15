@@ -27,6 +27,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/GraphNode.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
@@ -44,9 +45,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-#ifdef USE_IRESEARCH
-#include "IResearch/IResearchViewNode.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -188,7 +186,6 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       setRestrictedShard(ExecutionNode::castTo<IndexNode*>(node), _source);
       break;
     }
-#ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       TRI_ASSERT(EngineType::Collection == type());
       auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
@@ -201,7 +198,6 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
                            findFirstScatter(viewNode));
       break;
     }
-#endif
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REMOVE:
@@ -232,7 +228,6 @@ void EngineInfoContainerDBServer::EngineInfo::collection(Collection* col) noexce
   source->collection = col;
 }
 
-#ifdef USE_IRESEARCH
 LogicalView const* EngineInfoContainerDBServer::EngineInfo::view() const noexcept {
   TRI_ASSERT(EngineType::View == type());
   auto* source = boost::get<ViewSource>(&_source);
@@ -257,7 +252,6 @@ void EngineInfoContainerDBServer::EngineInfo::addClient(ServerID const& server) 
     source->gather->sortMode(GatherNode::evaluateSortMode(++source->numClients));
   }
 }
-#endif
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     ServerID const& serverId, Query& query, std::vector<ShardID> const& shards,
@@ -287,13 +281,10 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     // "varUsageComputed" flag below (which will handle the counting)
     plan.increaseCounter(nodeType);
 
-#ifdef USE_IRESEARCH
     if (ExecutionNode::ENUMERATE_IRESEARCH_VIEW == nodeType) {
       auto* viewNode = ExecutionNode::castTo<iresearch::IResearchViewNode*>(clone);
       viewNode->shards() = shards;
-    } else
-#endif
-    if (ExecutionNode::REMOTE == nodeType) {
+    } else if (ExecutionNode::REMOTE == nodeType) {
       auto rem = ExecutionNode::castTo<RemoteNode*>(clone);
       // update the remote node with the information about the query
       rem->server("server:" + arangodb::ServerState::instance()->getId());
@@ -451,7 +442,6 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
       updateCollection(col);
       break;
     }
-#ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
       auto* view = viewNode.view().get();
@@ -463,7 +453,6 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
 
       break;
     }
-#endif
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REMOVE:
@@ -508,12 +497,9 @@ void EngineInfoContainerDBServer::closeSnippet(QueryId coordinatorEngineId) {
 
   e->connectQueryId(coordinatorEngineId);
 
-#ifdef USE_IRESEARCH
   if (EngineInfo::EngineType::View == e->type()) {
     _viewInfos[e->view()].engines.emplace_back(std::move(e));
-  } else
-#endif
-  {
+  } else {
     TRI_ASSERT(e->collection() != nullptr);
     auto it = _collectionInfos.find(e->collection());
     // This is not possible we have a snippet where no collection is involved
@@ -548,7 +534,7 @@ EngineInfoContainerDBServer::CollectionInfo& EngineInfoContainerDBServer::handle
   // What if we have an empty shard list here?
   if (shards->empty()) {
     // TODO FIXME
-    LOG_TOPIC(WARN, arangodb::Logger::AQL)
+    LOG_TOPIC("0997e", WARN, arangodb::Logger::AQL)
         << "TEMPORARY: A collection access of a query has no result in any "
            "shard";
   }
@@ -644,7 +630,6 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
     EngineInfo& engine = *it.first;
     std::vector<ShardID> const& shards = it.second;
 
-#ifdef USE_IRESEARCH
     // serialize for the list of shards
     if (engine.type() == EngineInfo::EngineType::View) {
       engine.serializeSnippet(serverId, query, shards, infoBuilder);
@@ -652,7 +637,6 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
 
       continue;
     }
-#endif
 
     bool isResponsibleForInit = true;
     for (auto const& shard : shards) {
@@ -998,33 +982,17 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
   });
 
   // Build Lookup Infos
-  VPackBuilder infoBuilder;
-  
-  // lazily begin transactions on leaders if necessary
+  VPackBuilder infoBuilder;  
   transaction::Methods* trx = _query->trx();
-  
-  // snippets already know which shards to lock, there is no need for us to
-  // start a managed begin / end transaction for a single AQL query
-  if (trx->state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    std::vector<std::string> servers;
-    for (auto const& it : dbServerMapping) {
-      servers.emplace_back(it.first);
-    }
-    // start transaction on all servers with snippets
-    Result res = ClusterTrxMethods::beginTransactionOnLeaders(*trx->state(), servers);
-    if (res.fail()) {
-      return res;
-    }
-  }
 
   // we need to lock per server in a deterministic order to avoid deadlocks
   for (auto& it : dbServerMapping) {
     std::string const serverDest = "server:" + it.first;
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Building Engine Info for " << it.first;
+    LOG_TOPIC("4bbe6", DEBUG, arangodb::Logger::AQL) << "Building Engine Info for " << it.first;
     infoBuilder.clear();
     it.second.buildMessage(it.first, *this, *_query, infoBuilder);
-    LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+    LOG_TOPIC("2f1fd", DEBUG, arangodb::Logger::AQL)
         << "Sending the Engine info: " << infoBuilder.toJson();
 
     // Now we send to DBServers.
@@ -1036,14 +1004,16 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
     ClusterTrxMethods::addAQLTransactionHeader(*trx, /*server*/ it.first, headers);
 
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
+
+    _query->incHttpRequests(1);
     auto res = cc->syncRequest(coordTransactionID, serverDest, RequestType::POST,
                                url, infoBuilder.toJson(), headers, SETUP_TIMEOUT);
 
     if (res->getErrorCode() != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(DEBUG, Logger::AQL)
+      LOG_TOPIC("f9a77", DEBUG, Logger::AQL)
           << it.first << " responded with " << res->getErrorCode() << " -> "
           << res->stringifyErrorMessage();
-      LOG_TOPIC(TRACE, Logger::AQL) << infoBuilder.toJson();
+      LOG_TOPIC("41082", TRACE, Logger::AQL) << infoBuilder.toJson();
       return {res->getErrorCode(), res->stringifyErrorMessage()};
     }
 
@@ -1051,7 +1021,7 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
     VPackSlice response = builder->slice();
 
     if (!response.isObject() || !response.get("result").isObject()) {
-      LOG_TOPIC(ERR, Logger::AQL) << "Received error information from "
+      LOG_TOPIC("0c3f2", ERR, Logger::AQL) << "Received error information from "
                                   << it.first << " : " << response.toJson();
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
               "Unable to deploy query on all required "
@@ -1139,6 +1109,15 @@ void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
   _graphNodes.emplace_back(node);
 }
 
+
+namespace {
+struct NoopCb final : public arangodb::ClusterCommCallback {
+  bool operator()(ClusterCommResult*) override{
+    return true;
+  }
+};
+}
+
 /**
  * @brief Will send a shutdown to all engines registered in the list of
  * queryIds.
@@ -1172,19 +1151,26 @@ void EngineInfoContainerDBServer::cleanupEngines(std::shared_ptr<ClusterComm> cc
       }
     }
   }
-
+  
   // Shutdown traverser engines
   url = "/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
         "/_internal/traverser/";
+  std::unordered_map<std::string, std::string> headers;
   std::shared_ptr<std::string> noBody;
+  
+  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+  auto cb = std::make_shared<::NoopCb>();
+  
+  constexpr double shortTimeout = 10.0;  // Picked arbitrarily
   for (auto const& gn : _graphNodes) {
     auto allEngines = gn->engines();
     for (auto const& engine : *allEngines) {
-      requests.emplace_back(engine.first, rest::RequestType::DELETE_REQ,
-                            url + basics::StringUtils::itoa(engine.second), noBody);
+      cc->asyncRequest(coordinatorTransactionID, engine.first, rest::RequestType::DELETE_REQ,
+                       url + basics::StringUtils::itoa(engine.second), noBody, headers, cb,
+                       shortTimeout, false, 2.0);
     }
+    _query->incHttpRequests(allEngines->size());
   }
-
-  cc->fireAndForgetRequests(requests);
+  
   queryIds.clear();
 }

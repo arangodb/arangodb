@@ -105,7 +105,7 @@ MMFilesFulltextIndex::MMFilesFulltextIndex(TRI_idx_iid_t iid,
 
 MMFilesFulltextIndex::~MMFilesFulltextIndex() {
   if (_fulltextIndex != nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "destroying fulltext index";
+    LOG_TOPIC("a5f64", TRACE, arangodb::Logger::ENGINES) << "destroying fulltext index";
     TRI_FreeFtsIndex(_fulltextIndex);
   }
 }

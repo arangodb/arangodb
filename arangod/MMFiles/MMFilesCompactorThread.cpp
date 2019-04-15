@@ -108,33 +108,33 @@ void MMFilesCompactorThread::DropDatafileCallback(MMFilesDatafile* df,
     int res = datafile->rename(filename);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::COMPACTOR)
+      LOG_TOPIC("42de9", ERR, Logger::COMPACTOR)
           << "cannot rename obsolete datafile '" << copy << "' to '" << filename
           << "': " << TRI_errno_string(res);
     } else {
-      LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+      LOG_TOPIC("96ae7", DEBUG, Logger::COMPACTOR)
           << "renamed obsolete datafile '" << copy << "' to '" << filename
           << "': " << TRI_errno_string(res);
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+  LOG_TOPIC("cd87e", DEBUG, Logger::COMPACTOR)
       << "finished compacting datafile '" << datafile->getName() << "'";
 
   int res = datafile->close();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, Logger::COMPACTOR)
+    LOG_TOPIC("60d01", ERR, Logger::COMPACTOR)
         << "cannot close obsolete datafile '" << datafile->getName()
         << "': " << TRI_errno_string(res);
   } else if (datafile->isPhysical()) {
-    LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+    LOG_TOPIC("221fb", DEBUG, Logger::COMPACTOR)
         << "wiping compacted datafile '" << datafile->getName() << "' from disk";
 
     res = TRI_UnlinkFile(filename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::COMPACTOR)
+      LOG_TOPIC("2e63e", ERR, Logger::COMPACTOR)
           << "cannot wipe obsolete datafile '" << datafile->getName()
           << "': " << TRI_errno_string(res);
     }
@@ -188,21 +188,21 @@ void MMFilesCompactorThread::RenameDatafileCallback(MMFilesDatafile* datafile,
     int res = datafile->rename(tempFilename);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::COMPACTOR)
+      LOG_TOPIC("99972", ERR, Logger::COMPACTOR)
           << "unable to rename datafile '" << datafile->getName() << "' to '"
           << tempFilename << "': " << TRI_errno_string(res);
     } else {
-      LOG_TOPIC(DEBUG, arangodb::Logger::COMPACTOR)
+      LOG_TOPIC("96e24", DEBUG, arangodb::Logger::COMPACTOR)
           << "renamed datafile from '" << realName << "' to '" << tempFilename << "'";
 
       res = compactor->rename(realName);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC(ERR, Logger::COMPACTOR)
+        LOG_TOPIC("477cd", ERR, Logger::COMPACTOR)
             << "unable to rename compaction file '" << compactor->getName()
             << "' to '" << realName << "': " << TRI_errno_string(res);
       } else {
-        LOG_TOPIC(DEBUG, arangodb::Logger::COMPACTOR)
+        LOG_TOPIC("47a0f", DEBUG, arangodb::Logger::COMPACTOR)
             << "renamed datafile from '" << compactorName << "' to '"
             << tempFilename << "'";
       }
@@ -218,7 +218,7 @@ void MMFilesCompactorThread::RenameDatafileCallback(MMFilesDatafile* datafile,
                   ->replaceDatafileWithCompactor(datafile, compactor);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::COMPACTOR)
+      LOG_TOPIC("518c5", ERR, Logger::COMPACTOR)
           << "logic error: could not swap datafile and compactor files";
       return;
     }
@@ -230,14 +230,14 @@ void MMFilesCompactorThread::RenameDatafileCallback(MMFilesDatafile* datafile,
 /// @brief remove an empty compactor file
 int MMFilesCompactorThread::removeCompactor(LogicalCollection* collection,
                                             MMFilesDatafile* compactor) {
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+  LOG_TOPIC("87810", DEBUG, Logger::COMPACTOR)
       << "removing empty compaction file '" << compactor->getName() << "'";
 
   // remove the compactor from the list of compactors
   bool ok = static_cast<MMFilesCollection*>(collection->getPhysical())->removeCompactor(compactor);
 
   if (!ok) {
-    LOG_TOPIC(ERR, Logger::COMPACTOR)
+    LOG_TOPIC("0682c", ERR, Logger::COMPACTOR)
         << "logic error: could not locate compactor";
 
     return TRI_ERROR_INTERNAL;
@@ -258,13 +258,13 @@ int MMFilesCompactorThread::removeCompactor(LogicalCollection* collection,
 /// @brief remove an empty datafile
 int MMFilesCompactorThread::removeDatafile(LogicalCollection* collection,
                                            MMFilesDatafile* df) {
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+  LOG_TOPIC("d05c7", DEBUG, Logger::COMPACTOR)
       << "removing empty datafile '" << df->getName() << "'";
 
   bool ok = static_cast<MMFilesCollection*>(collection->getPhysical())->removeDatafile(df);
 
   if (!ok) {
-    LOG_TOPIC(ERR, Logger::COMPACTOR)
+    LOG_TOPIC("5d1aa", ERR, Logger::COMPACTOR)
         << "logic error: could not locate datafile";
 
     return TRI_ERROR_INTERNAL;
@@ -500,13 +500,13 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   CompactionInitialContext initial = getCompactionContext(&trx, collection, toCompact);
 
   if (initial._failed) {
-    LOG_TOPIC(ERR, Logger::COMPACTOR)
+    LOG_TOPIC("33ca7", ERR, Logger::COMPACTOR)
         << "could not create initialize compaction";
 
     return;
   }
 
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+  LOG_TOPIC("002a1", DEBUG, Logger::COMPACTOR)
       << "compaction writes to be executed for collection '" << collection->id()
       << "', number of source datafiles: " << n
       << ", target datafile size: " << initial._targetSize;
@@ -518,18 +518,18 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     compactor = physical->createCompactor(initial._fid,
                                           static_cast<uint32_t>(initial._targetSize));
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, Logger::COMPACTOR)
+    LOG_TOPIC("10471", ERR, Logger::COMPACTOR)
         << "could not create compactor file: " << ex.what();
     return;
   } catch (...) {
-    LOG_TOPIC(ERR, Logger::COMPACTOR)
+    LOG_TOPIC("29a67", ERR, Logger::COMPACTOR)
         << "could not create compactor file: unknown exception";
     return;
   }
 
   TRI_ASSERT(compactor != nullptr);
 
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+  LOG_TOPIC("e8dbf", DEBUG, Logger::COMPACTOR)
       << "created new compactor file '" << compactor->getName()
       << "', size: " << compactor->maximalSize();
 
@@ -541,7 +541,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   Result res = trx.begin();
 
   if (!res.ok()) {
-    LOG_TOPIC(ERR, Logger::COMPACTOR)
+    LOG_TOPIC("91796", ERR, Logger::COMPACTOR)
         << "error during compaction: " << res.errorMessage();
     return;
   }
@@ -554,7 +554,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     MMFilesDatafile* df = compaction._datafile;
 
     compactionBytesRead += df->currentSize();
-    LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+    LOG_TOPIC("92144", DEBUG, Logger::COMPACTOR)
         << "compacting datafile '" << df->getName() << "' into '"
         << compactor->getName() << "', number: " << i
         << ", keep deletions: " << compaction._keepDeletions;
@@ -568,13 +568,13 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     try {
       ok = TRI_IterateDatafile(df, compactifier);
     } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::COMPACTOR) << "failed to compact datafile '"
+      LOG_TOPIC("80c47", WARN, Logger::COMPACTOR) << "failed to compact datafile '"
                                          << df->getName() << "': " << ex.what();
       throw;
     }
 
     if (!ok) {
-      LOG_TOPIC(WARN, Logger::COMPACTOR)
+      LOG_TOPIC("84c6d", WARN, Logger::COMPACTOR)
           << "failed to compact datafile '" << df->getName() << "'";
       // compactor file does not need to be removed now. will be removed on next
       // startup
@@ -603,7 +603,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   }
 
   if (physical->closeCompactor(compactor) != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not close compactor file";
+    LOG_TOPIC("d86f1", ERR, Logger::COMPACTOR) << "could not close compactor file";
     // TODO: how do we recover from this state?
     return;
   }
@@ -643,7 +643,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
                                                     __FILE__, __LINE__);
 
       if (b == nullptr) {
-        LOG_TOPIC(ERR, Logger::COMPACTOR)
+        LOG_TOPIC("35cb5", ERR, Logger::COMPACTOR)
             << "out of memory when creating datafile-drop ditch";
       }
     }
@@ -676,7 +676,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
                                                         __FILE__, __LINE__);
 
         if (b == nullptr) {
-          LOG_TOPIC(ERR, Logger::COMPACTOR)
+          LOG_TOPIC("1bc3a", ERR, Logger::COMPACTOR)
               << "out of memory when creating datafile-rename ditch";
         } else {
           _vocbase.signalCleanup();
@@ -693,7 +693,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
                                                       __FILE__, __LINE__);
 
         if (b == nullptr) {
-          LOG_TOPIC(ERR, Logger::COMPACTOR)
+          LOG_TOPIC("7af1e", ERR, Logger::COMPACTOR)
               << "out of memory when creating datafile-drop ditch";
         } else {
           _vocbase.signalCleanup();
@@ -751,7 +751,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 
   // now we have datafiles that we can process
   size_t const n = datafiles.size();
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+  LOG_TOPIC("a02cc", DEBUG, Logger::COMPACTOR)
       << "inspecting datafiles of collection '" << collection->name()
       << "' for compaction opportunities";
 
@@ -791,7 +791,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   for (size_t i = start; i < n; ++i) {
     MMFilesDatafile* df = datafiles[i];
     if (df->state() == TRI_DF_STATE_OPEN_ERROR || df->state() == TRI_DF_STATE_WRITE_ERROR) {
-      LOG_TOPIC(WARN, Logger::COMPACTOR)
+      LOG_TOPIC("275f3", WARN, Logger::COMPACTOR)
           << "cannot compact datafile " << df->fid() << " of collection '"
           << collection->name() << "' because it has errors";
       physical->setCompactionStatus(ReasonCorrupted);
@@ -808,7 +808,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
             ->_datafileStatistics.get(df->fid());
 
     if (dfi.numberUncollected > 0) {
-      LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+      LOG_TOPIC("efb09", DEBUG, Logger::COMPACTOR)
           << "cannot compact datafile " << df->fid() << " of collection '"
           << collection->name() << "' because it still has uncollected entries";
       start = i + 1;
@@ -885,7 +885,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 
     TRI_ASSERT(reason != nullptr);
 
-    LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+    LOG_TOPIC("d870a", DEBUG, Logger::COMPACTOR)
         << "found datafile #" << i << " eligible for compaction. fid: " << df->fid()
         << ", size: " << df->maximalSize() << ", reason: " << reason
         << ", numberDead: " << dfi.numberDead << ", numberAlive: " << dfi.numberAlive
@@ -939,7 +939,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 
     // cleanup local variables
     physical->setCompactionStatus(ReasonNothingToCompact);
-    LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+    LOG_TOPIC("78371", DEBUG, Logger::COMPACTOR)
         << "inspecting datafiles of collection yielded: " << ReasonNothingToCompact;
     return false;
   }
@@ -1036,7 +1036,7 @@ void MMFilesCompactorThread::run() {
 
                       if (ce == nullptr) {
                         // out of memory
-                        LOG_TOPIC(WARN, Logger::COMPACTOR)
+                        LOG_TOPIC("5cd66", WARN, Logger::COMPACTOR)
                             << "out of memory when trying to create compaction "
                                "ditch";
                       } else {
@@ -1052,10 +1052,10 @@ void MMFilesCompactorThread::run() {
                           // compaction stamp to force another round of
                           // compaction
                         } catch (std::exception const& ex) {
-                          LOG_TOPIC(ERR, Logger::COMPACTOR)
+                          LOG_TOPIC("a9e71", ERR, Logger::COMPACTOR)
                               << "caught exception during compaction: " << ex.what();
                         } catch (...) {
-                          LOG_TOPIC(ERR, Logger::COMPACTOR)
+                          LOG_TOPIC("5f4c3", ERR, Logger::COMPACTOR)
                               << "an unknown exception occurred during "
                                  "compaction";
                           // in case an error occurs, we must still free this
@@ -1069,11 +1069,11 @@ void MMFilesCompactorThread::run() {
                       }
                     }
                   } catch (std::exception const& ex) {
-                    LOG_TOPIC(ERR, Logger::COMPACTOR)
+                    LOG_TOPIC("e38b9", ERR, Logger::COMPACTOR)
                         << "caught exception during compaction: " << ex.what();
                   } catch (...) {
                     // in case an error occurs, we must still relase the lock
-                    LOG_TOPIC(ERR, Logger::COMPACTOR)
+                    LOG_TOPIC("e9a26", ERR, Logger::COMPACTOR)
                         << "an unknown exception occurred during compaction";
                   }
                 }
@@ -1115,7 +1115,7 @@ void MMFilesCompactorThread::run() {
     }
   }
 
-  LOG_TOPIC(TRACE, Logger::COMPACTOR) << "shutting down compactor thread";
+  LOG_TOPIC("44c27", TRACE, Logger::COMPACTOR) << "shutting down compactor thread";
 }
 
 /// @brief determine the number of documents in the collection

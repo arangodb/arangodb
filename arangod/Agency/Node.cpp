@@ -37,15 +37,8 @@
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
 
-struct NotEmpty {
-  bool operator()(const std::string& s) { return !s.empty(); }
-};
-
-struct Empty {
-  bool operator()(const std::string& s) { return s.empty(); }
-};
-
 const Node::Children Node::dummyChildren = Node::Children();
+const Node Node::_dummyNode = Node("dumm-di-dumm");
 
 /// @brief Split strings by separator
 inline static std::vector<std::string> split(const std::string& str, char separator) {
@@ -70,7 +63,10 @@ inline static std::vector<std::string> split(const std::string& str, char separa
     p = q + 1;
   }
   result.emplace_back(key, p);
-  result.erase(std::find_if(result.rbegin(), result.rend(), NotEmpty()).base(),
+  result.erase(std::find_if(result.rbegin(), result.rend(),
+                            [](std::string const& s) -> bool {
+                              return !s.empty();
+                            }).base(),
                result.end());
   return result;
 }
@@ -390,11 +386,21 @@ bool Node::addTimeToLive(long millis) {
   return true;
 }
 
+void Node::timeToLive(TimePoint const& ttl) {
+  _ttl = ttl;
+}
+
+TimePoint const& Node::timeToLive() const {
+  return _ttl;
+}
+
 // remove time to live entry for this node
 bool Node::removeTimeToLive() {
-  if (_ttl != std::chrono::system_clock::time_point()) {
-    store().removeTTL(uri());
-    _ttl = std::chrono::system_clock::time_point();
+  if (_store != nullptr) {
+    _store->removeTTL(uri());
+    if (_ttl != std::chrono::system_clock::time_point()) {
+      _ttl = std::chrono::system_clock::time_point();
+    }
   }
   return true;
 }
@@ -439,7 +445,7 @@ bool Node::handle<SET>(VPackSlice const& slice) {
                        : static_cast<long>(slice.get("ttl").getNumber<int>()));
       addTimeToLive(ttl);
     } else {
-      LOG_TOPIC(WARN, Logger::AGENCY)
+      LOG_TOPIC("66da2", WARN, Logger::AGENCY)
           << "Non-number value assigned to ttl: " << ttl_v.toJson();
     }
   }
@@ -487,7 +493,7 @@ bool Node::handle<DECREMENT>(VPackSlice const& slice) {
 template <>
 bool Node::handle<PUSH>(VPackSlice const& slice) {
   if (!slice.hasKey("new")) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("a9481", WARN, Logger::AGENCY)
         << "Operator push without new value: " << slice.toJson();
     return false;
   }
@@ -510,17 +516,17 @@ bool Node::handle<ERASE>(VPackSlice const& slice) {
   bool havePos = slice.hasKey("pos");
 
   if (!haveVal && !havePos) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("b5eaa", WARN, Logger::AGENCY)
         << "Operator erase without value or position to be erased is illegal: "
         << slice.toJson();
     return false;
   } else if (haveVal && havePos) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("c2756", WARN, Logger::AGENCY)
         << "Operator erase with value and position to be erased is illegal: "
         << slice.toJson();
     return false;
   } else if (havePos && (!slice.get("pos").isUInt() && !slice.get("pos").isSmallInt())) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("d6648", WARN, Logger::AGENCY)
         << "Operator erase with non-positive integer position is illegal: "
         << slice.toJson();
   }
@@ -561,12 +567,12 @@ bool Node::handle<ERASE>(VPackSlice const& slice) {
 template <>
 bool Node::handle<REPLACE>(VPackSlice const& slice) {
   if (!slice.hasKey("val")) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("27763", WARN, Logger::AGENCY)
         << "Operator erase without value to be erased: " << slice.toJson();
     return false;
   }
   if (!slice.hasKey("new")) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("28331", WARN, Logger::AGENCY)
         << "Operator replace without new value: " << slice.toJson();
     return false;
   }
@@ -613,7 +619,7 @@ bool Node::handle<POP>(VPackSlice const& slice) {
 template <>
 bool Node::handle<PREPEND>(VPackSlice const& slice) {
   if (!slice.hasKey("new")) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("5ecb0", WARN, Logger::AGENCY)
         << "Operator prepend without new value: " << slice.toJson();
     return false;
   }
@@ -705,6 +711,7 @@ bool Node::applieOp(VPackSlice const& slice) {
     if (_parent == nullptr) {  // root node
       _children.clear();
       _value.clear();
+      _vecBufDirty = true;    // just in case there was an array
       return true;
     } else {
       return _parent->removeChild(_nodeName);
@@ -742,7 +749,7 @@ bool Node::applieOp(VPackSlice const& slice) {
   } else if (oper == "replace") {  // "op":"replace"
     return handle<REPLACE>(slice);
   } else {  // "op" might not be a key word after all
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("fb064", WARN, Logger::AGENCY)
         << "Keyword 'op' without known operation. Handling as regular key: \""
         << oper << "\"";
   }
@@ -797,7 +804,7 @@ void Node::toBuilder(Builder& builder, bool showHidden) const {
     }
 
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+    LOG_TOPIC("44d99", ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
   }
 }
 
@@ -931,7 +938,7 @@ std::pair<Node const&, bool> Node::hasAsNode(std::string const& url) const {
     return good_pair;
   } catch (...) {
     // do nothing, fail_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("3e591", DEBUG, Logger::SUPERVISION)
         << "hasAsNode had exception processing " << url;
   }  // catch
 
@@ -949,7 +956,7 @@ std::pair<Node&, bool> Node::hasAsWritableNode(std::string const& url) {
     return good_pair;
   } catch (...) {
     // do nothing, fail_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("027ed", DEBUG, Logger::SUPERVISION)
         << "hasAsWritableNode had exception processing " << url;
   }  // catch
 
@@ -966,7 +973,7 @@ std::pair<NodeType, bool> Node::hasAsType(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, fail_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("7f66c", DEBUG, Logger::SUPERVISION)
         << "hasAsType had exception processing " << url;
   }  // catch
 
@@ -984,7 +991,7 @@ std::pair<Slice, bool> Node::hasAsSlice(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("16f3d", TRACE, Logger::SUPERVISION)
         << "hasAsSlice had exception processing " << url;
   }  // catch
 
@@ -1003,7 +1010,7 @@ std::pair<uint64_t, bool> Node::hasAsUInt(std::string const& url) const {
     }
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("eaa6b", DEBUG, Logger::SUPERVISION)
         << "hasAsUInt had exception processing " << url;
   }  // catch
 
@@ -1022,7 +1029,7 @@ std::pair<bool, bool> Node::hasAsBool(std::string const& url) const {
     }
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("99238", DEBUG, Logger::SUPERVISION)
         << "hasAsBool had exception processing " << url;
   }  // catch
 
@@ -1043,7 +1050,7 @@ std::pair<std::string, bool> Node::hasAsString(std::string const& url) const {
     }
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("fd020", DEBUG, Logger::SUPERVISION)
         << "hasAsString had exception processing " << url;
   }  // catch
 
@@ -1057,7 +1064,7 @@ std::pair<Node::Children const&, bool> Node::hasAsChildren(std::string const& ur
     Node const& target(operator()(url));
     return std::pair<Children const&, bool> {target.children(), true};
   } catch (...) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("4e3cb", DEBUG, Logger::SUPERVISION)
         << "hasAsChildren had exception processing " << url;
   }  // catch
 
@@ -1076,7 +1083,7 @@ std::pair<void*, bool> Node::hasAsBuilder(std::string const& url, Builder& build
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("fb685", DEBUG, Logger::SUPERVISION)
         << "hasAsBuilder(1) had exception processing " << url;
   }  // catch
 
@@ -1095,7 +1102,7 @@ std::pair<Builder, bool> Node::hasAsBuilder(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("68a75", DEBUG, Logger::SUPERVISION)
         << "hasAsBuilder(2) had exception processing " << url;
   }  // catch
 
@@ -1113,7 +1120,7 @@ std::pair<Slice, bool> Node::hasAsArray(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("0a72b", DEBUG, Logger::SUPERVISION)
         << "hasAsArray had exception processing " << url;
   }  // catch
 

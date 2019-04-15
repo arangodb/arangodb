@@ -32,11 +32,7 @@
 #include "Basics/datetime.h"
 #include "Cluster/ServerState.h"
 #include "Index.h"
-
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchCommon.h"
-#endif
-
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
@@ -297,12 +293,10 @@ Index::IndexType Index::type(char const* type, size_t len) {
   if (::typeMatch(type, len, "geo2")) {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
-#ifdef USE_IRESEARCH
   std::string const& tmp = arangodb::iresearch::DATA_SOURCE_TYPE.name();
   if (::typeMatch(type, len, tmp.c_str())) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
   }
-#endif
   if (::typeMatch(type, len, "noaccess")) {
     return TRI_IDX_TYPE_NO_ACCESS_INDEX;
   }
@@ -337,10 +331,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "geo2";
     case TRI_IDX_TYPE_GEO_INDEX:
       return "geo";
-#ifdef USE_IRESEARCH
     case TRI_IDX_TYPE_IRESEARCH_LINK:
       return arangodb::iresearch::DATA_SOURCE_TYPE.name().c_str();
-#endif
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";
     case TRI_IDX_TYPE_UNKNOWN: {
@@ -635,9 +627,6 @@ Result Index::drop() {
 Result Index::sizeHint(transaction::Methods& trx, size_t size) {
   return Result();  // do nothing
 }
-
-/// @brief default implementation for hasBatchInsert
-bool Index::hasBatchInsert() const { return false; }
 
 /// @brief default implementation for supportsFilterCondition
 bool Index::supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const&,

@@ -60,9 +60,11 @@ extern uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data, size_t length
 }
 
 /// @brief computes a CRC32 for memory blobs
+/// the polynomial used is 0x1EDC6F41.
 uint32_t TRI_Crc32HashPointer(void const*, size_t);
 
 /// @brief computes a CRC32 for strings
+/// the polynomial used is 0x1EDC6F41.
 uint32_t TRI_Crc32HashString(char const*);
 
 #endif

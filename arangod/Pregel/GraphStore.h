@@ -23,9 +23,7 @@
 #ifndef ARANGODB_PREGEL_GRAPH_STORE_H
 #define ARANGODB_PREGEL_GRAPH_STORE_H 1
 
-#include <atomic>
-#include <cstdint>
-#include <set>
+#include "Basics/StringHeap.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
@@ -33,12 +31,20 @@
 #include "Pregel/TypedBuffer.h"
 #include "Utils/DatabaseGuard.h"
 
+#include <atomic>
+#include <cstdint>
+#include <set>
+
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
 
 class LogicalCollection;
-
+  
+namespace basic {
+class StringHeap;
+}
 namespace transaction {
 class Methods;
 }
@@ -117,6 +123,9 @@ class GraphStore {
 
   /// Edges (and data)
   TypedBuffer<Edge<E>>* _edges = nullptr;
+  
+  std::mutex _keyHeapMutex;
+  StringHeap _keyHeap;
 
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;

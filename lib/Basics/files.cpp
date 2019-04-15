@@ -461,7 +461,7 @@ int TRI_RemoveEmptyDirectory(char const* filename) {
   int res = TRI_RMDIR(filename);
 
   if (res != 0) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("a6c6a", TRACE, arangodb::Logger::FIXME)
         << "cannot remove directory '" << filename << "': " << TRI_LAST_ERROR_STR;
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
@@ -475,11 +475,11 @@ int TRI_RemoveEmptyDirectory(char const* filename) {
 
 int TRI_RemoveDirectory(char const* filename) {
   if (TRI_IsSymbolicLink(filename)) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("abdb4", TRACE, arangodb::Logger::FIXME)
         << "removing symbolic link '" << filename << "'";
     return TRI_UnlinkFile(filename);
   } else if (TRI_IsDirectory(filename)) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "removing directory '" << filename << "'";
+    LOG_TOPIC("0207a", TRACE, arangodb::Logger::FIXME) << "removing directory '" << filename << "'";
 
     int res = TRI_ERROR_NO_ERROR;
     std::vector<std::string> files = TRI_FilesDirectory(filename);
@@ -499,11 +499,11 @@ int TRI_RemoveDirectory(char const* filename) {
 
     return res;
   } else if (TRI_ExistsFile(filename)) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "removing file '" << filename << "'";
+    LOG_TOPIC("f103f", TRACE, arangodb::Logger::FIXME) << "removing file '" << filename << "'";
 
     return TRI_UnlinkFile(filename);
   } else {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("08df8", TRACE, arangodb::Logger::FIXME)
         << "attempt to remove non-existing file/directory '" << filename << "'";
 
     // TODO: why do we actually return "no error" here?
@@ -527,7 +527,7 @@ int TRI_RemoveDirectoryDeterministic(char const* filename) {
               return lhs.size() > rhs.size();
             });
 
-  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "removing files in directory
+  // LOG_TOPIC("0d9b9", TRACE, arangodb::Logger::FIXME) << "removing files in directory
   // '" << filename << "' in this order: " << files;
 
   int res = TRI_ERROR_NO_ERROR;
@@ -745,7 +745,7 @@ int TRI_RenameFile(char const* old, char const* filename, long* systemError,
     if (systemErrorStr != nullptr) {
       *systemErrorStr = windowsErrorBuf;
     }
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("1f6ac", TRACE, arangodb::Logger::FIXME)
         << "cannot rename file from '" << old << "' to '" << filename
         << "': " << errno << " - " << windowsErrorBuf;
     res = -1;
@@ -763,7 +763,7 @@ int TRI_RenameFile(char const* old, char const* filename, long* systemError,
     if (systemErrorStr != nullptr) {
       *systemErrorStr = TRI_LAST_ERROR_STR;
     }
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("d8b28", TRACE, arangodb::Logger::FIXME)
         << "cannot rename file from '" << old << "' to '" << filename
         << "': " << TRI_LAST_ERROR_STR;
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -782,7 +782,7 @@ int TRI_UnlinkFile(char const* filename) {
   if (res != 0) {
     int e = errno;
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("80e57", TRACE, arangodb::Logger::FIXME)
         << "cannot unlink file '" << filename << "': " << TRI_LAST_ERROR_STR;
     if (e == ENOENT) {
       return TRI_ERROR_FILE_NOT_FOUND;
@@ -808,11 +808,11 @@ bool TRI_ReadPointer(int fd, void* buffer, size_t length) {
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read: " << TRI_LAST_ERROR_STR;
+      LOG_TOPIC("c9c0c", ERR, arangodb::Logger::FIXME) << "cannot read: " << TRI_LAST_ERROR_STR;
       return false;
     } else if (n == 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read, end-of-file";
+      LOG_TOPIC("87f52", ERR, arangodb::Logger::FIXME) << "cannot read, end-of-file";
       return false;
     }
 
@@ -835,7 +835,7 @@ bool TRI_WritePointer(int fd, void const* buffer, size_t length) {
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot write: " << TRI_LAST_ERROR_STR;
+      LOG_TOPIC("420b1", ERR, arangodb::Logger::FIXME) << "cannot write: " << TRI_LAST_ERROR_STR;
       return false;
     }
 
@@ -972,7 +972,7 @@ int TRI_CreateLockFile(char const* filename) {
 
   if (fd == INVALID_HANDLE_VALUE) {
     TRI_SYSTEM_ERROR();
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("64d0d", ERR, arangodb::Logger::FIXME)
         << "cannot create lockfile '" << filename << "': " << TRI_GET_ERRORBUF;
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
@@ -985,7 +985,7 @@ int TRI_CreateLockFile(char const* filename) {
 
   if (!r || len != buf.size()) {
     TRI_SYSTEM_ERROR();
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("c2286", ERR, arangodb::Logger::FIXME)
         << "cannot write lockfile '" << filename << "': " << TRI_GET_ERRORBUF;
     int res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
@@ -1003,7 +1003,7 @@ int TRI_CreateLockFile(char const* filename) {
 
   if (!r) {
     TRI_SYSTEM_ERROR();
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("f0d61", ERR, arangodb::Logger::FIXME)
         << "cannot set lockfile status '" << filename << "': " << TRI_GET_ERRORBUF;
     int res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
@@ -1116,7 +1116,7 @@ int TRI_VerifyLockFile(char const* filename) {
 
   if (fd < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("51db5", WARN, arangodb::Logger::FIXME)
         << "cannot open lockfile '" << filename
         << "' in write mode: " << TRI_last_error();
 
@@ -1155,11 +1155,11 @@ int TRI_VerifyLockFile(char const* filename) {
   //   are still performed; this can be used to check for the existence of a
   //   process ID or process group ID that the caller is permitted to signal.
   if (kill(pid, 0) == -1) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("b387d", WARN, arangodb::Logger::FIXME)
         << "found existing lockfile '" << filename << "' of previous process with pid "
         << pid << ", but that process seems to be dead already";
   } else {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("ad4b2", WARN, arangodb::Logger::FIXME)
         << "found existing lockfile '" << filename << "' of previous process with pid "
         << pid << ", and that process seems to be still running";
   }
@@ -1180,7 +1180,7 @@ int TRI_VerifyLockFile(char const* filename) {
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("c960a", WARN, arangodb::Logger::FIXME)
           << "fcntl on lockfile '" << filename << "' failed: " << TRI_last_error();
     }
 
@@ -1194,7 +1194,7 @@ int TRI_VerifyLockFile(char const* filename) {
   // from man 2 fcntl: "If a conflicting lock is held by another process,
   // this call returns -1 and sets errno to EACCES or EAGAIN."
   if (canLock != EACCES && canLock != EAGAIN) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("94b6d", WARN, arangodb::Logger::FIXME)
         << "fcntl on lockfile '" << filename << "' failed: " << TRI_last_error()
         << ". a possible reason is that the filesystem does not support "
            "file-locking";
@@ -1572,91 +1572,87 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath, char const* instal
 static bool CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string& error) {
   bool rc = true;
 #if TRI_LINUX_SPLICE
-  bool enableSplice = true;
-  if (enableSplice) {
-    int splicePipe[2];
-    ssize_t pipeSize = 0;
-    long chunkSendRemain = fileSize;
-    loff_t totalSentAlready = 0;
+  int splicePipe[2];
+  ssize_t pipeSize = 0;
+  long chunkSendRemain = fileSize;
+  loff_t totalSentAlready = 0;
 
-    if (pipe(splicePipe) != 0) {
-      error = std::string("splice failed to create pipes: ") + strerror(errno);
-      return false;
-    }
-    while (chunkSendRemain > 0) {
-      if (pipeSize == 0) {
-        pipeSize = splice(srcFD, &totalSentAlready, splicePipe[1], nullptr,
-                          chunkSendRemain, SPLICE_F_MOVE);
-        if (pipeSize == -1) {
-          error = std::string("splice read failed: ") + strerror(errno);
-          rc = false;
-          break;
-        }
-      }
-      ssize_t sent = splice(splicePipe[0], nullptr, dstFD, nullptr, pipeSize,
-                            SPLICE_F_MORE | SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
-      if (sent == -1) {
+  if (pipe(splicePipe) != 0) {
+    error = std::string("splice failed to create pipes: ") + strerror(errno);
+    return false;
+  }
+  while (chunkSendRemain > 0) {
+    if (pipeSize == 0) {
+      pipeSize = splice(srcFD, &totalSentAlready, splicePipe[1], nullptr,
+                        chunkSendRemain, SPLICE_F_MOVE);
+      if (pipeSize == -1) {
         error = std::string("splice read failed: ") + strerror(errno);
         rc = false;
         break;
       }
-      pipeSize -= sent;
-      chunkSendRemain -= sent;
     }
-    close(splicePipe[0]);
-    close(splicePipe[1]);
-  } else
-#endif
-  {
-    // 128k:
-    constexpr size_t C128 = 128 * 1024;
-    char* buf = static_cast<char*>(TRI_Allocate(C128));
-
-    if (buf == nullptr) {
-      error = "failed to allocate temporary buffer";
+    ssize_t sent = splice(splicePipe[0], nullptr, dstFD, nullptr, pipeSize,
+                          SPLICE_F_MORE | SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
+    if (sent == -1) {
+      error = std::string("splice read failed: ") + strerror(errno);
       rc = false;
+      break;
+    }
+    pipeSize -= sent;
+    chunkSendRemain -= sent;
+  }
+  close(splicePipe[0]);
+  close(splicePipe[1]);
+#else
+  // 128k:
+  constexpr size_t C128 = 128 * 1024;
+  char* buf = static_cast<char*>(TRI_Allocate(C128));
+
+  if (buf == nullptr) {
+    error = "failed to allocate temporary buffer";
+    rc = false;
+  }
+
+  size_t chunkRemain = fileSize;
+  while (rc && (chunkRemain > 0)) {
+    size_t readChunk = (std::min)(C128, chunkRemain);
+    ssize_t nRead = TRI_READ(srcFD, buf, static_cast<TRI_read_t>(readChunk));
+
+    if (nRead < 0) {
+      error = std::string("failed to read a chunk: ") + strerror(errno);
+      rc = false;
+      break;
     }
 
-    size_t chunkRemain = fileSize;
-    while (rc && (chunkRemain > 0)) {
-      size_t readChunk = (std::min)(C128, chunkRemain);
-      ssize_t nRead = TRI_READ(srcFD, buf, static_cast<TRI_read_t>(readChunk));
+    if (nRead == 0) {
+      // EOF. done
+      break;
+    }
 
-      if (nRead < 0) {
+    size_t writeOffset = 0;
+    size_t writeRemaining = static_cast<size_t>(nRead);
+    while (writeRemaining > 0) {
+      // write can write less data than requested. so we must go on writing
+      // until we have written out all data
+      ssize_t nWritten = TRI_WRITE(dstFD, buf + writeOffset,
+                                    static_cast<TRI_write_t>(writeRemaining));
+
+      if (nWritten < 0) {
+        // error during write
         error = std::string("failed to read a chunk: ") + strerror(errno);
         rc = false;
         break;
       }
 
-      if (nRead == 0) {
-        // EOF. done
-        break;
-      }
-
-      size_t writeOffset = 0;
-      size_t writeRemaining = static_cast<size_t>(nRead);
-      while (writeRemaining > 0) {
-        // write can write less data than requested. so we must go on writing
-        // until we have written out all data
-        ssize_t nWritten = TRI_WRITE(dstFD, buf + writeOffset,
-                                     static_cast<TRI_write_t>(writeRemaining));
-
-        if (nWritten < 0) {
-          // error during write
-          error = std::string("failed to read a chunk: ") + strerror(errno);
-          rc = false;
-          break;
-        }
-
-        writeOffset += static_cast<size_t>(nWritten);
-        writeRemaining -= static_cast<size_t>(nWritten);
-      }
-
-      chunkRemain -= nRead;
+      writeOffset += static_cast<size_t>(nWritten);
+      writeRemaining -= static_cast<size_t>(nWritten);
     }
 
-    TRI_Free(buf);
+    chunkRemain -= nRead;
   }
+
+  TRI_Free(buf);
+#endif 
   return rc;
 }
 
@@ -1930,7 +1926,7 @@ static std::string getTempPath() {
 
   if ((dwReturnValue > LOCAL_MAX_PATH_BUFFER) || (dwReturnValue == 0)) {
     // something wrong
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("79ec5", TRACE, arangodb::Logger::FIXME)
         << "GetTempPathW failed: LOCAL_MAX_PATH_BUFFER=" << LOCAL_MAX_PATH_BUFFER
         << ":dwReturnValue=" << dwReturnValue;
   }
@@ -1946,7 +1942,7 @@ static std::string getTempPath() {
 
   for (auto const& it : result) {
     if (static_cast<uint8_t>(it) > 127) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("89d82", FATAL, arangodb::Logger::FIXME)
           << "Invalid characters in temporary path name: '" << result << "'";
       FATAL_ERROR_ABORT();
     }
@@ -2086,12 +2082,12 @@ std::string TRI_GetTempPath() {
       // this may be a race, a permissions problem or something else
       if (++tries >= 10) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("6656e", ERR, arangodb::Logger::FIXME)
             << "UserTempPath: " << UserTempPath << ", system: " << system
             << ", user temp path exists: " << TRI_IsDirectory(UserTempPath.c_str())
             << ", res: " << res << ", SystemTempPath: " << SystemTempPath.get();
 #endif
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("88da0", FATAL, arangodb::Logger::FIXME)
             << "failed to create a temporary directory - giving up!";
         FATAL_ERROR_ABORT();
       }
@@ -2268,13 +2264,13 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
   if (fd < 0) {
     if (errno == ENOSPC) {
       TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("f7530", ERR, arangodb::Logger::FIXME)
           << "cannot create datafile '" << filename << "': " << TRI_last_error();
     } else {
       TRI_SYSTEM_ERROR();
 
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("53a75", ERR, arangodb::Logger::FIXME)
           << "cannot create datafile '" << filename << "': " << TRI_GET_ERRORBUF;
     }
     return -1;
@@ -2313,12 +2309,12 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
       if (writeResult < 0) {
         if (errno == ENOSPC) {
           TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          LOG_TOPIC("449cf", ERR, arangodb::Logger::FIXME)
               << "cannot create datafile '" << filename << "': " << TRI_last_error();
         } else {
           TRI_SYSTEM_ERROR();
           TRI_set_errno(TRI_ERROR_SYS_ERROR);
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          LOG_TOPIC("2c4a6", ERR, arangodb::Logger::FIXME)
               << "cannot create datafile '" << filename << "': " << TRI_GET_ERRORBUF;
         }
 
@@ -2343,7 +2339,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
     // remove empty file
     TRI_UnlinkFile(filename.c_str());
 
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot seek in datafile '" << filename
+    LOG_TOPIC("dfc52", ERR, arangodb::Logger::FIXME) << "cannot seek in datafile '" << filename
                                             << "': '" << TRI_GET_ERRORBUF << "'";
     return -1;
   }

@@ -88,7 +88,7 @@ var TextHighlightRules = require("./text_highlight_rules").TextHighlightRules;
 var AqlHighlightRules = function() {
 
     var keywords = (
-        "for|return|filter|search|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|upsert|options|with|and|or|not|distinct|graph|shortest_path|outbound|inbound|any|all|none|aggregate|like"
+        "for|return|filter|search|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|upsert|options|with|and|or|not|distinct|graph|shortest_path|outbound|inbound|any|all|none|aggregate|like|k_shortest_paths"
     );
 
     var builtinFunctions = (
@@ -103,8 +103,8 @@ var AqlHighlightRules = function() {
         "date_minute|date_second|date_millisecond|date_dayofyear|date_isoweek|date_leapyear|date_quarter|date_days_in_month|" + 
         "date_add|date_subtract|date_diff|date_compare|date_format|fail|passthru|sleep|not_null|" +
         "first_list|first_document|parse_identifier|current_user|current_database|" +
-        "collections|document|union|union_distinct|intersection|flatten|is_same_collection|" +
-        "ltrim|rtrim|find_first|find_last|split|substitute|md5|sha1|hash|random_token|to_base64|" +
+        "collections|document|decode_rev|union|union_distinct|intersection|flatten|is_same_collection|check_document|" +
+        "ltrim|rtrim|find_first|find_last|split|substitute|md5|sha1|crc32|fnv64|hash|random_token|to_base64|" +
         "to_hex|encode_uri_component|soundex|assert|warn|is_key|sorted|sorted_unique|count_distinct|" +
         "levenshtein_distance|regex_matches|regex_split|uuid|" +
         "tokens|exists|starts_with|phrase|min_match|boost|analyzer|" +

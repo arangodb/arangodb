@@ -42,16 +42,16 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
     definition = basics::FileUtils::slurp(filename);
   } catch (std::exception const& e) {
     std::string msg = "cannot read maskings file '" + filename + "': " + e.what();
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << msg;
+    LOG_TOPIC("379fe", DEBUG, Logger::CONFIG) << msg;
 
     return MaskingsResult(MaskingsResult::CANNOT_READ_FILE, msg);
   }
 
-  LOG_TOPIC(DEBUG, Logger::CONFIG) << "found maskings file '" << filename;
+  LOG_TOPIC("fe73b", DEBUG, Logger::CONFIG) << "found maskings file '" << filename;
 
   if (definition.empty()) {
     std::string msg = "maskings file '" + filename + "' is empty";
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << msg;
+    LOG_TOPIC("5018d", DEBUG, Logger::CONFIG) << msg;
     return MaskingsResult(MaskingsResult::CANNOT_READ_FILE, msg);
   }
 
@@ -71,7 +71,7 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
     return MaskingsResult(std::move(maskings));
   } catch (velocypack::Exception const& e) {
     std::string msg = "cannot parse maskings file '" + filename + "': " + e.what();
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << msg << ". file content: " << definition;
+    LOG_TOPIC("5cb4c", DEBUG, Logger::CONFIG) << msg << ". file content: " << definition;
 
     return MaskingsResult(MaskingsResult::CANNOT_PARSE_FILE, msg);
   }
@@ -87,14 +87,14 @@ ParseResult<Maskings> Maskings::parse(VPackSlice const& def) {
     std::string key = entry.key.copyString();
 
     if (key == "*") {
-      LOG_TOPIC(TRACE, Logger::CONFIG) << "default masking";
+      LOG_TOPIC("b0d99", TRACE, Logger::CONFIG) << "default masking";
 
       if (_hasDefaultCollection) {
         return ParseResult<Maskings>(ParseResult<Maskings>::DUPLICATE_COLLECTION,
                                      "duplicate default entry");
       }
     } else {
-      LOG_TOPIC(TRACE, Logger::CONFIG) << "masking collection '" << key << "'";
+      LOG_TOPIC("f5aac", TRACE, Logger::CONFIG) << "masking collection '" << key << "'";
 
       if (_collections.find(key) != _collections.end()) {
         return ParseResult<Maskings>(ParseResult<Maskings>::DUPLICATE_COLLECTION,

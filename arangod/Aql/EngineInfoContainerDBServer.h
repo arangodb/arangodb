@@ -109,10 +109,8 @@ class EngineInfoContainerDBServer {
       return static_cast<EngineType>(_source.which());
     }
 
-#ifdef USE_IRESEARCH
     LogicalView const* view() const noexcept;
     void addClient(ServerID const& server);
-#endif
 
    private:
     struct CollectionSource {

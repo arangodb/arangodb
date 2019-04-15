@@ -26,7 +26,6 @@
 #include "OutputAqlItemRow.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
@@ -35,12 +34,12 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 OutputAqlItemRow::OutputAqlItemRow(
-    std::shared_ptr<AqlItemBlockShell> blockShell,
+    SharedAqlItemBlockPtr block,
     std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
     std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
     CopyRowBehaviour copyRowBehaviour)
-    : _blockShell(std::move(blockShell)),
+    : _block(std::move(block)),
       _baseIndex(0),
       _lastBaseIndex(0),
       _inputRowCopied(false),
@@ -55,7 +54,7 @@ OutputAqlItemRow::OutputAqlItemRow(
       _setBaseIndexNotUsed(true)
 #endif
 {
-  TRI_ASSERT(_blockShell != nullptr);
+  TRI_ASSERT(_block != nullptr);
 }
 
 void OutputAqlItemRow::doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing) {
@@ -97,11 +96,12 @@ void OutputAqlItemRow::doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMi
   _lastSourceRow = sourceRow;
 }
 
-std::unique_ptr<AqlItemBlock> OutputAqlItemRow::stealBlock() {
-  std::unique_ptr<AqlItemBlock> block = blockShell().stealBlockCompat();
+SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
+  // Release our hold on the block now
+  SharedAqlItemBlockPtr block = std::move(_block);
   if (numRowsWritten() == 0) {
     // blocks may not be empty
-    block.reset();
+    block = nullptr;
   } else {
     // numRowsWritten() returns the exact number of rows that were fully
     // written and takes into account whether the current row was written.
@@ -111,5 +111,6 @@ std::unique_ptr<AqlItemBlock> OutputAqlItemRow::stealBlock() {
       block->clearRegisters(registersToClear());
     }
   }
+
   return block;
 }

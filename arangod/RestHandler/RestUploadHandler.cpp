@@ -77,7 +77,7 @@ RestStatus RestUploadHandler::execute() {
   char const* body = bodyStr.data();
   size_t bodySize = bodyStr.size();
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+  LOG_TOPIC("bbab9", TRACE, arangodb::Logger::FIXME)
       << "saving uploaded file of length " << bodySize << " in file '"
       << filename << "', relative '" << relativeString << "'";
 

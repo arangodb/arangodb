@@ -27,6 +27,7 @@
 #include <utility>
 
 #include "Aql/Query.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
@@ -57,7 +58,9 @@ Result RestGraphHandler::executeGharial() {
   auto suffix = request()->suffixes().begin();
   auto end = request()->suffixes().end();
 
-  auto getNextSuffix = [&suffix]() { return *suffix++; };
+  auto getNextSuffix = [&suffix]() {
+    return basics::StringUtils::urlDecodePath(*suffix++);
+  };
 
   auto noMoreSuffixes = [&suffix, &end]() { return suffix == end; };
 

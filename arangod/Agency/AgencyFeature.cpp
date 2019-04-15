@@ -124,12 +124,11 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new UInt64Parameter(&_maxAppendSize),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption(
-      "--agency.disaster-recovery-id",
-      "allows for specification of the id for this agent; dangerous option for "
-      "disaster recover only!",
-      new StringParameter(&_recoveryId),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+  options->addOption("--agency.disaster-recovery-id",
+                     "allows for specification of the id for this agent; "
+                     "dangerous option for disaster recover only!",
+                     new StringParameter(&_recoveryId),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -149,7 +148,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // Agency size
   if (result.touched("agency.size")) {
     if (_size < 1) {
-      LOG_TOPIC(FATAL, Logger::AGENCY) << "agency must have size greater 0";
+      LOG_TOPIC("98510", FATAL, Logger::AGENCY) << "agency must have size greater 0";
       FATAL_ERROR_EXIT();
     }
   } else {
@@ -159,7 +158,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // Agency pool size
   if (result.touched("agency.pool-size")) {
     if (_poolSize < _size) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
+      LOG_TOPIC("af108", FATAL, Logger::AGENCY)
           << "agency pool size must be larger than agency size.";
       FATAL_ERROR_EXIT();
     }
@@ -169,35 +168,35 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   // Size needs to be odd
   if (_size % 2 == 0) {
-    LOG_TOPIC(FATAL, Logger::AGENCY)
+    LOG_TOPIC("0eab5", FATAL, Logger::AGENCY)
         << "AGENCY: agency must have odd number of members";
     FATAL_ERROR_EXIT();
   }
 
   // Timeouts sanity
   if (_minElectionTimeout <= 0.) {
-    LOG_TOPIC(FATAL, Logger::AGENCY)
+    LOG_TOPIC("facb6", FATAL, Logger::AGENCY)
         << "agency.election-timeout-min must not be negative!";
     FATAL_ERROR_EXIT();
   } else if (_minElectionTimeout < 0.15) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("0cce9", WARN, Logger::AGENCY)
         << "very short agency.election-timeout-min!";
   }
 
   if (_maxElectionTimeout <= _minElectionTimeout) {
-    LOG_TOPIC(FATAL, Logger::AGENCY)
+    LOG_TOPIC("62fc3", FATAL, Logger::AGENCY)
         << "agency.election-timeout-max must not be shorter than or"
         << "equal to agency.election-timeout-min.";
     FATAL_ERROR_EXIT();
   }
 
   if (_maxElectionTimeout <= 2. * _minElectionTimeout) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("99f84", WARN, Logger::AGENCY)
         << "agency.election-timeout-max should probably be chosen longer!";
   }
 
   if (_compactionKeepSize == 0) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("ca485", WARN, Logger::AGENCY)
         << "agency.compaction-keep-size must not be 0, set to 1000";
     _compactionKeepSize = 50000;
   }
@@ -206,7 +205,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     std::string const unified = Endpoint::unifiedForm(_agencyMyAddress);
 
     if (unified.empty()) {
-      LOG_TOPIC(FATAL, Logger::AGENCY) << "invalid endpoint '" << _agencyMyAddress
+      LOG_TOPIC("4faa0", FATAL, Logger::AGENCY) << "invalid endpoint '" << _agencyMyAddress
                                        << "' specified for --agency.my-address";
       FATAL_ERROR_EXIT();
     }
@@ -289,7 +288,7 @@ void AgencyFeature::prepare() {
   } else {
     endpoint = _agencyMyAddress;
   }
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agency endpoint " << endpoint;
+  LOG_TOPIC("693a2", DEBUG, Logger::AGENCY) << "Agency endpoint " << endpoint;
 
   if (_waitForSync) {
     _maxAppendSize /= 10;
@@ -309,10 +308,10 @@ void AgencyFeature::start() {
     return;
   }
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
+  LOG_TOPIC("a77c8", DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading agency";
+  LOG_TOPIC("b481d", DEBUG, Logger::AGENCY) << "Loading agency";
   _agent->load();
 }
 
@@ -336,7 +335,7 @@ void AgencyFeature::stop() {
       std::this_thread::sleep_for(std::chrono::microseconds(100000));
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
-        LOG_TOPIC(WARN, Logger::AGENCY)
+        LOG_TOPIC("bf6a6", WARN, Logger::AGENCY)
             << "waiting for inception thread to finish";
       }
     }
@@ -348,7 +347,7 @@ void AgencyFeature::stop() {
       std::this_thread::sleep_for(std::chrono::microseconds(100000));
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
-        LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for agent thread to finish";
+        LOG_TOPIC("5d3a5", WARN, Logger::AGENCY) << "waiting for agent thread to finish";
       }
     }
 

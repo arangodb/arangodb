@@ -61,7 +61,7 @@ void ConsoleThread::run() {
 
   bool v8Enabled = V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled();
   if (!v8Enabled) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "V8 engine is not enabled";
+    LOG_TOPIC("4a00f", FATAL, arangodb::Logger::FIXME) << "V8 engine is not enabled";
     FATAL_ERROR_EXIT();
   }
 
@@ -69,7 +69,7 @@ void ConsoleThread::run() {
   _context = V8DealerFeature::DEALER->enterContext(_vocbase, true);
 
   if (_context == nullptr) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";
+    LOG_TOPIC("921b8", FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";
     FATAL_ERROR_EXIT();
   }
 
@@ -80,7 +80,7 @@ void ConsoleThread::run() {
     inner();
   } catch (char const* error) {
     if (strcmp(error, USER_ABORTED) != 0) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << error;
+      LOG_TOPIC("6e7fd", ERR, arangodb::Logger::FIXME) << error;
     }
   } catch (...) {
     _applicationServer->beginShutdown();
@@ -149,7 +149,7 @@ start_color_print('arangodb', true);
     sigaddset(&set, SIGINT);
 
     if (pthread_sigmask(SIG_UNBLOCK, &set, nullptr) < 0) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("62022", ERR, arangodb::Logger::FIXME)
           << "unable to install signal handler";
     }
 #endif

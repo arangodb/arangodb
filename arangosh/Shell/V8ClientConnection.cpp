@@ -232,7 +232,7 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
   }
 
   if (isConnected() && _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+    LOG_TOPIC("2d416", INFO, arangodb::Logger::FIXME)
         << "Connected to ArangoDB "
         << "'" << endpointSpecification() << "', "
         << "version " << _version << " [" << _role << ", " << _mode << "], "
@@ -240,7 +240,7 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
         << "username: '" << client->username() << "'";
   } else {
     if (client->getWarnConnect()) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("9d7ea", ERR, arangodb::Logger::FIXME)
           << "Could not connect to endpoint '" << client->endpoint()
           << "', username: '" << client->username() << "'";
     }
@@ -358,7 +358,7 @@ static void ClientConnection_ConstructorCallback(v8::FunctionCallbackInfo<v8::Va
 
   if (v8connection->isConnected() &&
       v8connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+    LOG_TOPIC("9c8b4", INFO, arangodb::Logger::FIXME)
         << "Connected to ArangoDB "
         << "'" << v8connection->endpointSpecification() << "', "
         << "version " << v8connection->version() << " [" << v8connection->role() << ", " << v8connection->mode() << "], "
@@ -1466,8 +1466,8 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     VPackBuilder builder(buffer, &_vpackOptions);
     int res = TRI_V8ToVPack(isolate, builder, body, false);
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::V8)
-          << "error converting request body " << TRI_errno_string(res);
+      LOG_TOPIC("46ae2", ERR, Logger::V8)
+          << "error converting request body: " << TRI_errno_string(res);
       return v8::Null(isolate);
     }
     req->addVPack(std::move(buffer));
@@ -1525,8 +1525,8 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     VPackBuilder builder(buffer);
     int res = TRI_V8ToVPack(isolate, builder, body, false);
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::V8)
-          << "error converting request body " << TRI_errno_string(res);
+      LOG_TOPIC("10318", ERR, Logger::V8)
+          << "error converting request body: " << TRI_errno_string(res);
       return v8::Null(isolate);
     }
     req->addVPack(std::move(buffer));

@@ -37,7 +37,7 @@ using namespace arangodb::pregel;
 
 template <typename M>
 InCache<M>::InCache(MessageFormat<M> const* format)
-    : _containedMessageCount(0), _format(format) {}
+    : _containedMessageCount(0), _format(format), _keyHeap(4 * 1024) {}
 
 template <typename M>
 void InCache<M>::parseMessages(VPackSlice const& incomingData) {
@@ -49,12 +49,13 @@ void InCache<M>::parseMessages(VPackSlice const& incomingData) {
   VPackValueLength i = 0;
   PregelKey key;
   PregelShard shard = (PregelShard)shardSlice.getUInt();
-  MUTEX_LOCKER(guard, this->_bucketLocker[shard]);
+  std::lock_guard<std::mutex> guard(this->_bucketLocker[shard]);
 
   for (VPackSlice current : VPackArrayIterator(messages)) {
     if (i % 2 == 0) {  // TODO support multiple recipients
-      key = current.copyString();
+      key = VPackStringRef(current);
     } else {
+      TRI_ASSERT(!key.empty());
       if (current.isArray()) {
         VPackValueLength c = 0;
         for (VPackSlice val : VPackArrayIterator(current)) {
@@ -90,7 +91,7 @@ void InCache<M>::storeMessageNoLock(PregelShard shard,
 
 template <typename M>
 void InCache<M>::storeMessage(PregelShard shard, PregelKey const& vertexId, M const& data) {
-  MUTEX_LOCKER(guard, this->_bucketLocker[shard]);
+  std::lock_guard<std::mutex> guard(this->_bucketLocker[shard]);
   this->_set(shard, vertexId, data);
   this->_containedMessageCount++;
 }
@@ -113,7 +114,14 @@ ArrayInCache<M>::ArrayInCache(WorkerConfig const* config, MessageFormat<M> const
 template <typename M>
 void ArrayInCache<M>::_set(PregelShard shard, PregelKey const& key, M const& newValue) {
   HMap& vertexMap(_shardMap[shard]);
-  vertexMap[key].push_back(newValue);
+  auto it = vertexMap.find(key);
+  if (it == vertexMap.end()) {
+    std::lock_guard<std::mutex> guard(this->_keyMutex);
+    auto copy = this->_keyHeap.registerString(key);
+    it = vertexMap.emplace(copy, std::vector<M>{newValue}).first;
+  } else {
+    it->second.push_back(newValue);
+  }
 }
 
 template <typename M>
@@ -133,8 +141,9 @@ void ArrayInCache<M>::mergeCache(WorkerConfig const& config, InCache<M> const* o
 
     auto const& it = other->_shardMap.find(shardId);
     if (it != other->_shardMap.end() && it->second.size() > 0) {
-      TRY_MUTEX_LOCKER(guard, this->_bucketLocker[shardId]);
-      if (guard.isLocked() == false) {
+      std::unique_lock<std::mutex> guard(this->_bucketLocker[shardId], std::try_to_lock);
+      
+      if (!guard) {
         if (i == 0) {  // eventually we hit the last one
           std::this_thread::sleep_for(std::chrono::microseconds(100));  // don't busy wait
         }
@@ -168,7 +177,7 @@ MessageIterator<M> ArrayInCache<M>::getMessages(PregelShard shard, PregelKey con
 
 template <typename M>
 void ArrayInCache<M>::clear() {
-  for (auto& pair : _shardMap) {
+  for (auto& pair : _shardMap) { // keep the keys
     // MUTEX_LOCKER(guard, this->_bucketLocker[pair.first]);
     pair.second.clear();
   }
@@ -223,7 +232,9 @@ void CombiningInCache<M>::_set(PregelShard shard, PregelKey const& key, M const&
   if (vmsg != vertexMap.end()) {  // got a message for the same vertex
     _combiner->combine(vmsg->second, newValue);
   } else {
-    vertexMap.insert(std::make_pair(key, newValue));
+    std::lock_guard<std::mutex> guard(this->_keyMutex);
+    auto copy = this->_keyHeap.registerString(key);
+    vertexMap.emplace(copy, newValue);
   }
 }
 
@@ -244,8 +255,9 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config, InCache<M> cons
 
     auto const& it = other->_shardMap.find(shardId);
     if (it != other->_shardMap.end() && it->second.size() > 0) {
-      TRY_MUTEX_LOCKER(guard, this->_bucketLocker[shardId]);
-      if (guard.isLocked() == false) {
+      std::unique_lock<std::mutex> guard(this->_bucketLocker[shardId], std::try_to_lock);
+
+      if (!guard) {
         if (i == 0) {  // eventually we hit the last one
           std::this_thread::sleep_for(std::chrono::microseconds(100));  // don't busy wait
         }

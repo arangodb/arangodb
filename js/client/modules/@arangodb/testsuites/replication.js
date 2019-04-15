@@ -43,12 +43,12 @@ const tu = require('@arangodb/test-utils');
 
 const testPaths = {
   'shell_replication': [tu.pathForTesting('common/replication')],
-  'replication_aql': [tu.pathForTesting('server/replication')],
-  'replication_fuzz': [tu.pathForTesting('server/replication')],
-  'replication_random': [tu.pathForTesting('server/replication')],
-  'replication_ongoing': [tu.pathForTesting('server/replication')],
-  'replication_static': [tu.pathForTesting('server/replication')],
-  'replication_sync': [tu.pathForTesting('server/replication')]
+  'replication_aql': [tu.pathForTesting('server/replication/aql')],
+  'replication_fuzz': [tu.pathForTesting('server/replication/fuzz')],
+  'replication_random': [tu.pathForTesting('server/replication/random')],
+  'replication_ongoing': [tu.pathForTesting('server/replication/ongoing')],
+  'replication_static': [tu.pathForTesting('server/replication/static')],
+  'replication_sync': [tu.pathForTesting('server/replication/sync')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -73,10 +73,6 @@ function shellReplication (options) {
 function replicationFuzz (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_fuzz);
 
-  options.replication = true;
-  if (options.test === undefined) {
-    options.test = 'replication-fuzz';
-  }
   let startStopHandlers = {
     postStart: function (options,
                          serverOptions,
@@ -134,7 +130,8 @@ function replicationFuzz (options) {
 
   };
 
-  return tu.performTests(options, testCases, 'replication_fuzz', tu.runInArangosh, {}, startStopHandlers);
+  return tu.performTests(options, testCases, 'replication_fuzz', tu.runInArangosh,
+                         {"rocksdb.wal-file-timeout-initial": "7200"}, startStopHandlers);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -144,10 +141,6 @@ function replicationFuzz (options) {
 function replicationRandom (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_random);
 
-  options.replication = true;
-  if (options.test === undefined) {
-    options.test = 'replication-random';
-  }
   let startStopHandlers = {
     postStart: function (options,
                          serverOptions,
@@ -216,10 +209,6 @@ function replicationRandom (options) {
 function replicationAql (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_aql);
 
-  options.replication = true;
-  if (options.test === undefined) {
-    options.test = 'replication-aql';
-  }
   let startStopHandlers = {
     postStart: function (options,
                          serverOptions,
@@ -288,11 +277,6 @@ function replicationAql (options) {
 function replicationOngoing (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_ongoing);
 
-  options.replication = true;
-  if (options.test === undefined) {
-    options.test = 'replication-ongoing';
-  }
-
   let startStopHandlers = {
     postStart: function (options,
                          serverOptions,
@@ -360,11 +344,6 @@ function replicationOngoing (options) {
 
 function replicationStatic (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_static);
-
-  options.replication = true;
-  if (options.test === undefined) {
-    options.test = 'replication-static';
-  }
 
   let startStopHandlers = {
     postStart: function (options,
@@ -457,11 +436,6 @@ function replicationStatic (options) {
 
 function replicationSync (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_sync);
-
-  options.replication = true;
-  if (options.test === undefined) {
-    options.test = 'replication-sync';
-  }
 
   let startStopHandlers = {
     postStart: function (options,

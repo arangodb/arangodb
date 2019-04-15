@@ -26,6 +26,8 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/WakeupQueryCallback.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/RecursiveLocker.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
@@ -61,14 +63,13 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
              (!arangodb::ServerState::instance()->isCoordinator() && !ownName.empty()));
 }
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<RemoteExecutor>::getSome(size_t atMost) {
+std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
   auto result = getSomeWithoutTrace(atMost);
   return traceGetSomeEnd(result.first, std::move(result.second));
 }
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
+std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -110,8 +111,9 @@ ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
       state = ExecutionState::DONE;
     }
     if (responseBody.hasKey("data")) {
-      auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(),
-                                              responseBody);
+      SharedAqlItemBlockPtr r =
+          _engine->itemBlockManager().requestAndInitBlock(responseBody);
+
       return {state, std::move(r)};
     }
     return {ExecutionState::DONE, nullptr};
@@ -198,20 +200,8 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWi
   return {ExecutionState::WAITING, 0};
 }
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<RemoteExecutor>::traceGetSomeEnd(
-    ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
-  ExecutionBlock::traceGetSomeEnd(result.get(), state);
-  return {state, std::move(result)};
-}
-
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeEnd(
-    ExecutionState state, size_t skipped) {
-  ExecutionBlock::traceSkipSomeEnd(skipped, state);
-  return {state, skipped};
-}
-
 std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+    InputAqlItemRow const& input) {
   // For every call we simply forward via HTTP
 
   if (!_isResponsibleForInitializeCursor) {
@@ -219,7 +209,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
-  if (items == nullptr) {
+  if (!input.isInitialized()) {
     // we simply ignore the initialCursor request, as the remote side
     // will initialize the cursor lazily
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
@@ -251,10 +241,12 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   // Used in 3.4.0 onwards
   builder.add("done", VPackValue(false));
   builder.add("error", VPackValue(false));
-  builder.add("pos", VPackValue(pos));
+  // NOTE API change. Before all items have been send.
+  // Now only the one output row is send.
+  builder.add("pos", VPackValue(0));
   builder.add(VPackValue("items"));
   builder.openObject();
-  items->toVelocyPack(_engine->getQuery()->trx(), builder);
+  input.toVelocyPack(_engine->getQuery()->trx(), builder);
   builder.close();
 
   builder.close();
@@ -277,7 +269,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
     // in flight is not overtaking in the drop phase here.
     // After this lock is released even a response
     // will be discarded in the handle response code
-    MUTEX_LOCKER(locker, _communicationMutex); 
+    MUTEX_LOCKER(locker, _communicationMutex);
     if (_lastTicketId != 0) {
       auto cc = ClusterComm::instance();
       if (cc == nullptr) {
@@ -387,7 +379,14 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
 
   // Make sure to cover against the race that this
   // Request is fullfilled before the register has taken place
-  MUTEX_LOCKER(locker, _communicationMutex); 
+  // @note the only reason for not using recursive mutext always is due to the
+  //       concern that there might be recursive calls in production
+  #ifdef ARANGODB_USE_CATCH_TESTS
+    RECURSIVE_MUTEX_LOCKER(_communicationMutex, _communicationMutexOwner);
+  #else
+    MUTEX_LOCKER(locker, _communicationMutex);
+  #endif
+
   // We can only track one request at a time.
   // So assert there is no other request in flight!
   TRI_ASSERT(_lastTicketId == 0);
@@ -399,10 +398,17 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
 }
 
 bool ExecutionBlockImpl<RemoteExecutor>::handleAsyncResult(ClusterCommResult* result) {
-  // So we cannot have the response beeing produced while sending the request.
+  // So we cannot have the response being produced while sending the request.
   // Make sure to cover against the race that this
   // Request is fullfilled before the register has taken place
-  MUTEX_LOCKER(locker, _communicationMutex); 
+  // @note the only reason for not using recursive mutext always is due to the
+  //       concern that there might be recursive calls in production
+  #ifdef ARANGODB_USE_CATCH_TESTS
+    RECURSIVE_MUTEX_LOCKER(_communicationMutex, _communicationMutexOwner);
+  #else
+    MUTEX_LOCKER(locker, _communicationMutex);
+  #endif
+
   if (_lastTicketId == result->operationID) {
     // TODO Handle exceptions thrown while we are in this code
     // Query will not be woken up again.

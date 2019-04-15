@@ -45,6 +45,14 @@ void Optimizer::disableRule(int rule) {
   it->second.enabled = false;
 }
 
+bool Optimizer::isDisabled(int rule) const {
+  auto it = _rules.find(rule);
+  if (it == _rules.end()) {
+    return true;
+  }
+  return !it->second.enabled;
+}
+
 bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
   return (_runOnlyRequiredRules ||
           (_newPlans.size() + _plans.size() + extraPlans >= _maxNumberOfPlans));
@@ -232,7 +240,7 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
     }
   }
 
-  LOG_TOPIC(TRACE, Logger::FIXME) << "optimization ends with " << _plans.size() << " plans";
+  LOG_TOPIC("5b5f6", TRACE, Logger::FIXME) << "optimization ends with " << _plans.size() << " plans";
 
   return TRI_ERROR_NO_ERROR;
 }

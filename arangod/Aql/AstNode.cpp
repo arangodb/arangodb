@@ -158,6 +158,7 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
      "array compare not in"},
     {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"},
     {static_cast<int>(NODE_TYPE_SHORTEST_PATH), "shortest path"},
+    {static_cast<int>(NODE_TYPE_K_SHORTEST_PATHS), "k-shortest paths"},
     {static_cast<int>(NODE_TYPE_VIEW), "view"},
     {static_cast<int>(NODE_TYPE_PARAMETER_DATASOURCE), "datasource parameter"},
     {static_cast<int>(NODE_TYPE_FOR_VIEW), "view enumeration"},
@@ -570,6 +571,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_SHORTEST_PATH:
+    case NODE_TYPE_K_SHORTEST_PATHS:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_OPERATOR_NARY_AND:
@@ -690,6 +692,7 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_SHORTEST_PATH:
+    case NODE_TYPE_K_SHORTEST_PATHS:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_PASSTHRU:
@@ -2334,6 +2337,7 @@ void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_SHORTEST_PATH:
+    case NODE_TYPE_K_SHORTEST_PATHS:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_WITH:
@@ -2507,6 +2511,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_SHORTEST_PATH:
+    case NODE_TYPE_K_SHORTEST_PATHS:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_OPERATOR_NARY_AND:

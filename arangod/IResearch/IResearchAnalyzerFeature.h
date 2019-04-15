@@ -104,16 +104,9 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   ///         in defaultVocbase) is granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
   static bool canUse( // check permissions
-    irs::string_ref const& analyzer, // analyzer name
-    TRI_vocbase_t const& defaultVocbase, // fallback vocbase if not part of name
+    irs::string_ref const& name, // analyzer name (already normalized)
     arangodb::auth::Level const& level // access level
   );
-
-  // FIXME TODO remove
-  std::pair<AnalyzerPool::ptr, bool> emplace(
-      irs::string_ref const& name, irs::string_ref const& type,
-      irs::string_ref const& properties,
-      irs::flags const& features = irs::flags::empty_instance()) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief emplace an analyzer as per the specified parameters
@@ -141,23 +134,8 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   );
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get analyzer or placeholder
-  ///        before start() returns pool placeholder,
-  ///        during start() all placeholders are initialized,
-  ///        after start() returns same as get(...)
-  /// @param name analyzer name (used verbatim)
-  //////////////////////////////////////////////////////////////////////////////
-  // FIXME TODO remove
-  AnalyzerPool::ptr ensure(irs::string_ref const& name);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return number of analyzers removed
-  //////////////////////////////////////////////////////////////////////////////
-  size_t erase(irs::string_ref const& name) noexcept;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief find analyzer
-  /// @param name analyzer name (used verbatim)
+  /// @param name analyzer name (already normalized)
   /// @return analyzer with the specified name or nullptr
   //////////////////////////////////////////////////////////////////////////////
   AnalyzerPool::ptr get(irs::string_ref const& name) const noexcept;
@@ -193,6 +171,14 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   );
 
   void prepare() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief remove the specified analyzer
+  /// @param name analyzer name (already normalized)
+  /// @param force remove even if the analyzer is actively referenced
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result remove(irs::string_ref const& name, bool force = false);
+
   void start() override;
   void stop() override;
 
@@ -201,11 +187,10 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   /// @param vocbase only visit analysers for this vocbase (nullptr == all)
   /// @return visitation compleated fully
   //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<bool(irs::string_ref const& analyzer, irs::string_ref const& type, irs::string_ref const& properties)> VisitorType;
   bool visit( // visit analyzers
-    VisitorType const& visitor, // visitor
+    std::function<bool(AnalyzerPool::ptr const& analyzer)> const& visitor, // visitor
     TRI_vocbase_t const* vocbase = nullptr // analyzers for vocbase
-  );
+  ) const;
 
  private:
   // map of caches of irs::analysis::analyzer pools indexed by analyzer name and
@@ -213,18 +198,23 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   typedef std::unordered_map<irs::hashed_string_ref, AnalyzerPool::ptr> Analyzers;
 
   Analyzers _analyzers; // all analyzers known to this feature (including static) (names are stored with expanded vocbase prefixes)
-  Analyzers _customAnalyzers;  // user defined analyzers managed by this feature, a
-                               // subset of '_analyzers' (used for removals)
-  mutable irs::async_utils::read_write_mutex _mutex;
-  bool _started;
-
-  // FIXME TODO remove
-  std::pair<AnalyzerPool::ptr, bool> emplace(
-      irs::string_ref const& name, irs::string_ref const& type,
-      irs::string_ref const& properties, bool initAndPersist,
-      irs::flags const& features = irs::flags::empty_instance()) noexcept;
+  std::unordered_map<std::string, std::chrono::system_clock::time_point> _lastLoad; // last time a database was loaded
+  mutable irs::async_utils::read_write_mutex _mutex; // for use with member '_analyzers', '_lastLoad'
 
   static Analyzers const& getStaticAnalyzers();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief validate analyzer parameters and emplace into map
+  //////////////////////////////////////////////////////////////////////////////
+  typedef std::pair<Analyzers::iterator, bool> EmplaceAnalyzerResult;
+  arangodb::Result emplaceAnalyzer( // emplace
+    EmplaceAnalyzerResult& result, // emplacement result on success (out-param)
+    arangodb::iresearch::IResearchAnalyzerFeature::Analyzers& analyzers, // analyzers
+    irs::string_ref const& name, // analyzer name
+    irs::string_ref const& type, // analyzer type
+    irs::string_ref const& properties, // analyzer properties
+    irs::flags const& features // analyzer features
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an analyzer as per the specified parameters exists if
@@ -254,7 +244,16 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     bool allowCreation
   );
 
-  bool loadConfiguration();
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief load the analyzers for the specific database, analyzers read from
+  ///        the corresponding collection if they have not been loaded yet
+  /// @param database the database to load analizers for (nullptr == all)
+  /// @note on coordinator and db-server reload is also done if the database has
+  ///       not been reloaded in 'timeout' seconds
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result loadAnalyzers( // load analyzers
+      irs::string_ref const& database = irs::string_ref::NIL // database to load
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief store the definition for the speicifed pool in the corresponding

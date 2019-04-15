@@ -110,7 +110,7 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
                               std::string const& message) noexcept {
   try {
     if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("532c3", ERR, arangodb::Logger::FIXME)
           << "encountered out-of-memory error";
     }
 
@@ -168,7 +168,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   char* content = TRI_SlurpFile(filename, &length);
 
   if (content == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("790a5", ERR, arangodb::Logger::FIXME)
         << "cannot load JavaScript file '" << filename << "': " << TRI_last_error();
     return false;
   }
@@ -204,7 +204,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   }
 
   if (content == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("89c6f", ERR, arangodb::Logger::FIXME)
         << "cannot load JavaScript file '" << filename
         << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
     return false;
@@ -227,7 +227,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("6fffa", ERR, arangodb::Logger::FIXME)
         << "cannot load JavaScript file '" << filename << "': compilation failed.";
     return false;
   }
@@ -247,7 +247,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
     }
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+  LOG_TOPIC("fe6a4", TRACE, arangodb::Logger::FIXME)
       << "loaded JavaScript file: '" << filename << "'";
   return true;
 }
@@ -260,7 +260,7 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path, bool
                                     bool execute, bool useGlobalContext) {
   v8::HandleScope scope(isolate);
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+  LOG_TOPIC("65c8d", TRACE, arangodb::Logger::FIXME)
       << "loading JavaScript directory: '" << path << "'";
 
   std::vector<std::string> files = TRI_FilesDirectory(path);
@@ -697,16 +697,15 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        "invalid option value for sslProtocol");
       }
 
-      sslProtocol =
-          TRI_ObjectToUInt64(isolate,
-                             TRI_GetProperty(context, isolate, options, "sslProtocol"), false);
+      sslProtocol = TRI_ObjectToUInt64(
+          isolate, TRI_GetProperty(context, isolate, options, "sslProtocol"), false);
     }
 
     // method
     if (TRI_HasProperty(context, isolate, options, "method")) {
       std::string methodString =
-          TRI_ObjectToString(isolate,
-                             TRI_GetProperty(context, isolate, options, "method"));
+          TRI_ObjectToString(isolate, TRI_GetProperty(context, isolate, options,
+                                                      "method"));
 
       method = HttpRequest::translateMethod(methodString);
     }
@@ -733,20 +732,22 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        "invalid option value for timeout");
       }
 
-      timeout = TRI_ObjectToDouble(isolate,
-                                   TRI_GetProperty(context, isolate, options, "timeout"));
+      timeout = TRI_ObjectToDouble(isolate, TRI_GetProperty(context, isolate,
+                                                            options, "timeout"));
     }
 
     // return body as a buffer?
     if (TRI_HasProperty(context, isolate, options, "returnBodyAsBuffer")) {
-      returnBodyAsBuffer = TRI_ObjectToBoolean(
-          isolate, TRI_GetProperty(context, isolate, options, "returnBodyAsBuffer"));
+      returnBodyAsBuffer =
+          TRI_ObjectToBoolean(isolate, TRI_GetProperty(context, isolate, options,
+                                                       "returnBodyAsBuffer"));
     }
 
     // follow redirects
     if (TRI_HasProperty(context, isolate, options, "followRedirects")) {
-      followRedirects = TRI_ObjectToBoolean(
-          isolate, TRI_GetProperty(context, isolate, options, "followRedirects"));
+      followRedirects =
+          TRI_ObjectToBoolean(isolate, TRI_GetProperty(context, isolate, options,
+                                                       "followRedirects"));
     }
 
     // max redirects
@@ -756,8 +757,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        "invalid option value for maxRedirects");
       }
 
-      maxRedirects = (int)TRI_ObjectToInt64(
-          isolate, TRI_GetProperty(context, isolate, options, "maxRedirects"));
+      maxRedirects =
+          (int)TRI_ObjectToInt64(isolate, TRI_GetProperty(context, isolate, options,
+                                                          "maxRedirects"));
     }
 
     if (!body.empty() &&
@@ -768,21 +770,20 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     if (TRI_HasProperty(context, isolate, options, "returnBodyOnError")) {
-      returnBodyOnError = TRI_ObjectToBoolean(
-          isolate, TRI_GetProperty(context, isolate, options, "returnBodyOnError"));
+      returnBodyOnError =
+          TRI_ObjectToBoolean(isolate, TRI_GetProperty(context, isolate, options,
+                                                       "returnBodyOnError"));
     }
 
     if (TRI_HasProperty(context, isolate, options, "jwt")) {
-      jwtToken =
-          TRI_ObjectToString(isolate, TRI_GetProperty(context, isolate, options, "jwt"));
+      jwtToken = TRI_ObjectToString(isolate, TRI_GetProperty(context, isolate,
+                                                             options, "jwt"));
     } else if (TRI_HasProperty(context, isolate, options, "username")) {
-      username =
-          TRI_ObjectToString(isolate,
-                             TRI_GetProperty(context, isolate, options, "username"));
+      username = TRI_ObjectToString(isolate, TRI_GetProperty(context, isolate, options,
+                                                             "username"));
       if (TRI_HasProperty(context, isolate, options, "password")) {
-        password =
-            TRI_ObjectToString(isolate,
-                               TRI_GetProperty(context, isolate, options, "password"));
+        password = TRI_ObjectToString(isolate, TRI_GetProperty(context, isolate, options,
+                                                               "password"));
       }
     }
   }
@@ -875,7 +876,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_SYNTAX_ERROR("unsupported URL specified");
     }
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("d6bdb", TRACE, arangodb::Logger::FIXME)
         << "downloading file. endpoint: " << endpoint << ", relative URL: " << url;
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
@@ -1067,7 +1068,7 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_Utf8ValueNFC keyName(isolate, key);
 
         if (*keyName != nullptr) {
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+          LOG_TOPIC("1a894", TRACE, arangodb::Logger::FIXME)
               << "copying key '" << *keyName << "' from sandbox to context";
         }
       }
@@ -1155,7 +1156,7 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_Utf8ValueNFC keyName(isolate, key);
 
         if (*keyName != nullptr) {
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+          LOG_TOPIC("a9a45", TRACE, arangodb::Logger::FIXME)
               << "copying key '" << *keyName << "' from context to sandbox";
         }
       }
@@ -1870,29 +1871,12 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string prefix;
-  LogLevel ll = LogLevel::WARN;
 
   StringUtils::tolowerInPlace(&ls);
   StringUtils::tolowerInPlace(&ts);
 
-  if (ls == "fatal") {
-    prefix = "FATAL! ";
-    ll = LogLevel::ERR;
-  } else if (ls == "error") {
-    ll = LogLevel::ERR;
-  } else if (ls == "warning" || ls == "warn") {
-    ll = LogLevel::WARN;
-  } else if (ls == "info") {
-    ll = LogLevel::INFO;
-  } else if (ls == "debug") {
-    ll = LogLevel::DEBUG;
-  } else if (ls == "trace") {
-    ll = LogLevel::TRACE;
-  } else {
-    prefix = ls + "!";
-  }
-
-  LogTopic* topic = ts.empty() ? nullptr : LogTopic::lookup(ts);
+  LogTopic const* topicPtr = ts.empty() ? nullptr : LogTopic::lookup(ts);
+  LogTopic const& topic = (topicPtr != nullptr) ? *topicPtr : Logger::FIXME;
 
   if (args[1]->IsArray()) {
     auto loglines = v8::Handle<v8::Array>::Cast(args[1]);
@@ -1907,13 +1891,26 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
         logLineVec.push_back(*message);
       }
     }
+
     for (auto& message : logLineVec) {
-      if (topic == nullptr) {
-        LOG_TOPIC_RAW(ll, Logger::FIXME) << prefix << message;
+      if (ls == "fatal") {
+        prefix = "FATAL! ";
+        LOG_TOPIC("ecbc6", ERR, topic) << prefix << message;
+      } else if (ls == "error") {
+        LOG_TOPIC("24213", ERR, topic) << prefix << message;
+      } else if (ls == "warning" || ls == "warn") {
+        LOG_TOPIC("514da", WARN, topic) << prefix << message;
+      } else if (ls == "info") {
+        LOG_TOPIC("99d80", INFO, topic) << prefix << message;
+      } else if (ls == "debug") {
+        LOG_TOPIC("f3533", DEBUG, topic) << prefix << message;
+      } else if (ls == "trace") {
+        LOG_TOPIC("74c21", TRACE, topic) << prefix << message;
       } else {
-        LOG_TOPIC_RAW(ll, *topic) << prefix << message;
+        prefix = ls + "!";
+        LOG_TOPIC("6b817", WARN, topic) << prefix << message;
       }
-    }
+    }  // for
   } else {
     TRI_Utf8ValueNFC message(isolate, args[1]);
 
@@ -1922,10 +1919,23 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     std::string msg = *message;
-    if (topic == nullptr) {
-      LOG_TOPIC_RAW(ll, Logger::FIXME) << prefix << msg;
+
+    if (ls == "fatal") {
+      prefix = "FATAL! ";
+      LOG_TOPIC("d1117", ERR, topic) << prefix << msg;
+    } else if (ls == "error") {
+      LOG_TOPIC("10407", ERR, topic) << prefix << msg;
+    } else if (ls == "warning" || ls == "warn") {
+      LOG_TOPIC("ebe22", WARN, topic) << prefix << msg;
+    } else if (ls == "info") {
+      LOG_TOPIC("365ec", INFO, topic) << prefix << msg;
+    } else if (ls == "debug") {
+      LOG_TOPIC("599b7", DEBUG, topic) << prefix << msg;
+    } else if (ls == "trace") {
+      LOG_TOPIC("42416", TRACE, topic) << prefix << msg;
     } else {
-      LOG_TOPIC_RAW(ll, *topic) << prefix << msg;
+      prefix = ls + "!";
+      LOG_TOPIC("0c009", WARN, topic) << prefix << msg;
     }
   }
 
@@ -4356,9 +4366,11 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
   // exception.
   if (message.IsEmpty()) {
     if (exceptionString == nullptr) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "JavaScript exception";
+      LOG_TOPIC("49465", ERR, arangodb::Logger::FIXME)
+          << "JavaScript exception";
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "JavaScript exception: " << exceptionString;
+      LOG_TOPIC("7e60e", ERR, arangodb::Logger::FIXME)
+          << "JavaScript exception: " << exceptionString;
     }
   } else {
     TRI_Utf8ValueNFC filename(isolate, message->GetScriptResourceName());
@@ -4371,17 +4383,19 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 
     if (filenameString == nullptr) {
       if (exceptionString == nullptr) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "JavaScript exception";
+        LOG_TOPIC("27c91", ERR, arangodb::Logger::FIXME)
+            << "JavaScript exception";
       } else {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "JavaScript exception: " << exceptionString;
+        LOG_TOPIC("52220", ERR, arangodb::Logger::FIXME)
+            << "JavaScript exception: " << exceptionString;
       }
     } else {
       if (exceptionString == nullptr) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("b3488", ERR, arangodb::Logger::FIXME)
             << "JavaScript exception in file '" << filenameString << "' at "
             << linenum << "," << start;
       } else {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("8a210", ERR, arangodb::Logger::FIXME)
             << "JavaScript exception in file '" << filenameString << "' at "
             << linenum << "," << start << ": " << exceptionString;
       }
@@ -4393,7 +4407,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
     if (*sourceline) {
       std::string l = *sourceline;
 
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "!" << l;
+      LOG_TOPIC("409ee", ERR, arangodb::Logger::FIXME) << "!" << l;
 
       if (1 < start) {
         l = std::string(start - 1, ' ');
@@ -4403,7 +4417,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 
       l += std::string((size_t)(end - start + 1), '^');
 
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "!" << l;
+      LOG_TOPIC("cb0bd", ERR, arangodb::Logger::FIXME) << "!" << l;
     }
   }
 }
@@ -4495,7 +4509,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
         }
       }
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("837e5", ERR, arangodb::Logger::FIXME)
           << "no output function defined in Javascript context";
     }
   }

@@ -154,7 +154,7 @@ void V8Context::handleGlobalContextMethods() {
   for (auto& type : copy) {
     std::string const& func = GlobalContextMethods::code(type);
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::V8)
+    LOG_TOPIC("fcb75", DEBUG, arangodb::Logger::V8)
         << "executing global context method '" << func << "' for context " << _id;
 
     TRI_GET_GLOBALS2(_isolate);
@@ -176,7 +176,7 @@ void V8Context::handleGlobalContextMethods() {
         }
       }
     } catch (...) {
-      LOG_TOPIC(WARN, arangodb::Logger::V8)
+      LOG_TOPIC("d0adc", WARN, arangodb::Logger::V8)
           << "caught exception during global context method '" << func << "'";
     }
 
@@ -187,7 +187,7 @@ void V8Context::handleGlobalContextMethods() {
 void V8Context::handleCancelationCleanup() {
   v8::HandleScope scope(_isolate);
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::V8)
+  LOG_TOPIC("e8060", DEBUG, arangodb::Logger::V8)
       << "executing cancelation cleanup context #" << _id;
 
   try {
@@ -197,7 +197,7 @@ void V8Context::handleCancelationCleanup() {
                             "require('module')._cleanupCancelation();"),
         TRI_V8_ASCII_STRING(_isolate, "context cleanup method"), false);
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::Logger::V8)
+    LOG_TOPIC("558dd", WARN, arangodb::Logger::V8)
         << "caught exception during cancelation cleanup";
     // do not throw from here
   }

@@ -53,7 +53,7 @@ void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorR
       }
     }
 
-    LOG_TOPIC(ERR, Logger::ROCKSDB)
+    LOG_TOPIC("fae2c", ERR, Logger::ROCKSDB)
         << "RocksDB encountered a background error during a " << operation
         << " operation; The database will be put in read-only "
            "mode, and subsequent write errors are likely";

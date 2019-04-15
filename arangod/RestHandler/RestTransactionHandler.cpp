@@ -233,7 +233,7 @@ void RestTransactionHandler::executeJSTransaction() {
   auto slice = _request->payload();
   if (!slice.isObject()) {
     generateError(
-        Result(TRI_ERROR_BAD_PARAMETER, "could not acquire v8 context"));
+        Result(TRI_ERROR_BAD_PARAMETER, "expecting object input data"));
     return;
   }
 

@@ -25,7 +25,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlResult.h"
-#include "Aql/ClusterBlocks.h"
+#include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServer.h"
@@ -160,7 +160,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           auto remoteBlock = dynamic_cast<ExecutionBlockImpl<RemoteExecutor>*>(r.get());
           TRI_ASSERT(remoteBlock->server() == serverID);
-          TRI_ASSERT(remoteBlock->ownName() == ""); // NOLINT(readability-container-size-empty)
+          TRI_ASSERT(remoteBlock->ownName() == "");  // NOLINT(readability-container-size-empty)
           TRI_ASSERT(remoteBlock->queryId() == snippetId);
 #endif
 
@@ -369,6 +369,7 @@ struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
           break;
         case ExecutionNode::TRAVERSAL:
         case ExecutionNode::SHORTEST_PATH:
+        case ExecutionNode::K_SHORTEST_PATHS:
           _dbserverParts.addGraphNode(ExecutionNode::castTo<GraphNode*>(en));
           break;
         default:
@@ -446,9 +447,13 @@ struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(AqlItemBlock* items,
+std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(SharedAqlItemBlockPtr&& items,
                                                                     size_t pos) {
-  auto res = _root->initializeCursor(items, pos);
+  InputAqlItemRow inputRow{CreateInvalidInputRowHint{}};
+  if (items != nullptr) {
+    inputRow = InputAqlItemRow{std::move(items), pos};
+  }
+  auto res = _root->initializeCursor(inputRow);
   if (res.first == ExecutionState::WAITING) {
     return res;
   }
@@ -456,7 +461,7 @@ std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(AqlItemBlock
   return res;
 }
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionEngine::getSome(size_t atMost) {
+std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t atMost) {
   if (!_initializeCursorCalled) {
     auto res = initializeCursor(nullptr, 0);
     if (res.first == ExecutionState::WAITING) {
@@ -557,7 +562,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
         TRI_ASSERT(root != nullptr);
 
       } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AQL)
+        LOG_TOPIC("bc9d5", ERR, Logger::AQL)
             << "Coordinator query instantiation failed: " << e.what();
         throw;
       }

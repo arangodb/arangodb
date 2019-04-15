@@ -118,10 +118,10 @@ void InitDatabaseFeature::prepare() {
           _password = password1;
           break;
         }
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("2a01c", ERR, arangodb::Logger::FIXME)
             << "passwords do not match, please repeat";
       } else {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("ba459", FATAL, arangodb::Logger::FIXME)
             << "initialization aborted by user";
         FATAL_ERROR_EXIT();
       }
@@ -199,7 +199,7 @@ void InitDatabaseFeature::checkEmptyDatabase() {
   return;
 
 doexit:
-  LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << message;
+  LOG_TOPIC("a38e6", FATAL, arangodb::Logger::FIXME) << message;
 
   auto logger = ApplicationServer::getFeature<LoggerFeature>("Logger");
   logger->unprepare();

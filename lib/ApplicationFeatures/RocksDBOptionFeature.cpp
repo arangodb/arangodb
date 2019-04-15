@@ -325,39 +325,39 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 
 void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_writeBufferSize > 0 && _writeBufferSize < 1024 * 1024) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("4ce44", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.write-buffer-size'";
     FATAL_ERROR_EXIT();
   }
   if (_totalWriteBufferSize > 0 && _totalWriteBufferSize < 64 * 1024 * 1024) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("4ab88", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.total-write-buffer-size'";
     FATAL_ERROR_EXIT();
   }
   if (_maxBytesForLevelMultiplier <= 0.0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("f6f8a", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.max-bytes-for-level-multiplier'";
     FATAL_ERROR_EXIT();
   }
   if (_numLevels < 1 || _numLevels > 20) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("70938", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.num-levels'";
     FATAL_ERROR_EXIT();
   }
 
   if (_maxBackgroundJobs != -1 && (_maxBackgroundJobs < 1 || _maxBackgroundJobs > 128)) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("cfc5a", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.max-background-jobs'";
     FATAL_ERROR_EXIT();
   }
 
   if (_numThreadsHigh > 64) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("d3105", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.num-threads-priority-high'";
     FATAL_ERROR_EXIT();
   }
   if (_numThreadsLow > 256) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("30c65", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.num-threads-priority-low'";
     FATAL_ERROR_EXIT();
   }
@@ -366,7 +366,7 @@ void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
   }
   if (_blockCacheShardBits >= 20 || _blockCacheShardBits < -1) {
     // -1 is RocksDB default value, but anything less is invalid
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("327a3", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.block-cache-shard-bits'";
     FATAL_ERROR_EXIT();
   }
@@ -383,7 +383,7 @@ void RocksDBOptionFeature::start() {
     _numThreadsLow = clamped;
   }
 
-  LOG_TOPIC(TRACE, Logger::ROCKSDB)
+  LOG_TOPIC("f66e4", TRACE, Logger::ROCKSDB)
       << "using RocksDB options:"
       << " wal_dir: '" << _walDirectory << "'"
       << ", write_buffer_size: " << _writeBufferSize

@@ -44,6 +44,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction_db.h>
@@ -551,7 +552,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
           }
         }
         if (!inserted) {
-          LOG_TOPIC(DEBUG, arangodb::Logger::CACHE)
+          LOG_TOPIC("c1809", DEBUG, arangodb::Logger::CACHE)
               << "Failed to cache: " << fromTo.toString();
           delete entry;
         }
@@ -807,7 +808,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);
   if (expectedCount < 100000) {
-    LOG_TOPIC(DEBUG, Logger::ENGINES) << "Skipping the multithreaded loading";
+    LOG_TOPIC("ac653", DEBUG, Logger::ENGINES) << "Skipping the multithreaded loading";
     auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx,
                                                              bounds.start(),
                                                              bounds.end());
@@ -826,7 +827,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   // get the first and last actual key
   it->Seek(bounds.start());
   if (!it->Valid()) {
-    LOG_TOPIC(DEBUG, Logger::ENGINES)
+    LOG_TOPIC("7b7dc", DEBUG, Logger::ENGINES)
         << "Cannot use multithreaded edge index warmup";
     auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx,
                                                              bounds.start(),
@@ -837,7 +838,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   std::string firstKey = it->key().ToString();
   it->SeekForPrev(bounds.end());
   if (!it->Valid()) {
-    LOG_TOPIC(DEBUG, Logger::ENGINES)
+    LOG_TOPIC("24334", DEBUG, Logger::ENGINES)
         << "Cannot use multithreaded edge index warmup";
     auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx,
                                                              bounds.start(),
@@ -850,7 +851,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   std::string q1 = firstKey, q2, q3, q4, q5 = lastKey;
   q3 = FindMedian(it.get(), q1, q5);
   if (q3 == lastKey) {
-    LOG_TOPIC(DEBUG, Logger::ENGINES)
+    LOG_TOPIC("14caa", DEBUG, Logger::ENGINES)
         << "Cannot use multithreaded edge index warmup";
     auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx,
                                                              bounds.start(),
@@ -894,6 +895,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
   options.fill_cache = EdgeIndexFillBlockCache;
   std::unique_ptr<rocksdb::Iterator> it(
       rocksutils::globalRocksDB()->NewIterator(options, _cf));
+  
+  ManagedDocumentResult mdr;
 
   size_t n = 0;
   cache::Cache* cc = _cache.get();
@@ -971,21 +974,20 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
     }
     if (needsInsert) {
       LocalDocumentId const docId =
-          RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue, key);
-      if (!rocksColl->readDocumentWithCallback(trx, docId, [&](LocalDocumentId const&, VPackSlice doc) {
-            builder.add(VPackValue(docId.id()));
-            VPackSlice toFrom =
-                _isFromIndex ? transaction::helpers::extractToFromDocument(doc)
-                             : transaction::helpers::extractFromFromDocument(doc);
-            TRI_ASSERT(toFrom.isString());
-            builder.add(toFrom);
-          })) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        // Data Inconsistency.
-        // We have a revision id without a document...
+      RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue, key);
+      if (!rocksColl->readDocument(trx, docId, mdr)) {
+        // Data Inconsistency. revision id without a document...
         TRI_ASSERT(false);
-#endif
+        continue;
       }
+      
+      builder.add(VPackValue(docId.id()));
+      VPackSlice doc(mdr.vpack());
+      VPackSlice toFrom =
+      _isFromIndex ? transaction::helpers::extractToFromDocument(doc)
+                   : transaction::helpers::extractFromFromDocument(doc);
+      TRI_ASSERT(toFrom.isString());
+      builder.add(toFrom);
     }
   }
 
@@ -1015,7 +1017,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
       }
     }
   }
-  LOG_TOPIC(DEBUG, Logger::ENGINES) << "loaded n: " << n;
+  LOG_TOPIC("99a29", DEBUG, Logger::ENGINES) << "loaded n: " << n;
 }
 
 // ===================== Helpers ==================
@@ -1103,6 +1105,7 @@ RocksDBCuckooIndexEstimator<uint64_t>* RocksDBEdgeIndex::estimator() {
 }
 
 void RocksDBEdgeIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> est) {
+  TRI_ASSERT(_estimator == nullptr || _estimator->appliedSeq() <= est->appliedSeq());
   _estimator = std::move(est);
 }
 
@@ -1123,8 +1126,9 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   options.fill_cache = false;
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(options, _cf));
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
+    TRI_ASSERT(it->key().compare(bounds.end()) < 1);
     uint64_t hash = RocksDBEdgeIndex::HashForKey(it->key());
     _estimator->insert(hash);
   }
-  _estimator->setCommitSeq(seq);
+  _estimator->setAppliedSeq(seq);
 }

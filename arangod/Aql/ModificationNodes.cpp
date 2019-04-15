@@ -24,8 +24,10 @@
 #include "ModificationNodes.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/ModificationBlocks.h"
+#include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutorTraits.h"
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
 
@@ -108,7 +110,35 @@ void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<RemoveBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+
+  TRI_ASSERT(previousNode != nullptr);
+
+  RegisterId inDocRegister = variableToRegisterId(_inVariable);
+  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
+  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
+
+  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+
+  ModificationExecutorInfos infos(
+      inDocRegister, ExecutionNode::MaxRegisterId, ExecutionNode::MaxRegisterId,
+      outputNew, outputOld, ExecutionNode::MaxRegisterId /*output*/,
+      getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
+      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
+      getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
+      std::move(options), _collection, ProducesResults(producesResults()),
+      ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
+      IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
+      IsReplace(false) /*(needed by upsert)*/,
+      IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
+
+  if (_options.readCompleteInput) {
+    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Remove, AllRowsFetcher>>>(
+        &engine, this, std::move(infos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Remove, SingleBlockFetcher<false>>>>(
+        &engine, this, std::move(infos));
+  }
 }
 
 /// @brief clone ExecutionNode recursively
@@ -150,7 +180,37 @@ void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<InsertBlock>(&engine, this);
+  using namespace arangodb::aql;
+
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  RegisterId inputRegister = variableToRegisterId(_inVariable);
+
+  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
+  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
+
+  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+
+  ModificationExecutorInfos infos(
+      inputRegister, ExecutionNode::MaxRegisterId, ExecutionNode::MaxRegisterId,
+      outputNew, outputOld, ExecutionNode::MaxRegisterId /*output*/,
+      getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
+      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
+      getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
+      std::move(options), _collection, ProducesResults(producesResults()),
+      ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
+      IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
+      IsReplace(false) /*(needed by upsert)*/,
+      IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
+
+  if (_options.readCompleteInput) {
+    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Insert, AllRowsFetcher>>>(
+        &engine, this, std::move(infos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<false>>>>(
+        &engine, this, std::move(infos));
+  }
 }
 
 /// @brief clone ExecutionNode recursively
@@ -210,7 +270,37 @@ void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<UpdateBlock>(&engine, this);
+  using namespace arangodb::aql;
+
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  RegisterId inDocRegister = variableToRegisterId(_inDocVariable);
+
+  RegisterId inKeyRegister = variableToRegisterOptionalId(_inKeyVariable);
+  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
+  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
+
+  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+
+  ModificationExecutorInfos infos(
+      inDocRegister, inKeyRegister, ExecutionNode::MaxRegisterId, outputNew,
+      outputOld, ExecutionNode::MaxRegisterId /*output*/,
+      getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
+      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
+      getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
+      std::move(options), _collection, ProducesResults(producesResults()),
+      ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
+      IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
+      IsReplace(false) /*(needed by upsert)*/,
+      IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
+  if (_options.readCompleteInput) {
+    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Update, AllRowsFetcher>>>(
+        &engine, this, std::move(infos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Update, SingleBlockFetcher<false>>>>(
+        &engine, this, std::move(infos));
+  }
 }
 
 /// @brief clone ExecutionNode recursively
@@ -254,7 +344,37 @@ void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<ReplaceBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  RegisterId inDocRegister = variableToRegisterId(_inDocVariable);
+
+  RegisterId inKeyRegister = variableToRegisterOptionalId(_inKeyVariable);
+
+  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
+
+  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
+
+  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+
+  ModificationExecutorInfos infos(
+      inDocRegister, inKeyRegister, ExecutionNode::MaxRegisterId, outputNew,
+      outputOld, ExecutionNode::MaxRegisterId /*output*/,
+      getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
+      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
+      getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
+      std::move(options), _collection, ProducesResults(producesResults()),
+      ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
+      IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
+      IsReplace(false) /*(needed by upsert)*/,
+      IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
+  if (_options.readCompleteInput) {
+    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Replace, AllRowsFetcher>>>(
+        &engine, this, std::move(infos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Replace, SingleBlockFetcher<false>>>>(
+        &engine, this, std::move(infos));
+  }
 }
 
 /// @brief clone ExecutionNode recursively
@@ -315,7 +435,38 @@ void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<UpsertBlock>(&engine, this);
+  using namespace arangodb::aql;
+
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  RegisterId inDoc = variableToRegisterId(_inDocVariable);
+  RegisterId insert = variableToRegisterId(_insertVariable);
+  RegisterId update = variableToRegisterId(_updateVariable);
+
+  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
+
+  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
+
+  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+
+  ModificationExecutorInfos infos(
+      inDoc, insert, update, outputNew, outputOld, ExecutionNode::MaxRegisterId /*output*/,
+      getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
+      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
+      getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
+      std::move(options), _collection, ProducesResults(producesResults()),
+      ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
+      IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
+      IsReplace(_isReplace) /*(needed by upsert)*/,
+      IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
+  if (_options.readCompleteInput) {
+    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Upsert, AllRowsFetcher>>>(
+        &engine, this, std::move(infos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Upsert, SingleBlockFetcher<false>>>>(
+        &engine, this, std::move(infos));
+  }
 }
 
 /// @brief clone ExecutionNode recursively

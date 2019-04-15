@@ -24,6 +24,7 @@
 #include "Aql/Ast.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/SortRegister.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/ConstrainedSortExecutor.h"
@@ -31,17 +32,13 @@
 #include "Aql/ExecutionEngine.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "IResearch/IResearchOrderFactory.h"
 #include "SortNode.h"
 
 namespace {
 std::string const ConstrainedHeap = "constrained-heap";
 std::string const Standard = "standard";
 }  // namespace
-
-#ifdef USE_IRESEARCH
-#include "IResearch/IResearchViewNode.h"
-#include "IResearch/IResearchOrderFactory.h"
-#endif
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;

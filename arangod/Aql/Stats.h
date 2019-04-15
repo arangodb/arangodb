@@ -105,7 +105,9 @@ class IndexStats {
   IndexStats() noexcept : _scannedIndex(0) {}
 
   void incrScanned() noexcept { _scannedIndex++; }
-  void incrScanned(size_t value) noexcept { _scannedIndex = _scannedIndex + value; }
+  void incrScanned(size_t value) noexcept {
+    _scannedIndex = _scannedIndex + value;
+  }
 
   std::size_t getScanned() const noexcept { return _scannedIndex; }
 
@@ -116,6 +118,86 @@ class IndexStats {
 inline ExecutionStats& operator+=(ExecutionStats& executionStats,
                                   IndexStats const& enumerateCollectionStats) noexcept {
   executionStats.scannedIndex += enumerateCollectionStats.getScanned();
+  return executionStats;
+}
+
+class ModificationStats {
+ public:
+  ModificationStats() noexcept : _writesExecuted(0), _writesIgnored(0) {}
+
+  void setWritesExecuted(std::size_t writesExecuted) noexcept {
+    _writesExecuted = writesExecuted;
+  }
+  void addWritesExecuted(std::size_t writesExecuted) noexcept {
+    _writesExecuted += writesExecuted;
+  }
+  void incrWritesExecuted() noexcept { _writesExecuted++; }
+  std::size_t getWritesExecuted() const noexcept { return _writesExecuted; }
+
+  void setWritesIgnored(std::size_t writesIgnored) noexcept {
+    _writesIgnored = writesIgnored;
+  }
+  void addWritesIgnored(std::size_t writesIgnored) noexcept {
+    _writesIgnored += writesIgnored;
+  }
+  void incrWritesIgnored() noexcept { _writesIgnored++; }
+  std::size_t getWritesIgnored() const noexcept { return _writesIgnored; }
+
+ private:
+  std::size_t _writesExecuted;
+  std::size_t _writesIgnored;
+};
+
+inline ExecutionStats& operator+=(ExecutionStats& executionStats,
+                                  ModificationStats const& filterStats) noexcept {
+  executionStats.writesExecuted += filterStats.getWritesExecuted();
+  executionStats.writesIgnored += filterStats.getWritesIgnored();
+  return executionStats;
+}
+
+class SingleRemoteModificationStats {
+ public:
+  SingleRemoteModificationStats() noexcept
+      : _writesExecuted(0), _writesIgnored(0), _scannedIndex(0) {}
+
+  void setWritesExecuted(std::size_t writesExecuted) noexcept {
+    _writesExecuted = writesExecuted;
+  }
+  void addWritesExecuted(std::size_t writesExecuted) noexcept {
+    _writesExecuted += writesExecuted;
+  }
+  void incrWritesExecuted() noexcept { _writesExecuted++; }
+  std::size_t getWritesExecuted() const noexcept { return _writesExecuted; }
+
+  void setWritesIgnored(std::size_t writesIgnored) noexcept {
+    _writesIgnored = writesIgnored;
+  }
+  void addWritesIgnored(std::size_t writesIgnored) noexcept {
+    _writesIgnored += writesIgnored;
+  }
+  void incrWritesIgnored() noexcept { _writesIgnored++; }
+  std::size_t getWritesIgnored() const noexcept { return _writesIgnored; }
+
+  void setScannedIndex(std::size_t scannedIndex) noexcept {
+    _scannedIndex = scannedIndex;
+  }
+  void addScannedIndex(std::size_t scannedIndex) noexcept {
+    _scannedIndex += scannedIndex;
+  }
+  void incrScannedIndex() noexcept { _scannedIndex++; }
+  std::size_t getScannedIndex() const noexcept { return _scannedIndex; }
+
+ private:
+  std::size_t _writesExecuted;
+  std::size_t _writesIgnored;
+  std::size_t _scannedIndex;
+};
+
+inline ExecutionStats& operator+=(ExecutionStats& executionStats,
+                                  SingleRemoteModificationStats const& filterStats) noexcept {
+  executionStats.writesExecuted += filterStats.getWritesExecuted();
+  executionStats.writesIgnored += filterStats.getWritesIgnored();
+  executionStats.scannedIndex += filterStats.getScannedIndex();
   return executionStats;
 }
 

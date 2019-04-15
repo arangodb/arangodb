@@ -31,6 +31,7 @@
 'use strict';
 
 var jsunity = require('jsunity');
+var analyzers = require("@arangodb/analyzers");
 const testHelper = require('@arangodb/test-helper');
 const isEqual = testHelper.isEqual;
 const deriveTestSuite = testHelper.deriveTestSuite;
@@ -206,6 +207,9 @@ function UserRightsManagement(name) {
 
             rootCreateView(testViewName, { links: { [testCol1Name] : {includeAllFields: true } } });
             db._useDatabase(dbName);
+            helper.switchUser('root', dbName);
+            analyzers.save(db._name() + "::text_de", "text", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
+            analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
         },
 
         tearDown: function () {
@@ -340,7 +344,7 @@ for (name of userSet) {
             assertTrue(rootTestView(testViewName), 'Precondition failed, view was not found');
             if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
                 db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, true);
-                assertEqual(rootGetViewProps(testViewName, true)["links"][testCol1Name]["analyzers"], ["text_de","text_en"], 'View link update reported success, but property was not updated');
+                assertEqual(rootGetViewProps(testViewName, true)["links"][testCol1Name]["analyzers"], [db._name() + "::text_de",db._name() + "::text_en"], 'View link update reported success, but property was not updated');
             } else {
                 try {
                     db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, true);
@@ -355,7 +359,7 @@ for (name of userSet) {
             assertTrue(rootTestView(testViewName), 'Precondition failed, view was not found');
             if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
                 db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, false);
-                assertEqual(rootGetViewProps(testViewName, true)["links"][testCol1Name]["analyzers"], ["text_de","text_en"], 'View link update reported success, but property was not updated');
+                assertEqual(rootGetViewProps(testViewName, true)["links"][testCol1Name]["analyzers"], [db._name() + "::text_de",db._name() + "::text_en"], 'View link update reported success, but property was not updated');
             } else {
                 try {
                   db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, false);
@@ -374,8 +378,7 @@ for (name of userSet) {
 		rootGrantCollection(testCol2Name, name, 'rw');
 		if (dbLevel['rw'].has(name) && colLevel['ro'].has(name)) {
                     db._view(testViewName).properties({ links: { [testCol2Name]: { includeAllFields: true, analyzers: ["text_de"] } } }, true);
-                    assertEqual(rootGetViewProps(testViewName, true)["links"][testCol2Name]["analyzers"],
-				["text_de"], 'View link update reported success, but property was not updated');
+                    assertEqual(rootGetViewProps(testViewName, true)["links"][testCol2Name]["analyzers"], [db._name() + "::text_de"], 'View link update reported success, but property was not updated');
 		} else {
                     try {
 			db._view(testViewName).properties({ links: { [testCol2Name]: { includeAllFields: true, analyzers: ["text_de"] } } }, true);

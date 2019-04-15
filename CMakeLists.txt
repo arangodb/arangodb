@@ -1007,13 +1007,7 @@ endif ()
 # IResearch
 # ------------------------------------------------------------------------------
 
-option(USE_IRESEARCH "enable ArangoSearch views" ON)
-
-if(USE_IRESEARCH)
-  add_definitions("-DUSE_IRESEARCH=1")
-
-  set(LIB_ARANGO_IRESEARCH arango_iresearch)
-endif()
+set(LIB_ARANGO_IRESEARCH arango_iresearch)
 
 # 3rdParty exports:
 #

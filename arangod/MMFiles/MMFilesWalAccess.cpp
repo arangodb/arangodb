@@ -84,7 +84,7 @@ TRI_voc_tick_t MMFilesWalAccess::lastTick() const {
 /// range (range can be adjusted)
 WalAccessResult MMFilesWalAccess::openTransactions(WalAccess::Filter const& filter,
                                                    TransactionCallback const& cb) const {
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+  LOG_TOPIC("528fd", TRACE, arangodb::Logger::REPLICATION)
       << "determining transactions, tick range " << filter.tickStart << " - "
       << filter.tickEnd;
 
@@ -101,7 +101,7 @@ WalAccessResult MMFilesWalAccess::openTransactions(WalAccess::Filter const& filt
   TRI_voc_tick_t lastFoundTick = 0;
   WalAccessResult res;
 
-  // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "found logfiles: " <<
+  // LOG_TOPIC("f1157", INFO, arangodb::Logger::REPLICATION) << "found logfiles: " <<
   // logfiles.size();
 
   try {
@@ -114,7 +114,7 @@ WalAccessResult MMFilesWalAccess::openTransactions(WalAccess::Filter const& filt
       char const* end;
       MMFilesLogfileManager::instance()->getActiveLogfileRegion(logfile, ptr, end);
 
-      // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "scanning logfile "
+      // LOG_TOPIC("90e37", INFO, arangodb::Logger::REPLICATION) << "scanning logfile "
       // << i;
       while (ptr < end) {
         auto const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
@@ -176,8 +176,8 @@ WalAccessResult MMFilesWalAccess::openTransactions(WalAccess::Filter const& filt
       }
     }
 
-    // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "found transactions: "
-    // << transactions.size(); LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) <<
+    // LOG_TOPIC("a38b7", INFO, arangodb::Logger::REPLICATION) << "found transactions: "
+    // << transactions.size(); LOG_TOPIC("8785d", INFO, arangodb::Logger::REPLICATION) <<
     // "last tick: " << lastFoundTick;
     for (auto const& it : transactions) {
       if (it.second - 1 < lastFoundTick) {
@@ -190,15 +190,15 @@ WalAccessResult MMFilesWalAccess::openTransactions(WalAccess::Filter const& filt
     res.reset(TRI_ERROR_NO_ERROR, fromTickIncluded, lastFoundTick, 0,
               /*latest*/ state.lastCommittedTick);
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("12bcb", ERR, arangodb::Logger::REPLICATION)
         << "caught exception while determining open transactions: " << ex.what();
     res.reset(ex.code(), false, 0, 0, 0);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("cbfb0", ERR, arangodb::Logger::REPLICATION)
         << "caught exception while determining open transactions: " << ex.what();
     res.reset(TRI_ERROR_INTERNAL, false, 0, 0, 0);
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("e16aa", ERR, arangodb::Logger::REPLICATION)
         << "caught unknown exception while determining open transactions";
     res.reset(TRI_ERROR_INTERNAL, false, 0, 0, 0);
   }
@@ -381,7 +381,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
       }
 
       default: {
-        LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+        LOG_TOPIC("73246", ERR, arangodb::Logger::REPLICATION)
             << "got invalid marker of type " << static_cast<int>(type);
         TRI_ASSERT(false);
         return TRI_ERROR_INTERNAL;
@@ -529,15 +529,15 @@ struct MMFilesWalAccessContext : WalAccessContext {
         }
       }
     } catch (arangodb::basics::Exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+      LOG_TOPIC("c125c", ERR, arangodb::Logger::REPLICATION)
           << "caught exception while dumping replication log: " << ex.what();
       res = ex.code();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+      LOG_TOPIC("d98f2", ERR, arangodb::Logger::REPLICATION)
           << "caught exception while dumping replication log: " << ex.what();
       res = TRI_ERROR_INTERNAL;
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+      LOG_TOPIC("2a217", ERR, arangodb::Logger::REPLICATION)
           << "caught unknown exception while dumping replication log";
       res = TRI_ERROR_INTERNAL;
     }
@@ -557,7 +557,7 @@ WalAccessResult MMFilesWalAccess::tail(WalAccess::Filter const& filter,
       << filter.includeSystem << " firstRegularTick" <<
      filter.firstRegularTick;*/
 
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+  LOG_TOPIC("de336", TRACE, arangodb::Logger::REPLICATION)
       << "dumping log, tick range " << filter.tickStart << " - " << filter.tickEnd;
 
   if (barrierId > 0) {

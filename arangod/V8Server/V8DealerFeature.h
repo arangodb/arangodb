@@ -76,6 +76,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   bool _enableJS;
 
  public:
+  bool allowAdminExecute() const { return _allowAdminExecute; }
+
   bool addGlobalContextMethod(std::string const&);
   void collectGarbage();
 

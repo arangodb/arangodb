@@ -95,8 +95,11 @@ struct PRComputation : public VertexComputation<float, float, float> {
     float diff = fabs(copy - *ptr);
     aggregate<float>(kConvergence, diff);
 
-    float val = *ptr / getEdgeCount();
-    sendMessageToAllNeighbours(val);
+    size_t numEdges = getEdgeCount();
+    if (numEdges > 0) {
+      float val = *ptr / numEdges;
+      sendMessageToAllNeighbours(val);
+    }
   }
 };
 
@@ -116,7 +119,7 @@ struct PRMasterContext : public MasterContext {
   }
 
   void preApplication() override {
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Using threshold " << _threshold;
+    LOG_TOPIC("e0598", DEBUG, Logger::PREGEL) << "Using threshold " << _threshold;
   };
 
   bool postGlobalSuperstep() override {

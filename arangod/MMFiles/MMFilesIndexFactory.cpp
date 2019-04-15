@@ -46,9 +46,7 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchMMFilesLink.h"
-#endif
 
 using namespace arangodb;
 
@@ -419,7 +417,7 @@ void MMFilesIndexFactory::prepareIndexes(
     auto idx = prepareIndexFromSlice(v, false, col, true);
 
     if (!idx) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("e6baf", ERR, arangodb::Logger::ENGINES)
           << "error creating index from definition '" << v.toString() << "'";
 
       continue;

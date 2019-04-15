@@ -75,7 +75,7 @@ arangodb::Result writeSettings(rocksdb::WriteBatch& batch, VPackBuilder& b, uint
   b.close();
 
   VPackSlice slice = b.slice();
-  LOG_TOPIC(TRACE, Logger::ENGINES) << "writing settings: " << slice.toJson();
+  LOG_TOPIC("f5e34", DEBUG, Logger::ENGINES) << "writing settings: " << slice.toJson();
 
   RocksDBKey key;
   key.constructSettingsValue(RocksDBSettingsType::ServerTick);
@@ -83,7 +83,7 @@ arangodb::Result writeSettings(rocksdb::WriteBatch& batch, VPackBuilder& b, uint
 
   rocksdb::Status s = batch.Put(RocksDBColumnFamily::definitions(), key.string(), value);
   if (!s.ok()) {
-    LOG_TOPIC(WARN, Logger::ENGINES) << "writing settings failed: " << s.ToString();
+    LOG_TOPIC("140ec", WARN, Logger::ENGINES) << "writing settings failed: " << s.ToString();
     return arangodb::rocksutils::convertStatus(s);
   }
 
@@ -146,7 +146,7 @@ Result RocksDBSettingsManager::sync(bool force) {
 
   // fetch the seq number prior to any writes; this guarantees that we save
   // any subsequent updates in the WAL to replay if we crash in the middle
-  auto maxSeqNr = _db->GetLatestSequenceNumber();
+  auto const maxSeqNr = _db->GetLatestSequenceNumber();
   auto minSeqNr = maxSeqNr;
 
   rocksdb::TransactionOptions opts;
@@ -158,6 +158,7 @@ Result RocksDBSettingsManager::sync(bool force) {
 
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
   auto dbfeature = arangodb::DatabaseFeature::DATABASE;
+  TRI_ASSERT(!engine->inRecovery()); // just don't
 
   bool didWork = false;
   auto mappings = engine->collectionMappings();
@@ -180,20 +181,20 @@ Result RocksDBSettingsManager::sync(bool force) {
     TRI_DEFER(vocbase->releaseCollection(coll.get()));
 
     auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
-    rocksdb::SequenceNumber appliedSeq = minSeqNr;
+    rocksdb::SequenceNumber appliedSeq = maxSeqNr;
     Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder, appliedSeq);
     minSeqNr = std::min(minSeqNr, appliedSeq);
 
     const std::string err = "could not sync metadata for collection '";
     if (res.fail()) {
-      LOG_TOPIC(WARN, Logger::ENGINES) << err << coll->name() << "'";
+      LOG_TOPIC("1038d", WARN, Logger::ENGINES) << err << coll->name() << "'";
       return res;
     }
 
     if (batch.Count() > 0) {
       auto s = _db->Write(wo, &batch);
       if (!s.ok()) {
-        LOG_TOPIC(WARN, Logger::ENGINES) << err << coll->name() << "'";
+        LOG_TOPIC("afa17", WARN, Logger::ENGINES) << err << coll->name() << "'";
         return rocksutils::convertStatus(s);
       }
       didWork = true;
@@ -201,16 +202,16 @@ Result RocksDBSettingsManager::sync(bool force) {
     batch.Clear();
   }
 
+  TRI_ASSERT(_lastSync <= minSeqNr);
   if (!didWork) {
-    WRITE_LOCKER(guard, _rwLock);
     _lastSync = minSeqNr;
     return Result();  // nothing was written
   }
 
   _tmpBuilder.clear();
-  Result res = writeSettings(batch, _tmpBuilder, minSeqNr);
+  Result res = writeSettings(batch, _tmpBuilder, std::max(_lastSync.load(), minSeqNr));
   if (res.fail()) {
-    LOG_TOPIC(WARN, Logger::ENGINES)
+    LOG_TOPIC("8a5e6", WARN, Logger::ENGINES)
         << "could not store metadata settings " << res.errorMessage();
     return res;
   }
@@ -218,8 +219,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   // we have to commit all counters in one batch
   auto s = _db->Write(wo, &batch);
   if (s.ok()) {
-    WRITE_LOCKER(guard, _rwLock);
-    _lastSync = minSeqNr;
+    _lastSync = std::max(_lastSync.load(), minSeqNr);
   }
 
   return rocksutils::convertStatus(s);
@@ -237,39 +237,38 @@ void RocksDBSettingsManager::loadSettings() {
     // key may not be there, so don't fail when not found
     VPackSlice slice = VPackSlice(result.data());
     TRI_ASSERT(slice.isObject());
-    LOG_TOPIC(TRACE, Logger::ENGINES) << "read initial settings: " << slice.toJson();
+    LOG_TOPIC("7458b", TRACE, Logger::ENGINES) << "read initial settings: " << slice.toJson();
 
     if (!result.empty()) {
-      WRITE_LOCKER(guard, _rwLock);
       try {
         if (slice.hasKey("tick")) {
           uint64_t lastTick =
               basics::VelocyPackHelper::stringUInt64(slice.get("tick"));
-          LOG_TOPIC(TRACE, Logger::ENGINES) << "using last tick: " << lastTick;
+          LOG_TOPIC("369d3", TRACE, Logger::ENGINES) << "using last tick: " << lastTick;
           TRI_UpdateTickServer(lastTick);
         }
 
         if (slice.hasKey("hlc")) {
           uint64_t lastHlc =
               basics::VelocyPackHelper::stringUInt64(slice.get("hlc"));
-          LOG_TOPIC(TRACE, Logger::ENGINES) << "using last hlc: " << lastHlc;
+          LOG_TOPIC("647a8", TRACE, Logger::ENGINES) << "using last hlc: " << lastHlc;
           TRI_HybridLogicalClock(lastHlc);
         }
 
         if (slice.hasKey("releasedTick")) {
           _initialReleasedTick =
               basics::VelocyPackHelper::stringUInt64(slice.get("releasedTick"));
-          LOG_TOPIC(TRACE, Logger::ENGINES) << "using released tick: " << _initialReleasedTick;
+          LOG_TOPIC("e13f4", TRACE, Logger::ENGINES) << "using released tick: " << _initialReleasedTick;
           EngineSelectorFeature::ENGINE->releaseTick(_initialReleasedTick);
         }
 
         if (slice.hasKey("lastSync")) {
           _lastSync =
               basics::VelocyPackHelper::stringUInt64(slice.get("lastSync"));
-          LOG_TOPIC(TRACE, Logger::ENGINES) << "last background settings sync: " << _lastSync;
+          LOG_TOPIC("9e695", TRACE, Logger::ENGINES) << "last background settings sync: " << _lastSync;
         }
       } catch (...) {
-        LOG_TOPIC(WARN, Logger::ENGINES)
+        LOG_TOPIC("1b3de", WARN, Logger::ENGINES)
             << "unable to read initial settings: invalid data";
       }
     }
@@ -278,7 +277,6 @@ void RocksDBSettingsManager::loadSettings() {
 
 /// earliest safe sequence number to throw away from wal
 rocksdb::SequenceNumber RocksDBSettingsManager::earliestSeqNeeded() const {
-  READ_LOCKER(guard, _rwLock);
   return _lastSync;
 }
 

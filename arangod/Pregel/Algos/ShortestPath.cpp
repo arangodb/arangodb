@@ -58,7 +58,7 @@ struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
         // TODO extend pregel to update certain aggregators during a GSS
         aggregate(spUpperPathBound, current);
         enterNextGlobalSuperstep();
-        LOG_TOPIC(DEBUG, Logger::PREGEL) << "Found target " << current;
+        LOG_TOPIC("0267f", DEBUG, Logger::PREGEL) << "Found target " << current;
         return;
       }
 

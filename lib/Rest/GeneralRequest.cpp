@@ -81,7 +81,7 @@ std::string GeneralRequest::translateMethod(RequestType method) {
       return "STATUS";
 
     case RequestType::ILLEGAL:
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("62a53", WARN, arangodb::Logger::FIXME)
           << "illegal http request method encountered in switch";
       return "UNKNOWN";
   }

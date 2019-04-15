@@ -1754,7 +1754,9 @@
       "info",
       "info"
     ],
-    "deprecatedIn" : null,
+    "deprecatedIn" : [
+      "v3.5.0"
+    ],
     "description" : "the global or topic-specific log level",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -1869,6 +1871,22 @@
     "section" : "log",
     "type" : "boolean"
   },
+  "log.ids" : {
+    "category" : "option",
+    "default" : true,
+    "deprecatedIn" : null,
+    "description" : "log unique message ids",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
   "log.keep-logrotate" : {
     "category" : "option",
     "default" : false,
@@ -1932,7 +1950,9 @@
   "log.performance" : {
     "category" : "option",
     "default" : false,
-    "deprecatedIn" : null,
+    "deprecatedIn" : [
+      "v3.5.0"
+    ],
     "description" : "shortcut for '--log.level performance=trace'",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -2027,14 +2047,33 @@
     "section" : "log",
     "type" : "boolean"
   },
-  "log.use-local-time" : {
+  "log.time-format" : {
     "category" : "option",
-    "default" : false,
+    "default" : "utc-datestring",
     "deprecatedIn" : null,
-    "description" : "use local timezone instead of UTC",
+    "description" : "time format to use in logs",
     "dynamic" : false,
     "enterpriseOnly" : false,
     "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "log",
+    "type" : "string",
+    "values" : "Possible values: \"local-datestring\", \"timestamp\", \"timestamp-micros\", \"timestamp-millis\", \"uptime\", \"uptime-micros\", \"uptime-millis\", \"utc-datestring\""
+  },
+  "log.use-local-time" : {
+    "category" : "option",
+    "default" : false,
+    "deprecatedIn" : [
+      "v3.5.0"
+    ],
+    "description" : "use local timezone instead of UTC",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : true,
     "introducedIn" : null,
     "obsolete" : false,
     "requiresValue" : false,
@@ -2044,11 +2083,13 @@
   "log.use-microtime" : {
     "category" : "option",
     "default" : false,
-    "deprecatedIn" : null,
+    "deprecatedIn" : [
+      "v3.5.0"
+    ],
     "description" : "use microtime instead",
     "dynamic" : false,
     "enterpriseOnly" : false,
-    "hidden" : false,
+    "hidden" : true,
     "introducedIn" : null,
     "obsolete" : false,
     "requiresValue" : false,
@@ -2237,6 +2278,23 @@
     "section" : "query",
     "type" : "double"
   },
+  "query.smart-joins" : {
+    "category" : "option",
+    "default" : true,
+    "deprecatedIn" : null,
+    "description" : "enable smart joins query optimization",
+    "dynamic" : false,
+    "enterpriseOnly" : true,
+    "hidden" : true,
+    "introducedIn" : [
+      "v3.4.5",
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "query",
+    "type" : "boolean"
+  },
   "query.tracking" : {
     "category" : "option",
     "default" : true,
@@ -2322,6 +2380,23 @@
     "section" : "replication",
     "type" : "boolean"
   },
+  "rocksdb.allow-fallocate" : {
+    "category" : "option",
+    "default" : true,
+    "deprecatedIn" : null,
+    "description" : "if true, allow RocksDB to use fallocate calls. if false, fallocate calls are bypassed",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "introducedIn" : [
+      "v3.4.5",
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
   "rocksdb.block-align-data-blocks" : {
     "category" : "option",
     "default" : false,
@@ -2392,7 +2467,7 @@
     "section" : "rocksdb",
     "type" : "boolean"
   },
-  "rocksdb.delayed_write_rate" : {
+  "rocksdb.delayed-write-rate" : {
     "category" : "option",
     "default" : 0,
     "deprecatedIn" : null,
@@ -2559,6 +2634,23 @@
     "requiresValue" : true,
     "section" : "rocksdb",
     "type" : "int64"
+  },
+  "rocksdb.limit-open-files-at-startup" : {
+    "category" : "option",
+    "default" : false,
+    "deprecatedIn" : null,
+    "description" : "limit the amount of .sst files RocksDB will inspect at startup, in order to startup reduce IO",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "introducedIn" : [
+      "v3.4.5",
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "rocksdb",
+    "type" : "boolean"
   },
   "rocksdb.max-background-jobs" : {
     "category" : "option",
@@ -2744,17 +2836,17 @@
   },
   "rocksdb.recycle-log-file-num" : {
     "category" : "option",
-    "default" : 0,
+    "default" : false,
     "deprecatedIn" : null,
-    "description" : "number of log files to keep around for recycling",
+    "description" : "if true, keep a pool of log files around for recycling",
     "dynamic" : false,
     "enterpriseOnly" : false,
     "hidden" : true,
     "introducedIn" : null,
     "obsolete" : false,
-    "requiresValue" : true,
+    "requiresValue" : false,
     "section" : "rocksdb",
-    "type" : "uint64"
+    "type" : "boolean"
   },
   "rocksdb.sync-interval" : {
     "category" : "option",
@@ -2881,6 +2973,20 @@
     "requiresValue" : false,
     "section" : "rocksdb",
     "type" : "boolean"
+  },
+  "rocksdb.wal-archive-size-limit" : {
+    "category" : "option",
+    "default" : 0,
+    "deprecatedIn" : null,
+    "description" : "maximum total size (in bytes) of archived WAL files (0 = unlimited)",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "introducedIn" : null,
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "rocksdb",
+    "type" : "uint64"
   },
   "rocksdb.wal-directory" : {
     "category" : "option",

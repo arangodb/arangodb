@@ -32,6 +32,7 @@
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -85,7 +86,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
     AgencyCommResult commRes = agency.getValues("Plan/Databases/" + vocbase->name());
     if (!commRes.successful()) {
       // Error in communication, note that value not found is not an error
-      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+      LOG_TOPIC("87642", TRACE, Logger::COMMUNICATION)
           << "rest database handler: no agency communication";
       return Result(commRes.errorCode(), commRes.errorMessage());
     }
@@ -126,6 +127,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     if (!exec->isAdminUser()) {
+      events::CreateDatabase(dbName, TRI_ERROR_FORBIDDEN);
       return TRI_ERROR_FORBIDDEN;
     }
   }
@@ -134,12 +136,14 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   if (options.isNone() || options.isNull()) {
     options = VPackSlice::emptyObjectSlice();
   } else if (!options.isObject()) {
+    events::CreateDatabase(dbName, TRI_ERROR_HTTP_BAD_PARAMETER);
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid options slice");
   }
   VPackSlice users = inUsers;
   if (users.isNone() || users.isNull()) {
     users = VPackSlice::emptyArraySlice();
   } else if (!users.isArray()) {
+    events::CreateDatabase(dbName, TRI_ERROR_HTTP_BAD_PARAMETER);
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid users slice");
   }
 
@@ -148,6 +152,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   for (VPackSlice const& user : VPackArrayIterator(users)) {
     sanitizedUsers.openObject();
     if (!user.isObject()) {
+      events::CreateDatabase(dbName, TRI_ERROR_HTTP_BAD_PARAMETER);
       return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
     }
 
@@ -158,6 +163,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
       name = user.get("user");
     }
     if (!name.isString()) {  // empty names are silently ignored later
+      events::CreateDatabase(dbName, TRI_ERROR_HTTP_BAD_PARAMETER);
       return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
     }
     sanitizedUsers.add("username", name);
@@ -165,6 +171,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     if (user.hasKey("passwd")) {
       VPackSlice passwd = user.get("passwd");
       if (!passwd.isString()) {
+        events::CreateDatabase(dbName, TRI_ERROR_HTTP_BAD_PARAMETER);
         return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
       }
       sanitizedUsers.add("passwd", passwd);
@@ -189,12 +196,14 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
 
   DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
   if (databaseFeature == nullptr) {
+    events::CreateDatabase(dbName, TRI_ERROR_INTERNAL);
     return Result(TRI_ERROR_INTERNAL);
   }
 
   UpgradeResult upgradeRes;
   if (ServerState::instance()->isCoordinator()) {
     if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(dbName))) {
+      events::CreateDatabase(dbName, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
       return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     }
 
@@ -215,6 +224,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     auto res = ci->createDatabaseCoordinator(dbName, builder.slice(), 120.0);
 
     if (!res.ok()) {
+      events::CreateDatabase(dbName, res.errorNumber());
       return res;
     }
 
@@ -284,7 +294,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   }
 
   if (upgradeRes.fail()) {
-    LOG_TOPIC(ERR, Logger::FIXME)
+    LOG_TOPIC("1964a", ERR, Logger::FIXME)
         << "Could not create database: " << upgradeRes.errorMessage();
     return std::move(upgradeRes).result();
   }
@@ -313,6 +323,7 @@ int dropDBCoordinator(std::string const& dbName) {
   TRI_vocbase_t* vocbase = databaseFeature->useDatabase(dbName);
 
   if (vocbase == nullptr) {
+    events::DropDatabase(dbName, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
 
@@ -324,6 +335,7 @@ int dropDBCoordinator(std::string const& dbName) {
   auto res = ci->dropDatabaseCoordinator(dbName, 120.0);
 
   if (!res.ok()) {
+    events::DropDatabase(dbName, res.errorNumber());
     return res.errorNumber();
   }
 
@@ -351,6 +363,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     if (exec->systemAuthLevel() != auth::Level::RW) {
+      events::DropDatabase(dbName, TRI_ERROR_FORBIDDEN);
       return TRI_ERROR_FORBIDDEN;
     }
   }
@@ -360,6 +373,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
   if (dealer != nullptr && dealer->isEnabled()) {
     V8Context* v8ctx = V8DealerFeature::DEALER->enterContext(systemVocbase, true);
     if (v8ctx == nullptr) {
+      events::DropDatabase(dbName, TRI_ERROR_INTERNAL);
       return Result(TRI_ERROR_INTERNAL, "Could not get v8 context");
     }
     TRI_DEFER(V8DealerFeature::DEALER->exitContext(v8ctx));
@@ -376,6 +390,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
       res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
+        events::DropDatabase(dbName, res);
         return Result(res);
       }
 

@@ -49,7 +49,7 @@ ExecutionState AllRowsFetcher::fetchUntilDone() {
   }
 
   ExecutionState state = ExecutionState::HASMORE;
-  std::shared_ptr<AqlItemBlockShell> block;
+  SharedAqlItemBlockPtr block;
 
   while (state == ExecutionState::HASMORE) {
     std::tie(state, block) = fetchBlock();
@@ -84,16 +84,50 @@ std::pair<ExecutionState, size_t> AllRowsFetcher::preFetchNumberOfRows(size_t) {
 AllRowsFetcher::AllRowsFetcher(BlockFetcher<false>& executionBlock)
     : _blockFetcher(&executionBlock),
       _aqlItemMatrix(nullptr),
-      _upstreamState(ExecutionState::HASMORE) {}
+      _upstreamState(ExecutionState::HASMORE),
+      _blockToReturnNext(0) {}
 
 RegisterId AllRowsFetcher::getNrInputRegisters() const {
   return _blockFetcher->getNrInputRegisters();
 }
 
-std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> AllRowsFetcher::fetchBlock() {
+std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlock() {
   auto res = _blockFetcher->fetchBlock();
 
   _upstreamState = res.first;
 
   return res;
+}
+
+std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForModificationExecutor(
+    std::size_t limit = ExecutionBlock::DefaultBatchSize()) {
+  while (_upstreamState != ExecutionState::DONE) {
+    auto state = fetchUntilDone();
+    if (state == ExecutionState::WAITING) {
+      return {state, nullptr};
+    }
+  }
+  TRI_ASSERT(_aqlItemMatrix != nullptr);
+  auto size = _aqlItemMatrix->numberOfBlocks();
+  if (_blockToReturnNext >= size) {
+    return {ExecutionState::DONE, nullptr};
+  }
+  auto blk = _aqlItemMatrix->getBlock(_blockToReturnNext);
+  ++_blockToReturnNext;
+  return {(_blockToReturnNext < size ? ExecutionState::HASMORE : ExecutionState::DONE),
+          std::move(blk)};
+}
+
+ExecutionState AllRowsFetcher::upstreamState() {
+  if (_aqlItemMatrix == nullptr) {
+    // We have not pulled anything yet!
+    return ExecutionState::HASMORE;
+  }
+  if (_upstreamState == ExecutionState::WAITING) {
+    return ExecutionState::WAITING;
+  }
+  if (_blockToReturnNext >= _aqlItemMatrix->numberOfBlocks()) {
+    return ExecutionState::DONE;
+  }
+  return ExecutionState::HASMORE;
 }

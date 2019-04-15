@@ -951,9 +951,6 @@ function geoJsonTestSuite() {
     var result2 = getQueryResults(query.string, query.bindVars || {}, false,
       { optimizer: { rules: ["-all"] } });
     let expected = query.expected.slice().sort();
-    /*
-    result1.forEach(k => internal.print("Res: ", locations.document(k)));
-    expected.forEach(k => internal.print("Exp: ", locations.document(k)));//*/
 
     assertEqual(expected, result1.sort(), query.string);
     assertEqual(expected, result2.sort(), query.string);
@@ -1173,9 +1170,6 @@ function geoFunctionsTestSuite() {
     var result2 = getQueryResults(query.string, query.bindVars || {}, false,
       { optimizer: { rules: ["-all"] } });
     let expected = query.expected.slice().sort();
-    /*
-    result1.forEach(k => internal.print("Res: ", locations.document(k)));
-    expected.forEach(k => internal.print("Exp: ", locations.document(k)));//*/
 
     assertEqual(expected, result1.sort(), query.string);
     assertEqual(expected, result2.sort(), query.string);

@@ -197,7 +197,7 @@ bool BaseEngine::lockCollection(std::string const& shard) {
   Result lockResult = _trx->lockRecursive(cid, AccessMode::Type::READ);
 
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("d7485", ERR, arangodb::Logger::CLUSTER)
         << "Locking shard " << shard << " lead to exception '"
         << lockResult.errorNumber() << "' (" << lockResult.errorMessage() << ")";
     return false;

@@ -44,12 +44,14 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/Methods/Indexes.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -487,7 +489,7 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
       _state.vocbases.emplace(std::piecewise_construct, std::forward_as_tuple(name),
                               std::forward_as_tuple(*vocbase));
     } else {
-      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "could not find database '" << name << "'";
+      LOG_TOPIC("9bb38", DEBUG, Logger::REPLICATION) << "could not find database '" << name << "'";
     }
 
     return vocbase;
@@ -512,7 +514,7 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
   }
 
   if (cid == 0) {
-    LOG_TOPIC(ERR, Logger::REPLICATION)
+    LOG_TOPIC("fbf1a", ERR, Logger::REPLICATION)
         << "Invalid replication response: Was unable to resolve"
         << " collection from marker: " << slice.toJson();
     return nullptr;
@@ -548,7 +550,7 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx, LogicalColle
         return res;
       }
 
-      LOG_TOPIC(DEBUG, Logger::REPLICATION)
+      LOG_TOPIC("569c6", DEBUG, Logger::REPLICATION)
           << "got lock timeout while waiting for lock on collection '"
           << coll->name() << "', retrying...";
       std::this_thread::sleep_for(std::chrono::microseconds(50000));
@@ -595,7 +597,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   bool forceRemoveCid = false;
   if (col != nullptr && _state.master.simulate32Client()) {
     forceRemoveCid = true;
-    LOG_TOPIC(INFO, Logger::REPLICATION)
+    LOG_TOPIC("01f9f", INFO, Logger::REPLICATION)
         << "would have got a wrong collection!";
     // go on now and truncate or drop/re-create the collection
   }
@@ -727,14 +729,8 @@ Result Syncer::createIndex(VPackSlice const& slice) {
                              /*mergeValues*/ true, /*nullMeansRemove*/ true);
 
   try {
-    auto physical = col->getPhysical();
-    TRI_ASSERT(physical != nullptr);
-
-    std::shared_ptr<arangodb::Index> idx;
-    bool created = false;
-    idx = physical->createIndex(merged.slice(), /*restore*/ true, created);
-    TRI_ASSERT(idx != nullptr);
-
+    VPackSlice idxDef = merged.slice();
+    createIndexInternal(idxDef, *col);
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(),
                   std::string("caught exception while creating index: ") + ex.what());
@@ -746,6 +742,62 @@ Result Syncer::createIndex(VPackSlice const& slice) {
                   "caught unknown exception while creating index");
   }
   return Result();
+}
+
+void Syncer::createIndexInternal(VPackSlice const& idxDef, LogicalCollection& col) {
+  std::shared_ptr<arangodb::Index> idx;
+  auto physical = col.getPhysical();
+  TRI_ASSERT(physical != nullptr);
+
+  // check any identifier conflicts first
+  {
+    // check ID first
+    TRI_idx_iid_t iid = 0;
+    CollectionNameResolver resolver(col.vocbase());
+    Result res = methods::Indexes::extractHandle(&col, &resolver, idxDef, iid);
+    if (res.ok() && iid != 0) {
+      // lookup by id
+      auto byId = physical->lookupIndex(iid);
+      auto byDef = physical->lookupIndex(idxDef);
+      if (byId != nullptr) {
+        if (byDef == nullptr || byId != byDef) {
+          // drop existing byId
+          physical->dropIndex(byId->id());
+        } else {
+          idx = byId;
+        }
+      }
+    }
+
+    // now check name;
+    std::string name =
+        basics::VelocyPackHelper::getStringValue(idxDef,
+                                                 StaticStrings::IndexName, "");
+    if (!name.empty()) {
+      // lookup by name
+      auto byName = physical->lookupIndex(name);
+      auto byDef = physical->lookupIndex(idxDef);
+      if (byName != nullptr) {
+        if (byDef == nullptr || byName != byDef) {
+          // drop existing byName
+          physical->dropIndex(byName->id());
+        } else if (idx != nullptr && byName != idx) {
+          // drop existing byName and byId
+          physical->dropIndex(byName->id());
+          physical->dropIndex(idx->id());
+          idx = nullptr;
+        } else {
+          idx = byName;
+        }
+      }
+    }
+  }
+
+  if (idx == nullptr) {
+    bool created = false;
+    idx = physical->createIndex(idxDef, /*restore*/ true, created);
+  }
+  TRI_ASSERT(idx != nullptr);
 }
 
 Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {

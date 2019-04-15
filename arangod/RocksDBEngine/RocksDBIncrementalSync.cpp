@@ -96,8 +96,6 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
 
   VPackBuilder builder;
   ManagedDocumentResult mdr;
-  TRI_voc_tick_t tick;
-  TRI_voc_rid_t prevRev, revisionId;
 
   // remove everything from the beginning of the key range until the lowest
   // remote key
@@ -108,8 +106,8 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
           builder.clear();
           builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
                                             velocypack::ValueType::String));
-          auto r = physical->remove(trx, builder.slice(), mdr, options, tick,
-                                    false, prevRev, revisionId, nullptr, nullptr);
+          auto r = physical->remove(trx, builder.slice(), mdr, options,
+                                    /*lock*/false, nullptr, nullptr);
 
           if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
             // ignore not found, we remove conflicting docs ahead of time
@@ -145,8 +143,8 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
           builder.clear();
           builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
                                             velocypack::ValueType::String));
-          auto r = physical->remove(trx, builder.slice(), mdr, options, tick,
-                                    false, prevRev, revisionId, nullptr, nullptr);
+          auto r = physical->remove(trx, builder.slice(), mdr, options,
+                                    /*lock*/false, nullptr, nullptr);
 
           if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
             // ignore not found, we remove conflicting docs ahead of time
@@ -190,7 +188,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     options.isSynchronousReplicationFrom = syncer._state.leaderId;
   }
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "syncing chunk. low: '" << lowString
+  LOG_TOPIC("295ed", TRACE, Logger::REPLICATION) << "syncing chunk. low: '" << lowString
                                         << "', high: '" << highString << "'";
 
   // no match
@@ -252,8 +250,6 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
   // state for RocksDBCollection insert/replace/remove
   ManagedDocumentResult mdr, previous;
-  TRI_voc_tick_t resultTick;
-  TRI_voc_rid_t prevRev, revisionId;
 
   transaction::BuilderLeaser keyBuilder(trx);
   std::vector<size_t> toFetch;
@@ -297,8 +293,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         keyBuilder->clear();
         keyBuilder->add(VPackValue(localKey));
 
-        auto r = physical->remove(*trx, keyBuilder->slice(), mdr, options, resultTick,
-                                  false, prevRev, revisionId, nullptr, nullptr);
+        auto r = physical->remove(*trx, keyBuilder->slice(), mdr, options,
+                                  /*lock*/false, nullptr, nullptr);
 
         if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
           // ignore not found, we remove conflicting docs ahead of time
@@ -351,8 +347,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       keyBuilder->clear();
       keyBuilder->add(VPackValue(localKey));
 
-      auto r = physical->remove(*trx, keyBuilder->slice(), mdr, options, resultTick,
-                                false, prevRev, revisionId, nullptr, nullptr);
+      auto r = physical->remove(*trx, keyBuilder->slice(), mdr, options,
+                                /*lock*/false, nullptr, nullptr);
 
       if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // ignore not found, we remove conflicting docs ahead of time
@@ -375,7 +371,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     syncer._state.barrier.extend(syncer._state.connection);
   }
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
+  LOG_TOPIC("48f94", TRACE, Logger::REPLICATION)
       << "will refetch " << toFetch.size() << " documents for this chunk";
 
   keyBuilder->clear();
@@ -476,8 +472,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         keyBuilder->clear();
         keyBuilder->add(VPackValue(conflictingKey));
 
-        auto res = physical->remove(*trx, keyBuilder->slice(), mdr, options, resultTick,
-                                    false, prevRev, revisionId, nullptr, nullptr);
+        auto res = physical->remove(*trx, keyBuilder->slice(), mdr, options,
+                                    /*lock*/false, nullptr, nullptr);
 
         if (res.ok()) {
           ++stats.numDocsRemoved;
@@ -492,8 +488,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         // INSERT
         TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
 
-        Result res = physical->insert(trx, it, mdr, options, resultTick, false,
-                                      revisionId, nullptr, nullptr);
+        Result res = physical->insert(trx, it, mdr, options,
+                                      /*lock*/false, nullptr, nullptr);
         if (res.fail()) {
           if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
               res.errorMessage() > keySlice.copyString()) {
@@ -504,8 +500,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
               return res;
             }
 
-            res = physical->insert(trx, it, mdr, options, resultTick, false,
-                                   revisionId, nullptr, nullptr);
+            res = physical->insert(trx, it, mdr, options,
+                                   /*lock*/false, nullptr, nullptr);
             if (res.fail()) {
               return res;
             }
@@ -520,8 +516,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         // REPLACE
         TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
 
-        Result res = physical->replace(trx, it, mdr, options, resultTick, false,
-                                       prevRev, previous, nullptr);
+        Result res = physical->replace(trx, it, mdr, options,
+                                       /*lock*/false, previous);
         if (res.fail()) {
           if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
               res.errorMessage() > keySlice.copyString()) {
@@ -531,8 +527,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
             if (inner.fail()) {
               return res;
             }
-            res = physical->replace(trx, it, mdr, options, resultTick, false,
-                                    prevRev, previous, nullptr);
+            res = physical->replace(trx, it, mdr, options,
+                                    /*lock*/false, previous);
             if (res.fail()) {
               return res;
             }
@@ -735,11 +731,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             tempBuilder.add(VPackValue(docKey));
 
             ManagedDocumentResult previous;
-            TRI_voc_rid_t resultMarkerTick;
-            TRI_voc_rid_t prevRev, revisionId;
             auto r = physical->remove(trx, tempBuilder.slice(), previous,
-                                      options, resultMarkerTick, false, prevRev,
-                                      revisionId, nullptr, nullptr);
+                                      options, /*lock*/false, nullptr, nullptr);
 
             if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
               // ignore not found, we remove conflicting docs ahead of time
@@ -857,7 +850,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           std::to_string(numberDocumentsDueToCounter));
 
       if (numberDocumentsAfterSync != numberDocumentsDueToCounter) {
-        LOG_TOPIC(WARN, Logger::REPLICATION)
+        LOG_TOPIC("118bd", WARN, Logger::REPLICATION)
             << "number of remaining documents in collection '" + col->name() +
                    "' is " + std::to_string(numberDocumentsAfterSync) +
                    " and differs from number of documents returned by "

@@ -70,7 +70,8 @@ arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* res
 
 namespace arangodb {
 
-ClientManager::ClientManager(LogTopic& topic) : _topic{topic} {}
+ClientManager::ClientManager(LogTopic& topic) : 
+    _topic{topic} {}
 
 ClientManager::~ClientManager() {}
 
@@ -84,7 +85,7 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
   try {
     httpClient = client->createHttpClient();
   } catch (...) {
-    LOG_TOPIC(FATAL, _topic) << "cannot create server connection, giving up!";
+    LOG_TOPIC("2b5fd", FATAL, _topic) << "cannot create server connection, giving up!";
     return {TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT};
   }
 
@@ -100,10 +101,10 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
     if (TRI_ERROR_ARANGO_DATABASE_NOT_FOUND != errorCode || logDatabaseNotFound) {
       // arangorestore does not log "database not found" errors in case
       // it tries to create the database...
-      LOG_TOPIC(ERR, _topic) << "Could not connect to endpoint '"
+      LOG_TOPIC("775bd", ERR, _topic) << "Could not connect to endpoint '"
                              << client->endpoint() << "', database: '" << dbName
                              << "', username: '" << client->username() << "'";
-      LOG_TOPIC(ERR, _topic) << "Error message: '" << httpClient->getErrorMessage() << "'";
+      LOG_TOPIC("b1ad6", ERR, _topic) << "Error message: '" << httpClient->getErrorMessage() << "'";
     }
 
     return {errorCode};
@@ -111,14 +112,14 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
 
   if (logServerVersion) {
     // successfully connected
-    LOG_TOPIC(INFO, _topic) << "Server version: " << versionString;
+    LOG_TOPIC("06792", INFO, _topic) << "Server version: " << versionString;
   }
 
   // validate server version
   std::pair<int, int> version = rest::Version::parseVersionString(versionString);
   if (version.first < 3) {
     // we can connect to 3.x
-    LOG_TOPIC(ERR, _topic) << "Error: got incompatible server version '"
+    LOG_TOPIC("c4add", ERR, _topic) << "Error: got incompatible server version '"
                            << versionString << "'";
 
     if (!force) {
@@ -184,7 +185,7 @@ std::pair<Result, std::string> ClientManager::getArangoIsCluster(httpclient::Sim
   } else {
     if (response->wasHttpError()) {
       result = ::getHttpErrorMessage(response.get());
-      LOG_TOPIC(ERR, _topic)
+      LOG_TOPIC("0d964", ERR, _topic)
           << "got error while checking cluster mode: " << result.errorMessage();
       client.setErrorMessage(result.errorMessage(), false);
     } else {
@@ -222,7 +223,7 @@ std::pair<Result, bool> ClientManager::getArangoIsUsingEngine(httpclient::Simple
   } else {
     if (response->wasHttpError()) {
       result = ::getHttpErrorMessage(response.get());
-      LOG_TOPIC(ERR, _topic) << "got error while checking storage engine: "
+      LOG_TOPIC("b05c4", ERR, _topic) << "got error while checking storage engine: "
                              << result.errorMessage();
       client.setErrorMessage(result.errorMessage(), false);
     } else {

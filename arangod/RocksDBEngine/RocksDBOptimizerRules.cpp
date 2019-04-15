@@ -230,6 +230,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
               std::move(condition), opts);
           plan->registerNode(inode);
           plan->replaceNode(n, inode);
+          // copy over specialization data from smart-joins rule
+          inode->setPrototype(en->prototypeCollection(), en->prototypeOutVariable());
           n = inode;
           // need to update e, because it is used later
           e = dynamic_cast<DocumentProducingNode*>(n);
@@ -353,9 +355,7 @@ void RocksDBOptimizerRules::removeSortRandRule(Optimizer* opt,
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
         case EN::INDEX:
-#ifdef USE_IRESEARCH
         case EN::ENUMERATE_IRESEARCH_VIEW:
-#endif
         {
           // if we found another SortNode, a CollectNode, FilterNode, a
           // SubqueryNode, an EnumerateListNode, a TraversalNode or an IndexNode

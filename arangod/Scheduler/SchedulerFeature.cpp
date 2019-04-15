@@ -119,12 +119,12 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
 void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   auto const N = TRI_numberProcessors();
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::THREADS)
+  LOG_TOPIC("2ef39", DEBUG, arangodb::Logger::THREADS)
       << "Detected number of processors: " << N;
 
   TRI_ASSERT(N > 0);
   if (_nrMaximalThreads > 8 * N) {
-    LOG_TOPIC(WARN, arangodb::Logger::THREADS)
+    LOG_TOPIC("0a92a", WARN, arangodb::Logger::THREADS)
         << "--server.maximal-threads (" << _nrMaximalThreads
         << ") is more than eight times the number of cores (" << N
         << "), this might overload the server";
@@ -133,13 +133,13 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>)
   }
 
   if (_nrMinimalThreads < 2) {
-    LOG_TOPIC(WARN, arangodb::Logger::THREADS)
+    LOG_TOPIC("bf034", WARN, arangodb::Logger::THREADS)
         << "--server.minimal-threads (" << _nrMinimalThreads << ") should be at least 2";
     _nrMinimalThreads = 2;
   }
 
   if (_nrMinimalThreads >= _nrMaximalThreads) {
-    LOG_TOPIC(WARN, arangodb::Logger::THREADS)
+    LOG_TOPIC("48e02", WARN, arangodb::Logger::THREADS)
         << "--server.maximal-threads (" << _nrMaximalThreads
         << ") should be at least " << (_nrMinimalThreads + 1) << ", raising it";
     _nrMaximalThreads = _nrMinimalThreads;
@@ -172,11 +172,11 @@ void SchedulerFeature::start() {
 
   bool ok = _scheduler->start();
   if (!ok) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("7f497", FATAL, arangodb::Logger::FIXME)
         << "the scheduler cannot be started";
     FATAL_ERROR_EXIT();
   }
-  LOG_TOPIC(DEBUG, Logger::STARTUP) << "scheduler has started";
+  LOG_TOPIC("14e6f", DEBUG, Logger::STARTUP) << "scheduler has started";
 
   initV8Stuff();
 }
@@ -238,7 +238,7 @@ void SchedulerFeature::signalStuffInit() {
   int res = sigaction(SIGPIPE, &action, nullptr);
 
   if (res < 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("91d20", ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handlers for pipe";
   }
 #endif
@@ -308,7 +308,7 @@ bool CtrlHandler(DWORD eventType) {
   }
 
   if (shutdown == false) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("ec3b4", ERR, arangodb::Logger::FIXME)
         << "Invalid CTRL HANDLER event received - ignoring event";
     return true;
   }
@@ -316,7 +316,7 @@ bool CtrlHandler(DWORD eventType) {
   static bool seen = false;
 
   if (!seen) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+    LOG_TOPIC("3278a", INFO, arangodb::Logger::FIXME)
         << shutdownMessage << ", beginning shut down sequence";
 
     if (application_features::ApplicationServer::server != nullptr) {
@@ -331,7 +331,7 @@ bool CtrlHandler(DWORD eventType) {
   // user is desperate to kill the server!
   // ........................................................................
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << shutdownMessage << ", terminating";
+  LOG_TOPIC("18daf", INFO, arangodb::Logger::FIXME) << shutdownMessage << ", terminating";
   _exit(EXIT_FAILURE);  // quick exit for windows
   return true;
 }
@@ -339,11 +339,11 @@ bool CtrlHandler(DWORD eventType) {
 #else
 
 extern "C" void c_exit_handler(int signal) {
-  static bool seen = false;
-
   if (signal == SIGQUIT || signal == SIGTERM || signal == SIGINT) {
+    static bool seen = false;
+
     if (!seen) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+      LOG_TOPIC("b4133", INFO, arangodb::Logger::FIXME)
           << "control-c received, beginning shut down sequence";
 
       if (application_features::ApplicationServer::server != nullptr) {
@@ -352,7 +352,7 @@ extern "C" void c_exit_handler(int signal) {
 
       seen = true;
     } else {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("11ca3", FATAL, arangodb::Logger::CLUSTER)
           << "control-c received (again!), terminating";
       FATAL_ERROR_EXIT();
     }
@@ -361,10 +361,10 @@ extern "C" void c_exit_handler(int signal) {
 
 extern "C" void c_hangup_handler(int signal) {
   if (signal == SIGHUP) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+    LOG_TOPIC("33eae", INFO, arangodb::Logger::FIXME)
         << "hangup received, about to reopen logfile";
     LogAppender::reopen();
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+    LOG_TOPIC("23db2", INFO, arangodb::Logger::FIXME)
         << "hangup received, reopened logfile";
   }
 }
@@ -380,7 +380,7 @@ void SchedulerFeature::buildHangupHandler() {
   int res = sigaction(SIGHUP, &action, nullptr);
 
   if (res < 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("b7ed0", ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handlers for hang up";
   }
 #endif
@@ -392,7 +392,7 @@ void SchedulerFeature::buildControlCHandler() {
     int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
 
     if (result == 0) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("e21e8", WARN, arangodb::Logger::FIXME)
           << "unable to install control-c handler";
     }
   }
@@ -416,19 +416,19 @@ void SchedulerFeature::buildControlCHandler() {
   int res;
   res = sigaction(SIGINT, &action, nullptr);
   if (res < 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("cc8d8", ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handlers for hang up";
   }
 
   res = sigaction(SIGQUIT, &action, nullptr);
   if (res < 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("78075", ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handlers for hang up";
   }
 
   res = sigaction(SIGTERM, &action, nullptr);
   if (res < 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("e666b", ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handlers for hang up";
   }
 #endif

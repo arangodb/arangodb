@@ -132,6 +132,14 @@ void assertFilterBoost(
   irs::filter const& actual
 );
 
+void assertFilterOptimized(
+  TRI_vocbase_t& vocbase,
+  std::string const& queryString,
+  irs::filter const& expectedFilter,
+  arangodb::aql::ExpressionContext* exprCtx = nullptr,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
+);
+
 void assertFilter(
   bool parseOk,
   bool execOk,
