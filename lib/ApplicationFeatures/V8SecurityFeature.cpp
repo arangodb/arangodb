@@ -344,11 +344,8 @@ void V8SecurityFeature::start() {
 
 bool V8SecurityFeature::isAllowedToControlProcesses(v8::Isolate* isolate) const {
   TRI_GET_GLOBALS();
-  // v8g may be a nullptr when we are in arangosh
-  if (v8g != nullptr) {
-    return _allowProcessControl || v8g->_securityContext.canControlProcesses();
-  }
-  return _allowProcessControl;
+  TRI_ASSERT(v8g != nullptr);
+  return _allowProcessControl && v8g->_securityContext.canControlProcesses();
 }
 
 bool V8SecurityFeature::isAllowedToTestPorts(v8::Isolate* isolate) const {
@@ -361,13 +358,14 @@ bool V8SecurityFeature::isInternalModuleHardened(v8::Isolate* isolate) const {
 
 bool V8SecurityFeature::isAllowedToDefineHttpAction(v8::Isolate* isolate) const {
   TRI_GET_GLOBALS();
-  // v8g may be a nullptr when we are in arangosh
-  return v8g != nullptr && v8g->_securityContext.canDefineHttpAction();
+  TRI_ASSERT(v8g != nullptr);
+  return v8g->_securityContext.canDefineHttpAction();
 }
 
 bool V8SecurityFeature::isInternalContext(v8::Isolate* isolate) const {
   TRI_GET_GLOBALS();
-  return v8g != nullptr && v8g->_securityContext.isInternal();
+  TRI_ASSERT(v8g != nullptr);
+  return v8g->_securityContext.isInternal();
 }
 
 bool V8SecurityFeature::shouldExposeStartupOption(v8::Isolate* isolate,
@@ -389,7 +387,8 @@ bool V8SecurityFeature::shouldExposeEnvironmentVariable(v8::Isolate* isolate,
 bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
                                                      std::string const& name) const {
   TRI_GET_GLOBALS();
-  if (v8g != nullptr && v8g->_securityContext.isInternal()) {
+  TRI_ASSERT(v8g != nullptr);
+  if (v8g->_securityContext.isInternal()) {
     // internal security contexts are allowed to connect to any endpoint
     // this includes connecting to self or to other instances in a cluster
     return true;
@@ -413,13 +412,10 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
 
   // check security context first
   TRI_GET_GLOBALS();
+  TRI_ASSERT(v8g != nullptr);
 
-  if (v8g == nullptr) {
-    TRI_ASSERT(false);
-    return false;
-  };
-
-  auto& sec = v8g->_securityContext;
+  //TODO -- remove when perms are fixed
+  auto const& sec = v8g->_securityContext;
   if ((access == FSAccessType::READ && sec.canReadFs()) ||
       (access == FSAccessType::WRITE && sec.canWriteFs())) {
     return true;  // context may read / write without restrictions

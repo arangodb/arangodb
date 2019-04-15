@@ -42,7 +42,7 @@ bool JavaScriptSecurityContext::canWriteFs() const {
 }
 
 bool JavaScriptSecurityContext::canControlProcesses() const {
-  return _type == Type::Internal;
+  return _type == Type::Internal || _type == Type::AdminScript;
 }
 
 /*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createRestrictedContext() {
