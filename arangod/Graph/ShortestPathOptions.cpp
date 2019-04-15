@@ -173,7 +173,7 @@ void ShortestPathOptions::addReverseLookupInfo(aql::ExecutionPlan* plan,
   injectLookupInfoInList(_reverseLookupInfos, plan, collectionName, attributeName, condition);
 }
 
-double ShortestPathOptions::weightEdge(VPackSlice edge) {
+double ShortestPathOptions::weightEdge(VPackSlice edge) const {
   TRI_ASSERT(useWeight());
   return arangodb::basics::VelocyPackHelper::getNumericValue<double>(
       edge, weightAttribute.c_str(), defaultWeight);

@@ -1175,9 +1175,8 @@ static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
 }
 #else
 static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
-  HANDLE hProcess;
+  HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
 
-  hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
   if (hProcess != nullptr) {
     ExternalProcess* external = new ExternalProcess();
 
@@ -1191,12 +1190,14 @@ static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-// @brief check for a process we didn't spawn, and check for access rights to
-//        send it signals.
+/// @brief check for a process we didn't spawn, and check for access rights to
+/// send it signals.
 #ifndef _WIN32
 static bool killProcess(ExternalProcess* pid, int signal) {
   TRI_ASSERT(pid != nullptr);
+  if (pid == nullptr) {
+    return false;
+  }
   if (signal == SIGKILL) {
     LOG_TOPIC("021b9", WARN, arangodb::Logger::FIXME) << "sending SIGKILL signal to process: " << pid->_pid;
   }
@@ -1210,6 +1211,10 @@ static bool killProcess(ExternalProcess* pid, int signal) {
 static bool killProcess(ExternalProcess* pid, int signal) {
   TRI_ASSERT(pid != nullptr);
   UINT uExitCode = 0;
+  
+  if (pid == nullptr) {
+    return false;
+  }
 
   // kill worker process
   if (0 != TerminateProcess(pid->_process, uExitCode)) {

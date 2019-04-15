@@ -24,6 +24,7 @@
 #include "AqlValue.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Arithmetic.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -838,6 +839,12 @@ size_t AqlValue::docvecSize() const {
   return s;
 }
 
+/// @brief return the size of the docvec array
+size_t AqlValue::sizeofDocvec() const {
+  TRI_ASSERT(type() == DOCVEC);
+  return sizeof(_data.docvec[0]) * _data.docvec->size();
+}
+
 /// @brief construct a V8 value as input for the expression execution in V8
 v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, transaction::Methods* trx) const {
   switch (type()) {
@@ -987,7 +994,7 @@ AqlValue AqlValue::clone() const {
       return AqlValue(VPackSlice(_data.buffer->data()));
     }
     case DOCVEC: {
-      auto c = std::make_unique<std::vector<std::unique_ptr<AqlItemBlock>>>();
+      auto c = std::make_unique<std::vector<SharedAqlItemBlockPtr>>();
       c->reserve(docvecSize());
       for (auto const& it : *_data.docvec) {
         c->emplace_back(it->slice(0, it->size()));
@@ -1001,7 +1008,7 @@ AqlValue AqlValue::clone() const {
   }
 
   TRI_ASSERT(false);
-  return AqlValue();
+  return {};
 }
 
 /// @brief destroy the value's internals
@@ -1234,4 +1241,16 @@ int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
   }
 
   return 0;
+}
+
+AqlValue::AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept {
+  TRI_ASSERT(docvec != nullptr);
+  _data.docvec = docvec;
+  setType(AqlValueType::DOCVEC);
+}
+
+/// @brief return the item block at position
+AqlItemBlock* AqlValue::docvecAt(size_t position) const {
+  TRI_ASSERT(isDocvec());
+  return _data.docvec->at(position).get();
 }

@@ -49,7 +49,7 @@ ExecutionState AllRowsFetcher::fetchUntilDone() {
   }
 
   ExecutionState state = ExecutionState::HASMORE;
-  std::shared_ptr<AqlItemBlockShell> block;
+  SharedAqlItemBlockPtr block;
 
   while (state == ExecutionState::HASMORE) {
     std::tie(state, block) = fetchBlock();
@@ -91,7 +91,7 @@ RegisterId AllRowsFetcher::getNrInputRegisters() const {
   return _blockFetcher->getNrInputRegisters();
 }
 
-std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> AllRowsFetcher::fetchBlock() {
+std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlock() {
   auto res = _blockFetcher->fetchBlock();
 
   _upstreamState = res.first;
@@ -99,7 +99,7 @@ std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> AllRowsFetcher::fe
   return res;
 }
 
-std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> AllRowsFetcher::fetchBlockForModificationExecutor(
+std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForModificationExecutor(
     std::size_t limit = ExecutionBlock::DefaultBatchSize()) {
   while (_upstreamState != ExecutionState::DONE) {
     auto state = fetchUntilDone();

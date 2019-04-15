@@ -64,7 +64,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
 
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor};
-  auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 1)};
 
   // Mock of the Transaction
   // Enough for this test, will only be passed through and accessed
@@ -89,8 +89,6 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
   SortExecutorInfos infos(std::move(sortRegisters),
                           /*limit (ignored for default sort)*/ 0,
                           itemBlockManager, 1, 1, {}, {0}, &trx, false);
-  auto blockShell =
-      std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
 
   GIVEN("there are no rows upstream") {
     VPackBuilder input;
@@ -104,7 +102,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       NoStats stats{};
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
@@ -121,7 +119,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       NoStats stats{};
 
       THEN("the executor should first return WAIT with nullptr") {
-        OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
@@ -149,7 +147,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       NoStats stats{};
 
       THEN("we will hit waiting 5 times") {
-        OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear()};
         // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
         for (size_t i = 0; i < 5; ++i) {

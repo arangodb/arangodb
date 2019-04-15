@@ -23,7 +23,7 @@
 #ifndef ARANGOD_AQL_DISTRIBUTE_EXECUTOR_H
 #define ARANGOD_AQL_DISTRIBUTE_EXECUTOR_H
 
-#include "Aql/ClusterBlocks.h"
+#include "Aql/BlocksWithClients.h"
 #include "Aql/ExecutionBlockImpl.h"
 
 namespace arangodb {
@@ -39,7 +39,7 @@ class DistributeExecutor {};
  * @brief See ExecutionBlockImpl.h for documentation.
  */
 template <>
-class ExecutionBlockImpl<DistributeExecutor> : public BlockWithClients {
+class ExecutionBlockImpl<DistributeExecutor> : public BlocksWithClients {
  public:
   // TODO Even if it's not strictly necessary here, for consistency's sake the
   // non-standard arguments (shardIds, collection) should probably be moved into
@@ -55,21 +55,16 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlockWithClients {
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   /// @brief getSomeForShard
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShard(
-      size_t atMost, std::string const& shardId) override;
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(size_t atMost,
+                                                                   std::string const& shardId) override;
 
   /// @brief skipSomeForShard
   std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost,
                                                      std::string const& shardId) override;
 
  private:
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> traceGetSomeEnd(
-      ExecutionState state, std::unique_ptr<AqlItemBlock> result);
-
-  std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
-
   /// @brief getSomeForShard
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShardWithoutTrace(
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShardWithoutTrace(
       size_t atMost, std::string const& shardId);
 
   /// @brief skipSomeForShard
@@ -77,7 +72,7 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlockWithClients {
                                                                  std::string const& shardId);
 
   std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
-      size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
+      size_t atMost, bool skipping, SharedAqlItemBlockPtr& result,
       size_t& skipped, std::string const& shardId);
 
   bool hasMoreForClientId(size_t clientId) const;
@@ -95,7 +90,7 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlockWithClients {
   /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
   /// attributes <shardKeys> of the register <id> to determine to which shard
   /// the row should be sent.
-  size_t sendToClient(AqlItemBlock*);
+  size_t sendToClient(SharedAqlItemBlockPtr);
 
   /// @brief create a new document key
   std::string createKey(arangodb::velocypack::Slice) const;

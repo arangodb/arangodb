@@ -31,10 +31,12 @@
 #include "Aql/IResearchViewNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Query.h"
+#include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/AqlHelper.h"
+#include "IResearch/IResearchView.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "Utils/CollectionNameResolver.h"
@@ -120,6 +122,116 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
 
   return true;
 }
+    
+bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
+  std::unordered_map<VariableId, AstNode const*> variableDefinitions;
+
+  ExecutionNode* current = static_cast<ExecutionNode*>(&viewNode);
+
+  while (true) {
+    current = current->getFirstParent();
+
+    if (current == nullptr) {
+      // we are at the bottom end of the plan
+      return false;
+    }
+      
+    if (current->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
+        current->getType() == EN::ENUMERATE_COLLECTION ||
+        current->getType() == EN::TRAVERSAL ||
+        current->getType() == EN::SHORTEST_PATH ||
+        current->getType() == EN::INDEX ||
+        current->getType() == EN::COLLECT) {
+      // any of these node types will lead to more/less results in the output,
+      // and may as well change the sort order, so let's better abort here
+      return false;
+    }
+        
+    if (current->getType() == EN::CALCULATION) {
+      // pick up the meanings of variables as we walk the plan
+      variableDefinitions.emplace(
+          ExecutionNode::castTo<CalculationNode const*>(current)->outVariable()->id,
+          ExecutionNode::castTo<CalculationNode const*>(current)->expression()->node());
+    }
+
+    if (current->getType() != EN::SORT) {
+      // from here on, we are only interested in sorts
+      continue;
+    }
+    
+    std::vector<std::pair<Variable const*, bool>> sorts;
+
+    auto* sortNode = ExecutionNode::castTo<SortNode*>(current);
+    auto const& sortElements = sortNode->elements();
+
+    sorts.reserve(sortElements.size());
+    for (auto& it : sortElements) {
+      // note: in contrast to regular indexes, views support sorting in different 
+      // directions for multiple fields (e.g. SORT doc.a ASC, doc.b DESC). 
+      // this is not supported by indexes
+      sorts.emplace_back(it.var, it.ascending);
+    }
+
+    SortCondition sortCondition(plan, 
+                                sorts,
+                                std::vector<std::vector<arangodb::basics::AttributeName>>(),
+                                variableDefinitions);
+
+    if (sortCondition.isEmpty() || !sortCondition.isOnlyAttributeAccess()) {
+      // unusable sort condition
+      return false;
+    }
+
+    auto& view = arangodb::LogicalView::cast<IResearchView>(*viewNode.view());
+    auto& primarySort = view.primarySort();
+    
+    // sort condition found, and sorting only by attributes!
+
+    if (sortCondition.numAttributes() > primarySort.size()) {
+      // the SORT condition in the query has more attributes than the view
+      // is sorted by. we cannot optimize in this case
+      return false;
+    }
+    
+    // check if all sort conditions match
+    for (size_t i = 0; i < sortElements.size(); ++i) {
+      if (sortElements[i].ascending != primarySort.direction(i)) {
+        // view is sorted in different order than requested in SORT condition
+        return false;
+      }
+    }
+
+    // all sort orders equal!
+    // now finally check how many of the SORT conditions attributes we cover
+    size_t numCovered = sortCondition.coveredAttributes(&viewNode.outVariable(), primarySort.fields());
+
+    if (numCovered < sortNode->elements().size()) {
+      // the sort is not covered by the view
+      return false;
+    }
+    
+    // we are almost done... but we need to do a final check and verify that our
+    // sort node itself is not followed by another node that injects more data into
+    // the result or that re-sorts it
+    while (current->hasParent()) {
+      current = current->getFirstParent();
+      if (current->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
+          current->getType() == EN::ENUMERATE_COLLECTION ||
+          current->getType() == EN::TRAVERSAL ||
+          current->getType() == EN::SHORTEST_PATH ||
+          current->getType() == EN::INDEX ||
+          current->getType() == EN::COLLECT ||
+          current->getType() == EN::SORT) {
+        // any of these node types will lead to more/less results in the output,
+        // and may as well change the sort order, so let's better abort here
+        return false;
+      }
+    }
+  
+    plan->unlinkNode(sortNode); 
+    return true;
+  }
+}
 
 }  // namespace
 
@@ -169,6 +281,13 @@ void handleViewsRule(arangodb::aql::Optimizer* opt,
   for (auto* node : nodes) {
     TRI_ASSERT(node && EN::ENUMERATE_IRESEARCH_VIEW == node->getType());
     auto& viewNode = *EN::castTo<IResearchViewNode*>(node);
+
+    //FIXME uncomment
+    //if (!viewNode.isInInnerLoop()) {
+    //  // check if we can optimize away a sort that follows the EnumerateView node
+    //  // this is only possible if the view node itself is not contained in another loop
+    //  modified = optimizeSort(viewNode, plan.get());
+    //}
 
     if (!optimizeSearchCondition(viewNode, query, *plan)) {
       continue;

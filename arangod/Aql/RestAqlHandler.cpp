@@ -28,7 +28,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ClusterBlocks.h"
+#include "Aql/BlocksWithClients.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
@@ -725,7 +725,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         auto atMost =
             VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
                                                       ExecutionBlock::DefaultBatchSize());
-        std::unique_ptr<AqlItemBlock> items;
+        SharedAqlItemBlockPtr items;
         ExecutionState state;
         if (shardId.empty()) {
           std::tie(state, items) = query->engine()->getSome(atMost);
@@ -733,7 +733,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
             return RestStatus::WAITING;
           }
         } else {
-          auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
+          auto block = dynamic_cast<BlocksWithClients*>(query->engine()->root());
           if (block == nullptr) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "unexpected node type");
@@ -766,7 +766,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
           }
           skipped = tmpRes.second;
         } else {
-          auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
+          auto block = dynamic_cast<BlocksWithClients*>(query->engine()->root());
           if (block == nullptr) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "unexpected node type");
@@ -796,8 +796,8 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
           }
           res = tmpRes.second;
         } else {
-          auto items = std::make_unique<AqlItemBlock>(query->resourceMonitor(),
-                                                      querySlice.get("items"));
+          auto items = query->engine()->itemBlockManager().requestAndInitBlock(
+              querySlice.get("items"));
           auto tmpRes = query->engine()->initializeCursor(std::move(items), pos);
           if (tmpRes.first == ExecutionState::WAITING) {
             return RestStatus::WAITING;
