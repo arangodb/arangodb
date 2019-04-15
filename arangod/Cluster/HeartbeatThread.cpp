@@ -106,8 +106,23 @@ class HeartbeatBackgroundJobThread : public Thread {
     }
   }
 
+  /// @brief Tell HeartbeatBackgroundThread to reload the Plan:
+  void pleaseLoadPlan() {
+    std::unique_lock<std::mutex> guard(_mutex);
+    shouldLoadPlan = true;
+  }
+
+  /// @brief Tell HeartbeatBackgroundThread to reload Current:
+  void pleaseLoadCurrent() {
+    std::unique_lock<std::mutex> guard(_mutex);
+    shouldLoadCurrent = true;
+  }
+
  protected:
   void run() override {
+    bool mustLoadPlan = false;
+    bool mustLoadCurrent = false;
+    auto ci = ClusterInfo::instance();
     while (!_stop) {
       {
         std::unique_lock<std::mutex> guard(_mutex);
@@ -129,6 +144,24 @@ class HeartbeatBackgroundJobThread : public Thread {
         }
 
         _anotherRun.store(false, std::memory_order_release);
+        if (shouldLoadPlan) {
+          mustLoadPlan = true;
+          shouldLoadPlan = false;
+        }
+        if (shouldLoadCurrent) {
+          mustLoadCurrent = true;
+          shouldLoadCurrent = false;
+        }
+      }
+
+      // Potentially load Plan and Current:
+      if (mustLoadPlan) {
+        ci->loadPlan();
+        mustLoadPlan = false;
+      }
+      if (mustLoadCurrent) {
+        ci->loadCurrent();
+        mustLoadCurrent = false;
       }
 
       // execute schmutz here
@@ -171,6 +204,18 @@ class HeartbeatBackgroundJobThread : public Thread {
   /// guarded via _mutex.
   //////////////////////////////////////////////////////////////////////////////
   std::atomic<bool> _anotherRun;
+
+  /// @brief This flag indicates that the Plan should be reloaded with
+  /// ClusterInfo::loadPlan() in the next round. This is triggered by the
+  /// HeartBeat thread itself when the Plan/Version has advanced. This flag
+  /// should only be modified under the _mutex.
+  bool shouldLoadPlan;
+
+  /// @brief This flag indicates that Current should be reloaded with
+  /// ClusterInfo::loadCurrent() in the next round. This is triggered by the
+  /// HeartBeat thread itself when the Current/Version has advanced. This flag
+  /// should only be modified under the _mutex.
+  bool shouldLoadCurrent;
 
   uint64_t _backgroundJobsLaunched;
 };
@@ -943,7 +988,12 @@ void HeartbeatThread::runCoordinator() {
                 << " which is newer than " << lastCurrentVersionNoticed;
             lastCurrentVersionNoticed = currentVersion;
 
-            ClusterInfo::instance()->loadCurrent();
+            // Do loadCurrent asynchronously, such that the heartbeat thread
+            // and all other requests can continue uninterrupted:
+            SchedulerFeature::SCHEDULER->queue(RequestPriority::HIGH,
+                [](bool) -> void {
+                  ClusterInfo::instance()->loadCurrent();
+                });
             invalidateCoordinators = false;
           }
         }
@@ -1171,8 +1221,12 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     return false;
   }
 
-  // invalidate our local cache
-  ClusterInfo::instance()->flush();
+  // invalidate our local cache, do this asynchronously, such that the
+  // heartbeat thread and all other requests con continue uninterrupted:
+  SchedulerFeature::SCHEDULER->queue(RequestPriority::HIGH,
+      [](bool) -> void {
+        ClusterInfo::instance()->loadPlan();
+      });
 
   // turn on error logging now
   auto cc = ClusterComm::instance();
@@ -1221,10 +1275,10 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   // First invalidate the caches in ClusterInfo:
   auto ci = ClusterInfo::instance();
   if (_desiredVersions->plan > ci->getPlanVersion()) {
-    ci->loadPlan();
+    _maintenanceThread->pleaseLoadPlan();
   }
   if (_desiredVersions->current > ci->getCurrentVersion()) {
-    ci->loadCurrent();
+    _maintenanceThread->pleaseLoadCurrent();
   }
 
   // schedule a job for the change:
@@ -1327,3 +1381,10 @@ void HeartbeatThread::logThreadDeaths(bool force) {
   }    // if
 
 }  // HeartbeatThread::logThreadDeaths
+
+/// @brief pleaseLoadCurrent
+void HeartbeatThread::pleaseLoadCurrent() {
+  _maintenanceThread->pleaseLoadCurrent();
+  _maintenanceThread->notify();
+}
+
