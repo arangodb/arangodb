@@ -110,12 +110,14 @@ PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not a valid document id");
   }
-  CollectionID coll = documentID.substr(0, pos);
-  std::string _key = documentID.substr(pos + 1);
-
+  StringRef docRef(documentID);
+  StringRef collPart = docRef.substr(0, pos);
+  StringRef keyPart = docRef.substr(pos + 1);
+  
   ShardID responsibleShard;
-  Utils::resolveShard(this, coll, StaticStrings::KeyString, _key, responsibleShard);
-
+  Utils::resolveShard(this, collPart.toString(), StaticStrings::KeyString,
+                      keyPart, responsibleShard);
+  
   PregelShard source = this->shardId(responsibleShard);
-  return PregelID(source, _key);
+  return PregelID(source, keyPart);
 }

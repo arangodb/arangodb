@@ -107,7 +107,9 @@ void ArrayOutCache<M>::flushMessages() {
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
     for (auto const& vertexMessagePair : vertexMessageMap) {
-      data.add(VPackValue(vertexMessagePair.first));      // key
+      data.add(VPackValuePair(vertexMessagePair.first.data(),
+                              vertexMessagePair.first.size(),
+                              VPackValueType::String));      // key
       data.add(VPackValue(VPackValueType::Array, true));  // message array
       for (M const& val : vertexMessagePair.second) {
         this->_format->addValue(data, val);
@@ -209,7 +211,9 @@ void CombiningOutCache<M>::flushMessages() {
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
     for (auto const& vertexMessagePair : vertexMessageMap) {
-      data.add(VPackValue(vertexMessagePair.first));            // key
+      data.add(VPackValuePair(vertexMessagePair.first.data(),
+                              vertexMessagePair.first.size(),
+                              VPackValueType::String));            // key
       this->_format->addValue(data, vertexMessagePair.second);  // value
 
       if (this->_sendToNextGSS) {
