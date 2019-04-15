@@ -1431,7 +1431,7 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
 }
 
 arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::Hints hints) {
-  static std::atomic<TRI_voc_tid_t> lastId(0);
+//  static std::atomic<TRI_voc_tid_t> lastId(0);
   ++beginTransactionCount;
   _hints = hints;
 
@@ -1445,18 +1445,22 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
     return res;
   }
 
-  const_cast<TRI_voc_tid_t&>(_id) = ++lastId;  // ensure each transaction state has a unique ID
-  updateStatus(arangodb::transaction::Status::RUNNING);
+  if (nestingLevel() == 0) {
+//    const_cast<TRI_voc_tid_t&>(_id) = ++lastId;  // ensure each transaction state has a unique ID
+    updateStatus(arangodb::transaction::Status::RUNNING);
+  }
 
   return arangodb::Result();
 }
 
 arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
   ++commitTransactionCount;
-  updateStatus(arangodb::transaction::Status::COMMITTED);
+  if (nestingLevel() == 0) {
+    updateStatus(arangodb::transaction::Status::COMMITTED);
+    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+    const_cast<TRI_voc_tid_t&>(_id) = 0;
+  }
   unuseCollections(nestingLevel());
-  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-  const_cast<TRI_voc_tid_t&>(_id) = 0;
 
   return arangodb::Result();
 }

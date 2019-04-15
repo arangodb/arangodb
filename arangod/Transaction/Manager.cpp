@@ -208,6 +208,7 @@ bool Manager::garbageCollect(bool abortAll) {
           }
         } else {
           TRI_ASSERT(mtrx.state->isRunning() && mtrx.state->isTopLevelTransaction());
+          TRI_ASSERT(it->first == mtrx.state->id());
           if (abortAll || mtrx.expires < now) {
             gcBuffer.emplace_back(mtrx.state->id());
           }
@@ -417,6 +418,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     }
     double expires = defaultTTL + TRI_microtime();
     TRI_ASSERT(expires > 0);
+    TRI_ASSERT(state->id() == tid);
     _transactions[bucket]._managed.emplace(std::piecewise_construct,
                                            std::forward_as_tuple(tid),
                                            std::forward_as_tuple(MetaType::Managed, state.release(),
