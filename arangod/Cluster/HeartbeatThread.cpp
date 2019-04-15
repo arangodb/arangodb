@@ -1225,6 +1225,11 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   // heartbeat thread and all other requests con continue uninterrupted:
   SchedulerFeature::SCHEDULER->queue(RequestPriority::HIGH,
       [](bool) -> void {
+        // We load the following for every Plan Version increase, normally,
+        // we would only load the Plan, but in some tests the mappings
+        // have not been loaded quickly enough, so we do it additionally here.
+        loadServers();
+        loadCurrentMappings();
         ClusterInfo::instance()->loadPlan();
       });
 
