@@ -21,6 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RestCursorHandler.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
@@ -28,10 +29,10 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
-#include "RestCursorHandler.h"
 #include "Transaction/Context.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
+#include "Utils/Events.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
@@ -50,7 +51,8 @@ RestCursorHandler::RestCursorHandler(GeneralRequest* request, GeneralResponse* r
       _leasedCursor(nullptr),
       _hasStarted(false),
       _queryKilled(false),
-      _isValidForFinalize(false) {}
+      _isValidForFinalize(false),
+      _auditLogged(false) {}
 
 RestCursorHandler::~RestCursorHandler() {
   if (_leasedCursor) {
@@ -102,9 +104,55 @@ RestStatus RestCursorHandler::continueExecute() {
   return RestStatus::DONE;
 }
 
+void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
+  TRI_DEFER(RestVocbaseBaseHandler::shutdownExecute(isFinalized));
+  auto const type = _request->requestType();
+
+  // request not done yet
+  if (_state == HandlerState::PAUSED) {
+    return;
+  }
+
+  // only trace create cursor requests
+  if (type != rest::RequestType::POST) {
+    return;
+  }
+
+  if (!_isValidForFinalize || _auditLogged) {
+    // set by RestCursorHandler before
+    return;
+  }
+
+  try {
+    bool parseSuccess = true;
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+    VPackSlice body = parsedBody.get()->slice();
+    events::QueryDocument(*_request, _response.get(), body);
+    _auditLogged = true;
+  } catch (...) {
+  }
+}
+
 bool RestCursorHandler::cancel() {
   RestVocbaseBaseHandler::cancel();
   return cancelQuery();
+}
+
+void RestCursorHandler::handleError(basics::Exception const& ex) {
+  TRI_DEFER(RestVocbaseBaseHandler::handleError(ex));
+
+  if (!_isValidForFinalize || _auditLogged) {
+    return;
+  }
+
+  try {
+    bool parseSuccess = true;
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+    VPackSlice body = parsedBody.get()->slice();
+    events::QueryDocument(*_request, _response.get(), body);
+    _auditLogged = true;
+  } catch (...) {
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

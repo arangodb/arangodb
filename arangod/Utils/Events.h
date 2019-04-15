@@ -29,26 +29,46 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Rest/CommonDefines.h"
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
 class GeneralRequest;
+class GeneralResponse;
+struct OperationResult;
 
 namespace events {
-void UnknownAuthenticationMethod(GeneralRequest const*);
-void CredentialsMissing(GeneralRequest const*);
-void CredentialsBad(GeneralRequest const*, rest::AuthenticationMethod);
-void PasswordChangeRequired(GeneralRequest const*);
-void Authenticated(GeneralRequest const*, rest::AuthenticationMethod);
-void NotAuthorized(GeneralRequest const*);
-void CreateCollection(std::string const& name, int result);
-void DropCollection(std::string const& name, int result);
-void TruncateCollection(std::string const& name, int result);
+void UnknownAuthenticationMethod(GeneralRequest const&);
+void CredentialsMissing(GeneralRequest const&);
+void LoggedIn(GeneralRequest const&, std::string const& username);
+void CredentialsBad(GeneralRequest const&, std::string const& username);
+void CredentialsBad(GeneralRequest const&, rest::AuthenticationMethod);
+void PasswordChangeRequired(GeneralRequest const&);
+void Authenticated(GeneralRequest const&, rest::AuthenticationMethod);
+void NotAuthorized(GeneralRequest const&);
+void CreateCollection(std::string const& db, std::string const& name, int result);
+void DropCollection(std::string const& db, std::string const& name, int result);
+void TruncateCollection(std::string const& db, std::string const& name, int result);
 void CreateDatabase(std::string const& name, int result);
 void DropDatabase(std::string const& name, int result);
-void CreateIndex(std::string const& col, VPackSlice const&);
-void DropIndex(std::string const& col, std::string const& idx, int result);
-void CreateView(std::string const& name, int result);
-void DropView(std::string const& name, int result);
+void CreateIndex(std::string const& db, std::string const& col, VPackSlice const&, int result);
+void DropIndex(std::string const& db, std::string const& col,
+               std::string const& idx, int result);
+void CreateView(std::string const& db, std::string const& name, int result);
+void DropView(std::string const& db, std::string const& name, int result);
+void CreateDocument(std::string const& db, std::string const& collection,
+                    VPackSlice const& document, int);
+void DeleteDocument(std::string const& db, std::string const& collection,
+                    VPackSlice const& document, int);
+void ReadDocument(std::string const& db, std::string const& collection,
+                  VPackSlice const& document, int);
+void ReplaceDocument(std::string const& db, std::string const& collection,
+                     VPackSlice const& document, int);
+void ModifyDocument(std::string const& db, std::string const& collection,
+                    VPackSlice const& document, int);
+void IllegalDocumentOperation(GeneralRequest const&, int result);
+void QueryDocument(std::string const& db, std::string const&, std::string const&, int code);
+void QueryDocument(std::string const& db, VPackSlice const&, int code);
+void QueryDocument(GeneralRequest const&, GeneralResponse const*, VPackSlice const&);
 }  // namespace events
 }  // namespace arangodb
 
