@@ -230,6 +230,9 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
               std::move(condition), opts);
           plan->registerNode(inode);
           plan->replaceNode(n, inode);
+          if (en->isRestricted()) {
+            inode->restrictToShard(en->restrictedShard());
+          }
           // copy over specialization data from smart-joins rule
           inode->setPrototype(en->prototypeCollection(), en->prototypeOutVariable());
           n = inode;
@@ -280,6 +283,9 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             std::move(condition), opts);
         plan->registerNode(inode);
         plan->replaceNode(n, inode);
+        if (en->isRestricted()) {
+          inode->restrictToShard(en->restrictedShard());
+        }
         modified = true;
       }
     }
