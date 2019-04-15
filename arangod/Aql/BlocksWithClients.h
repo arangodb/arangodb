@@ -90,6 +90,9 @@ class BlocksWithClients : public ExecutionBlock {
   /// corresponding to <shardId>
   size_t getClientId(std::string const& shardId) const;
 
+  /// @brief throw an exception if query was killed
+  void throwIfKilled();
+
   /// @brief _shardIdMap: map from shardIds to clientNrs
   std::unordered_map<std::string, size_t> _shardIdMap;
 
