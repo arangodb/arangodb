@@ -1228,9 +1228,10 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         // We load the following for every Plan Version increase, normally,
         // we would only load the Plan, but in some tests the mappings
         // have not been loaded quickly enough, so we do it additionally here.
-        loadServers();
-        loadCurrentMappings();
-        ClusterInfo::instance()->loadPlan();
+        auto ci = ClusterInfo::instance();
+        ci->loadServers();
+        ci->loadCurrentMappings();
+        ci->loadPlan();
       });
 
   // turn on error logging now
