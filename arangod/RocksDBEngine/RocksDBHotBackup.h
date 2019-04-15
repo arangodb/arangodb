@@ -190,6 +190,13 @@ public:
   void parseParameters() override;
   void execute() override;
 
+  void listAll();
+  void statId();
+
+protected:
+  static std::string loadAgencyJson(std::string filename);
+
+  std::string _listId;
 };// class RocksDBHotBackupList
 
 

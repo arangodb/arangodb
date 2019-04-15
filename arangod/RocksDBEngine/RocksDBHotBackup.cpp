@@ -43,6 +43,7 @@
 #include "Enterprise/RocksDBEngine/RocksDBHotBackupEE.h"
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #include "Basics/OpenFilesTracker.h"
+#include <velocypack/Parser.h>
 #endif
 
 #include <rocksdb/utilities/checkpoint.h>
@@ -409,7 +410,7 @@ void RocksDBHotBackupCreate::parseParameters() {
   getParamValue("timeout", _timeoutSeconds, false);
   getParamValue("label", _label, false);
   getParamValue("forceBackup", _forceBackup, false);
-  
+
   //
   // extra validation
   //
@@ -827,6 +828,7 @@ RocksDBHotBackupList::RocksDBHotBackupList(VPackSlice body, VPackBuilder& report
 void RocksDBHotBackupList::parseParameters() {
 
   _valid = true; //(rest::RequestType::POST == type);
+  getParamValue("id", _listId, false);
 
   if (!_valid) {
     try {
@@ -850,7 +852,69 @@ void RocksDBHotBackupList::parseParameters() {
 
 // @brief route to independent functions for "create" and "delete"
 void RocksDBHotBackupList::execute() {
-  std::vector<std::string> hotbackups = TRI_FilesDirectory(rebuildPathPrefix().c_str());
+  if (_listId.empty()) {
+    listAll();
+  } else {
+    statId();
+  }
+} // RocksDBHotBackupList::execute
+
+// @brief returns specific information about the hotbackup with the given id
+void RocksDBHotBackupList::statId() {
+  std::string directory = rebuildPath(_listId);
+
+  std::shared_ptr<VPackBuilder> agency;
+  try {
+    std::string agencyjson = RocksDBHotBackupList::loadAgencyJson(directory + TRI_DIR_SEPARATOR_CHAR + "agency.json");
+
+    if (agencyjson.empty()) {
+      _respCode = rest::ResponseCode::BAD;
+      _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+      _success = false;
+      _errorMessage = "Could not open agency.json";
+      return ;
+    }
+
+    agency = arangodb::velocypack::Parser::fromJson(agencyjson);
+
+
+  } catch (...) {
+    _respCode = rest::ResponseCode::BAD;
+    _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+    _success = false;
+    _errorMessage = "Could not open agency.json";
+    return ;
+  }
+
+  _result.add(VPackValue(VPackValueType::Object));
+  _result.add("agency-dump", agency->slice());
+  _result.close();
+  _success = true;
+}
+
+// @brief load the agency using the current encryption key
+std::string RocksDBHotBackupList::loadAgencyJson(std::string filename) {
+
+#ifdef USE_ENTERPRISE
+  std::string encryptionKey = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->getEncryptionKey();
+  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+  if (fd != -1) {
+    TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+
+    auto context = EncryptionFeature::beginDecryption(fd, encryptionKey);
+    return EncryptionFeature::slurpData(*context.get());
+  } else {
+    return std::string{};
+  }
+#else
+  return basics::FileUtils::slurp(filename);
+#endif
+
+}
+
+// @brief list all available backups
+void RocksDBHotBackupList::listAll() {
+    std::vector<std::string> hotbackups = TRI_FilesDirectory(rebuildPathPrefix().c_str());
 
   // remove working directories from list
   std::vector<std::string>::iterator found;
@@ -899,10 +963,7 @@ void RocksDBHotBackupList::execute() {
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
       << "RocksDBHotBackupList::execute caught exception.";
   } // catch
-
-} // RocksDBHotBackupList::execute
-
-
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief LockCleaner is a helper class to RocksDBHotBackupLock.  It insures
