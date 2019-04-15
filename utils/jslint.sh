@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/bin/sh
 
-if [ "x$@" == "x" ] ; then
+if [ "x$@" = "x" ] ; then
   JAVASCRIPT_JSLINT="\
     `find ./js/actions -name "*.js"` \
     `find ./js/common/bootstrap -name "*.js"` \
