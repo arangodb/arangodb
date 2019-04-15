@@ -155,9 +155,11 @@ bool KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
                                            std::unordered_set<Edge> const& forbiddenEdges,
                                            VertexRef& join) {
   VertexRef vr;
-  FoundVertex* v;
+  FoundVertex *v, *w;
 
   bool success = source._frontier.popMinimal(vr, v);
+  TRI_ASSERT(v != nullptr);
+  TRI_ASSERT(vr == v->_vertex);
   if (!success) {
     return false;
   }
@@ -181,15 +183,17 @@ bool KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
         source._frontier.insert(s._vertex,
                                 std::make_unique<FoundVertex>(s._vertex, vr,
                                                               std::move(s._edge), weight));
-
-        auto found = target._frontier.find(s._vertex);
-        if (found != nullptr) {
-          join = s._vertex;
-          return true;
-        }
       }
     }
   }
+  v->_done = true;
+
+  w = target._frontier.find(v->_vertex);
+  if (w != nullptr && w->_done) {
+    join = v->_vertex;
+    return true;
+  }
+
   return false;
 }
 
