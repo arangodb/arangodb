@@ -81,7 +81,7 @@ class LimitExecutor {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
     /* This could be set to true after some investigation/fixes */
-    static const bool inputSizeRestrictsOutputSize = true;
+    static const bool inputSizeRestrictsOutputSize = false; // TODO set to true again, as soon as expectedNumberOfRows calls skipSome when necessary
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = LimitExecutorInfos;
@@ -106,11 +106,11 @@ class LimitExecutor {
   Infos const& infos() const noexcept { return _infos; };
 
   size_t maxRowsLeftToFetch() const noexcept {
-    if (infos().isFullCountEnabled()) {
-      return ExecutionBlock::DefaultBatchSize();
-    } else {
-      return infos().getLimitPlusOffset() - _counter;
-    }
+    return infos().getLimitPlusOffset() - _counter;
+  }
+
+  size_t maxRowsLeftToSkip() const noexcept {
+    return infos().getOffset() - _counter;
   }
 
   enum class LimitState {

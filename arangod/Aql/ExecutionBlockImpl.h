@@ -182,6 +182,10 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    */
   std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
 
+  // TODO: Desc
+  std::pair<ExecutionState, size_t> defaultSkipSome(size_t atMost);
+  std::pair<ExecutionState, size_t> passSkipSome(size_t atMost);
+
   /**
    * @brief Allocates a new AqlItemBlock and returns it, with the specified
    *        number of rows (nrItems) and columns (nrRegs).

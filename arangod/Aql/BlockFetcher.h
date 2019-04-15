@@ -94,6 +94,9 @@ class BlockFetcher {
   // TODO enable_if<allowBlockPassthrough>
   std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
+  // TODO: skipsome description
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost);
+
   TEST_VIRTUAL inline RegisterId getNrInputRegisters() const {
     return _nrInputRegisters;
   }

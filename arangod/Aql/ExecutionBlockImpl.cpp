@@ -194,12 +194,44 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
   }
 }
 
+enum class SkipVariants {
+  DEFAULT,
+  PASSTHROUGH,
+  CUSTOM
+};
+
+/*
+template<class Variant, class Executor>
+void static skipSome();
+
+template<>
+void static skipSome<SkipVariants::DEFAULT>() {
+
+}
+template<>
+void static skipSome<PASSTHROUGH>() {}
+template<>
+void static skipSome<CUSTOM>() {}
+
+skipSome<DEFAULT>();
+*/
+
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t atMost) {
-  // TODO IMPLEMENT ME, this is a stub!
-
   traceSkipSomeBegin(atMost);
 
+  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough) {
+    // TODO forbid modify executors
+    LOG_DEVEL << "PASS SKIP SOME";
+    return traceSkipSomeEnd(passSkipSome(atMost));
+  } else {
+    LOG_DEVEL << "DEFAULT SKIP SOME";
+    return traceSkipSomeEnd(defaultSkipSome(atMost));
+  }
+}
+
+template <class Executor>
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::defaultSkipSome(size_t atMost) {
   auto res = getSomeWithoutTrace(atMost);
 
   size_t skipped = 0;
@@ -207,7 +239,12 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
     skipped = res.second->size();
   }
 
-  return traceSkipSomeEnd(res.first, skipped);
+  return {res.first, skipped};
+}
+
+template <class Executor>
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::passSkipSome(size_t atMost) {
+  return _blockFetcher.skipSome(atMost);
 }
 
 template <class Executor>

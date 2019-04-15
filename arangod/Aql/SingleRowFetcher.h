@@ -85,6 +85,8 @@ class SingleRowFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(
       size_t atMost = ExecutionBlock::DefaultBatchSize());
 
+  std::pair<ExecutionState, size_t> skipRows(size_t atMost);
+
   // TODO enable_if<passBlocksThrough>
   std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
@@ -183,7 +185,6 @@ class SingleRowFetcher {
 };
 
 template <bool passBlocksThrough>
-// NOLINTNEXTLINE google-default-arguments
 std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchRow(size_t atMost) {
   // Fetch a new block iff necessary
   if (!indexIsValid()) {
@@ -222,6 +223,12 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
     _rowIndex++;
   }
   return {rowState, _currentRow};
+}
+
+template <bool passBlocksThrough>
+std::pair<ExecutionState, size_t> SingleRowFetcher<passBlocksThrough>::skipRows(size_t atMost) {
+  TRI_ASSERT(!indexIsValid());
+  return _blockFetcher->skipSome(atMost);
 }
 
 template <bool passBlocksThrough>

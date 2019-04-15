@@ -187,7 +187,10 @@ class ExecutionBlock {
     }
   }
 
-  inline std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped) {
+  inline std::pair<ExecutionState, size_t> traceSkipSomeEnd(std::pair<ExecutionState, size_t> const res) {
+    ExecutionState const state = res.first;
+    size_t const skipped = res.second;
+
     if (_profile >= PROFILE_LEVEL_BLOCKS) {
       ExecutionNode const* en = getPlanNode();
       ExecutionStats::Node stats;
@@ -208,12 +211,16 @@ class ExecutionBlock {
       if (_profile >= PROFILE_LEVEL_TRACE_1) {
         ExecutionNode const* node = getPlanNode();
         LOG_TOPIC("d1950", INFO, Logger::QUERIES)
-            << "skipSome done type=" << node->getTypeString()
-            << " this=" << (uintptr_t)this << " id=" << node->id()
-            << " state=" << stateToString(state);
+        << "skipSome done type=" << node->getTypeString()
+        << " this=" << (uintptr_t)this << " id=" << node->id()
+        << " state=" << stateToString(state);
       }
     }
-    return {state, skipped};
+    return res;
+  }
+
+  inline std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped) {
+    return traceSkipSomeEnd({state, skipped});
   }
 
   /// @brief skipSome, skips some more items, semantic is as follows: not

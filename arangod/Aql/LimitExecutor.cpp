@@ -65,7 +65,28 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
 
   ExecutionState state;
   LimitState limitState;
-  while (LimitState::LIMIT_REACHED != (limitState = currentState())) {
+
+  while (LimitState::SKIPPING == currentState()) {
+    size_t skipped;
+    std::tie(state, skipped) = _fetcher.skipRows(maxRowsLeftToSkip());
+
+    if (state == ExecutionState::WAITING) {
+      return {state, stats};
+    }
+
+    _counter += skipped;
+
+    if (infos().isFullCountEnabled()) {
+      stats.incrFullCountBy(skipped);
+    }
+
+    // Abort if upstream is done
+    if (state == ExecutionState::DONE) {
+      return {state, stats};
+    }
+  }
+
+  while (LimitState::LIMIT_REACHED != (limitState = currentState()) && LimitState::COUNTING != limitState) {
     std::tie(state, input) = _fetcher.fetchRow(maxRowsLeftToFetch());
 
     if (state == ExecutionState::WAITING) {
@@ -100,7 +121,28 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
       return {state, stats};
     }
 
-    TRI_ASSERT(limitState == LimitState::SKIPPING || limitState == LimitState::COUNTING);
+    TRI_ASSERT(false);
+  }
+
+  while (LimitState::LIMIT_REACHED != currentState()) {
+    size_t skipped;
+    // TODO: skip ALL the rows
+    std::tie(state, skipped) = _fetcher.skipRows(ExecutionBlock::DefaultBatchSize());
+
+    if (state == ExecutionState::WAITING) {
+      return {state, stats};
+    }
+
+    _counter += skipped;
+
+    if (infos().isFullCountEnabled()) {
+      stats.incrFullCountBy(skipped);
+    }
+
+    // Abort if upstream is done
+    if (state == ExecutionState::DONE) {
+      return {state, stats};
+    }
   }
 
   // When fullCount is enabled, the loop may only abort when upstream is done.

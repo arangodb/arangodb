@@ -127,6 +127,19 @@ BlockFetcher<passBlocksThrough>::fetchBlockForDependency(size_t dependency, size
 }
 
 template <bool allowBlockPassthrough>
+std::pair<ExecutionState, size_t>
+BlockFetcher<allowBlockPassthrough>::skipSome(size_t atMost) {
+  TRI_ASSERT(_blockPassThroughQueue.empty());
+  TRI_ASSERT(_blockQueue.empty());
+
+  TRI_ASSERT(_dependencies.size() == 1);
+  ExecutionBlock& upstream = upstreamBlock();
+
+  return upstream.skipSome(atMost);
+}
+
+
+template <bool allowBlockPassthrough>
 std::pair<ExecutionState, SharedAqlItemBlockPtr>
 BlockFetcher<allowBlockPassthrough>::fetchBlockForPassthrough(size_t atMost) {
   TRI_ASSERT(allowBlockPassthrough);  // TODO check this with enable_if in the header already
