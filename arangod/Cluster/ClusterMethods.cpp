@@ -3236,6 +3236,9 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload) {
 
 }
 
+
+std::vector<std::string> lockPath = std::vector<std::string>{"result","lockId"};
+
 arangodb::Result lockDBServerTransactions(
   std::string const& backupId, std::vector<ServerID> const& dbServers,
   double const& lockWait, std::vector<ServerID>& lockedServers) {
@@ -3259,6 +3262,9 @@ arangodb::Result lockDBServerTransactions(
     lock.add("id", VPackValue(backupId));
     lock.add("timeout", VPackValue(lockWait));
   }
+  
+  LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
+    << "Trying to acquire global transaction locks using body " << lock.toJson();
   
   auto body = std::make_shared<std::string const>(lock.toJson());
   std::vector<ClusterCommRequest> requests;
@@ -3285,30 +3291,46 @@ arangodb::Result lockDBServerTransactions(
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice slc = resBody->slice();
     
-    if (!slc.isObject() || !slc.hasKey("id") || !slc.get("id").isString() ||
-        !slc.hasKey("locked") || !slc.get("locked").isBoolean()) {
+    if (!slc.isObject() ||
+        !slc.hasKey("error") || !slc.get("error").isBoolean() ||
+        !slc.hasKey("result") || !slc.get("result").isObject()) {
       return arangodb::Result(
         TRI_ERROR_LOCAL_LOCK_FAILED,
         std::string("invalid response from ") + req.destination
-        + " when trying to freeze transactions for hot backup " + backupId);
-    }
-    
-    std::string otherBackupId = slc.get("id").copyString();
-    bool locked = (slc.get("locked").getBool());
-    if (backupId != otherBackupId) {
-      return arangodb::Result(
-        TRI_ERROR_LOCAL_LOCK_RETRY,
-        std::string("lock result from ") + req.destination
-        + " with contradicting backup IDs. mine: " + backupId + " theirs: " + otherBackupId);
-    }
-    
-    if (!locked) {
-      return arangodb::Result(
-        TRI_ERROR_LOCAL_LOCK_RETRY,
-        std::string("failed to acquire ransaction lock from ")
-        + req.destination + " for backupId " + backupId);
+        + " when trying to freeze transactions for hot backup " + backupId + ": "
+        + slc.toJson());
     }
 
+    if (slc.get("error").getBoolean()) {
+      return arangodb::Result(
+        TRI_ERROR_LOCAL_LOCK_FAILED,
+        std::string("lock was denied from ") + req.destination
+        + " when trying to check for lockId for hot backup " + backupId + ": "
+        + slc.toJson());
+    }
+    
+    if (!slc.hasKey(lockPath) || !slc.get(lockPath).isNumber()) {
+      return arangodb::Result(
+        TRI_ERROR_LOCAL_LOCK_FAILED,
+        std::string("invalid response from ") + req.destination
+        + " when trying to check for lockId for hot backup " + backupId + ": "
+        + slc.toJson());
+    }
+    
+    uint64_t lockId = 0;
+    try {
+      lockId = slc.get(lockPath).getNumber<uint64_t>();
+      LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
+        << "acquired lock from " << req.destination << " for backupId " << backupId
+        << " with lockId " << lockId;
+    } catch (std::exception const& e) { 
+      return arangodb::Result(
+        TRI_ERROR_LOCAL_LOCK_FAILED,
+        std::string("invalid response from ") + req.destination
+        + " when trying to get lockId for hot backup " + backupId + ": "
+        + slc.toJson());
+    }
+    
     lockedServers.push_back(req.destination);
     
   }
@@ -3331,7 +3353,7 @@ arangodb::Result unlockDBServerTransactions(
     // nullptr happens only during controlled shutdown
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN, "Shutting down");
   }
-  
+
   std::string const url = apiStr + "unlock";
   VPackBuilder lock;
   {
@@ -3357,8 +3379,7 @@ arangodb::Result unlockDBServerTransactions(
 
 }
 
-
-
+std::vector<std::string> idPath {"result","id"};
 
 arangodb::Result hotBackupDBServers(
   std::string const& backupId, std::string const& timeStamp,
@@ -3412,8 +3433,7 @@ arangodb::Result hotBackupDBServers(
         std::string("result to take snapshot on ") + req.destination + " not an object");
     }
 
-    if (!resSlice.hasKey("result") ||
-        !resSlice.get("result").isBoolean() || !resSlice.get("result").getBoolean()) {
+    if (!resSlice.hasKey(idPath) || !resSlice.get(idPath).isString()) {
       LOG_TOPIC(ERR, Logger::HOTBACKUP)
         << "DB server " << req.destination << "is missing backup " << backupId;
       return arangodb::Result(
@@ -3421,10 +3441,12 @@ arangodb::Result hotBackupDBServers(
         std::string("no backup with id ") + backupId + " on server " + req.destination);
     }
 
+    LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
+      << req.destination << " created local backup " << resSlice.get(idPath).copyString();
+
   }
 
-  LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
-    << "Have located backup. Replaying plan snapshot. Requesting restore " << backupId;
+  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Have created backup " << backupId;
 
   return arangodb::Result();
   
@@ -3502,7 +3524,7 @@ arangodb::Result removeLocalBackups(
 
 }
 
-arangodb::Result hotBackupCoordinator(VPackSlice const payload) {
+arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& report) {
 
   // ToDo: mode
   //HotBackupMode const mode = CONSISTENT;
@@ -3587,7 +3609,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload) {
     }
     std::vector<ServerID> dbServers = ci->getCurrentDBServers();
     std::vector<ServerID> lockedServers;
-    double lockWait = 1.0;
+    double lockWait = 5.0;
   
     while(cc != nullptr && steady_clock::now() < end) {
       auto end = steady_clock::now() + duration<double>(lockWait);
@@ -3634,10 +3656,15 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload) {
 
     unlockDBServerTransactions(backupId, dbServers);
     ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+
+    { 
+      VPackObjectBuilder o(&report);
+      report.add("id", VPackValue(backupId + "_" + timeStamp));
+    }
+    
     return arangodb::Result();
 
   } catch (std::exception const& e) {
-    TRI_ASSERT(false);
     return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_INTERNAL,
       std::string("caught exception cretaing cluster backup: ") + e.what());

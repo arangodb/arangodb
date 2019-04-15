@@ -949,35 +949,41 @@ void RocksDBHotBackupLock::parseParameters() {
 void RocksDBHotBackupLock::execute() {
   MUTEX_LOCKER (mLock, serialNumberMutex);
 
-  if (!_isSingle) {
-    if (_isLock) {
-      // make sure no one already locked for restore
-      if ( 0 == lockingSerialNumber ) {
-        _success = holdRocksDBTransactions();
+  {
+    VPackObjectBuilder o(&_result); 
 
-        // prepare emergency lock release in case of coordinator failure
-        if (_success) {
-          lockingSerialNumber = getSerialNumber();
-          // LockCleaner gets copied by async_wait during constructor
-          LockCleaner cleaner(lockingSerialNumber, _unlockTimeoutSeconds);
+    if (!_isSingle) {
+      if (_isLock) {
+        // make sure no one already locked for restore
+        if ( 0 == lockingSerialNumber ) {
+          _success = holdRocksDBTransactions();
+
+          // prepare emergency lock release in case of coordinator failure
+          if (_success) {
+            lockingSerialNumber = getSerialNumber();
+            // LockCleaner gets copied by async_wait during constructor
+            _result.add("lockId", VPackValue(lockingSerialNumber));
+            LockCleaner cleaner(lockingSerialNumber, _unlockTimeoutSeconds);
+          } else {
+            _respCode = rest::ResponseCode::REQUEST_TIMEOUT;
+            _respError = TRI_ERROR_LOCK_TIMEOUT;
+          } // else
         } else {
-          _respCode = rest::ResponseCode::REQUEST_TIMEOUT;
-          _respError = TRI_ERROR_LOCK_TIMEOUT;
+          _respCode = rest::ResponseCode::BAD;
+          _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+          _errorMessage = "RocksDBHotBackupLock: another restore in progress";
         } // else
       } else {
-        _respCode = rest::ResponseCode::BAD;
-        _respError = TRI_ERROR_HTTP_SERVER_ERROR;
-        _errorMessage = "RocksDBHotBackupLock: another restore in progress";
-      } // else
+        releaseRocksDBTransactions();
+        lockingSerialNumber = 0;
+        _success = true;
+      }  // else
     } else {
-      releaseRocksDBTransactions();
-      lockingSerialNumber = 0;
+      // single server locks during executeCreate call
       _success = true;
-    }  // else
-  } else {
-    // single server locks during executeCreate call
-    _success = true;
-  } // else
+    } // else
+
+  }
 
   /// return codes
   if (_success) {

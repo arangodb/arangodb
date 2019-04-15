@@ -253,7 +253,8 @@ enum HotBackupMode {CONSISTENT, DIRTY};
  * @param mode    Backup mode: consistent, dirty
  * @param timeout Wait for this attempt and bail out if not met
  */
-arangodb::Result hotBackupCoordinator(VPackSlice const payload);
+arangodb::Result hotBackupCoordinator(
+  VPackSlice const payload, VPackBuilder& report);
 
 /**
  * @brief Restore specific hot backup on coordinators

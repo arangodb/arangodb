@@ -787,6 +787,7 @@ static VPackBuilder assembleLocalDatabaseInfo(std::string const& database,
 
     return ret;
   } catch (std::exception const& e) {
+    ret.clear(); // In case the above has mid air collision.
     std::string errorMsg(
         "Maintenance::assembleLocalDatabaseInfo: Failed to lookup database ");
     errorMsg += database;
@@ -817,6 +818,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
     if (!cur.hasKey(cdbpath)) {
       auto const localDatabaseInfo = assembleLocalDatabaseInfo(dbName, allErrors);
+      TRI_ASSERT(!localDatabaseInfo.slice().isNone());
       if (!localDatabaseInfo.slice().isEmptyObject()) {
         report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
         {

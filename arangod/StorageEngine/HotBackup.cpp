@@ -81,7 +81,7 @@ arangodb::Result HotBackup::executeCoordinator(
   std::string const& command, VPackSlice const payload, VPackBuilder& report) {
 
   if (command == "create") {
-    return hotBackupCoordinator(payload);
+    return hotBackupCoordinator(payload, report);
   } else if (command == "lock") {
     return arangodb::Result(
       TRI_ERROR_NOT_IMPLEMENTED, "backup locks not implemented on coordinators");
