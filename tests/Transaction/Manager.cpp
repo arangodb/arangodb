@@ -71,25 +71,6 @@ struct TransactionManagerSetup {
     features.emplace_back(new arangodb::AqlFeature(server), true);
     features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
     
-    
-//#ifdef USE_ENTERPRISE
-//    features.emplace_back(new arangodb::LdapFeature(server), false);
-//#endif
-//    features.emplace_back(new arangodb::ShardingFeature(server), false); //
-//    features.emplace_back(new arangodb::ViewTypesFeature(server), true);
-//    features.emplace_back(new arangodb::AuthenticationFeature(server), true); // required for FeatureCacheFeature
-//    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
-//    features.emplace_back(new arangodb::DatabaseFeature(server), false); // required for FeatureCacheFeature
-//    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
-//    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-//    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-//    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
-//    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
-//       features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
-//    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
-//    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
-
-    
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
     }
@@ -367,20 +348,6 @@ TEST_CASE("TransactionManagerTest", "[transaction]") {
     REQUIRE(mgr->garbageCollect(/*abortAll*/true));
     REQUIRE((mgr->getManagedTrxStatus(tid) == transaction::Status::ABORTED));
   }
-  
-//  SECTION("Garbage Collection normal") {
-//    auto json = arangodb::velocypack::Parser::fromJson("{ \"collections\":{\"write\": [\"42\"]}}");
-//    Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
-//    REQUIRE(res.ok());
-//    {
-//      auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
-//      REQUIRE(ctx.get() != nullptr);
-//      REQUIRE(ctx->getParentTransaction() != nullptr);
-//    }
-//    REQUIRE(mgr->getManagedTrxStatus(tid) == transaction::Status::RUNNING);
-//    REQUIRE(mgr->garbageCollect(/*abortAll*/false));
-//    REQUIRE(mgr->getManagedTrxStatus(tid) == transaction::Status::ABORTED);
-//  }
 
   SECTION("AQL standalone transaction") {
     {

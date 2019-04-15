@@ -36,11 +36,6 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
 
   explicit SchedulerFeature(application_features::ApplicationServer& server);
   ~SchedulerFeature();
-  
-#ifdef ARANGODB_USE_CATCH_TESTS
-  SchedulerFeature(application_features::ApplicationServer& server,
-                   bool enableSignals);
-#endif
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -79,8 +74,6 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
 
   std::function<void(const asio_ns::error_code&, int)> _hangupHandler;
   std::shared_ptr<asio_ns::signal_set> _hangupSignals;
-  
-  bool _enableSignals;
 };
 
 }  // namespace arangodb
