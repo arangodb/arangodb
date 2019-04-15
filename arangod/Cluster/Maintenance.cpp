@@ -819,7 +819,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     if (!cur.hasKey(cdbpath)) {
       auto const localDatabaseInfo = assembleLocalDatabaseInfo(dbName, allErrors);
       TRI_ASSERT(!localDatabaseInfo.slice().isNone());
-      if (!localDatabaseInfo.slice().isEmptyObject()) {
+      if (!localDatabaseInfo.slice().isEmptyObject() && !localDatabaseInfo.slice().isNone()) {
         report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
         {
           VPackObjectBuilder o(&report);
