@@ -500,13 +500,10 @@ EdgeCursor* arangodb::traverser::TraverserOptions::nextCursor(
     return nextCursorCoordinator(vid, depth);
   }
   auto specific = _depthLookupInfo.find(depth);
-  std::vector<LookupInfo> list;
   if (specific != _depthLookupInfo.end()) {
-    list = specific->second;
-  } else {
-    list = _baseLookupInfos;
-  }
-  return nextCursorLocal(vid, list);
+    return nextCursorLocal(vid, specific->second);
+  } 
+  return nextCursorLocal(vid, _baseLookupInfos);
 }
 
 EdgeCursor* TraverserOptions::nextCursorCoordinator(arangodb::velocypack::StringRef vid,

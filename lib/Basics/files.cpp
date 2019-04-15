@@ -1572,91 +1572,87 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath, char const* instal
 static bool CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string& error) {
   bool rc = true;
 #if TRI_LINUX_SPLICE
-  bool enableSplice = true;
-  if (enableSplice) {
-    int splicePipe[2];
-    ssize_t pipeSize = 0;
-    long chunkSendRemain = fileSize;
-    loff_t totalSentAlready = 0;
+  int splicePipe[2];
+  ssize_t pipeSize = 0;
+  long chunkSendRemain = fileSize;
+  loff_t totalSentAlready = 0;
 
-    if (pipe(splicePipe) != 0) {
-      error = std::string("splice failed to create pipes: ") + strerror(errno);
-      return false;
-    }
-    while (chunkSendRemain > 0) {
-      if (pipeSize == 0) {
-        pipeSize = splice(srcFD, &totalSentAlready, splicePipe[1], nullptr,
-                          chunkSendRemain, SPLICE_F_MOVE);
-        if (pipeSize == -1) {
-          error = std::string("splice read failed: ") + strerror(errno);
-          rc = false;
-          break;
-        }
-      }
-      ssize_t sent = splice(splicePipe[0], nullptr, dstFD, nullptr, pipeSize,
-                            SPLICE_F_MORE | SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
-      if (sent == -1) {
+  if (pipe(splicePipe) != 0) {
+    error = std::string("splice failed to create pipes: ") + strerror(errno);
+    return false;
+  }
+  while (chunkSendRemain > 0) {
+    if (pipeSize == 0) {
+      pipeSize = splice(srcFD, &totalSentAlready, splicePipe[1], nullptr,
+                        chunkSendRemain, SPLICE_F_MOVE);
+      if (pipeSize == -1) {
         error = std::string("splice read failed: ") + strerror(errno);
         rc = false;
         break;
       }
-      pipeSize -= sent;
-      chunkSendRemain -= sent;
     }
-    close(splicePipe[0]);
-    close(splicePipe[1]);
-  } else
-#endif
-  {
-    // 128k:
-    constexpr size_t C128 = 128 * 1024;
-    char* buf = static_cast<char*>(TRI_Allocate(C128));
-
-    if (buf == nullptr) {
-      error = "failed to allocate temporary buffer";
+    ssize_t sent = splice(splicePipe[0], nullptr, dstFD, nullptr, pipeSize,
+                          SPLICE_F_MORE | SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
+    if (sent == -1) {
+      error = std::string("splice read failed: ") + strerror(errno);
       rc = false;
+      break;
+    }
+    pipeSize -= sent;
+    chunkSendRemain -= sent;
+  }
+  close(splicePipe[0]);
+  close(splicePipe[1]);
+#else
+  // 128k:
+  constexpr size_t C128 = 128 * 1024;
+  char* buf = static_cast<char*>(TRI_Allocate(C128));
+
+  if (buf == nullptr) {
+    error = "failed to allocate temporary buffer";
+    rc = false;
+  }
+
+  size_t chunkRemain = fileSize;
+  while (rc && (chunkRemain > 0)) {
+    size_t readChunk = (std::min)(C128, chunkRemain);
+    ssize_t nRead = TRI_READ(srcFD, buf, static_cast<TRI_read_t>(readChunk));
+
+    if (nRead < 0) {
+      error = std::string("failed to read a chunk: ") + strerror(errno);
+      rc = false;
+      break;
     }
 
-    size_t chunkRemain = fileSize;
-    while (rc && (chunkRemain > 0)) {
-      size_t readChunk = (std::min)(C128, chunkRemain);
-      ssize_t nRead = TRI_READ(srcFD, buf, static_cast<TRI_read_t>(readChunk));
+    if (nRead == 0) {
+      // EOF. done
+      break;
+    }
 
-      if (nRead < 0) {
+    size_t writeOffset = 0;
+    size_t writeRemaining = static_cast<size_t>(nRead);
+    while (writeRemaining > 0) {
+      // write can write less data than requested. so we must go on writing
+      // until we have written out all data
+      ssize_t nWritten = TRI_WRITE(dstFD, buf + writeOffset,
+                                    static_cast<TRI_write_t>(writeRemaining));
+
+      if (nWritten < 0) {
+        // error during write
         error = std::string("failed to read a chunk: ") + strerror(errno);
         rc = false;
         break;
       }
 
-      if (nRead == 0) {
-        // EOF. done
-        break;
-      }
-
-      size_t writeOffset = 0;
-      size_t writeRemaining = static_cast<size_t>(nRead);
-      while (writeRemaining > 0) {
-        // write can write less data than requested. so we must go on writing
-        // until we have written out all data
-        ssize_t nWritten = TRI_WRITE(dstFD, buf + writeOffset,
-                                     static_cast<TRI_write_t>(writeRemaining));
-
-        if (nWritten < 0) {
-          // error during write
-          error = std::string("failed to read a chunk: ") + strerror(errno);
-          rc = false;
-          break;
-        }
-
-        writeOffset += static_cast<size_t>(nWritten);
-        writeRemaining -= static_cast<size_t>(nWritten);
-      }
-
-      chunkRemain -= nRead;
+      writeOffset += static_cast<size_t>(nWritten);
+      writeRemaining -= static_cast<size_t>(nWritten);
     }
 
-    TRI_Free(buf);
+    chunkRemain -= nRead;
   }
+
+  TRI_Free(buf);
+#endif 
   return rc;
 }
 

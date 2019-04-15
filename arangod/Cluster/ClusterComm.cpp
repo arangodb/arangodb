@@ -806,12 +806,12 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
     dueTime.push_back(startTime);
   }
 
-  size_t nrDone = 0;
   size_t nrGood = 0;
 
   std::unordered_map<OperationID, size_t> opIDtoIndex;
 
   try {
+   size_t nrDone = 0;
     while (true) {
       now = TRI_microtime();
       if (now > endTime || application_features::ApplicationServer::isStopping()) {

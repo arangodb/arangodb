@@ -89,7 +89,7 @@ struct ShortestPathOptions : public BaseOptions {
                             std::string const& attributeName, aql::AstNode* condition);
 
   // Compute the weight of the given edge
-  double weightEdge(arangodb::velocypack::Slice const);
+  double weightEdge(arangodb::velocypack::Slice const) const;
 
   EdgeCursor* nextCursor(arangodb::velocypack::StringRef vid);
 

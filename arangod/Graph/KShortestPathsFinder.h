@@ -69,8 +69,8 @@ class KShortestPathsFinder : public ShortestPathFinder {
       _edges.clear();
       _weights.clear();
       _weight = 0;
-    };
-    size_t length() const { return _vertices.size(); };
+    }
+    size_t length() const { return _vertices.size(); }
     void append(Path const& p, size_t a, size_t b) {
       if (this->length() == 0) {
         _vertices.emplace_back(p._vertices.at(a));
@@ -108,7 +108,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
         }
       }
       return true;
-    };
+    }
   };
   struct Step {
     Edge _edge;
@@ -116,7 +116,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     double _weight;
 
     Step(Edge const& edge, VertexRef const& vertex, double weight)
-        : _edge(edge), _vertex(vertex), _weight(weight){};
+        : _edge(edge), _vertex(vertex), _weight(weight) {}
   };
 
   struct FoundVertex {
@@ -126,12 +126,12 @@ class KShortestPathsFinder : public ShortestPathFinder {
     double _weight;
 
     // Using negative weight to signifiy start/end vertex
-    FoundVertex(VertexRef const& vertex) : _vertex(vertex), _weight(0){};
+    explicit FoundVertex(VertexRef const& vertex) : _vertex(vertex), _weight(0) {}
     FoundVertex(VertexRef const& vertex, VertexRef const& pred, Edge&& edge, double weight)
-        : _vertex(vertex), _pred(pred), _edge(std::move(edge)), _weight(weight){};
-    double weight() { return _weight; };
-    void setWeight(double weight) { _weight = weight; };
-    VertexRef const& getKey() { return _vertex; };
+        : _vertex(vertex), _pred(pred), _edge(std::move(edge)), _weight(weight) {}
+    double weight() const { return _weight; }
+    void setWeight(double weight) { _weight = weight; }
+    VertexRef const& getKey() const { return _vertex; }
   };
   //  typedef std::deque<VertexRef> Frontier;
   typedef ShortestPathPriorityQueue<VertexRef, FoundVertex, double> Frontier;
@@ -147,12 +147,17 @@ class KShortestPathsFinder : public ShortestPathFinder {
     Direction _direction;
     Frontier _frontier;
 
-    Ball(void){};
+    Ball(void) {}
     Ball(VertexRef const& centre, Direction direction)
         : _centre(centre), _direction(direction) {
       auto v = new FoundVertex(centre);
-      _frontier.insert(centre, v);
-    };
+      try {
+        _frontier.insert(centre, v);
+      } catch (...) {
+        delete v;
+        throw;
+      }
+    }
     ~Ball() {
       // TODO free all vertices
     }
@@ -166,10 +171,10 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // TODO: Remove
   bool shortestPath(arangodb::velocypack::Slice const& start,
                     arangodb::velocypack::Slice const& target,
-                    arangodb::graph::ShortestPathResult& result) {
+                    arangodb::graph::ShortestPathResult& result) override {
     TRI_ASSERT(false);
     return false;
-  };
+  }
 
   //
   bool startKShortestPathsTraversal(arangodb::velocypack::Slice const& start,
@@ -183,7 +188,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
   bool getNextPathShortestPathResult(ShortestPathResult& path);
   // get the next available path as a Path
   bool getNextPath(Path& path);
-  bool isPathAvailable(void) { return _pathAvailable; };
+  bool isPathAvailable(void) { return _pathAvailable; }
 
  private:
   bool computeShortestPath(VertexRef const& start, VertexRef const& end,
