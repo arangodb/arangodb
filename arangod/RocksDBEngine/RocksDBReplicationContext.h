@@ -152,7 +152,7 @@ class RocksDBReplicationContext {
     bool fail() const { return _result.fail(); }
     int errorNumber() const { return _result.errorNumber(); }
     std::string errorMessage() const { return _result.errorMessage(); }
-    bool is(uint64_t code) const { return _result.is(code); }
+    bool is(int code) const { return _result.is(code); }
 
     // access methods
     Result const& result() const& { return _result; }

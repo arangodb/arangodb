@@ -42,7 +42,7 @@ bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other) const 
 SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager,
                                                     std::unordered_set<RegisterId> const& registers,
                                                     size_t newNrRegs) const {
-  SharedAqlItemBlockPtr block = manager.requestBlock(1, newNrRegs);
+  SharedAqlItemBlockPtr block = manager.requestBlock(1, static_cast<RegisterId>(newNrRegs));
   if (isInitialized()) {
     std::unordered_set<AqlValue> cache;
     TRI_ASSERT(getNrRegisters() <= newNrRegs);

@@ -933,7 +933,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             bool created;
             auto unused = physical->createIndex(payloadSlice, /*restore*/ true, created);
             TRI_ASSERT(unused != nullptr);
-          } catch (basics::Exception const& e) {
+          } catch (basics::Exception const&) {
             LOG_TOPIC("92fdf", WARN, arangodb::Logger::ENGINES)
                 << "cannot create index " << indexId << ", collection "
                 << collectionId << " in database " << databaseId;

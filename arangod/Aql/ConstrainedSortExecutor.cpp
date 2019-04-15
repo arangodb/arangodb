@@ -42,7 +42,7 @@ namespace {
 
 void eraseRow(SharedAqlItemBlockPtr& block, size_t row) {
   arangodb::aql::RegisterId const nrRegs = block->getNrRegs();
-  for (size_t i = 0; i < nrRegs; i++) {
+  for (arangodb::aql::RegisterId i = 0; i < nrRegs; i++) {
     block->destroyValue(row, i);
   }
 }
