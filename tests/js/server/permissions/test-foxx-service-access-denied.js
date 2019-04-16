@@ -9,14 +9,14 @@ if (getOptions === true) {
     'server.harden': 'true',
     'server.authentication': 'true',
     'javascript.harden' : 'true',
-    'javascript.files-black-list': [
+    'javascript.files-blacklist': [
       '^/etc/',
     ],
-    'javascript.endpoints-white-list' : [
+    'javascript.endpoints-whitelist' : [
       'ssl://arangodb.com:443'
     ],
-    'javascript.environment-variables-black-list': 'PATH',
-    'javascript.startup-options-black-list': 'point|log',
+    'javascript.environment-variables-blacklist': 'PATH',
+    'javascript.startup-options-blacklist': 'point|log',
   };
 }
 

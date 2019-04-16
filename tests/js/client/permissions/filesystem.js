@@ -118,7 +118,7 @@ if (getOptions === true) {
 
   return {
     'temp.path': fs.getTempPath(),     // Adjust the temp-path to match our current temp path
-    'javascript.files-black-list': [
+    'javascript.files-blacklist': [
       '^/var/lib/', // that for sure!
       '^/var/log/', // that for sure!
       '^/etc/passwd', // if not this, what else?
@@ -127,7 +127,7 @@ if (getOptions === true) {
       '^' + topLevelForbiddenRecursive
       // N/A  subLevelForbidden + '.*'
     ],
-    'javascript.files-white-list': [
+    'javascript.files-whitelist': [
       '^' + testresults,
       '^' + topLevelAllowed,
       '^' + subLevelAllowed,

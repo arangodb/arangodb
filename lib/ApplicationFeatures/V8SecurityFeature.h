@@ -80,55 +80,54 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, FSAccessType) const;
   bool isInternalContext(v8::Isolate* isolate) const;
 
-  void addToInternalReadWhiteList(char const* item);
+  void addToInternalReadWhitelist(std::string const& item);
 
  private:
   bool _hardenInternalModule;
   bool _allowProcessControl;
   bool _allowPortTesting;
 
-  std::string _readWhiteList;
-  std::unordered_set<std::string> _readWhiteListSet;
-  std::regex _readWhiteListRegex;
+  std::string _readWhitelist;
+  std::unordered_set<std::string> _readWhitelistSet;
+  std::regex _readWhitelistRegex;
 
-
-  // All the following options have white and black lists.
-  // The white-list will take precedence over the black list
+  // All the following options have whitelists and blacklists.
+  // The whitelist will take precedence over the blacklist
   // Items is the corresponding Vector will be joined with
   // an logical OR to the final expression. That in turn
-  // will be compile into an std::regex.
+  // will be compiled into an std::regex.
 
-  std::string _startupOptionsWhiteList;
-  std::vector<std::string> _startupOptionsWhiteListVec;
-  std::regex _startupOptionsWhiteListRegex;
-  std::string _startupOptionsBlackList;
-  std::vector<std::string> _startupOptionsBlackListVec;
-  std::regex _startupOptionsBlackListRegex;
+  std::string _startupOptionsWhitelist;
+  std::vector<std::string> _startupOptionsWhitelistVec;
+  std::regex _startupOptionsWhitelistRegex;
+  std::string _startupOptionsBlacklist;
+  std::vector<std::string> _startupOptionsBlacklistVec;
+  std::regex _startupOptionsBlacklistRegex;
 
   /// @brief regular expression string for forbidden IP address/host names
   /// to connect to via JS_Download/internal.download
-  std::string _endpointsWhiteList;
-  std::vector<std::string> _endpointsWhiteListVec;
-  std::regex _endpointsWhiteListRegex;
-  std::string _endpointsBlackList;
-  std::vector<std::string> _endpointsBlackListVec;
-  std::regex _endpointsBlackListRegex;
+  std::string _endpointsWhitelist;
+  std::vector<std::string> _endpointsWhitelistVec;
+  std::regex _endpointsWhitelistRegex;
+  std::string _endpointsBlacklist;
+  std::vector<std::string> _endpointsBlacklistVec;
+  std::regex _endpointsBlacklistRegex;
 
   /// @brief regular expression string for environment variables filtering
-  std::string _environmentVariablesWhiteList;
-  std::vector<std::string> _environmentVariablesWhiteListVec;
-  std::regex _environmentVariablesWhiteListRegex;
-  std::string _environmentVariablesBlackList;
-  std::vector<std::string> _environmentVariablesBlackListVec;
-  std::regex _environmentVariablesBlackListRegex;
+  std::string _environmentVariablesWhitelist;
+  std::vector<std::string> _environmentVariablesWhitelistVec;
+  std::regex _environmentVariablesWhitelistRegex;
+  std::string _environmentVariablesBlacklist;
+  std::vector<std::string> _environmentVariablesBlacklistVec;
+  std::regex _environmentVariablesBlacklistRegex;
 
   /// @brief variables for file access
-  std::string _filesWhiteList;
-  std::vector<std::string> _filesWhiteListVec;
-  std::regex _filesWhiteListRegex;
-  std::string _filesBlackList;
-  std::vector<std::string> _filesBlackListVec;
-  std::regex _filesBlackListRegex;
+  std::string _filesWhitelist;
+  std::vector<std::string> _filesWhitelistVec;
+  std::regex _filesWhitelistRegex;
+  std::string _filesBlacklist;
+  std::vector<std::string> _filesBlacklistVec;
+  std::regex _filesBlacklistRegex;
 };
 
 }  // namespace arangodb

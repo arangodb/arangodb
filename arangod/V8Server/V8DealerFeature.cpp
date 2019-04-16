@@ -221,7 +221,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
-  v8security->addToInternalReadWhiteList(_startupDirectory.c_str());
+  v8security->addToInternalReadWhitelist(_startupDirectory);
 
   ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
 
@@ -251,7 +251,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       // version-specific js path exists!
       it = versionedPath;
     }
-    v8security->addToInternalReadWhiteList(it.c_str());
+    v8security->addToInternalReadWhitelist(it);
   }
 
   // check whether app-path was specified
@@ -264,7 +264,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // Tests if this path is either a directory (ok) or does not exist (we create
   // it in ::start) If it is something else this will throw an error.
   ctx->normalizePath(_appPath, "javascript.app-path", false);
-  v8security->addToInternalReadWhiteList(_appPath.c_str());
+  v8security->addToInternalReadWhitelist(_appPath);
 
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {

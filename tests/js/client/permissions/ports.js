@@ -30,14 +30,14 @@
 
 if (getOptions === true) {
   return {
-    'javascript.endpoints-black-list': [
+    'javascript.endpoints-blacklist': [
       'tcp://127.0.0.1:8888',     // Will match http:// 
       '127.0.0.1:8899',           // will match at http and https.
       'ssl://127.0.0.1:7777',     // will match https://
       'arangodb.org',             // will match https + http
       'http://127.0.0.1:9999'            // won't match at all.
     ],
-    'javascript.endpoints-white-list': [
+    'javascript.endpoints-whitelist': [
       'white.arangodb.org',
       'arangodb.com',             // will match https + http
     ]

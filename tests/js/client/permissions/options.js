@@ -30,7 +30,7 @@
 
 if (getOptions === true) {
   return {
-    'javascript.startup-options-black-list': 'point|log'
+    'javascript.startup-options-blacklist': 'point|log'
   };
 }
 

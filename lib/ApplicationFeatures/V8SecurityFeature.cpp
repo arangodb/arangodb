@@ -23,7 +23,6 @@
 #include "ApplicationFeatures/V8SecurityFeature.h"
 
 #include "Basics/FileUtils.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
@@ -32,12 +31,109 @@
 #include "ProgramOptions/Section.h"
 #include "V8/v8-globals.h"
 
-#include <stdlib.h>
 #include <v8.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
+
+namespace {
+
+void testRegexPair(std::string const& whitelist, std::string const& blacklist,
+                   char const* optionName) {
+  try {
+    std::regex(whitelist, std::regex::nosubs | std::regex::ECMAScript);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("ab6d5", FATAL, arangodb::Logger::FIXME)
+        << "value for '--javascript." << optionName << "-whitelist' is not a "
+           "valid regular expression: " << ex.what();
+    FATAL_ERROR_EXIT();
+  }
+
+  try {
+    std::regex(blacklist, std::regex::nosubs | std::regex::ECMAScript);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("ab2d5", FATAL, arangodb::Logger::FIXME)
+        << "value for '--javascript." << optionName << "-blacklist' is not a "
+           "valid regular expression: " << ex.what();
+    FATAL_ERROR_EXIT();
+  }
+}
+
+std::string canonicalpath(std::string const& path) {
+#ifndef _WIN32
+  auto realPath = std::unique_ptr<char, void (*)(void*)>(
+    ::realpath(path.c_str(), nullptr), &free);
+  if (realPath) {
+    return std::string(realPath.get());
+  }
+  // fallthrough intentional
+#endif
+  return path;
+}
+
+void convertToRegex(std::vector<std::string> const& files, std::string& targetRegex) {
+  if (files.empty()) {
+    return;
+  }
+
+  targetRegex = arangodb::basics::StringUtils::join(files, '|');
+}
+
+void convertToRegex(std::unordered_set<std::string> const& files, std::string& targetRegex) {
+  // does not delete from the set
+  if (files.empty()) {
+    return;
+  }
+  auto last = *files.cbegin();
+
+  std::stringstream ss;
+  for (auto fileIt = std::next(files.cbegin()); fileIt != files.cend(); ++fileIt) {
+    ss << *fileIt << "|";
+  }
+
+  ss << last;
+  targetRegex = ss.str();
+}
+
+bool checkBlackAndWhitelist(std::string const& value, bool hasWhitelist,
+                            std::regex const& whitelist, bool hasBlacklist,
+                            std::regex const& blacklist) {
+  if (!hasWhitelist && !hasBlacklist) {
+    return true;
+  }
+
+  if (!hasBlacklist) {
+    // only have a whitelist
+    return std::regex_search(value, whitelist);
+  }
+
+  if (!hasWhitelist) {
+    // only have a blacklist
+    return !std::regex_search(value, blacklist);
+  }
+
+  std::smatch white_result{};
+  std::smatch black_result{};
+  bool white = std::regex_search(value, white_result, whitelist);
+  bool black = std::regex_search(value, black_result, blacklist);
+
+  if (white && !black) {
+    // we only have a whitelist hit => allow
+    return true;
+  } else if (!white && black) {
+    // we only have a blacklist hit => deny
+    return false;
+  } else if (!white && !black) {
+    // we have neither a whitelist nor a blacklist hit => deny
+    return false;
+  }
+
+  // longer match wins
+  return white_result[0].length() > black_result[0].length();
+
+}
+}  // namespace
 
 V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "V8Security"),
@@ -68,247 +164,71 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                      new BooleanParameter(&_hardenInternalModule))
                      .setIntroducedIn(30500);
 
-  options->addOption("--javascript.startup-options-white-list",
+  options->addOption("--javascript.startup-options-whitelist",
                      "startup options whose names match this regular "
                      "expression will be whitelisted and exposed to JavaScript",
-                     new VectorParameter<StringParameter>(&_startupOptionsWhiteListVec))
+                     new VectorParameter<StringParameter>(&_startupOptionsWhitelistVec))
                      .setIntroducedIn(30500);
-  options->addOption("--javascript.startup-options-black-list",
+  options->addOption("--javascript.startup-options-blacklist",
                      "startup options whose names match this regular "
                      "expression will not be exposed (if not whitelisted) to "
                      "JavaScript actions",
-                     new VectorParameter<StringParameter>(&_startupOptionsBlackListVec))
+                     new VectorParameter<StringParameter>(&_startupOptionsBlacklistVec))
                      .setIntroducedIn(30500);
 
-  options->addOption("--javascript.environment-variables-white-list",
+  options->addOption("--javascript.environment-variables-whitelist",
                      "environment variables that will be accessible in JavaScript",
-                     new VectorParameter<StringParameter>(&_environmentVariablesWhiteListVec))
+                     new VectorParameter<StringParameter>(&_environmentVariablesWhitelistVec))
                      .setIntroducedIn(30500);
-  options->addOption("--javascript.environment-variables-black-list",
+  options->addOption("--javascript.environment-variables-blacklist",
                      "environment variables that will be inaccessible in JavaScript if not whitelisted",
-                     new VectorParameter<StringParameter>(&_environmentVariablesBlackListVec))
+                     new VectorParameter<StringParameter>(&_environmentVariablesBlacklistVec))
                      .setIntroducedIn(30500);
 
-  options->addOption("--javascript.endpoints-white-list",
+  options->addOption("--javascript.endpoints-whitelist",
                      "endpoints that can be connected to via "
                      "@arangodb/request module in JavaScript actions",
-                     new VectorParameter<StringParameter>(&_endpointsWhiteListVec))
+                     new VectorParameter<StringParameter>(&_endpointsWhitelistVec))
                      .setIntroducedIn(30500);
-  options->addOption("--javascript.endpoints-black-list",
+  options->addOption("--javascript.endpoints-blacklist",
                      "endpoints that cannot be connected to via @arangodb/request module in "
                      "JavaScript actions if not whitelisted",
-                     new VectorParameter<StringParameter>(&_endpointsBlackListVec))
+                     new VectorParameter<StringParameter>(&_endpointsBlacklistVec))
                      .setIntroducedIn(30500);
 
-  options->addOption("--javascript.files-white-list",
+  options->addOption("--javascript.files-whitelist",
                      "filesystem paths that will be accessible from within JavaScript actions",
-                     new VectorParameter<StringParameter>(&_filesWhiteListVec))
+                     new VectorParameter<StringParameter>(&_filesWhitelistVec))
                      .setIntroducedIn(30500);
-  options->addOption("--javascript.files-black-list",
+  options->addOption("--javascript.files-blacklist",
                      "filesystem paths that will be inaccessible from within JavaScript actions "
                      "if not whitelisted",
-                     new VectorParameter<StringParameter>(&_filesBlackListVec))
+                     new VectorParameter<StringParameter>(&_filesBlacklistVec))
                      .setIntroducedIn(30500);
-}
-
-namespace {
-
-std::string canonicalpath(std::string&& path) {
-#ifdef _WIN32
-  return std::move(path);
-#else
-  auto realPath = std::unique_ptr<char, void (*)(void*)>(
-    ::realpath(path.c_str(), nullptr), &free);
-  if (realPath) {
-    path = std::string(realPath.get());
-  }
-  return std::move(path); // must be moved as it passed with && into the function
-                          // usually no move required
-#endif
-}
-
-void convertToRe(std::vector<std::string>& files, std::string& target_re) {
-  if (files.empty()) {
-    return;
-  }
-
-  std::string last = std::move(files.back());
-  files.pop_back();
-
-  std::stringstream ss;
-  for (auto const& f : files) {
-    ss << f << "|";
-  }
-  ss << last;
-  target_re = ss.str();
-}
-
-void convertToRe(std::unordered_set<std::string>& files, std::string& target_re) {
-  //does not delete from the set
-  if (files.empty()) {
-    return;
-  }
-  auto last = *files.cbegin();
-
-  std::stringstream ss;
-  for (auto fileIt = std::next(files.cbegin()); fileIt != files.cend(); ++fileIt){
-    ss << *fileIt << "|";
-  }
-
-  ss << last;
-  target_re = ss.str();
-}
-
-bool checkBlackAndWhiteList(std::string const& value, bool hasWhiteList,
-                            std::regex const& whiteList, bool hasBlacklist,
-                            std::regex const& blackList) {
-  if (!hasWhiteList && !hasBlacklist) {
-    return true;
-  }
-
-  if (!hasBlacklist) {
-    // must be white listed
-    return std::regex_search(value, whiteList);
-  }
-
-  if (!hasWhiteList) {
-    // must be white listed
-    return !std::regex_search(value, blackList);
-  }
-
-  std::smatch white_result{};
-  std::smatch black_result{};
-  bool white = std::regex_search(value, white_result, whiteList);
-  bool black = std::regex_search(value, black_result, blackList);
-
-  if(white && !black) {
-    return true;
-  } else if(!white && black) {
-    return false;
-  } else if(!white && !black) {
-    return false;
-  }
-
-  return white_result[0].length() > black_result[0].length();
-
-}
-}  // namespace
-
-void V8SecurityFeature::addToInternalReadWhiteList(char const* item) {
-  // This function is not efficient and we would not need the _readWhiteList
-  // to be persistent. But the persistence will help in debugging and
-  // there are only a few items expected.
-  auto path = "^" + canonicalpath(item) + TRI_DIR_SEPARATOR_STR;
-  _readWhiteListSet.emplace(std::move(path));
-  _readWhiteList.clear();
-  convertToRe(_readWhiteListSet, _readWhiteList);
-  _readWhiteListRegex =
-      std::regex(_readWhiteList, std::regex::nosubs | std::regex::ECMAScript);
-  LOG_TOPIC("dedb6", DEBUG, Logger::FIXME) << _readWhiteList;
 }
 
 void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // check if the regular expressions compile properly
 
   // startup options
-  convertToRe(_startupOptionsWhiteListVec, _startupOptionsWhiteList);
-  try {
-    std::regex(_startupOptionsWhiteList, std::regex::nosubs | std::regex::ECMAScript);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("ab6d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript.startup-options-white-list' is not a "
-           "valid regular "
-           "expression: "
-        << ex.what();
-    FATAL_ERROR_EXIT();
-  }
-
-  convertToRe(_startupOptionsBlackListVec, _startupOptionsBlackList);
-  try {
-    std::regex(_startupOptionsBlackList, std::regex::nosubs | std::regex::ECMAScript);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("ab2d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript.startup-options-black-list' is not a "
-           "valid regular "
-           "expression: "
-        << ex.what();
-    FATAL_ERROR_EXIT();
-  }
+  convertToRegex(_startupOptionsWhitelistVec, _startupOptionsWhitelist);
+  convertToRegex(_startupOptionsBlacklistVec, _startupOptionsBlacklist);
+  testRegexPair(_startupOptionsWhitelist, _startupOptionsBlacklist, "startup-options");
 
   // environment variables
-  convertToRe(_environmentVariablesWhiteListVec, _environmentVariablesWhiteList);
-  try {
-    std::regex(_environmentVariablesWhiteList, std::regex::nosubs | std::regex::ECMAScript);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("cb9d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript.environment-variables-white-list' is not a "
-           "valid regular "
-           "expression: "
-        << ex.what();
-    FATAL_ERROR_EXIT();
-  }
-
-  convertToRe(_environmentVariablesBlackListVec, _environmentVariablesBlackList);
-  try {
-    std::regex(_environmentVariablesBlackList, std::regex::nosubs | std::regex::ECMAScript);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("4b8d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript.environment-variables-black-list' is not a "
-           "valid regular "
-           "expression: "
-        << ex.what();
-    FATAL_ERROR_EXIT();
-  }
+  convertToRegex(_environmentVariablesWhitelistVec, _environmentVariablesWhitelist);
+  convertToRegex(_environmentVariablesBlacklistVec, _environmentVariablesBlacklist);
+  testRegexPair(_environmentVariablesWhitelist, _environmentVariablesBlacklist, "environment-variables");
 
   // endpoints
-  convertToRe(_endpointsWhiteListVec, _endpointsWhiteList);
-  try {
-    std::regex(_endpointsWhiteList, std::regex::nosubs | std::regex::ECMAScript);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("ab9d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript.endpoints-white-list' is not a "
-           "valid regular "
-           "expression: "
-        << ex.what();
-    FATAL_ERROR_EXIT();
-  }
-
-  convertToRe(_endpointsBlackListVec, _endpointsBlackList);
-  try {
-    std::regex(_endpointsBlackList, std::regex::nosubs | std::regex::ECMAScript);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("ab8d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript.endpoints-black-list' is not a "
-           "valid regular "
-           "expression: "
-        << ex.what();
-    FATAL_ERROR_EXIT();
-  }
-
+  convertToRegex(_endpointsWhitelistVec, _endpointsWhitelist);
+  convertToRegex(_endpointsBlacklistVec, _endpointsBlacklist);
+  testRegexPair(_endpointsWhitelist, _endpointsBlacklist, "endpoints");
+  
   // file access
-  convertToRe(_filesWhiteListVec, _filesWhiteList);
-  try {
-    std::regex(_filesWhiteList, std::regex::nosubs | std::regex::ECMAScript);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("4b9d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript.files-white-list' is not a "
-           "valid regular "
-           "expression: "
-        << ex.what();
-    FATAL_ERROR_EXIT();
-  }
-
-  convertToRe(_filesBlackListVec, _filesBlackList);
-  try {
-    std::regex(_filesBlackList, std::regex::nosubs | std::regex::ECMAScript);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("a48d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript.files-black-list' is not a "
-           "valid regular "
-           "expression: "
-        << ex.what();
-    FATAL_ERROR_EXIT();
-  }
+  convertToRegex(_filesWhitelistVec, _filesWhitelist);
+  convertToRegex(_filesBlacklistVec, _filesBlacklist);
+  testRegexPair(_filesWhitelist, _filesBlacklist, "files");
 }
 
 void V8SecurityFeature::prepare() {
@@ -316,30 +236,43 @@ void V8SecurityFeature::prepare() {
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
 
-  v8security->addToInternalReadWhiteList(TRI_GetTempPath().c_str());
+  v8security->addToInternalReadWhitelist(TRI_GetTempPath());
 }
 
 void V8SecurityFeature::start() {
   // initialize regexes for filtering options. the regexes must have been validated before
-  _startupOptionsWhiteListRegex =
-      std::regex(_startupOptionsWhiteList, std::regex::nosubs | std::regex::ECMAScript);
-  _startupOptionsBlackListRegex =
-      std::regex(_startupOptionsBlackList, std::regex::nosubs | std::regex::ECMAScript);
+  _startupOptionsWhitelistRegex =
+      std::regex(_startupOptionsWhitelist, std::regex::nosubs | std::regex::ECMAScript);
+  _startupOptionsBlacklistRegex =
+      std::regex(_startupOptionsBlacklist, std::regex::nosubs | std::regex::ECMAScript);
 
-  _environmentVariablesWhiteListRegex =
-      std::regex(_environmentVariablesWhiteList, std::regex::nosubs | std::regex::ECMAScript);
-  _environmentVariablesBlackListRegex =
-      std::regex(_environmentVariablesBlackList, std::regex::nosubs | std::regex::ECMAScript);
+  _environmentVariablesWhitelistRegex =
+      std::regex(_environmentVariablesWhitelist, std::regex::nosubs | std::regex::ECMAScript);
+  _environmentVariablesBlacklistRegex =
+      std::regex(_environmentVariablesBlacklist, std::regex::nosubs | std::regex::ECMAScript);
 
-  _endpointsWhiteListRegex =
-      std::regex(_endpointsWhiteList, std::regex::nosubs | std::regex::ECMAScript);
-  _endpointsBlackListRegex =
-      std::regex(_endpointsBlackList, std::regex::nosubs | std::regex::ECMAScript);
+  _endpointsWhitelistRegex =
+      std::regex(_endpointsWhitelist, std::regex::nosubs | std::regex::ECMAScript);
+  _endpointsBlacklistRegex =
+      std::regex(_endpointsBlacklist, std::regex::nosubs | std::regex::ECMAScript);
 
-  _filesWhiteListRegex =
-      std::regex(_filesWhiteList, std::regex::nosubs | std::regex::ECMAScript);
-  _filesBlackListRegex =
-      std::regex(_filesBlackList, std::regex::nosubs | std::regex::ECMAScript);
+  _filesWhitelistRegex =
+      std::regex(_filesWhitelist, std::regex::nosubs | std::regex::ECMAScript);
+  _filesBlacklistRegex =
+      std::regex(_filesBlacklist, std::regex::nosubs | std::regex::ECMAScript);
+}
+
+void V8SecurityFeature::addToInternalReadWhitelist(std::string const& item) {
+  // This function is not efficient and we would not need the _readWhitelist
+  // to be persistent. But the persistence will help in debugging and
+  // there are only a few items expected.
+  auto path = "^" + canonicalpath(item) + TRI_DIR_SEPARATOR_STR;
+  _readWhitelistSet.emplace(std::move(path));
+  _readWhitelist.clear();
+  convertToRegex(_readWhitelistSet, _readWhitelist);
+  _readWhitelistRegex =
+      std::regex(_readWhitelist, std::regex::nosubs | std::regex::ECMAScript);
+  LOG_TOPIC("dedb6", DEBUG, Logger::FIXME) << "read-whitelist set to " << _readWhitelist;
 }
 
 bool V8SecurityFeature::isAllowedToControlProcesses(v8::Isolate* isolate) const {
@@ -370,18 +303,18 @@ bool V8SecurityFeature::isInternalContext(v8::Isolate* isolate) const {
 
 bool V8SecurityFeature::shouldExposeStartupOption(v8::Isolate* isolate,
                                                   std::string const& name) const {
-  return checkBlackAndWhiteList(name, !_startupOptionsWhiteList.empty(),
-                                _startupOptionsWhiteListRegex,
-                                !_startupOptionsBlackList.empty(),
-                                _startupOptionsBlackListRegex);
+  return checkBlackAndWhitelist(name, !_startupOptionsWhitelist.empty(),
+                                _startupOptionsWhitelistRegex,
+                                !_startupOptionsBlacklist.empty(),
+                                _startupOptionsBlacklistRegex);
 }
 
 bool V8SecurityFeature::shouldExposeEnvironmentVariable(v8::Isolate* isolate,
                                                         std::string const& name) const {
-  return checkBlackAndWhiteList(name, !_environmentVariablesWhiteList.empty(),
-                                _environmentVariablesWhiteListRegex,
-                                !_environmentVariablesBlackList.empty(),
-                                _environmentVariablesBlackListRegex);
+  return checkBlackAndWhitelist(name, !_environmentVariablesWhitelist.empty(),
+                                _environmentVariablesWhitelistRegex,
+                                !_environmentVariablesBlacklist.empty(),
+                                _environmentVariablesBlacklistRegex);
 }
 
 bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
@@ -394,8 +327,8 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
     return true;
   }
 
-  return checkBlackAndWhiteList(name, !_endpointsWhiteList.empty(), _endpointsWhiteListRegex,
-                                !_endpointsBlackList.empty(), _endpointsBlackListRegex);
+  return checkBlackAndWhitelist(name, !_endpointsWhitelist.empty(), _endpointsWhitelistRegex,
+                                !_endpointsBlacklist.empty(), _endpointsBlacklistRegex);
 }
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string const&  path,
@@ -406,7 +339,7 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* pathPtr,
                                               FSAccessType access) const {
 
-  if(_filesWhiteList.empty(), _filesBlackList.empty()) {
+  if (_filesWhitelist.empty(), _filesBlacklist.empty()) {
     return true;
   }
 
@@ -435,21 +368,20 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
 
 
   path = canonicalpath(std::move(path));
-  if(basics::FileUtils::isDirectory(path)){
+  if (basics::FileUtils::isDirectory(path)) {
     path += TRI_DIR_SEPARATOR_STR;
-  };
+  }
 
-  bool rv = checkBlackAndWhiteList(path, !_filesWhiteList.empty(), _filesWhiteListRegex,
-                                !_filesBlackList.empty(), _filesBlackListRegex);
+  bool rv = checkBlackAndWhitelist(path, !_filesWhitelist.empty(), _filesWhitelistRegex,
+                                   !_filesBlacklist.empty(), _filesBlacklistRegex);
 
-  if(rv) { return true; }
+  if (rv) { 
+    return true; 
+  }
 
-  if (access == FSAccessType::READ && std::regex_search(path, _readWhiteListRegex)) {
+  if (access == FSAccessType::READ && std::regex_search(path, _readWhitelistRegex)) {
     // even in restricted contexts we may read module paths
-    if(!_filesBlackList.empty() && std::regex_search(path, _filesBlackListRegex)) {
-      return false;
-    }
-    return true;
+    return (_filesBlacklist.empty() || !std::regex_search(path, _filesBlacklistRegex));
   }
 
   return rv;

@@ -36,7 +36,7 @@ if (getOptions === true) {
 
   return {
     'server.allow-use-database': 'false',
-    'javascript.files-black-list': '^.*$',
+    'javascript.files-blacklist': '^.*$',
   };
 }
 var jsunity = require('jsunity');

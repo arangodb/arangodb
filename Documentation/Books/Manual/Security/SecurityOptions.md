@@ -47,10 +47,10 @@ the individual values for each option will be combined with a _logical or_.
 
 For example, the following combination of startup options
 
-    --javascript.files-white-list "/etc/required/"
-    --javascript.files-white-list "/etc/mtab"
-    --javascript.files-black-list "/etc"
-    --javascript.files-black-list "/home"
+    --javascript.files-whitelist "/etc/required/"
+    --javascript.files-whitelist "/etc/mtab"
+    --javascript.files-blacklist "/etc"
+    --javascript.files-blacklist "/home"
 
 will resolve internally to the following regular expressions:
 
@@ -68,15 +68,15 @@ allowed via the whitelist.
 The following options are available for blacklisting and whitelisting access
 to dedicated functionality for application code:
 
-- `--javascript.startup-options-white-list` and `--javascript.startup-options-black-list`:
+- `--javascript.startup-options-whitelist` and `--javascript.startup-options-blacklist`:
   These options control which startup options will be exposed to JavaScript code, 
   following above rules for blacklists and whitelists.
 
-- `--javascript.environment-variables-white-list` and `--javascript.environment-variables-black-list`:
+- `--javascript.environment-variables-whitelist` and `--javascript.environment-variables-blacklist`:
   These options control which environment variables will be exposed to JavaScript
   code, following above rules for blacklists and whitelists.
 
-- `--javascript.endpoints-white-list` and `--javascript.endpoints-black-list`:
+- `--javascript.endpoints-whitelist` and `--javascript.endpoints-blacklist`:
   These options control which endpoints can be used from within the `@arangodb/request`
   JavaScript module.
   Endpoint values are passed into the filter in a normalized format starting
@@ -85,7 +85,7 @@ to dedicated functionality for application code:
   and that the endpoint can be specified either as an IP address or host name
   from application code.
 
-- `--javascript.files-white-list` and `--javascript.files-black-list`:
+- `--javascript.files-whitelist` and `--javascript.files-blacklist`:
   These options control which filesystem paths can be accessed from JavaScript code 
   in restricted contexts, following above rules for blacklist and whitelists.
 

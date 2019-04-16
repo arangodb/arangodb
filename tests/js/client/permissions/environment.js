@@ -32,8 +32,8 @@ let env = require('process').env;
 if (getOptions === true) {
   env['PATHTT'] = 'whitelist';
   return {
-    'javascript.environment-variables-black-list': 'PATH',
-    'javascript.environment-variables-white-list': '^MIAU-DERFUCHS$|PATHTT|^INSTANCEINFO$'
+    'javascript.environment-variables-blacklist': 'PATH',
+    'javascript.environment-variables-whitelist': '^MIAU-DERFUCHS$|PATHTT|^INSTANCEINFO$'
   };
 }
 

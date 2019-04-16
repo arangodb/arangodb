@@ -1022,7 +1022,7 @@ void V8ShellFeature::initGlobals() {
     // version-specific js path exists!
     _startupDirectory = versionedPath;
   }
-  v8security->addToInternalReadWhiteList(_startupDirectory.c_str());
+  v8security->addToInternalReadWhitelist(_startupDirectory);
 
   for (auto& it : _moduleDirectories) {
     versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
@@ -1034,7 +1034,7 @@ void V8ShellFeature::initGlobals() {
       // version-specific js path exists!
       it = versionedPath;
     }
-    v8security->addToInternalReadWhiteList(it.c_str()); //expand
+    v8security->addToInternalReadWhitelist(it); //expand
   }
 
   LOG_TOPIC("930d9", DEBUG, Logger::V8)
@@ -1064,7 +1064,7 @@ void V8ShellFeature::initGlobals() {
 
   if (_currentModuleDirectory) {
     modules += sep + FileUtils::currentDirectory().result();
-    v8security->addToInternalReadWhiteList(FileUtils::currentDirectory().result().c_str());
+    v8security->addToInternalReadWhitelist(FileUtils::currentDirectory().result());
   }
 
   // we take the last entry in _startupDirectory as global path;

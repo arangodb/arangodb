@@ -34,10 +34,10 @@ if (getOptions === true) {
     'server.harden': 'true',
     'server.authentication': 'true',
     'javascript.harden' : 'true',
-    'javascript.files-black-list': [
+    'javascript.files-blacklist': [
       '^/etc/',
     ],
-    'javascript.endpoints-white-list' : [
+    'javascript.endpoints-whitelist' : [
       'ssl://arangodb.com:443'
     ],
   };
