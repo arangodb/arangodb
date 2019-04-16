@@ -1619,12 +1619,12 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "not allowed to read files in this path");
   }
 
-  char* abs = TRI_GetAbsolutePath(*name, cwd.result().c_str());
+  std::string abs = TRI_GetAbsolutePath(std::string(*name, name.length()), cwd.result());
+  
   v8::Handle<v8::String> res;
 
-  if (nullptr != abs) {
-    res = TRI_V8_STRING(isolate, abs);
-    TRI_Free(abs);
+  if (!abs.empty()) {
+    res = TRI_V8_STD_STRING(isolate, abs);
   } else {
     res = TRI_V8_STD_STRING(isolate, cwd.result());
   }

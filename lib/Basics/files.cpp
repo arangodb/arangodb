@@ -1384,18 +1384,10 @@ char* TRI_GetFilename(char const* filename) {
 
 #ifdef _WIN32
 
-char* TRI_GetAbsolutePath(char const* fileName, char const* currentWorkingDirectory) {
-  char* result;
-  size_t cwdLength;
-  size_t fileLength;
-  bool ok;
-
-  // ...........................................................................
+std::string TRI_GetAbsolutePath(std::string const& fileName, std::string const& currentWorkingDirectory) {
   // Check that fileName actually makes some sense
-  // ...........................................................................
-
-  if (fileName == nullptr || *fileName == '\0') {
-    return nullptr;
+  if (fileName.empty()) {
+    return std::string;
   }
 
   // ...........................................................................
@@ -1404,12 +1396,11 @@ char* TRI_GetAbsolutePath(char const* fileName, char const* currentWorkingDirect
   // backslash.
   // ...........................................................................
 
-  if ((fileName[0] > 64 && fileName[0] < 91) || (fileName[0] > 96 && fileName[0] < 123)) {
-    if (fileName[1] == ':') {
-      if (fileName[2] == '/' || fileName[2] == '\\') {
-        return TRI_DuplicateString(fileName);
-      }
-    }
+  if (fileName.size() >= 3 &&
+      ((fileName[0] > 64 && fileName[0] < 91) || (fileName[0] > 96 && fileName[0] < 123)) &&
+      fileName[1] == ':' &&
+      (fileName[2] == '/' || fileName[2] == '\\')) {
+    return fileName;
   }
 
   // ...........................................................................
@@ -1417,12 +1408,9 @@ char* TRI_GetAbsolutePath(char const* fileName, char const* currentWorkingDirect
   // currentWorkingDirectory with the fileName
   // ...........................................................................
 
-  // ...........................................................................
   // Check that the currentWorkingDirectory makes sense
-  // ...........................................................................
-
-  if (currentWorkingDirectory == nullptr || *currentWorkingDirectory == '\0') {
-    return nullptr;
+  if (currentWorkingDirectory.empty()) {
+    return std::string();
   }
 
   // ...........................................................................
@@ -1431,55 +1419,35 @@ char* TRI_GetAbsolutePath(char const* fileName, char const* currentWorkingDirect
   // backslash.
   // ...........................................................................
 
-  ok = false;
-  if ((currentWorkingDirectory[0] > 64 && currentWorkingDirectory[0] < 91) ||
-      (currentWorkingDirectory[0] > 96 && currentWorkingDirectory[0] < 123)) {
-    if (currentWorkingDirectory[1] == ':') {
-      if (currentWorkingDirectory[2] == '/' || currentWorkingDirectory[2] == '\\') {
-        ok = true;
-      }
-    }
-  }
-
-  if (!ok) {
+  if (currentWorkingDirectory.size() >= 3 &&
+      ((currentWorkingDirectory[0] > 64 && currentWorkingDirectory[0] < 91) || (currentWorkingDirectory[0] > 96 && currentWorkingDirectory[0] < 123)) &&
+      currentWorkingDirectory[1] == ':' &&
+      (currentWorkingDirectory[2] == '/' || currentWorkingDirectory[2] == '\\')) {
+    // e.g. C:/ or Z:\ drive letter paths
+  } else if (currentWorkingDirectory[0] == '/' || currentWorkingDirectory[0] == '\\') {
     // directory name can also start with a backslash
-    if (currentWorkingDirectory[0] == '/' || currentWorkingDirectory[0] == '\\') {
-      ok = true;
-    }
+    // /... or \...
+  } else {
+    return std::string();
   }
 
-  if (!ok) {
-    return nullptr;
-  }
+  // Determine the total length of the new string
+  std::string result;
 
-  // ...........................................................................
-  // Determine the total legnth of the new string
-  // ...........................................................................
-
-  cwdLength = strlen(currentWorkingDirectory);
-  fileLength = strlen(fileName);
-
-  if (currentWorkingDirectory[cwdLength - 1] == '\\' ||
-      currentWorkingDirectory[cwdLength - 1] == '/' || fileName[0] == '\\' ||
-      fileName[0] == '/') {
+  if (currentWorkingDirectory.back() == '\\' ||
+      currentWorkingDirectory.back() == '/' || 
+      fileName.front() == '\\' ||
+      fileName.front() == '/') {
     // we do not require a backslash
-    result = static_cast<char*>(TRI_Allocate((cwdLength + fileLength + 1) * sizeof(char)));
-    if (result == nullptr) {
-      return nullptr;
-    }
-    memcpy(result, currentWorkingDirectory, cwdLength);
-    memcpy(result + cwdLength, fileName, fileLength);
-    result[cwdLength + fileLength] = '\0';
+    result.reserve(currentWorkingDirectory.size() + fileName.size());
+    result.append(currentWorkingDirectory);
+    result.append(fileName);
   } else {
     // we do require a backslash
-    result = static_cast<char*>(TRI_Allocate((cwdLength + fileLength + 2) * sizeof(char)));
-    if (result == nullptr) {
-      return nullptr;
-    }
-    memcpy(result, currentWorkingDirectory, cwdLength);
-    result[cwdLength] = '\\';
-    memcpy(result + cwdLength + 1, fileName, fileLength);
-    result[cwdLength + fileLength + 1] = '\0';
+    result.reserve(currentWorkingDirectory.size() + fileName.size() + 1);
+    result.append(currentWorkingDirectory);
+    result.push_back('\\');
+    result.append(fileName);
   }
 
   return result;
@@ -1487,51 +1455,29 @@ char* TRI_GetAbsolutePath(char const* fileName, char const* currentWorkingDirect
 
 #else
 
-char* TRI_GetAbsolutePath(char const* file, char const* cwd) {
-  char* ptr;
-  size_t cwdLength;
-
-  if (file == nullptr || *file == '\0') {
-    return nullptr;
+std::string TRI_GetAbsolutePath(std::string const& fileName, std::string const& currentWorkingDirectory) {
+  if (fileName.empty()) {
+    return std::string();
   }
 
   // name is absolute if starts with either forward or backslash
-  bool isAbsolute = (*file == '/' || *file == '\\');
-
   // file is also absolute if contains a colon
-  for (ptr = (char*)file; *ptr; ++ptr) {
-    if (*ptr == ':') {
-      isAbsolute = true;
-      break;
-    }
-  }
+  bool isAbsolute = (fileName[0] == '/' || fileName[0] == '\\' || fileName.find(':') != std::string::npos);
 
   if (isAbsolute) {
-    return TRI_DuplicateString(file);
+    return fileName;
   }
+  
+  std::string result;
 
-  if (cwd == nullptr || *cwd == '\0') {
-    // no absolute path given, must abort
-    return nullptr;
-  }
+  if (!currentWorkingDirectory.empty()) {
+    result.reserve(currentWorkingDirectory.size() + fileName.size() + 1);
 
-  cwdLength = strlen(cwd);
-  TRI_ASSERT(cwdLength > 0);
-
-  char* result =
-      static_cast<char*>(TRI_Allocate((cwdLength + strlen(file) + 2) * sizeof(char)));
-
-  if (result != nullptr) {
-    ptr = result;
-    memcpy(ptr, cwd, cwdLength);
-    ptr += cwdLength;
-
-    if (cwd[cwdLength - 1] != '/') {
-      *(ptr++) = '/';
+    result.append(currentWorkingDirectory);
+    if (currentWorkingDirectory.back() != '/') {
+      result.push_back('/');
     }
-    memcpy(ptr, file, strlen(file));
-    ptr += strlen(file);
-    *ptr = '\0';
+    result.append(fileName);
   }
 
   return result;

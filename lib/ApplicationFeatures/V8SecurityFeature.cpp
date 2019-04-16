@@ -347,7 +347,6 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
   TRI_GET_GLOBALS();
   TRI_ASSERT(v8g != nullptr);
 
-  //TODO -- remove when perms are fixed
   auto const& sec = v8g->_securityContext;
   if ((access == FSAccessType::READ && sec.canReadFs()) ||
       (access == FSAccessType::WRITE && sec.canWriteFs())) {
@@ -358,14 +357,7 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
 
   // make absolute
   std::string cwd = FileUtils::currentDirectory().result();
-  {
-    auto absPath = std::unique_ptr<char, void (*)(char*)>(
-        TRI_GetAbsolutePath(path.c_str(), cwd.c_str()), &TRI_FreeString);
-    if (absPath) {
-      path = std::string(absPath.get());
-    }
-  }
-
+  path = TRI_GetAbsolutePath(path, cwd);
 
   path = canonicalpath(std::move(path));
   if (basics::FileUtils::isDirectory(path)) {

@@ -241,7 +241,8 @@ char* TRI_GetFilename(char const*);
 /// function
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetAbsolutePath(char const*, char const*);
+std::string TRI_GetAbsolutePath(std::string const& fileName,
+                                std::string const& currentWorkingDirectory);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the binary name without any path or suffix
