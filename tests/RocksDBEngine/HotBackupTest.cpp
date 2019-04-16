@@ -144,7 +144,7 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
 
     VPackBuilder report;
     RocksDBHotBackupCreate testee(opBuilder.slice(), report, false);
-    testee.parseParameters(rest::RequestType::DELETE_REQ);
+    testee.parseParameters();
     CHECK(!testee.valid());
     CHECK((testee.resultSlice().isObject() && testee.resultSlice().hasKey("timeout")));
   }
