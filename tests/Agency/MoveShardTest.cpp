@@ -1603,7 +1603,6 @@ SECTION("a pending moveshard job should also put the original server back into p
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
-    LOG_DEVEL << q->slice().toJson() << " " << __LINE__;
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
     REQUIRE(q->slice()[0].length() == 2); // Precondition: to Server not leader yet 
@@ -1832,7 +1831,6 @@ SECTION("aborting the job while a leader transition is in progress (for example 
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
-    LOG_DEVEL << q->slice().toJson() << " " << __LINE__;
 
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
