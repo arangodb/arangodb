@@ -289,7 +289,7 @@ arangodb::RestStatus RestAnalyzerHandler::execute() {
     generateError( // generate error
       arangodb::rest::ResponseCode::BAD, // HTTP code
       TRI_ERROR_BAD_PARAMETER, // code
-      std::string("expecting DELETE ") + ANALYZER_PATH + "/<analyzer-name>[#force=true]" // mesage
+      std::string("expecting DELETE ") + ANALYZER_PATH + "/<analyzer-name>[?force=true]" // mesage
     );
 
     return arangodb::RestStatus::DONE;

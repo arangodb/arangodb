@@ -201,6 +201,13 @@ Alternatively, expiration timepoints can be specified as absolute values per
 document.
 It is also possible to exclude documents from automatic expiration and removal.
 
+Please also note that TTL indexes are designed exactly for the purpose of removing 
+expired documents from collections. It is *not recommended* to rely on TTL indexes 
+for user-land AQL queries. This is because TTL indexes internally may store a transformed, 
+always numerical version of the index attribute value even if it was originally passed in 
+as a datestring. As a result TTL indexes will likely not be used for filtering and sort 
+operations in user-land AQL queries.
+
 Also see the [TTL Indexes](../Indexing/Ttl.md) page.
 
 

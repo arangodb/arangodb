@@ -256,9 +256,6 @@ class ExecutionBlock {
     _dependencyPos = _dependencies.end();
   }
 
-  /// @brief throw an exception if query was killed
-  void throwIfKilled();
-
  protected:
   /// @brief the execution engine
   ExecutionEngine* _engine;

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertTrue, assertFalse, db._query */
+/*global assertUndefined, assertEqual, assertTrue, assertFalse, fail, db._query */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -99,6 +99,106 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(null === analyzers.analyzer(db._name() + "::testAnalyzer"));
       assertEqual(oldList.length, analyzers.toArray().length);
     },
+
+   testAnalyzersFeatures: function() {
+      try {
+       analyzers.save("testAnalyzer", "identity", "test properties", [ "unknown" ]);
+       fail(); // unsupported feature
+      } catch(e) {
+      }
+
+      try {
+       analyzers.save("testAnalyzer", "identity", "test properties", [ "position" ]);
+       fail(); // feature with dependency
+      } catch(e) {
+      }
+
+      // feature with dependency satisfied
+      analyzers.save("testAnalyzer", "identity", "test properties", [ "frequency", "position" ]);
+      analyzers.remove("testAnalyzer", true);
+    },
+
+    testAnalyzersPrefix: function() {
+      let dbName = "TestDB";
+
+      try { db._dropDatabase(dbName); } catch (e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+
+      let oldList = analyzers.toArray();
+      assertTrue(Array === oldList.constructor);
+
+      // creation
+      db._useDatabase("_system");
+      analyzers.save("testAnalyzer", "identity", "system properties", [ "frequency" ]);
+      db._useDatabase(dbName);
+      analyzers.save("testAnalyzer", "identity", "user properties", [ "norm" ]);
+
+      // retrieval (system)
+      db._useDatabase("_system");
+
+      {
+        let analyzer = analyzers.analyzer("testAnalyzer");
+        assertTrue(null !== analyzer);
+        assertEqual(db._name() + "::testAnalyzer", analyzer.name());
+        assertEqual("identity", analyzer.type());
+        assertEqual("system properties", analyzer.properties());
+        assertTrue(Array === analyzer.features().constructor);
+        assertEqual(1, analyzer.features().length);
+        assertEqual([ "frequency" ], analyzer.features());
+      }
+
+      {
+        let analyzer = analyzers.analyzer(dbName + "::testAnalyzer");
+        assertTrue(null !== analyzer);
+        assertEqual(dbName + "::testAnalyzer", analyzer.name());
+        assertEqual("identity", analyzer.type());
+        assertEqual("user properties", analyzer.properties());
+        assertTrue(Array === analyzer.features().constructor);
+        assertEqual(1, analyzer.features().length);
+        assertEqual([ "norm" ], analyzer.features());
+      }
+
+      // retrieval (dbName)
+      db._useDatabase(dbName);
+
+      {
+        let analyzer = analyzers.analyzer("testAnalyzer");
+        assertTrue(null !== analyzer);
+        assertEqual(db._name() + "::testAnalyzer", analyzer.name());
+        assertEqual("identity", analyzer.type());
+        assertEqual("user properties", analyzer.properties());
+        assertTrue(Array === analyzer.features().constructor);
+        assertEqual(1, analyzer.features().length);
+        assertEqual([ "norm" ], analyzer.features());
+      }
+
+      {
+        let analyzer = analyzers.analyzer("::testAnalyzer");
+        assertTrue(null !== analyzer);
+        assertEqual("_system::testAnalyzer", analyzer.name());
+        assertEqual("identity", analyzer.type());
+        assertEqual("system properties", analyzer.properties());
+        assertTrue(Array === analyzer.features().constructor);
+        assertEqual(1, analyzer.features().length);
+        assertEqual([ "frequency" ], analyzer.features());
+      }
+
+      // listing
+      let list = analyzers.toArray();
+      assertTrue(Array === list.constructor);
+      assertEqual(oldList.length + 2, list.length);
+
+      // removal
+      analyzers.remove("testAnalyzer", true);
+      assertTrue(null === analyzers.analyzer("testAnalyzer"));
+      analyzers.remove("::testAnalyzer", true);
+      assertTrue(null === analyzers.analyzer("::testAnalyzer"));
+      assertEqual(oldList.length, analyzers.toArray().length);
+
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+   },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchFeature tests

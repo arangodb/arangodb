@@ -220,15 +220,3 @@ std::tuple<Variable const*, AstNode const*, bool> SortCondition::field(size_t po
   SortField const& field = _fields[position];
   return std::make_tuple(field.variable, field.node, field.order);
 }
-
-/// @brief toVelocyPack
-void SortCondition::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  // TODO FIXME implement
-}
-
-std::shared_ptr<SortCondition> SortCondition::fromVelocyPack(ExecutionPlan const* plan,
-                                                             arangodb::velocypack::Slice const& base,
-                                                             std::string const& name) {
-  // TODO FIXME implement
-  return nullptr;
-}

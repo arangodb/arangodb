@@ -450,7 +450,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     }
     guard.unlock();
 #if USE_PLAN_CACHE
-    arangodb::aql::PlanCache::instance()->invalidate(_logicalCollection->vocbase());
+    arangodb::aql::PlanCache::instance()->invalidate(_logicalCollection.vocbase());
 #endif
     
     // inBackground index might not recover selectivity estimate w/o sync
@@ -516,7 +516,8 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
 
   if (!toRemove) {  // index not found
     // We tried to remove an index that does not exist
-    events::DropIndex("", std::to_string(iid), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+    events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
+                      std::to_string(iid), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     return false;
   }
 
@@ -531,7 +532,8 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
     return false;
   }
 
-  events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
+  events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
+                    std::to_string(iid), TRI_ERROR_NO_ERROR);
 
   cindex->compact(); // trigger compaction before deleting the object
 
@@ -1320,7 +1322,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   /*LOG_TOPIC("17502", ERR, Logger::ENGINES)
       << "Delete rev: " << revisionId << " trx: " << trx->state()->id()
       << " seq: " << mthds->sequenceNumber()
-      << " objectID " << _objectId << " name: " << _logicalCollection->name();*/
+      << " objectID " << _objectId << " name: " << _logicalCollection.name();*/
 
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {

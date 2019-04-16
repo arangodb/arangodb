@@ -160,6 +160,7 @@
   * [Detailed Overview](Views/ArangoSearch/DetailedOverview.md)
   * [Analyzers](Views/ArangoSearch/Analyzers.md)
   * [Scorers](Views/ArangoSearch/Scorers.md)
+* [Analyzers](Analyzers/README.md)
 
 ## ADVANCED TOPICS
 

@@ -23,15 +23,24 @@
 #include "ViewTypesFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "BootstrapFeature.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/BootstrapFeature.h"
+#include "Utils/Events.h"
 
 namespace {
 
 struct InvalidViewFactory : public arangodb::ViewFactory {
-  virtual arangodb::Result create(arangodb::LogicalView::ptr&, TRI_vocbase_t&,
+  virtual arangodb::Result create(arangodb::LogicalView::ptr&, TRI_vocbase_t& vocbase,
                                   arangodb::velocypack::Slice const& definition) const override {
+    std::string name;
+    if (definition.isObject()) {
+      name = arangodb::basics::VelocyPackHelper::getStringValue(
+          definition, arangodb::StaticStrings::DataSourceName, "");
+    }
+    arangodb::events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string(

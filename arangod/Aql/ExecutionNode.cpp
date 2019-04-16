@@ -2031,18 +2031,6 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
 
   RegisterId inputRegister = variableToRegisterId(_inVariable);
 
-  // TODO - remove LOGGING once register planning changes have been made and the ReturnExecutor is final
-  // LOG_DEVEL << "-------------------------------";
-  // LOG_DEVEL << "inputRegister:     " << inputRegister;
-  // LOG_DEVEL << "input block width: " << getRegisterPlan()->nrRegs[previousNode->getDepth()];
-  // LOG_DEVEL << "ouput block width: " << getRegisterPlan()->nrRegs[getDepth()];
-
-  // std::stringstream ss;
-  // for(auto const& a : getRegsToClear()){
-  //  ss << a << " ";
-  //}
-  // LOG_DEVEL << "registersToClear:  " << ss.rdbuf();
-
   bool const isRoot = plan()->root() == this;
 
   bool const isDBServer = arangodb::ServerState::instance()->isDBServer();

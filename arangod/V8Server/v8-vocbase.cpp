@@ -62,6 +62,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/V8Context.h"
+#include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
@@ -672,10 +673,12 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
 
   if (args.Length() < 1 || args.Length() > 2) {
+    events::QueryDocument(vocbase.name(), VPackSlice(), TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_EXECUTEJSON(<queryjson>, <options>)");
   }
 
   if (!args[0]->IsObject()) {
+    events::QueryDocument(vocbase.name(), VPackSlice(), TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_TYPE_ERROR("expecting object for <queryjson>");
   }
 
@@ -683,6 +686,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   int res = TRI_V8ToVPack(isolate, *queryBuilder, args[0], false);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    events::QueryDocument(vocbase.name(), VPackSlice(), res);
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -691,11 +695,13 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() > 1) {
     // we have options! yikes!
     if (!args[1]->IsUndefined() && !args[1]->IsObject()) {
+      events::QueryDocument(vocbase.name(), queryBuilder->slice(), TRI_ERROR_BAD_PARAMETER);
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
 
     res = TRI_V8ToVPack(isolate, *options, args[1], false);
     if (res != TRI_ERROR_NO_ERROR) {
+      events::QueryDocument(vocbase.name(), queryBuilder->slice(), res);
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
@@ -706,6 +712,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
       query.executeSync(static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
 
   if (queryResult.result.fail()) {
+    events::QueryDocument(vocbase.name(), queryBuilder->slice(), queryResult.result.errorNumber());
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(), queryResult.result.errorMessage());
   }
 
@@ -738,6 +745,8 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   result->Set(TRI_V8_ASCII_STRING(isolate, "cached"),
               v8::Boolean::New(isolate, queryResult.cached));
 
+  events::QueryDocument(vocbase.name(), queryBuilder->slice(), TRI_ERROR_NO_ERROR);
+
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -752,12 +761,14 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
 
   if (args.Length() < 1 || args.Length() > 3) {
+    events::QueryDocument(vocbase.name(), "", "", TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_EXCEPTION_USAGE(
         "AQL_EXECUTE(<queryString>, <bindVars>, <options>)");
   }
 
   // get the query string
   if (!args[0]->IsString()) {
+    events::QueryDocument(vocbase.name(), "", "", TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_TYPE_ERROR("expecting string for <queryString>");
   }
 
@@ -768,6 +779,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args.Length() > 1) {
     if (!args[1]->IsUndefined() && !args[1]->IsNull() && !args[1]->IsObject()) {
+      events::QueryDocument(vocbase.name(), queryString, "", TRI_ERROR_BAD_PARAMETER);
       TRI_V8_THROW_TYPE_ERROR("expecting object for <bindVars>");
     }
     if (args[1]->IsObject()) {
@@ -775,6 +787,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       int res = TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
 
       if (res != TRI_ERROR_NO_ERROR) {
+        events::QueryDocument(vocbase.name(), queryString, "", res);
         TRI_V8_THROW_EXCEPTION(res);
       }
     }
@@ -785,11 +798,16 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() > 2) {
     // we have options! yikes!
     if (!args[2]->IsObject()) {
+      events::QueryDocument(vocbase.name(), queryString,
+                            (bindVars ? bindVars->slice().toJson() : ""),
+                            TRI_ERROR_BAD_PARAMETER);
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
 
     int res = TRI_V8ToVPack(isolate, *options, args[2], false);
     if (res != TRI_ERROR_NO_ERROR) {
+      events::QueryDocument(vocbase.name(), queryString,
+                            (bindVars ? bindVars->slice().toJson() : ""), res);
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
@@ -817,9 +835,15 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED)) {
       TRI_GET_GLOBALS();
       v8g->_canceled = true;
+      events::QueryDocument(vocbase.name(), queryString,
+                            (bindVars ? bindVars->slice().toJson() : ""),
+                            TRI_ERROR_REQUEST_CANCELED);
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
 
+    events::QueryDocument(vocbase.name(), queryString,
+                          (bindVars ? bindVars->slice().toJson() : ""),
+                          queryResult.result.errorNumber());
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(), queryResult.result.errorMessage());
   }
 
@@ -853,6 +877,9 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "cached"),
               v8::Boolean::New(isolate, queryResult.cached));
+
+  events::QueryDocument(vocbase.name(), queryString,
+                        (bindVars ? bindVars->slice().toJson() : ""), TRI_ERROR_NO_ERROR);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -1655,6 +1682,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 1 || args.Length() > 3) {
+    events::CreateDatabase("", TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_EXCEPTION_USAGE(
         "db._createDatabase(<name>, <options>, <users>)");
   }
@@ -1664,6 +1692,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(!vocbase.isDangling());
 
   if (!vocbase.isSystem()) {
+    events::CreateDatabase("", TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
@@ -1683,6 +1712,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Value> user = ar->Get(i);
 
       if (!user->IsObject()) {
+        events::CreateDatabase("", TRI_ERROR_BAD_PARAMETER);
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "user is not an object");
       }
@@ -1711,18 +1741,21 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
+    events::DropDatabase("", TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_EXCEPTION_USAGE("db._dropDatabase(<name>)");
   }
 
   auto& vocbase = GetContextVocBase(isolate);
 
   if (!vocbase.isSystem()) {
+    events::DropDatabase("", TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
   ExecContext const* exec = ExecContext::CURRENT;
 
   if (exec != nullptr && exec->systemAuthLevel() != auth::Level::RW) {
+    events::DropDatabase("", TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
