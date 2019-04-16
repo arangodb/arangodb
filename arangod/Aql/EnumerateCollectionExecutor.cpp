@@ -89,11 +89,11 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                        " did not come into sync in time (" +
                                        std::to_string(maxWait) + ")");
   }
-  this->setProducingFunction(buildCallback(
-        _documentProducer, _infos.getOutVariable(), _infos.getProduceResult(),
-        _infos.getProjections(), _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
-        _allowCoveringIndexOptimization, _infos.getUseRawDocumentPointers()));
-
+  this->setProducingFunction(
+      buildCallback(_documentProducer, _infos.getOutVariable(),
+                    _infos.getProduceResult(), _infos.getProjections(),
+                    _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
+                    _allowCoveringIndexOptimization, _infos.getUseRawDocumentPointers()));
 }
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
@@ -136,7 +136,8 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
           [&](LocalDocumentId const&, VPackSlice slice) {
             _documentProducer(_input, output, slice, _infos.getOutputRegisterId());
             stats.incrScanned();
-          }, 1 /*atMost*/);
+          },
+          1 /*atMost*/);
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
@@ -145,7 +146,8 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
             _documentProducer(_input, output, VPackSlice::nullSlice(),
                               _infos.getOutputRegisterId());
             stats.incrScanned();
-          }, 1 /*atMost*/);
+          },
+          1 /*atMost*/);
     }
 
     if (_state == ExecutionState::DONE && !_cursorHasMore) {
@@ -153,6 +155,58 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
     }
     return {ExecutionState::HASMORE, stats};
   }
+}
+
+std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor::skipRows(size_t toSkip) {
+  TRI_IF_FAILURE("EnumerateCollectionExecutor::skipRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  EnumerateCollectionStats stats{};
+
+  if (!_cursorHasMore) {
+    std::tie(_state, _input) = _fetcher.fetchRow();
+
+    if (_state == ExecutionState::WAITING) {
+      return {_state, stats};
+    }
+
+    if (!_input) {
+      TRI_ASSERT(_state == ExecutionState::DONE);
+      return {_state, stats};
+    }
+    _cursor->reset();
+    _cursorHasMore = _cursor->hasMore();
+  }
+
+  TRI_ASSERT(_input.isInitialized());
+  TRI_ASSERT(_cursor->hasMore());
+
+  TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  uint64_t actuallySkipped = 0;
+  _cursor->skip(toSkip, actuallySkipped);
+  _cursorHasMore = _cursor->hasMore();
+
+  if (actuallySkipped > 0) {
+    // increase scannedFull statistic
+    stats.incrScanned(actuallySkipped);
+  }
+
+  if (actuallySkipped == toSkip) {
+    return {ExecutionState::DONE, stats};
+  }
+
+  /* TODO: just a note, we do not need those checks, because we always run into hasmore
+  if (actuallySkipped < toSkip) {
+    return {ExecutionState::HASMORE, stats};
+  }
+  if (actuallySkipped == 0) {
+    return {ExecutionState::HASMORE, stats};
+  }*/
+
+  return {ExecutionState::HASMORE, stats};
 }
 
 #ifndef USE_ENTERPRISE
