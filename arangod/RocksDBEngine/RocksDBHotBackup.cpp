@@ -16,7 +16,9 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+/// 
+/// @author Matthew Van-Maszewski
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBHotBackup.h"
@@ -395,7 +397,6 @@ void RocksDBHotBackup::startGlobalShutdown() {
 RocksDBHotBackupCreate::RocksDBHotBackupCreate(VPackSlice body, VPackBuilder& report, bool isCreate)
   : RocksDBHotBackup(body, report), _isCreate(isCreate), _forceBackup(false), _agencyDump(VPackSlice::noneSlice()) {}
 
-void RocksDBHotBackupCreate::parseParameters() {
 
   // single server create, we generate the timestamp
   if (_isSingle && _isCreate) {
@@ -964,7 +965,8 @@ void RocksDBHotBackupList::listAll() {
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
       << "RocksDBHotBackupList::execute caught exception.";
   } // catch
-}
+
+} // RocksDBHotBackupList::execute
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief LockCleaner is a helper class to RocksDBHotBackupLock.  It insures

@@ -17,7 +17,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+///
 /// @author Matthew Von-Maszewski
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestHotBackupHandler.h"

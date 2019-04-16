@@ -116,7 +116,7 @@ public:
 
   // @brief Validate and extract parameters appropriate to the operation type
   void parseParameters() override;
-
+  
   // @brief Execute an operation
   void execute() override;
 
@@ -125,6 +125,7 @@ public:
   const std::string & getTimestamp() const {return _timestamp;}
   const std::string & getUserString() const {return _label;}
   const std::string & getDirectory() const {return _id;}
+
 protected:
   // @brief Execute the create operation
   void executeCreate();
@@ -138,6 +139,7 @@ protected:
   std::string _label;
   std::string _id;   // required for Delete
   VPackSlice _agencyDump;   // required for Create from Coordinator
+
 
 };// class RocksDBHotBackupCreate
 
@@ -197,6 +199,7 @@ protected:
   static std::string loadAgencyJson(std::string filename);
 
   std::string _listId;
+  
 };// class RocksDBHotBackupList
 
 
@@ -212,6 +215,7 @@ public:
   ~RocksDBHotBackupLock();
 
   void parseParameters() override;
+
   void execute() override;
 
 protected:

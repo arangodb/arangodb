@@ -365,6 +365,7 @@
     "ERROR_REMOTE_REPOSITORY_CONFIG_BAD" : { "code" :  7008, "message" : " \"remote hotback repository configuration error\"" },
     "ERROR_LOCAL_LOCK_FAILED"      : { "code" :  7009, "message" : " \"some db servers cannot be reached for transaction locks\"" },
     "ERROR_LOCAL_LOCK_RETRY"       : { "code" :  7010, "message" : " \"some db servers cannot be reached for transaction locks\"" }
+
   };
 
   // For compatibility with <= 3.3
