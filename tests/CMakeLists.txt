@@ -184,6 +184,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/IndexEstimatorTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
+  Transaction/Manager.cpp
   VocBase/VersionTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
 )
