@@ -83,13 +83,17 @@ std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
   std::shared_ptr<RocksDBHotBackup> operation;
 
   if (0 == command.compare("create")) {
-    operation.reset(toHotBackup(new RocksDBHotBackupCreate(body, report)));
+    operation.reset(toHotBackup(new RocksDBHotBackupCreate(body, report, true)));
+  } else if (0 == command.compare("delete")) {
+    operation.reset(toHotBackup(new RocksDBHotBackupCreate(body, report, false)));
   } else if (0 == command.compare("restore")) {
     operation.reset(toHotBackup(new RocksDBHotBackupRestore(body, report)));
   } else if (0 == command.compare("list")) {
     operation.reset(toHotBackup(new RocksDBHotBackupList(body, report)));
   } else if (0 == command.compare("lock")) {
-    operation.reset(toHotBackup(new RocksDBHotBackupLock(body, report)));
+    operation.reset(toHotBackup(new RocksDBHotBackupLock(body, report, true)));
+  } else if (0 == command.compare("unlock")) {
+    operation.reset(toHotBackup(new RocksDBHotBackupLock(body, report, false)));
   }
 #if USE_ENTERPRISE
   else if (0 == command.compare("upload")) {
@@ -117,7 +121,7 @@ std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
 // @brief Setup the base object, default is "bad parameters"
 //
 RocksDBHotBackup::RocksDBHotBackup(VPackSlice body, VPackBuilder& report)
-  : _body(body), _valid(false), _success(false), _respCode(rest::ResponseCode::BAD),
+  : _body(body), _valid(true), _success(false), _respCode(rest::ResponseCode::BAD),
     _respError(TRI_ERROR_HTTP_BAD_PARAMETER), _result(report), _timeoutSeconds(10)
 {
   _isSingle = ServerState::instance()->isSingleServer();
@@ -385,14 +389,11 @@ void RocksDBHotBackup::startGlobalShutdown() {
 ///        POST:  Initiate rocksdb checkpoint on local server
 ///        DELETE:  Remove an existing rocksdb checkpoint from local server
 ////////////////////////////////////////////////////////////////////////////////
-RocksDBHotBackupCreate::RocksDBHotBackupCreate(VPackSlice body, VPackBuilder& report)
-  : RocksDBHotBackup(body, report), _isCreate(true), _forceBackup(false) {}
+RocksDBHotBackupCreate::RocksDBHotBackupCreate(VPackSlice body, VPackBuilder& report, bool isCreate)
+  : RocksDBHotBackup(body, report), _isCreate(isCreate), _forceBackup(false) {}
 
 
 void RocksDBHotBackupCreate::parseParameters() {
-
-  _isCreate = true;
-  _valid = _isCreate;
 
   // single server create, we generate the timestamp
   if (_isSingle && _isCreate) {
@@ -909,8 +910,9 @@ struct LockCleaner {
 ///        POST:  Initiate lock on transactions within rocksdb
 ///      DELETE:  Remove lock on transactions
 ////////////////////////////////////////////////////////////////////////////////
-RocksDBHotBackupLock::RocksDBHotBackupLock(VPackSlice const body, VPackBuilder& report)
-  : RocksDBHotBackup(body, report), _isLock(false), _unlockTimeoutSeconds(5)
+RocksDBHotBackupLock::RocksDBHotBackupLock(
+  VPackSlice const body, VPackBuilder& report, bool isLock)
+  : RocksDBHotBackup(body, report), _isLock(isLock), _unlockTimeoutSeconds(5)
 {
 }
 
@@ -919,28 +921,8 @@ RocksDBHotBackupLock::~RocksDBHotBackupLock() {
 
 void RocksDBHotBackupLock::parseParameters() {
 
-  _isLock = true; //(rest::RequestType::POST == type);
-  _valid = _isLock;// || (rest::RequestType::DELETE_REQ == type);
-
   getParamValue("timeout", _timeoutSeconds, false);
   getParamValue("unlockTimeout", _unlockTimeoutSeconds, false);
-
-  if (!_valid) {
-    try {
-      _result.add(VPackValue(VPackValueType::Object));
-      _result.add("httpMethod", VPackValue("only POST or DELETE allowed"));
-      _result.close();
-      _respCode = rest::ResponseCode::BAD;
-      _respError = TRI_ERROR_HTTP_BAD_PARAMETER;
-    } catch (...) {
-      _result.clear();
-      _respCode = rest::ResponseCode::BAD;
-      _respError = TRI_ERROR_HTTP_SERVER_ERROR;
-      _errorMessage = "RocksDBHotBackupLock::parseParameters caught exception.";
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-        << "RocksDBHotBackupLock::parseParameters caught exception.";
-    } // catch
-  } // if
 
   return;
 

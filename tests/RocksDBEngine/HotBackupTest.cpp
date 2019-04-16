@@ -109,7 +109,7 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
   SECTION("test_defaults") {
     const VPackSlice slice;
     VPackBuilder report;
-    RocksDBHotBackupCreate testee(slice, report);
+    RocksDBHotBackupCreate testee(slice, report, true);
     CHECK(true == testee.isCreate());
     CHECK(testee.getTimestamp() == "");
     CHECK(10 == testee.getTimeout());
@@ -124,16 +124,14 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
       opBuilder.add("label", VPackValue("first day"));
     }
 
-    /*
     VPackBuilder report;
-    RocksDBHotBackupCreate testee(opBuilder.slice(), report);
+    RocksDBHotBackupCreate testee(opBuilder.slice(), report, false);
     testee.parseParameters();
     CHECK(testee.valid());
     CHECK(false == testee.isCreate());
     CHECK(12345 == testee.getTimeout());
     CHECK(testee.getDirectory() == "2017-08-01T09:00:00Z");
     CHECK(testee.getUserString() == "first day");
-    */
   }
 
   SECTION("test_timestamp_exception") {
@@ -144,11 +142,11 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
       opBuilder.add("label", VPackValue("makes timeoutMS throw")); //  to happen
     }
 
-/*    VPackBuilder report;
-    RocksDBHotBackupCreate testee(opBuilder.slice(), report);
+    VPackBuilder report;
+    RocksDBHotBackupCreate testee(opBuilder.slice(), report, false);
     testee.parseParameters(rest::RequestType::DELETE_REQ);
     CHECK(!testee.valid());
-    CHECK((testee.resultSlice().isObject() && testee.resultSlice().hasKey("timeout")));*/
+    CHECK((testee.resultSlice().isObject() && testee.resultSlice().hasKey("timeout")));
   }
 
 }

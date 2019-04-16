@@ -112,7 +112,7 @@ public:
 
   RocksDBHotBackupCreate() = delete;
   virtual ~RocksDBHotBackupCreate() = default;
-  explicit RocksDBHotBackupCreate(VPackSlice body, VPackBuilder& report);
+  explicit RocksDBHotBackupCreate(VPackSlice body, VPackBuilder& report, bool isCreate);
 
   // @brief Validate and extract parameters appropriate to the operation type
   void parseParameters() override;
@@ -200,7 +200,7 @@ class RocksDBHotBackupLock : public RocksDBHotBackup {
 public:
 
   RocksDBHotBackupLock() = delete;
-  RocksDBHotBackupLock(const VPackSlice body, VPackBuilder& report);
+  RocksDBHotBackupLock(const VPackSlice body, VPackBuilder& report, bool isLock);
   ~RocksDBHotBackupLock();
 
   void parseParameters() override;
