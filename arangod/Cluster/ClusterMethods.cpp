@@ -3658,11 +3658,11 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     unlockDBServerTransactions(backupId, dbServers);
     ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
 
+    std::replace(backupId.begin(), backupId.end(), ':', '.');
     {
       VPackObjectBuilder o(&report);
       report.add("id", VPackValue(
-                   timeStamp + "_" +
-                   std::replace(backupId.begin(), backupId.end(), ':', '.');));
+                   timeStamp + "_" + backupId));
     }
 
     return arangodb::Result();
