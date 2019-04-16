@@ -72,6 +72,7 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
       _strings{_strArena},
       _options(arangodb::velocypack::Options::Defaults),
       _dumpOptions(arangodb::velocypack::Options::Defaults),
+      _contextData(EngineSelectorFeature::ENGINE->createTransactionContextData()),
       _transaction{0, false},
       _ownsResolver(false) {
   /// dump options contain have the escapeUnicode attribute set to true
@@ -81,8 +82,6 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
   /// which speculate on ASCII strings first and only fall back to slower
   /// multibyte strings on first actual occurrence of a multibyte character.
   _dumpOptions.escapeUnicode = true;
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  _contextData = engine->createTransactionContextData();
 }
 
 /// @brief destroy the context

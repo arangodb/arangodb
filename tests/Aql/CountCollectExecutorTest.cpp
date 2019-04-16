@@ -24,7 +24,6 @@
 #include "catch.hpp"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
@@ -49,11 +48,9 @@ SCENARIO("CountCollectExecutor", "[AQL][EXECUTOR][COUNTCOLLECTEXECUTOR]") {
 
   RegisterId nrOutputReg = 2;
 
-  auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, nrOutputReg);
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputReg)};
   auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
       std::initializer_list<RegisterId>{1});
-  auto blockShell =
-      std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
 
   GIVEN("there are no rows upstream") {
     CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */,
@@ -66,7 +63,7 @@ SCENARIO("CountCollectExecutor", "[AQL][EXECUTOR][COUNTCOLLECTEXECUTOR]") {
       NoStats stats{};
 
       THEN("the executor should return 0") {
-        OutputAqlItemRow result{std::move(blockShell), outputRegisters,
+        OutputAqlItemRow result{std::move(block), outputRegisters,
                                 infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
@@ -85,7 +82,7 @@ SCENARIO("CountCollectExecutor", "[AQL][EXECUTOR][COUNTCOLLECTEXECUTOR]") {
       NoStats stats{};
 
       THEN("the executor should return 0") {
-        OutputAqlItemRow result{std::move(blockShell), outputRegisters,
+        OutputAqlItemRow result{std::move(block), outputRegisters,
                                 infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
@@ -114,7 +111,7 @@ SCENARIO("CountCollectExecutor", "[AQL][EXECUTOR][COUNTCOLLECTEXECUTOR]") {
       NoStats stats{};
 
       THEN("the executor should return 3") {
-        OutputAqlItemRow result{std::move(blockShell), outputRegisters,
+        OutputAqlItemRow result{std::move(block), outputRegisters,
                                 infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
@@ -133,7 +130,7 @@ SCENARIO("CountCollectExecutor", "[AQL][EXECUTOR][COUNTCOLLECTEXECUTOR]") {
       CountCollectExecutor testee(fetcher, infos);
       NoStats stats{};
       THEN("the executor should return 3") {
-        OutputAqlItemRow result{std::move(blockShell), outputRegisters,
+        OutputAqlItemRow result{std::move(block), outputRegisters,
                                 infos.registersToKeep(), infos.registersToClear()};
 
         std::tie(state, stats) = testee.produceRow(result);

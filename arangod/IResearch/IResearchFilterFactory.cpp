@@ -2096,8 +2096,11 @@ namespace iresearch {
 
 /*static*/ bool FilterFactory::filter(irs::boolean_filter* filter, QueryContext const& ctx,
                                       arangodb::aql::AstNode const& node) {
+  // The analyzer is referenced in the FilterContext and used during the
+  // following ::filter() call, so may not be a temporary.
+  IResearchLinkMeta::Analyzer analyzer = IResearchLinkMeta::Analyzer();
   FilterContext const filterCtx( // context
-    IResearchLinkMeta::Analyzer(), irs::boost::no_boost() // args
+      analyzer, irs::boost::no_boost() // args
   );
 
   return ::filter(filter, ctx, filterCtx, node);

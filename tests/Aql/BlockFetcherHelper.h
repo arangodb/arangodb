@@ -69,7 +69,7 @@ class SingleRowFetcherHelper
       size_t atMost = ::arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
   uint64_t nrCalled() { return _nrCalled; }
 
-  std::shared_ptr<arangodb::aql::AqlItemBlockShell> getItemBlockShell() {
+  ::arangodb::aql::SharedAqlItemBlockPtr getItemBlock() {
     return _itemBlock;
   }
 
@@ -85,7 +85,7 @@ class SingleRowFetcherHelper
   bool _didWait;
   arangodb::aql::ResourceMonitor _resourceMonitor;
   arangodb::aql::AqlItemBlockManager _itemBlockManager;
-  std::shared_ptr<arangodb::aql::AqlItemBlockShell> _itemBlock;
+  arangodb::aql::SharedAqlItemBlockPtr _itemBlock;
   arangodb::aql::InputAqlItemRow _lastReturnedRow;
 };
 

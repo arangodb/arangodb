@@ -44,6 +44,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/V8Context.h"
+#include "Utils/Events.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
@@ -1590,12 +1591,13 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   delete context;
 }
 
-V8ContextGuard::V8ContextGuard(TRI_vocbase_t* vocbase,
+V8ContextGuard::V8ContextGuard(TRI_vocbase_t* vocbase, std::string const& dbName,
                                JavaScriptSecurityContext const& securityContext)
     : _isolate(nullptr),
       _context(nullptr) {
   _context = V8DealerFeature::DEALER->enterContext(vocbase, securityContext);
   if (_context == nullptr) {
+    events::DropDatabase(dbName, TRI_ERROR_INTERNAL);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT,
                                    "unable to acquire V8 context in time");
   }

@@ -63,14 +63,13 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
              (!arangodb::ServerState::instance()->isCoordinator() && !ownName.empty()));
 }
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<RemoteExecutor>::getSome(size_t atMost) {
+std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
   auto result = getSomeWithoutTrace(atMost);
   return traceGetSomeEnd(result.first, std::move(result.second));
 }
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
+std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -112,8 +111,9 @@ ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
       state = ExecutionState::DONE;
     }
     if (responseBody.hasKey("data")) {
-      auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(),
-                                              responseBody);
+      SharedAqlItemBlockPtr r =
+          _engine->itemBlockManager().requestAndInitBlock(responseBody);
+
       return {state, std::move(r)};
     }
     return {ExecutionState::DONE, nullptr};

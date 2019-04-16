@@ -676,8 +676,6 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
             }
           }
 
-          _engine->itemBlockManager().returnBlock(std::move(res.second));
-
           if (res.first == ExecutionState::DONE) {
             break;
           }
@@ -837,7 +835,6 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
 
     // this is the RegisterId our results can be found in
     auto const resultRegister = _engine->resultRegister();
-    std::unique_ptr<AqlItemBlock> value;
 
     // following options and builder only required for query cache
     VPackOptions options = VPackOptions::Defaults;
@@ -862,7 +859,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
           res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
           state = res.first;
         }
-        value.swap(res.second);
+        SharedAqlItemBlockPtr value = std::move(res.second);
 
         // value == nullptr => state == DONE
         TRI_ASSERT(value != nullptr || state == ExecutionState::DONE);
@@ -890,8 +887,6 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
             }
           }
         }
-
-        _engine->itemBlockManager().returnBlock(std::move(value));
       }
 
       builder->close();

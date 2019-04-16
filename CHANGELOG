@@ -19,6 +19,10 @@ devel
   allowed controlling in which particular V8 context number a JavaScript-based
   action was executed. This header was only used internally for testing.
 
+* added req.auth property to Foxx
+
+* added collection.documentId method to derive document id from key
+
 * fixed internal issue #536: ArangoSearch may crash server during term lookup
 
 * fixed internal issue #2946: Create graph autocomplete was not working under

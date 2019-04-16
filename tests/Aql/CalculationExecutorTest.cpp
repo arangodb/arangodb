@@ -97,9 +97,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
   );
 
   GIVEN("there are no rows upstream") {
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
-    auto blockShell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
@@ -111,7 +109,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
       NoStats stats{};
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
@@ -128,7 +126,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
       NoStats stats{};
 
       THEN("the executor should first return WAIT with nullptr") {
-        OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
@@ -145,9 +143,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
   }  // GIVEN
 
   GIVEN("there are rows in the upstream") {
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
-    auto blockShell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
 
     auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
 
@@ -157,7 +153,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
       NoStats stats{};
 
       THEN("the executor should return the rows") {
-        OutputAqlItemRow row{std::move(blockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow row{std::move(block), infos.getOutputRegisters(),
                              infos.registersToKeep(), infos.registersToClear()};
 
         // 1
@@ -202,7 +198,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
       NoStats stats{};
 
       THEN("the executor should return the rows") {
-        OutputAqlItemRow row{std::move(blockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow row{std::move(block), infos.getOutputRegisters(),
                              infos.registersToKeep(), infos.registersToClear()};
 
         // waiting

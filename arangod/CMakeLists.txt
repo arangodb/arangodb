@@ -171,7 +171,7 @@ SET(ARANGOD_SOURCES
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
-  Aql/AqlItemBlockShell.cpp
+  Aql/AqlItemBlockUtils.cpp
   Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
@@ -229,6 +229,8 @@ SET(ARANGOD_SOURCES
   Aql/IndexHint.cpp
   Aql/IndexNode.cpp
   Aql/InputAqlItemRow.cpp
+  Aql/KShortestPathsExecutor.cpp
+  Aql/KShortestPathsNode.cpp
   Aql/LimitExecutor.cpp
   Aql/ModificationExecutor.cpp
   Aql/ModificationExecutorTraits.cpp
@@ -265,6 +267,7 @@ SET(ARANGOD_SOURCES
   Aql/ReturnExecutor.cpp
   Aql/ScatterExecutor.cpp
   Aql/Scopes.cpp
+  Aql/SharedAqlItemBlockPtr.cpp
   Aql/SharedQueryState.cpp
   Aql/ShortStringStorage.cpp
   Aql/ShortestPathExecutor.cpp
@@ -378,6 +381,7 @@ SET(ARANGOD_SOURCES
   Graph/Graph.cpp
   Graph/GraphManager.cpp
   Graph/GraphOperations.cpp
+  Graph/KShortestPathsFinder.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/PathEnumerator.cpp
   Graph/ShortestPathFinder.cpp

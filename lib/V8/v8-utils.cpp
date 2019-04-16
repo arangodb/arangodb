@@ -334,13 +334,15 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto filter = [v8security, isolate](std::string const& name) {
     if (name.find("passwd") != std::string::npos ||
-        name.find("password") != std::string::npos) {
+        name.find("password") != std::string::npos ||
+        name.find("secret") != std::string::npos) {
       return false;
     }
     return v8security->shouldExposeStartupOption(isolate, name);
   };
 
   VPackBuilder builder = ApplicationServer::server->options(filter);
+
   auto result = TRI_VPackToV8(isolate, builder.slice());
 
   TRI_V8_RETURN(result);

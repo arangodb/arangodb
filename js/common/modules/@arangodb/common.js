@@ -133,6 +133,12 @@ exports.aql.join = function (values, sep = " ") {
   );
 };
 
+exports.isValidDocumentKey = function (documentKey) {
+  if (!documentKey) return false;
+  // see VocBase/KeyGenerator.cpp keyCharLookupTable
+  return /^[-_!$%'()*+,.:;=@0-9a-z]+$/i.test(documentKey);
+};
+
 exports.errors = internal.errors;
 
 exports.time = internal.time;

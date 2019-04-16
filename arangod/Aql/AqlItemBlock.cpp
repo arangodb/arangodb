@@ -22,9 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlock.h"
+
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Iterator.h>
@@ -36,9 +39,8 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the block
-AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, size_t nrItems, RegisterId nrRegs)
-    : _nrItems(nrItems), _nrRegs(nrRegs), _resourceMonitor(resourceMonitor) {
-  TRI_ASSERT(resourceMonitor != nullptr);
+AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, RegisterId nrRegs)
+    : _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager), _refCount(0) {
   TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
 
   if (nrRegs > 0) {
@@ -57,11 +59,8 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, size_t nrItems, Reg
   }
 }
 
-/// @brief create the block from VelocyPack, note that this can throw
-AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const slice)
-    : _nrItems(0), _nrRegs(0), _resourceMonitor(resourceMonitor) {
-  TRI_ASSERT(resourceMonitor != nullptr);
-
+/// @brief init the block from VelocyPack, note that this can throw
+void AqlItemBlock::initFromSlice(VPackSlice const slice) {
   int64_t nrItems = VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
   if (nrItems <= 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
@@ -382,13 +381,13 @@ void AqlItemBlock::clearRegisters(std::unordered_set<RegisterId> const& toClear)
 }
 
 /// @brief slice/clone, this does a deep copy of all entries
-AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
+SharedAqlItemBlockPtr AqlItemBlock::slice(size_t from, size_t to) const {
   TRI_ASSERT(from < to && to <= _nrItems);
 
   std::unordered_set<AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
-  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
+  SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _nrRegs)};
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
@@ -418,17 +417,18 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
     }
   }
 
-  return res.release();
+  return res;
 }
 
 /// @brief slice/clone, this does a deep copy of all entries
-AqlItemBlock* AqlItemBlock::slice(size_t row, std::unordered_set<RegisterId> const& registers,
-                                  size_t newNrRegs) const {
+SharedAqlItemBlockPtr AqlItemBlock::slice(size_t row,
+                                          std::unordered_set<RegisterId> const& registers,
+                                          size_t newNrRegs) const {
   TRI_ASSERT(_nrRegs <= newNrRegs);
 
   std::unordered_set<AqlValue> cache;
 
-  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, 1, newNrRegs);
+  SharedAqlItemBlockPtr res{_manager.requestBlock(1, newNrRegs)};
 
   for (RegisterId col = 0; col < _nrRegs; col++) {
     if (registers.find(col) == registers.end()) {
@@ -459,19 +459,19 @@ AqlItemBlock* AqlItemBlock::slice(size_t row, std::unordered_set<RegisterId> con
     }
   }
 
-  return res.release();
+  return res;
 }
 
 /// @brief slice/clone chosen rows for a subset, this does a deep copy
 /// of all entries
-AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen,
-                                  size_t from, size_t to) const {
+SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
+                                          size_t from, size_t to) const {
   TRI_ASSERT(from < to && to <= chosen.size());
 
   std::unordered_set<AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
-  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
+  SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _nrRegs)};
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
@@ -499,7 +499,7 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen,
     }
   }
 
-  return res.release();
+  return res;
 }
 
 /// @brief steal for a subset, this does not copy the entries, rather,
@@ -509,10 +509,11 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen,
 /// operation, because it is unclear, when the values to which our
 /// AqlValues point will vanish! In particular, do not use setValue
 /// any more.
-AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from, size_t to) {
+SharedAqlItemBlockPtr AqlItemBlock::steal(std::vector<size_t> const& chosen,
+                                          size_t from, size_t to) {
   TRI_ASSERT(from < to && to <= chosen.size());
 
-  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
+  SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _nrRegs)};
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
@@ -530,55 +531,7 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from
     }
   }
 
-  return res.release();
-}
-
-/// @brief concatenate multiple blocks
-AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
-                                        BlockCollector* collector) {
-  return concatenate(resourceMonitor, collector->_blocks);
-}
-
-/// @brief concatenate multiple blocks, note that the new block now owns all
-/// AqlValue pointers in the old blocks, therefore, the latter are all
-/// set to nullptr, just to be sure.
-AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
-                                        std::vector<AqlItemBlock*> const& blocks) {
-  TRI_ASSERT(!blocks.empty());
-
-  size_t totalSize = 0;
-  RegisterId nrRegs = 0;
-  for (auto& it : blocks) {
-    totalSize += it->size();
-    if (nrRegs == 0) {
-      nrRegs = it->getNrRegs();
-    } else {
-      TRI_ASSERT(it->getNrRegs() == nrRegs);
-    }
-  }
-
-  TRI_ASSERT(totalSize > 0);
-  TRI_ASSERT(nrRegs > 0);
-
-  auto res = std::make_unique<AqlItemBlock>(resourceMonitor, totalSize, nrRegs);
-
-  size_t pos = 0;
-  for (auto& it : blocks) {
-    size_t const n = it->size();
-    for (size_t row = 0; row < n; ++row) {
-      for (RegisterId col = 0; col < nrRegs; ++col) {
-        // copy over value
-        AqlValue const& a = it->getValueReference(row, col);
-        if (!a.isEmpty()) {
-          res->setValue(pos + row, col, a);
-        }
-      }
-    }
-    it->eraseAll();
-    pos += n;
-  }
-
-  return res.release();
+  return res;
 }
 
 /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
@@ -740,4 +693,8 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result)
 
   raw.close();
   result.add("raw", raw.slice());
+}
+
+ResourceMonitor& AqlItemBlock::resourceMonitor() noexcept {
+  return *_manager.resourceMonitor();
 }
