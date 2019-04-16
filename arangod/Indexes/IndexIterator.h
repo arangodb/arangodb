@@ -228,6 +228,8 @@ struct IndexIteratorOptions {
   bool evaluateFCalls = true;
   /// @brief Whether to eagerly scan the full range of a condition
   bool fullRange = false;
+  /// @brief force covering index access in case this would otherwise be doubtful
+  bool forceProjection = false;
   /// @brief Limit used in a parent LIMIT node (if non-zero)
   size_t limit = 0;
 };
