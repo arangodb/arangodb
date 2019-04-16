@@ -604,7 +604,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     // tell graphstore to remove read locks
     _graphStore->storeResults(&_config, callback);
   } else {
-    LOG_TOPIC(WARN, Logger::PREGEL) << "Discarding results";
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Discarding results";
   }
 }
 

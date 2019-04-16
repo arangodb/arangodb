@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, JSON */
+/*global assertEqual, assertTrue JSON */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -52,6 +52,7 @@ function testAlgo(a, p) {
 
       db[vColl].all().toArray()
       .forEach(function(d) {
+                print(d);
                  if (d[a] && d[a] !== -1) {
                    var diff = Math.abs(d[a] - d.result);
                    if (diff > EPS) {
@@ -139,23 +140,23 @@ function basicTestSuite () {
     },
     
     testSSSPNormal: function () {
-      testAlgo("sssp", {async:false, source:vColl + "/K", resultField: "result"});
+      testAlgo("sssp", {async:false, source:vColl + "/K", resultField: "result", store: true});
     },
     
     testSSSPAsync: function () {
-      testAlgo("sssp", {async:true, source:vColl + "/K", resultField: "result"});
+      testAlgo("sssp", {async:true, source:vColl + "/K", resultField: "result", store: true});
     },
     
     testPageRank: function () {
       // should test correct convergence behaviour, might fail if EPS is too low
-      testAlgo("pagerank", {threshold:EPS / 10, resultField: "result"});
+      testAlgo("pagerank", {threshold:EPS / 10, resultField: "result", store: true});
     },
 
     testPageRankSeeded: function() {
       // test that pagerank picks the seed value
-      testAlgo("pagerank", {maxGSS:1,  sourceField: "pagerank", resultField: "result"});
+      testAlgo("pagerank", {maxGSS:1,  sourceField: "pagerank", resultField: "result", store: true});
       // since we already use converged values this should not change anything
-      testAlgo("pagerank", {maxGSS:5, sourceField: "pagerank", resultField: "result"});
+      testAlgo("pagerank", {maxGSS:5, sourceField: "pagerank", resultField: "result", store: true});
     },
 
     // test the PREGEL_RESULT AQL function
@@ -305,7 +306,7 @@ function randomTestSuite () {
     },
 
     testPageRankRandom: function () {
-      var pid = pregel.start("pagerank", graphName, {threshold:0.0000001});
+      var pid = pregel.start("pagerank", graphName, {threshold:0.0000001, resultField: "result", store: true});
       var i = 10000;
       do {
         internal.wait(0.2);
@@ -313,7 +314,6 @@ function randomTestSuite () {
         if (stats.state !== "running") {
           assertEqual(stats.vertexCount, n, stats);
           assertEqual(stats.edgeCount, m * 2, stats);
-          print(stats);
           break;
         }
       } while(i-- >= 0);
