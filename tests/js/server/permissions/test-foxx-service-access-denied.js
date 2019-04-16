@@ -1,14 +1,9 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango */
+/* global getOptions, assertTrue, assertFalse, assertEqual, assertMatch, fail */
 'use strict';
 
 if (getOptions === true) {
   let users = require("@arangodb/users");
-
-  //users.save("test_rw", "testi");
-  //users.grantDatabase("test_rw", "_system", "rw");
-  //users.save("test_ro", "testi");
-  //users.grantDatabase("test_ro", "_system", "ro");
 
   return {
     'server.harden': 'true',
@@ -26,42 +21,28 @@ if (getOptions === true) {
 }
 
 const jsunity = require('jsunity');
-
-const FoxxManager = require('@arangodb/foxx/manager');
 const fs = require('fs');
-
 const internal = require('internal');
 const db = internal.db;
 const download = internal.download;
-
 const arangodb = require('@arangodb');
-const arango = arangodb.arango;
-const aql = arangodb.aql;
-const ArangoCollection = arangodb.ArangoCollection;
+const FoxxManager = require('@arangodb/foxx/manager');
 
-const basePath = fs.makeAbsolute(fs.join(require('internal').pathForTesting('common'), 'test-data', 'apps'));
-
-const print = internal.print;
 
 function testSuite() {
+  const basePath = fs.makeAbsolute(fs.join(require('internal').pathForTesting('common'), 'test-data', 'apps'));
   const foxxApp = fs.join(basePath, 'server-security');
   const mount = '/testmount';
   const collName = 'server_security';
   const prefix = mount.substr(1).replace(/[-.:/]/, '_');
-  const endpoint = arango.getEndpoint().replace('tcp://', 'http://');
+  const endpoint = arangodb.arango.getEndpoint().replace('tcp://', 'http://');
 
   return {
     setUp: function() {
       try {
         FoxxManager.uninstall(mount, {force: true});
         FoxxManager.install(foxxApp, mount);
-      } catch (e) {
-      }
-
-      try {
-        db._drop(collName);
-      } catch (e) {
-      }
+      } catch (e) { }
     },
 
     tearDown: function() {
@@ -69,37 +50,10 @@ function testSuite() {
         FoxxManager.uninstall(mount, {force: false});
       } catch (e) {
       }
-
-      try {
-        db._drop(collName);
-      } catch (e) {
-      }
-
-      try {
-        // some tests create these:
-        db._drop(collName);
-      } catch (e) {
-      }
     },
 
     // routes are defined in:
     // js/common/test-data/apps/server-security/index.js
-
-    testServiceInstalled : function() {
-      const checksum = db._query(aql`
-        FOR service IN _apps
-        FILTER service.mount == ${mount}
-        RETURN service.checksum
-      `).next();
-      assertTrue(typeof checksum === 'string');
-      assertTrue(checksum !== '');
-    },
-
-    testTest : function() {
-      const url = endpoint + mount + "/test";
-      const res = download(url);
-      assertTrue(res.body === "true");
-    },
 
     testPid : function() {
       const url = endpoint + mount + "/pid";
@@ -191,7 +145,9 @@ function testSuite() {
       assertEqual("undefined", res.body);
     },
 
+
     //testTemplate : function() {
+    //  const print = internal.print;
     //  return
     //  const url = endpoint + mount + "/bla";
     //  const res = download(url);
