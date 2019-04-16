@@ -394,10 +394,14 @@ void RocksDBHotBackup::startGlobalShutdown() {
 ///        POST:  Initiate rocksdb checkpoint on local server
 ///        DELETE:  Remove an existing rocksdb checkpoint from local server
 ////////////////////////////////////////////////////////////////////////////////
-RocksDBHotBackupCreate::RocksDBHotBackupCreate(VPackSlice body, VPackBuilder& report, bool isCreate)
-  : RocksDBHotBackup(body, report), _isCreate(isCreate), _forceBackup(false), _agencyDump(VPackSlice::noneSlice()) {}
+RocksDBHotBackupCreate::RocksDBHotBackupCreate(
+  VPackSlice body, VPackBuilder& report, bool isCreate)
+  : RocksDBHotBackup(body, report), _isCreate(isCreate), _forceBackup(false),
+    _agencyDump(VPackSlice::noneSlice()) {}
 
 
+void RocksDBHotBackupCreate::parseParameters() {
+  
   // single server create, we generate the timestamp
   if (_isSingle && _isCreate) {
     _timestamp = timepointToString(std::chrono::system_clock::now());
