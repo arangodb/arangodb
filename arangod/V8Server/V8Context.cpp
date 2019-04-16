@@ -37,16 +37,6 @@ std::string const GlobalContextMethods::CodeReloadRouting =
 std::string const GlobalContextMethods::CodeReloadAql =
     "try { require(\"@arangodb/aql\").reload(); } catch (err) { }";
 
-std::string const GlobalContextMethods::CodeCollectGarbage =
-    "require(\"internal\").wait(0.01, true);";
-
-std::string const GlobalContextMethods::CodeBootstrapCoordinator =
-    "require('internal').loadStartup('server/bootstrap/autoload.js').startup();"
-    "require('internal').loadStartup('server/bootstrap/routing.js').startup();";
-
-std::string const GlobalContextMethods::CodeWarmupExports =
-    "require(\"@arangodb/actions\").warmupExports()";
-
 V8Context::V8Context(size_t id, v8::Isolate* isolate)
     : _id(id),
       _isolate(isolate),
