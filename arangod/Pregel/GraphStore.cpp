@@ -450,8 +450,12 @@ void GraphStore<V, E>::_loadVertices(transaction::Methods& trx, ShardID const& v
     LOG_TOPIC(WARN, Logger::PREGEL)
         << "Pregel worker: Failed to commit on a read transaction";
   }
-  std::lock_guard<std::mutex> guard(_keyHeapMutex);
-  _keyHeap.merge(std::move(strHeap));
+  {
+    std::lock_guard<std::mutex> guard(_keyHeapMutex);
+    _keyHeap.merge(std::move(strHeap));
+  }
+  LOG_TOPIC(DEBUG, Logger::PREGEL)
+  << "Pregel worker: done loading from vertex shard " << vertexShard;
 }
 
 template <typename V, typename E>
@@ -531,8 +535,11 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, ShardID const& edge
   // Add up all added elements
   vertexEntry._edgeCount += added;
   _localEdgeCount += added;
-  std::lock_guard<std::mutex> guard(_keyHeapMutex);
-  _keyHeap.merge(std::move(strHeap));
+  {
+    std::lock_guard<std::mutex> guard(_keyHeapMutex);
+    _keyHeap.merge(std::move(strHeap));
+  }
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Pregel worker: done loading from edge shard " << edgeShard;
 }
 
 /// Loops over the array starting a new transaction for different shards

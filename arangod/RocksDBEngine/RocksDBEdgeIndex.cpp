@@ -589,7 +589,9 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx, RocksDBMethod
                           : transaction::helpers::extractFromFromDocument(doc);
   TRI_ASSERT(toFrom.isString());
   RocksDBValue value = RocksDBValue::EdgeIndexValue(StringRef(toFrom));
-  // simon: no need to blacklist key, only visible in db after commit
+
+  // blacklist key in cache (required in any case)
+  blackListKey(fromToRef);
 
   // acquire rocksdb transaction
   Result r = mthd->PutUntracked(_cf, key.ref(), value.string(), rocksutils::index);

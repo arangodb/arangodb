@@ -305,7 +305,7 @@ function randomTestSuite () {
     },
 
     testPageRankRandom: function () {
-      var pid = pregel.start("pagerank", graphName, {threshold:0.000001});
+      var pid = pregel.start("pagerank", graphName, {threshold:0.0000001});
       var i = 10000;
       do {
         internal.wait(0.2);
