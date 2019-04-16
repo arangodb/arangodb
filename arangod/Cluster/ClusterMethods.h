@@ -61,7 +61,7 @@ bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& old
                       VPackSlice const& newValue, bool isPatch);
 
 /// @brief check if the value of the smartJoinAttribute has changed
-bool smartJoinAttributeChanged(LogicalCollection const& collection, 
+bool smartJoinAttributeChanged(LogicalCollection const& collection,
                                VPackSlice const& oldValue,
                                VPackSlice const& newValue, bool isPatch);
 
@@ -262,32 +262,33 @@ arangodb::Result hotBackupCoordinator(
  * @param timeout Wait for this attempt and bail out if not met
  */
 arangodb::Result hotRestoreCoordinator(VPackSlice const payload);
-  
+
 /**
- * @brief List all 
+ * @brief List all
  * @param mode    Backup mode: consistent, dirty
  * @param timeout Wait for this attempt and bail out if not met
  */
 arangodb::Result listHotBakupsOnCoordinator(VPackSlice const payload);
-  
+
 /**
  * @brief Delete specific hot backup
  * @param backupId  BackupId to delete
  */
 arangodb::Result deleteHotBakupsOnCoordinator(VPackSlice const payload);
-  
-/**
- * @brief Delete specific hot backup
- * @param backupId  BackupId to delete
- */
-arangodb::Result uploadHotBakupsOnCoordinator(VPackSlice const payload);
-  
-/**
- * @brief Delete specific hot backup
- * @param backupId  BackupId to delete
- */
-arangodb::Result downloadHotBakupsOnCoordinator(VPackSlice const payload);
 
+#ifdef USE_ENTERPRISE
+/**
+ * @brief Trigger upload of specific hot backup
+ * @param backupId  BackupId to delete
+ */
+arangodb::Result uploadBackupsOnCoordinator(VPackSlice const payload, VPackBuilder& report);
+
+/**
+ * @brief Trigger download of specific hot backup
+ * @param backupId  BackupId to delete
+ */
+arangodb::Result downloadBackupsOnCoordinator(VPackSlice const payload);
+#endif
 
 /**
  * @brief match backup servers

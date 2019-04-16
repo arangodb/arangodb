@@ -43,8 +43,9 @@
 #include "Enterprise/RocksDBEngine/RocksDBHotBackupEE.h"
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #include "Basics/OpenFilesTracker.h"
-#include <velocypack/Parser.h>
 #endif
+
+#include <velocypack/Parser.h>
 
 #include <rocksdb/utilities/checkpoint.h>
 
@@ -1027,7 +1028,7 @@ void RocksDBHotBackupLock::execute() {
   MUTEX_LOCKER (mLock, serialNumberMutex);
 
   {
-    VPackObjectBuilder o(&_result); 
+    VPackObjectBuilder o(&_result);
 
     if (!_isSingle) {
       if (_isLock) {

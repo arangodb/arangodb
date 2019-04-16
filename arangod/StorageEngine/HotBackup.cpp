@@ -51,9 +51,9 @@ arangodb::Result HotBackup::execute (
   case BACKUP_ENGINE::CLUSTER:
     return executeCoordinator(command, payload, report);
   }
-  
+
   return arangodb::Result();
-  
+
 }
 
 
@@ -62,18 +62,18 @@ arangodb::Result HotBackup::executeRocksDB(
 
   std::shared_ptr<RocksDBHotBackup> operation;
   operation = RocksDBHotBackup::operationFactory(command, payload, report);
-  
+
   if (operation->valid()) {
     operation->execute();
   } // if
-  
+
   // if !valid() then !success() already set
   if (!operation->success()) {
     return arangodb::Result(operation->restResponseError());
   } // if
 
   return arangodb::Result();
-  
+
 }
 
 
@@ -89,18 +89,20 @@ arangodb::Result HotBackup::executeCoordinator(
     return hotRestoreCoordinator(payload);
   } else if (command == "list") {
     return listHotBakupsOnCoordinator(payload);
+#ifdef USE_ENTERPRISE
   } else if (command == "upload") {
-    return uploadHotBakupsOnCoordinator(payload);
+    return uploadBackupsOnCoordinator(payload, report);
   } else if (command == "download") {
-    return uploadHotBakupsOnCoordinator(payload);
+    return downloadBackupsOnCoordinator(payload);
+#endif
   } else {
     return arangodb::Result(
-      TRI_ERROR_NOT_IMPLEMENTED, command + " is not implemented on coordinators"); 
+      TRI_ERROR_NOT_IMPLEMENTED, command + " is not implemented on coordinators");
   }
 
   // We'll never get here
   return arangodb::Result();
-  
+
 }
 
 arangodb::Result HotBackup::executeMMFiles(

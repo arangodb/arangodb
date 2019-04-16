@@ -313,7 +313,7 @@ class AgencyOperation {
   template<typename T>
   AgencyOperation(std::string const& key, AgencyValueOperationType opType, T const& value)
     : _key(AgencyCommManager::path(key)), _opType(), _holder(std::make_shared<VPackBuilder>()) {
-    _holder->add(VpackValue(value));
+    _holder->add(VPackValue(value));
     _value = _holder->slice();
     _opType.type = AgencyOperationType::Type::VALUE;
     _opType.value = opType;
@@ -378,6 +378,13 @@ class AgencyCommResult {
   VPackSlice slice() const;
   void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) {
     _vpack = vpack;
+  }
+
+  Result asResult() {
+    if (successful()) {
+      return Result{};
+    }
+    return Result{errorCode(), errorMessage()};
   }
 
  public:
