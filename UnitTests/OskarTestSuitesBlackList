@@ -5,5 +5,6 @@ version
 upgrade_data_3.4.*
 dump_multiple
 permissions
+permissions_server
 audit_client
 audit_server
