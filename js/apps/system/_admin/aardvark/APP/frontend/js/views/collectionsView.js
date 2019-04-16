@@ -354,8 +354,9 @@
           var collType = $('#new-collection-type').val();
           var collSync = $('#new-collection-sync').val();
           var shards = 1;
-          var shardBy = [];
+          var shardKeys = [];
           var smartJoinAttribute = '';
+          var distributeShardsLike = '';
 
           if (replicationFactor === '') {
             replicationFactor = 1;
@@ -367,6 +368,9 @@
           if (isCoordinator) {
             if (frontendConfig.isEnterprise && $('#smart-join-attribute').val() !== '') {
               smartJoinAttribute = $('#smart-join-attribute').val().trim();
+            }
+            if (frontendConfig.isEnterprise && $('#distribute-shards-like').val() !== '') {
+              distributeShardsLike = $('#distribute-shards-like').val().trim();
             }
 
             shards = $('#new-collection-shards').val();
@@ -381,11 +385,11 @@
               );
               return 0;
             }
-            shardBy = _.pluck($('#new-collection-shardBy').select2('data'), 'text');
-            if (shardBy.length === 0) {
-              shardBy.push('_key');
+            shardKeys = _.pluck($('#new-collection-shardKeys').select2('data'), 'text');
+            if (shardKeys.length === 0) {
+              shardKeys.push('_key');
             } else {
-              _.each(shardBy, function (element, index) { shardBy[index] = arangoHelper.escapeHtml(element); });
+              _.each(shardKeys, function (element, index) { shardKeys[index] = arangoHelper.escapeHtml(element); });
             }
           }
           if (collName.substr(0, 1) === '_') {
@@ -429,13 +433,16 @@
             replicationFactor: replicationFactor,
             collType: collType,
             shards: shards,
-            shardBy: shardBy
+            shardKeys: shardKeys
           };
           if (self.engine.name !== 'rocksdb') {
             tmpObj.journalSize = collSize;
           }
           if (smartJoinAttribute !== '') {
             tmpObj.smartJoinAttribute = smartJoinAttribute;
+          }
+          if (distributeShardsLike !== '') {
+            tmpObj.distributeShardsLike = distributeShardsLike;
           }
           this.collection.newCollection(tmpObj, callback);
           window.modalView.hide();
@@ -497,16 +504,15 @@
                 'new-collection-shards',
                 'Shards',
                 '',
-                'The number of shards to create. You cannot change this afterwards. ' +
-                'Recommended: DBServers squared',
+                'The number of shards to create. You cannot change this afterwards. ',
                 '',
                 true
               )
             );
             tableContent.push(
               window.modalView.createSelect2Entry(
-                'new-collection-shardBy',
-                'shardBy',
+                'new-collection-shardKeys',
+                'Shard keys',
                 '',
                 'The keys used to distribute documents on shards. ' +
                 'Type the key and press return to add it.',
@@ -524,6 +530,18 @@
           );
           if (window.App.isCluster) {
             if (frontendConfig.isEnterprise) {
+              advancedTableContent.push(
+                window.modalView.createTextEntry(
+                  'distribute-shards-like',
+                  'Distribute shards like',
+                  '',
+                  'Name of another collection that should be used as a prototype for sharding this collection.',
+                  '',
+                  false,
+                  [
+                  ]
+                )
+              );
               advancedTableContent.push(
                 window.modalView.createSelectEntry(
                   'is-satellite-collection',
@@ -601,7 +619,7 @@
           );
 
           // select2 workaround
-          $('#s2id_new-collection-shardBy .select2-search-field input').on('focusout', function (e) {
+          $('#s2id_new-collection-shardKeys .select2-search-field input').on('focusout', function (e) {
             if ($('.select2-drop').is(':visible')) {
               if (!$('#select2-search-field input').is(':focus')) {
                 window.setTimeout(function () {
