@@ -871,7 +871,8 @@ void RocksDBHotBackupList::statId() {
 
   std::shared_ptr<VPackBuilder> agency;
   try {
-    std::string agencyjson = RocksDBHotBackupList::loadAgencyJson(directory + TRI_DIR_SEPARATOR_CHAR + "agency.json");
+    std::string agencyjson =
+      RocksDBHotBackupList::loadAgencyJson(directory + TRI_DIR_SEPARATOR_CHAR + "agency.json");
 
     if (agencyjson.empty()) {
       _respCode = rest::ResponseCode::BAD;
@@ -881,7 +882,9 @@ void RocksDBHotBackupList::statId() {
       return ;
     }
 
-    agency = arangodb::velocypack::Parser::fromJson(agencyjson);
+    if (ServerState::instance()->isDBServer()) {
+      agency = arangodb::velocypack::Parser::fromJson(agencyjson);
+    }
 
 
   } catch (...) {
@@ -892,9 +895,11 @@ void RocksDBHotBackupList::statId() {
     return ;
   }
 
-  _result.add(VPackValue(VPackValueType::Object));
-  _result.add("agency-dump", agency->slice());
-  _result.close();
+  if (ServerState::instance()->isDBServer()) {
+    _result.add(VPackValue(VPackValueType::Object));
+    _result.add("agency-dump", agency->slice());
+    _result.close();
+  }
   _success = true;
 }
 

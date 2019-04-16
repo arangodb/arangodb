@@ -285,11 +285,12 @@ class AgencyPrecondition {
   AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
   AgencyPrecondition(std::string const& key, Type, VPackSlice const&);
+  template<typename T> 
   AgencyPrecondition(std::string const& key, Type t, T const& v)
     : key(AgencyCommManager::path(key)), type(t), empty(false),
       builder(std::make_shared<VPackBuilder>()) {
     builder.add(VPackValue(v));
-    v = builder.slice();
+    value = builder->slice();
   }; 
 
  public:
@@ -301,7 +302,7 @@ class AgencyPrecondition {
   Type type;
   bool empty;
   VPackSlice const value;
-  std::shared_ptr<VPackBuilder> builder
+  std::shared_ptr<VPackBuilder> builder;
 };
 
 // -----------------------------------------------------------------------------
