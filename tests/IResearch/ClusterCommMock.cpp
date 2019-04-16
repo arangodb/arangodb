@@ -100,6 +100,7 @@ void ClusterCommMock::drop(
   _theInstance = std::shared_ptr<arangodb::ClusterComm>(
     &instance, [](arangodb::ClusterComm*)->void {}
   );
+  arangodb::ClusterComm::_theInstanceInit.store(2);
 
   return std::shared_ptr<ClusterCommMock>(
     &instance,
