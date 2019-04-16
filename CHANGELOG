@@ -445,6 +445,8 @@ devel
 
 * do not wait for replication after each job execution in Supervision
 
+* add support for configuring custom Analyzers via JavaScript and REST
+
 v3.4.1 (XXXX-XX-XX)
 -------------------
 
