@@ -1,6 +1,13 @@
 'use strict';
 const router = require('@arangodb/foxx/router')();
+const utils = require('@arangodb/foxx/manager-utils');
 const internal = require('internal');
+const path = require('path');
+
+// variables
+const appPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'server-security');
+const isWindows = (require("internal").platform.substr(0, 3) === 'win');
+
 module.context.use(router);
 
 router.get('/pid', function (req, res) {
@@ -57,3 +64,22 @@ router.get('/startup-options-log-file', function (req, res) {
   res.json(internal.options()['log.file']);
 });
 
+router.get('/read-service-file', function (req, res) {
+  const fs = require('fs');
+  let indexFile = path.resolve(appPath, "index.js");
+  res.json(fs.read(indexFile));
+});
+
+router.get('/write-service-file', function (req, res) {
+  const fs = require('fs');
+  let jsonFile = path.resolve(appPath, "ulf.json");
+  fs.write(jsonFile, "{ \"der\" : \"hund\" }");
+  res.json(true);
+});
+
+router.get('/remove-service-file', function (req, res) {
+  const fs = require('fs');
+  let jsonFile = path.resolve(appPath, "ulf.json");
+  fs.remove(jsonFile);
+  res.json(true);
+});

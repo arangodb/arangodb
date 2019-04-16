@@ -145,6 +145,27 @@ function testSuite() {
       assertEqual("undefined", res.body);
     },
 
+    testReadServiceFile : function() {
+      const url = endpoint + mount + "/read-service-file";
+      const res = download(url);
+      assertEqual(200, res.code);
+      let body = JSON.parse(res.body)
+      assertTrue(body.startsWith("'use strict'"))
+    },
+
+    testWriteRemoveServiceFile : function() {
+      {
+        const url = endpoint + mount + "/write-service-file";
+        const res = download(url);
+        assertEqual(200, res.code);
+      }
+      {
+        const url = endpoint + mount + "/remove-service-file";
+        const res = download(url);
+        assertEqual(200, res.code);
+      }
+    },
+
 
     //testTemplate : function() {
     //  const print = internal.print;
