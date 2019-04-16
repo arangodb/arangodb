@@ -998,7 +998,7 @@ void HeartbeatThread::runCoordinator() {
 
             // Do loadCurrent asynchronously, such that the heartbeat thread
             // and all other requests can continue uninterrupted:
-            SchedulerFeature::SCHEDULER->queueDelay(RequestLane::CLUSTER_INTERNAL,
+            SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL,
                 []() -> void {
                   ClusterInfo::instance()->loadCurrent();
                 });
