@@ -2650,7 +2650,9 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
     THROW_ARANGO_EXCEPTION_MESSAGE(myerrno, errorMsg);
   }
 
-  ci->loadPlan();
+  // This is no longer necessary, since we load the Plan in
+  // ClusterInfo::createCollectionCoordinator.
+  // ci->loadPlan();
 
   auto c = ci->getCollection(dbName, std::to_string(col->id()));
   // We never get a nullptr here because an exception is thrown if the

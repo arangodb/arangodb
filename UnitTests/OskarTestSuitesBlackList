@@ -1,3 +1,6 @@
 upgrade_data_3.2.*
 dump_multiple
 permissions
+permissions_server
+audit_client
+audit_server

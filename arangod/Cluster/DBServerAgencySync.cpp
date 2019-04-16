@@ -289,8 +289,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
               << ". This can be ignored, since it will be retried automatically.";
           } else {
             LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-                << "Invalidating current in ClusterInfo";
-            clusterInfo->invalidateCurrent();
+                << "Reloading Current in ClusterInfo";
+            _heartbeat->pleaseLoadCurrent();
           }
         }
       }
