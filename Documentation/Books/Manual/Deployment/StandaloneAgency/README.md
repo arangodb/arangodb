@@ -22,7 +22,7 @@ Clearly all cases, which would form disjunct subsets of agents would break or in
 
 Typically, one achieves fairly high fault-tolerance with low, odd number of agents while keeping the necessary network traffic at a minimum. It seems that the typical agency size will be 3, 5 or 7 agents.
 
-The below commands start up a 3-host agency on one physical/logical box with ports 8531, 8541 and 8551 for demonstration purposes. The address of the first instance, port 8531, is known to the other two. After at most 2 rounds of gossipping, the last 2 agents will have a complete picture of their surrounding and persist it for the next restart.
+The below commands start up a 3-host agency on one physical/logical box with ports 8531, 8541 and 8551 for demonstration purposes. The address of the first instance, port 8531, is known to the other two. After at most 2 rounds of gossipping, the last 2 agents will have a complete picture of their surroundings and persist it for the next restart.
 
 ```
 ./arangod --agency.activate true --agency.size 3 --agency.my-address tcp://localhost:8531 --server.authentication false --server.endpoint tcp://0.0.0.0:8531 agency-8531
