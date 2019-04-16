@@ -54,11 +54,11 @@ RestStatus RestAdminExecuteHandler::execute() {
   }
 
   TRI_ASSERT(V8DealerFeature::DEALER->allowAdminExecute());
-      
+
   arangodb::velocypack::StringRef bodyStr = _request->rawPayload();
   char const* body = bodyStr.data();
   size_t bodySize = bodyStr.size();
-  
+
   if (bodySize == 0) {
     // nothing to execute. return an empty response
     VPackBuilder result;
@@ -73,13 +73,13 @@ RestStatus RestAdminExecuteHandler::execute() {
 
   try {
     LOG_TOPIC("c838e", WARN, Logger::FIXME) << "about to execute: '" << Logger::CHARS(body, bodySize) << "'";
-    
+
     // get a V8 context
     bool const allowUseDatabase = ActionFeature::ACTION->allowUseDatabase();
     JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
     V8ContextGuard guard(&_vocbase, securityContext);
-    
-    { 
+
+    {
       v8::Isolate* isolate = guard.isolate();
       v8::HandleScope scope(isolate);
 
@@ -92,9 +92,9 @@ RestStatus RestAdminExecuteHandler::execute() {
       v8::Handle<v8::Value> args[1] = {TRI_V8_PAIR_STRING(isolate, body, bodySize)};
       v8::Local<v8::Object> function = ctor->NewInstance(TRI_IGETC, 1, args).FromMaybe(v8::Local<v8::Object>());
       v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
-        
+
       v8::Handle<v8::Value> rv;
-      
+
       if (!action.IsEmpty()) {
         action->SetName(TRI_V8_ASCII_STRING(isolate, "source"));
 
@@ -102,18 +102,18 @@ RestStatus RestAdminExecuteHandler::execute() {
 
         TRI_fake_action_t adminExecuteAction("_admin/execute", 2);
 
-        v8g->_currentRequest = TRI_RequestCppToV8(isolate, v8g, _request.get(), &adminExecuteAction); 
+        v8g->_currentRequest = TRI_RequestCppToV8(isolate, v8g, _request.get(), &adminExecuteAction);
         v8g->_currentResponse = v8::Object::New(isolate);
-       
+
         auto guard = scopeGuard([&v8g, &isolate]() {
           v8g->_currentRequest = v8::Undefined(isolate);
           v8g->_currentResponse = v8::Undefined(isolate);
         });
-           
+
         v8::Handle<v8::Value> args[] = {v8::Null(isolate)};
         rv = action->Call(current, 0, args);
       }
-    
+
       if (tryCatch.HasCaught()) {
         // got an error
         std::string errorMessage;
@@ -128,7 +128,7 @@ RestStatus RestAdminExecuteHandler::execute() {
             errorMessage = *tryCatchMessage;
           }
         }
-    
+
         _response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
         switch (_response->transportType()) {
           case Endpoint::TransportType::HTTP: {
@@ -139,7 +139,7 @@ RestStatus RestAdminExecuteHandler::execute() {
             _response->setContentType(rest::ContentType::TEXT);
             httpResponse->body().appendText(errorMessage.data(), errorMessage.size());
             break;
-          } 
+          }
           case Endpoint::TransportType::VST: {
             VPackBuffer<uint8_t> buffer;
             VPackBuilder builder(buffer);
@@ -154,11 +154,11 @@ RestStatus RestAdminExecuteHandler::execute() {
         bool returnAsJSON = _request->parsedValue("returnAsJSON", false);
         if (returnAsJSON) {
           // if the result is one of the following type, we return it as is
-          returnAsJSON &= (rv->IsString() || rv->IsStringObject() || 
-                           rv->IsNumber() || rv->IsNumberObject() || 
+          returnAsJSON &= (rv->IsString() || rv->IsStringObject() ||
+                           rv->IsNumber() || rv->IsNumberObject() ||
                            rv->IsBoolean());
         }
-          
+
         VPackBuilder result;
         bool handled = false;
         int res = TRI_ERROR_FAILED;
@@ -168,7 +168,7 @@ RestStatus RestAdminExecuteHandler::execute() {
           result.add(StaticStrings::Error, VPackValue(false));
           result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
           if (rv->IsObject()) {
-            res = TRI_V8ToVPack(isolate, result, rv, false); 
+            res = TRI_V8ToVPack(isolate, result, rv, false);
             handled = true;
           }
           result.close();
@@ -176,16 +176,16 @@ RestStatus RestAdminExecuteHandler::execute() {
 
         if (!handled) {
           result.clear();
-          
+
           VPackBuilder temp;
-          res = TRI_V8ToVPack(isolate, temp, rv, false); 
+          res = TRI_V8ToVPack(isolate, temp, rv, false);
           result.add(temp.slice());
-        } 
-          
+        }
+
         if (res != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION(res);
         }
-    
+
         generateResult(rest::ResponseCode::OK, result.slice());
       }
     }

@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "Databases.h"
+#include "Basics/Common.h"
 
 #include "Agency/AgencyComm.h"
 #include "Basics/StringUtils.h"
@@ -357,6 +357,8 @@ int dropDBCoordinator(std::string const& dbName) {
   }
   return TRI_ERROR_NO_ERROR;
 }
+
+const std::string dropError = "Error when dropping Datbase";
 }  // namespace
 
 arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const& dbName) {
@@ -372,32 +374,44 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
   int res;
   V8DealerFeature* dealer = V8DealerFeature::DEALER;
   if (dealer != nullptr && dealer->isEnabled()) {
+    try {
+      JavaScriptSecurityContext securityContext =
+          JavaScriptSecurityContext::createInternalContext();
 
-    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createInternalContext();
-    V8ContextGuard guard(systemVocbase, dbname, securityContext);
-    v8::Isolate* isolate = guard.isolate();
+      V8ContextGuard guard(systemVocbase, securityContext);
+      v8::Isolate* isolate = guard.isolate();
 
-    v8::HandleScope scope(isolate);
+      v8::HandleScope scope(isolate);
 
-    // clear collections in cache object
-    TRI_ClearObjectCacheV8(isolate);
+      // clear collections in cache object
+      TRI_ClearObjectCacheV8(isolate);
 
-    if (ServerState::instance()->isCoordinator()) {
-      // If we are a coordinator in a cluster, we have to behave differently:
-      res = ::dropDBCoordinator(dbName);
-    } else {
-      res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
+      if (ServerState::instance()->isCoordinator()) {
+        // If we are a coordinator in a cluster, we have to behave differently:
+        res = ::dropDBCoordinator(dbName);
+      } else {
+        res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        events::DropDatabase(dbName, res);
-        return Result(res);
+        if (res != TRI_ERROR_NO_ERROR) {
+          events::DropDatabase(dbName, res);
+          return Result(res);
+        }
+
+        TRI_RemoveDatabaseTasksV8Dispatcher(dbName);
+        // run the garbage collection in case the database held some objects
+        // which can now be freed
+        TRI_RunGarbageCollectionV8(isolate, 0.25);
+        V8DealerFeature::DEALER->addGlobalContextMethod("reloadRouting");
       }
-
-      TRI_RemoveDatabaseTasksV8Dispatcher(dbName);
-      // run the garbage collection in case the database held some objects which
-      // can now be freed
-      TRI_RunGarbageCollectionV8(isolate, 0.25);
-      V8DealerFeature::DEALER->addGlobalContextMethod("reloadRouting");
+    } catch (arangodb::basics::Exception const& ex) {
+      events::DropDatabase(dbName, TRI_ERROR_INTERNAL);
+      return Result(ex.code(), dropError + ex.message());
+    } catch (std::exception const& ex) {
+      events::DropDatabase(dbName, TRI_ERROR_INTERNAL);
+      return Result(TRI_ERROR_INTERNAL, dropError + ex.what());
+    } catch (...) {
+      events::DropDatabase(dbName, TRI_ERROR_INTERNAL);
+      return Result(TRI_ERROR_INTERNAL, dropError);
     }
   } else {
     if (ServerState::instance()->isCoordinator()) {
@@ -405,7 +419,6 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
       res = ::dropDBCoordinator(dbName);
     } else {
       res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
-      ;
     }
   }
 

@@ -162,7 +162,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 /// throws an exception when no context can be provided
 class V8ContextGuard {
  public:
-  explicit V8ContextGuard(TRI_vocbase_t*, std::string const& dbName, JavaScriptSecurityContext const&);
+  explicit V8ContextGuard(TRI_vocbase_t*, JavaScriptSecurityContext const&);
   V8ContextGuard(V8ContextGuard const&) = delete;
   V8ContextGuard& operator=(V8ContextGuard const&) = delete;
   ~V8ContextGuard();
