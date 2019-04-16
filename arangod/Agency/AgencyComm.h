@@ -289,7 +289,7 @@ class AgencyPrecondition {
   AgencyPrecondition(std::string const& key, Type t, T const& v)
     : key(AgencyCommManager::path(key)), type(t), empty(false),
       builder(std::make_shared<VPackBuilder>()) {
-    builder.add(VPackValue(v));
+    builder->add(VPackValue(v));
     value = builder->slice();
   }; 
 
