@@ -48,11 +48,6 @@ class TraversalNode;
 struct Variable;
 }  // namespace aql
 
-namespace graph {
-class EdgeUniquenessChecker;
-class TraverserCache;
-}  // namespace graph
-
 namespace traverser {
 
 class ClusterTraverser;
