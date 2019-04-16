@@ -76,7 +76,7 @@ RestStatus RestAdminExecuteHandler::execute() {
 
     // get a V8 context
     bool const allowUseDatabase = ActionFeature::ACTION->allowUseDatabase();
-    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
+    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestAdminScriptActionContext(allowUseDatabase);
     V8ContextGuard guard(&_vocbase, securityContext);
 
     {

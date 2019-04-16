@@ -42,7 +42,7 @@ bool JavaScriptSecurityContext::canWriteFs() const {
 }
 
 bool JavaScriptSecurityContext::canControlProcesses() const {
-  return _type == Type::Internal || _type == Type::AdminScript;
+  return _type == Type::Internal || _type == Type::AdminScript || _type == Type::RestAdminScriptAction;
 }
 
 /*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createRestrictedContext() {
@@ -77,6 +77,12 @@ bool JavaScriptSecurityContext::canControlProcesses() const {
 
 /*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createRestActionContext(bool allowUseDatabase) {
   JavaScriptSecurityContext context(Type::RestAction);
+  context._canUseDatabase = allowUseDatabase;
+  return context;
+}
+
+/*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createRestAdminScriptActionContext(bool allowUseDatabase) {
+  JavaScriptSecurityContext context(Type::RestAdminScriptAction);
   context._canUseDatabase = allowUseDatabase;
   return context;
 }
