@@ -869,12 +869,47 @@ void RocksDBHotBackupList::execute() {
 void RocksDBHotBackupList::statId() {
   std::string directory = rebuildPath(_listId);
 
-  std::shared_ptr<VPackBuilder> agency;
-  try {
-    std::string agencyjson =
-      RocksDBHotBackupList::loadAgencyJson(directory + TRI_DIR_SEPARATOR_CHAR + "agency.json");
+  if (!basics::FileUtils::isDirectory(directory)) {
+    _success = false;
+    _respError = TRI_ERROR_HTTP_NOT_FOUND;
+    _errorMessage = "No such backup";
+    return;
+  }
 
-    if (agencyjson.empty()) {
+  if (_isSingle) {
+    _success = true;
+    _respError = TRI_ERROR_NO_ERROR;
+    { 
+      VPackObjectBuilder o(&_result);
+      _result.add(VPackValue("ids"));
+      {
+        VPackArrayBuilder a(&_result);
+        _result.add(VPackValue(_listId));
+      }
+    }
+    return; 
+  }
+  
+  if (ServerState::instance()->isDBServer()) {
+    std::shared_ptr<VPackBuilder> agency;
+    try {
+      std::string agencyjson =
+        RocksDBHotBackupList::loadAgencyJson(directory + TRI_DIR_SEPARATOR_CHAR + "agency.json");
+    
+      if (ServerState::instance()->isDBServer()) {
+        if (agencyjson.empty()) {
+          _respCode = rest::ResponseCode::BAD;
+          _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+          _success = false;
+          _errorMessage = "Could not open agency.json";
+          return ;
+        }
+      
+        agency = arangodb::velocypack::Parser::fromJson(agencyjson);
+      }
+
+
+    } catch (...) {
       _respCode = rest::ResponseCode::BAD;
       _respError = TRI_ERROR_HTTP_SERVER_ERROR;
       _success = false;
@@ -882,25 +917,20 @@ void RocksDBHotBackupList::statId() {
       return ;
     }
 
-    if (ServerState::instance()->isDBServer()) {
-      agency = arangodb::velocypack::Parser::fromJson(agencyjson);
+    {
+      VPackObjectBuilder o(&_result);
+      if (ServerState::instance()->isDBServer()) {
+        _result.add("agency-dump", agency->slice());
+      }
     }
-
-
-  } catch (...) {
-    _respCode = rest::ResponseCode::BAD;
-    _respError = TRI_ERROR_HTTP_SERVER_ERROR;
-    _success = false;
-    _errorMessage = "Could not open agency.json";
-    return ;
+    _success = true;
+    return;
   }
 
-  if (ServerState::instance()->isDBServer()) {
-    _result.add(VPackValue(VPackValueType::Object));
-    _result.add("agency-dump", agency->slice());
-    _result.close();
-  }
-  _success = true;
+  _success = false;
+  _respError = TRI_ERROR_HOT_BACKUP_INTERNAL;
+  return;
+  
 }
 
 // @brief load the agency using the current encryption key
