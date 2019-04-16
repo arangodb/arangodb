@@ -25,7 +25,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
-if (internal.isFoxxApiDisabled()) {
+if (!internal.isFoxxApiDisabled()) {
 
 const fs = require('fs');
 const joi = require('joi');
