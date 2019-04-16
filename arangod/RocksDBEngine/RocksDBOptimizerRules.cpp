@@ -222,6 +222,10 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           auto condition = std::make_unique<Condition>(plan->getAst());
           condition->normalize(plan.get());
           IndexIteratorOptions opts;
+          // we have already proven that we can use the covering index optimization,
+          // so force it - if we wouldn't force it here it would mean that for a
+          // FILTER-less query we would be a lot less efficient for some indexes
+          opts.forceProjection = true;
           auto inode = new IndexNode(
               plan.get(), plan->nextId(),
               en->collection(), en->outVariable(),
