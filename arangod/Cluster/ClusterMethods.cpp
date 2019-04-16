@@ -3557,9 +3557,9 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
         "backup payload must be an object defining an optional string attribute 'label'");
     }
 
-    std::string backupId = payload.hasKey("label") ?
+    std::string const backupId = payload.hasKey("label") ?
       payload.get("label").copyString() : to_string(boost::uuids::random_generator()());
-    std::string const timeStamp = timepointToString(std::chrono::system_clock::now());
+    std::string timeStamp = timepointToString(std::chrono::system_clock::now());
 
     double timeout = payload.hasKey("timeout") ?
       payload.get("timeout").getNumber<double>() : 120.;
@@ -3658,7 +3658,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     unlockDBServerTransactions(backupId, dbServers);
     ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
 
-    std::replace(backupId.begin(), backupId.end(), ':', '.');
+    std::replace(timeStamp.begin(), timeStamp.end(), ':', '.');
     {
       VPackObjectBuilder o(&report);
       report.add("id", VPackValue(timeStamp + "_" + backupId));
