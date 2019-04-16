@@ -1,6 +1,12 @@
 devel
 -----
 
+* added req.auth property to Foxx
+
+* added collection.documentId method to derive document id from key
+
+* fixed internal issue #536: ArangoSearch may crash server during term lookup
+
 * fixed internal issue #2946: Create graph autocomplete was not working under
   certain circumstances.
 
@@ -43,6 +49,9 @@ devel
 * show startup warning in case kernel setting `vm.overcommit_memory` is set  
   to a value of 2 and the jemalloc memory allocator is in use. This combination
   does not play well together.
+
+* added AQL function DECODE_REV for decomposing `_rev` values into their
+  individual parts
 
 * added AQL functions CRC32 and FNV64 for hashing data
 

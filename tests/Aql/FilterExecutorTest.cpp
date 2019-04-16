@@ -27,7 +27,6 @@
 #include "catch.hpp"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/InputAqlItemRow.h"
@@ -49,11 +48,9 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
 
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager(&monitor);
-  auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 1)};
   auto outputRegisters = make_shared_unordered_set();
   auto& registersToKeep = outputRegisters;
-  auto blockShell =
-      std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
 
   FilterExecutorInfos infos(0, 1, 1, {}, {});
 
@@ -66,8 +63,8 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterStats stats{};
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(std::move(blockShell), outputRegisters, registersToKeep,
-            infos.registersToClear());
+        OutputAqlItemRow result(std::move(block), outputRegisters,
+                                registersToKeep, infos.registersToClear());
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -80,7 +77,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterStats stats{};
 
       THEN("the executor should first return WAIT with nullptr") {
-        OutputAqlItemRow result(std::move(blockShell), outputRegisters,
+        OutputAqlItemRow result(std::move(block), outputRegisters,
                                 registersToKeep, infos.registersToClear());
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
@@ -107,8 +104,8 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterStats stats{};
 
       THEN("the executor should return the rows") {
-        OutputAqlItemRow row(std::move(blockShell), outputRegisters,
-                             registersToKeep, infos.registersToClear());
+        OutputAqlItemRow row(std::move(block), outputRegisters, registersToKeep,
+                             infos.registersToClear());
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
@@ -146,8 +143,8 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterStats stats{};
 
       THEN("the executor should return the rows") {
-        OutputAqlItemRow row(std::move(blockShell), outputRegisters,
-                             registersToKeep, infos.registersToClear());
+        OutputAqlItemRow row(std::move(block), outputRegisters, registersToKeep,
+                             infos.registersToClear());
 
         /*
         1  produce => WAIT                 RES1
@@ -232,8 +229,8 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterStats stats{};
 
       THEN("the executor should return the rows") {
-        OutputAqlItemRow row(std::move(blockShell), outputRegisters,
-                             registersToKeep, infos.registersToClear());
+        OutputAqlItemRow row(std::move(block), outputRegisters, registersToKeep,
+                             infos.registersToClear());
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
@@ -276,7 +273,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterStats stats{};
 
       THEN("the executor should return the rows") {
-        OutputAqlItemRow result(std::move(blockShell), outputRegisters,
+        OutputAqlItemRow result(std::move(block), outputRegisters,
                                 registersToKeep, infos.registersToClear());
 
         /*

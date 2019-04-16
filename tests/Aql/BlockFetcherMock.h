@@ -25,6 +25,7 @@
 
 #include "Aql/BlockFetcher.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 
 #include <stdint.h>
@@ -43,23 +44,23 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher<passBlocksThrough>
  public:
   // mock methods
   // NOLINTNEXTLINE google-default-arguments
-  std::pair<arangodb::aql::ExecutionState, std::shared_ptr<arangodb::aql::AqlItemBlockShell>> fetchBlock(
+  std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlock(
       size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
   inline size_t numberDependencies() const override { return 1; }
 
  private:
   using FetchBlockReturnItem =
-      std::pair<arangodb::aql::ExecutionState, std::shared_ptr<arangodb::aql::AqlItemBlockShell>>;
+      std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>;
 
  public:
   // additional test methods
   BlockFetcherMock& shouldReturn(arangodb::aql::ExecutionState,
-                                 std::unique_ptr<arangodb::aql::AqlItemBlock>);
+                                 arangodb::aql::SharedAqlItemBlockPtr const&);
   BlockFetcherMock& shouldReturn(FetchBlockReturnItem);
   BlockFetcherMock& shouldReturn(std::vector<FetchBlockReturnItem>);
   BlockFetcherMock& andThenReturn(FetchBlockReturnItem);
   BlockFetcherMock& andThenReturn(arangodb::aql::ExecutionState,
-                                  std::unique_ptr<arangodb::aql::AqlItemBlock>);
+                                  arangodb::aql::SharedAqlItemBlockPtr const&);
   BlockFetcherMock& andThenReturn(std::vector<FetchBlockReturnItem>);
 
   bool allBlocksFetched() const;
@@ -86,7 +87,7 @@ class MultiBlockFetcherMock : public ::arangodb::aql::BlockFetcher<passBlocksThr
  public:
   // mock methods
   // NOLINTNEXTLINE google-default-arguments
-  std::pair<arangodb::aql::ExecutionState, std::shared_ptr<arangodb::aql::AqlItemBlockShell>> fetchBlock(
+  std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlock(
       size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override {
     // This is never allowed to be called.
     TRI_ASSERT(false);
@@ -94,7 +95,7 @@ class MultiBlockFetcherMock : public ::arangodb::aql::BlockFetcher<passBlocksThr
   }
 
   // NOLINTNEXTLINE google-default-arguments
-  std::pair<arangodb::aql::ExecutionState, std::shared_ptr<arangodb::aql::AqlItemBlockShell>> fetchBlockForDependency(
+  std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlockForDependency(
       size_t dependency,
       size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
 

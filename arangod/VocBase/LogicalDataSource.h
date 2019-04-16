@@ -116,6 +116,8 @@ class LogicalDataSource {
         _guid(other._guid),
         _deleted(other._deleted),
         _system(other._system) {}
+  
+  LogicalDataSource& operator=(LogicalDataSource const& other) = delete;
 
   virtual ~LogicalDataSource() = default;
 

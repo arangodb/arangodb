@@ -25,7 +25,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
-#include "Aql/ClusterBlocks.h"
+#include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/DistributeExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -123,15 +123,11 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
   }
 
   std::unordered_set<RegisterId> regsToClear = getRegsToClear();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // TODO This is only for me to find out about the current behaviour. Should
-  // probably be either removed, or made into an assert.
-  if (!regsToClear.empty()) {
-    LOG_TOPIC("4fd06", WARN, Logger::AQL)
-        << "RemoteBlock has registers to clear. "
-        << "Shouldn't this be done before network?";
-  }
-#endif
+
+  // Everything that is cleared here could and should have been cleared before,
+  // i.e. before sending it over the network.
+  TRI_ASSERT(regsToClear.empty());
+
   ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
                       std::move(regsToKeep));
 

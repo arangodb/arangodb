@@ -233,7 +233,7 @@ class MMFilesFlushMarker final: public arangodb::MMFilesWalMarker {
   TRI_voc_fid_t fid() const override final { return 0; }
 
   uint32_t size() const override final {
-    return sizeof(MMFilesMarker) + sizeof(TRI_voc_tick_t) + _slice.byteSize();
+    return static_cast<uint32_t>(sizeof(MMFilesMarker) + sizeof(TRI_voc_tick_t) + _slice.byteSize());
   }
 
   arangodb::velocypack::Slice const& slice() const noexcept { return _slice; }

@@ -186,11 +186,11 @@ void auth::User::fromDocumentDatabases(auth::User& entry, VPackSlice const& data
       if (collectionsSlice.isObject()) {
         for (auto const& collection : VPackObjectIterator(collectionsSlice)) {
           std::string const cName = collection.key.copyString();
-          auto const permissionsSlice = collection.value.get("permissions");
+          auto const collPerSlice = collection.value.get("permissions");
 
-          if (permissionsSlice.isObject()) {
+          if (collPerSlice.isObject()) {
             try {
-              entry.grantCollection(dbName, cName, AuthLevelFromSlice(permissionsSlice));
+              entry.grantCollection(dbName, cName, AuthLevelFromSlice(collPerSlice));
             } catch (arangodb::basics::Exception const& e) {
               LOG_TOPIC("181fa", DEBUG, Logger::AUTHENTICATION) << e.message();
             }
@@ -382,11 +382,11 @@ VPackBuilder auth::User::toVPackBuilder() const {
 
         // collections
         {
-          VPackObjectBuilder o4(&builder, "collections", true);
+          VPackObjectBuilder o5(&builder, "collections", true);
 
           for (auto const& colAccessPair : dbCtxPair.second._collectionAccess) {
-            VPackObjectBuilder o4(&builder, colAccessPair.first, true);
-            VPackObjectBuilder o5(&builder, "permissions", true);
+            VPackObjectBuilder o6(&builder, colAccessPair.first, true);
+            VPackObjectBuilder o7(&builder, "permissions", true);
             AddAuthLevel(builder, colAccessPair.second);
           }
         }

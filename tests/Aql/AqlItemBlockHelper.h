@@ -30,6 +30,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ResourceUsage.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 
 #include "VelocyPackHelper.h"
 
@@ -40,7 +41,7 @@
 build a matrix with 4 rows and 3 columns
 the number of columns has to be specified as a template parameter:
 
-  std::unique_ptr<AqlItemBlock> block = buildBlock<3>({
+  SharedAqlItemBlockPtr block = buildBlock<3>({
     { {1}, {2}, {R"({ "iam": [ "a", "json" ] })"} },
     { {4}, {5}, {"\"and will be converted\""} },
     { {7}, {8}, {R"({ "into": [], "a": [], "vpack": [] })"} },
@@ -73,9 +74,8 @@ template <::arangodb::aql::RegisterId columns>
 using MatrixBuilder = std::vector<RowBuilder<columns>>;
 
 template <::arangodb::aql::RegisterId columns>
-std::unique_ptr<::arangodb::aql::AqlItemBlock> buildBlock(
-    ::arangodb::aql::ResourceMonitor* monitor, MatrixBuilder<columns>&& matrix);
-
+::arangodb::aql::SharedAqlItemBlockPtr buildBlock(::arangodb::aql::AqlItemBlockManager& manager,
+                                                  MatrixBuilder<columns>&& matrix);
 
 }  // namespace aql
 }  // namespace tests
@@ -102,8 +102,9 @@ class EntryToAqlValueVisitor : public boost::static_visitor<AqlValue> {
 };
 
 template <RegisterId columns>
-std::unique_ptr<AqlItemBlock> buildBlock(ResourceMonitor* monitor, MatrixBuilder<columns>&& matrix) {
-  auto block = std::make_unique<AqlItemBlock>(monitor, matrix.size(), columns);
+SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
+                                 MatrixBuilder<columns>&& matrix) {
+  SharedAqlItemBlockPtr block{new AqlItemBlock(manager, matrix.size(), columns)};
 
   for (size_t row = 0; row < matrix.size(); row++) {
     for (RegisterId col = 0; col < columns; col++) {
@@ -113,7 +114,7 @@ std::unique_ptr<AqlItemBlock> buildBlock(ResourceMonitor* monitor, MatrixBuilder
     }
   }
 
-  return std::move(block);
+  return block;
 }
 
 }  // namespace aql

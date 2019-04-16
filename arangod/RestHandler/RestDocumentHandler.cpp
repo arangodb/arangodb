@@ -21,15 +21,16 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RestDocumentHandler.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
-#include "RestDocumentHandler.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
@@ -72,6 +73,29 @@ RestStatus RestDocumentHandler::execute() {
 
   // this handler is done
   return RestStatus::DONE;
+}
+
+void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
+  try {
+    GeneralRequest const* request = _request.get();
+    auto const type = request->requestType();
+    int result = static_cast<int>(_response->responseCode());
+
+    switch (type) {
+      case rest::RequestType::DELETE_REQ:
+      case rest::RequestType::GET:
+      case rest::RequestType::HEAD:
+      case rest::RequestType::POST:
+      case rest::RequestType::PUT:
+      case rest::RequestType::PATCH:
+        break;
+      default:
+        events::IllegalDocumentOperation(*request, result);
+        break;
+    }
+  } catch (...) {
+  }
+  RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
 /// @brief returns the short id of the server which should handle this request

@@ -64,12 +64,10 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_AQL; }
 
   virtual RestStatus continueExecute() override;
-
-#ifdef USE_ENTERPRISE
   void shutdownExecute(bool isFinalized) noexcept override;
-#endif
 
   bool cancel() override final;
+  void handleError(basics::Exception const&) override;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -207,6 +205,9 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool _isValidForFinalize;
+
+  /// @brief whether or not an audit message has already been logged
+  bool _auditLogged;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief A shared pointer to the query options velocypack, s.t. we avoid

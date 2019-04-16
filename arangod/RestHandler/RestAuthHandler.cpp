@@ -31,6 +31,7 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Ssl/SslInterface.h"
+#include "Utils/Events.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -110,4 +111,16 @@ RestStatus RestAuthHandler::badRequest() {
   generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                 "invalid JSON");
   return RestStatus::DONE;
+}
+
+void RestAuthHandler::shutdownExecute(bool isFinalized) noexcept {
+  try {
+    if (_isValid) {
+      events::LoggedIn(*_request, _username);
+    } else {
+      events::CredentialsBad(*_request, _username);
+    }
+  } catch (...) {
+  }
+  RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }

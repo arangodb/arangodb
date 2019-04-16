@@ -55,6 +55,7 @@ namespace aql {
 
 SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
   ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager{&monitor};
   ExecutionState state;
 
 /*
@@ -134,7 +135,7 @@ GIVEN(std::string{
   BlockFetcherMock<passBlocksThrough> blockFetcherMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
-  std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
 
   WHEN("the producer returns DONE immediately") {
     blockFetcherMock.shouldReturn(ExecutionState::DONE, std::move(block));
@@ -255,9 +256,9 @@ GIVEN(std::string{"there are multiple blocks upstream, passBlocksThrough="} +
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
   // three 1-column matrices with 3, 2 and 1 rows, respectively
-  std::unique_ptr<AqlItemBlock> block1 = buildBlock<1>(&monitor, {{{1}}, {{2}}, {{3}}}),
-                                block2 = buildBlock<1>(&monitor, {{{4}}, {{5}}}),
-                                block3 = buildBlock<1>(&monitor, {{{6}}});
+  SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
+                        block2 = buildBlock<1>(itemBlockManager, {{{4}}, {{5}}}),
+                        block3 = buildBlock<1>(itemBlockManager, {{{6}}});
 
   WHEN("the producer does not wait") {
     blockFetcherMock.shouldReturn(ExecutionState::HASMORE, std::move(block1))

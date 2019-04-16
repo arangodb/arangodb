@@ -16,11 +16,8 @@ set(IRESEARCH_TESTS_SOURCES
   IResearch/ClusterCommMock.cpp IResearch/ClusterCommMock.h
   IResearch/Containers-test.cpp
   IResearch/ExpressionFilter-test.cpp
-  IResearch/ExecutionBlockMock.cpp
-  IResearch/ExecutionBlockMock-test.cpp
   IResearch/ExpressionContextMock.cpp
   IResearch/IResearchAnalyzerFeature-test.cpp
-  IResearch/IResearchFeature-test.cpp
   IResearch/IResearchOrder-test.cpp
   IResearch/IResearchView-test.cpp
   IResearch/IResearchViewCoordinator-test.cpp
@@ -62,6 +59,7 @@ set(IRESEARCH_TESTS_SOURCES
   IResearch/RestHandlerMock.cpp
   IResearch/IResearchViewNode-test.cpp
   IResearch/VelocyPackHelper-test.cpp
+  Aql/WaitingExecutionBlockMock.cpp
   RestHandler/RestAnalyzerHandler-test.cpp
   RestHandler/RestUsersHandler-test.cpp
   RestHandler/RestViewHandler-test.cpp
@@ -118,7 +116,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/TestExecutorHelper.cpp
   Aql/TraversalExecutorTest.cpp
   Aql/VelocyPackHelper.cpp
-  Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
   Basics/ApplicationServerTest.cpp
   Basics/icu-helper.cpp
@@ -175,6 +172,7 @@ set(ARANGODB_TESTS_SOURCES
   Geo/ShapeContainerTest.cpp
   Graph/ClusterTraverserCacheTest.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
+  Graph/KShortestPathsFinder.cpp
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp

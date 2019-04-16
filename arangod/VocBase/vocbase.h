@@ -241,6 +241,10 @@ struct TRI_vocbase_t {
   /// @brief returns whether the database is the system database
   bool isSystem() const { return name() == TRI_VOC_SYSTEM_DATABASE; }
 
+  /// @brief stop operations in this vocbase. must be called prior to
+  /// shutdown to clean things up
+  void stop();
+
   /// @brief closes a database and all collections
   void shutdown();
 

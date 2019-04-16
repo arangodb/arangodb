@@ -163,10 +163,7 @@ class SortedCollectExecutor {
   struct Properties {
     static const bool preservesOrder = false;
     static const bool allowsBlockPassthrough = false;
-    // TODO This should be true, but the current implementation in
-    // ExecutionBlockImpl and the fetchers does not work with this.
-    // It will however always overfetch if activated
-    static const bool inputSizeRestrictsOutputSize = false;
+    static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = SortedCollectExecutorInfos;
@@ -189,12 +186,7 @@ class SortedCollectExecutor {
    * it will produce exactly. It can however only
    * overestimate never underestimate.
    */
-  inline size_t numberOfRowsInFlight() const {
-    // We always need to be prepared for 1 more row.
-    // On empty input we can produce 1 row.
-    // Otherwise we will have an open group!
-    return 1;
-  }
+  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
   Infos const& infos() const noexcept { return _infos; };

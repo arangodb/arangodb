@@ -21,7 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterBlocks.h"
+#include "BlocksWithClients.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlTransaction.h"
@@ -62,21 +62,41 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
 
-BlockWithClients::BlockWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
+BlocksWithClients::BlocksWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
                                    std::vector<std::string> const& shardIds)
-    : ExecutionBlock(engine, ep), _nrClients(shardIds.size()), _wasShutdown(false) {
+    : ExecutionBlock(engine, ep),
+      _nrClients(shardIds.size()),
+      _wasShutdown(false) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.emplace(std::make_pair(shardIds[i], i));
   }
 }
 
-std::pair<ExecutionState, Result> BlockWithClients::initializeCursor(InputAqlItemRow const& input) {
-  return ExecutionBlock::initializeCursor(input);
+std::pair<ExecutionState, bool> BlocksWithClients::getBlock(size_t atMost) {
+  throwIfKilled();  // check if we were aborted
+
+  auto res = _dependencies[0]->getSome(atMost);
+  if (res.first == ExecutionState::WAITING) {
+    return {res.first, false};
+  }
+
+  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  _upstreamState = res.first;
+
+  if (res.second != nullptr) {
+    _buffer.emplace_back(std::move(res.second));
+    return {res.first, true};
+  }
+
+  return {res.first, false};
 }
 
 /// @brief shutdown
-std::pair<ExecutionState, Result> BlockWithClients::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> BlocksWithClients::shutdown(int errorCode) {
   if (_wasShutdown) {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
@@ -90,7 +110,7 @@ std::pair<ExecutionState, Result> BlockWithClients::shutdown(int errorCode) {
 
 /// @brief getClientId: get the number <clientId> (used internally)
 /// corresponding to <shardId>
-size_t BlockWithClients::getClientId(std::string const& shardId) const {
+size_t BlocksWithClients::getClientId(std::string const& shardId) const {
   if (shardId.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "got empty shard id");
   }
@@ -102,4 +122,10 @@ size_t BlockWithClients::getClientId(std::string const& shardId) const {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
   return ((*it).second);
+}
+
+void BlocksWithClients::throwIfKilled() {
+  if (_engine->getQuery()->killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
 }

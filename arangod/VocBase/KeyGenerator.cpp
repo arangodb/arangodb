@@ -46,7 +46,10 @@ using namespace arangodb::basics;
 namespace {
 
 /// @brief lookup table for key checks
-static std::array<bool, 256> const keyCharLookupTable = {
+/// in case this table is changed, the regex in file
+/// js/common/modules/@arangodb/common.js for function isValidDocumentKey
+/// should be adjusted too
+std::array<bool, 256> const keyCharLookupTable = {
     {/* 0x00 . */ false, /* 0x01 . */ false,
      /* 0x02 . */ false, /* 0x03 . */ false,
      /* 0x04 . */ false, /* 0x05 . */ false,

@@ -1542,14 +1542,20 @@ OperationResult transaction::Methods::document(std::string const& collectionName
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
+    events::ReadDocument(vocbase().name(), collectionName, value,
+                         TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
+  OperationResult result;
   if (_state->isCoordinator()) {
-    return documentCoordinator(collectionName, value, options);
+    result = documentCoordinator(collectionName, value, options);
+  } else {
+    result = documentLocal(collectionName, value, options);
   }
 
-  return documentLocal(collectionName, value, options);
+  events::ReadDocument(vocbase().name(), collectionName, value, result.errorNumber());
+  return result;
 }
 
 /// @brief read one or multiple documents in a collection, coordinator
@@ -1668,20 +1674,29 @@ OperationResult transaction::Methods::insert(std::string const& collectionName,
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
+    events::CreateDocument(vocbase().name(), collectionName, value,
+                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (value.isArray() && value.length() == 0) {
+    events::CreateDocument(vocbase().name(), collectionName, value, TRI_ERROR_NO_ERROR);
     return emptyResult(options);
   }
 
   // Validate Edges
   OperationOptions optionsCopy = options;
 
+  OperationResult result;
   if (_state->isCoordinator()) {
-    return insertCoordinator(collectionName, value, optionsCopy);
+    result = insertCoordinator(collectionName, value, optionsCopy);
+  } else {
+    result = insertLocal(collectionName, value, optionsCopy);
   }
 
-  return insertLocal(collectionName, value, optionsCopy);
+  events::CreateDocument(vocbase().name(), collectionName,
+                         ((result.ok() && options.returnNew) ? result.slice() : value),
+                         result.errorNumber());
+  return result;
 }
 
 /// @brief create one or multiple documents in a collection, coordinator
@@ -1958,19 +1973,26 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
 
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
+    events::ModifyDocument(vocbase().name(), collectionName, newValue,
+                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (newValue.isArray() && newValue.length() == 0) {
+    events::ModifyDocument(vocbase().name(), collectionName, newValue, TRI_ERROR_NO_ERROR);
     return emptyResult(options);
   }
 
   OperationOptions optionsCopy = options;
 
+  OperationResult result;
   if (_state->isCoordinator()) {
-    return updateCoordinator(collectionName, newValue, optionsCopy);
+    result = updateCoordinator(collectionName, newValue, optionsCopy);
+  } else {
+    result = modifyLocal(collectionName, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
   }
 
-  return modifyLocal(collectionName, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+  events::ModifyDocument(vocbase().name(), collectionName, newValue, result.errorNumber());
+  return result;
 }
 
 /// @brief update one or multiple documents in a collection, coordinator
@@ -2006,19 +2028,27 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
 
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
+    events::ReplaceDocument(vocbase().name(), collectionName, newValue,
+                            TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (newValue.isArray() && newValue.length() == 0) {
+    events::ReplaceDocument(vocbase().name(), collectionName, newValue, TRI_ERROR_NO_ERROR);
     return emptyResult(options);
   }
 
   OperationOptions optionsCopy = options;
 
+  OperationResult result;
   if (_state->isCoordinator()) {
-    return replaceCoordinator(collectionName, newValue, optionsCopy);
+    result = replaceCoordinator(collectionName, newValue, optionsCopy);
+  } else {
+    result = modifyLocal(collectionName, newValue, optionsCopy,
+                         TRI_VOC_DOCUMENT_OPERATION_REPLACE);
   }
 
-  return modifyLocal(collectionName, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+  events::ReplaceDocument(vocbase().name(), collectionName, newValue, result.errorNumber());
+  return result;
 }
 
 /// @brief replace one or multiple documents in a collection, coordinator
@@ -2261,18 +2291,25 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
 
   if (!value.isObject() && !value.isArray() && !value.isString()) {
     // must provide a document object or an array of documents
+    events::DeleteDocument(vocbase().name(), collectionName, value,
+                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (value.isArray() && value.length() == 0) {
+    events::DeleteDocument(vocbase().name(), collectionName, value, TRI_ERROR_NO_ERROR);
     return emptyResult(options);
   }
 
+  OperationResult result;
   if (_state->isCoordinator()) {
-    return removeCoordinator(collectionName, value, options);
+    result = removeCoordinator(collectionName, value, options);
+  } else {
+    OperationOptions optionsCopy = options;
+    result = removeLocal(collectionName, value, optionsCopy);
   }
 
-  OperationOptions optionsCopy = options;
-  return removeLocal(collectionName, value, optionsCopy);
+  events::DeleteDocument(vocbase().name(), collectionName, value, result.errorNumber());
+  return result;
 }
 
 /// @brief remove one or multiple documents in a collection, coordinator
@@ -2565,7 +2602,7 @@ OperationResult transaction::Methods::truncate(std::string const& collectionName
     result = truncateLocal(collectionName, optionsCopy);
   }
 
-  events::TruncateCollection(collectionName, result.errorNumber());
+  events::TruncateCollection(vocbase().name(), collectionName, result.errorNumber());
   return result;
 }
 

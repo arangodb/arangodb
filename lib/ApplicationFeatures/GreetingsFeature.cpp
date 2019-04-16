@@ -38,12 +38,16 @@ void GreetingsFeature::prepare() {
 
   // building in maintainer mode or enabling catch test code will incur runtime overhead,
   // so warn users about this
-  bool warn = false;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  warn = true;
+  // maintainer mode
+  bool warn = true;
 #else
+  // catch-tests on (enables TEST_VIRTUAL)
 #ifdef ARANGODB_USE_CATCH_TESTS
-  warn = true;
+  bool warn = true;
+#else
+  // neither maintainer mode nor catch tests
+  bool warn = false;
 #endif
 #endif
   if (warn) {

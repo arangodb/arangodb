@@ -255,6 +255,67 @@ const fst::FstReadOptions& fst_read_options() {
   return INSTANCE;
 }
 
+// mininum size of string weight we store in FST
+CONSTEXPR const size_t MIN_WEIGHT_SIZE = 2;
+
+void merge_blocks(std::list<irs::burst_trie::detail::entry>& blocks) {
+  assert(!blocks.empty());
+
+  auto it = blocks.begin();
+
+  auto& root = *it;
+  auto& root_block = root.block();
+  auto& root_index = root_block.index;
+
+  root_index.emplace_front(std::move(root.data()));
+
+  // First byte in block header must not be equal to fst::kStringInfinity
+  // Consider the following:
+  //   StringWeight0 -> { fst::kStringInfinity 0x11 ... }
+  //   StringWeight1 -> { fst::KStringInfinity 0x22 ... }
+  //   CommonPrefix = fst::Plus(StringWeight0, StringWeight1) -> { fst::kStringInfinity }
+  //   Suffix = fst::Divide(StringWeight1, CommonPrefix) -> { fst::kStringBad }
+  // But actually Suffix should be equal to { 0x22 ... }
+  assert(char(root_block.meta) != fst::kStringInfinity);
+
+  // will store just several bytes here
+  auto& out = *root_index.begin();
+  out.write_byte(static_cast<byte_type>(root_block.meta)); // block metadata
+  out.write_vlong(root_block.start); // start pointer of the block
+
+  if (block_meta::floor(root_block.meta)) {
+    out.write_vlong(static_cast<uint64_t>(blocks.size()-1));
+    for (++it; it != blocks.end(); ++it ) {
+      const auto* block = &it->block();
+      assert(block->label != irs::burst_trie::detail::block_t::INVALID_LABEL);
+      assert(block->start > root_block.start);
+
+      const uint64_t start_delta = it->block().start - root_block.start;
+      out.write_byte(static_cast<byte_type>(block->label & 0xFF));
+      out.write_vlong(start_delta);
+      out.write_byte(static_cast<byte_type>(block->meta));
+
+      root_index.splice(root_index.end(), it->block().index);
+    }
+  } else {
+    for (++it; it != blocks.end(); ++it) {
+      root_index.splice(root_index.end(), it->block().index);
+    }
+  }
+
+  // ensure weight we've written doesn't interfere
+  // with semiring members and other constants
+  assert(
+    out.weight != byte_weight::One()
+      && out.weight != byte_weight::Zero()
+      && out.weight != byte_weight::NoWeight()
+      && out.weight.Size() >= MIN_WEIGHT_SIZE
+      && byte_weight::One().Size() < MIN_WEIGHT_SIZE
+      && byte_weight::Zero().Size() < MIN_WEIGHT_SIZE
+      && byte_weight::NoWeight().Size() < MIN_WEIGHT_SIZE
+  );
+}
+
 NS_END
 
 NS_ROOT
@@ -399,13 +460,13 @@ class block_iterator : util::noncopyable {
 
   SeekResult scan_to_term(const bytes_ref& term);
 
-  /*  scan to floor block */
+  //  scan to floor block
   void scan_to_block(const bytes_ref& term);
 
-  /* scan to entry with the following start address*/
+  // scan to entry with the following start address
   void scan_to_block(uint64_t ptr);
 
-  /* read attributes */
+  // read attributes
   void load_data(const field_meta& meta, irs::postings_reader& pr);
 
  private:
@@ -444,7 +505,7 @@ class block_iterator : util::noncopyable {
 ///////////////////////////////////////////////////////////////////////////////
 /// @class term_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class term_iterator : public irs::seek_term_iterator {
+class term_iterator final : public irs::seek_term_iterator {
  public:
   explicit term_iterator(const term_reader* owner);
 
@@ -455,7 +516,9 @@ class term_iterator : public irs::seek_term_iterator {
   }
   const bytes_ref& value() const override { return term_; }
   virtual SeekResult seek_ge(const bytes_ref& term) override;
-  virtual bool seek(const bytes_ref& term) override;
+  virtual bool seek(const bytes_ref& term) override {
+    return SeekResult::FOUND == seek_equal(term);
+  }
   virtual bool seek(
       const bytes_ref& term,
       const irs::seek_term_iterator::seek_cookie& cookie) override {
@@ -529,16 +592,21 @@ class term_iterator : public irs::seek_term_iterator {
     byte_weight& weight, const bytes_ref& term
   );
 
-  /* Seeks to the specified term using FST
-   * There may be several sutuations: 
-   *   1. There is no term in a block (SeekResult::NOT_FOUND)
-   *   2. There is no term in a block and we have
-   *      reached the end of the block (SeekResult::END)
-   *   3. We have found term in a block (SeekResult::FOUND)    
-   *
-   * Note, that search may end up on a BLOCK entry. In all cases
-   * "owner_->term_" will be refreshed with the valid number of
-   * common bytes */ 
+  /// @brief Seek to the closest block which contain a specified term
+  /// @param prefix size of the common term/block prefix
+  /// @returns true if we're already at a requested term
+  bool seek_to_block(const bytes_ref& term, size_t& prefix);
+
+  /// @brief Seeks to the specified term using FST
+  /// There may be several sutuations:
+  ///   1. There is no term in a block (SeekResult::NOT_FOUND)
+  ///   2. There is no term in a block and we have
+  ///      reached the end of the block (SeekResult::END)
+  ///   3. We have found term in a block (SeekResult::FOUND)
+  ///
+  /// Note, that search may end up on a BLOCK entry. In all cases
+  /// "owner_->term_" will be refreshed with the valid number of
+  /// common bytes
   SeekResult seek_equal(const bytes_ref& term);
 
   inline block_iterator* pop_block() {
@@ -547,7 +615,9 @@ class term_iterator : public irs::seek_term_iterator {
   }
 
   inline block_iterator* push_block(byte_weight&& out, size_t prefix) {
-    assert(out.Size());
+    // ensure final weight correctess
+    assert(out.Size() >= MIN_WEIGHT_SIZE);
+
     block_stack_.emplace_back(std::move(out), prefix, this);
     return &block_stack_.back();
   }
@@ -704,11 +774,11 @@ SeekResult block_iterator::scan_to_term_leaf(
     ++term_count_;
     cur_type_ = ET_TERM;
     suffix = suffix_in_.read_vlong();
-    start = suffix_in_.file_pointer(); /* start of the current suffix */
-    suffix_in_.skip(suffix); /* skip to the next term */
+    start = suffix_in_.file_pointer(); // start of the current suffix
+    suffix_in_.skip(suffix); // skip to the next term
 
     const size_t term_len = prefix_ + suffix;
-    const size_t max = std::min(term.size(), term_len); /* max limit of comparison */
+    const size_t max = std::min(term.size(), term_len); // max limit of comparison
 
     ptrdiff_t cmp;
     bool stop = false;
@@ -724,19 +794,19 @@ SeekResult block_iterator::scan_to_term_leaf(
       }
 
       if (cmp < 0) { 
-        /* we before the target, move to next entry */
+        // we before the target, move to next entry
         break;
       } else if (cmp > 0) { 
-        /* we after the target, not found */
+        // we after the target, not found
         return SeekResult::NOT_FOUND;
       } else if (stop) { // && cmp == 0
-        /* match! */
+        // match!
         return SeekResult::FOUND;
       }
     }
   }
   
-  /* we have reached the end of the block */
+  // we have reached the end of the block
   return SeekResult::END;
 }
 
@@ -752,10 +822,10 @@ SeekResult block_iterator::scan_to_term_nonleaf(
     ++cur_ent_;
     cur_type_ = shift_unpack_64(suffix_in_.read_vlong(), suffix) ? ET_BLOCK : ET_TERM;
     start = suffix_in_.file_pointer();
-    suffix_in_.skip(suffix); /* skip to the next entry*/
+    suffix_in_.skip(suffix); // skip to the next entry
 
     const size_t term_len = prefix_ + suffix;
-    const size_t max = std::min(term.size(), term_len); /* max limit of comparison */
+    const size_t max = std::min(term.size(), term_len); // max limit of comparison
 
     switch (cur_type_) {
       case ET_TERM: ++term_count_; break;
@@ -777,19 +847,19 @@ SeekResult block_iterator::scan_to_term_nonleaf(
       }
 
       if (cmp < 0) { 
-        /* we before the target, move to next entry */
+        // we before the target, move to next entry
         break;
       } else if (cmp > 0) { 
-        /* we after the target, not found */
+        // we after the target, not found
         return SeekResult::NOT_FOUND;
-      } else if (stop) { /* && cmp == 0 */
-        /* match! */
+      } else if (stop) { // && cmp == 0
+        // match!
         return SeekResult::FOUND;
       }
     }
   }
 
-  /* we have reached the end of the block */
+  // we have reached the end of the block
   return SeekResult::END;
 }
 
@@ -797,7 +867,7 @@ SeekResult block_iterator::scan_to_term(const bytes_ref& term) {
   assert(!dirty_);
 
   if (cur_ent_ == ent_count_) {
-    /* have reached the end of the block */
+    // have reached the end of the block
     return SeekResult::END;
   }
 
@@ -814,13 +884,13 @@ void block_iterator::scan_to_block(const bytes_ref& term) {
   assert(sub_count_ != UNDEFINED);
 
   if (!sub_count_ || !block_meta::floor(meta_) || term.size() <= prefix_) {
-    /* no sub-blocks, nothing to do */
+    // no sub-blocks, nothing to do
     return;
   }
 
   const byte_type label = term[prefix_];
   if (label < next_label_) {
-    /* search does not required */
+    // search does not required
     return;
   }
 
@@ -850,9 +920,17 @@ void block_iterator::scan_to_block(const bytes_ref& term) {
 }
 
 void block_iterator::scan_to_block(uint64_t start) {
-  if (leaf_) return; /* should be non leaf block */
-  if (cur_block_start_ == start) return; /* nothing to do */
-  const uint64_t target = cur_start_ - start; /* delta */
+  if (leaf_) {
+    // must be a non leaf block
+    return;
+  }
+
+  if (cur_block_start_ == start) {
+    // nothing to do
+    return;
+  }
+
+  const uint64_t target = cur_start_ - start; // delta
   for (; cur_ent_ < ent_count_;) {
     ++cur_ent_;
     uint64_t suffix;
@@ -886,7 +964,7 @@ void block_iterator::load_data(const field_meta& meta, irs::postings_reader& pr)
 
   auto& state = owner_->state_;
   if (0 == cur_stats_ent_) {
-    /* clear state at the beginning */
+    // clear state at the beginning
     state.clear();
   } else {
     state = state_;
@@ -942,10 +1020,10 @@ void term_iterator::read() {
   );
 }
 bool term_iterator::next() {
-  /* iterator at the beginning or seek to cached state was called */
+  // iterator at the beginning or seek to cached state was called
   if (!cur_block_) {
     if (term_.empty()) {
-      /* iterator at the beginning */
+      // iterator at the beginning
       const auto& fst = *owner_->fst_;
       cur_block_ = push_block(fst.Final(fst.Start()), 0);
       cur_block_->load();
@@ -966,12 +1044,12 @@ bool term_iterator::next() {
     }
   }
 
-  /* pop finished blocks */
+  // pop finished blocks
   while (cur_block_->block_end()) {
     if (cur_block_->sub_count() > 0) {
       cur_block_->next_block();
       cur_block_->load();
-    } else if (&block_stack_.front() == cur_block_) { /* root */
+    } else if (&block_stack_.front() == cur_block_) { // root
       term_.reset();
       cur_block_->reset();
       sstate_.resize(0);
@@ -981,8 +1059,8 @@ bool term_iterator::next() {
       cur_block_ = pop_block();
       state_ = cur_block_->state();
       if (cur_block_->dirty() || cur_block_->sub_start() != start) {
-        /* here we currently on non block that was not loaded yet */
-        cur_block_->scan_to_block(term_); /* to sub-block */
+        // here we're currently at non block that was not loaded yet
+        cur_block_->scan_to_block(term_); // to sub-block
         cur_block_->load();
         cur_block_->scan_to_block(start);
       }
@@ -991,7 +1069,7 @@ bool term_iterator::next() {
     sstate_.resize(std::min(sstate_.size(), cur_block_->prefix()));
   }
 
-  /* push new block or next term */
+  // push new block or next term
   for (cur_block_->next();
        EntryType::ET_BLOCK == cur_block_->type();
        cur_block_->next()) {
@@ -1025,7 +1103,7 @@ ptrdiff_t term_iterator::seek_cached(
     auto end = begin + std::min(target.size(), sstate_.size());
 
     for (;begin != end && *pterm == *ptarget; ++begin, ++pterm, ++ptarget) {
-      fst_utils::append(weight, begin->weight);
+      weight.PushBack(begin->weight);
       state = begin->state;
       cur_block = begin->block;
     }
@@ -1044,7 +1122,7 @@ ptrdiff_t term_iterator::seek_cached(
   }
 
   if (cmp) {
-    cur_block_ = cur_block; // update cir_block if not on the same block
+    cur_block_ = cur_block; // update cur_block if not at the same block
 
     // truncate block_stack_ to match path
     while (!block_stack_.empty() && &(block_stack_.back()) != cur_block_) {
@@ -1058,104 +1136,129 @@ ptrdiff_t term_iterator::seek_cached(
   return cmp;
 }
 
-SeekResult term_iterator::seek_equal(const bytes_ref& term) {
-  assert(owner_->fst_);
+bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
+  assert(owner_->fst_ && owner_->fst_->GetImpl());
 
-  typedef fst_t::Weight weight_t;
+  const auto& fst = *owner_->fst_->GetImpl();
 
-  const auto& fst = *owner_->fst_;
-
-  size_t prefix = 0; // number of current symbol to process
+  prefix = 0; // number of current symbol to process
   arc::stateid_t state = fst.Start(); // start state
   weight_.Clear(); // clear aggregated fst output
 
   if (cur_block_) {
     const auto cmp = seek_cached(prefix, state, weight_, term);
     if (cmp > 0) {
-      /* target term is before the current term */
+      // target term is before the current term
       cur_block_->reset();
     } else if (0 == cmp) {
-      /* we already at current term */
-      return SeekResult::FOUND;
+      // we're already at current term
+      return true;
     }
   } else {
     cur_block_ = push_block(fst.Final(state), prefix);
   }
 
   term_.oversize(term.size());
-  term_.reset(prefix); /* reset to common seek prefix */
-  sstate_.resize(prefix); /* remove invalid cached arcs */
+  term_.reset(prefix); // reset to common seek prefix
+  sstate_.resize(prefix); // remove invalid cached arcs
 
-  bool found = fst_byte_builder::final != state;
-  while (found && prefix < term.size()) {
+  while (fst_byte_builder::final != state && prefix < term.size()) {
     matcher_.SetState(state);
-    if (found = matcher_.Find(term[prefix])) {
-      const auto& arc = matcher_.Value();
-      term_ += byte_type(arc.ilabel);
-      fst_utils::append(weight_, arc.weight);
-      ++prefix;
 
-      const auto weight = fst.Final(state = arc.nextstate);
-      if (weight_t::One() != weight && weight_t::Zero() != weight) {
-        cur_block_ = push_block(fst::Times(weight_, weight), prefix);
-      } else if (fst_byte_builder::final == state) {
-        cur_block_ = push_block(std::move(weight_), prefix);
-        found = false;
-      }
-
-      /* cache found arcs, we can reuse it in further seek's, 
-       * avoiding expensive FST lookups */
-      sstate_.emplace_back(state, arc.weight, cur_block_);
+    if (!matcher_.Find(term[prefix])) {
+      break;
     }
+
+    const auto& arc = matcher_.Value();
+
+    term_ += byte_type(arc.ilabel); // aggregate arc label
+    weight_.PushBack(arc.weight); // aggregate arc weight
+    ++prefix;
+
+    const auto& weight = fst.FinalRef(arc.nextstate);
+
+    if (!weight.Empty()) {
+      cur_block_ = push_block(fst::Times(weight_, weight), prefix);
+    } else if (fst_byte_builder::final == arc.nextstate) {
+      // ensure final state has no weight assigned
+      // the only case when it's wrong is degerated FST composed of only
+      // 'fst_byte_builder::final' state.
+      // in that case we'll never get there due to the loop condition above.
+      assert(fst.FinalRef(fst_byte_builder::final).Empty());
+
+      cur_block_ = push_block(std::move(weight_), prefix);
+    }
+
+    // cache found arcs, we can reuse it in further seeks
+    // avoiding relatively expensive FST lookups
+    sstate_.emplace_back(arc.nextstate, arc.weight, cur_block_);
+
+    // proceed to the next state
+    state = arc.nextstate;
   }
 
   assert(cur_block_);
   sstate_.resize(cur_block_->prefix());
   cur_block_->scan_to_block(term);
+
+  return false;
+}
+
+SeekResult term_iterator::seek_equal(const bytes_ref& term) {
+  size_t prefix;
+  if (seek_to_block(term, prefix)) {
+    return SeekResult::FOUND;
+  }
+
+  assert(cur_block_);
+
   if (!block_meta::terms(cur_block_->meta())) {
-    /* current block does not contain terms */
+    // current block has no terms
     term_.reset(prefix);
     return SeekResult::NOT_FOUND;
   }
+
   cur_block_->load();
   return cur_block_->scan_to_term(term);
 }
 
 SeekResult term_iterator::seek_ge(const bytes_ref& term) {
-  switch (seek_equal(term)) {
+  size_t prefix;
+  if (seek_to_block(term, prefix)) {
+    return SeekResult::FOUND;
+  }
+  UNUSED(prefix);
+
+  assert(cur_block_);
+
+  cur_block_->load();
+  switch (cur_block_->scan_to_term(term)) {
     case SeekResult::FOUND:
-      // we have found the specified term
+      assert(ET_TERM == cur_block_->type());
       return SeekResult::FOUND;
     case SeekResult::NOT_FOUND:
-      assert(cur_block_);
-      // in case of dirty block we should just load it and call next,
-      // block may be dirty here if it was denied by seek_equal 
-      // when it has no terms
-      if (!cur_block_->dirty()) {
-        // we are on the term or block after the specified term 
-        if (ET_TERM == cur_block_->type()) {
-          // we already on the greater term 
+      switch (cur_block_->type()) {
+        case ET_TERM:
+          // we're already at greater term
           return SeekResult::NOT_FOUND;
-        }
-
-        // in case of block entry we should step into 
-        // and move to the next term 
-        cur_block_ = push_block(cur_block_->sub_start(), term_.size());
+        case ET_BLOCK:
+          // we're at the greater block, load it and call next
+          cur_block_ = push_block(cur_block_->sub_start(), term_.size());
+          cur_block_->load();
+          break;
+        default:
+          assert(false);
+          return SeekResult::END;
       }
-      cur_block_->load();
+      // intentional fallthrough
     case SeekResult::END:
-      /* we are in the end of the block */
       return next()
-        ? SeekResult::NOT_FOUND /* have moved to the next entry*/
-        : SeekResult::END; /* have no more terms */
+        ? SeekResult::NOT_FOUND // have moved to the next entry
+        : SeekResult::END; // have no more terms
   }
 
   assert(false);
   return SeekResult::END;
-}
-
-bool term_iterator::seek(const bytes_ref& term) {
-  return SeekResult::FOUND == seek_equal(term);
 }
 
 #if defined(_MSC_VER)
@@ -1168,8 +1271,7 @@ doc_iterator::ptr term_iterator::postings(const flags& features) const {
   const field_meta& field = owner_->field_;
   postings_reader& pr = *owner_->owner_->pr_;
   if (cur_block_) {
-    /* read attributes */
-    cur_block_->load_data(field, pr);
+    cur_block_->load_data(field, pr); // read attributes
   }
   return pr.iterator(field.features, attrs_, features);
 }
@@ -1392,52 +1494,6 @@ void field_writer::write_block(
   }
 }
 
-/*static*/ void field_writer::merge_blocks(std::list<detail::entry>& blocks) {
-  assert(!blocks.empty());
-
-  auto it = blocks.begin();
-
-  auto& root = *it;
-  auto& root_block = root.block();
-  auto& root_index = root_block.index;
-
-  root_index.emplace_front(std::move(root.data()));
-
-  // First byte in block header must not be equal to fst::kStringInfinity
-  // Consider the following:
-  //   StringWeight0 -> { fst::kStringInfinity 0x11 ... }
-  //   StringWeight1 -> { fst::KStringInfinity 0x22 ... }
-  //   CommonPrefix = fst::Plus(StringWeight0, StringWeight1) -> { fst::kStringInfinity }
-  //   Suffix = fst::Divide(StringWeight1, CommonPrefix) -> { fst::kStringBad }
-  // But actually Suffix should be equal to { 0x22 ... }
-  assert(char(root_block.meta) != fst::kStringInfinity);
-
-  // will store just several bytes here
-  auto& out = *root_index.begin();
-  out.write_byte(static_cast<byte_type>(root_block.meta)); // block metadata
-  out.write_vlong(root_block.start); // start pointer of the block
-
-  if (block_meta::floor(root_block.meta)) {
-    out.write_vlong(static_cast< uint64_t >(blocks.size()-1));
-    for (++it; it != blocks.end(); ++it ) {
-      const auto* block = &it->block();
-      assert(block->label != detail::block_t::INVALID_LABEL);
-      assert(block->start > root_block.start);
-
-      const uint64_t start_delta = it->block().start - root_block.start;
-      out.write_byte( static_cast< byte_type >(block->label & 0xFF));
-      out.write_vlong( start_delta );
-      out.write_byte( static_cast< byte_type >(block->meta));
-
-      root_index.splice(root_index.end(), it->block().index);
-    }
-  } else {
-    for (++it; it != blocks.end(); ++it ) {
-      root_index.splice(root_index.end(), it->block().index);
-    }
-  }
-}
-
 void field_writer::write_blocks( size_t prefix, size_t count ) {
   // only root node able to write whole stack
   assert(prefix || count == stack_.size());
@@ -1488,7 +1544,7 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
   }
 
   // merge blocks into 1st block
-  merge_blocks( blocks );
+  ::merge_blocks(blocks);
 
   // remove processed entries from the
   // top of the stack
@@ -1512,7 +1568,7 @@ void field_writer::push( const bytes_ref& term ) {
   }
 
   for (size_t i = last.empty() ? 0 : last.size() - 1; i > pos;) {
-    --i; /* should use it here as we use size_t */
+    --i; // should use it here as we use size_t
     const size_t top = stack_.size() - prefixes_[i];
     if (top > min_block_size_) {
       write_blocks(i + 1, top);

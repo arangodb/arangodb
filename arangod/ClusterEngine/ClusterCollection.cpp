@@ -387,14 +387,16 @@ bool ClusterCollection::dropIndex(TRI_idx_iid_t iid) {
   for (std::shared_ptr<Index> index : _indexes) {
     if (iid == index->id()) {
       _indexes.erase(_indexes.begin() + i);
-      events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
+      events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
+                        std::to_string(iid), TRI_ERROR_NO_ERROR);
       return true;
     }
     ++i;
   }
 
   // We tried to remove an index that does not exist
-  events::DropIndex("", std::to_string(iid), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+  events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
+                    std::to_string(iid), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   return false;
 }
 

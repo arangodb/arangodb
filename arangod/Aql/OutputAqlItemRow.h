@@ -47,7 +47,7 @@ class OutputAqlItemRow {
   // TODO Implement this behaviour via a template parameter instead?
   enum class CopyRowBehaviour { CopyInputRows, DoNotCopyInputRows };
 
-  explicit OutputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell,
+  explicit OutputAqlItemRow(SharedAqlItemBlockPtr block,
                             std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
@@ -139,7 +139,7 @@ class OutputAqlItemRow {
     if (_doNotCopyInputRow) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(sourceRow.isInitialized());
-      TRI_ASSERT(sourceRow.internalBlockIs(blockShell()));
+      TRI_ASSERT(sourceRow.internalBlockIs(_block));
 #endif
       _inputRowCopied = true;
       _lastSourceRow = sourceRow;
@@ -186,7 +186,7 @@ class OutputAqlItemRow {
    *        return a nullptr.
    *        After stealBlock(), the OutputAqlItemRow is unusable!
    */
-  std::unique_ptr<AqlItemBlock> stealBlock();
+  SharedAqlItemBlockPtr stealBlock();
 
   bool isFull() const { return numRowsWritten() >= block().size(); }
 
@@ -240,8 +240,6 @@ class OutputAqlItemRow {
   }
 
  private:
-  inline AqlItemBlockShell& blockShell() { return *_blockShell; }
-  inline AqlItemBlockShell const& blockShell() const { return *_blockShell; }
 
   std::unordered_set<RegisterId> const& outputRegisters() const {
     return *_outputRegisters;
@@ -263,7 +261,7 @@ class OutputAqlItemRow {
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  std::shared_ptr<AqlItemBlockShell> _blockShell;
+  SharedAqlItemBlockPtr _block;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.
@@ -311,8 +309,15 @@ class OutputAqlItemRow {
     return _numValuesWritten == numRegistersToWrite();
   }
 
-  inline AqlItemBlock const& block() const { return blockShell().block(); }
-  inline AqlItemBlock& block() { return blockShell().block(); }
+  inline AqlItemBlock const& block() const {
+    TRI_ASSERT(_block != nullptr);
+    return *_block;
+  }
+
+  inline AqlItemBlock& block() {
+    TRI_ASSERT(_block != nullptr);
+    return *_block;
+  }
 
   void doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing);
 };

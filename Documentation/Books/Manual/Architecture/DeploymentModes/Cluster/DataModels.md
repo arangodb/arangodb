@@ -68,7 +68,7 @@ necessary between nodes, and performance suffers. To achieve good
 performance at scale, it is therefore necessary to get the
 distribution of the graph data across the shards in the cluster
 right. Most of the time, the application developers and users of
-ArangoDB know best, how their graphs ara structured. Therefore, 
+ArangoDB know best, how their graphs are structured. Therefore, 
 ArangoDB allows users to specify, according to which attributes
 the graph data is sharded. A useful first step is usually to make
 sure that the edges originating at a vertex reside on the same

@@ -1037,6 +1037,10 @@ function shutdownArangod (arangod, options, forceTerminate) {
   if (options.valgrind) {
     waitOnServerForGC(arangod, options, 60);
   }
+  if (options.rr && forceTerminate) {
+    forceTerminate = false;
+    options.useKillExternal = true;
+  }
   if ((!arangod.hasOwnProperty('exitStatus')) ||
       (arangod.exitStatus.status === 'RUNNING')) {
     if (forceTerminate) {
@@ -1478,6 +1482,11 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   args['server.endpoint'] = endpoint;
   args['database.directory'] = dataDir;
   args['log.file'] = fs.join(rootDir, 'log');
+  if (options.auditLoggingEnabled) {
+    args['audit.output'] = 'file://' + fs.join(rootDir, 'audit.log');
+    args['server.statistics'] = false;
+    args['foxx.queues'] = false;
+  }
 
   if (protocol === 'ssl') {
     args['ssl.keyfile'] = fs.join('UnitTests', 'server.pem');

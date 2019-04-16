@@ -765,7 +765,7 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* req) {
   std::string const& authStr = req->header(StaticStrings::Authorization, found);
   if (!found) {
     if (_auth->isActive()) {
-      events::CredentialsMissing(req);
+      events::CredentialsMissing(*req);
       return rest::ResponseCode::UNAUTHORIZED;
     }
     return rest::ResponseCode::OK;
@@ -801,10 +801,10 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* req) {
       }
 
       if (req->authenticated() || !_auth->isActive()) {
-        events::Authenticated(req, authMethod);
+        events::Authenticated(*req, authMethod);
         return rest::ResponseCode::OK;
       } else if (_auth->isActive()) {
-        events::CredentialsBad(req, authMethod);
+        events::CredentialsBad(*req, authMethod);
         return rest::ResponseCode::UNAUTHORIZED;
       }
 
@@ -820,6 +820,6 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* req) {
     }
   }
 
-  events::UnknownAuthenticationMethod(req);
+  events::UnknownAuthenticationMethod(*req);
   return rest::ResponseCode::UNAUTHORIZED;
 }

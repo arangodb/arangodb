@@ -770,7 +770,7 @@ namespace {
         return true;
       }
       
-      int dist = std::distance(begin, end);
+      auto dist = std::distance(begin, end);
       bool notF1 = first.isNone() || (dist == 1 && !first.isObject());
       bool notF2 = second.isNone() || (dist == 1 && !second.isObject());
       if (notF1 != notF2) {
@@ -798,14 +798,9 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
                                 newDocumentId, newDoc, mode);
   }
   
-  bool equal = true;
-  for (std::vector<basics::AttributeName> const& path : _fields) {
-    if (!::attributesEqual(oldDoc, newDoc, path.begin(), path.end())) {
-      equal = false;
-      break;
-    }
-  }
-  if (!equal) {
+  if (!std::all_of(_fields.cbegin(), _fields.cend(), [&](auto const& path) {
+    return ::attributesEqual(oldDoc, newDoc, path.begin(), path.end());
+  })) {
     // we can only use in-place updates if no indexed attributes changed
     return RocksDBIndex::update(trx, mthds, oldDocumentId, oldDoc,
                                 newDocumentId, newDoc, mode);
@@ -1017,9 +1012,9 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
   return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
-                                                                node, reference,
-                                                                itemsInIndex, estimatedItems,
-                                                                estimatedCost);
+                                                              node, reference,
+                                                              itemsInIndex, estimatedItems,
+                                                              estimatedCost);
 }
 
 bool RocksDBVPackIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
@@ -1027,8 +1022,8 @@ bool RocksDBVPackIndex::supportsSortCondition(arangodb::aql::SortCondition const
                                               size_t itemsInIndex, double& estimatedCost,
                                               size_t& coveredAttributes) const {
   return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
-                                                              itemsInIndex, estimatedCost,
-                                                              coveredAttributes);
+                                                            itemsInIndex, estimatedCost,
+                                                            coveredAttributes);
 }
 
 /// @brief specializes the condition for use with the index

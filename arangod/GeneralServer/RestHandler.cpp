@@ -53,8 +53,8 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
       _request(request),
       _response(response),
       _statistics(nullptr),
-      _handlerId(0),
-      _state(HandlerState::PREPARE) {}
+      _state(HandlerState::PREPARE),
+      _handlerId(0) {}
 
 RestHandler::~RestHandler() {
   RequestStatistics* stat = _statistics.exchange(nullptr);

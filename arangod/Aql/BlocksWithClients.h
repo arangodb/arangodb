@@ -27,6 +27,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/SortRegister.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterComm.h"
@@ -51,22 +52,21 @@ class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
 
-class BlockWithClients : public ExecutionBlock {
+class BlocksWithClients : public ExecutionBlock {
  public:
-  BlockWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
+  BlocksWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
                    std::vector<std::string> const& shardIds);
 
-  ~BlockWithClients() override = default;
+  ~BlocksWithClients() override = default;
 
  public:
-  /// @brief initializeCursor
-  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
-
   /// @brief shutdown
   std::pair<ExecutionState, Result> shutdown(int) override;
 
+  std::pair<ExecutionState, bool> getBlock(size_t atMost);
+
   /// @brief getSome: shouldn't be used, use skipSomeForShard
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final {
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override final {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -78,7 +78,7 @@ class BlockWithClients : public ExecutionBlock {
   }
 
   /// @brief getSomeForShard
-  virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShard(
+  virtual std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(
       size_t atMost, std::string const& shardId) = 0;
 
   /// @brief skipSomeForShard
@@ -90,7 +90,9 @@ class BlockWithClients : public ExecutionBlock {
   /// corresponding to <shardId>
   size_t getClientId(std::string const& shardId) const;
 
- protected:
+  /// @brief throw an exception if query was killed
+  void throwIfKilled();
+
   /// @brief _shardIdMap: map from shardIds to clientNrs
   std::unordered_map<std::string, size_t> _shardIdMap;
 

@@ -38,6 +38,12 @@
 
 #include <v8.h>
 
+namespace arangodb {
+namespace aql {
+class SharedAqlItemBlockPtr;
+}
+}  // namespace arangodb
+
 // some functionality borrowed from 3rdParty/velocypack/include/velocypack
 // this is a copy of that functionality, because the functions in velocypack
 // are not accessible from here
@@ -178,7 +184,7 @@ struct AqlValue final {
     uint8_t const* pointer;
     uint8_t* slice;
     arangodb::velocypack::Buffer<uint8_t>* buffer;
-    std::vector<std::unique_ptr<AqlItemBlock>>* docvec;
+    std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec;
     Range const* range;
   } _data;
 
@@ -212,11 +218,7 @@ struct AqlValue final {
   }
 
   // construct from docvec, taking over its ownership
-  explicit AqlValue(std::vector<std::unique_ptr<AqlItemBlock>>* docvec) noexcept {
-    TRI_ASSERT(docvec != nullptr);
-    _data.docvec = docvec;
-    setType(AqlValueType::DOCVEC);
-  }
+  explicit AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept;
 
   explicit AqlValue(AqlValueHintNull const&) noexcept {
     _data.internal[0] = 0x18;  // null in VPack
@@ -525,11 +527,10 @@ struct AqlValue final {
   /// @brief return the total size of the docvecs
   size_t docvecSize() const;
 
-  /// @brief return the item block at position
-  AqlItemBlock* docvecAt(size_t position) const {
-    TRI_ASSERT(isDocvec());
-    return _data.docvec->at(position).get();
-  }
+  /// @brief return the size of the docvec array
+  size_t sizeofDocvec() const;
+
+  AqlItemBlock* docvecAt(size_t position) const;
 
   /// @brief construct a V8 value as input for the expression execution in V8
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate, transaction::Methods*) const;
@@ -578,7 +579,7 @@ struct AqlValue final {
         // no need to count the memory usage for the item blocks in docvec.
         // these have already been counted elsewhere (in ctors of AqlItemBlock
         // and AqlItemBlock::setValue)
-        return sizeof(std::unique_ptr<AqlItemBlock>) * _data.docvec->size();
+        return sizeofDocvec();
       case RANGE:
         return sizeof(Range);
     }

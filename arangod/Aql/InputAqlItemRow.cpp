@@ -25,7 +25,7 @@
 
 #include "InputAqlItemRow.h"
 
-#include "Aql/AqlItemBlockShell.h"
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
 
 #include <utility>
@@ -34,15 +34,15 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-bool InputAqlItemRow::internalBlockIs(AqlItemBlockShell const& other) const {
-  return &blockShell() == &other;
+bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other) const {
+  return _block == other;
 }
 #endif
 
-std::unique_ptr<AqlItemBlock> InputAqlItemRow::cloneToBlock(
-    AqlItemBlockManager& manager,
-    std::unordered_set<RegisterId> const& registers, size_t newNrRegs) const {
-  auto block = std::unique_ptr<AqlItemBlock>(manager.requestBlock(1, newNrRegs));
+SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager,
+                                                    std::unordered_set<RegisterId> const& registers,
+                                                    size_t newNrRegs) const {
+  SharedAqlItemBlockPtr block = manager.requestBlock(1, static_cast<RegisterId>(newNrRegs));
   if (isInitialized()) {
     std::unordered_set<AqlValue> cache;
     TRI_ASSERT(getNrRegisters() <= newNrRegs);

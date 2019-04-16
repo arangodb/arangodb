@@ -24,10 +24,14 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_H 1
 
+#include "Aql/AqlItemBlock.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/ExecutionStats.h"
 #include "Aql/Variable.h"
+#include "QueryOptions.h"
 
 #include <deque>
 
@@ -38,9 +42,33 @@ namespace transaction {
 class Methods;
 }
 
+namespace {
+
+std::string const doneString = "DONE";
+std::string const hasMoreString = "HASMORE";
+std::string const waitingString = "WAITING";
+std::string const unknownString = "UNKNOWN";
+
+static std::string const& stateToString(aql::ExecutionState state) {
+  switch (state) {
+    case aql::ExecutionState::DONE:
+      return doneString;
+    case aql::ExecutionState::HASMORE:
+      return hasMoreString;
+    case aql::ExecutionState::WAITING:
+      return waitingString;
+    default:
+      // just to suppress a warning ..
+      return unknownString;
+  }
+}
+
+}  // namespace
+
 namespace aql {
 class InputAqlItemRow;
 class ExecutionEngine;
+class SharedAqlItemBlockPtr;
 
 class ExecutionBlock {
  public:
@@ -49,30 +77,11 @@ class ExecutionBlock {
   virtual ~ExecutionBlock();
 
   ExecutionBlock(ExecutionBlock const&) = delete;
-  ExecutionBlock operator=(ExecutionBlock const&) = delete;
+  ExecutionBlock& operator=(ExecutionBlock const&) = delete;
 
  public:
   /// @brief batch size value
   static constexpr inline size_t DefaultBatchSize() { return 1000; }
-
-  /// @brief returns the register id for a variable id
-  /// will return ExecutionNode::MaxRegisterId for an unknown variable
-  RegisterId getRegister(VariableId id) const;
-  RegisterId getRegister(Variable const* variable) const;
-
-  /// @brief throw an exception if query was killed
-  void throwIfKilled();
-
-  /// @brief add a dependency
-  TEST_VIRTUAL void addDependency(ExecutionBlock* ep) {
-    TRI_ASSERT(ep != nullptr);
-    _dependencies.emplace_back(ep);
-    _dependencyPos = _dependencies.end();
-  }
-
-  /// @brief remove a dependency, returns true if the pointer was found and
-  /// removed, please note that this does not delete ep!
-  bool removeDependency(ExecutionBlock* ep);
 
   /// @brief Methods for execution
   /// Lifecycle is:
@@ -87,10 +96,10 @@ class ExecutionBlock {
   ///    DESTRUCTOR
 
   /// @brief initializeCursor, could be called multiple times
-  virtual std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input);
+  virtual std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) = 0;
 
   /// @brief shutdown, will be called exactly once for the whole query
-  virtual std::pair<ExecutionState, Result> shutdown(int errorCode);
+  virtual std::pair<ExecutionState, Result> shutdown(int errorCode) = 0;
 
   /// @brief getSome, gets some more items, semantic is as follows: not
   /// more than atMost items may be delivered. The method tries to
@@ -99,21 +108,133 @@ class ExecutionBlock {
   /// if it returns an actual block, it must contain at least one item.
   /// getSome() also takes care of tracing and clearing registers; don't do it
   /// in getOrSkipSome() implementations.
-  virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost);
+  virtual std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) = 0;
 
-  void traceGetSomeBegin(size_t atMost);
-  void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state);
+  // Trace the start of a getSome call
+  inline void traceGetSomeBegin(size_t atMost) {
+    if (_profile >= PROFILE_LEVEL_BLOCKS) {
+      if (_getSomeBegin <= 0.0) {
+        _getSomeBegin = TRI_microtime();
+      }
+      if (_profile >= PROFILE_LEVEL_TRACE_1) {
+        auto node = getPlanNode();
+        LOG_TOPIC("ca7db", INFO, Logger::QUERIES)
+            << "getSome type=" << node->getTypeString() << " atMost = " << atMost
+            << " this=" << (uintptr_t)this << " id=" << node->id();
+      }
+    }
+  }
 
-  void traceSkipSomeBegin(size_t atMost);
-  void traceSkipSomeEnd(size_t skipped, ExecutionState state);
+  // Trace the end of a getSome call, potentially with result
+  inline std::pair<ExecutionState, SharedAqlItemBlockPtr> traceGetSomeEnd(
+      ExecutionState state, SharedAqlItemBlockPtr result) {
+    TRI_ASSERT(result != nullptr || state != ExecutionState::HASMORE);
+    if (_profile >= PROFILE_LEVEL_BLOCKS) {
+      ExecutionNode const* en = getPlanNode();
+      ExecutionStats::Node stats;
+      stats.calls = 1;
+      stats.items = result != nullptr ? result->size() : 0;
+      if (state != ExecutionState::WAITING) {
+        stats.runtime = TRI_microtime() - _getSomeBegin;
+        _getSomeBegin = 0.0;
+      }
+
+      auto it = _engine->_stats.nodes.find(en->id());
+      if (it != _engine->_stats.nodes.end()) {
+        it->second += stats;
+      } else {
+        _engine->_stats.nodes.emplace(en->id(), stats);
+      }
+
+      if (_profile >= PROFILE_LEVEL_TRACE_1) {
+        ExecutionNode const* node = getPlanNode();
+        LOG_TOPIC("07a60", INFO, Logger::QUERIES)
+            << "getSome done type=" << node->getTypeString()
+            << " this=" << (uintptr_t)this << " id=" << node->id()
+            << " state=" << stateToString(state);
+
+        if (_profile >= PROFILE_LEVEL_TRACE_2) {
+          if (result == nullptr) {
+            LOG_TOPIC("daa64", INFO, Logger::QUERIES)
+                << "getSome type=" << node->getTypeString() << " result: nullptr";
+          } else {
+            VPackBuilder builder;
+            {
+              VPackObjectBuilder guard(&builder);
+              result->toVelocyPack(transaction(), builder);
+            }
+            LOG_TOPIC("fcd9c", INFO, Logger::QUERIES)
+                << "getSome type=" << node->getTypeString()
+                << " result: " << builder.toJson();
+          }
+        }
+      }
+    }
+    return {state, std::move(result)};
+  }
+
+  inline void traceSkipSomeBegin(size_t atMost) {
+    if (_profile >= PROFILE_LEVEL_BLOCKS) {
+      if (_getSomeBegin <= 0.0) {
+        _getSomeBegin = TRI_microtime();
+      }
+      if (_profile >= PROFILE_LEVEL_TRACE_1) {
+        auto node = getPlanNode();
+        LOG_TOPIC("dba8a", INFO, Logger::QUERIES)
+            << "skipSome type=" << node->getTypeString() << " atMost = " << atMost
+            << " this=" << (uintptr_t)this << " id=" << node->id();
+      }
+    }
+  }
+
+  inline std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped) {
+    if (_profile >= PROFILE_LEVEL_BLOCKS) {
+      ExecutionNode const* en = getPlanNode();
+      ExecutionStats::Node stats;
+      stats.calls = 1;
+      stats.items = skipped;
+      if (state != ExecutionState::WAITING) {
+        stats.runtime = TRI_microtime() - _getSomeBegin;
+        _getSomeBegin = 0.0;
+      }
+
+      auto it = _engine->_stats.nodes.find(en->id());
+      if (it != _engine->_stats.nodes.end()) {
+        it->second += stats;
+      } else {
+        _engine->_stats.nodes.emplace(en->id(), stats);
+      }
+
+      if (_profile >= PROFILE_LEVEL_TRACE_1) {
+        ExecutionNode const* node = getPlanNode();
+        LOG_TOPIC("d1950", INFO, Logger::QUERIES)
+            << "skipSome done type=" << node->getTypeString()
+            << " this=" << (uintptr_t)this << " id=" << node->id()
+            << " state=" << stateToString(state);
+      }
+    }
+    return {state, skipped};
+  }
 
   /// @brief skipSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to
   /// skip a block of at most atMost items, however, it may skip
   /// less (for example if there are not enough items to come). The number of
   /// elements skipped is returned.
-  virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost);
+  virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost) = 0;
 
+  ExecutionState getHasMoreState() {
+    if (_done) {
+      return ExecutionState::DONE;
+    }
+    if (_buffer.empty() && _upstreamState == ExecutionState::DONE) {
+      _done = true;
+      return ExecutionState::DONE;
+    }
+    return ExecutionState::HASMORE;
+  }
+
+  // TODO: Can we get rid of this? Problem: Subquery Executor is using it.
   ExecutionNode const* getPlanNode() const { return _exeNode; }
 
   transaction::Methods* transaction() const { return _trx; }
@@ -128,76 +249,12 @@ class ExecutionBlock {
     return true;
   }
 
-  RegisterId getNrInputRegisters() const;
-
-  RegisterId getNrOutputRegisters() const;
-
- protected:
-  /// @brief request an AqlItemBlock from the memory manager
-  AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
-
-  /// @brief return an AqlItemBlock to the memory manager
-  void returnBlock(AqlItemBlock*& block) noexcept;
-
-  /// @brief return an AqlItemBlock to the memory manager, but ignore nullptr
-  void returnBlockUnlessNull(AqlItemBlock*& block) noexcept;
-
-  /// @brief copy register data from one block (src) into another (dst)
-  /// register values are cloned
-  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t row) {
-    return inheritRegisters(src, dst, row, 0);
+  /// @brief add a dependency
+  void addDependency(ExecutionBlock* ep) {
+    TRI_ASSERT(ep != nullptr);
+    _dependencies.emplace_back(ep);
+    _dependencyPos = _dependencies.end();
   }
-
-  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst,
-                        size_t srcRow, size_t dstRow);
-
-  /// @brief the following is internal to pull one more block and append it to
-  /// our _buffer deque. Returns true if a new block was appended and false if
-  /// the dependent node is exhausted.
-  std::pair<ExecutionState, bool> getBlock(size_t atMost);
-
-  /// @brief getSomeWithoutRegisterClearout, same as above, however, this
-  /// is the actual worker which does not clear out registers at the end
-  /// the idea is that somebody who wants to call the generic functionality
-  /// in a derived class but wants to modify the results before the register
-  /// cleanup can use this method, internal use only
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutRegisterClearout(size_t atMost);
-
-  /// @brief clearRegisters, clears out registers holding values that are no
-  /// longer needed by later nodes
-  void clearRegisters(AqlItemBlock* result);
-
-  /// @brief generic method to get or skip some
-  /// Does neither do tracing (traceGetSomeBegin/~End), nor call
-  /// clearRegisters() - both is done in getSome(), which calls this via
-  /// getSomeWithoutRegisterClearout(). The same must hold for all overriding
-  /// implementations.
-  virtual std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
-                                                          AqlItemBlock*& result,
-                                                          size_t& skipped);
-
-  /// @brief Returns the success return start of this block.
-  ///        Can either be HASMORE or DONE.
-  ///        Guarantee is that if DONE is returned every subsequent call
-  ///        to get/skipSome will NOT find mor documents.
-  ///        HASMORE is allowed to lie, so a next call to get/skipSome could
-  ///        return no more results.
-  virtual ExecutionState getHasMoreState();
-
-  /// @brief If the buffer is empty, calls getBlock(atMost). The return values
-  /// mean:
-  /// - NO_MORE_BLOCKS: the buffer is empty and the upstream is DONE
-  /// - HAS_BLOCKS: there is at least one block in the buffer
-  /// - HAS_NEW_BLOCK: the buffer was empty before and a new block was added
-  /// - WAITING: upstream returned WAITING, state is unchanged
-  enum class BufferState { NO_MORE_BLOCKS, HAS_BLOCKS, HAS_NEW_BLOCK, WAITING };
-  BufferState getBlockIfNeeded(size_t atMost);
-
-  /// @brief Updates _skipped and _pos; removes the first item from the
-  /// buffer if necessary. If a block was removed it is returned, and nullptr
-  /// otherwise. The caller then owns the block (and therefore is responsible
-  /// for calling returnBlock()).
-  AqlItemBlock* advanceCursor(size_t numInputRowsConsumed, size_t numOutputRowsCreated);
 
  protected:
   /// @brief the execution engine
@@ -206,8 +263,15 @@ class ExecutionBlock {
   /// @brief the transaction for this query
   transaction::Methods* _trx;
 
+  /// @brief the Result returned during the shutdown phase. Is kept for multiple
+  ///        waiting phases.
+  Result _shutdownResult;
+
+  /// @brief if this is set, we are done, this is reset to false by execute()
+  bool _done;
+
   /// @brief our corresponding ExecutionNode node
-  ExecutionNode const* _exeNode;
+  ExecutionNode const* _exeNode;  // TODO: Can we get rid of this? Problem: Subquery Executor is using it.
 
   /// @brief our dependent nodes
   std::vector<ExecutionBlock*> _dependencies;
@@ -216,27 +280,6 @@ class ExecutionBlock {
   ///        used in initializeCursor and shutdown.
   ///        Needs to be set to .end() everytime we modify _dependencies
   std::vector<ExecutionBlock*>::iterator _dependencyPos;
-
-  /// @brief the Result returned during the shutdown phase. Is kept for multiple
-  ///        waiting phases.
-  Result _shutdownResult;
-
-  /// @brief this is our buffer for the items, it is a deque of AqlItemBlocks.
-  /// We keep the following invariant between this and the other two variables
-  /// _pos and _done: If _buffer.size() != 0, then 0 <= _pos <
-  /// _buffer[0]->size()
-  /// and _buffer[0][_pos] is the next item to be handed on. If _done is true,
-  /// then no more documents will ever be returned. _done will be set to
-  /// true if and only if we have no more data ourselves (i.e.
-  /// _buffer.size()==0)
-  /// and we have unsuccessfully tried to get another block from our dependency.
-  std::deque<AqlItemBlock*> _buffer;
-
-  /// @brief current working position in the first entry of _buffer
-  size_t _pos;
-
-  /// @brief if this is set, we are done, this is reset to false by execute()
-  bool _done;
 
   /// @brief profiling level
   uint32_t _profile;
@@ -248,17 +291,25 @@ class ExecutionBlock {
   ///        used to determine HASMORE or DONE better
   ExecutionState _upstreamState;
 
-  /// @brief The number of skipped/processed rows in getOrSkipSome, used to keep
-  /// track of it despite WAITING interruptions. As
-  /// ExecutionBlock::getOrSkipSome is called directly in some overriden
-  /// implementations of ::getOrSkipSome, these implementations need their own
-  /// _skipped counter.
-  size_t _skipped;
+  /// @brief this is our buffer for the items, it is a deque of AqlItemBlocks.
+  /// We keep the following invariant between this and the other two variables
+  /// _pos and _done: If _buffer.size() != 0, then 0 <= _pos <
+  /// _buffer[0]->size()
+  /// and _buffer[0][_pos] is the next item to be handed on. If _done is true,
+  /// then no more documents will ever be returned. _done will be set to
+  /// true if and only if we have no more data ourselves (i.e.
+  /// _buffer.size()==0)
+  /// and we have unsuccessfully tried to get another block from our dependency.
+  std::deque<SharedAqlItemBlockPtr> _buffer;
+
+  /// @brief current working position in the first entry of _buffer
+  size_t _pos;
 
   /// @brief Collects result blocks during ExecutionBlock::getOrSkipSome. Must
   /// be a member variable due to possible WAITING interruptions.
   aql::BlockCollector _collector;
 };
+
 
 }  // namespace aql
 }  // namespace arangodb

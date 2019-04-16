@@ -201,6 +201,13 @@ Alternatively, expiration timepoints can be specified as absolute values per
 document.
 It is also possible to exclude documents from automatic expiration and removal.
 
+Please also note that TTL indexes are designed exactly for the purpose of removing 
+expired documents from collections. It is *not recommended* to rely on TTL indexes 
+for user-land AQL queries. This is because TTL indexes internally may store a transformed, 
+always numerical version of the index attribute value even if it was originally passed in 
+as a datestring. As a result TTL indexes will likely not be used for filtering and sort 
+operations in user-land AQL queries.
+
 Also see the [TTL Indexes](../Indexing/Ttl.md) page.
 
 
@@ -253,6 +260,8 @@ when using the RocksDB engine, so there is no need to offer them all.
 JavaScript
 ----------
 
+### V8 updated
+
 The bundled version of the V8 JavaScript engine has been upgraded from 5.7.492.77 to 
 7.1.302.28.
 
@@ -293,6 +302,26 @@ always be honored:
 Mon Apr 01 2019 02:00:00 GMT+0200 (Central European Summer Time)
 > new Date("2019-04-01T00:00:00Z");
 Mon Apr 01 2019 02:00:00 GMT+0200 (Central European Summer Time)
+```
+
+### API improvements
+
+Collections now provide the `documentId` method to derive document ids from keys.
+
+Before:
+
+```js
+const collection = context.collection("users");
+const documentKey = "my-document-key";
+const documentId = `${collection.name()}/${documentKey}`;
+```
+
+After:
+
+```js
+const collection = context.collection("users");
+const documentKey = "my-document-key";
+const documentId = collection.documentId(documentKey);
 ```
 
 
@@ -426,3 +455,19 @@ The bundled JEMalloc memory allocator used in ArangoDB release packages has been
 upgraded from version 5.0.1 to version 5.2.0.
 
 The bundled version of the RocksDB library has been upgraded from 5.16 to 6.0.
+
+
+Foxx
+----
+
+Request credentials are now exposed via the `auth` property:
+
+```js
+const tokens = context.collection("tokens");
+router.get("/authorized", (req, res) => {
+    if (!req.auth || !req.auth.bearer || !tokens.exists(req.auth.bearer)) {
+        res.throw(403, "Not authenticated");
+    }
+    // ...
+});
+```

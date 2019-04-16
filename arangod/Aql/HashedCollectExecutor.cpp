@@ -46,8 +46,8 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
     std::unordered_set<RegisterId> registersToKeep,
     std::unordered_set<RegisterId>&& readableInputRegisters,
     std::unordered_set<RegisterId>&& writeableOutputRegisters,
-    std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters, RegisterId collectRegister,
-    std::vector<std::string>&& aggregateTypes,
+    std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
+    RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
     transaction::Methods* trxPtr, bool count)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
@@ -79,8 +79,7 @@ HashedCollectExecutor::createAggregatorFactories(HashedCollectExecutor::Infos co
 
     // initialize aggregators
     for (auto const& r : infos.getAggregateTypes()) {
-      aggregatorFactories.emplace_back(
-          Aggregator::factoryFromTypeString(r));
+      aggregatorFactories.emplace_back(Aggregator::factoryFromTypeString(r));
     }
   }
 
@@ -97,7 +96,8 @@ HashedCollectExecutor::HashedCollectExecutor(Fetcher& fetcher, Infos& infos)
                                    _infos.getGroupRegisters().size()),
                  AqlValueGroupEqual(_infos.getTransaction())),
       _isInitialized(false),
-      _aggregatorFactories() {
+      _aggregatorFactories(),
+      _returnedGroups(0) {
   _aggregatorFactories = createAggregatorFactories(_infos);
 };
 
@@ -232,6 +232,8 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
   if (_currentGroup != _allGroups.end()) {
     writeCurrentGroupToOutput(output);
     ++_currentGroup;
+    ++_returnedGroups;
+    TRI_ASSERT(_returnedGroups <= _allGroups.size());
   }
 
   ExecutionState state = _currentGroup != _allGroups.end() ? ExecutionState::HASMORE
@@ -265,7 +267,7 @@ HashedCollectExecutor::buildNewGroup(InputAqlItemRow& input, size_t n) {
 // _allGroups. additionally, .second is true iff a new group was emplaced.
 decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::findOrEmplaceGroup(
     InputAqlItemRow& input) {
-  GroupKeyType groupValues; // TODO store groupValues locally
+  GroupKeyType groupValues;  // TODO store groupValues locally
   size_t const n = _infos.getGroupRegisters().size();
   groupValues.reserve(n);
 
@@ -294,3 +296,24 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
 
   return emplaceResult.first;
 };
+
+std::pair<ExecutionState, size_t> HashedCollectExecutor::expectedNumberOfRows(size_t atMost) const {
+  size_t rowsLeft = 0;
+  if (!_isInitialized) {
+    ExecutionState state;
+    std::tie(state, rowsLeft) = _fetcher.preFetchNumberOfRows(atMost);
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(rowsLeft == 0);
+      return {state, 0};
+    }
+    // Overestimate, we have not grouped!
+  } else {
+    // This fetcher nows how exactly many rows are left
+    // as it knows how many  groups is has created and not returned.
+    rowsLeft = _allGroups.size() - _returnedGroups;
+  }
+  if (rowsLeft > 0) {
+    return {ExecutionState::HASMORE, rowsLeft};
+  }
+  return {ExecutionState::DONE, rowsLeft};
+}
