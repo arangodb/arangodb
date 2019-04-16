@@ -38,7 +38,7 @@ var EPS = 0.0001;
 let pregel = require("@arangodb/pregel");
 
 const graphName = "UnitTest_pregel";
-var vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
+const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
 function testAlgo(a, p) {
   var pid = pregel.start(a, graphName, p);
@@ -67,6 +67,7 @@ function testAlgo(a, p) {
     assertTrue(false, "timeout in pregel execution");
   }
 }
+
 
 function basicTestSuite () {
   'use strict';
@@ -205,7 +206,7 @@ function exampleTestSuite () {
     
     setUp : function () {
       var examples = require("@arangodb/graph-examples/example-graph.js"); 
-      var graph = examples.loadGraph("social");
+      examples.loadGraph("social");
     },
     
     ////////////////////////////////////////////////////////////////////////////////
@@ -237,7 +238,95 @@ function exampleTestSuite () {
   };
 };
 
+function randomTestSuite () {
+  'use strict';
+
+  const n = 10000; // vertices
+  const m = 150000; // edges
+
+  return {
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    setUp : function () {
+      
+      var exists = graph_module._list().indexOf("random") !== -1;
+      if (exists || db.demo_v) {
+        return;
+      }
+      var graph = graph_module._create(graphName);
+      db._create(vColl, {numberOfShards: 4});
+      graph._addVertexCollection(vColl);
+      db._createEdgeCollection(eColl, {
+                               numberOfShards: 4,
+                               replicationFactor: 1,
+                               shardKeys:["vertex"],
+                               distributeShardsLike:vColl});
+      
+      var rel = graph_module._relation(eColl, [vColl], [vColl]);
+      graph._extendEdgeDefinitions(rel);
+
+      let x = 0
+      while (x < n) {
+        let vertices = [];
+        for (let i = 0; i < 1000; i++) {
+          vertices.push({_key: String(x++)});
+        }
+        db[vColl].insert(vertices);
+        db[vColl].count();
+      }
+      assertEqual(db[vColl].count(), n);
+
+      x = 0
+      while (x < m) {
+        let edges = [];
+        for (let i = 0; i < 1000; i++) {
+          let fromID = Math.floor(Math.random() * n);
+          let toID = Math.floor(Math.random() * n);
+          let from = vColl +'/' + fromID;
+          let to = vColl +'/' + toID;
+          edges.push({_from: from, _to: to, vertex: String(fromID)});
+          edges.push({_from: to, _to: from, vertex: String(toID)});
+          x++;
+        }
+        db[eColl].insert(edges);
+      }
+      assertEqual(db[eColl].count(), m * 2);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    tearDown : function () {
+      graph_module._drop(graphName, true);
+    },
+
+    testPageRankRandom: function () {
+      var pid = pregel.start("pagerank", graphName, {threshold:0.000001});
+      var i = 10000;
+      do {
+        internal.wait(0.2);
+        var stats = pregel.status(pid);
+        if (stats.state !== "running") {
+          assertEqual(stats.vertexCount, n, stats);
+          assertEqual(stats.edgeCount, m * 2, stats);
+          print(stats);
+          break;
+        }
+      } while(i-- >= 0);
+      if (i === 0) {
+        assertTrue(false, "timeout in pregel execution");
+      }
+    }
+  }
+}
+
 jsunity.run(basicTestSuite);
 jsunity.run(exampleTestSuite);
+jsunity.run(randomTestSuite);
+
 
 return jsunity.done();

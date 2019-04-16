@@ -581,7 +581,7 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx, RocksDBMethod
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
   TRI_ASSERT(!_unique);
-  auto fromToRef = StringRef(fromTo);
+  StringRef fromToRef(fromTo);
   RocksDBKeyLeaser key(trx);
   key->constructEdgeIndexValue(_objectId, fromToRef, documentId);
   VPackSlice toFrom = _isFromIndex

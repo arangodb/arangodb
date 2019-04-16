@@ -383,6 +383,10 @@ template <typename V, typename E>
 void GraphStore<V, E>::_loadVertices(transaction::Methods& trx, ShardID const& vertexShard,
                                      std::vector<ShardID> const& edgeShards,
                                      size_t vertexOffset, size_t& edgeOffset) {
+  
+  LOG_TOPIC(DEBUG, Logger::PREGEL)
+    << "Pregel worker: loading from vertex shard " << vertexShard;
+  
   TRI_ASSERT(vertexOffset < _index.size());
   uint64_t originalVertexOffset = vertexOffset;
 
@@ -453,6 +457,9 @@ void GraphStore<V, E>::_loadVertices(transaction::Methods& trx, ShardID const& v
 template <typename V, typename E>
 void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, ShardID const& edgeShard,
                                   VertexEntry& vertexEntry, std::string const& documentID) {
+  
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Pregel worker: loading from edge shard " << edgeShard;
+  
   size_t added = 0;
   size_t offset = vertexEntry._edgeDataOffset + vertexEntry._edgeCount;
   // moving pointer to edge
