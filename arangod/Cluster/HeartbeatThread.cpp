@@ -998,8 +998,8 @@ void HeartbeatThread::runCoordinator() {
 
             // Do loadCurrent asynchronously, such that the heartbeat thread
             // and all other requests can continue uninterrupted:
-            SchedulerFeature::SCHEDULER->queue(RequestPriority::HIGH,
-                [](bool) -> void {
+            SchedulerFeature::SCHEDULER->queueDelay(RequestLane::CLUSTER_INTERNAL,
+                []() -> void {
                   ClusterInfo::instance()->loadCurrent();
                 });
             invalidateCoordinators = false;
@@ -1231,8 +1231,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
   // invalidate our local cache, do this asynchronously, such that the
   // heartbeat thread and all other requests con continue uninterrupted:
-  SchedulerFeature::SCHEDULER->queue(RequestPriority::HIGH,
-      [](bool) -> void {
+  SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL,
+      []() -> void {
         // We load the following for every Plan Version increase, normally,
         // we would only load the Plan, but in some tests the mappings
         // have not been loaded quickly enough, so we do it additionally here.
