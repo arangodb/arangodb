@@ -3661,7 +3661,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
 
     { 
       VPackObjectBuilder o(&report);
-      report.add("id", VPackValue(backupId + "_" + timeStamp));
+      report.add("id", VPackValue(timeStamp + "_" + backupId));
     }
     
     return arangodb::Result();
