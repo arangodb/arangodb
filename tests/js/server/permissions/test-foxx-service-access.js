@@ -133,7 +133,7 @@ function testSuite() {
       const url = endpoint + mount + "/get-tmp-path";
       const res = download(url);
       assertEqual(200, res.code);
-      let body = JSON.parse(res.body)
+      let body = JSON.parse(res.body);
       assertTrue(body.startsWith("/tmp"));
     },
 
@@ -141,7 +141,7 @@ function testSuite() {
       const url = endpoint + mount + "/get-tmp-file";
       const res = download(url);
       assertEqual(200, res.code);
-      let body = JSON.parse(res.body)
+      let body = JSON.parse(res.body);
       assertTrue(body.startsWith("/tmp"));
     },
 
@@ -167,28 +167,28 @@ function testSuite() {
       { // read
         const url = endpoint + mount + "/environment-variables-get-path";
         const res = download(url);
-        assertEqual(204, res.code)
-        assertEqual("undefined", res.body)
+        assertEqual(204, res.code);
+        assertEqual("undefined", res.body);
       }
       { // modify
         const url = endpoint + mount + "/environment-variables-set-path";
         const res = download(url);
-        assertEqual(200, res.code)
-        assertEqual("true", res.body)
+        assertEqual(200, res.code);
+        assertEqual("true", res.body);
       }
       { // read
         const url = endpoint + mount + "/environment-variables-get-path";
         const res = download(url);
-        assertEqual(204, res.code)
-        assertEqual("undefined", res.body)
+        assertEqual(204, res.code);
+        assertEqual("undefined", res.body);
       }
     },
 
     testStartupOptions : function() {
       const url = endpoint + mount + "/startup-options-log-file";
       const res = download(url);
-      assertEqual(204, res.code)
-      assertEqual("undefined", res.body)
+      assertEqual(204, res.code);
+      assertEqual("undefined", res.body);
     },
 
     //testTemplate : function() {
