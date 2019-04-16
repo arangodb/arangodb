@@ -869,6 +869,7 @@ void RocksDBHotBackupList::execute() {
 // @brief returns specific information about the hotbackup with the given id
 void RocksDBHotBackupList::statId() {
   std::string directory = rebuildPath(_listId);
+  
 
   if (!basics::FileUtils::isDirectory(directory)) {
     _success = false;
@@ -990,9 +991,13 @@ void RocksDBHotBackupList::listAll() {
   try {
     _result.add(VPackValue(VPackValueType::Object));
     _result.add("server", VPackValue(getPersistedId()));
-    _result.add("backups", VPackValue(VPackValueType::Array));  // open
+    _result.add("id", VPackValue(VPackValueType::Array));  // open
     for (auto const& dir : hotbackups) {
-      _result.add(VPackValue(dir.c_str()));
+      if (_isSingle) {
+        _result.add(VPackValue(dir.c_str()));
+      } else {
+        _result.add(VPackValue(dir.substr(getPersistedId().size()+1).c_str()));
+      }
     } // for
     _result.close();
     _result.close();

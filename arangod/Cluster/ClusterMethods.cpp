@@ -3396,7 +3396,7 @@ arangodb::Result hotBackupDBServers(
   VPackBuilder builder;
   {
     VPackObjectBuilder b(&builder);
-    builder.add("id", VPackValue(backupId));
+    builder.add("label", VPackValue(backupId));
     builder.add("agency-dump", agencyDump);
     builder.add("timestamp", VPackValue(timeStamp));
   }
@@ -3673,8 +3673,54 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
 }
 
 
-arangodb::Result listHotBakupsOnCoordinator(VPackSlice const paylod) {
+arangodb::Result listHotBakupsOnCoordinator(
+  VPackSlice const payload, VPackBuilder& report) {
+
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return Result(TRI_ERROR_SHUTTING_DOWN, "server is shutting down");
+  }
+
+  ClusterInfo* ci = ClusterInfo::instance();
+  std::vector<ServerID> dbServers = ci->getCurrentDBServers();
+
+  std::vector<std::string> listIds;
+
+  if (!payload.isNone()) {
+    if (payload.hasKey("id")) {
+      if (payload.get("id").isArray()) {
+        for (auto const i : VPackArrayIterator(payload.get("id"))) {
+          if (!i.isString()) {
+            return arangodb::Result(
+              TRI_ERROR_HOT_BACKUP_INTERNAL,
+              "invalid list JSON: all ids must be string.");
+          }
+        }
+      }
+      if (!payload.get("id").isString()) {
+        return arangodb::Result(
+          TRI_ERROR_HOT_BACKUP_INTERNAL,
+          "invalid JSON: id must be string or array of strings.");
+      }
+    }
+  }
+
+  arangodb::Result result = hotBackupList(dbServers, listIds);
+
+  {
+    VPackObjectBuilder o(&report);
+    report.add(VPackValue("id"));
+    { 
+      VPackArrayBuilder a(&report);
+      for (auto const& i : listIds) {
+        report.add(VPackValue(i));
+      }
+    }
+  }
+    
   return arangodb::Result();
+  
 }
 
 
