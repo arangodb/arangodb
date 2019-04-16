@@ -285,6 +285,13 @@ class AgencyPrecondition {
   AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
   AgencyPrecondition(std::string const& key, Type, VPackSlice const&);
+  template<typename T> 
+  AgencyPrecondition(std::string const& key, Type t, T const& v)
+    : key(AgencyCommManager::path(key)), type(t), empty(false),
+      builder(std::make_shared<VPackBuilder>()) {
+    builder->add(VPackValue(v));
+    value = builder->slice();
+  }; 
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
@@ -294,7 +301,8 @@ class AgencyPrecondition {
   std::string key;
   Type type;
   bool empty;
-  VPackSlice const value;
+  VPackSlice value;
+  std::shared_ptr<VPackBuilder> builder;
 };
 
 // -----------------------------------------------------------------------------

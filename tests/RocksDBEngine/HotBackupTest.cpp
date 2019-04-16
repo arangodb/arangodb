@@ -64,7 +64,7 @@ public:
 // -----------------------------------------------------------------------------
 
 /// @brief test RocksDBHotBackup::buildDirectoryPath
-TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel]") {
+TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel][hotbackup]") {
 
   VPackSlice config;
   VPackBuilder report;
@@ -77,19 +77,19 @@ TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel]") {
 
   SECTION("test_date clean up") {
     CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z","") ==
-            "/var/db/hotbackups/SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe_2019-01-23T14.47.42Z");
+            "/var/db/backups/SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe_2019-01-23T14.47.42Z");
   }
 
   SECTION("test_user string clean up") {
     CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z","1\"2#3,14159") ==
-            "/var/db/hotbackups/SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe_2019-01-23T14.47.42Z_1.2.3.14159");
+            "/var/db/backups/SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe_2019-01-23T14.47.42Z_1.2.3.14159");
     CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z","Today\'s Hot Backup") ==
-            "/var/db/hotbackups/SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe_2019-01-23T14.47.42Z_Today.s_Hot_Backup");
+            "/var/db/backups/SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe_2019-01-23T14.47.42Z_Today.s_Hot_Backup");
     std::string raw_string("Toodaay\'s hot");
     raw_string[1]=(char)1;
     raw_string[5]=(char)5;
     CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z",raw_string) ==
-            "/var/db/hotbackups/SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe_2019-01-23T14.47.42Z_Today.s_hot");
+            "/var/db/backups/SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe_2019-01-23T14.47.42Z_Today.s_hot");
   }
 
   SECTION("test getRocksDBPath") {
@@ -104,12 +104,13 @@ TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel]") {
 // -----------------------------------------------------------------------------
 
 /// @brief test RocksDBHotBackup create operation parameters
-TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
+TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel][hotbackup]") {
 
   SECTION("test_defaults") {
     const VPackSlice slice;
     VPackBuilder report;
     RocksDBHotBackupCreate testee(slice, report, true);
+
     CHECK(true == testee.isCreate());
     CHECK(testee.getTimestamp() == "");
     CHECK(10 == testee.getTimeout());
@@ -127,6 +128,7 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
     VPackBuilder report;
     RocksDBHotBackupCreate testee(opBuilder.slice(), report, false);
     testee.parseParameters();
+
     CHECK(testee.valid());
     CHECK(false == testee.isCreate());
     CHECK(12345 == testee.getTimeout());
@@ -145,6 +147,7 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
     VPackBuilder report;
     RocksDBHotBackupCreate testee(opBuilder.slice(), report, false);
     testee.parseParameters();
+
     CHECK(!testee.valid());
     CHECK((testee.resultSlice().isObject() && testee.resultSlice().hasKey("timeout")));
   }
@@ -160,6 +163,7 @@ public:
   RocksDBHotBackupRestoreTest(VPackSlice const slice, VPackBuilder& report) :
     RocksDBHotBackupRestore(slice, report), _pauseRocksDBReturn(true),
     _restartRocksDBReturn(true), _holdTransactionsReturn(true) {
+
     long systemError;
     std::string errorMessage;
 
@@ -177,6 +181,7 @@ public:
     TRI_CreateDirectory(_id.c_str(), systemError, errorMessage);
 
     _idRestore = "SNGL-9231534b-e1aa-4eb6-881a-0b6c798c6677_2019-02-15T20.51.13Z";
+
   }
 
   //RocksDBHotBackupRestoreTest(const VPackSlice body) : RocksDBHotBackup(body) {};
@@ -274,7 +279,7 @@ public:
 
     pathname = getDatabasePath();
     pathname += TRI_DIR_SEPARATOR_CHAR;
-    pathname += "hotbackups";
+    pathname += "backups";
     pathname += TRI_DIR_SEPARATOR_CHAR;
     pathname += _idRestore;
     retVal = TRI_CreateRecursiveDirectory(pathname.c_str(), systemError,
@@ -304,13 +309,15 @@ public:
 
 
 /// @brief test
-TEST_CASE("RocksDBHotBackupRestore directories", "[rocksdb][devel]") {
+TEST_CASE("RocksDBHotBackupRestore directories", "[rocksdb][devel][hotbackup]") {
+
   std::string restoringDir, tempname;
   bool retBool;
 
   SECTION("test createRestoringDirectory") {
     VPackBuilder report;
     RocksDBHotBackupRestoreTest testee(VPackSlice(), report);
+
     testee.createHotDirectory();
 
     retBool = testee.createRestoringDirectory(restoringDir);
@@ -355,6 +362,7 @@ TEST_CASE("RocksDBHotBackupRestore directories", "[rocksdb][devel]") {
   SECTION("test execute() normal directory path") {
     VPackBuilder report; 
     RocksDBHotBackupRestoreTest testee(VPackSlice(), report);
+
     testee.createDBDirectory();
     testee.createHotDirectory();
 

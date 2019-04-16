@@ -68,7 +68,7 @@ auth::TokenCache::~TokenCache() {
 void auth::TokenCache::setJwtSecret(std::string const& jwtSecret) {
   WRITE_LOCKER(writeLocker, _jwtLock);
   LOG_TOPIC(DEBUG, Logger::AUTHENTICATION)
-      << "Setting jwt secret " << Logger::BINARY(jwtSecret.data(), jwtSecret.size());
+      << "Setting jwt secret of size " << jwtSecret.size();
   _jwtSecret = jwtSecret;
   _jwtCache.clear();
   generateJwtToken();
@@ -213,7 +213,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
   std::string const message = header + "." + body;
   if (!validateJwtHMAC256Signature(message, signature)) {
     LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
-        << "Couldn't validate jwt signature " << signature << " against " << _jwtSecret;
+        << "Couldn't validate jwt signature " << signature << " against given secret";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
