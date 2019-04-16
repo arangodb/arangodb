@@ -3557,7 +3557,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
         "backup payload must be an object defining an optional string attribute 'label'");
     }
 
-    std::string const backupId = payload.hasKey("label") ?
+    std::string backupId = payload.hasKey("label") ?
       payload.get("label").copyString() : to_string(boost::uuids::random_generator()());
     std::string const timeStamp = timepointToString(std::chrono::system_clock::now());
 
