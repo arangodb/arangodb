@@ -291,13 +291,12 @@ the
 specified filename.
 
 
-### LinkFile
-
+### linkFile
 
 creates a symbolic link from a target in the place of linkpath.
-`fs.copyFile(target, linkpath)`
+`fs.linkFile(target, linkpath)`
 
-in `linkpath` a symbolic link to `target` will be created.
+In `linkpath` a symbolic link to `target` will be created.
 
 ### move
 
