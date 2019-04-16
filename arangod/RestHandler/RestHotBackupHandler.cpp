@@ -59,7 +59,7 @@ RestStatus RestHotBackupHandler::execute() {
       result.errorMessage());
     return RestStatus::DONE;
   }
-  
+
   HotBackup hotbackup;
   VPackBuilder report;
   result = hotbackup.execute(suffixes.front(), payload, report);
@@ -110,9 +110,13 @@ arangodb::Result RestHotBackupHandler::parseHotBackupParams(
     return arangodb::Result(
       TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
       "backup API only takes a single additional suffix out of "
+#ifdef USE_ENTERPRISE
       "[create, delete, list, upload, download]");
+#else
+      "[create, delete, list]");
+#endif
   }
-  
+
   bool parseSuccess = false;
   slice = this->parseVPackBody(parseSuccess);
 
@@ -122,5 +126,5 @@ arangodb::Result RestHotBackupHandler::parseHotBackupParams(
   }
 
   return arangodb::Result();
-  
+
 } // RestHotBackupHander::parseHotBackupParams

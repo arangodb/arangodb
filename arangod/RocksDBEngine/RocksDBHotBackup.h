@@ -35,7 +35,7 @@ namespace arangodb {
 /// @brief Base class for various RocksDBHotBackup operations
 ////////////////////////////////////////////////////////////////////////////////
 
-class RocksDBHotBackup {
+class RocksDBHotBackup : public std::enable_shared_from_this<RocksDBHotBackup> {
 public:
   static std::shared_ptr<RocksDBHotBackup> operationFactory(
     std::string const& suffixes, VPackSlice const body, VPackBuilder& report);
