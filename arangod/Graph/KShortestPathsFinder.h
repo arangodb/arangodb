@@ -126,7 +126,8 @@ class KShortestPathsFinder : public ShortestPathFinder {
     double _weight;
 
     // Using negative weight to signifiy start/end vertex
-    explicit FoundVertex(VertexRef const& vertex) : _vertex(vertex), _weight(0) {}
+    explicit FoundVertex(VertexRef const& vertex)
+        : _vertex(vertex), _weight(0) {}
     FoundVertex(VertexRef const& vertex, VertexRef const& pred, Edge&& edge, double weight)
         : _vertex(vertex), _pred(pred), _edge(std::move(edge)), _weight(weight) {}
     double weight() const { return _weight; }
@@ -150,13 +151,8 @@ class KShortestPathsFinder : public ShortestPathFinder {
     Ball(void) {}
     Ball(VertexRef const& centre, Direction direction)
         : _centre(centre), _direction(direction) {
-      auto v = new FoundVertex(centre);
-      try {
-        _frontier.insert(centre, v);
-      } catch (...) {
-        delete v;
-        throw;
-      }
+      auto v = std::make_unique<FoundVertex>(centre);
+      _frontier.insert(centre, std::move(v));
     }
     ~Ball() {
       // TODO free all vertices
