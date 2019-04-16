@@ -52,7 +52,6 @@ function testAlgo(a, p) {
 
       db[vColl].all().toArray()
       .forEach(function(d) {
-                print(d);
                  if (d[a] && d[a] !== -1) {
                    var diff = Math.abs(d[a] - d.result);
                    if (diff > EPS) {
