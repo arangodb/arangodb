@@ -3106,9 +3106,12 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #if _WIN32  // the wintendo needs utf16 filenames
   v8::String::Value str(isolate, args[0]);
   std::wstring name{reinterpret_cast<wchar_t*>(*str), static_cast<size_t>(str.length())};
+  TRI_Utf8ValueNFC utf8Str(isolate, args[0]);
+  std::string utf8Name(*utf8Str, utf8Str.length());
 #else
   TRI_Utf8ValueNFC str(isolate, args[0]);
   std::string name(*str, str.length());
+  std::string const& utf8Name = name;
 #endif
 
   if (name.empty()) {
@@ -3120,7 +3123,8 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToAccessPath(isolate, name, FSAccessType::WRITE)) {
+
+  if (!v8security->isAllowedToAccessPath(isolate, utf8Name, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to modify files in this path");
   }
@@ -3178,10 +3182,14 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #if _WIN32  // the wintendo needs utf16 filenames
   v8::String::Value str(isolate, args[0]);
   std::wstring name{reinterpret_cast<wchar_t*>(*str), static_cast<size_t>(str.length())};
+  TRI_Utf8ValueNFC utf8Str(isolate, args[0]);
+  std::string utf8Name(*utf8Str, utf8Str.length());
 #else
   TRI_Utf8ValueNFC str(isolate, args[0]);
   std::string name(*str, str.length());
+  std::string const& utf8Name = name;
 #endif
+
   if (name.length() == 0) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
@@ -3191,7 +3199,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (!v8security->isAllowedToAccessPath(isolate, name, FSAccessType::WRITE)) {
+  if (!v8security->isAllowedToAccessPath(isolate, utf8Name, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to modify files in this path");
   }
