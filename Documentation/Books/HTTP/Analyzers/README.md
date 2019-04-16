@@ -43,22 +43,34 @@ The *properties* allowed for this analyzer are either:
 - an object with the attribute *delimiter* containing the string encoded
   delimiter to use
 
-### Ngram
+### N-gram
 
-An analyzer capable of producing ngrams from a specified input in a range of
-[min_gram;max_gram]. Can optionally preserve the original input.
+An analyzer capable of producing n-grams from a specified input in a range of
+[min;max] (inclusive). Can optionally preserve the original input.
 
 The *properties* allowed for this analyzer are an object with the following
 attributes:
 
-- *max*: unsigned integer (required) max ngram
-- *min*: unsigned integer (required) min ngram
+- *max*: unsigned integer (required) maximum n-gram length
+- *min*: unsigned integer (required) minimum n-gram length
 - *preserveOriginal*: boolean (required) output the original value as well
+
+*Example*
+
+With `min` = 4 and `max` = 5, the analyzer will produce the following n-grams
+for the input *foobar*:
+- foob
+- ooba
+- obar
+- fooba
+- oobar
+
+With `preserveOriginal` enabled, it will additionally include *foobar* itself.
 
 ### Text
 
 An analyzer capable of breaking up strings into individual words while also
-optionally filtering out stopwords, applying case conversion and extracting
+optionally filtering out stop-words, applying case conversion and extracting
 word stems.
 
 The *properties* allowed for this analyzer are an object with the following
