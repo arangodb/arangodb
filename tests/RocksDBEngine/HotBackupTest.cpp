@@ -64,7 +64,7 @@ public:
 // -----------------------------------------------------------------------------
 
 /// @brief test RocksDBHotBackup::buildDirectoryPath
-TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel]") {
+TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel][hotbackup]") {
 
   VPackSlice config;
   VPackBuilder report;
@@ -104,7 +104,7 @@ TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel]") {
 // -----------------------------------------------------------------------------
 
 /// @brief test RocksDBHotBackup create operation parameters
-TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
+TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel][hotbackup]") {
 
   SECTION("test_defaults") {
     const VPackSlice slice;
@@ -304,7 +304,7 @@ public:
 
 
 /// @brief test
-TEST_CASE("RocksDBHotBackupRestore directories", "[rocksdb][devel]") {
+TEST_CASE("RocksDBHotBackupRestore directories", "[rocksdb][devel][hotbackup]") {
   std::string restoringDir, tempname;
   bool retBool;
 
