@@ -46,6 +46,11 @@ function aqlSkippingTestsuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      var c = db._createDocumentCollection('skipCollection');
+      // c size > 1000 because of internal batchSize of 1000
+      for (var i = 0; i < 2000; i++) {
+        c.save({i: i});
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,6 +58,7 @@ function aqlSkippingTestsuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      db._drop('skipCollection');
     },
 
     testDefaultSkipOffset: function () {
@@ -91,6 +97,35 @@ function aqlSkippingTestsuite () {
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(result.json, [ 93, 94, 95, 96, 97, 98, 99, 100, 101, 102 ]);
       assertEqual(result.stats.fullCount, 100);
+    },
+
+    testPassSkipEnumerateCollection: function () {
+      var query = "FOR i IN skipCollection LIMIT 10, 10 return i";
+      var bindParams = {};
+      var queryOptions = {optimizer: {"rules": ["-move-calculations-down"]}};
+
+      var result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(result.json.length, 10);
+    },
+
+    testPassSkipEnumerateCollectionWithFullCount1: function () {
+      var query = "FOR i IN skipCollection LIMIT 10, 20 return i";
+      var bindParams = {};
+      var queryOptions = {optimizer: {"rules": ["-move-calculations-down"]}};
+
+      var result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(result.json.length, 20);
+      assertEqual(result.stats.scannedFull, 30);
+    },
+
+    testPassSkipEnumerateCollectionWithFullCount2: function () {
+      var query = "FOR i IN skipCollection LIMIT 900, 300 return i";
+      var bindParams = {};
+      var queryOptions = {optimizer: {"rules": ["-move-calculations-down"]}};
+
+      var result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(result.json.length, 300);
+      assertEqual(result.stats.scannedFull, 1200);
     },
 
   };
