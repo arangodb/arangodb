@@ -301,7 +301,7 @@ class AgencyPrecondition {
   std::string key;
   Type type;
   bool empty;
-  VPackSlice const value;
+  VPackSlice value;
   std::shared_ptr<VPackBuilder> builder;
 };
 
