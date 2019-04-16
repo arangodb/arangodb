@@ -119,8 +119,8 @@ class RocksDBFilePurgeEnabler {
 };
 
 class RocksDBEngine final : public StorageEngine {
-  friend class RocksDBFilePurgePreventer; 
-  friend class RocksDBFilePurgeEnabler; 
+  friend class RocksDBFilePurgePreventer;
+  friend class RocksDBFilePurgeEnabler;
 
  public:
   // create the storage engine
@@ -185,7 +185,7 @@ class RocksDBEngine final : public StorageEngine {
                              ) const override {
     return std::string();  // no path to be returned here
   }
-  
+
   void cleanupReplicationContexts() override;
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
@@ -348,6 +348,9 @@ class RocksDBEngine final : public StorageEngine {
   void configureEnterpriseRocksDBOptions(rocksdb::Options& options);
 
   enterprise::RocksDBEngineEEData _eeData;
+
+public:
+  std::string const& getEncryptionKey();
 #endif
 
  public:
@@ -461,7 +464,7 @@ class RocksDBEngine final : public StorageEngine {
 
   arangodb::basics::ReadWriteLock _purgeLock;
 };
-  
+
 }  // namespace arangodb
 
 #endif

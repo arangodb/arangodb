@@ -137,6 +137,7 @@ protected:
   std::string _timestamp;   // required for Create from Coordinator
   std::string _label;
   std::string _id;   // required for Delete
+  VPackSlice _agencyDump;   // required for Create from Coordinator
 
 };// class RocksDBHotBackupCreate
 
@@ -189,6 +190,13 @@ public:
   void parseParameters() override;
   void execute() override;
 
+  void listAll();
+  void statId();
+
+protected:
+  static std::string loadAgencyJson(std::string filename);
+
+  std::string _listId;
 };// class RocksDBHotBackupList
 
 
