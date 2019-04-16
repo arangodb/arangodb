@@ -11,9 +11,14 @@ devel
   `--javascript.startup-options-*`: control startup options visible in JavaScript
   `--javascript.environment-variables-*`: control environment variables visible in JavaScript
   `--javascript.endpoints-*`: control accessible endpoints in JavaScript
-  `--javascript.files-white-list`: control file access in JavaScript
+  `--javascript.files-*`: control file access in JavaScript
 
   Note: There is a [detailed description of all options](https://github.com/arangodb-helper/arangodb/blob/master/Documentation/Books/Manual/Security/SecurityOptions.md).
+
+* prevent arangod from making a call to www.arangodb.com at startup
+
+  This call was done to check for available updates, but it could have contributed
+  to small startup delays in case outgoing connections were blocked.
 
 * removed support for undocumented HTTP header `x-arango-v8-context`, which
   allowed controlling in which particular V8 context number a JavaScript-based
