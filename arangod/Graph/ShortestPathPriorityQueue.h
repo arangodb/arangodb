@@ -178,7 +178,7 @@ class ShortestPathPriorityQueue {
   /// than via lowerWeight, otherwise the queue order could be violated.
   //////////////////////////////////////////////////////////////////////////////
 
-  Value* getMinimal() {
+  Value* getMinimal() const {
     if (_heap.empty()) {
       return nullptr;
     }
