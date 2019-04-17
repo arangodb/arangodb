@@ -37,6 +37,10 @@ using namespace arangodb::aql;
 bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other) const {
   return _block == other;
 }
+
+bool InputAqlItemRow::internalIndexIs(size_t const other) const {
+  return _baseIndex == other;
+}
 #endif
 
 SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager,

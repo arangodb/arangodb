@@ -35,6 +35,8 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
+template<bool>
+class SingleRowFetcher;
 struct AqlValue;
 
 struct CreateInvalidInputRowHint {
@@ -55,12 +57,12 @@ struct CreateInvalidInputRowHint {
 class InputAqlItemRow {
  public:
   // The default constructor contains an invalid item row
-  explicit InputAqlItemRow(CreateInvalidInputRowHint)
+  explicit InputAqlItemRow(CreateInvalidInputRowHint) noexcept
       : _block(nullptr), _baseIndex(0) {}
 
   InputAqlItemRow(
       // cppcheck-suppress passedByValue
-      SharedAqlItemBlockPtr block, size_t baseIndex)
+      SharedAqlItemBlockPtr block, size_t baseIndex) noexcept
       : _block(std::move(block)), _baseIndex(baseIndex) {
     TRI_ASSERT(_block != nullptr);
   }
@@ -133,6 +135,11 @@ class InputAqlItemRow {
    * @brief Compare the underlying block. Only for assertions.
    */
   bool internalBlockIs(SharedAqlItemBlockPtr const& other) const;
+
+  /**
+   * @brief Compare the underlying index. Only for assertions.
+   */
+  bool internalIndexIs(size_t other) const;
 #endif
 
   /**
@@ -146,6 +153,17 @@ class InputAqlItemRow {
   /// be used to recreate the AqlItemBlock via the Json constructor
   /// Uses the same API as an AqlItemBlock with only a single row
   void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
+
+ protected:
+  // for moveToNextRow()
+  friend class SingleRowFetcher<true>;
+  friend class SingleRowFetcher<false>;
+
+  void moveToNextRow() noexcept {
+    TRI_ASSERT(isInitialized());
+    TRI_ASSERT(!isLastRowInBlock());
+    ++_baseIndex;
+  }
 
  private:
 

@@ -39,6 +39,9 @@ class AqlItemBlock;
 template <bool>
 class BlockFetcher;
 
+static const InputAqlItemRow invalidInputRow =
+    InputAqlItemRow{CreateInvalidInputRowHint{}};
+
 /**
  * @brief Interface for all AqlExecutors that do only need one
  *        row at a time in order to make progress.
@@ -58,6 +61,9 @@ class SingleRowFetcher {
   SingleRowFetcher();
 
  public:
+  using ConstInputRowRef = std::reference_wrapper<InputAqlItemRow const>;
+  using InputRowRef = std::reference_wrapper<InputAqlItemRow>;
+
   /**
    * @brief Fetch one new AqlItemRow from upstream.
    *        **Guarantee**: the row returned is valid only
@@ -82,7 +88,7 @@ class SingleRowFetcher {
    */
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
-  TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(
+  TEST_VIRTUAL std::pair<ExecutionState, ConstInputRowRef> fetchRow(
       size_t atMost = ExecutionBlock::DefaultBatchSize());
 
   // TODO enable_if<passBlocksThrough>
@@ -183,8 +189,9 @@ class SingleRowFetcher {
 };
 
 template <bool passBlocksThrough>
+std::pair<ExecutionState, std::reference_wrapper<InputAqlItemRow const>>
 // NOLINTNEXTLINE google-default-arguments
-std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchRow(size_t atMost) {
+SingleRowFetcher<passBlocksThrough>::fetchRow(size_t atMost) {
   // Fetch a new block iff necessary
   if (!indexIsValid()) {
     // This returns the AqlItemBlock to the ItemBlockManager before fetching a
@@ -195,7 +202,7 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
     SharedAqlItemBlockPtr newBlock;
     std::tie(state, newBlock) = fetchBlock(atMost);
     if (state == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
+      return {ExecutionState::WAITING, invalidInputRow};
     }
 
     _currentBlock = std::move(newBlock);
@@ -210,7 +217,22 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
     rowState = ExecutionState::DONE;
   } else {
     TRI_ASSERT(_currentBlock != nullptr);
-    _currentRow = InputAqlItemRow{_currentBlock, _rowIndex};
+    // When _rowIndex is 0, we got a new block - either just now (from the
+    // `if (!indexIsValid())` branch) or from a preFetchNumberOfRows() call.
+    // Otherwise we can just increase the rows index instead of recreating it.
+    // Because of preFetchNumberOfRows() we sadly cannot avoid the check here.
+    if (_rowIndex > 0) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      TRI_ASSERT(_currentRow.internalBlockIs(_currentBlock));
+      TRI_ASSERT(!_currentRow.isLastRowInBlock());
+#endif
+      _currentRow.moveToNextRow();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      TRI_ASSERT(_currentRow.internalIndexIs(_rowIndex));
+#endif
+    } else {
+      _currentRow = InputAqlItemRow{_currentBlock, _rowIndex};
+    }
 
     TRI_ASSERT(_upstreamState != ExecutionState::WAITING);
     if (isLastRowInBlock() && _upstreamState == ExecutionState::DONE) {

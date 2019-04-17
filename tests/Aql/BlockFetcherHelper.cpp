@@ -111,7 +111,8 @@ SingleRowFetcherHelper<passBlocksThrough>::~SingleRowFetcherHelper() = default;
 
 template <bool passBlocksThrough>
 // NOLINTNEXTLINE google-default-arguments
-std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThrough>::fetchRow(size_t) {
+std::pair<ExecutionState, std::reference_wrapper<InputAqlItemRow const>>
+SingleRowFetcherHelper<passBlocksThrough>::fetchRow(size_t) {
   // If this REQUIRE fails, the Executor has fetched more rows after DONE.
   REQUIRE(_nrCalled <= _nrItems);
   if (_returnsWaiting) {
@@ -119,16 +120,16 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThro
       _didWait = true;
       // if once DONE is returned, always return DONE
       if (_returnedDone) {
-        return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
+        return {ExecutionState::DONE, invalidInputRow};
       }
-      return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
+      return {ExecutionState::WAITING, invalidInputRow};
     }
     _didWait = false;
   }
   _nrCalled++;
   if (_nrCalled > _nrItems) {
     _returnedDone = true;
-    return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
+    return {ExecutionState::DONE, invalidInputRow};
   }
   TRI_ASSERT(_itemBlock != nullptr);
   _lastReturnedRow = InputAqlItemRow{_itemBlock, _nrCalled - 1};
