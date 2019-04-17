@@ -179,6 +179,9 @@ class IndexExecutor {
 
     ~IndexCallback() = default;
 
+    IndexCallback(IndexCallback const&) = delete;
+    IndexCallback(IndexCallback&&) = delete;
+
     bool hasInput() const;
 
     void setInput(InputAqlItemRow&& input);

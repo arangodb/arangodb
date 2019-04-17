@@ -247,7 +247,10 @@ bool IndexExecutor::readIndex(bool& hasWritten) {
     if (!_infos.getProduceResult()) {
       // optimization: iterate over index (e.g. for filtering), but do not fetch
       // the actual documents
-      res = getCursor()->next(_indexCallback, 1);
+      auto& icb = _indexCallback;
+      IndexIterator::LocalDocumentIdCallback cb =
+          [&icb](LocalDocumentId const& token) { icb(token); };
+      res = getCursor()->next(cb, 1);
     } else {
       // check if the *current* cursor supports covering index queries or not
       // if we can optimize or not must be stored in our instance, so the
@@ -259,10 +262,16 @@ bool IndexExecutor::readIndex(bool& hasWritten) {
       if (_allowCoveringIndexOptimization &&
           !_infos.getCoveringIndexAttributePositions().empty()) {
         // index covers all projections
-        res = getCursor()->nextCovering(_indexCallback, 1);
+        auto& icb = _indexCallback;
+        IndexIterator::DocumentCallback cb =
+            [&icb](LocalDocumentId const& token, VPackSlice v) { icb(token, v); };
+        res = getCursor()->nextCovering(cb, 1);
       } else {
         // we need the documents later on. fetch entire documents
-        res = getCursor()->nextDocument(_indexCallback, 1);
+        auto& icb = _indexCallback;
+        IndexIterator::DocumentCallback cb =
+            [&icb](LocalDocumentId const& token, VPackSlice v) { icb(token, v); };
+        res = getCursor()->nextDocument(cb, 1);
       }
     }
 
