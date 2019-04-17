@@ -81,7 +81,7 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
     bindVars: bindVars || undefined
   };
 
-  if (query && typeof query === 'object') {
+  if (query && typeof query === 'object' && typeof query.toAQL !== 'function') {
     payload = query;
     options = cursorOptions;
     cursorOptions = bindVars;
