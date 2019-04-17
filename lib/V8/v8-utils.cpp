@@ -1609,16 +1609,6 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        cwd.errorMessage());
   }
 
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
-
-  if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
-  }
-
   std::string abs = TRI_GetAbsolutePath(std::string(*name, name.length()), cwd.result());
 
   v8::Handle<v8::String> res;
