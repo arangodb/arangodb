@@ -48,17 +48,24 @@ function testSuite() {
   const continueExternal = internal.continueExternal;
   const arangodb = require("@arangodb");
 
+  let command;
+  if (internal.platform.substr(0, 3) !== 'win') {
+    command = "/bin/true";
+  } else {
+    command = "notepad.exe";
+  }
+
   return {
     testExternalProcesses : function() {
       try {
-        let rv = executeExternal("/bin/true");
+        let rv = executeExternal(command);
         killExternal(rv.pid);
         fail();
       } catch (err) {
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
       }
       try {
-        let rv = executeExternalAndWait("/bin/true");
+        let rv = executeExternalAndWait(command);
         fail();
       } catch (err) {
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
@@ -96,5 +103,6 @@ function testSuite() {
     }
   };
 }
+
 jsunity.run(testSuite);
 return jsunity.done();

@@ -30,7 +30,8 @@
 
 if (getOptions === true) {
   return {
-    'javascript.harden': 'true'
+    'javascript.harden': 'true',
+    'javascript.allow-external-process-control': 'false'
   };
 }
 var jsunity = require('jsunity');
@@ -91,7 +92,28 @@ function testSuite() {
       assertEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
     },
     
+    testExecuteExternal : function() {
+      let data = {
+        collections: {},
+        action: String(function() { 
+          let command;
+          if (require('internal').platform.substr(0, 3) !== 'win') {
+            command = "/bin/true";
+          } else {
+            command = "notepad.exe";
+          }
+          require('internal').executeExternal(command); 
+        })
+      };
+
+      let result = arango.POST("/_api/transaction", data);
+      assertTrue(result.error);
+      assertEqual(403, result.code);
+      assertEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
+    },
+    
   };
 }
+
 jsunity.run(testSuite);
 return jsunity.done();
