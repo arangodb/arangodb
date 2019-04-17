@@ -124,7 +124,7 @@ Also see the [Fundamentals of Objects / Documents](../Fundamentals/DataTypes.md#
 about attribute access.
 
 We can use the *traits* array together with the `DOCUMENT()` function to use
-the elements as document keys and look up them up in the *Traits* collection:
+the elements as document keys and look them up in the *Traits* collection:
 
 ```js
 FOR c IN Characters
@@ -197,6 +197,13 @@ FOR c IN Characters
 ]
 ```
 
+The [DOCUMENT() function](../Functions/Miscellaneous.md#document) can be used
+to look up a single or multiple documents via document identifiers. In our
+example, we pass the collection name from which we want to fetch documents
+as first argument (`"Traits"`) and an array of document keys (`_key` attribute)
+as second argument. In return we get an array of the full trait documents
+for each character.
+
 This is a bit too much information, so let's only return English labels using
 the [array expansion](../Advanced/ArrayOperators.md#array-expansion) notation:
 
@@ -228,7 +235,7 @@ Merging characters and traits
 
 Great, we resolved the letters to meaningful traits! But we also need to know
 to which character they belong. Thus, we need to merge both the character
-document and the data from trait document:
+document and the data from the trait documents:
 
 ```js
 FOR c IN Characters
@@ -273,20 +280,21 @@ FOR c IN Characters
 
 The `MERGE()` functions merges objects together. Because we used an object
 `{ traits: ... }` which has the same attribute name *traits* as the original
-character attribute, the latter is overwritten by the merge.
-
-<!-- extend later, possibly move to a second article about joins
-     (also show how this would be done in relational world with a cross table?)
+character attribute, the latter got overwritten by the merge operation.
 
 Join another way
 ----------------
+
+The `DOCUMENT()` function utilizes primary indices to look up documents quickly.
+It is limited to find documents via their identifiers however. For a use case
+like in our example it is sufficient to accomplish a simple join.
 
 There is another, more flexible syntax for joins: nested `FOR` loops over
 multiple collections, with a `FILTER` condition to match up attributes.
 In case of the traits key array, there needs to be a third loop to iterate
 over the keys:
 
-`js
+```js
 FOR c IN Characters
   RETURN MERGE(c, {
     traits: (
@@ -296,7 +304,21 @@ FOR c IN Characters
           RETURN t.en
     )
   })
-`
+```
 
-The result is identical to the previous example.
--->
+For each character, it loops over its *traits* attribute (e.g. `["D","H","C"]`)
+and for each document reference in this array, it loops over the *Traits*
+collections. There is a condition to match the document key with the key
+reference. The inner `FOR` loop and the `FILTER` get transformed to a primary
+index lookup in this case instead of building up a Cartesian product only to
+filter away everything but a single match (document keys within a collection
+are unique).
+
+The English trait label is returned and the spelled out traits are merged
+with the character document, so the result is identical to the previous query.
+However, this approach is not limited to primary keys. You can do this with
+any other attribute as well. For an efficient lookup, make sure you add a
+hash index for this attribute. If its values are unique, then also set the
+index option to unique. Then the query optimizer will know that it can stop
+after one match. If you actually want to match multiple documents, that is
+possible too of course.
