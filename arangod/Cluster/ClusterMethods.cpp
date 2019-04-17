@@ -2849,6 +2849,12 @@ arangodb::Result matchBackupServers(VPackSlice const agencyDump,
   }
   auto planServers = agencyDump.get(ap);
 
+  return matchBackupServersSlice(planServers, dbServers, match);
+}
+
+arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
+                                    std::vector<ServerID> const& dbServers,
+                                    std::map<ServerID,ServerID>& match) {
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "matching db servers between snapshot: " <<
     planServers.toJson() << " and this cluster's db servers " << dbServers;
 
@@ -3712,16 +3718,16 @@ arangodb::Result listHotBakupsOnCoordinator(
   {
     VPackObjectBuilder o(&report);
     report.add(VPackValue("id"));
-    { 
+    {
       VPackArrayBuilder a(&report);
       for (auto const& i : listIds) {
         report.add(VPackValue(i));
       }
     }
   }
-    
+
   return arangodb::Result();
-  
+
 }
 
 

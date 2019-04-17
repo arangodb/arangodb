@@ -93,7 +93,7 @@ arangodb::Result HotBackup::executeCoordinator(
   } else if (command == "upload") {
     return uploadBackupsOnCoordinator(payload, report);
   } else if (command == "download") {
-    return downloadBackupsOnCoordinator(payload);
+    return downloadBackupsOnCoordinator(payload, report);
 #endif
   } else {
     return arangodb::Result(

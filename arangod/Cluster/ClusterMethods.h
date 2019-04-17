@@ -287,7 +287,7 @@ arangodb::Result uploadBackupsOnCoordinator(VPackSlice const payload, VPackBuild
  * @brief Trigger download of specific hot backup
  * @param backupId  BackupId to delete
  */
-arangodb::Result downloadBackupsOnCoordinator(VPackSlice const payload);
+arangodb::Result downloadBackupsOnCoordinator(VPackSlice const payload, VPackBuilder& report);
 #endif
 
 /**
@@ -300,6 +300,10 @@ arangodb::Result downloadBackupsOnCoordinator(VPackSlice const payload);
 arangodb::Result matchBackupServers(
   VPackSlice const planDump, std::vector<ServerID> const& dbServers,
   std::map<std::string,std::string>& match);
+
+arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
+                                    std::vector<ServerID> const& dbServers,
+                                    std::map<ServerID,ServerID>& match);
 
 /**
  * @brief apply database server matches to plan
