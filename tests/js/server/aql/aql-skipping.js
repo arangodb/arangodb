@@ -115,7 +115,7 @@ function aqlSkippingTestsuite () {
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(result.json.length, 20);
-      assertEqual(result.stats.scannedFull, 30);
+      assertEqual(result.stats.scannedFull, 20);
     },
 
     testPassSkipEnumerateCollectionWithFullCount2: function () {
@@ -125,8 +125,30 @@ function aqlSkippingTestsuite () {
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(result.json.length, 300);
-      assertEqual(result.stats.scannedFull, 1200);
+      assertEqual(result.stats.scannedFull, 300);
     },
+
+    testPassSkipEnumerateCollectionWithFullCount3: function () {
+      // skip more as documents are available
+      var query = "FOR i IN skipCollection LIMIT 2000, 100 return i";
+      var bindParams = {};
+      var queryOptions = {optimizer: {"rules": ["-move-calculations-down"]}};
+
+      var result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(result.json.length, 0);
+      assertEqual(result.stats.scannedFull, 0);
+    },
+
+    testPassSkipEnumerateCollectionWithFullCount3: function () {
+      // skip more as documents are available, this will trigger done inside internal skip
+      var query = "FOR i IN skipCollection LIMIT 3000, 100 return i";
+      var bindParams = {};
+      var queryOptions = {optimizer: {"rules": ["-move-calculations-down"]}};
+
+      var result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(result.json.length, 0);
+      assertEqual(result.stats.scannedFull, 0);
+    }
 
   };
 
