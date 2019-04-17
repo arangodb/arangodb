@@ -73,9 +73,12 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
     : _infos(infos),
       _fetcher(fetcher),
       _state(ExecutionState::HASMORE),
-      _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _allowCoveringIndexOptimization(true),
-      _cursorHasMore(false) {
+      _cursorHasMore(false),
+      _indexCallback(_infos.getOutputRegisterId(), buildCallback(_infos.getOutVariable(), _infos.getProduceResult(),
+                    _infos.getProjections(), _infos.getTrxPtr(),
+                    _infos.getCoveringIndexAttributePositions(), _allowCoveringIndexOptimization,
+                    _infos.getUseRawDocumentPointers())) {
   _cursor = std::make_unique<OperationCursor>(
       _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
                                     (_infos.getRandom()
@@ -89,11 +92,6 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                        " did not come into sync in time (" +
                                        std::to_string(maxWait) + ")");
   }
-  this->setProducingFunction(buildCallback(
-        _documentProducer, _infos.getOutVariable(), _infos.getProduceResult(),
-        _infos.getProjections(), _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
-        _allowCoveringIndexOptimization, _infos.getUseRawDocumentPointers()));
-
 }
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
@@ -107,22 +105,26 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
 
   while (true) {
     if (!_cursorHasMore) {
-      std::tie(_state, _input) = _fetcher.fetchRow();
-
+      InputAqlItemRow input{CreateInvalidInputRowHint{}};
+      std::tie(_state, input) = _fetcher.fetchRow();
+       
       if (_state == ExecutionState::WAITING) {
         return {_state, stats};
       }
 
-      if (!_input) {
+      if (!input) {
         TRI_ASSERT(_state == ExecutionState::DONE);
         return {_state, stats};
       }
       _cursor->reset();
       _cursorHasMore = _cursor->hasMore();
+      if (_cursorHasMore) {
+        _indexCallback.setInput(std::move(input));
+      }
       continue;
     }
 
-    TRI_ASSERT(_input.isInitialized());
+    TRI_ASSERT(_indexCallback.hasInput());
     TRI_ASSERT(_cursor->hasMore());
 
     TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
@@ -132,20 +134,14 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
     if (_infos.getProduceResult()) {
       // properly build up results by fetching the actual documents
       // using nextDocument()
-      _cursorHasMore = _cursor->nextDocument(
-          [&](LocalDocumentId const&, VPackSlice slice) {
-            _documentProducer(_input, output, slice, _infos.getOutputRegisterId());
-            stats.incrScanned();
-          }, 1 /*atMost*/);
+      _cursorHasMore = _cursor->nextDocument(_indexCallback, 1);
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
-      _cursorHasMore = _cursor->next(
-          [&](LocalDocumentId const&) {
-            _documentProducer(_input, output, VPackSlice::nullSlice(),
-                              _infos.getOutputRegisterId());
-            stats.incrScanned();
-          }, 1 /*atMost*/);
+      _cursorHasMore = _cursor->next(_indexCallback, 1);
+    }
+    if (_indexCallback.hasWritten()) {
+      stats.incrScanned();
     }
 
     if (_state == ExecutionState::DONE && !_cursorHasMore) {
@@ -161,3 +157,34 @@ bool EnumerateCollectionExecutor::waitForSatellites(ExecutionEngine* engine,
   return true;
 }
 #endif
+
+
+EnumerateCollectionExecutor::IndexCallback::IndexCallback(RegisterId outputRegister,
+                                            DocumentProducingFunction producer)
+    : _hasWritten(false),
+      _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _output(nullptr),
+      _outputRegister(outputRegister),
+      _documentProducer(producer) {}
+
+bool EnumerateCollectionExecutor::IndexCallback::hasInput() const {
+  return _input.isInitialized();
+}
+
+void EnumerateCollectionExecutor::IndexCallback::setInput(InputAqlItemRow&& input) {
+  _input = std::move(input);
+}
+
+void EnumerateCollectionExecutor::IndexCallback::reset() {
+  _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+}
+
+void EnumerateCollectionExecutor::IndexCallback::operator()(LocalDocumentId const& token) {
+  return operator()(token, VPackSlice::nullSlice());
+}
+
+void EnumerateCollectionExecutor::IndexCallback::operator()(LocalDocumentId const& token, VPackSlice slice) {
+  TRI_ASSERT(_output != nullptr);
+  _documentProducer(_input, *_output, slice, _outputRegister);
+  _hasWritten = true;
+}

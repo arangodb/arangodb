@@ -78,29 +78,26 @@ inline void handleProjections(std::vector<std::string> const& projections,
 }
 
 static DocumentProducingFunction buildCallback(
-    DocumentProducingFunction documentProducer, Variable const* outVariable,
-    bool produceResult, std::vector<std::string> const& projections,
-    transaction::Methods* trxPtr, std::vector<size_t> const& coveringIndexAttributePositions,
+    Variable const* outVariable, bool produceResult,
+    std::vector<std::string> const& projections, transaction::Methods* trxPtr,
+    std::vector<size_t> const& coveringIndexAttributePositions,
     bool& allowCoveringIndexOptimization, bool useRawDocumentPointers) {
   if (!produceResult) {
     // no result needed
-    documentProducer = [](InputAqlItemRow& input, OutputAqlItemRow& output,
-                          VPackSlice, RegisterId registerId) {
+    return [](InputAqlItemRow& input, OutputAqlItemRow& output, VPackSlice,
+              RegisterId registerId) {
       // TODO: optimize this within the register planning mechanism?
       output.cloneValueInto(registerId, input, AqlValue(AqlValueHintNull()));
     };
-    return documentProducer;
   }
 
   if (!projections.empty()) {
     // return a projection
     if (!coveringIndexAttributePositions.empty()) {
       // projections from an index value (covering index)
-      documentProducer = [trxPtr, projections, coveringIndexAttributePositions,
-                          &allowCoveringIndexOptimization,
-                          useRawDocumentPointers](InputAqlItemRow& input,
-                                                  OutputAqlItemRow& output,
-                                                  VPackSlice slice, RegisterId registerId) {
+      return [trxPtr, projections, coveringIndexAttributePositions, &allowCoveringIndexOptimization,
+              useRawDocumentPointers](InputAqlItemRow& input, OutputAqlItemRow& output,
+                                      VPackSlice slice, RegisterId registerId) {
         transaction::BuilderLeaser b(trxPtr);
         b->openObject(true);
 
@@ -147,14 +144,12 @@ static DocumentProducingFunction buildCallback(
         AqlValueGuard guard{v, true};
         output.moveValueInto(registerId, input, guard);
       };
-      return documentProducer;
     }
 
     // projections from a "real" document
-    documentProducer = [trxPtr, projections,
-                        useRawDocumentPointers](InputAqlItemRow& input,
-                                                OutputAqlItemRow& output,
-                                                VPackSlice slice, RegisterId registerId) {
+    return [trxPtr, projections,
+            useRawDocumentPointers](InputAqlItemRow& input, OutputAqlItemRow& output,
+                                    VPackSlice slice, RegisterId registerId) {
       transaction::BuilderLeaser b(trxPtr);
       b->openObject(true);
       handleProjections(projections, trxPtr, slice, *b.get(), useRawDocumentPointers);
@@ -164,13 +159,11 @@ static DocumentProducingFunction buildCallback(
       AqlValueGuard guard{v, true};
       output.moveValueInto(registerId, input, guard);
     };
-    return documentProducer;
   }
 
   // return the document as is
-  documentProducer = [useRawDocumentPointers](InputAqlItemRow& input,
-                                              OutputAqlItemRow& output,
-                                              VPackSlice slice, RegisterId registerId) {
+  return [useRawDocumentPointers](InputAqlItemRow& input, OutputAqlItemRow& output,
+                                  VPackSlice slice, RegisterId registerId) {
     uint8_t const* vpack = slice.begin();
     if (useRawDocumentPointers) {
       // With NoCopy we do not clone anyways
@@ -182,7 +175,6 @@ static DocumentProducingFunction buildCallback(
       output.moveValueInto(registerId, input, guard);
     }
   };
-  return documentProducer;
 }
 
 }  // namespace aql

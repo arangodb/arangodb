@@ -110,6 +110,53 @@ class EnumerateCollectionExecutor {
   EnumerateCollectionExecutor(Fetcher& fetcher, Infos&);
   ~EnumerateCollectionExecutor();
 
+ class IndexCallback {
+   private:
+    typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
+
+   public:
+    IndexCallback(RegisterId outputRegister,
+                  DocumentProducingFunction producer);
+
+    ~IndexCallback() = default;
+
+    bool hasInput() const;
+
+    void setInput(InputAqlItemRow&& input);
+
+    void operator()(LocalDocumentId const&);
+
+    void operator()(LocalDocumentId const&, VPackSlice slice);
+
+    void setOutputRow(OutputAqlItemRow& output) { _output = &output; }
+
+    bool hasWritten() {
+      bool ret = _hasWritten;
+      _hasWritten = false;
+      return ret;
+    }
+    void reset();
+
+   private:
+    /**
+     * @brief Test if this has written a document to OutputRow
+     */
+    bool _hasWritten;
+
+    InputAqlItemRow _input;
+
+    /**
+     * @brief The output row, required to write to.
+     *        Call setOutputRow before handing over this object!
+     */
+    OutputAqlItemRow* _output;
+
+    RegisterId const _outputRegister;
+
+    DocumentProducingFunction _documentProducer;
+  };
+  public:
+
   /**
    * @brief produce the next Row of Aql Values.
    *
@@ -118,10 +165,6 @@ class EnumerateCollectionExecutor {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
   typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
-
-  void setProducingFunction(DocumentProducingFunction const& documentProducer) {
-    _documentProducer = documentProducer;
-  };
   
   inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
     TRI_ASSERT(false);
@@ -138,10 +181,13 @@ class EnumerateCollectionExecutor {
   Fetcher& _fetcher;
   DocumentProducingFunction _documentProducer;
   ExecutionState _state;
-  InputAqlItemRow _input;
   std::unique_ptr<OperationCursor> _cursor;
   bool _allowCoveringIndexOptimization;
   bool _cursorHasMore;
+
+  /// @brief Callable struct to hand over to indexes. Is reusable
+  ///        and requires the outputRow to be injected.
+  IndexCallback _indexCallback;
 };
 
 }  // namespace aql

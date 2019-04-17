@@ -168,19 +168,69 @@ class IndexExecutor {
   IndexExecutor(Fetcher& fetcher, Infos&);
   ~IndexExecutor();
 
+ private:
+  class IndexCallback {
+   private:
+    typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
+
+   public:
+    IndexCallback(bool doesUniqueChecks, RegisterId outputRegister,
+                  DocumentProducingFunction producer);
+
+    ~IndexCallback() = default;
+
+    bool hasInput() const;
+
+    void setInput(InputAqlItemRow&& input);
+
+    void operator()(LocalDocumentId const&);
+
+    void operator()(LocalDocumentId const&, VPackSlice slice);
+
+    void setOutputRow(OutputAqlItemRow& output) { _output = &output; }
+
+    bool hasWritten() {
+      bool ret = _hasWritten;
+      _hasWritten = false;
+      return ret;
+    }
+    void reset();
+
+    void setIsLastIndex(bool isLast) { _isLastIndex = isLast; }
+
+   private:
+    /**
+     * @brief Test if this has written a document to OutputRow
+     */
+    bool _hasWritten;
+
+    InputAqlItemRow _input;
+
+    /**
+     * @brief The output row, required to write to.
+     *        Call setOutputRow before handing over this object!
+     */
+    OutputAqlItemRow* _output;
+
+    bool const _doesUniqueChecks;
+
+    /// @brief set of already returned documents. Used to make the result distinct
+    std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
+
+    bool _isLastIndex;
+
+    RegisterId const _outputRegister;
+
+    DocumentProducingFunction _documentProducer;
+  };
+
+ public:
   /**
    * @brief produce the next Row of Aql Values.
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
-
- public:
-  typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
-
-  void setProducingFunction(DocumentProducingFunction documentProducer) {
-    _documentProducer = std::move(documentProducer);
-  }
 
   inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
     TRI_ASSERT(false);
@@ -192,13 +242,13 @@ class IndexExecutor {
  private:
   bool advanceCursor();
   void executeExpressions(InputAqlItemRow& input);
-  bool initIndexes(InputAqlItemRow& input);
+  bool initIndexes(InputAqlItemRow&& input);
 
   /// @brief create an iterator object
   void createCursor();
 
   /// @brief continue fetching of documents
-  bool readIndex(IndexIterator::DocumentCallback const&, bool& hasWritten);
+  bool readIndex(bool& hasWritten);
 
   /// @brief reset the cursor at given position
   void resetCursor(size_t pos) { _cursors[pos]->reset(); };
@@ -223,24 +273,15 @@ class IndexExecutor {
   void setIndexesExhausted(bool flag) { _indexesExhausted = flag; }
   bool getIndexesExhausted() { return _indexesExhausted; }
 
-  bool isLastIndex() { return _isLastIndex; }
-  void setIsLastIndex(bool flag) { _isLastIndex = flag; }
-
   void setCurrentIndex(size_t pos) { _currentIndex = pos; }
-  void decrCurrentIndex() {
-    _currentIndex--;
-  }
-  void incrCurrentIndex() {
-    _currentIndex++;
-  }
+  void decrCurrentIndex() { _currentIndex--; }
+  void incrCurrentIndex() { _currentIndex++; }
   size_t getCurrentIndex() const noexcept { return _currentIndex; }
 
  private:
   Infos& _infos;
   Fetcher& _fetcher;
-  DocumentProducingFunction _documentProducer;
   ExecutionState _state;
-  InputAqlItemRow _input;
 
   /// @brief whether or not we are allowed to use the covering index
   /// optimization in a callback
@@ -258,16 +299,13 @@ class IndexExecutor {
   /// @brief current position in _indexes
   size_t _currentIndex;
 
-  /// @brief set of already returned documents. Used to make the result distinct
-  std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
-
   /// @brief Flag if all indexes are exhausted to be maintained accross several
   /// getSome() calls
   bool _indexesExhausted;
 
-  /// @brief Flag if the current index pointer is the last of the list.
-  ///        Used in uniqueness checks.
-  bool _isLastIndex;
+  /// @brief Callable struct to hand over to indexes. Is reusable
+  ///        and requires the outputRow to be injected.
+  IndexCallback _indexCallback;
 };
 
 }  // namespace aql
