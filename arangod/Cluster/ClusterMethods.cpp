@@ -3330,6 +3330,10 @@ arangodb::Result lockDBServerTransactions(
     }
 
     if (slc.get("error").getBoolean()) {
+      auto errorNum = slc.get("errorNum").getNumber<int>();
+      if (errorNum == TRI_ERROR_LOCK_TIMEOUT) {
+        return arangodb::Result(errorNum, slc.get("errorMessage").copyString());
+      }
       return arangodb::Result(
         TRI_ERROR_LOCAL_LOCK_FAILED,
         std::string("lock was denied from ") + req.destination
@@ -3637,7 +3641,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     }
     std::vector<ServerID> dbServers = ci->getCurrentDBServers();
     std::vector<ServerID> lockedServers;
-    double lockWait = 5.0;
+    double lockWait = 2.0;
     while(cc != nullptr && steady_clock::now() < end) {
       auto end = steady_clock::now() + duration<double>(lockWait);
       result = lockDBServerTransactions(backupId, dbServers, lockWait, lockedServers);
@@ -3650,7 +3654,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       } else {
         break;
       }
-      if (lockWait < 5.0) {
+      if (lockWait < 30.0) {
         lockWait *= 1.1;
       }
       double tmp = duration<double>(end - steady_clock::now()).count();
