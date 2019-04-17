@@ -71,9 +71,11 @@ class SharedAqlItemBlockPtr {
  private:
   inline void incrRefCount() const noexcept;
   // decrRefCount returns ("frees") _aqlItemBlock if the ref count reaches 0
-  void decrRefCount() noexcept;
+  inline void decrRefCount() noexcept;
 
   AqlItemBlockManager& itemBlockManager() const noexcept;
+
+  void returnBlock() noexcept;
 
  private:
   AqlItemBlock* _aqlItemBlock;
@@ -194,6 +196,15 @@ void SharedAqlItemBlockPtr::swap(SharedAqlItemBlockPtr& other) noexcept {
   AqlItemBlock* tmp = _aqlItemBlock;
   _aqlItemBlock = other._aqlItemBlock;
   other._aqlItemBlock = tmp;
+}
+
+void arangodb::aql::SharedAqlItemBlockPtr::decrRefCount() noexcept {
+  if (_aqlItemBlock != nullptr) {
+    _aqlItemBlock->decrRefCount();
+    if (_aqlItemBlock->getRefCount() == 0) {
+      returnBlock();
+    }
+  }
 }
 
 }  // namespace aql
