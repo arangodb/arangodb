@@ -368,6 +368,36 @@ TEST_CASE("TransactionManagerTest", "[transaction]") {
     REQUIRE(qres.ok());
   }
   
+  SECTION("Abort transactions with matcher") {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"collections\":{\"write\": [\"42\"]}}");
+    Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
+    REQUIRE(res.ok());
+    
+    {
+      auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
+      REQUIRE(ctx.get() != nullptr);
+      
+      SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);
+      REQUIRE(trx.state()->isEmbeddedTransaction());
+      
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
+      OperationOptions opts;
+      auto opRes = trx.insert(coll->name(), doc->slice(), opts);
+      REQUIRE(opRes.ok());
+      REQUIRE(trx.finish(opRes.result).ok());
+    }
+    REQUIRE((mgr->getManagedTrxStatus(tid) == transaction::Status::RUNNING));
+
+    //
+    mgr->abortManagedTrx([](TransactionState const& state) -> bool {
+      TransactionCollection* tcoll = state.collection(42, AccessMode::Type::NONE);
+      return tcoll != nullptr;
+    });
+    
+    REQUIRE((mgr->getManagedTrxStatus(tid) == transaction::Status::ABORTED));
+  }
+  
+  
 
 //  SECTION("Permission denied") {
 //    ExecContext exe(ExecContext::Type, "dummy",

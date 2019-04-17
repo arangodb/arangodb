@@ -230,9 +230,9 @@ class RocksDBCollection final : public PhysicalCollection {
   inline bool useCache() const noexcept {
     return (_cacheEnabled && _cachePresent);
   }
-
+  
   /// @brief track key in file
-  void blackListKey(char const* data, std::size_t len) const;
+  void blackListKey(RocksDBKey const& key) const;
 
   /// @brief track the usage of waitForSync option in an operation
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);

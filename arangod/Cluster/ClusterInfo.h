@@ -251,7 +251,7 @@ class ClusterInfo {
   /// @brief shuts down library
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ~ClusterInfo();
+  TEST_VIRTUAL ~ClusterInfo();
 
  public:
   static void createInstance(AgencyCallbackRegistry*);
@@ -314,8 +314,8 @@ class ClusterInfo {
   /// Throwing version, deprecated.
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
-                                                           CollectionID const&);
+  TEST_VIRTUAL std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
+                                                                CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection
@@ -338,7 +338,7 @@ class ClusterInfo {
   /// @brief ask about all collections of a database
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::vector<std::shared_ptr<LogicalCollection>> const getCollections(DatabaseID const&);
+  TEST_VIRTUAL std::vector<std::shared_ptr<LogicalCollection>> const getCollections(DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a view
@@ -360,8 +360,8 @@ class ClusterInfo {
   /// If it is not found in the cache, the cache is reloaded once.
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(DatabaseID const&,
-                                                                      CollectionID const&);
+  TEST_VIRTUAL std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(DatabaseID const&,
+                                                                           CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create database in coordinator
@@ -595,7 +595,7 @@ class ClusterInfo {
 
   std::unordered_map<ServerID, std::string> getServers();
 
-  virtual std::unordered_map<ServerID, std::string> getServerAliases();
+  TEST_VIRTUAL std::unordered_map<ServerID, std::string> getServerAliases();
 
   std::unordered_map<ServerID, std::string> getServerAdvertisedEndpoints();
 
