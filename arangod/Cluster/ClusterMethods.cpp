@@ -2839,7 +2839,7 @@ arangodb::Result hotBackupList(
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "found: " << dbsBackups;
+  //LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "found: " << dbsBackups;
 
   for (auto const& i : dbsBackups) {
     if (i.second.size() == dbServers.size()) {
