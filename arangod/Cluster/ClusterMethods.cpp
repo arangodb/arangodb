@@ -3159,10 +3159,10 @@ arangodb::Result findLocalBackup(
         + " failed on db server " + req.destination + "not an object");
     }
 
-    if (!resSlice.hasKey("result") || !resSlice.get("result").isBoolean() ||
-      !resSlice.get("result").getBoolean()) {
+    if (!resSlice.hasKey("result") || !resSlice.get("result").isObject()) {
       LOG_TOPIC(ERR, Logger::HOTBACKUP)
-        << "DB server " << req.destination << "is missing backup " << backupId;
+        << "DB server " << req.destination << " responded with invalid json, "
+        << resSlice.toJson() << " ,when inquiring about backup " << backupId;
       return arangodb::Result(
         TRI_ERROR_FILE_NOT_FOUND,
         std::string("no backup with id ") + backupId + " on server " + req.destination);
@@ -3320,8 +3320,7 @@ arangodb::Result lockDBServerTransactions(
     VPackSlice slc = resBody->slice();
 
     if (!slc.isObject() ||
-        !slc.hasKey("error") || !slc.get("error").isBoolean() ||
-        !slc.hasKey("result") || !slc.get("result").isObject()) {
+        !slc.hasKey("error") || !slc.get("error").isBoolean()) {
       return arangodb::Result(
         TRI_ERROR_LOCAL_LOCK_FAILED,
         std::string("invalid response from ") + req.destination
@@ -3330,6 +3329,8 @@ arangodb::Result lockDBServerTransactions(
     }
 
     if (slc.get("error").getBoolean()) {
+      LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
+        << "failed to acquire lock from " << req.destination << ": " << slc.toJson();
       auto errorNum = slc.get("errorNum").getNumber<int>();
       if (errorNum == TRI_ERROR_LOCK_TIMEOUT) {
         return arangodb::Result(errorNum, slc.get("errorMessage").copyString());
@@ -3341,7 +3342,8 @@ arangodb::Result lockDBServerTransactions(
         + slc.toJson());
     }
 
-    if (!slc.hasKey(lockPath) || !slc.get(lockPath).isNumber()) {
+    if (!slc.hasKey(lockPath) || !slc.get(lockPath).isNumber() ||
+        !slc.hasKey("result") || !slc.get("result").isObject()) {
       return arangodb::Result(
         TRI_ERROR_LOCAL_LOCK_FAILED,
         std::string("invalid response from ") + req.destination
@@ -3643,7 +3645,8 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     std::vector<ServerID> lockedServers;
     double lockWait = 2.0;
     while(cc != nullptr && steady_clock::now() < end) {
-      auto end = steady_clock::now() + duration<double>(lockWait);
+      auto iterEnd = steady_clock::now() + duration<double>(lockWait);
+
       result = lockDBServerTransactions(backupId, dbServers, lockWait, lockedServers);
       if (!result.ok()) {
         unlockDBServerTransactions(backupId, lockedServers);
@@ -3657,7 +3660,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       if (lockWait < 30.0) {
         lockWait *= 1.1;
       }
-      double tmp = duration<double>(end - steady_clock::now()).count();
+      double tmp = duration<double>(iterEnd - steady_clock::now()).count();
       if (tmp > 0) {
         std::this_thread::sleep_for(duration<double>(tmp));
       }
