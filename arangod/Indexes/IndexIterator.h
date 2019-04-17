@@ -201,7 +201,7 @@ class MultiIndexIterator final : public IndexIterator {
   ///        all iterators are exhausted
   bool next(LocalDocumentIdCallback const& callback, size_t limit) override;
   bool nextDocument(DocumentCallback const& callback, size_t limit) override;
-
+  bool nextExtra(ExtraCallback const& callback, size_t limit) override;
   bool nextCovering(DocumentCallback const& callback, size_t limit) override;
 
   /// @brief Reset the cursor

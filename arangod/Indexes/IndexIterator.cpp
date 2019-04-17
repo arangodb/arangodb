@@ -131,6 +131,11 @@ bool MultiIndexIterator::nextDocument(DocumentCallback const& callback, size_t l
   return true;
 }
 
+bool MultiIndexIterator::nextExtra(ExtraCallback const& callback, size_t limit) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested extra values from an index iterator that does not support it");
+}
+
+
 /// @brief Get the next elements
 ///        If one iterator is exhausted, the next one is used.
 ///        If callback is called less than limit many times
