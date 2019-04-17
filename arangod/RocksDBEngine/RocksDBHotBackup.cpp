@@ -995,7 +995,7 @@ void RocksDBHotBackupList::listAll() {
       if (_isSingle) {
         _result.add(VPackValue(dir.c_str()));
       } else {
-        _result.add(VPackValue(dir.substr(getPersistedId().size()+1).c_str()));
+        _result.add(VPackValue(dir));
       }
     } // for
     _result.close();
