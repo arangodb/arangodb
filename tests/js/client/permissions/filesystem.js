@@ -49,14 +49,14 @@ let testFilesDir = fs.join(rootDir, 'test_file_tree');
 
 if (getOptions === true) {
   rootDir = fs.join(fs.getTempPath(), 'permissions');
-  subInstanceTemp = fs.join(rootDir, 'subinstance_temp_directory')
+  subInstanceTemp = fs.join(rootDir, 'subinstance_temp_directory');
   testResults = fs.join(subInstanceTemp, 'testresult.json'); // where we want to put our results ;-)
   testFilesDir = fs.join(rootDir, 'test_file_tree');
   fs.makeDirectoryRecursive(subInstanceTemp);
   fs.makeDirectoryRecursive(testFilesDir);
 
   //create al symlink from subinstance test result to test result expecte by calling arangosh
-  let callerResult = fs.join(rootDir, 'testresult.json')
+  let callerResult = fs.join(rootDir, 'testresult.json');
   try {
     fs.remove(callerResult);
   } catch(ex) {}
@@ -107,8 +107,6 @@ const topLevelAllowedCopyFile = fs.join(topLevelAllowed, 'allowed_copy.txt');
 const topLevelForbiddenCopyFile = fs.join(topLevelForbidden, 'forbidden_copy.txt');
 const subLevelAllowedCopyFile = fs.join(subLevelAllowed, 'allowed_copy.txt');
 // N/A const subLevelForbiddenCopyFile = fs.join(subLevelForbidden, 'forbidden_json.txt');
-
-print("topLevelAllowed: " + topLevelAllowed);
 
 const CSV = 'a,b\n1,2\n3,4\n';
 const CSVParsed = [['a', 'b'], ['1', '2'], ['3', '4']];
@@ -464,7 +462,7 @@ function testSuite() {
 
   function tryGetTempFileForbidden(dn) {
     try {
-      rc = fs.getTempFile(dn, true);
+      let rc = fs.getTempFile(dn, true);
       fail();
     }
     catch (err) {
