@@ -3653,7 +3653,7 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
 }
 
 
-std::string const backupKey = "/arango/Target/HotBackup/";
+std::string const backupKey = "/arango/Target/HotBackup/Create/";
 std::string const maintenanceKey = "/arango/Supervision/Maintenance";
 std::string const toDoKey = "/arango/Target/ToDo";
 std::string const pendingKey = "/arango/Target/Pending";
@@ -3755,7 +3755,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
       arangodb::rest::RequestType::POST, timeout, writeURL, builder.slice());
 
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
-    << "agency lock for hot backup " << backupId << " scheduled";
+    << "agency lock for hot backup " << backupId << " scheduled with " << builder.toJson();
   
   // *** ATTENTION ***: Result will always be 412.
   // So we're going to fail, if we have an error OTHER THAN 412:
@@ -3851,7 +3851,7 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(
       VPackArrayBuilder trx (&builder);
       {
         VPackObjectBuilder o(&builder);
-        builder.add(VPackValue(backupKey + backupId)); // Remove backup key
+        builder.add(VPackValue(backupKey)); // Remove backup key
         {
           VPackObjectBuilder oo(&builder);
           builder.add("op", VPackValue("delete"));
