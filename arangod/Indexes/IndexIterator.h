@@ -142,6 +142,7 @@ class EmptyIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "empty-index-iterator"; }
 
   bool next(LocalDocumentIdCallback const&, size_t) override { return false; }
+  bool nextDocument(DocumentCallback const&, size_t) override { return false; }
   bool nextExtra(ExtraCallback const&, size_t) override { return false; }
   bool nextCovering(DocumentCallback const&, size_t) override { return false; }
 
@@ -199,7 +200,8 @@ class MultiIndexIterator final : public IndexIterator {
   ///        If callback is called less than limit many times
   ///        all iterators are exhausted
   bool next(LocalDocumentIdCallback const& callback, size_t limit) override;
-
+  bool nextDocument(DocumentCallback const& callback, size_t limit) override;
+  bool nextExtra(ExtraCallback const& callback, size_t limit) override;
   bool nextCovering(DocumentCallback const& callback, size_t limit) override;
 
   /// @brief Reset the cursor
@@ -219,7 +221,7 @@ class MultiIndexIterator final : public IndexIterator {
 
 /// Options for creating an index iterator
 struct IndexIteratorOptions {
-  /// @brief whether the index must sort it's results
+  /// @brief whether the index must sort its results
   bool sorted = true;
   /// @brief the index sort order - this is the same order for all indexes
   bool ascending = true;

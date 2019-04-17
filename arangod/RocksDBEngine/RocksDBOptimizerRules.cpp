@@ -33,6 +33,7 @@
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Basics/HashSet.h"
 #include "Basics/StaticStrings.h"
@@ -194,8 +195,12 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         EnumerateCollectionNode const* en = ExecutionNode::castTo<EnumerateCollectionNode const*>(n);
 
         // now check all indexes if they cover the projection
+        auto trx = plan->getAst()->query()->trx();
         std::shared_ptr<Index> picked;
-        auto indexes = en->collection()->getCollection()->getIndexes();
+        std::vector<std::shared_ptr<Index>> indexes;
+        if (!trx->isInaccessibleCollection(en->collection()->getCollection()->name())) {
+          indexes = en->collection()->getCollection()->getIndexes();
+        }
 
         for (auto const& idx : indexes) {
           if (!idx->hasCoveringIterator() || !idx->covers(attributes)) {
@@ -265,8 +270,12 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       // documents via the primary index should be faster
       EnumerateCollectionNode* en = ExecutionNode::castTo<EnumerateCollectionNode*>(n);
         
+      auto trx = plan->getAst()->query()->trx();
       std::shared_ptr<Index> picked;
-      auto indexes = en->collection()->getCollection()->getIndexes();
+      std::vector<std::shared_ptr<Index>> indexes;
+      if (!trx->isInaccessibleCollection(en->collection()->getCollection()->name())) {
+        indexes = en->collection()->getCollection()->getIndexes();
+      }
 
       for (auto const& idx : indexes) {
         if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
