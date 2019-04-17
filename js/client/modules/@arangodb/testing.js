@@ -162,6 +162,7 @@ const optionsDefaults = {
   'skipNightly': true,
   'skipNondeterministic': false,
   'skipGrey': false,
+  'onlyGrey': false,
   'skipTimeCritical': false,
   'storageEngine': 'rocksdb',
   'test': undefined,
