@@ -44,35 +44,36 @@ if (getOptions === true) {
   };
 }
 
-const download = require('internal').download;
 var jsunity = require('jsunity');
-var env = require('process').env;
-var arangodb = require("@arangodb");
+
 function testSuite() {
+  const download = require('internal').download;
+  let env = require('process').env;
+  let arangodb = require("@arangodb");
+
   function downloadForbidden(url, method) {
     try {
       let reply = download(url, '', { method: method, timeout: 3 } );
       fail();
-    }
-    catch (err) {
+    } catch (err) {
       assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while fetching: ' + url);
     }
   }
+
   function downloadPermitted(url, method) {
     try {
       let reply = download(url, '', { method: method, timeout: 30 } );
       if (reply.code === 200) {
         assertEqual(reply.code, 200);
-      }
-      else {
+      } else {
         assertEqual(reply.code, 500);
         assertTrue(reply.message.search('Could not connect') >=0 );
       }
-    }
-    catch (err) {
-      assertNotEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while fetching: ' + url + " Detail error: " + JSON.stringify(err) + ' ' );
+    } catch (err) {
+      assertNotEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while fetching: ' + url + " Detail error: " + JSON.stringify(err) + ' ');
     }
   }
+
   return {
     testDownload : function() {
       // The filter will only match the host part. We specify one anyways.
@@ -91,7 +92,6 @@ function testSuite() {
       downloadPermitted('http://white.arangodb.org/bla', 'GET');
       downloadPermitted('https://arangodb.com/blog', 'GET');
       downloadPermitted('http://arangodb.com/blog', 'GET');
-
     }
   };
 }
