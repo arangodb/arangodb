@@ -118,6 +118,9 @@ class EmptyIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "empty-index-iterator"; }
 
   bool next(LocalDocumentIdCallback const&, size_t) override { return false; }
+  bool nextDocument(DocumentCallback const&, size_t) override { return false; }
+  bool nextExtra(ExtraCallback const&, size_t) override { return false; }
+  bool nextCovering(DocumentCallback const&, size_t) override { return false; }
 
   void reset() override {}
 
