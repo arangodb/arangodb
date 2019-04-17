@@ -13,13 +13,9 @@ if (getOptions === true) {
     'server.harden': 'true',
     'server.authentication': 'true',
     'javascript.harden' : 'true',
-    'javascript.files-blacklist': [
-      '^/',
-    ],
     'javascript.files-whitelist': [
-      '^' + pu.TOP_DIR + '/'
-     // '^/home/oberon/checkouts/arangodb3/.*'
-
+      '^' + pu.TOP_DIR + '.*',
+      '^' + fs.getTempPath(),
     ],
     'javascript.endpoints-whitelist' : [
       'ssl://arangodb.com:443'
@@ -67,109 +63,109 @@ function testSuite() {
       assertEqual("Forbidden", res.message);
     },
 
-    testPasswd : function() {
-      const url = endpoint + mount + "/passwd";
-      const res = download(url);
-      assertEqual(403, res.code);
-      assertEqual("Forbidden", res.message);
-    },
+     testPasswd : function() {
+       const url = endpoint + mount + "/passwd";
+       const res = download(url);
+       assertEqual(403, res.code);
+       assertEqual("Forbidden", res.message);
+     },
 
-    testDlHeise : function() {
-      const url = endpoint + mount + "/dl-heise";
-      const res = download(url);
-      assertEqual(403, res.code);
-      assertEqual("Forbidden", res.message);
-    },
+     testDlHeise : function() {
+       const url = endpoint + mount + "/dl-heise";
+       const res = download(url);
+       assertEqual(403, res.code);
+       assertEqual("Forbidden", res.message);
+     },
 
-    testTestPort : function() {
-      const url = endpoint + mount + "/test-port";
-      const res = download(url);
-      assertEqual(403, res.code);
-      assertEqual("Forbidden", res.message);
-    },
+     testTestPort : function() {
+       const url = endpoint + mount + "/test-port";
+       const res = download(url);
+       assertEqual(403, res.code);
+       assertEqual("Forbidden", res.message);
+     },
 
-    testGetTmpPath : function() {
-      const url = endpoint + mount + "/get-tmp-path";
-      const res = download(url);
-      assertEqual(200, res.code);
-      let body = JSON.parse(res.body);
-      assertTrue(body.startsWith("/tmp"));
-    },
+     testGetTmpPath : function() {
+       const url = endpoint + mount + "/get-tmp-path";
+       const res = download(url);
+       assertEqual(200, res.code);
+       let body = JSON.parse(res.body);
+       assertTrue(body.startsWith("/tmp"));
+     },
 
-    testGetTmpFile : function() {
-      const url = endpoint + mount + "/get-tmp-file";
-      const res = download(url);
-      assertEqual(200, res.code);
-      let body = JSON.parse(res.body);
-      assertTrue(body.startsWith("/tmp"));
-    },
+     testGetTmpFile : function() {
+       const url = endpoint + mount + "/get-tmp-file";
+       const res = download(url);
+       assertEqual(200, res.code);
+       let body = JSON.parse(res.body);
+       assertTrue(body.startsWith("/tmp"));
+     },
 
-    testWriteTmpFile : function() {
-      const url = endpoint + mount + "/write-tmp-file";
-      const res = download(url);
-      assertEqual(200, res.code);
-    },
+     testWriteTmpFile : function() {
+       const url = endpoint + mount + "/write-tmp-file";
+       const res = download(url);
+       assertEqual(200, res.code);
+     },
 
-    testProcessStatistics : function() {
-      const url = endpoint + mount + "/process-statistics";
-      const res = download(url);
-      assertEqual(403, res.code);
-    },
+     testProcessStatistics : function() {
+       const url = endpoint + mount + "/process-statistics";
+       const res = download(url);
+       assertEqual(403, res.code);
+     },
 
-    testExecuteExternal : function() {
-      const url = endpoint + mount + "/execute-external";
-      const res = download(url);
-      assertEqual(403, res.code);
-    },
+     testExecuteExternal : function() {
+       const url = endpoint + mount + "/execute-external";
+       const res = download(url);
+       assertEqual(403, res.code);
+     },
 
-    testPath : function() {
-      { // read
-        const url = endpoint + mount + "/environment-variables-get-path";
-        const res = download(url);
-        assertEqual(204, res.code);
-        assertEqual("undefined", res.body);
-      }
-      { // modify
-        const url = endpoint + mount + "/environment-variables-set-path";
-        const res = download(url);
-        assertEqual(200, res.code);
-        assertEqual("true", res.body);
-      }
-      { // read
-        const url = endpoint + mount + "/environment-variables-get-path";
-        const res = download(url);
-        assertEqual(204, res.code);
-        assertEqual("undefined", res.body);
-      }
-    },
+     testPath : function() {
+       { // read
+         const url = endpoint + mount + "/environment-variables-get-path";
+         const res = download(url);
+         assertEqual(204, res.code);
+         assertEqual("undefined", res.body);
+       }
+       { // modify
+         const url = endpoint + mount + "/environment-variables-set-path";
+         const res = download(url);
+         assertEqual(200, res.code);
+         assertEqual("true", res.body);
+       }
+       { // read
+         const url = endpoint + mount + "/environment-variables-get-path";
+         const res = download(url);
+         assertEqual(204, res.code);
+         assertEqual("undefined", res.body);
+       }
+     },
 
-    testStartupOptions : function() {
-      const url = endpoint + mount + "/startup-options-log-file";
-      const res = download(url);
-      assertEqual(204, res.code);
-      assertEqual("undefined", res.body);
-    },
+     testStartupOptions : function() {
+       const url = endpoint + mount + "/startup-options-log-file";
+       const res = download(url);
+       assertEqual(204, res.code);
+       assertEqual("undefined", res.body);
+     },
 
-    testReadServiceFile : function() {
-      const url = endpoint + mount + "/read-service-file";
-      const res = download(url);
-      assertEqual(200, res.code);
-      let body = JSON.parse(res.body);
-      assertTrue(body.startsWith("'use strict'"));
-    },
+     testReadServiceFile : function() {
+       const url = endpoint + mount + "/read-service-file";
+       const res = download(url);
+       assertEqual(200, res.code);
+       let body = JSON.parse(res.body);
+       assertTrue(body.startsWith("'use strict'"));
+     },
 
-    testWriteRemoveServiceFile : function() {
-      {
-        const url = endpoint + mount + "/write-service-file";
-        const res = download(url);
-        assertEqual(200, res.code);
-      }
-      {
-        const url = endpoint + mount + "/remove-service-file";
-        const res = download(url);
-        assertEqual(200, res.code);
-      }
-    },
+     testWriteRemoveServiceFile : function() {
+       {
+         const url = endpoint + mount + "/write-service-file";
+         const res = download(url);
+         assertEqual(200, res.code);
+       }
+       {
+         const url = endpoint + mount + "/remove-service-file";
+         const res = download(url);
+         assertEqual(200, res.code);
+       }
+     },
 
   };
 }

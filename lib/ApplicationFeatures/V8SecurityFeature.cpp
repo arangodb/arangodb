@@ -45,8 +45,10 @@ void testRegexPair(std::string const& whitelist, std::string const& blacklist,
     std::regex(whitelist, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
     LOG_TOPIC("ab6d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript." << optionName << "-whitelist' is not a "
-           "valid regular expression: " << ex.what();
+        << "value for '--javascript." << optionName
+        << "-whitelist' is not a "
+           "valid regular expression: "
+        << ex.what();
     FATAL_ERROR_EXIT();
   }
 
@@ -54,16 +56,18 @@ void testRegexPair(std::string const& whitelist, std::string const& blacklist,
     std::regex(blacklist, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
     LOG_TOPIC("ab2d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript." << optionName << "-blacklist' is not a "
-           "valid regular expression: " << ex.what();
+        << "value for '--javascript." << optionName
+        << "-blacklist' is not a "
+           "valid regular expression: "
+        << ex.what();
     FATAL_ERROR_EXIT();
   }
 }
 
 std::string canonicalpath(std::string const& path) {
 #ifndef _WIN32
-  auto realPath = std::unique_ptr<char, void (*)(void*)>(
-    ::realpath(path.c_str(), nullptr), &free);
+  auto realPath =
+      std::unique_ptr<char, void (*)(void*)>(::realpath(path.c_str(), nullptr), &free);
   if (realPath) {
     return std::string(realPath.get());
   }
@@ -131,7 +135,6 @@ bool checkBlackAndWhitelist(std::string const& value, bool hasWhitelist,
 
   // longer match or blacklist wins
   return white_result[0].length() > black_result[0].length();
-
 }
 }  // namespace
 
@@ -147,59 +150,75 @@ V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& se
 
 void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("javascript", "Configure the Javascript engine");
-  options->addOption("--javascript.allow-port-testing", "allow testing of ports from within JavaScript actions",
-                     new BooleanParameter(&_allowPortTesting),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
-                    .setIntroducedIn(30500);
+  options
+      ->addOption("--javascript.allow-port-testing",
+                  "allow testing of ports from within JavaScript actions",
+                  new BooleanParameter(&_allowPortTesting),
+                  arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30500);
 
-  options->addOption("--javascript.allow-external-process-control",
-                     "allow execution and control of external processes from within JavaScript actions",
-                     new BooleanParameter(&_allowProcessControl),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30500);
+  options
+      ->addOption("--javascript.allow-external-process-control",
+                  "allow execution and control of external processes from "
+                  "within JavaScript actions",
+                  new BooleanParameter(&_allowProcessControl),
+                  arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30500);
 
-  options->addOption("--javascript.harden",
-                     "disables access to JavaScript functions in the internal module: getPid(), "
-                     "processStatistics() andl logLevel()",
-                     new BooleanParameter(&_hardenInternalModule))
-                     .setIntroducedIn(30500);
+  options
+      ->addOption("--javascript.harden",
+                  "disables access to JavaScript functions in the internal "
+                  "module: getPid(), "
+                  "processStatistics() andl logLevel()",
+                  new BooleanParameter(&_hardenInternalModule))
+      .setIntroducedIn(30500);
 
-  options->addOption("--javascript.startup-options-whitelist",
-                     "startup options whose names match this regular "
-                     "expression will be whitelisted and exposed to JavaScript",
-                     new VectorParameter<StringParameter>(&_startupOptionsWhitelistVec))
-                     .setIntroducedIn(30500);
-  options->addOption("--javascript.startup-options-blacklist",
-                     "startup options whose names match this regular "
-                     "expression will not be exposed (if not whitelisted) to "
-                     "JavaScript actions",
-                     new VectorParameter<StringParameter>(&_startupOptionsBlacklistVec))
-                     .setIntroducedIn(30500);
+  options
+      ->addOption("--javascript.startup-options-whitelist",
+                  "startup options whose names match this regular "
+                  "expression will be whitelisted and exposed to JavaScript",
+                  new VectorParameter<StringParameter>(&_startupOptionsWhitelistVec))
+      .setIntroducedIn(30500);
+  options
+      ->addOption("--javascript.startup-options-blacklist",
+                  "startup options whose names match this regular "
+                  "expression will not be exposed (if not whitelisted) to "
+                  "JavaScript actions",
+                  new VectorParameter<StringParameter>(&_startupOptionsBlacklistVec))
+      .setIntroducedIn(30500);
 
-  options->addOption("--javascript.environment-variables-whitelist",
-                     "environment variables that will be accessible in JavaScript",
-                     new VectorParameter<StringParameter>(&_environmentVariablesWhitelistVec))
-                     .setIntroducedIn(30500);
-  options->addOption("--javascript.environment-variables-blacklist",
-                     "environment variables that will be inaccessible in JavaScript if not whitelisted",
-                     new VectorParameter<StringParameter>(&_environmentVariablesBlacklistVec))
-                     .setIntroducedIn(30500);
+  options
+      ->addOption("--javascript.environment-variables-whitelist",
+                  "environment variables that will be accessible in JavaScript",
+                  new VectorParameter<StringParameter>(&_environmentVariablesWhitelistVec))
+      .setIntroducedIn(30500);
+  options
+      ->addOption("--javascript.environment-variables-blacklist",
+                  "environment variables that will be inaccessible in "
+                  "JavaScript if not whitelisted",
+                  new VectorParameter<StringParameter>(&_environmentVariablesBlacklistVec))
+      .setIntroducedIn(30500);
 
-  options->addOption("--javascript.endpoints-whitelist",
-                     "endpoints that can be connected to via "
-                     "@arangodb/request module in JavaScript actions",
-                     new VectorParameter<StringParameter>(&_endpointsWhitelistVec))
-                     .setIntroducedIn(30500);
-  options->addOption("--javascript.endpoints-blacklist",
-                     "endpoints that cannot be connected to via @arangodb/request module in "
-                     "JavaScript actions if not whitelisted",
-                     new VectorParameter<StringParameter>(&_endpointsBlacklistVec))
-                     .setIntroducedIn(30500);
+  options
+      ->addOption("--javascript.endpoints-whitelist",
+                  "endpoints that can be connected to via "
+                  "@arangodb/request module in JavaScript actions",
+                  new VectorParameter<StringParameter>(&_endpointsWhitelistVec))
+      .setIntroducedIn(30500);
+  options
+      ->addOption("--javascript.endpoints-blacklist",
+                  "endpoints that cannot be connected to via @arangodb/request "
+                  "module in "
+                  "JavaScript actions if not whitelisted",
+                  new VectorParameter<StringParameter>(&_endpointsBlacklistVec))
+      .setIntroducedIn(30500);
 
-  options->addOption("--javascript.files-whitelist",
-                     "filesystem paths that will be accessible from within JavaScript actions",
-                     new VectorParameter<StringParameter>(&_filesWhitelistVec))
-                     .setIntroducedIn(30500);
+  options
+      ->addOption("--javascript.files-whitelist",
+                  "filesystem paths that will be accessible from within "
+                  "JavaScript actions",
+                  new VectorParameter<StringParameter>(&_filesWhitelistVec))
+      .setIntroducedIn(30500);
 }
 
 void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -208,12 +227,14 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   // startup options
   convertToRegex(_startupOptionsWhitelistVec, _startupOptionsWhitelist);
   convertToRegex(_startupOptionsBlacklistVec, _startupOptionsBlacklist);
-  testRegexPair(_startupOptionsWhitelist, _startupOptionsBlacklist, "startup-options");
+  testRegexPair(_startupOptionsWhitelist, _startupOptionsBlacklist,
+                "startup-options");
 
   // environment variables
   convertToRegex(_environmentVariablesWhitelistVec, _environmentVariablesWhitelist);
   convertToRegex(_environmentVariablesBlacklistVec, _environmentVariablesBlacklist);
-  testRegexPair(_environmentVariablesWhitelist, _environmentVariablesBlacklist, "environment-variables");
+  testRegexPair(_environmentVariablesWhitelist, _environmentVariablesBlacklist,
+                "environment-variables");
 
   // endpoints
   convertToRegex(_endpointsWhitelistVec, _endpointsWhitelist);
@@ -323,14 +344,13 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
                                 !_endpointsBlacklist.empty(), _endpointsBlacklistRegex);
 }
 
-bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string const&  path,
+bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path,
                                               FSAccessType access) const {
   return V8SecurityFeature::isAllowedToAccessPath(isolate, path.c_str(), access);
 }
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* pathPtr,
                                               FSAccessType access) const {
-
   if (_filesWhitelist.empty()) {
     return true;
   }
@@ -357,7 +377,7 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
   }
 
   bool rv = checkBlackAndWhitelist(path, !_filesWhitelist.empty(), _filesWhitelistRegex,
-                                   false, _filesWhitelistRegex /*passed to match the signature but not used*/);
+                                         false, _filesWhitelistRegex /*passed to match the signature but not used*/);
 
   if (rv) {
     return true;
