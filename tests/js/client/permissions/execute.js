@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global fail, getOptions, assertTrue, assertEqual, assertNotEqual, print */
+/* global fail, getOptions, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief teardown for dump/reload tests
@@ -31,26 +31,23 @@
 if (getOptions === true) {
   return {
     'javascript.allow-external-process-control': false,
-    'javascript.harden': true
   };
 }
 
-var env = require('process').env;
 var jsunity = require('jsunity');
-const internal = require('internal');
-const executeExternal = internal.executeExternal;
-const executeExternalAndWait = internal.executeExternalAndWait;
-const killExternal = internal.killExternal;
-const statusExternal = internal.statusExternal;
-const getExternalSpawned = internal.getExternalSpawned;
-const suspendExternal = internal.suspendExternal;
-const continueExternal = internal.continueExternal;
-const processStatistics = internal.processStatistics;
-const getPid = internal.getPid;
-
-const arangodb = require("@arangodb");
 
 function testSuite() {
+  let env = require('process').env;
+  const internal = require('internal');
+  const executeExternal = internal.executeExternal;
+  const executeExternalAndWait = internal.executeExternalAndWait;
+  const killExternal = internal.killExternal;
+  const statusExternal = internal.statusExternal;
+  const getExternalSpawned = internal.getExternalSpawned;
+  const suspendExternal = internal.suspendExternal;
+  const continueExternal = internal.continueExternal;
+  const arangodb = require("@arangodb");
+
   return {
     testExternalProcesses : function() {
       try {
@@ -80,18 +77,6 @@ function testSuite() {
       }
       try {
         let rv = getExternalSpawned();
-        fail();
-      } catch (err) {
-        assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
-      }
-      try {
-        let rv = processStatistics();
-        fail();
-      } catch (err) {
-        assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
-      }
-      try {
-        let rv = getPid();
         fail();
       } catch (err) {
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
