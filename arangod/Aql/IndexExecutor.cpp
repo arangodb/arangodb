@@ -444,6 +444,7 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     // We only get here with non-exhausted indexes.
     // At least one of them is prepared and ready to read.
     TRI_ASSERT(!getIndexesExhausted());
+    _indexCallback.setOutputRow(output);
     bool hasWritten = false;
     // Read the next elements from the indexes
     bool more = readIndex(hasWritten);
