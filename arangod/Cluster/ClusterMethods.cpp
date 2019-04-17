@@ -2817,8 +2817,6 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
         std::string("result to list request to ") + req.destination + " not an object");
     }
 
-    LOG_DEVEL << resSlice.toJson();
-    
     if (!resSlice.hasKey("result") || !resSlice.get("result").isObject()) {
       return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
