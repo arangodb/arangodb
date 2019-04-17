@@ -73,6 +73,7 @@ function auditLog(onServer) {
     const serverOptions = {
       'server.authentication': 'true',
       'server.jwt-secret': 'haxxmann',
+      'log.level': 'audit-authentication=info',
     };
 
     print(CYAN + 'Audit log server tests...' + RESET);
