@@ -186,6 +186,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::pair<ExecutionState, size_t> defaultSkipSome(size_t atMost);
   std::pair<ExecutionState, size_t> passSkipSome(size_t atMost);
   std::pair<ExecutionState, size_t> enumerateCollectionSkipSome(size_t atMost);
+  std::pair<ExecutionState, size_t> indexSkipSome(size_t atMost);
+  std::pair<ExecutionState, size_t> searchSkipSome(size_t atMost);
 
   /**
    * @brief Allocates a new AqlItemBlock and returns it, with the specified

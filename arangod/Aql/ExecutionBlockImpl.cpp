@@ -212,30 +212,37 @@ template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
 
-  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough && !std::is_same<Executor, SubqueryExecutor>::value) {  // TODO: check for modifications inside a subquery
+  bool temp = false; // TODO: remove me, just a temp variable to disable first if statement
+
+  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough && !std::is_same<Executor, SubqueryExecutor>::value && temp) {  // TODO: check for modifications inside a subquery
     // TODO forbid modify executors
     LOG_DEVEL << "PASS SKIP SOME";
     return traceSkipSomeEnd(passSkipSome(atMost));
   } else if (std::is_same<Executor, EnumerateCollectionExecutor>::value) {
-    LOG_DEVEL << "SKIP ENUM COLLETION";
-    return traceSkipSomeEnd(enumerateCollectionSkipSome(atMost));
+    LOG_DEVEL << "SKIP ENUM COLLECTION";
+    return traceSkipSomeEnd(skipSome((atMost)));
   } else {
     LOG_DEVEL << "DEFAULT SKIP SOME";
     return traceSkipSomeEnd(defaultSkipSome(atMost));
   }
 }
 
+template <>
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<EnumerateCollectionExecutor>::skipSome(size_t atMost) {
+  LOG_DEVEL << " SKIP ENUM COLL Special case";
+  return this->executor().skipRows(atMost);
+}
+
+/*
 template <class EnumerateCollectionExecutor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<EnumerateCollectionExecutor>::enumerateCollectionSkipSome(size_t atMost) {
-  auto res = getSomeWithoutTrace(atMost);
+  ExecutionState state = ExecutionState::HASMORE;
+  ExecutorStats executorStats{};
 
-  size_t skipped = 0;
-  if (res.second != nullptr) {
-    skipped = res.second->size();
-  }
+    std::tie(state, skipped) = _executor->skipRows(atMost);
 
   return {res.first, skipped};
-}
+}*/
 
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::defaultSkipSome(size_t atMost) {

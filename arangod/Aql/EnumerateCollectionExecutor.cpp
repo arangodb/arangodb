@@ -157,7 +157,7 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
   }
 }
 
-std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor::skipRows(size_t toSkip) {
+std::pair<ExecutionState, size_t> EnumerateCollectionExecutor::skipRows(size_t toSkip) {
   TRI_IF_FAILURE("EnumerateCollectionExecutor::skipRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -167,12 +167,14 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
     std::tie(_state, _input) = _fetcher.fetchRow();
 
     if (_state == ExecutionState::WAITING) {
-      return {_state, stats};
+      LOG_DEVEL << "returned waiting";
+      return {_state, 0};
     }
 
     if (!_input) {
+      LOG_DEVEL << "no input, we're done. returning done,";
       TRI_ASSERT(_state == ExecutionState::DONE);
-      return {_state, stats};
+      return {_state, 0};
     }
     _cursor->reset();
     _cursorHasMore = _cursor->hasMore();
@@ -189,13 +191,9 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
   _cursor->skip(toSkip, actuallySkipped);
   _cursorHasMore = _cursor->hasMore();
 
-  if (actuallySkipped > 0) {
-    // increase scannedFull statistic
-    stats.incrScanned(actuallySkipped);
-  }
-
-  if (actuallySkipped == toSkip) {
-    return {ExecutionState::DONE, stats};
+  if (actuallySkipped == toSkip && !_cursorHasMore) {
+    LOG_DEVEL << "returned done and skipped with: " << actuallySkipped;
+    return {ExecutionState::DONE, actuallySkipped};
   }
 
   /* TODO: just a note, we do not need those checks, because we always run into hasmore
@@ -206,7 +204,8 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
     return {ExecutionState::HASMORE, stats};
   }*/
 
-  return {ExecutionState::HASMORE, stats};
+  LOG_DEVEL << "returned HASMORE and skipped with: " << actuallySkipped;
+  return {ExecutionState::HASMORE, actuallySkipped};
 }
 
 #ifndef USE_ENTERPRISE
