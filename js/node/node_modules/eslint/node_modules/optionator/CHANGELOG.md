@@ -1,3 +1,7 @@
+# 0.8.2
+- fix bug #18 - detect missing value when flag is last item
+- update dependencies
+
 # 0.8.1
 - update `fast-levenshtein` dependency
 
