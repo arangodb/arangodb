@@ -2814,13 +2814,25 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
       // Response has invalid format
       return arangodb::Result(
         TRI_ERROR_HTTP_CORRUPTED_JSON,
-        std::string("result to list request to ") + req.destination + "not an object");
+        std::string("result to list request to ") + req.destination + " not an object");
     }
 
-    if (!resSlice.hasKey("server") || !resSlice.hasKey("id") || !resSlice.get("id").isArray()) {
+    LOG_DEVEL << resSlice.toJson();
+    
+    if (!resSlice.hasKey("result") || !resSlice.get("result").isObject()) {
       return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
-        std::string("invalid response from ") + req.destination);
+        std::string("invalid response ") + resSlice.toJson() + "from " + req.destination);
+    }
+
+    resSlice = resSlice.get("result");
+
+    if (!resSlice.hasKey("server") || !resSlice.get("server").isString()) {
+      return arangodb::Result(TRI_ERROR_HOT_BACKUP_INTERNAL, "result is missing server id");
+    }
+    
+    if (!resSlice.hasKey("id") || !resSlice.get("id").isArray() || resSlice.get("id").length() == 0) {
+      return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND, "no backups listed");
     }
 
     for (auto const& id : VPackArrayIterator(resSlice.get("id"))) {
@@ -3723,6 +3735,10 @@ arangodb::Result listHotBakupsOnCoordinator(
   }
 
   arangodb::Result result = hotBackupList(dbServers, listIds);
+
+  if (!result.ok()) {
+    return result;
+  }
 
   {
     VPackObjectBuilder o(&report);
