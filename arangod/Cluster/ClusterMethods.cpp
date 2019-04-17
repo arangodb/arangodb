@@ -2766,6 +2766,8 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
 
   hotBackups.clear();
 
+  std::map<std::string, std::set<ServerID>> dbsBackups;
+
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // shutdown, leave here
@@ -2815,18 +2817,25 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
         std::string("result to list request to ") + req.destination + "not an object");
     }
 
-    if (!resSlice.hasKey("server") || !resSlice.hasKey("backups")
-        || !resSlice.get("backups").isArray()) {
+    if (!resSlice.hasKey("server") || !resSlice.hasKey("id") || !resSlice.get("id").isArray()) {
       return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         std::string("invalid response from ") + req.destination);
     }
 
-    for (auto const id : VPackArrayIterator(resSlice.get("backups"))) {
-      hotBackups.push_back(id.copyString());
+    for (auto const& id : VPackArrayIterator(resSlice.get("id"))) {
+      dbsBackups[id.copyString()].emplace(req.destination);
     }
   }
 
+  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << dbsBackups;
+
+  for (auto const& i : dbsBackups) {
+    if (i.second.size() == dbServers.size()) {
+      hotBackups.emplace_back(i.first);
+    }
+  }
+  
   return arangodb::Result();
 }
 

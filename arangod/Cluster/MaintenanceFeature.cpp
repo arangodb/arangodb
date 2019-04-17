@@ -676,20 +676,6 @@ arangodb::Result MaintenanceFeature::indexErrors(
   return Result();
 }
 
-template <typename T>
-std::ostream& operator<<(std::ostream& os, std::set<T> const& st) {
-  size_t j = 0;
-  os << "[";
-  for (auto const& i : st) {
-    os << i;
-    if (++j < st.size()) {
-      os << ", ";
-    }
-  }
-  os << "]";
-  return os;
-}
-
 arangodb::Result MaintenanceFeature::removeIndexErrors(
     std::string const& key, std::unordered_set<std::string> const& indexIds) {
   MUTEX_LOCKER(guard, _ieLock);
