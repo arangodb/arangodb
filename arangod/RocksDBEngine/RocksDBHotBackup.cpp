@@ -135,9 +135,8 @@ RocksDBHotBackup::RocksDBHotBackup(VPackSlice body, VPackBuilder& report)
 }
 
 std::string RocksDBHotBackup::buildDirectoryPath(std::string const& timestamp, std::string const& label) {
-  std::string suffix = getPersistedId();
-  suffix += "_";
-  suffix += timestamp;
+
+  std::string suffix = timestamp;
 
   if (0 != label.length()) {
     // limit directory name to 254 characters
