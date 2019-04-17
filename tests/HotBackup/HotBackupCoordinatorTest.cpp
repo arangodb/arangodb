@@ -73,7 +73,7 @@ int countSubstring(std::string const& str, std::string const& sub) {
   return count;
 }
 
-TEST_CASE("HotBackup", "[cluster][hotbackup]") {
+TEST_CASE("HotBackup on coordinators", "[cluster][hotbackup]") {
   VPackBuilder pb = parseToBuilder(planFile);
   VPackSlice plan = pb.slice();
   

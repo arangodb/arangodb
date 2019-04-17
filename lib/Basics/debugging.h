@@ -156,6 +156,29 @@ std::ostream& operator<<(std::ostream& stream, std::deque<T> const& data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief dump set contents to an ostream
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+std::ostream& operator<<(std::ostream& stream, std::set<T> const& data) {
+  bool first = true;
+
+  stream << "{";
+  for (auto const& it : data) {
+    if (first) {
+      stream << " ";
+      first = false;
+    } else {
+      stream << ", ";
+    }
+    stream << it;
+  }
+  stream << " }";
+
+  return stream;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief dump unordered_set contents to an ostream
 ////////////////////////////////////////////////////////////////////////////////
 
