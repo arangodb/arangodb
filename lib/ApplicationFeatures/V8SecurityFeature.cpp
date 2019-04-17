@@ -129,7 +129,7 @@ bool checkBlackAndWhitelist(std::string const& value, bool hasWhitelist,
     return false;
   }
 
-  // longer match wins
+  // longer match or blacklist wins
   return white_result[0].length() > black_result[0].length();
 
 }
@@ -224,7 +224,7 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   convertToRegex(_endpointsWhitelistVec, _endpointsWhitelist);
   convertToRegex(_endpointsBlacklistVec, _endpointsBlacklist);
   testRegexPair(_endpointsWhitelist, _endpointsBlacklist, "endpoints");
-  
+
   // file access
   convertToRegex(_filesWhitelistVec, _filesWhitelist);
   convertToRegex(_filesBlacklistVec, _filesBlacklist);
@@ -367,8 +367,8 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
   bool rv = checkBlackAndWhitelist(path, !_filesWhitelist.empty(), _filesWhitelistRegex,
                                    !_filesBlacklist.empty(), _filesBlacklistRegex);
 
-  if (rv) { 
-    return true; 
+  if (rv) {
+    return true;
   }
 
   if (access == FSAccessType::READ && std::regex_search(path, _readWhitelistRegex)) {

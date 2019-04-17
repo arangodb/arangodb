@@ -1,16 +1,25 @@
 /*jshint globalstrict:false, strict:false */
 /* global getOptions, assertTrue, assertFalse, assertEqual, assertMatch, fail */
 'use strict';
+const fs = require('fs');
+const internal = require('internal');
+const pu = require('@arangodb/process-utils');
 
 if (getOptions === true) {
   let users = require("@arangodb/users");
 
   return {
+    'temp.path': fs.getTempPath(),     // Adjust the temp-path to match our current temp path
     'server.harden': 'true',
     'server.authentication': 'true',
     'javascript.harden' : 'true',
     'javascript.files-blacklist': [
-      '^/etc/',
+      '^/',
+    ],
+    'javascript.files-whitelist': [
+      '^' + pu.TOP_DIR + '/'
+     // '^/home/oberon/checkouts/arangodb3/.*'
+
     ],
     'javascript.endpoints-whitelist' : [
       'ssl://arangodb.com:443'
@@ -20,11 +29,10 @@ if (getOptions === true) {
   };
 }
 
+
 const jsunity = require('jsunity');
 
 function testSuite() {
-  const fs = require('fs');
-  const internal = require('internal');
   const db = internal.db;
   const arangodb = require('@arangodb');
   const FoxxManager = require('@arangodb/foxx/manager');

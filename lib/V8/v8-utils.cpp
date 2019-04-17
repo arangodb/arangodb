@@ -173,7 +173,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   if (!v8security->isAllowedToAccessPath(isolate, filename, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + filename);
   }
 
   size_t length;
@@ -295,7 +295,7 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path, bool
 
     if (!v8security->isAllowedToAccessPath(isolate, full, FSAccessType::READ)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     "not allowed to read files in this path");
+                                     std::string("not allowed to read files in this path: ") + full);
     }
 
     bool ok = LoadJavaScriptFile(isolate, full.c_str(), stripShebang, execute, useGlobalContext);
@@ -523,7 +523,7 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + *name);
   }
 
   size_t length;
@@ -859,7 +859,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     if (!v8security->isAllowedToAccessPath(isolate, outfile, FSAccessType::WRITE)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(
-          TRI_ERROR_FORBIDDEN, "not allowed to modify files in this path");
+          TRI_ERROR_FORBIDDEN, std::string("not allowed to modify files in this path: ") + outfile);
     }
 
     if (TRI_ExistsFile(outfile.c_str())) {
@@ -1275,7 +1275,7 @@ static void JS_Exists(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + *name);
   }
 
   if (TRI_ExistsFile(*name)) {
@@ -1340,7 +1340,7 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+                                   std::string("not allowed to modify files in this path: ") + *name);
   }
 
   std::string err;
@@ -1380,7 +1380,7 @@ static void JS_SizeFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + *name);
   }
 
   if (!TRI_ExistsFile(*name) || TRI_IsDirectory(*name)) {
@@ -1442,7 +1442,7 @@ static void JS_GetTempPath(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, path, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+                                   std::string("not allowed to modify files in this path: ") + path);
   }
 
   TRI_V8_RETURN(result);
@@ -1483,12 +1483,12 @@ static void JS_GetTempFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (create) {
     if (!v8security->isAllowedToAccessPath(isolate, dir, FSAccessType::WRITE)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     "not allowed to read files in this path");
+                                     std::string("not allowed to read files in this path: ") + dir);
     }
   } else {
     if (!v8security->isAllowedToAccessPath(isolate, dir, FSAccessType::READ)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     "not allowed to read files in this path");
+                                     std::string("not allowed to read files in this path: ") + dir);
     }
   }
 
@@ -1532,7 +1532,7 @@ static void JS_IsDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + *name);
   }
 
   // return result
@@ -1570,7 +1570,7 @@ static void JS_IsFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + *name);
   }
 
   // return result
@@ -1616,11 +1616,11 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + *name);
   }
 
   std::string abs = TRI_GetAbsolutePath(std::string(*name, name.length()), cwd.result());
-  
+
   v8::Handle<v8::String> res;
 
   if (!abs.empty()) {
@@ -1660,7 +1660,7 @@ static void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + *name);
   }
 
   // constructed listing
@@ -1704,7 +1704,7 @@ static void JS_ListTree(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + *name);
   }
 
   // constructed listing
@@ -1749,7 +1749,7 @@ static void JS_MakeDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+                                   std::string("not allowed to modify files in this path: ") + *name);
   }
 
   long systemError = 0;
@@ -1792,7 +1792,7 @@ static void JS_MakeDirectoryRecursive(v8::FunctionCallbackInfo<v8::Value> const&
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+                                   std::string("not allowed to modify files in this path: ") + *name);
   }
 
   long systemError = 0;
@@ -1849,12 +1849,12 @@ static void JS_UnzipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, filename, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + filename);
   }
 
   if (!v8security->isAllowedToAccessPath(isolate, outPath, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+                                   std::string("not allowed to modify files in this path: ") + outPath);
   }
 
   std::string errMsg;
@@ -1901,18 +1901,18 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, filename, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-                    TRI_ERROR_FORBIDDEN, "not allowed to read files in this path");
+                    TRI_ERROR_FORBIDDEN, std::string("not allowed to read files in this path: ") + filename);
   }
   if (!v8security->isAllowedToAccessPath(isolate, dir, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-                    TRI_ERROR_FORBIDDEN, "not allowed to read files in this path");
+                    TRI_ERROR_FORBIDDEN, std::string("not allowed to read files in this path: ") + dir);
   }
   for (uint32_t i = 0; i < files->Length(); ++i) {
     v8::Handle<v8::Value> file = files->Get(i);
     if (file->IsString()) {
       if (!v8security->isAllowedToAccessPath(isolate, filename, FSAccessType::READ)) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_FORBIDDEN, "not allowed to read files in this path");
+            TRI_ERROR_FORBIDDEN, std::string("not allowed to read files in this path: ") + filename);
       }
       filenames.emplace_back(TRI_ObjectToString(isolate, file));
     } else {
@@ -1935,7 +1935,7 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, filename, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+                                   std::string("not allowed to modify files in this path: ") + filename);
   }
 
   res = TRI_ZipFile(filename.c_str(), dir.c_str(), filenames, p);
@@ -1975,7 +1975,7 @@ static void JS_Adler32(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + *name);
   }
 
   uint32_t chksum = 0;
@@ -2028,7 +2028,7 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + *name);
   }
 
   size_t length;
@@ -2473,7 +2473,7 @@ static void JS_MTime(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, filename, FSAccessType::READ)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + filename);
   }
 
   int64_t mtime;
@@ -2510,12 +2510,12 @@ static void JS_MoveFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, source, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+                                   std::string("not allowed to modify files in this path: ") + source);
   }
 
   if (!v8security->isAllowedToAccessPath(isolate, destination, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+                                   std::string("not allowed to modify files in this path: ") + destination);
   }
 
   bool const sourceIsDirectory = TRI_IsDirectory(source.c_str());
@@ -2586,12 +2586,12 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, source, FSAccessType::READ)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + source);
   }
 
   if (!v8security->isAllowedToAccessPath(isolate, destination, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+                                   std::string("not allowed to modify files in this path: ") + destination);
   }
 
   std::string systemErrorStr;
@@ -2641,12 +2641,12 @@ static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, source, FSAccessType::READ)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + source);
   }
 
   if (!v8security->isAllowedToAccessPath(isolate, destination, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+                                   std::string("not allowed to modify files in this path: ") + destination);
   }
 
   bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
@@ -2702,12 +2702,12 @@ static void JS_LinkFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, target, FSAccessType::READ)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + target);
   }
 
   if (!v8security->isAllowedToAccessPath(isolate, linkpath, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+                                   std::string("not allowed to modify files in this path: ") + linkpath);
   }
 
   std::string systemErrorStr;
@@ -2986,7 +2986,7 @@ static void JS_Read(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + *name);
   }
 
   size_t length;
@@ -3032,7 +3032,7 @@ static void JS_ReadBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + *name);
   }
 
   size_t length;
@@ -3075,7 +3075,7 @@ static void JS_Read64(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + *name);
   }
 
   std::string base64;
@@ -3126,7 +3126,7 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, utf8Name, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+                                   std::string("not allowed to modify files in this path: ") + utf8Name);
   }
 
   std::ofstream file;
@@ -3201,7 +3201,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, utf8Name, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+                                   std::string("not allowed to modify files in this path: ") + utf8Name);
   }
 
   bool flush = false;
@@ -3302,7 +3302,7 @@ static void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+                                   std::string("not allowed to modify files in this path: ") + *name);
   }
 
   int res = TRI_UnlinkFile(*name);
@@ -3341,7 +3341,7 @@ static void JS_RemoveDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+                                   std::string("not allowed to modify files in this path: ") + *name);
   }
 
   if (!TRI_IsDirectory(*name)) {
@@ -3388,7 +3388,7 @@ static void JS_RemoveRecursiveDirectory(v8::FunctionCallbackInfo<v8::Value> cons
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to modify files in this path");
+                                   std::string("not allowed to modify files in this path: ") + *name);
   }
 
   if (!TRI_IsDirectory(*name)) {
@@ -4217,7 +4217,7 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + *name);
   }
 
   std::vector<std::string> arguments;
@@ -4360,7 +4360,7 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
 
   if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to read files in this path");
+                                   std::string("not allowed to read files in this path: ") + *name);
   }
 
   std::vector<std::string> arguments;
