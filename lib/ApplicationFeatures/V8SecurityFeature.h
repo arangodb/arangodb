@@ -125,9 +125,6 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   std::string _filesWhitelist;
   std::vector<std::string> _filesWhitelistVec;
   std::regex _filesWhitelistRegex;
-  std::string _filesBlacklist;
-  std::vector<std::string> _filesBlacklistVec;
-  std::regex _filesBlacklistRegex;
 };
 
 }  // namespace arangodb
