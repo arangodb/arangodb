@@ -24,6 +24,7 @@
 #include "v8-actions.h"
 #include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
@@ -46,6 +47,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+#include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbase.h"
@@ -1736,4 +1738,15 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
                                                    "SYS_DEBUG_SHOULD_FAILAT"),
                                JS_DebugShouldFailAt);
 #endif
+  
+  // poll interval for Foxx queues
+  FoxxQueuesFeature* foxxQueuesFeature =
+      application_features::ApplicationServer::getFeature<FoxxQueuesFeature>(
+          "FoxxQueues");
+
+  isolate->GetCurrentContext()->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
+                          v8::Number::New(isolate, foxxQueuesFeature->pollInterval()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result
 }
