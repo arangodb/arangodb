@@ -304,41 +304,6 @@ Mon Apr 01 2019 02:00:00 GMT+0200 (Central European Summer Time)
 Mon Apr 01 2019 02:00:00 GMT+0200 (Central European Summer Time)
 ```
 
-### JavaScript security options
-
-ArangoDB 3.5 provides several new options for restricting the functionality of
-JavaScript application code running in the server, with the intent to make a setup
-more secure.
-
-There now exist startup options for restricting which environment variables and
-values of which configuration options JavaScript code is allowed to read. These
-options can be set to prevent leaking of confidential information from the
-environment or the setup into the JavaScript application code.
-Additionally there are options to restrict outbound HTTP connections from JavaScript
-applications to certain endpoints and to restrict filesystem access from JavaScript
-applications to certain directories only.
-
-Finally there are startup options to turn off the REST APIs for managing Foxx
-services, which can be used to prevent installation and uninstallation of Foxx
-applications on a server. A separate option is provided to turn off access and
-connections to the central Foxx app store via the web interface.
-
-A complete overview of the security options can be found in [Security Options](../Security/SecurityOptions.md).
-
-### Foxx
-
-Request credentials are now exposed via the `auth` property:
-
-```js
-const tokens = context.collection("tokens");
-router.get("/authorized", (req, res) => {
-  if (!req.auth || !req.auth.bearer || !tokens.exists(req.auth.bearer)) {
-    res.throw(403, "Not authenticated");
-  }
-  // ...
-});
-```
-
 ### API improvements
 
 Collections now provide the `documentId` method to derive document ids from keys.
@@ -416,6 +381,7 @@ Client configurations that use this configuration variable should adjust their
 configuration and set this variable to a boolean value instead of to a numeric
 value.
 
+FIXME [Security Options](../Security/SecurityOptions.md)
 
 Miscellaneous
 -------------
@@ -491,3 +457,19 @@ The bundled JEMalloc memory allocator used in ArangoDB release packages has been
 upgraded from version 5.0.1 to version 5.2.0.
 
 The bundled version of the RocksDB library has been upgraded from 5.16 to 6.0.
+
+
+Foxx
+----
+
+Request credentials are now exposed via the `auth` property:
+
+```js
+const tokens = context.collection("tokens");
+router.get("/authorized", (req, res) => {
+    if (!req.auth || !req.auth.bearer || !tokens.exists(req.auth.bearer)) {
+        res.throw(403, "Not authenticated");
+    }
+    // ...
+});
+```

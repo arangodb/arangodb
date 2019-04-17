@@ -31,55 +31,53 @@ The following security options are available:
 secure when it comes to running application code in it. Below you will find 
 an overview of the relevant options.
 
-### Whitelists
+### Blacklist and whitelists
 
-Several options exists to restrict JavaScript application code functionality 
-to certain whitelists of allowed items. The whitelists can be used to allow access
-to only certain functionality. Access to any item not specified in the whitelist
-will then be disallowed.
+Several options to restrict application code functionality consist of a 
+blacklist part and whitelist part. Blacklists can be used to disallow access
+to dedicated functionality, whereas whitelists can be used to allow access
+to certain functionality.
 
-Whitelist options need to be specified as ECMAScript regular expressions. Each 
-option can be used multiple times. In this case, the individual values for each 
-whitelist option will be combined with a _logical or_.
+If a functionality is covered in both a blacklist and a whitelist, the 
+whitelist will overrule and access to the functionality will be allowed.
+
+Values for blacklist and whitelist options need to be specified as ECMAScript 
+regular expressions. Each option can be used multiple times. In this case,
+the individual values for each option will be combined with a _logical or_.
 
 For example, the following combination of startup options
 
-    --javascript.files-whitelist "^/etc/required/.*"
-    --javascript.files-whitelist "^/etc/mtab/.*"
+    --javascript.files-whitelist "/etc/required/"
+    --javascript.files-whitelist "/etc/mtab"
+    --javascript.files-blacklist "/etc"
+    --javascript.files-blacklist "/home"
 
 will resolve internally to the following regular expressions:
 
 ```
-whitelist = "^/etc/required/.*|^/etc/mtab/.*"
+whitelist = "/etc/required/|/etc/mtab"
+blacklist = "/etc|/home"
 ```
 
-Files in the directories `/etc/required` and `/etc/mtab` will then be
-accessible, while access to files in any other directories will be disallowed.
+Files in `/etc/required` and `/etc/mtab` will be accessible, because even though the 
+blacklist regular expression matches `/etc` it, the access to it is explicitly
+allowed via the whitelist.
 
-Please note that access to the following directories will always be allowed via 
-JavaScript code even if not explicitly whitelisted:
+### Options for blacklisting and whitelisting
 
-- ArangoDB's temporary directory. Note that the temporary directory location 
-  can be specified via the `--temp.path` option at startup. If the option is
-  not specified, ArangoDB will use a sub-directory of the system's temporary directory).
-- ArangoDB's own JavaScript code, shipped with the ArangoDB release packages.
-  The path is specified by the startup option `--javascript.startup-directory`.
-  All JavaScript code is allowed to read from this directory and its subdirectories.
+The following options are available for blacklisting and whitelisting access
+to dedicated functionality for application code:
 
-### Options for whitelisting
+- `--javascript.startup-options-whitelist` and `--javascript.startup-options-blacklist`:
+  These options control which startup options will be exposed to JavaScript code, 
+  following above rules for blacklists and whitelists.
 
-The following dedicated options are available for whitelisting access: 
+- `--javascript.environment-variables-whitelist` and `--javascript.environment-variables-blacklist`:
+  These options control which environment variables will be exposed to JavaScript
+  code, following above rules for blacklists and whitelists.
 
-- `--javascript.startup-options-whitelist`:
-  This option controls which startup options will be exposed to JavaScript code, 
-  following above rules for whitelists.
-
-- `--javascript.environment-variables-whitelist`:
-  This option controls which environment variables will be exposed to JavaScript
-  code, following above rules for whitelists.
-
-- `--javascript.endpoints-whitelist`:
-  This option controls which endpoints can be used from within the `@arangodb/request`
+- `--javascript.endpoints-whitelist` and `--javascript.endpoints-blacklist`:
+  These options control which endpoints can be used from within the `@arangodb/request`
   JavaScript module.
   Endpoint values are passed into the filter in a normalized format starting
   with either of the prefixes `tcp://`, `ssl://`, `unix://` or `srv://`.
@@ -87,14 +85,14 @@ The following dedicated options are available for whitelisting access:
   and that the endpoint can be specified either as an IP address or host name
   from application code.
 
-- `--javascript.files-whitelist`:
-  This option controls which filesystem paths can be accessed from JavaScript code 
-  in restricted contexts, following above rules for whitelists.
+- `--javascript.files-whitelist` and `--javascript.files-blacklist`:
+  These options control which filesystem paths can be accessed from JavaScript code 
+  in restricted contexts, following above rules for blacklist and whitelists.
 
 ### Additional JavaScript security options
 
-In addition to the whitelisting security options, the following extra options 
-are available for locking down JavaScript access to server functionality:
+In addition to the blacklisting and whitelisting security options, the following
+extra options are available for locking down JavaScript access to server functionality:
 
 - `--javascript.allow-port-testing`:
   If set to `true`, this option enables the `testPort` JavaScript function in the
@@ -102,26 +100,14 @@ are available for locking down JavaScript access to server functionality:
 
 - `--javascript.allow-external-process-control`:
   If set to `true`, this option allows the execution and control of external processes
-  from JavaScript code via the functions from the `internal` module:
-  
-  - executeExternal
-  - executeExternalAndWait
-  - getExternalSpawned
-  - killExternal
-  - suspendExternal
-  - continueExternal
-  - statusExternal
-
-  The default value is `false`.
+  from JavaScript code. The default value is `false`.
 
 - `--javascript.harden`:
   If set to `true`, this setting will deactivate the following JavaScript functions
   which may leak information about the environment:
 
-  - `internal.clientStatistics()`
-  - `internal.httpStatistics()`
-  - `internal.processStatistics()`
   - `internal.getPid()`
+  - `internal.processStatistics()`
   - `internal.logLevel()`.
 
   The default value is `false`.
@@ -133,12 +119,11 @@ in an ArangoDB server:
 
 - `--foxx.api`:
   If set to `false`, this option disables the Foxx management API, which will make it
-  impossible to install and uninstall Foxx applications. Setting the option to `false`
-  will also deactivate the "Services" section in the web interface. 
-  The default value is `true`, meaning that Foxx apps can be installed and uninstalled.
+  impossible to install and uninstall Foxx applications. The default value is `true`.
 
 - `--foxx.store`:
   If set to `false`, this option disables the Foxx app store in ArangoDB's web interface,
-  which will also prevent ArangoDB and its web interface from making calls to the main 
-  Foxx application Github repository at https://github.com/arangodb/foxx-apps.
+  which will prevent ArangoDB and its web interface from making calls to the main Foxx 
+  application Github repository at https://github.com/arangodb/foxx-apps.
   The default value is `true`.
+
