@@ -922,6 +922,9 @@ void RocksDBHotBackupList::statId() {
       VPackObjectBuilder o(&_result);
       if (ServerState::instance()->isDBServer()) {
         _result.add("agency-dump", agency->slice());
+        _result.add(VPackValue("id"));
+        VPackArrayBuilder a(&_result);
+        _result.add(VPackValue(_listId));
       }
     }
     _success = true;
