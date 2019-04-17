@@ -37,6 +37,7 @@ if (getOptions === true) {
   return {
     'server.allow-use-database': 'false',
     'javascript.files-blacklist': '^.*$',
+    'javascript.endpoints-blacklist': '^.*$',
   };
 }
 var jsunity = require('jsunity');
@@ -89,6 +90,22 @@ function testSuite() {
           const fs = require('fs');
           const rootDir = fs.join(fs.getTempPath(), '..');
           return fs.listTree(rootDir);
+        })
+      };
+
+      let result = arango.POST("/_api/transaction", data);
+      assertTrue(result.error);
+      assertEqual(403, result.code);
+      assertEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
+    },
+    
+    testDownload : function() {
+      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+
+      let data = {
+        collections: { },
+        action: String(function() {
+          require("internal").download("https://www.arangodb.com/");
         })
       };
 
