@@ -40,63 +40,51 @@ constexpr bool AnyIteratorFillBlockCache = false;
 // ================ All Iterator ==================
 
 RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
-                                                 transaction::Methods* trx,
-                                                 RocksDBPrimaryIndex const* index)
+                                                 transaction::Methods* trx) 
     : IndexIterator(col, trx),
-      _bounds(RocksDBKeyBounds::CollectionDocuments(
-          static_cast<RocksDBCollection*>(col->getPhysical())->objectId())),
-      _upperBound(_bounds.end()),
-      _cmp(RocksDBColumnFamily::documents()->GetComparator()) {
+      _iterator(RocksDBColumnFamily::documents()->GetComparator(),
+                RocksDBKeyBounds::CollectionDocuments(
+                   static_cast<RocksDBCollection*>(col->getPhysical())->objectId()), false) {
   // acquire rocksdb transaction
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   rocksdb::ColumnFamilyHandle* cf = RocksDBColumnFamily::documents();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  rocksdb::ColumnFamilyDescriptor desc;
+  cf->GetDescriptor(&desc);
+  TRI_ASSERT(desc.options.prefix_extractor);
+#endif
 
   rocksdb::ReadOptions options = mthds->iteratorReadOptions();
   TRI_ASSERT(options.snapshot != nullptr);
   TRI_ASSERT(options.prefix_same_as_start);
   options.fill_cache = AllIteratorFillBlockCache;
   options.verify_checksums = false;  // TODO evaluate
-  options.iterate_upper_bound = &_upperBound;
   // options.readahead_size = 4 * 1024 * 1024;
-  _iterator = mthds->NewIterator(options, cf);
-  TRI_ASSERT(_iterator);
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  rocksdb::ColumnFamilyDescriptor desc;
-  cf->GetDescriptor(&desc);
-  TRI_ASSERT(desc.options.prefix_extractor);
-#endif
-  _iterator->Seek(_bounds.start());
-}
-
-bool RocksDBAllIndexIterator::outOfRange() const {
-  TRI_ASSERT(_trx->state()->isRunning());
-  return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
+  _iterator.initialize(mthds, cf, std::move(options));
 }
 
 bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
+    TRI_ASSERT(limit > 0);
 
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+  if (limit == 0) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
-    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
     return false;
   }
 
-  while (limit > 0) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_bounds.objectId() == RocksDBKey::objectId(_iterator->key()));
-#endif
-
-    cb(RocksDBKey::documentId(_iterator->key()));
-    --limit;
-    _iterator->Next();
-
-    if (!_iterator->Valid() || outOfRange()) {
+  do {
+    TRI_ASSERT(limit > 0);
+    if (!_iterator.prepareRead()) {
       return false;
     }
-  }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+//    TRI_ASSERT(_bounds.objectId() == RocksDBKey::objectId(_iterator.key()));
+#endif
+
+    cb(RocksDBKey::documentId(_iterator.key()));
+  } while (--limit > 0);
 
   return true;
 }
@@ -104,23 +92,22 @@ bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
 bool RocksDBAllIndexIterator::nextDocument(IndexIterator::DocumentCallback const& cb,
                                            size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
-
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+  TRI_ASSERT(limit > 0);
+  
+  if (limit == 0) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
-    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
     return false;
   }
 
-  while (limit > 0) {
-    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(_iterator->value().data()));
-    --limit;
-    _iterator->Next();
-
-    if (!_iterator->Valid() || outOfRange()) {
+  do {
+    TRI_ASSERT(limit > 0);
+    if (!_iterator.prepareRead()) {
       return false;
     }
-  }
+    
+    cb(RocksDBKey::documentId(_iterator.key()), VPackSlice(_iterator.value().data()));
+  } while (--limit > 0);
 
   return true;
 }
@@ -128,23 +115,27 @@ bool RocksDBAllIndexIterator::nextDocument(IndexIterator::DocumentCallback const
 void RocksDBAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  while (count > 0 && _iterator->Valid()) {
-    --count;
-    ++skipped;
-
-    _iterator->Next();
+  if (count == 0) {
+    return;
   }
+
+  do {
+    TRI_ASSERT(count > 0);
+    if (!_iterator.prepareRead()) {
+      return;
+    }
+    ++skipped;
+  } while (--count > 0);
 }
 
 void RocksDBAllIndexIterator::reset() {
   TRI_ASSERT(_trx->state()->isRunning());
-  _iterator->Seek(_bounds.start());
+  _iterator.reset();
 }
 
 // ================ Any Iterator ================
 RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
-                                                 transaction::Methods* trx,
-                                                 RocksDBPrimaryIndex const* index)
+                                                 transaction::Methods* trx)
     : IndexIterator(col, trx),
       _cmp(RocksDBColumnFamily::documents()->GetComparator()),
       _objectId(static_cast<RocksDBCollection*>(col->getPhysical())->objectId()),

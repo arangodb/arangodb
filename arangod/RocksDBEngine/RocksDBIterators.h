@@ -26,6 +26,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBIteratorBase.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 
 #include <velocypack/Iterator.h>
@@ -34,7 +35,6 @@
 namespace rocksdb {
 class Iterator;
 class Comparator;
-class TransactionDB;
 }  // namespace rocksdb
 
 namespace arangodb {
@@ -48,9 +48,7 @@ typedef std::function<bool(rocksdb::Slice const& key, rocksdb::Slice const& valu
 /// basically sorted after LocalDocumentId
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
-  RocksDBAllIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                          RocksDBPrimaryIndex const* index);
-  ~RocksDBAllIndexIterator() {}
+  RocksDBAllIndexIterator(LogicalCollection* collection, transaction::Methods* trx);
 
   char const* typeName() const override { return "all-index-iterator"; }
 
@@ -61,21 +59,12 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  bool outOfRange() const;
-
- private:
-  RocksDBKeyBounds const _bounds;
-  rocksdb::Slice _upperBound;  // used for iterate_upper_bound
-  std::unique_ptr<rocksdb::Iterator> _iterator;
-  rocksdb::Comparator const* _cmp;
+  RocksDBIterator<rocksdb::Comparator> _iterator;
 };
 
 class RocksDBAnyIndexIterator final : public IndexIterator {
  public:
-  RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                          RocksDBPrimaryIndex const* index);
-
-  ~RocksDBAnyIndexIterator() {}
+  RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx);
 
   char const* typeName() const override { return "any-index-iterator"; }
 

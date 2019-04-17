@@ -33,6 +33,7 @@
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBIteratorBase.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -177,99 +178,72 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                             arangodb::RocksDBVPackIndex const* index,
                             bool reverse, RocksDBKeyBounds&& bounds)
       : IndexIterator(collection, trx),
+        _iterator(static_cast<RocksDBVPackComparator const*>(index->comparator()), std::move(bounds), reverse),
         _index(index),
-        _cmp(index->comparator()),
-        _fullEnumerationObjectId(0),
-        _reverse(reverse),
-        _bounds(std::move(bounds)) {
-    TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
+        _unique(index->_unique),
+        _allowCoveringIndexOptimization(index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX) {
+    TRI_ASSERT(_index->columnFamily() == RocksDBColumnFamily::vpack());
 
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
     rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-    // we need to have a pointer to a slice for the upper bound
-    // so we need to assign the slice to an instance variable here
-    if (reverse) {
-      _rangeBound = _bounds.start();
-      options.iterate_lower_bound = &_rangeBound;
-      VPackSlice s = VPackSlice(_rangeBound.data() + sizeof(uint64_t));
-      if (s.isArray() && s.length() == 1 && s.at(0).isMinKey()) {
-        // lower bound is the min key. that means we can get away with a
-        // cheap outOfBounds comparator
-        _fullEnumerationObjectId = _index->objectId();
-      }
-    } else {
-      _rangeBound = _bounds.end();
-      options.iterate_upper_bound = &_rangeBound;
-      VPackSlice s = VPackSlice(_rangeBound.data() + sizeof(uint64_t));
-      if (s.isArray() && s.length() == 1 && s.at(0).isMaxKey()) {
-        // upper bound is the max key. that means we can get away with a
-        // cheap outOfBounds comparator
-        _fullEnumerationObjectId = _index->objectId();
-      }
-    }
 
     TRI_ASSERT(options.prefix_same_as_start);
-    _iterator = mthds->NewIterator(options, index->columnFamily());
-    if (reverse) {
-      _iterator->SeekForPrev(_bounds.end());
-    } else {
-      _iterator->Seek(_bounds.start());
-    }
+    _iterator.initialize(mthds, index->columnFamily(), std::move(options));
   }
-
+  
  public:
-  char const* typeName() const override { return "rocksdb-index-iterator"; }
+  char const* typeName() const override { return "rocksdb-vpack-index-iterator"; }
 
   /// @brief Get the next limit many elements in the index
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
+    TRI_ASSERT(limit > 0);
 
-    if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+    if (limit == 0) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
-      TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
       return false;
     }
 
-    while (limit > 0) {
-      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
-
-      cb(_index->_unique ? RocksDBValue::documentId(_iterator->value())
-                        : RocksDBKey::indexDocumentId(_bounds.type(), _iterator->key()));
-
-      --limit;
-      if (!advance()) {
+    do {
+      TRI_ASSERT(limit > 0);
+      if (!_iterator.prepareRead()) {
         return false;
       }
-    }
+
+      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator.key()));
+
+      cb(_unique ? RocksDBValue::documentId(_iterator.value())
+                 : RocksDBKey::indexDocumentId(RocksDBEntryType::VPackIndexValue, _iterator.key()));
+    } while (--limit > 0);
 
     return true;
   }
 
   bool nextCovering(DocumentCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
+    TRI_ASSERT(limit > 0);
 
-    if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+    if (limit == 0) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
-      TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
       return false;
     }
 
-    while (limit > 0) {
-      rocksdb::Slice const& key = _iterator->key();
+    do {
+      TRI_ASSERT(limit > 0);
+      if (!_iterator.prepareRead()) {
+        return false;
+      }
+
+      rocksdb::Slice const& key = _iterator.key();
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(key));
 
       LocalDocumentId const documentId(
-          _index->_unique ? RocksDBValue::documentId(_iterator->value())
-                          : RocksDBKey::indexDocumentId(_bounds.type(), key));
+          _unique ? RocksDBValue::documentId(_iterator.value())
+                  : RocksDBKey::indexDocumentId(RocksDBEntryType::VPackIndexValue, key));
       cb(documentId, RocksDBKey::indexedVPack(key));
-
-      --limit;
-      if (!advance()) {
-        return false;
-      }
-    }
+    } while (--limit > 0);
 
     return true;
   }
@@ -277,75 +251,35 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   void skip(uint64_t count, uint64_t& skipped) override {
     TRI_ASSERT(_trx->state()->isRunning());
 
-    if (!_iterator->Valid() || outOfRange()) {
+    if (count == 0) {
       return;
     }
 
-    while (count > 0) {
-      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
-
-      --count;
-      ++skipped;
-      if (!advance()) {
+    do {
+      TRI_ASSERT(count > 0);
+      if (!_iterator.prepareRead()) {
         return;
       }
-    }
+
+      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator.key()));
+      ++skipped;
+    } while (--count > 0); 
   }
 
   /// @brief Reset the cursor
   void reset() override {
-    TRI_ASSERT(_trx->state()->isRunning());
-
-    if (_reverse) {
-      _iterator->SeekForPrev(_bounds.end());
-    } else {
-      _iterator->Seek(_bounds.start());
-    }
+    _iterator.reset();
   }
 
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
-  bool hasCovering() const override {
-    return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX; 
-  }
+  bool hasCovering() const override { return _allowCoveringIndexOptimization; }
 
  private:
-  inline bool outOfRange() const {
-    if (_fullEnumerationObjectId) {
-      // we are enumerating the entire index
-      // so we can use a cheap comparator that only checks the objectId
-      return (arangodb::rocksutils::uint64FromPersistent(_iterator->key().data()) != _fullEnumerationObjectId);
-    }
-
-    // we are enumerating a subset of the index
-    // so we really need to run the full-featured (read: expensive)
-    // comparator
-
-    if (_reverse) {
-      return (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
-    } else {
-      return (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
-    }
-  }
-
-  inline bool advance() {
-    if (_reverse) {
-      _iterator->Prev();
-    } else {
-      _iterator->Next();
-    }
-
-    return _iterator->Valid() && !outOfRange();
-  }
-
-  arangodb::RocksDBVPackIndex const* _index;
-  rocksdb::Comparator const* _cmp;
-  std::unique_ptr<rocksdb::Iterator> _iterator;
-  uint64_t _fullEnumerationObjectId;
-  bool const _reverse;
-  RocksDBKeyBounds _bounds;
-  // used for iterate_upper_bound iterate_lower_bound
-  rocksdb::Slice _rangeBound;
+  RocksDBIterator<arangodb::RocksDBVPackComparator> _iterator;
+  RocksDBVPackIndex const* _index;
+  bool const _unique;
+  bool const _allowCoveringIndexOptimization;
 };
 
 } // namespace
@@ -1037,13 +971,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
-  VPackBuilder searchValues;
-  searchValues.openArray();
-  bool needNormalize = false;
   if (node == nullptr) {
-    // We only use this index for sort. Empty searchValue
-    VPackArrayBuilder guard(&searchValues);
-
     TRI_IF_FAILURE("PersistentIndex::noSortIterator") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
@@ -1053,159 +981,170 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     TRI_IF_FAILURE("HashIndex::noSortIterator") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-  } else {
-    // Create the search values for the lookup
-    VPackArrayBuilder guard(&searchValues);
 
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
-    std::unordered_set<std::string> nonNullAttributes;
-    size_t unused = 0;
+    RocksDBKeyBounds bounds =
+        _unique ? RocksDBKeyBounds::UniqueVPackIndex(_objectId)
+                : RocksDBKeyBounds::VPackIndex(_objectId);
 
-    SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
-                                                 unused, nonNullAttributes, true);
+    return new RocksDBVPackIndexIterator(&_collection, trx, this, !opts.ascending, std::move(bounds));
+  }
 
-    // found contains all attributes that are relevant for this node.
-    // It might be less than fields().
-    //
-    // Handle the first attributes. They can only be == or IN and only
-    // one node per attribute
+  bool needNormalize = false;
+  VPackBuilder searchValues;
+  searchValues.openArray();
+  
+  // Create the search values for the lookup
+  searchValues.openArray();
+  
+  std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
+  std::unordered_set<std::string> nonNullAttributes;
+  size_t unused = 0;
 
-    auto getValueAccess = [&](arangodb::aql::AstNode const* comp,
-                              arangodb::aql::AstNode const*& access,
-                              arangodb::aql::AstNode const*& value) -> bool {
-      access = comp->getMember(0);
-      value = comp->getMember(1);
-      std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> paramPair;
+  SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
+                                                unused, nonNullAttributes, true);
+
+  // found contains all attributes that are relevant for this node.
+  // It might be less than fields().
+  //
+  // Handle the first attributes. They can only be == or IN and only
+  // one node per attribute
+
+  auto getValueAccess = [&](arangodb::aql::AstNode const* comp,
+                            arangodb::aql::AstNode const*& access,
+                            arangodb::aql::AstNode const*& value) -> bool {
+    access = comp->getMember(0);
+    value = comp->getMember(1);
+    std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> paramPair;
+    if (!(access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
+      access = comp->getMember(1);
+      value = comp->getMember(0);
       if (!(access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
-        access = comp->getMember(1);
-        value = comp->getMember(0);
-        if (!(access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
-          // Both side do not have a correct AttributeAccess, this should not
-          // happen and indicates
-          // an error in the optimizer
-          TRI_ASSERT(false);
-        }
-        return true;
+        // Both side do not have a correct AttributeAccess, this should not
+        // happen and indicates
+        // an error in the optimizer
+        TRI_ASSERT(false);
       }
-      return false;
-    };
+      return true;
+    }
+    return false;
+  };
 
-    size_t usedFields = 0;
-    for (; usedFields < _fields.size(); ++usedFields) {
-      auto it = found.find(usedFields);
-      if (it == found.end()) {
-        // We are either done
-        // or this is a range.
-        // Continue with more complicated loop
-        break;
-      }
-
-      auto comp = it->second[0];
-      TRI_ASSERT(comp->numMembers() == 2);
-      arangodb::aql::AstNode const* access = nullptr;
-      arangodb::aql::AstNode const* value = nullptr;
-      getValueAccess(comp, access, value);
-      // We found an access for this field
-
-      if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-        searchValues.openObject();
-        searchValues.add(VPackValue(StaticStrings::IndexEq));
-        TRI_IF_FAILURE("PersistentIndex::permutationEQ") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        TRI_IF_FAILURE("HashIndex::permutationEQ") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-      } else if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-        if (isAttributeExpanded(usedFields)) {
-          searchValues.openObject();
-          searchValues.add(VPackValue(StaticStrings::IndexEq));
-          TRI_IF_FAILURE("PersistentIndex::permutationArrayIN") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-          TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-          TRI_IF_FAILURE("HashIndex::permutationArrayIN") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-        } else {
-          needNormalize = true;
-          searchValues.openObject();
-          searchValues.add(VPackValue(StaticStrings::IndexIn));
-        }
-      } else {
-        // This is a one-sided range
-        break;
-      }
-      // We have to add the value always, the key was added before
-      value->toVelocyPackValue(searchValues);
-      searchValues.close();
+  size_t usedFields = 0;
+  for (; usedFields < _fields.size(); ++usedFields) {
+    auto it = found.find(usedFields);
+    if (it == found.end()) {
+      // We are either done
+      // or this is a range.
+      // Continue with more complicated loop
+      break;
     }
 
-    // Now handle the next element, which might be a range
-    if (usedFields < _fields.size()) {
-      auto it = found.find(usedFields);
+    auto comp = it->second[0];
+    TRI_ASSERT(comp->numMembers() == 2);
+    arangodb::aql::AstNode const* access = nullptr;
+    arangodb::aql::AstNode const* value = nullptr;
+    getValueAccess(comp, access, value);
+    // We found an access for this field
 
-      if (it != found.end()) {
-        auto rangeConditions = it->second;
-        TRI_ASSERT(rangeConditions.size() <= 2);
-
-        VPackObjectBuilder searchElement(&searchValues);
-
-        for (auto& comp : rangeConditions) {
-          TRI_ASSERT(comp->numMembers() == 2);
-          arangodb::aql::AstNode const* access = nullptr;
-          arangodb::aql::AstNode const* value = nullptr;
-          bool isReverseOrder = getValueAccess(comp, access, value);
-
-          // Add the key
-          switch (comp->type) {
-            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-              if (isReverseOrder) {
-                searchValues.add(VPackValue(StaticStrings::IndexGt));
-              } else {
-                searchValues.add(VPackValue(StaticStrings::IndexLt));
-              }
-              break;
-            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-              if (isReverseOrder) {
-                searchValues.add(VPackValue(StaticStrings::IndexGe));
-              } else {
-                searchValues.add(VPackValue(StaticStrings::IndexLe));
-              }
-              break;
-            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-              if (isReverseOrder) {
-                searchValues.add(VPackValue(StaticStrings::IndexLt));
-              } else {
-                searchValues.add(VPackValue(StaticStrings::IndexGt));
-              }
-              break;
-            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-              if (isReverseOrder) {
-                searchValues.add(VPackValue(StaticStrings::IndexLe));
-              } else {
-                searchValues.add(VPackValue(StaticStrings::IndexGe));
-              }
-              break;
-            default:
-              // unsupported right now. Should have been rejected by
-              // supportsFilterCondition
-              TRI_ASSERT(false);
-              return new EmptyIndexIterator(&_collection, trx);
-          }
-
-          value->toVelocyPackValue(searchValues);
+    if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      searchValues.openObject();
+      searchValues.add(VPackValue(StaticStrings::IndexEq));
+      TRI_IF_FAILURE("PersistentIndex::permutationEQ") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+      TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+      TRI_IF_FAILURE("HashIndex::permutationEQ") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    } else if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+      if (isAttributeExpanded(usedFields)) {
+        searchValues.openObject();
+        searchValues.add(VPackValue(StaticStrings::IndexEq));
+        TRI_IF_FAILURE("PersistentIndex::permutationArrayIN") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
+        TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        TRI_IF_FAILURE("HashIndex::permutationArrayIN") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+      } else {
+        needNormalize = true;
+        searchValues.openObject();
+        searchValues.add(VPackValue(StaticStrings::IndexIn));
+      }
+    } else {
+      // This is a one-sided range
+      break;
+    }
+    // We have to add the value always, the key was added before
+    value->toVelocyPackValue(searchValues);
+    searchValues.close();
+  }
+
+  // Now handle the next element, which might be a range
+  if (usedFields < _fields.size()) {
+    auto it = found.find(usedFields);
+
+    if (it != found.end()) {
+      auto rangeConditions = it->second;
+      TRI_ASSERT(rangeConditions.size() <= 2);
+
+      VPackObjectBuilder searchElement(&searchValues);
+
+      for (auto& comp : rangeConditions) {
+        TRI_ASSERT(comp->numMembers() == 2);
+        arangodb::aql::AstNode const* access = nullptr;
+        arangodb::aql::AstNode const* value = nullptr;
+        bool isReverseOrder = getValueAccess(comp, access, value);
+
+        // Add the key
+        switch (comp->type) {
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+            if (isReverseOrder) {
+              searchValues.add(VPackValue(StaticStrings::IndexGt));
+            } else {
+              searchValues.add(VPackValue(StaticStrings::IndexLt));
+            }
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+            if (isReverseOrder) {
+              searchValues.add(VPackValue(StaticStrings::IndexGe));
+            } else {
+              searchValues.add(VPackValue(StaticStrings::IndexLe));
+            }
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+            if (isReverseOrder) {
+              searchValues.add(VPackValue(StaticStrings::IndexLt));
+            } else {
+              searchValues.add(VPackValue(StaticStrings::IndexGt));
+            }
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+            if (isReverseOrder) {
+              searchValues.add(VPackValue(StaticStrings::IndexLe));
+            } else {
+              searchValues.add(VPackValue(StaticStrings::IndexGe));
+            }
+            break;
+          default:
+            // unsupported right now. Should have been rejected by
+            // supportsFilterCondition
+            TRI_ASSERT(false);
+            return new EmptyIndexIterator(&_collection, trx);
+        }
+
+        value->toVelocyPackValue(searchValues);
       }
     }
   }
   searchValues.close();
-
+  searchValues.close();
+    
   TRI_IF_FAILURE("PersistentIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

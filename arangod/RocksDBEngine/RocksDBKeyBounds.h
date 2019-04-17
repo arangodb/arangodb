@@ -168,9 +168,9 @@ class RocksDBKeyBounds {
 
  public:
   RocksDBKeyBounds(RocksDBKeyBounds const& other);
-  RocksDBKeyBounds(RocksDBKeyBounds&& other);
+  RocksDBKeyBounds(RocksDBKeyBounds&& other) noexcept;
   RocksDBKeyBounds& operator=(RocksDBKeyBounds const& other);
-  RocksDBKeyBounds& operator=(RocksDBKeyBounds&& other);
+  RocksDBKeyBounds& operator=(RocksDBKeyBounds&& other) noexcept;
 
   RocksDBEntryType type() const { return _type; }
 

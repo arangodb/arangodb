@@ -155,7 +155,7 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexComplete(uint64_t indexId,
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds const& other)
     : _type(other._type), _internals(other._internals) {}
 
-RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds&& other)
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds&& other) noexcept
     : _type(other._type), _internals(std::move(other._internals)) {}
 
 RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds const& other) {
@@ -167,7 +167,7 @@ RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds const& other) {
   return *this;
 }
 
-RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds&& other) {
+RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds&& other) noexcept {
   if (this != &other) {
     _type = other._type;
     _internals = std::move(other._internals);
@@ -315,11 +315,18 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
 
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append((char*)(min.begin()), min.byteSize());
+      //uint64ToPersistent(_internals.buffer(), first - 1);
+      //_internals.buffer().append((char*)(max.begin()), max.byteSize());
 
       _internals.separate();
 
-      uint64ToPersistent(_internals.buffer(), first);
-      _internals.buffer().append((char*)(max.begin()), max.byteSize());
+      if (rocksDBEndianness == RocksDBEndianness::Big) {
+        uint64ToPersistent(_internals.buffer(), first + 1);
+        _internals.buffer().append((char*)(min.begin()), min.byteSize());
+      } else {
+        uint64ToPersistent(_internals.buffer(), first);
+        _internals.buffer().append((char*)(max.begin()), max.byteSize());
+      }
       break;
     }
 
@@ -361,10 +368,15 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
         _internals.push_back(_stringSeparator);
       }
       _internals.separate();
-      uint64ToPersistent(_internals.buffer(), first);
-      _internals.push_back(0xFFU);  // higher than any ascci char
-      if (type == RocksDBEntryType::EdgeIndexValue) {
-        _internals.push_back(_stringSeparator);
+      if (type == RocksDBEntryType::PrimaryIndexValue && rocksDBEndianness == RocksDBEndianness::Big) {
+        uint64ToPersistent(_internals.buffer(), first + 1);
+        _internals.push_back(0x00U);  // lower/equal to any ascii char
+      } else {
+        uint64ToPersistent(_internals.buffer(), first);
+        _internals.push_back(0xFFU);  // higher than any ascii char
+        if (type == RocksDBEntryType::EdgeIndexValue) {
+          _internals.push_back(_stringSeparator);
+        }
       }
       break;
     }
