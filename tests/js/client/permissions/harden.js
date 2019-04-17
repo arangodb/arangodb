@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global fail, getOptions, assertEqual */
+/* global fail, getOptions, assertTrue, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief teardown for dump/reload tests
@@ -30,65 +30,41 @@
 
 if (getOptions === true) {
   return {
-    'javascript.allow-external-process-control': false,
+    'javascript.harden': true
   };
 }
 
 var jsunity = require('jsunity');
 
 function testSuite() {
-  let env = require('process').env;
-  const internal = require('internal');
-  const executeExternal = internal.executeExternal;
-  const executeExternalAndWait = internal.executeExternalAndWait;
-  const killExternal = internal.killExternal;
-  const statusExternal = internal.statusExternal;
-  const getExternalSpawned = internal.getExternalSpawned;
-  const suspendExternal = internal.suspendExternal;
-  const continueExternal = internal.continueExternal;
   const arangodb = require("@arangodb");
+  const internal = require('internal');
+  const processStatistics = internal.processStatistics;
+  const getPid = internal.getPid;
+  const logLevel = internal.logLevel;
 
   return {
-    testExternalProcesses : function() {
+    testHardenedFunctionProcessStatistics : function() {
       try {
-        let rv = executeExternal("/bin/true");
-        killExternal(rv.pid);
+        processStatistics();
         fail();
       } catch (err) {
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
       }
+    },
+
+    testHardenedFunctionGetPid : function() {
       try {
-        let rv = executeExternalAndWait("/bin/true");
+        getPid();
         fail();
       } catch (err) {
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
       }
+    },
+
+    testHardenedFunctionLogLevel : function() {
       try {
-        let rv = statusExternal(env['PID']);
-        fail();
-      } catch (err) {
-        assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
-      }
-      try {
-        let rv = killExternal(env['PID']);
-        fail();
-      } catch (err) {
-        assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
-      }
-      try {
-        let rv = getExternalSpawned();
-        fail();
-      } catch (err) {
-        assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
-      }
-      try {
-        let rv = suspendExternal(env['PID']);
-        fail();
-      } catch (err) {
-        assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
-      }
-      try {
-        let rv = continueExternal(env['PID']);
+        logLevel();
         fail();
       } catch (err) {
         assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
