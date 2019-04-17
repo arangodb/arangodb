@@ -51,46 +51,76 @@ function testSuite() {
   return {
     setUp: function() {},
     tearDown: function() {},
+    
+    testCanAccessAdminFoxxApi : function() {
+      ["test_rw", "test_ro"].forEach(function(user) {
+        arango.reconnect(endpoint, db._name(), user, "testi");
 
-    testCanAccessFoxxApiRw : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+        let routes = [
+          "setup", "teardown", "install", "uninstall",
+          "replace", "upgrade", "configure", "configuration",
+          "set-dependencies", "dependencies", "development",
+          "tests", "script"
+        ];
 
-      let routes = [
-        "setup", "teardown", "install", "uninstall",
-        "replace", "upgrade", "configure", "configuration",
-        "set-dependencies", "dependencies", "development",
-        "tests", "script"
-      ];
-
-      routes.forEach(function(route) {
-        // foxx API is available. but as we are now posting some random
-        // stuff, we cannot expect the requests to work
-        let result = arango.POST("/_admin/foxx/" + route, {});
-        assertTrue(result.error);
-        assertNotEqual(403, result.code);
-        assertNotEqual(403, result.errorNum);
-        assertNotEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
+        routes.forEach(function(route) {
+          let result = arango.POST("/_admin/foxx/" + route, {});
+          assertTrue(result.error);
+          assertNotEqual(403, result.code);
+          assertNotEqual(403, result.errorNum);
+          assertNotEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
+        });
       });
     },
     
-    testCanAccessFoxxApiRo : function() {
-      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+    testCanAccessPutApiFoxxApi : function() {
+      ["test_rw", "test_ro"].forEach(function(user) {
+        arango.reconnect(endpoint, db._name(), user, "testi");
 
-      let routes = [
-        "setup", "teardown", "install", "uninstall",
-        "replace", "upgrade", "configure", "configuration",
-        "set-dependencies", "dependencies", "development",
-        "tests", "script"
-      ];
+        let routes = [
+          "store", "git", "url", "generate", "zip", "raw" 
+        ];
 
-      routes.forEach(function(route) {
-        // foxx API is available. but as we are now posting some random
-        // stuff, we cannot expect the requests to work
-        let result = arango.POST("/_admin/foxx/" + route, {});
-        assertTrue(result.error);
-        assertNotEqual(403, result.code);
-        assertNotEqual(403, result.errorNum);
-        assertNotEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
+        routes.forEach(function(route) {
+          let result = arango.PUT("/_api/foxx/" + route, {});
+          assertNotEqual(403, result.code);
+          assertNotEqual(403, result.errorNum);
+          assertNotEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
+        });
+      });
+    },
+    
+    testCanAccessPostApiFoxxApiRo : function() {
+      ["test_rw", "test_ro"].forEach(function(user) {
+        arango.reconnect(endpoint, db._name(), user, "testi");
+
+        let routes = [
+          "tests", "download/nonce"
+        ];
+
+        routes.forEach(function(route) {
+          let result = arango.POST("/_api/foxx/" + route, {});
+          assertNotEqual(403, result.code);
+          assertNotEqual(403, result.errorNum);
+          assertNotEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
+        });
+      });
+    },
+    
+    testCanAccessGetApiFoxxApi : function() {
+      ["test_rw", "test_ro"].forEach(function(user) {
+        arango.reconnect(endpoint, db._name(), user, "testi");
+
+        let routes = [
+          "", "thumbnail", "config", "deps", "fishbowl", "download/zip" 
+        ];
+
+        routes.forEach(function(route) {
+          let result = arango.GET("/_api/foxx/" + route);
+          assertNotEqual(403, result.code);
+          assertNotEqual(403, result.errorNum);
+          assertNotEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
+        });
       });
     },
 

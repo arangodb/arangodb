@@ -51,39 +51,74 @@ function testSuite() {
     setUp: function() {},
     tearDown: function() {},
 
-    testCanAccessFoxxApiRw : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+    testCanAccessAdminFoxxApi : function() {
+      ["test_rw", "test_ro"].forEach(function(user) {
+        arango.reconnect(endpoint, db._name(), user, "testi");
 
-      let routes = [
-        "setup", "teardown", "install", "uninstall",
-        "replace", "upgrade", "configure", "configuration",
-        "set-dependencies", "dependencies", "development",
-        "tests", "script"
-      ];
+        let routes = [
+          "setup", "teardown", "install", "uninstall",
+          "replace", "upgrade", "configure", "configuration",
+          "set-dependencies", "dependencies", "development",
+          "tests", "script"
+        ];
 
-      routes.forEach(function(route) {
-        let result = arango.POST("/_admin/foxx/" + route, {});
-        assertTrue(result.error);
-        assertEqual(404, result.code);
-        assertEqual(404, result.errorNum);
+        routes.forEach(function(route) {
+          let result = arango.POST("/_admin/foxx/" + route, {});
+          assertTrue(result.error);
+          assertEqual(404, result.code);
+          assertEqual(404, result.errorNum);
+        });
       });
     },
     
-    testCanAccessFoxxApiRo : function() {
-      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+    testCanAccessPutApiFoxxApi : function() {
+      ["test_rw", "test_ro"].forEach(function(user) {
+        arango.reconnect(endpoint, db._name(), user, "testi");
 
-      let routes = [
-        "setup", "teardown", "install", "uninstall",
-        "replace", "upgrade", "configure", "configuration",
-        "set-dependencies", "dependencies", "development",
-        "tests", "script"
-      ];
+        let routes = [
+          "store", "git", "url", "generate", "zip", "raw" 
+        ];
 
-      routes.forEach(function(route) {
-        let result = arango.POST("/_admin/foxx/" + route, {});
-        assertTrue(result.error);
-        assertEqual(404, result.code);
-        assertEqual(404, result.errorNum);
+        routes.forEach(function(route) {
+          let result = arango.PUT("/_api/foxx/" + route, {});
+          assertTrue(result.error);
+          assertEqual(404, result.code);
+          assertEqual(404, result.errorNum);
+        });
+      });
+    },
+    
+    testCanAccessPostApiFoxxApi : function() {
+      ["test_rw", "test_ro"].forEach(function(user) {
+        arango.reconnect(endpoint, db._name(), user, "testi");
+
+        let routes = [
+          "tests", "download/nonce"
+        ];
+
+        routes.forEach(function(route) {
+          let result = arango.POST("/_api/foxx/" + route, {});
+          assertTrue(result.error);
+          assertEqual(404, result.code);
+          assertEqual(404, result.errorNum);
+        });
+      });
+    },
+    
+    testCanAccessGetApiFoxxApi : function() {
+      ["test_rw", "test_ro"].forEach(function(user) {
+        arango.reconnect(endpoint, db._name(), user, "testi");
+
+        let routes = [
+          "", "thumbnail", "config", "deps", "fishbowl", "download/zip" 
+        ];
+
+        routes.forEach(function(route) {
+          let result = arango.GET("/_api/foxx/" + route);
+          assertTrue(result.error);
+          assertEqual(404, result.code);
+          assertEqual(404, result.errorNum);
+        });
       });
     },
 
