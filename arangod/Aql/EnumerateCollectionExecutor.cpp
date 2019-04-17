@@ -75,10 +75,12 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _state(ExecutionState::HASMORE),
       _allowCoveringIndexOptimization(true),
       _cursorHasMore(false),
-      _indexCallback(_infos.getOutputRegisterId(), buildCallback(_infos.getOutVariable(), _infos.getProduceResult(),
-                    _infos.getProjections(), _infos.getTrxPtr(),
-                    _infos.getCoveringIndexAttributePositions(), _allowCoveringIndexOptimization,
-                    _infos.getUseRawDocumentPointers())) {
+      _indexCallback(_infos.getOutputRegisterId(),
+                     buildCallback(_infos.getOutVariable(), _infos.getProduceResult(),
+                                   _infos.getProjections(), _infos.getTrxPtr(),
+                                   _infos.getCoveringIndexAttributePositions(),
+                                   _allowCoveringIndexOptimization,
+                                   _infos.getUseRawDocumentPointers())) {
   _cursor = std::make_unique<OperationCursor>(
       _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
                                     (_infos.getRandom()
@@ -107,7 +109,7 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
     if (!_cursorHasMore) {
       InputAqlItemRow input{CreateInvalidInputRowHint{}};
       std::tie(_state, input) = _fetcher.fetchRow();
-       
+
       if (_state == ExecutionState::WAITING) {
         return {_state, stats};
       }
@@ -130,7 +132,7 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
     TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-
+    _indexCallback.setOutputRow(output);
     if (_infos.getProduceResult()) {
       // properly build up results by fetching the actual documents
       // using nextDocument()
@@ -158,9 +160,8 @@ bool EnumerateCollectionExecutor::waitForSatellites(ExecutionEngine* engine,
 }
 #endif
 
-
 EnumerateCollectionExecutor::IndexCallback::IndexCallback(RegisterId outputRegister,
-                                            DocumentProducingFunction producer)
+                                                          DocumentProducingFunction producer)
     : _hasWritten(false),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _output(nullptr),
@@ -183,7 +184,8 @@ void EnumerateCollectionExecutor::IndexCallback::operator()(LocalDocumentId cons
   return operator()(token, VPackSlice::nullSlice());
 }
 
-void EnumerateCollectionExecutor::IndexCallback::operator()(LocalDocumentId const& token, VPackSlice slice) {
+void EnumerateCollectionExecutor::IndexCallback::operator()(LocalDocumentId const& token,
+                                                            VPackSlice slice) {
   TRI_ASSERT(_output != nullptr);
   _documentProducer(_input, *_output, slice, _outputRegister);
   _hasWritten = true;
