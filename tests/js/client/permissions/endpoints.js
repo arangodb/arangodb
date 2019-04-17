@@ -41,7 +41,8 @@ function testSuite() {
     try {
       let reply = testPort('tcp://0.0.0.0:' + port);
       fail();
-    } catch (err) {
+    }
+    catch (err) {
       assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while probing: ' + port);
     }
   }

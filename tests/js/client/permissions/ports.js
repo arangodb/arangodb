@@ -30,8 +30,16 @@
 
 if (getOptions === true) {
   return {
+    'javascript.endpoints-blacklist': [
+      'tcp://127.0.0.1:8888',     // Will match http:// 
+      '127.0.0.1:8899',           // will match at http and https.
+      'ssl://127.0.0.1:7777',     // will match https://
+      'arangodb.org',             // will match https + http
+      'http://127.0.0.1:9999'            // won't match at all.
+    ],
     'javascript.endpoints-whitelist': [
-      '(white.arangodb.org|arangodb.com)',
+      'white.arangodb.org',
+      'arangodb.com',             // will match https + http
     ]
   };
 }
@@ -45,11 +53,11 @@ function testSuite() {
     try {
       let reply = download(url, '', { method: method, timeout: 3 } );
       fail();
-    } catch (err) {
+    }
+    catch (err) {
       assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while fetching: ' + url);
     }
   }
-
   function downloadPermitted(url, method) {
     try {
       let reply = download(url, '', { method: method, timeout: 30 } );
@@ -60,11 +68,11 @@ function testSuite() {
         assertEqual(reply.code, 500);
         assertTrue(reply.message.search('Could not connect') >=0 );
       }
-    } catch (err) {
+    }
+    catch (err) {
       assertNotEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while fetching: ' + url + " Detail error: " + JSON.stringify(err) + ' ' );
     }
   }
-
   return {
     testDownload : function() {
       // The filter will only match the host part. We specify one anyways.
@@ -83,6 +91,7 @@ function testSuite() {
       downloadPermitted('http://white.arangodb.org/bla', 'GET');
       downloadPermitted('https://arangodb.com/blog', 'GET');
       downloadPermitted('http://arangodb.com/blog', 'GET');
+
     }
   };
 }
