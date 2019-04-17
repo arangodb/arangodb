@@ -450,7 +450,12 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   could not be moved before the sort, or an source node like *EnumerateCollectionNode*).
   This is used to make the *SortNode* aware of the limit and offset from the *LimitNode*
   to enable some optimizations internal to the *SortNode* which allow for reduced
-  memory usage and and in many cases, improved sorting speed.
+  memory usage and and in many cases, improved sorting speed. The optimizer may
+  choose not to apply the rule if it decides that it will offer little or no benefit.
+  In particular it will not apply the rule if the input size is very small or if
+  the output from the `LimitNode` is similar in size to the input. In exceptionally rare 
+  cases, this rule could result in some small slowdown. If observed, one can 
+  disable the rule for the affected query at the cost of increased memory usage.
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 
