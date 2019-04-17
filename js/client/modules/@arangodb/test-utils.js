@@ -467,6 +467,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if (testname.indexOf('-grey') === -1 && options.onlyGrey) {
+    whichFilter.filter = 'grey';
+    return false;
+  }
+
   if (testname.indexOf('-graph') !== -1 && options.skipGraph) {
     whichFilter.filter = 'graph';
     return false;
