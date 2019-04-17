@@ -3616,7 +3616,7 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 
 arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
 
-  AgencyCommResult dump = _agency.getValues("arango/Plan");
+  AgencyCommResult dump = _agency.getValues("Plan");
 
   if (!dump.successful()) {
     LOG_TOPIC(ERR, Logger::CLUSTER)
