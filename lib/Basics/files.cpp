@@ -1387,7 +1387,7 @@ char* TRI_GetFilename(char const* filename) {
 std::string TRI_GetAbsolutePath(std::string const& fileName, std::string const& currentWorkingDirectory) {
   // Check that fileName actually makes some sense
   if (fileName.empty()) {
-    return std::string;
+    return std::string();
   }
 
   // ...........................................................................
