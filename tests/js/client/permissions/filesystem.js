@@ -31,17 +31,43 @@
 const fs = require('fs');
 const internal = require('internal');
 
-const rootDir = fs.join(fs.getTempPath(), 'permissions');
-const testresults = fs.join(rootDir, 'testresult.json'); // where we want to put our results ;-)
-const topLevelForbidden = fs.join(rootDir, 'forbidden');
+//  first inst - tmp  --                 /tmp/xxx-arangosh/
+//  first inst - rootDir  --             /tmp/xxx-arangosh/permissions
+//  first inst - testFilesDir  --        /tmp/xxx-arangosh/permissions/testfiles
+//  frist inst - subInstanceTemp  --     /tmp/xxx-arangosh/permissions/subinstance_temp_directory
+
+// second inst - tmp  --                 /tmp/xxx-arangosh/permissions/subinstance_temp_directory
+// second inst - rootDir  --             /tmp/xxx-arangosh/permissions
+// second inst - testFilesDir  --        /tmp/xxx-arangosh/permissions/testfiles
+// second inst - subInstanceTemp  --     not needed /tmp/xxx-arangosh/permissions/subinstance_tmp_directory
+
+
+let rootDir = fs.join(fs.getTempPath(), '..');
+let subInstanceTemp; //not set for subinstance
+let testResults = fs.join(fs.getTempPath(), 'testresult.json'); // where we want to put our results ;-)
+let testFilesDir = fs.join(rootDir, 'test_file_tree');
+
+if (getOptions === true) {
+  rootDir = fs.join(fs.getTempPath(), 'permissions');
+  subInstanceTemp = fs.join(rootDir, 'subinstance_temp_directory')
+  testResults = fs.join(subInstanceTemp, 'testresult.json'); // where we want to put our results ;-)
+  testFilesDir = fs.join(rootDir, 'test_file_tree');
+
+  fs.makeDirectoryRecursive(subInstanceTemp);
+  fs.makeDirectoryRecursive(testFilesDir);
+}
+
+
+
+const topLevelForbidden = fs.join(testFilesDir, 'forbidden');
 const forbiddenZipFileName = fs.join(topLevelForbidden, 'forbidden.zip');
 const forbiddenJSFileName = fs.join(topLevelForbidden, 'forbidden.js');
-const topLevelForbiddenRecursive = fs.join(rootDir, 'forbidden_recursive');
+const topLevelForbiddenRecursive = fs.join(testFilesDir, 'forbidden_recursive');
 
-const topLevelAllowed = fs.join(rootDir, 'allowed');
+const topLevelAllowed = fs.join(testFilesDir, 'allowed');
 const intoTopLevelForbidden = fs.join(topLevelAllowed, 'into_forbidden.txt');
-const topLevelAllowedUnZip = fs.join(rootDir, 'allowed_unzip');
-const topLevelAllowedRecursive = fs.join(rootDir, 'allowed_recursive');
+const topLevelAllowedUnZip = fs.join(testFilesDir, 'allowed_unzip');
+const topLevelAllowedRecursive = fs.join(testFilesDir, 'allowed_recursive');
 const allowedZipFileName = fs.join(topLevelAllowedRecursive, 'allowed.zip');
 const allowedJSFileName = fs.join(topLevelAllowedRecursive, 'allowed.js');
 const intoTopLevelAllowed = fs.join(topLevelForbidden, 'into_allowed.txt');
@@ -116,19 +142,20 @@ if (getOptions === true) {
   fs.write(topLevelForbiddenReadJSONFile, JSONText);
   fs.write(subLevelAllowedReadJSONFile, JSONText);
 
+
   return {
-    'temp.path': fs.getTempPath(),     // Adjust the temp-path to match our current temp path
-    'javascript.files-blacklist': [
-      '^/var/lib/', // that for sure!
-      '^/var/log/', // that for sure!
-      '^/etc/passwd', // if not this, what else?
-      '^/etc/',
-      '^' + topLevelForbidden ,
-      '^' + topLevelForbiddenRecursive
-      // N/A  subLevelForbidden + '.*'
-    ],
+    'temp.path': subInstanceTemp,     // Adjust the temp-path to match our current temp path
+  //  'javascript.files-blacklist': [
+  //    '^/var/lib/', // that for sure!
+  //    '^/var/log/', // that for sure!
+  //    '^/etc/passwd', // if not this, what else?
+  //    '^/etc/',
+  //    '^' + topLevelForbidden ,
+  //    '^' + topLevelForbiddenRecursive
+  //    // N/A  subLevelForbidden + '.*'
+  //  ],
     'javascript.files-whitelist': [
-      '^' + testresults,
+      '^' + testResults,
       '^' + topLevelAllowed,
       '^' + subLevelAllowed,
       '^' + topLevelAllowedRecursive
