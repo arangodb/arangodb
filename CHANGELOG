@@ -2,16 +2,16 @@ devel
 -----
 
 * added options to make server more secure:
-  `--server.harden`: denies access to certain REST APIs that return server internals
-  `--foxx.api`: set to false disables Foxx management API
-  `--foxx.store`: set to false disables Foxx UI
-  `--javascript.allow-port-testing`: enables internal.testPort()
-  `--javascript.allow-external-process-control`: enables external process control
-  `--javascript.harden`: disables getPid(), processStatistics() and logLevel()
-  `--javascript.startup-options-*`: control startup options visible in JavaScript
-  `--javascript.environment-variables-*`: control environment variables visible in JavaScript
-  `--javascript.endpoints-*`: control accessible endpoints in JavaScript
-  `--javascript.files-*`: control file access in JavaScript
+  - `--server.harden`: denies access to certain REST APIs that return server internals
+  - `--foxx.api`: set to false disables Foxx management API
+  - `--foxx.store`: set to false disables Foxx UI
+  - `--javascript.allow-port-testing`: enables internal.testPort()
+  - `--javascript.allow-external-process-control`: enables external process control
+  - `--javascript.harden`: disables getPid(), processStatistics() and logLevel()
+  - `--javascript.startup-options-whitelist`: control startup options visible in JavaScript
+  - `--javascript.environment-variables-whitelist`: control environment variables visible in JavaScript
+  - `--javascript.endpoints-whitelist`: control accessible endpoints in JavaScript
+  - `--javascript.files-whitelist`: control file access in JavaScript
 
   Note: There is a [detailed description of all options](https://github.com/arangodb-helper/arangodb/blob/master/Documentation/Books/Manual/Security/SecurityOptions.md).
 
