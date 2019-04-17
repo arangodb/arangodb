@@ -62,8 +62,8 @@ class SharedAqlItemBlockPtr {
 
   inline void swap(SharedAqlItemBlockPtr& other) noexcept;
 
-  inline bool operator==(std::nullptr_t) noexcept;
-  inline bool operator!=(std::nullptr_t) noexcept;
+  inline bool operator==(std::nullptr_t) const noexcept;
+  inline bool operator!=(std::nullptr_t) const noexcept;
 
   inline bool operator==(SharedAqlItemBlockPtr const&) const noexcept;
   inline bool operator!=(SharedAqlItemBlockPtr const&) const noexcept;
@@ -164,11 +164,11 @@ void SharedAqlItemBlockPtr::incrRefCount() const noexcept {
   }
 }
 
-bool SharedAqlItemBlockPtr::operator==(std::nullptr_t) noexcept {
+bool SharedAqlItemBlockPtr::operator==(std::nullptr_t) const noexcept {
   return _aqlItemBlock == nullptr;
 }
 
-bool SharedAqlItemBlockPtr::operator!=(std::nullptr_t) noexcept {
+bool SharedAqlItemBlockPtr::operator!=(std::nullptr_t) const noexcept {
   return _aqlItemBlock != nullptr;
 }
 
