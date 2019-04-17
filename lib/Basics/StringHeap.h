@@ -43,6 +43,11 @@ class StringHeap {
   arangodb::velocypack::StringRef registerString(arangodb::velocypack::StringRef const& str) {
     return registerString(str.data(), str.size());
   }
+ 
+  /// @brief clear all data from the StringHeap, not releasing any occupied memory 
+  /// the caller must make sure that nothing points into the data of the StringHeap
+  /// when calling this method
+  void clear();
   
   void merge(StringHeap&& heap);
   
