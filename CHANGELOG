@@ -5,6 +5,9 @@ devel
 
 * added collection.documentId method to derive document id from key
 
+* Indexes created with the 'inBackground', will not hold an
+  exclusive collection lock for the entire index creation period (rocksdb only)
+
 * fixed internal issue #536: ArangoSearch may crash server during term lookup
 
 * fixed internal issue #2946: Create graph autocomplete was not working under
@@ -444,6 +447,8 @@ devel
 * priority queue for maintenance jobs
 
 * do not wait for replication after each job execution in Supervision
+
+* add support for configuring custom Analyzers via JavaScript and REST
 
 v3.4.1 (XXXX-XX-XX)
 -------------------
