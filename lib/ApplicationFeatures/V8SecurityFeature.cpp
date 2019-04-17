@@ -200,11 +200,6 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                      "filesystem paths that will be accessible from within JavaScript actions",
                      new VectorParameter<StringParameter>(&_filesWhitelistVec))
                      .setIntroducedIn(30500);
-  options->addOption("--javascript.files-blacklist",
-                     "filesystem paths that will be inaccessible from within JavaScript actions "
-                     "if not whitelisted",
-                     new VectorParameter<StringParameter>(&_filesBlacklistVec))
-                     .setIntroducedIn(30500);
 }
 
 void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -227,8 +222,7 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
 
   // file access
   convertToRegex(_filesWhitelistVec, _filesWhitelist);
-  convertToRegex(_filesBlacklistVec, _filesBlacklist);
-  testRegexPair(_filesWhitelist, _filesBlacklist, "files");
+  testRegexPair(_filesWhitelist, "", "files");
 }
 
 void V8SecurityFeature::prepare() {
@@ -258,8 +252,6 @@ void V8SecurityFeature::start() {
 
   _filesWhitelistRegex =
       std::regex(_filesWhitelist, std::regex::nosubs | std::regex::ECMAScript);
-  _filesBlacklistRegex =
-      std::regex(_filesBlacklist, std::regex::nosubs | std::regex::ECMAScript);
 }
 
 void V8SecurityFeature::addToInternalReadWhitelist(std::string const& item) {
@@ -339,7 +331,7 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* pathPtr,
                                               FSAccessType access) const {
 
-  if (_filesWhitelist.empty(), _filesBlacklist.empty()) {
+  if (_filesWhitelist.empty()) {
     return true;
   }
 
@@ -365,7 +357,7 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
   }
 
   bool rv = checkBlackAndWhitelist(path, !_filesWhitelist.empty(), _filesWhitelistRegex,
-                                   !_filesBlacklist.empty(), _filesBlacklistRegex);
+                                   false, _filesWhitelistRegex /*passed to match the signature but not used*/);
 
   if (rv) {
     return true;
@@ -373,7 +365,7 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
 
   if (access == FSAccessType::READ && std::regex_search(path, _readWhitelistRegex)) {
     // even in restricted contexts we may read module paths
-    return (_filesBlacklist.empty() || !std::regex_search(path, _filesBlacklistRegex));
+    return true;
   }
 
   return rv;
