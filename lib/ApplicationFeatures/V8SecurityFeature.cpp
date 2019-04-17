@@ -39,22 +39,12 @@ using namespace arangodb::options;
 
 namespace {
 
-void testRegexPair(std::string const& whitelist, std::string const& blacklist,
-                   char const* optionName) {
+void testRegex(std::string const& whitelist, char const* optionName) {
   try {
     std::regex(whitelist, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
     LOG_TOPIC("ab6d5", FATAL, arangodb::Logger::FIXME)
         << "value for '--javascript." << optionName << "-whitelist' is not a "
-           "valid regular expression: " << ex.what();
-    FATAL_ERROR_EXIT();
-  }
-
-  try {
-    std::regex(blacklist, std::regex::nosubs | std::regex::ECMAScript);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("ab2d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript." << optionName << "-blacklist' is not a "
            "valid regular expression: " << ex.what();
     FATAL_ERROR_EXIT();
   }
@@ -96,42 +86,13 @@ void convertToRegex(std::unordered_set<std::string> const& files, std::string& t
   targetRegex = ss.str();
 }
 
-bool checkBlackAndWhitelist(std::string const& value, bool hasWhitelist,
-                            std::regex const& whitelist, bool hasBlacklist,
-                            std::regex const& blacklist) {
-  if (!hasWhitelist && !hasBlacklist) {
-    return true;
-  }
-
-  if (!hasBlacklist) {
-    // only have a whitelist
-    return std::regex_search(value, whitelist);
-  }
-
+bool checkWhitelist(std::string const& value, bool hasWhitelist,
+                            std::regex const& whitelist){
   if (!hasWhitelist) {
-    // only have a blacklist
-    return !std::regex_search(value, blacklist);
-  }
-
-  std::smatch white_result{};
-  std::smatch black_result{};
-  bool white = std::regex_search(value, white_result, whitelist);
-  bool black = std::regex_search(value, black_result, blacklist);
-
-  if (white && !black) {
-    // we only have a whitelist hit => allow
     return true;
-  } else if (!white && black) {
-    // we only have a blacklist hit => deny
-    return false;
-  } else if (!white && !black) {
-    // we have neither a whitelist nor a blacklist hit => deny
-    return false;
   }
 
-  // longer match or blacklist wins
-  return white_result[0].length() > black_result[0].length();
-
+  return std::regex_search(value, whitelist);
 }
 }  // namespace
 
@@ -169,20 +130,10 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                      "expression will be whitelisted and exposed to JavaScript",
                      new VectorParameter<StringParameter>(&_startupOptionsWhitelistVec))
                      .setIntroducedIn(30500);
-  options->addOption("--javascript.startup-options-blacklist",
-                     "startup options whose names match this regular "
-                     "expression will not be exposed (if not whitelisted) to "
-                     "JavaScript actions",
-                     new VectorParameter<StringParameter>(&_startupOptionsBlacklistVec))
-                     .setIntroducedIn(30500);
 
   options->addOption("--javascript.environment-variables-whitelist",
                      "environment variables that will be accessible in JavaScript",
                      new VectorParameter<StringParameter>(&_environmentVariablesWhitelistVec))
-                     .setIntroducedIn(30500);
-  options->addOption("--javascript.environment-variables-blacklist",
-                     "environment variables that will be inaccessible in JavaScript if not whitelisted",
-                     new VectorParameter<StringParameter>(&_environmentVariablesBlacklistVec))
                      .setIntroducedIn(30500);
 
   options->addOption("--javascript.endpoints-whitelist",
@@ -190,20 +141,10 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                      "@arangodb/request module in JavaScript actions",
                      new VectorParameter<StringParameter>(&_endpointsWhitelistVec))
                      .setIntroducedIn(30500);
-  options->addOption("--javascript.endpoints-blacklist",
-                     "endpoints that cannot be connected to via @arangodb/request module in "
-                     "JavaScript actions if not whitelisted",
-                     new VectorParameter<StringParameter>(&_endpointsBlacklistVec))
-                     .setIntroducedIn(30500);
 
   options->addOption("--javascript.files-whitelist",
                      "filesystem paths that will be accessible from within JavaScript actions",
                      new VectorParameter<StringParameter>(&_filesWhitelistVec))
-                     .setIntroducedIn(30500);
-  options->addOption("--javascript.files-blacklist",
-                     "filesystem paths that will be inaccessible from within JavaScript actions "
-                     "if not whitelisted",
-                     new VectorParameter<StringParameter>(&_filesBlacklistVec))
                      .setIntroducedIn(30500);
 }
 
@@ -212,23 +153,19 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
 
   // startup options
   convertToRegex(_startupOptionsWhitelistVec, _startupOptionsWhitelist);
-  convertToRegex(_startupOptionsBlacklistVec, _startupOptionsBlacklist);
-  testRegexPair(_startupOptionsWhitelist, _startupOptionsBlacklist, "startup-options");
+  testRegex(_startupOptionsWhitelist, "startup-options");
 
   // environment variables
   convertToRegex(_environmentVariablesWhitelistVec, _environmentVariablesWhitelist);
-  convertToRegex(_environmentVariablesBlacklistVec, _environmentVariablesBlacklist);
-  testRegexPair(_environmentVariablesWhitelist, _environmentVariablesBlacklist, "environment-variables");
+  testRegex(_environmentVariablesWhitelist, "environment-variables");
 
   // endpoints
   convertToRegex(_endpointsWhitelistVec, _endpointsWhitelist);
-  convertToRegex(_endpointsBlacklistVec, _endpointsBlacklist);
-  testRegexPair(_endpointsWhitelist, _endpointsBlacklist, "endpoints");
+  testRegex(_endpointsWhitelist, "endpoints");
 
   // file access
   convertToRegex(_filesWhitelistVec, _filesWhitelist);
-  convertToRegex(_filesBlacklistVec, _filesBlacklist);
-  testRegexPair(_filesWhitelist, _filesBlacklist, "files");
+  testRegex(_filesWhitelist, "files");
 }
 
 void V8SecurityFeature::prepare() {
@@ -243,23 +180,15 @@ void V8SecurityFeature::start() {
   // initialize regexes for filtering options. the regexes must have been validated before
   _startupOptionsWhitelistRegex =
       std::regex(_startupOptionsWhitelist, std::regex::nosubs | std::regex::ECMAScript);
-  _startupOptionsBlacklistRegex =
-      std::regex(_startupOptionsBlacklist, std::regex::nosubs | std::regex::ECMAScript);
 
   _environmentVariablesWhitelistRegex =
       std::regex(_environmentVariablesWhitelist, std::regex::nosubs | std::regex::ECMAScript);
-  _environmentVariablesBlacklistRegex =
-      std::regex(_environmentVariablesBlacklist, std::regex::nosubs | std::regex::ECMAScript);
 
   _endpointsWhitelistRegex =
       std::regex(_endpointsWhitelist, std::regex::nosubs | std::regex::ECMAScript);
-  _endpointsBlacklistRegex =
-      std::regex(_endpointsBlacklist, std::regex::nosubs | std::regex::ECMAScript);
 
   _filesWhitelistRegex =
       std::regex(_filesWhitelist, std::regex::nosubs | std::regex::ECMAScript);
-  _filesBlacklistRegex =
-      std::regex(_filesBlacklist, std::regex::nosubs | std::regex::ECMAScript);
 }
 
 void V8SecurityFeature::addToInternalReadWhitelist(std::string const& item) {
@@ -303,18 +232,14 @@ bool V8SecurityFeature::isInternalContext(v8::Isolate* isolate) const {
 
 bool V8SecurityFeature::shouldExposeStartupOption(v8::Isolate* isolate,
                                                   std::string const& name) const {
-  return checkBlackAndWhitelist(name, !_startupOptionsWhitelist.empty(),
-                                _startupOptionsWhitelistRegex,
-                                !_startupOptionsBlacklist.empty(),
-                                _startupOptionsBlacklistRegex);
+  return checkWhitelist(name, !_startupOptionsWhitelist.empty(),
+                                _startupOptionsWhitelistRegex);
 }
 
 bool V8SecurityFeature::shouldExposeEnvironmentVariable(v8::Isolate* isolate,
                                                         std::string const& name) const {
-  return checkBlackAndWhitelist(name, !_environmentVariablesWhitelist.empty(),
-                                _environmentVariablesWhitelistRegex,
-                                !_environmentVariablesBlacklist.empty(),
-                                _environmentVariablesBlacklistRegex);
+  return checkWhitelist(name, !_environmentVariablesWhitelist.empty(),
+                                _environmentVariablesWhitelistRegex);
 }
 
 bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
@@ -327,8 +252,7 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
     return true;
   }
 
-  return checkBlackAndWhitelist(name, !_endpointsWhitelist.empty(), _endpointsWhitelistRegex,
-                                !_endpointsBlacklist.empty(), _endpointsBlacklistRegex);
+  return checkWhitelist(name, !_endpointsWhitelist.empty(), _endpointsWhitelistRegex);
 }
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string const&  path,
@@ -339,7 +263,7 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* pathPtr,
                                               FSAccessType access) const {
 
-  if (_filesWhitelist.empty(), _filesBlacklist.empty()) {
+  if (_filesWhitelist.empty()) {
     return true;
   }
 
@@ -364,8 +288,7 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
     path += TRI_DIR_SEPARATOR_STR;
   }
 
-  bool rv = checkBlackAndWhitelist(path, !_filesWhitelist.empty(), _filesWhitelistRegex,
-                                   !_filesBlacklist.empty(), _filesBlacklistRegex);
+  bool rv = checkWhitelist(path, !_filesWhitelist.empty(), _filesWhitelistRegex);
 
   if (rv) {
     return true;
@@ -373,7 +296,7 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
 
   if (access == FSAccessType::READ && std::regex_search(path, _readWhitelistRegex)) {
     // even in restricted contexts we may read module paths
-    return (_filesBlacklist.empty() || !std::regex_search(path, _filesBlacklistRegex));
+    return true;
   }
 
   return rv;
