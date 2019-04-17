@@ -2761,8 +2761,9 @@ int fetchEdgesFromEngines(std::string const& dbname,
 
 std::string const apiStr("/_admin/backup/");
 
-arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
-                               std::vector<std::string>& hotBackups) {
+arangodb::Result hotBackupList(
+  std::vector<ServerID> const& dbServers, VPackSlice const payload,
+  std::vector<std::string>& hotBackups) {
 
   hotBackups.clear();
 
@@ -2774,12 +2775,7 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder b(&builder);
-    builder.add("operation", VPackValue("list"));
-  }
-  auto body = std::make_shared<std::string>(builder.toJson());
+  auto body = std::make_shared<std::string>(payload.toJson());
   std::string const url = apiStr + "list";
 
   std::vector<ClusterCommRequest> requests;
@@ -2829,8 +2825,8 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers,
       return arangodb::Result(TRI_ERROR_HOT_BACKUP_INTERNAL, "result is missing server id");
     }
     
-    if (!resSlice.hasKey("id") || !resSlice.get("id").isArray() || resSlice.get("id").length() == 0) {
-      return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND, "no backups listed");
+    if (!resSlice.hasKey("id") || !resSlice.get("id").isArray()) {
+      return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,  "result is missing backup ids");
     }
 
     for (auto const& id : VPackArrayIterator(resSlice.get("id"))) {
@@ -3713,7 +3709,7 @@ arangodb::Result listHotBakupsOnCoordinator(
 
   std::vector<std::string> listIds;
 
-  if (!payload.isNone()) {
+  if (!payload.isNone() && !payload.isEmptyObject()) {
     if (payload.hasKey("id")) {
       if (payload.get("id").isArray()) {
         for (auto const i : VPackArrayIterator(payload.get("id"))) {
@@ -3732,7 +3728,7 @@ arangodb::Result listHotBakupsOnCoordinator(
     }
   }
 
-  arangodb::Result result = hotBackupList(dbServers, listIds);
+  arangodb::Result result = hotBackupList(dbServers, payload, listIds);
 
   if (!result.ok()) {
     return result;
