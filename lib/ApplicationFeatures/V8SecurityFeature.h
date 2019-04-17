@@ -91,43 +91,26 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   std::unordered_set<std::string> _readWhitelistSet;
   std::regex _readWhitelistRegex;
 
-  // All the following options have whitelists and blacklists.
-  // The whitelist will take precedence over the blacklist
-  // Items is the corresponding Vector will be joined with
-  // an logical OR to the final expression. That in turn
-  // will be compiled into an std::regex.
 
   std::string _startupOptionsWhitelist;
   std::vector<std::string> _startupOptionsWhitelistVec;
   std::regex _startupOptionsWhitelistRegex;
-  std::string _startupOptionsBlacklist;
-  std::vector<std::string> _startupOptionsBlacklistVec;
-  std::regex _startupOptionsBlacklistRegex;
 
   /// @brief regular expression string for forbidden IP address/host names
   /// to connect to via JS_Download/internal.download
   std::string _endpointsWhitelist;
   std::vector<std::string> _endpointsWhitelistVec;
   std::regex _endpointsWhitelistRegex;
-  std::string _endpointsBlacklist;
-  std::vector<std::string> _endpointsBlacklistVec;
-  std::regex _endpointsBlacklistRegex;
 
   /// @brief regular expression string for environment variables filtering
   std::string _environmentVariablesWhitelist;
   std::vector<std::string> _environmentVariablesWhitelistVec;
   std::regex _environmentVariablesWhitelistRegex;
-  std::string _environmentVariablesBlacklist;
-  std::vector<std::string> _environmentVariablesBlacklistVec;
-  std::regex _environmentVariablesBlacklistRegex;
 
   /// @brief variables for file access
   std::string _filesWhitelist;
   std::vector<std::string> _filesWhitelistVec;
   std::regex _filesWhitelistRegex;
-  std::string _filesBlacklist;
-  std::vector<std::string> _filesBlacklistVec;
-  std::regex _filesBlacklistRegex;
 };
 
 }  // namespace arangodb
