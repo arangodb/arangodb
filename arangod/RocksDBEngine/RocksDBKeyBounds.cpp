@@ -320,7 +320,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
 
       _internals.separate();
 
-      if (rocksDBEndianness == RocksDBEndianness::Big) {
+      if (false && rocksDBEndianness == RocksDBEndianness::Big) {
         uint64ToPersistent(_internals.buffer(), first + 1);
         _internals.buffer().append((char*)(min.begin()), min.byteSize());
       } else {
@@ -368,7 +368,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
         _internals.push_back(_stringSeparator);
       }
       _internals.separate();
-      if (type == RocksDBEntryType::PrimaryIndexValue && rocksDBEndianness == RocksDBEndianness::Big) {
+      if (false && type == RocksDBEntryType::PrimaryIndexValue && rocksDBEndianness == RocksDBEndianness::Big) {
         uint64ToPersistent(_internals.buffer(), first + 1);
         _internals.push_back(0x00U);  // lower/equal to any ascii char
       } else {
