@@ -2813,11 +2813,9 @@ arangodb::Result hotBackupList(
         std::string("result to list request to ") + req.destination + " not an object");
     }
 
-    if (!resSlice.hasKey("errorNum") || !resSlice.hasKey("error") || !resSlice.get("error").isBoolean()) {
-      if (!resSlice.get("error").getBoolean()) {
-        return arangodb::Result(resSlice.get("errorNum").getNumber<uint64_t>(),
-                                resSlice.get("errorMessage").copyString());
-      }
+    if (resSlice.get("error").getBoolean()) {
+      return arangodb::Result(resSlice.get("errorNum").getNumber<uint64_t>(),
+                              resSlice.get("errorMessage").copyString());
     }
 
     if (!resSlice.hasKey("result") || !resSlice.get("result").isObject()) {

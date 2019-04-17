@@ -865,6 +865,7 @@ void RocksDBHotBackupList::execute() {
   }
 } // RocksDBHotBackupList::execute
 
+
 // @brief returns specific information about the hotbackup with the given id
 void RocksDBHotBackupList::statId() {
   std::string directory = rebuildPath(_listId);
@@ -921,6 +922,7 @@ void RocksDBHotBackupList::statId() {
     {
       VPackObjectBuilder o(&_result);
       if (ServerState::instance()->isDBServer()) {
+        _result.add("server", VPackValue(getPersistedId()));
         _result.add("agency-dump", agency->slice());
         _result.add(VPackValue("id"));
         VPackArrayBuilder a(&_result);
