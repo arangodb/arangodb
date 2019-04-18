@@ -2949,22 +2949,22 @@ arangodb::Result controlMaintenanceFeature(
     builder.add("duration", VPackValue(30));
     builder.add("id", VPackValue(backupId));
   }
-
+  
   std::vector<ClusterCommRequest> requests;
-  std::string const url = "_admin/actions";
+  std::string const url = "/_admin/actions";
   auto body = std::make_shared<std::string>(builder.toJson());
   for (auto const& dbServer : dbServers) {
     requests.emplace_back("server:" + dbServer, RequestType::POST, url, body);
   }
 
+  LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
+    << "Attempting to execute " << command << " maintenance features for hot backup id "
+    << backupId << " using " << *body;
+  
   // Perform the requests
   size_t done = 0;
   cc->performRequests(
     requests, CL_DEFAULT_TIMEOUT, done, Logger::HOTBACKUP, false);
-
-  LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
-    << "Attempting to stop maintenance features for hot backup id " << backupId;
-  VPackBuilder plan;
 
   // Now listen to the results:
   for (auto const& req : requests) {
@@ -2974,26 +2974,28 @@ arangodb::Result controlMaintenanceFeature(
     if (commError != TRI_ERROR_NO_ERROR) {
       return arangodb::Result(
         commError,
-        std::string("Communication error while pausing maintenance on ")
+        std::string("Communication error while executing " + command + " maintenance on ")
         + req.destination);
     }
     TRI_ASSERT(res.answer != nullptr);
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice resSlice = resBody->slice();
-    if (!resSlice.isString()) {
+    if (!resSlice.isObject() || !resSlice.hasKey("error") || !resSlice.get("error").isBoolean()) {
       // Response has invalid format
       return arangodb::Result(
         TRI_ERROR_HTTP_CORRUPTED_JSON,
-        std::string("result of stop request to maintenance feature on ")
-        + req.destination + " not a string");
+        std::string("result of executing " + command + " request to maintenance feature on ")
+        + req.destination + " is invalid");
     }
 
-    if (!resSlice.isEqualString("OK")) {
+    if (resSlice.get("error").getBoolean()) {
       return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
-        std::string("failed to stop maintenance feature for ")
+        std::string("failed to execute " + command + " on maintenance feature for ")
         + backupId + " on server " + req.destination);
     }
+
+    LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "maintenance is paused on " << req.destination;
 
   }
 
