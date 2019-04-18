@@ -137,7 +137,7 @@ class SortedCollectExecutor {
     size_t groupLength;
     bool const count;
     Infos& infos;
-    ConstInputRowRef _lastInputRow;
+    InputAqlItemRow _lastInputRow;
     arangodb::velocypack::Builder _builder;
     bool _shouldDeleteBuilderBuffer;
 
@@ -151,7 +151,7 @@ class SortedCollectExecutor {
     void initialize(size_t capacity);
     void reset(InputAqlItemRow const& input);
 
-    bool isValid() const { return _lastInputRow.get().isInitialized(); }
+    bool isValid() const { return _lastInputRow.isInitialized(); }
 
     void addLine(InputAqlItemRow const& input);
     bool isSameGroup(InputAqlItemRow const& input);
