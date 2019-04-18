@@ -80,7 +80,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, FSAccessType) const;
   bool isInternalContext(v8::Isolate* isolate) const;
 
-  void addToInternalReadWhitelist(std::string const& item);
+  void addToInternalReadWhitelist(std::string const& item, FSAccessType);
 
  private:
   bool _hardenInternalModule;
@@ -90,6 +90,10 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   std::string _readWhitelist;
   std::unordered_set<std::string> _readWhitelistSet;
   std::regex _readWhitelistRegex;
+
+  std::string _writeWhitelist;
+  std::unordered_set<std::string> _writeWhitelistSet;
+  std::regex _writeWhitelistRegex;
 
   // All the following options have whitelists and blacklists.
   // The whitelist will take precedence over the blacklist

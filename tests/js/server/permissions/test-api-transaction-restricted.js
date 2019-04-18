@@ -36,8 +36,8 @@ if (getOptions === true) {
 
   return {
     'server.allow-use-database': 'false',
-    'javascript.files-blacklist': '^.*$',
     'javascript.endpoints-blacklist': '^.*$',
+    'javascript.files-whitelist': '/usr/local',
   };
 }
 var jsunity = require('jsunity');

@@ -150,8 +150,6 @@ if (getOptions === true) {
   return {
     'temp.path': subInstanceTemp,     // Adjust the temp-path to match our current temp path
     'javascript.files-whitelist': [
-// FIXME FIX FIX FIXME WE MUST BE ABLE TO ACCESS OUR OWN TEMP DIR IN WRITE MODE WITHOUT WHITELISING
-      '^' + subInstanceTemp,
       '^' + testResults,
       '^' + topLevelAllowed,
       '^' + subLevelAllowed,
@@ -650,14 +648,6 @@ function testSuite() {
       //tryGetTempFileForbidden(topLevelForbidden);
       //FIXMEtryGetTempFileAllowed(topLevelAllowed);
       //FIXME//tryGetTempFileAllowed(subLevelAllowed);
-    },
-    testMakeAbsolute : function() {
-      tryMakeAbsoluteForbidden(rootDir + '/../../../etc/passwd');
-      tryMakeAbsoluteForbidden(intoTopLevelForbidden);
-      // TODO: do we really want that?
-      tryMakeAbsoluteAllowed(intoTopLevelAllowed);
-      tryMakeAbsoluteAllowed(intoTopLevelAllowed);
-      tryMakeAbsoluteAllowed(intoSubLevelAllowed);
     },
     testReadFile : function() {
       tryReadForbidden('/etc/passwd');

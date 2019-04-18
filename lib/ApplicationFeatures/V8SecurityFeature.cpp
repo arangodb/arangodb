@@ -76,7 +76,7 @@ std::string canonicalpath(std::string const& path) {
   return path;
 }
 
-void convertToRegex(std::vector<std::string> const& files, std::string& targetRegex) {
+void convertToSingleExpression(std::vector<std::string> const& files, std::string& targetRegex) {
   if (files.empty()) {
     return;
   }
@@ -84,7 +84,7 @@ void convertToRegex(std::vector<std::string> const& files, std::string& targetRe
   targetRegex = arangodb::basics::StringUtils::join(files, '|');
 }
 
-void convertToRegex(std::unordered_set<std::string> const& files, std::string& targetRegex) {
+void convertToSingleExpression(std::unordered_set<std::string> const& files, std::string& targetRegex) {
   // does not delete from the set
   if (files.empty()) {
     return;
@@ -225,24 +225,24 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   // check if the regular expressions compile properly
 
   // startup options
-  convertToRegex(_startupOptionsWhitelistVec, _startupOptionsWhitelist);
-  convertToRegex(_startupOptionsBlacklistVec, _startupOptionsBlacklist);
+  convertToSingleExpression(_startupOptionsWhitelistVec, _startupOptionsWhitelist);
+  convertToSingleExpression(_startupOptionsBlacklistVec, _startupOptionsBlacklist);
   testRegexPair(_startupOptionsWhitelist, _startupOptionsBlacklist,
                 "startup-options");
 
   // environment variables
-  convertToRegex(_environmentVariablesWhitelistVec, _environmentVariablesWhitelist);
-  convertToRegex(_environmentVariablesBlacklistVec, _environmentVariablesBlacklist);
+  convertToSingleExpression(_environmentVariablesWhitelistVec, _environmentVariablesWhitelist);
+  convertToSingleExpression(_environmentVariablesBlacklistVec, _environmentVariablesBlacklist);
   testRegexPair(_environmentVariablesWhitelist, _environmentVariablesBlacklist,
                 "environment-variables");
 
   // endpoints
-  convertToRegex(_endpointsWhitelistVec, _endpointsWhitelist);
-  convertToRegex(_endpointsBlacklistVec, _endpointsBlacklist);
+  convertToSingleExpression(_endpointsWhitelistVec, _endpointsWhitelist);
+  convertToSingleExpression(_endpointsBlacklistVec, _endpointsBlacklist);
   testRegexPair(_endpointsWhitelist, _endpointsBlacklist, "endpoints");
 
   // file access
-  convertToRegex(_filesWhitelistVec, _filesWhitelist);
+  convertToSingleExpression(_filesWhitelistVec, _filesWhitelist);
   testRegexPair(_filesWhitelist, "", "files");
 }
 
@@ -251,7 +251,8 @@ void V8SecurityFeature::prepare() {
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
 
-  v8security->addToInternalReadWhitelist(TRI_GetTempPath());
+  v8security->addToInternalReadWhitelist(TRI_GetTempPath(), FSAccessType::READ);
+  v8security->addToInternalReadWhitelist(TRI_GetTempPath(), FSAccessType::WRITE);
 }
 
 void V8SecurityFeature::start() {
@@ -275,17 +276,24 @@ void V8SecurityFeature::start() {
       std::regex(_filesWhitelist, std::regex::nosubs | std::regex::ECMAScript);
 }
 
-void V8SecurityFeature::addToInternalReadWhitelist(std::string const& item) {
+void V8SecurityFeature::addToInternalReadWhitelist(std::string const& item, FSAccessType type) {
   // This function is not efficient and we would not need the _readWhitelist
   // to be persistent. But the persistence will help in debugging and
   // there are only a few items expected.
+  auto& set = _readWhitelistSet;
+  auto& expression = _readWhitelist;
+  auto& re = _readWhitelistRegex;
+  if(type == FSAccessType::WRITE) {
+    set = _writeWhitelistSet;
+    expression = _writeWhitelist;
+    re = _writeWhitelistRegex;
+  }
+
   auto path = "^" + canonicalpath(item) + TRI_DIR_SEPARATOR_STR;
-  _readWhitelistSet.emplace(std::move(path));
-  _readWhitelist.clear();
-  convertToRegex(_readWhitelistSet, _readWhitelist);
-  _readWhitelistRegex =
-      std::regex(_readWhitelist, std::regex::nosubs | std::regex::ECMAScript);
-  LOG_TOPIC("dedb6", DEBUG, Logger::FIXME) << "read-whitelist set to " << _readWhitelist;
+  set.emplace(std::move(path));
+  expression.clear();
+  convertToSingleExpression(set, expression);
+  re = std::regex(expression, std::regex::nosubs | std::regex::ECMAScript);
 }
 
 bool V8SecurityFeature::isAllowedToControlProcesses(v8::Isolate* isolate) const {
@@ -376,17 +384,17 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
     path += TRI_DIR_SEPARATOR_STR;
   }
 
-  bool rv = checkBlackAndWhitelist(path, !_filesWhitelist.empty(), _filesWhitelistRegex,
-                                         false, _filesWhitelistRegex /*passed to match the signature but not used*/);
-
-  if (rv) {
-    return true;
-  }
-
   if (access == FSAccessType::READ && std::regex_search(path, _readWhitelistRegex)) {
     // even in restricted contexts we may read module paths
     return true;
   }
 
-  return rv;
+  if (access == FSAccessType::WRITE && std::regex_search(path, _writeWhitelistRegex)) {
+    // even in restricted contexts we may read module paths
+    return true;
+  }
+
+  return checkBlackAndWhitelist(path, !_filesWhitelist.empty(), _filesWhitelistRegex,
+                                         false, _filesWhitelistRegex /*passed to match the signature but not used*/);
+
 }
