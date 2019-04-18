@@ -26,6 +26,7 @@
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Graph/Traverser.h"
+#include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 
 using namespace arangodb;
@@ -246,6 +247,8 @@ ExecutionState TraversalExecutor::computeState() const {
 }
 
 bool TraversalExecutor::resetTraverser() {
+  _traverser.traverserCache()->clear();
+
   // Initialize the Expressions within the options.
   // We need to find the variable and read its value here. Everything is
   // computed right now.

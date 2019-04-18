@@ -220,8 +220,9 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief flushes the current index selectivity estimates
   void flushClusterIndexEstimates();
 
+  /// @brief return all indexes of the collection
   std::vector<std::shared_ptr<Index>> getIndexes() const;
-
+  
   void getIndexesVPack(velocypack::Builder&, uint8_t,
                        std::function<bool(arangodb::Index const*)> const& filter =
                            [](arangodb::Index const*) -> bool { return true; }) const;
