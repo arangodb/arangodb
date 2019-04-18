@@ -66,9 +66,6 @@ void InitialSyncer::startRecurringBatchExtension() {
         if (!cancelled && _batch.id != 0 && !isAborted()) {
           _batch.extend(_state.connection, _progress);
           startRecurringBatchExtension();
-        } else {
-          MUTEX_LOCKER(guard, _batchPingTimerMutex);
-          _batchPingTimer.reset();
         }
       });
 }
