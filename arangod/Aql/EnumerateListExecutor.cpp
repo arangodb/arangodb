@@ -55,7 +55,7 @@ EnumerateListExecutorInfos::EnumerateListExecutorInfos(
 EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos& infos)
     : _infos(infos),
       _fetcher(fetcher),
-      _currentRow{CreateInvalidInputRowHint{}},
+      _currentRow{InvalidInputAqlItemRow},
       _rowState(ExecutionState::HASMORE),
       _inputArrayPosition(0),
       _inputArrayLength(0){};
@@ -75,18 +75,20 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(OutputAqlIt
         return {_rowState, NoStats{}};
       }
       initialize();
-      std::tie(_rowState, _currentRow) = _fetcher.fetchRow();
+      auto res = _fetcher.fetchRow();
+      _rowState = res.first;
+      _currentRow = res.second.get();
       if (_rowState == ExecutionState::WAITING) {
         return {_rowState, NoStats{}};
       }
     }
 
-    if (!_currentRow.isInitialized()) {
+    if (!_currentRow.get().isInitialized()) {
       TRI_ASSERT(_rowState == ExecutionState::DONE);
       return {_rowState, NoStats{}};
     }
 
-    AqlValue const& inputList = _currentRow.getValue(_infos.getInputRegister());
+    AqlValue const& inputList = _currentRow.get().getValue(_infos.getInputRegister());
 
     if (_inputArrayPosition == 0) {
       // store the length into a local variable
@@ -134,7 +136,7 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(OutputAqlIt
 void EnumerateListExecutor::initialize() {
   _inputArrayLength = 0;
   _inputArrayPosition = 0;
-  _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  _currentRow = InvalidInputAqlItemRow;
 }
 
 /// @brief create an AqlValue from the inVariable using the current _index

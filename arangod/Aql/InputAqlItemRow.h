@@ -193,8 +193,7 @@ class InputAqlItemRow {
   size_t _baseIndex;
 };
 
-
-static const InputAqlItemRow InvalidInputAqlItemRow =
+static InputAqlItemRow InvalidInputAqlItemRow =
     InputAqlItemRow{CreateInvalidInputRowHint{}};
 
 }  // namespace aql

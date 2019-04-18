@@ -187,8 +187,10 @@ ExecutionState HashedCollectExecutor::init() {
 
   // fetch & consume all input
   while (_upstreamState != ExecutionState::DONE) {
-    InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};
-    std::tie(_upstreamState, input) = _fetcher.fetchRow();
+    auto res = _fetcher.fetchRow();
+    _upstreamState = res.first;
+    InputAqlItemRow& input = res.second;
+
 
     if (_upstreamState == ExecutionState::WAITING) {
       TRI_ASSERT(!input.isInitialized());

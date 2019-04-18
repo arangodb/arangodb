@@ -73,13 +73,14 @@ template <typename Modifier>
 std::pair<ExecutionState, typename SingleRemoteModificationExecutor<Modifier>::Stats>
 SingleRemoteModificationExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
   Stats stats;
-  InputAqlItemRow input = InputAqlItemRow(CreateInvalidInputRowHint{});
 
   if (_upstreamState == ExecutionState::DONE) {
-    return {_upstreamState, std::move(stats)};
+    return {_upstreamState, stats};
   }
 
-  std::tie(_upstreamState, input) = _fetcher.fetchRow();
+  auto res = _fetcher.fetchRow();
+  _upstreamState = res.first;
+  InputAqlItemRow const& input = res.second;
 
   if (input.isInitialized()) {
     TRI_ASSERT(_upstreamState == ExecutionState::HASMORE ||
@@ -89,12 +90,12 @@ SingleRemoteModificationExecutor<Modifier>::produceRow(OutputAqlItemRow& output)
     TRI_ASSERT(_upstreamState == ExecutionState::WAITING ||
                _upstreamState == ExecutionState::DONE);
   }
-  return {_upstreamState, std::move(stats)};
+  return {_upstreamState, stats};
 }
 
 template <typename Modifier>
 bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOperation(
-    InputAqlItemRow& input, OutputAqlItemRow& output, Stats& stats) {
+    InputAqlItemRow const& input, OutputAqlItemRow& output, Stats& stats) {
   _info._options.silent = false;
   _info._options.returnOld = _info._options.returnOld ||
                              _info._outputRegisterId != ExecutionNode::MaxRegisterId;

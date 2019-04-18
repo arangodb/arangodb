@@ -97,14 +97,15 @@ class CountCollectExecutor {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     NoStats stats{};
-    InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
     if (_state == ExecutionState::DONE) {
       return {_state, stats};
     }
 
     while (true) {
-      std::tie(_state, input) = _fetcher.fetchRow();
+      auto res = _fetcher.fetchRow();
+      _state = res.first;
+      InputAqlItemRow const& input = res.second;
 
       if (_state == ExecutionState::WAITING) {
         return {_state, stats};

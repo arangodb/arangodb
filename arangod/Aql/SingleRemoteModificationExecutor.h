@@ -94,7 +94,7 @@ struct SingleRemoteModificationExecutor {
   }
 
  protected:
-  bool doSingleRemoteModificationOperation(InputAqlItemRow&, OutputAqlItemRow&, Stats&);
+  bool doSingleRemoteModificationOperation(InputAqlItemRow const&, OutputAqlItemRow&, Stats&);
 
   Infos& _info;
   Fetcher& _fetcher;

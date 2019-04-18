@@ -130,7 +130,7 @@ class SubqueryExecutor {
   std::unique_ptr<std::vector<SharedAqlItemBlockPtr>> _subqueryResults;
 
   // Cache for the input row we are currently working on
-  InputAqlItemRow _input;
+  ConstInputRowRef _input;
 };
 }  // namespace aql
 }  // namespace arangodb

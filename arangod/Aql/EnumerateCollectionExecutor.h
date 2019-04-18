@@ -117,7 +117,7 @@ class EnumerateCollectionExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
-  typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
+  typedef std::function<void(InputAqlItemRow const&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
 
   void setProducingFunction(DocumentProducingFunction const& documentProducer) {
     _documentProducer = documentProducer;
@@ -138,7 +138,7 @@ class EnumerateCollectionExecutor {
   Fetcher& _fetcher;
   DocumentProducingFunction _documentProducer;
   ExecutionState _state;
-  InputAqlItemRow _input;
+  ConstInputRowRef _input;
   std::unique_ptr<OperationCursor> _cursor;
   bool _allowCoveringIndexOptimization;
   bool _cursorHasMore;

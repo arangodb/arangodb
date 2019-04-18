@@ -133,7 +133,7 @@ graph::TraverserCache* ShortestPathExecutorInfos::cache() const {
 ShortestPathExecutor::ShortestPathExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
-      _input{CreateInvalidInputRowHint{}},
+      _input{InvalidInputAqlItemRow},
       _rowState(ExecutionState::HASMORE),
       _finder{infos.finder()},
       _path{new arangodb::graph::ShortestPathResult{}},
@@ -192,8 +192,10 @@ bool ShortestPathExecutor::fetchPath() {
   VPackSlice start;
   VPackSlice end;
   do {
-    std::tie(_rowState, _input) = _fetcher.fetchRow();
-    if (!_input.isInitialized()) {
+    auto res = _fetcher.fetchRow();
+    _rowState = res.first;
+    _input = res.second.get();
+    if (!_input.get().isInitialized()) {
       // Either WAITING or DONE and nothing produced.
       TRI_ASSERT(_rowState == ExecutionState::WAITING || _rowState == ExecutionState::DONE);
       return false;
@@ -222,7 +224,7 @@ bool ShortestPathExecutor::getVertexId(bool isTarget, VPackSlice& id) {
     // The input row stays valid until the next fetchRow is executed.
     // So the slice can easily point to it.
     RegisterId reg = _infos.getInputRegister(isTarget);
-    AqlValue const& in = _input.getValue(reg);
+    AqlValue const& in = _input.get().getValue(reg);
     if (in.isObject()) {
       try {
         auto idString = _finder.options().trx()->extractIdString(in.slice());

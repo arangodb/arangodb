@@ -110,7 +110,7 @@ class EnumerateListExecutor {
  private:
   EnumerateListExecutorInfos& _infos;
   Fetcher& _fetcher;
-  InputAqlItemRow _currentRow;
+  ConstInputRowRef _currentRow;
   ExecutionState _rowState;
   size_t _inputArrayPosition;
   size_t _inputArrayLength;

@@ -131,7 +131,7 @@ IResearchViewExecutor<ordered>::IResearchViewExecutor(IResearchViewExecutor::Fet
                                                       IResearchViewExecutor::Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
-      _inputRow(CreateInvalidInputRowHint{}),
+      _inputRow(InvalidInputAqlItemRow),
       _upstreamState(ExecutionState::HASMORE),
       _indexReadBuffer(_infos.getNumScoreRegisters()),
       _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
@@ -163,19 +163,21 @@ IResearchViewExecutor<ordered>::produceRow(OutputAqlItemRow& output) {
   bool documentWritten = false;
 
   while (!documentWritten) {
-    if (!_inputRow.isInitialized()) {
+    if (!_inputRow.get().isInitialized()) {
       if (_upstreamState == ExecutionState::DONE) {
         // There will be no more rows, stop fetching.
         return {ExecutionState::DONE, stats};
       }
 
-      std::tie(_upstreamState, _inputRow) = _fetcher.fetchRow();
+      auto res = _fetcher.fetchRow();
+      _upstreamState = res.first;
+      _inputRow = res.second.get();
 
       if (_upstreamState == ExecutionState::WAITING) {
         return {_upstreamState, stats};
       }
 
-      if (!_inputRow.isInitialized()) {
+      if (!_inputRow.get().isInitialized()) {
         return {ExecutionState::DONE, stats};
       }
 
@@ -189,7 +191,7 @@ IResearchViewExecutor<ordered>::produceRow(OutputAqlItemRow& output) {
     if (documentWritten) {
       stats.incrScanned();
     } else {
-      _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      _inputRow = InvalidInputAqlItemRow;
       // no document written, repeat.
     }
   }

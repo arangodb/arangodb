@@ -73,7 +73,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
     : _infos(infos),
       _fetcher(fetcher),
       _state(ExecutionState::HASMORE),
-      _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _input(InvalidInputAqlItemRow),
       _allowCoveringIndexOptimization(true),
       _cursorHasMore(false) {
   _cursor = std::make_unique<OperationCursor>(
@@ -107,13 +107,15 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
 
   while (true) {
     if (!_cursorHasMore) {
-      std::tie(_state, _input) = _fetcher.fetchRow();
+      auto res = _fetcher.fetchRow();
+      _state = res.first;
+      _input = res.second.get();
 
       if (_state == ExecutionState::WAITING) {
         return {_state, stats};
       }
 
-      if (!_input) {
+      if (!_input.get()) {
         TRI_ASSERT(_state == ExecutionState::DONE);
         return {_state, stats};
       }
@@ -122,7 +124,7 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
       continue;
     }
 
-    TRI_ASSERT(_input.isInitialized());
+    TRI_ASSERT(_input.get().isInitialized());
     TRI_ASSERT(_cursor->hasMore());
 
     TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
@@ -134,7 +136,7 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
       // using nextDocument()
       _cursorHasMore = _cursor->nextDocument(
           [&](LocalDocumentId const&, VPackSlice slice) {
-            _documentProducer(_input, output, slice, _infos.getOutputRegisterId());
+            _documentProducer(_input.get(), output, slice, _infos.getOutputRegisterId());
             stats.incrScanned();
           }, 1 /*atMost*/);
     } else {
@@ -142,7 +144,7 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
       // so just call next()
       _cursorHasMore = _cursor->next(
           [&](LocalDocumentId const&) {
-            _documentProducer(_input, output, VPackSlice::nullSlice(),
+            _documentProducer(_input.get(), output, VPackSlice::nullSlice(),
                               _infos.getOutputRegisterId());
             stats.incrScanned();
           }, 1 /*atMost*/);

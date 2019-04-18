@@ -77,14 +77,14 @@ std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRow(OutputAql
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   NoStats stats{};
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
-  ExecutionState state;
 
   std::vector<AqlValue> groupValues;
   groupValues.reserve(_infos.getGroupRegisters().size());
 
   while (true) {
-    std::tie(state, input) = _fetcher.fetchRow();
+    auto res = _fetcher.fetchRow();
+    ExecutionState state = res.first;
+    InputAqlItemRow const& input = res.second;
 
     if (state == ExecutionState::WAITING) {
       return {state, stats};

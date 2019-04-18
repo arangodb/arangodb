@@ -85,8 +85,8 @@ class ConstrainedSortExecutor {
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
-  bool compareInput(uint32_t const& rosPos, InputAqlItemRow& row) const;
-  arangodb::Result pushRow(InputAqlItemRow& row);
+  bool compareInput(uint32_t const& rosPos, InputAqlItemRow const& row) const;
+  arangodb::Result pushRow(InputAqlItemRow const& row);
 
  private:
   Infos& _infos;

@@ -37,7 +37,7 @@
 namespace arangodb {
 namespace aql {
 
-typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
+typedef std::function<void(InputAqlItemRow const&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
 
 inline void handleProjections(std::vector<std::string> const& projections,
                               transaction::Methods const* trxPtr, VPackSlice slice,
@@ -84,7 +84,7 @@ static DocumentProducingFunction buildCallback(
     bool& allowCoveringIndexOptimization, bool useRawDocumentPointers) {
   if (!produceResult) {
     // no result needed
-    documentProducer = [](InputAqlItemRow& input, OutputAqlItemRow& output,
+    documentProducer = [](InputAqlItemRow const& input, OutputAqlItemRow& output,
                           VPackSlice, RegisterId registerId) {
       // TODO: optimize this within the register planning mechanism?
       output.cloneValueInto(registerId, input, AqlValue(AqlValueHintNull()));
@@ -98,7 +98,7 @@ static DocumentProducingFunction buildCallback(
       // projections from an index value (covering index)
       documentProducer = [trxPtr, projections, coveringIndexAttributePositions,
                           &allowCoveringIndexOptimization,
-                          useRawDocumentPointers](InputAqlItemRow& input,
+                          useRawDocumentPointers](InputAqlItemRow const& input,
                                                   OutputAqlItemRow& output,
                                                   VPackSlice slice, RegisterId registerId) {
         transaction::BuilderLeaser b(trxPtr);
@@ -152,7 +152,7 @@ static DocumentProducingFunction buildCallback(
 
     // projections from a "real" document
     documentProducer = [trxPtr, projections,
-                        useRawDocumentPointers](InputAqlItemRow& input,
+                        useRawDocumentPointers](InputAqlItemRow const& input,
                                                 OutputAqlItemRow& output,
                                                 VPackSlice slice, RegisterId registerId) {
       transaction::BuilderLeaser b(trxPtr);
@@ -168,7 +168,7 @@ static DocumentProducingFunction buildCallback(
   }
 
   // return the document as is
-  documentProducer = [useRawDocumentPointers](InputAqlItemRow& input,
+  documentProducer = [useRawDocumentPointers](InputAqlItemRow const& input,
                                               OutputAqlItemRow& output,
                                               VPackSlice slice, RegisterId registerId) {
     uint8_t const* vpack = slice.begin();

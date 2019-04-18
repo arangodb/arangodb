@@ -56,12 +56,12 @@ std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemR
   TRI_IF_FAILURE("FilterExecutor::produceRow") {
      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  ExecutionState state;
   FilterStats stats{};
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (true) {
-    std::tie(state, input) = _fetcher.fetchRow();
+    auto res = _fetcher.fetchRow();
+    ExecutionState state = res.first;
+    InputAqlItemRow const& input = res.second;
 
     if (state == ExecutionState::WAITING) {
       return {state, stats};

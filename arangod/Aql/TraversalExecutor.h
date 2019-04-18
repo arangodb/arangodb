@@ -156,7 +156,7 @@ class TraversalExecutor {
  private:
   Infos& _infos;
   Fetcher& _fetcher;
-  InputAqlItemRow _input;
+  ConstInputRowRef _input;
   ExecutionState _rowState;
   traverser::Traverser& _traverser;
 };

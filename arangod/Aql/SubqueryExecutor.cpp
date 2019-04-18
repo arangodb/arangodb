@@ -110,13 +110,15 @@ std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRow(OutputAqlItemRow
 
     } else {
       // init new subquery
-      if (!_input) {
-        std::tie(_state, _input) = _fetcher.fetchRow();
+      if (!_input.get()) {
+        auto res = _fetcher.fetchRow();
+        _state = res.first;
+        _input = res.second.get();
         if (_state == ExecutionState::WAITING) {
-          TRI_ASSERT(!_input);
+          TRI_ASSERT(!_input.get());
           return {_state, NoStats{}};
         }
-        if (!_input) {
+        if (!_input.get()) {
           TRI_ASSERT(_state == ExecutionState::DONE);
 
           // We are done!
@@ -124,8 +126,8 @@ std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRow(OutputAqlItemRow
         }
       }
 
-      TRI_ASSERT(_input);
-      if (!_infos.isConst() || _input.isFirstRowInBlock()) {
+      TRI_ASSERT(_input.get());
+      if (!_infos.isConst() || _input.get().isFirstRowInBlock()) {
         auto initRes = _subquery.initializeCursor(_input);
         if (initRes.first == ExecutionState::WAITING) {
           return {ExecutionState::WAITING, NoStats{}};
@@ -147,7 +149,7 @@ void SubqueryExecutor::writeOutput(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("SubqueryBlock::getSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  if (!_infos.isConst() || _input.isFirstRowInBlock()) {
+  if (!_infos.isConst() || _input.get().isFirstRowInBlock()) {
     // In the non const case, or if we are the first row.
     // We need to copy the data, and hand over ownership
     TRI_ASSERT(_subqueryResults != nullptr);
@@ -167,7 +169,7 @@ void SubqueryExecutor::writeOutput(OutputAqlItemRow& output) {
     bool didReuse = output.reuseLastStoredValue(_infos.outputRegister(), _input);
     TRI_ASSERT(didReuse);
   }
-  _input = InputAqlItemRow(CreateInvalidInputRowHint{});
+  _input = InvalidInputAqlItemRow;
   TRI_ASSERT(output.produced());
 }
 

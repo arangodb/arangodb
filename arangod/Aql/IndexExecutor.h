@@ -176,7 +176,7 @@ class IndexExecutor {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  public:
-  typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
+  typedef std::function<void(InputAqlItemRow const&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
 
   void setProducingFunction(DocumentProducingFunction documentProducer) {
     _documentProducer = std::move(documentProducer);
@@ -191,8 +191,8 @@ class IndexExecutor {
 
  private:
   bool advanceCursor();
-  void executeExpressions(InputAqlItemRow& input);
-  bool initIndexes(InputAqlItemRow& input);
+  void executeExpressions(InputAqlItemRow const& input);
+  bool initIndexes(InputAqlItemRow const& input);
 
   /// @brief create an iterator object
   void createCursor();
@@ -240,7 +240,7 @@ class IndexExecutor {
   Fetcher& _fetcher;
   DocumentProducingFunction _documentProducer;
   ExecutionState _state;
-  InputAqlItemRow _input;
+  ConstInputRowRef _input;
 
   /// @brief whether or not we are allowed to use the covering index
   /// optimization in a callback

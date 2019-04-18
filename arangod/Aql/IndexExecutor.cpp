@@ -106,7 +106,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
       _state(ExecutionState::HASMORE),
-      _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _input(InvalidInputAqlItemRow),
       _allowCoveringIndexOptimization(false),
       _cursor(nullptr),
       _cursors(_infos.getIndexes().size()),
@@ -286,7 +286,7 @@ bool IndexExecutor::readIndex(IndexIterator::DocumentCallback const& callback, b
   }
 }
 
-bool IndexExecutor::initIndexes(InputAqlItemRow& input) {
+bool IndexExecutor::initIndexes(InputAqlItemRow const& input) {
   // We start with a different context. Return documents found in the previous
   // context again.
   _alreadyReturned.clear();
@@ -337,7 +337,7 @@ bool IndexExecutor::initIndexes(InputAqlItemRow& input) {
   return advanceCursor();
 }
 
-void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
+void IndexExecutor::executeExpressions(InputAqlItemRow const& input) {
   TRI_ASSERT(_infos.getCondition() != nullptr);
   TRI_ASSERT(!_infos.getNonConstExpressions().empty());
 
@@ -423,28 +423,30 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
   IndexStats stats{};
 
   while (true) {
-    if (!_input) {
+    if (!_input.get().isInitialized()) {
       if (_state == ExecutionState::DONE) {
         return {_state, stats};
       }
 
-      std::tie(_state, _input) = _fetcher.fetchRow();
+      auto res = _fetcher.fetchRow();
+      _state = res.first;
+      _input = res.second.get();
 
       if (_state == ExecutionState::WAITING) {
         return {_state, stats};
       }
 
-      if (!_input) {
+      if (!_input.get()) {
         TRI_ASSERT(_state == ExecutionState::DONE);
         return {_state, stats};
       }
 
-      if (!initIndexes(_input)) {
-        _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      if (!initIndexes(_input.get())) {
+        _input = InvalidInputAqlItemRow;
         continue;
       }
     }
-    TRI_ASSERT(_input.isInitialized());
+    TRI_ASSERT(_input.get().isInitialized());
     TRI_ASSERT(getCursor() != nullptr && getCursor()->hasMore());
 
     IndexIterator::DocumentCallback callback;
@@ -487,14 +489,14 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     TRI_ASSERT(getCursor() != nullptr || !more);
 
     if (!more) {
-      _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      _input = InvalidInputAqlItemRow;
     }
     TRI_ASSERT(!more || hasWritten);
 
     if (hasWritten) {
       stats.incrScanned(1);
 
-      if (_state == ExecutionState::DONE && !_input) {
+      if (_state == ExecutionState::DONE && !_input.get()) {
         return {ExecutionState::DONE, stats};
       }
       return {ExecutionState::HASMORE, stats};

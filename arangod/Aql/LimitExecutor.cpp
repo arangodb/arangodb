@@ -61,12 +61,12 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   LimitStats stats{};
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
-  ExecutionState state;
   LimitState limitState;
   while (LimitState::LIMIT_REACHED != (limitState = currentState())) {
-    std::tie(state, input) = _fetcher.fetchRow(maxRowsLeftToFetch());
+    auto res = _fetcher.fetchRow(maxRowsLeftToFetch());
+    ExecutionState state = res.first;
+    InputAqlItemRow const& input = res.second.get();
 
     if (state == ExecutionState::WAITING) {
       return {state, stats};

@@ -111,8 +111,7 @@ SingleRowFetcherHelper<passBlocksThrough>::~SingleRowFetcherHelper() = default;
 
 template <bool passBlocksThrough>
 // NOLINTNEXTLINE google-default-arguments
-std::pair<ExecutionState, ConstInputRowRef>
-SingleRowFetcherHelper<passBlocksThrough>::fetchRow(size_t) {
+std::pair<ExecutionState, InputRowRef> SingleRowFetcherHelper<passBlocksThrough>::fetchRow(size_t) {
   // If this REQUIRE fails, the Executor has fetched more rows after DONE.
   REQUIRE(_nrCalled <= _nrItems);
   if (_returnsWaiting) {

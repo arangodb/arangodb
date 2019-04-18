@@ -188,18 +188,17 @@ inline void CalculationExecutor<CalculationType::Reference>::doEvaluation(
 template <CalculationType calculationType>
 inline std::pair<ExecutionState, typename CalculationExecutor<calculationType>::Stats>
 CalculationExecutor<calculationType>::produceRow(OutputAqlItemRow& output) {
-  ExecutionState state;
-  //InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  std::reference_wrapper<InputAqlItemRow const> row = InvalidInputAqlItemRow;
-  std::tie(state, row) = _fetcher.fetchRow();
+  auto res = _fetcher.fetchRow();
+  ExecutionState const state = res.first;
+  InputAqlItemRow const& row = res.second;
 
   if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(!row.get());
+    TRI_ASSERT(!row);
     TRI_ASSERT(!_infos.getQuery().hasEnteredContext());
     return {state, NoStats{}};
   }
 
-  if (!row.get()) {
+  if (!row) {
     TRI_ASSERT(state == ExecutionState::DONE);
     TRI_ASSERT(!_infos.getQuery().hasEnteredContext());
     return {state, NoStats{}};

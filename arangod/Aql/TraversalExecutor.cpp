@@ -61,7 +61,7 @@ TraversalExecutorInfos::~TraversalExecutorInfos() = default;
 
 Traverser& TraversalExecutorInfos::traverser() {
   TRI_ASSERT(_traverser != nullptr);
-  return *_traverser.get();
+  return *_traverser;
 }
 
 bool TraversalExecutorInfos::usesOutputRegister(OutputName type) const {
@@ -172,7 +172,7 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
   TraversalStats s;
 
   while (true) {
-    if (!_input.isInitialized()) {
+    if (!_input.get().isInitialized()) {
       if (_rowState == ExecutionState::DONE) {
         // we are done
         s.addFiltered(_traverser.getAndResetFilteredPaths());
@@ -180,16 +180,18 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
         s.addHttpRequests(_traverser.getAndResetHttpRequests());
         return {_rowState, s};
       }
-      std::tie(_rowState, _input) = _fetcher.fetchRow();
+      auto res = _fetcher.fetchRow();
+      _rowState = res.first;
+      _input = res.second.get();
       if (_rowState == ExecutionState::WAITING) {
-        TRI_ASSERT(!_input.isInitialized());
+        TRI_ASSERT(!_input.get().isInitialized());
         s.addFiltered(_traverser.getAndResetFilteredPaths());
         s.addScannedIndex(_traverser.getAndResetReadDocuments());
         s.addHttpRequests(_traverser.getAndResetHttpRequests());
         return {_rowState, s};
       }
 
-      if (!_input.isInitialized()) {
+      if (!_input.get().isInitialized()) {
         // We tried to fetch, but no upstream
         TRI_ASSERT(_rowState == ExecutionState::DONE);
         s.addFiltered(_traverser.getAndResetFilteredPaths());
@@ -200,13 +202,13 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
       if (!resetTraverser()) {
         // Could not start here, (invalid)
         // Go to next
-        _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+        _input = InvalidInputAqlItemRow;
         continue;
       }
     }
     if (!_traverser.hasMore() || !_traverser.next()) {
       // Nothing more to read, reset input to refetch
-      _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      _input = InvalidInputAqlItemRow;
     } else {
       // traverser now has next v, e, p values
       if (_infos.useVertexOutput()) {
@@ -252,7 +254,7 @@ bool TraversalExecutor::resetTraverser() {
   auto opts = _traverser.options();
   opts->clearVariableValues();
   for (auto const& pair : _infos.filterConditionVariables()) {
-    opts->setVariableValue(pair.first, _input.getValue(pair.second));
+    opts->setVariableValue(pair.first, _input.get().getValue(pair.second));
   }
   if (opts->usesPrune()) {
     auto* evaluator = opts->getPruneEvaluator();
@@ -275,7 +277,7 @@ bool TraversalExecutor::resetTraverser() {
       return true;
     }
   } else {
-    AqlValue const& in = _input.getValue(_infos.getInputRegister());
+    AqlValue const& in = _input.get().getValue(_infos.getInputRegister());
     if (in.isObject()) {
       try {
         _traverser.setStartVertex(_traverser.options()->trx()->extractIdString(in.slice()));

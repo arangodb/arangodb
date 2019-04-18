@@ -83,7 +83,7 @@ class arangodb::aql::ConstrainedLessThan {
   std::vector<arangodb::aql::SortRegister>& _sortRegisters;
 };  // ConstrainedLessThan
 
-arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
+arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow const& input) {
   using arangodb::aql::AqlItemBlock;
   using arangodb::aql::AqlValue;
   using arangodb::aql::RegisterId;
@@ -92,7 +92,7 @@ arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
 
   if (dRow >= _infos._limit) {
     // pop an entry first
-    std::pop_heap(_rows.begin(), _rows.end(), *_cmpHeap.get());
+    std::pop_heap(_rows.begin(), _rows.end(), *_cmpHeap);
     dRow = _rows.back();
     eraseRow(_heapBuffer, dRow);
   } else {
@@ -111,12 +111,12 @@ arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
   ++_rowsPushed;
 
   // now restore heap condition
-  std::push_heap(_rows.begin(), _rows.end(), *_cmpHeap.get());
+  std::push_heap(_rows.begin(), _rows.end(), *_cmpHeap);
 
   return TRI_ERROR_NO_ERROR;
 }
 
-bool ConstrainedSortExecutor::compareInput(uint32_t const& rowPos, InputAqlItemRow& row) const {
+bool ConstrainedSortExecutor::compareInput(uint32_t const& rowPos, InputAqlItemRow const& row) const {
   for (auto const& reg : _infos.sortRegisters()) {
     auto const& lhs = _heapBuffer->getValueReference(rowPos, reg.reg);
     auto const& rhs = row.getValue(reg.reg);
@@ -157,9 +157,10 @@ std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRow(OutputAql
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     // We need to pull rows from above, and insert them into the heap
-    InputAqlItemRow input(CreateInvalidInputRowHint{});
+    auto res = _fetcher.fetchRow();
+    _state = res.first;
+    InputAqlItemRow const& input = res.second.get();
 
-    std::tie(_state, input) = _fetcher.fetchRow();
     if (_state == ExecutionState::WAITING) {
       return {_state, NoStats{}};
     }

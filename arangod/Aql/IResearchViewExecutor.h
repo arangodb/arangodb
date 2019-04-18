@@ -156,7 +156,7 @@ class IResearchViewExecutor {
     static IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
 
    public:
-    explicit ReadContext(aql::RegisterId docOutReg, InputAqlItemRow& inputRow,
+    explicit ReadContext(aql::RegisterId docOutReg, InputAqlItemRow const& inputRow,
                          OutputAqlItemRow& outputRow)
         : docOutReg(docOutReg),
           inputRow(inputRow),
@@ -164,7 +164,7 @@ class IResearchViewExecutor {
           callback(copyDocumentCallback(*this)) {}
 
     aql::RegisterId const docOutReg;
-    InputAqlItemRow& inputRow;
+    InputAqlItemRow const& inputRow;
     OutputAqlItemRow& outputRow;
     IndexIterator::DocumentCallback const callback;
   };  // ReadContext
@@ -315,7 +315,7 @@ class IResearchViewExecutor {
   Infos const& _infos;
   Fetcher& _fetcher;
 
-  InputAqlItemRow _inputRow;
+  ConstInputRowRef _inputRow;
 
   ExecutionState _upstreamState;
 

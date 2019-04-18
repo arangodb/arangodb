@@ -82,7 +82,7 @@ class SingleRowFetcher {
    */
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
-  TEST_VIRTUAL std::pair<ExecutionState, ConstInputRowRef> fetchRow(
+  TEST_VIRTUAL std::pair<ExecutionState, InputRowRef> fetchRow(
       size_t atMost = ExecutionBlock::DefaultBatchSize());
 
   // TODO enable_if<passBlocksThrough>
@@ -183,9 +183,8 @@ class SingleRowFetcher {
 };
 
 template <bool passBlocksThrough>
-std::pair<ExecutionState, std::reference_wrapper<InputAqlItemRow const>>
 // NOLINTNEXTLINE google-default-arguments
-SingleRowFetcher<passBlocksThrough>::fetchRow(size_t atMost) {
+std::pair<ExecutionState, InputRowRef> SingleRowFetcher<passBlocksThrough>::fetchRow(size_t atMost) {
   // Fetch a new block iff necessary
   if (!indexIsValid()) {
     // This returns the AqlItemBlock to the ItemBlockManager before fetching a

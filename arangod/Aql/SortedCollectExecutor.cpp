@@ -44,7 +44,7 @@ SortedCollectExecutor::CollectGroup::CollectGroup(bool count, Infos& infos)
     : groupLength(0),
       count(count),
       infos(infos),
-      _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _lastInputRow(InvalidInputAqlItemRow),
       _shouldDeleteBuilderBuffer(true) {
   for (auto const& aggName : infos.getAggregateTypes()) {
     aggregators.emplace_back(Aggregator::fromTypeString(infos.getTransaction(), aggName));
@@ -77,7 +77,7 @@ void SortedCollectExecutor::CollectGroup::initialize(size_t capacity) {
   }
 }
 
-void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow& input) {
+void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
   _shouldDeleteBuilderBuffer = true;
   ConditionalDeleter<VPackBuffer<uint8_t>> deleter(_shouldDeleteBuilderBuffer);
   std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
@@ -154,7 +154,7 @@ SortedCollectExecutor::SortedCollectExecutor(Fetcher& fetcher, Infos& infos)
   _currentGroup.reset(emptyInput);
 };
 
-void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
+void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) {
   // remember the last valid row we had
   _lastInputRow = input;
 
@@ -201,7 +201,7 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
   }
 }
 
-bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow& input) {
+bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow const& input) {
   // if we do not have valid input, return false
   if (!input.isInitialized()) {
     return false;
@@ -283,15 +283,11 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  ExecutionState state;
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
-
   while (true) {
     if (_fetcherDone) {
       if (_currentGroup.isValid()) {
         _currentGroup.writeToOutput(output);
-        InputAqlItemRow input{CreateInvalidInputRowHint{}};
-        _currentGroup.reset(input);
+        _currentGroup.reset(InvalidInputAqlItemRow);
         TRI_ASSERT(!_currentGroup.isValid());
         return {ExecutionState::DONE, {}};
       }
@@ -305,7 +301,9 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    std::tie(state, input) = _fetcher.fetchRow();
+    auto res = _fetcher.fetchRow();
+    ExecutionState const state = res.first;
+    InputAqlItemRow const& input = res.second;
 
     if (state == ExecutionState::WAITING) {
       return {state, {}};
@@ -323,8 +321,7 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
         TRI_ASSERT(!output.produced());
         _currentGroup.writeToOutput(output);
         // Invalidate group
-        input = InputAqlItemRow{CreateInvalidInputRowHint{}};
-        _currentGroup.reset(input);
+        _currentGroup.reset(InvalidInputAqlItemRow);
         return {ExecutionState::DONE, {}};
       }
     } else {

@@ -65,7 +65,7 @@ class SingleRowFetcherHelper
   virtual ~SingleRowFetcherHelper();
 
   // NOLINTNEXTLINE google-default-arguments
-  std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::ConstInputRowRef> fetchRow(
+  std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::InputRowRef> fetchRow(
       size_t atMost = ::arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
   uint64_t nrCalled() { return _nrCalled; }
 

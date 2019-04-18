@@ -97,10 +97,10 @@ class ReturnExecutor {
    *         if something was written output.hasValue() == true
    */
   inline std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output) {
-    ExecutionState state;
     ReturnExecutor::Stats stats;
-    InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-    std::tie(state, inputRow) = _fetcher.fetchRow();
+    auto res = _fetcher.fetchRow();
+    ExecutionState const state = res.first;
+    InputAqlItemRow& inputRow = res.second;
 
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(!inputRow);
