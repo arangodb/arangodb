@@ -174,7 +174,7 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
                              arangodb::BackupFeature::Options const& options) {
   arangodb::Result result;
 
-  std::string const url = "/_admin/hotbackup/list";
+  std::string const url = "/_admin/backup/list";
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::POST, url, nullptr, 0));
   result = ::checkHttpResponse(client, response);
@@ -205,7 +205,7 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
   }
   TRI_ASSERT(resultObject.isObject());
 
-  VPackSlice const backups = resultObject.get("hotbackups");
+  VPackSlice const backups = resultObject.get("id");
   if (!backups.isArray()) {
     result.reset(TRI_ERROR_INTERNAL,
                  "expected 'result.hotbackups' to be an array");
@@ -232,7 +232,7 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
                                arangodb::BackupFeature::Options const& options) {
   arangodb::Result result;
 
-  std::string const url = "/_admin/hotbackup/create";
+  std::string const url = "/_admin/backup/create";
   VPackBuilder bodyBuilder;
   {
     VPackObjectBuilder guard(&bodyBuilder);
@@ -259,6 +259,7 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
     return result;
   }
   VPackSlice const resBody = parsedBody->slice();
+
   if (!resBody.isObject()) {
     result.reset(TRI_ERROR_INTERNAL, "expected response to be an object");
     return result;
@@ -272,7 +273,7 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
   }
   TRI_ASSERT(resultObject.isObject());
 
-  VPackSlice const identifier = resultObject.get("directory");
+  VPackSlice const identifier = resultObject.get("id");
   if (!identifier.isString()) {
     result.reset(TRI_ERROR_INTERNAL,
                  "expected 'result.directory' to be a string");
@@ -281,18 +282,16 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
   TRI_ASSERT(identifier.isString());
 
   VPackSlice const forced = resultObject.get("forced");
-  if (!forced.isBoolean()) {
+  if (forced.isTrue()) {
+    LOG_TOPIC(WARN, arangodb::Logger::BACKUP)
+        << "Failed to get write lock before proceeding with backup. Backup may "
+           "contain some inconsistencies.";
+  } else if (!forced.isBoolean() && !forced.isNone()) {
     result.reset(TRI_ERROR_INTERNAL,
                  "expected 'result.forced'' to be an boolean");
     return result;
   }
-  TRI_ASSERT(forced.isBoolean());
 
-  if (forced.getBoolean()) {
-    LOG_TOPIC(WARN, arangodb::Logger::BACKUP)
-        << "Failed to get write lock before proceeding with backup. Backup may "
-           "contain some inconsistencies.";
-  }
   LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
       << "Backup succeeded. Generated identifier '" << identifier.copyString() << "'";
 
@@ -312,11 +311,11 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
     }
   }
 
-  std::string const url = "/_admin/hotbackup/restore";
+  std::string const url = "/_admin/backup/restore";
   VPackBuilder bodyBuilder;
   {
     VPackObjectBuilder guard(&bodyBuilder);
-    bodyBuilder.add("directory", VPackValue(options.identifier));
+    bodyBuilder.add("id", VPackValue(options.identifier));
     bodyBuilder.add("saveCurrent", VPackValue(options.saveCurrent));
   }
   std::string const body = bodyBuilder.slice().toJson();
@@ -377,15 +376,15 @@ arangodb::Result executeDelete(arangodb::httpclient::SimpleHttpClient& client,
                                arangodb::BackupFeature::Options const& options) {
   arangodb::Result result;
 
-  std::string const url = "/_admin/hotbackup/create";
+  std::string const url = "/_admin/backup/delete";
   VPackBuilder bodyBuilder;
   {
     VPackObjectBuilder guard(&bodyBuilder);
-    bodyBuilder.add("directory", VPackValue(options.identifier));
+    bodyBuilder.add("id", VPackValue(options.identifier));
   }
   std::string const body = bodyBuilder.slice().toJson();
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(arangodb::rest::RequestType::DELETE_REQ, url, body.c_str(),
+      client.request(arangodb::rest::RequestType::POST, url, body.c_str(),
                      body.size()));
   result = ::checkHttpResponse(client, response);
   if (result.fail()) {
@@ -569,7 +568,8 @@ void BackupFeature::start() {
     LOG_TOPIC(ERR, Logger::BACKUP)
         << "Error during backup operation '" << _options.operation
         << "': " << result.errorMessage();
-    FATAL_ERROR_EXIT();
+    //FATAL_ERROR_EXIT();
+    _exitCode = EXIT_FAILURE;
   }
 
   _exitCode = EXIT_SUCCESS;
