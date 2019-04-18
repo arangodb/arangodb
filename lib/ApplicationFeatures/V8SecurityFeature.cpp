@@ -398,5 +398,5 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
   }
 
   return checkBlackAndWhitelist(path, !_filesWhitelist.empty(), _filesWhitelistRegex,
-                                         false, _filesWhitelistRegex /*passed to match the signature but not used*/);
+                               false, _filesWhitelistRegex /*passed to match the signature but not used*/);
 }

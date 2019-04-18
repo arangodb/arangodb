@@ -9,12 +9,12 @@ if (getOptions === true) {
   let users = require("@arangodb/users");
 
   return {
-    'temp.path': fs.getTempPath(),     // Adjust the temp-path to match our current temp path
+    'temp.path': fs.getTempPath(), // Adjust the temp-path to match our current temp path
     'server.harden': 'true',
     'server.authentication': 'true',
     'javascript.harden' : 'true',
     'javascript.files-whitelist': [
-      '^' + pu.TOP_DIR,     // FIXME -- why do we still need this
+      '^' + fs.join(pu.TOP_DIR, 'tests', 'js'), //contains services to install
     ],
     'javascript.endpoints-whitelist' : [
       'ssl://arangodb.com:443'
