@@ -1,6 +1,9 @@
 devel
 -----
 
+* db._query now handles additional arguments correctly when passing an AQL
+  query object instead of a query string and separate bindVars
+
 * added req.auth property to Foxx
 
 * added collection.documentId method to derive document id from key
