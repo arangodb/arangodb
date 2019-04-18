@@ -3450,7 +3450,8 @@ arangodb::Result hotBackupDBServers(
  * @brief delete all backups with backupId from the db servers
  */
 arangodb::Result removeLocalBackups(
-  std::string const& backupId, std::vector<ServerID> const& dbServers) {
+  std::string const& backupId, std::vector<ServerID> const& dbServers,
+  std::vector<std::string>& deleted) {
 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -3509,6 +3510,8 @@ arangodb::Result removeLocalBackups(
     }
 
   }
+
+  deleted.emplace_back(backupId);
 
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
     << "Have located backup. Replaying plan snapshot. Requesting restore " << backupId;
@@ -3643,7 +3646,8 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         std::string ("failed to hot backup on all db servers: ") + result.errorMessage());
       LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
-      removeLocalBackups(backupId, dbServers);
+      std::vector<std::string> dummy;
+      removeLocalBackups(backupId, dbServers, dummy);
       return result;
     }
 
@@ -3719,6 +3723,42 @@ arangodb::Result listHotBakupsOnCoordinator(
 
   return arangodb::Result();
 
+}
+
+
+arangodb::Result deleteHotBakupsOnCoordinator(VPackSlice const payload, VPackBuilder& report) {
+
+  std::vector<std::string> listIds, deleted;
+  VPackBuilder dummy;
+  arangodb::Result result;
+  
+  ClusterInfo* ci = ClusterInfo::instance();
+  std::vector<ServerID> dbServers = ci->getCurrentDBServers();
+
+  result = hotBackupList(dbServers, payload, listIds, dummy);
+  if (!result.ok()) {
+    return result;
+  }
+
+  result = removeLocalBackups(listIds.front(), dbServers, deleted);
+  if (result.ok()) {
+    return result;
+  }
+
+  {
+    VPackObjectBuilder o(&report);
+    report.add(VPackValue("id"));
+    { 
+      VPackArrayBuilder a(&report);
+      for (auto const& i : deleted) {
+        report.add(VPackValue(i));
+      }
+    }
+  }
+
+  result.reset();
+  return result;
+  
 }
 
 
