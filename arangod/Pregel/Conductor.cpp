@@ -680,11 +680,11 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   double storeTime = TRI_microtime() - _finalizationStartTimeSecs;
   
   LOG_TOPIC(INFO, Logger::PREGEL) << "Done. We did " << _globalSuperstep << " rounds";
-  LOG_TOPIC(DEBUG, Logger::PREGEL)
+  LOG_TOPIC(INFO, Logger::PREGEL)
   << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
-  LOG_TOPIC(DEBUG, Logger::PREGEL)
+  LOG_TOPIC(INFO, Logger::PREGEL)
   << "Computation Time: " << compTime << "s";
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Storage Time: " << storeTime << "s";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Storage Time: " << storeTime << "s";
   LOG_TOPIC(INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
   LOG_TOPIC(DEBUG, Logger::PREGEL) << "Stats: " << debugOut.toString();
 }
