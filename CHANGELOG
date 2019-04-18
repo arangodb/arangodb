@@ -25,6 +25,9 @@ devel
   allowed controlling in which particular V8 context number a JavaScript-based
   action was executed. This header was only used internally for testing.
 
+* db._query now handles additional arguments correctly when passing an AQL
+  query object instead of a query string and separate bindVars
+
 * added req.auth property to Foxx
 
 * added collection.documentId method to derive document id from key

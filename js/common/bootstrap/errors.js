@@ -239,7 +239,6 @@
     "ERROR_USER_INVALID_PASSWORD"  : { "code" : 1701, "message" : "invalid password" },
     "ERROR_USER_DUPLICATE"         : { "code" : 1702, "message" : "duplicate user" },
     "ERROR_USER_NOT_FOUND"         : { "code" : 1703, "message" : "user not found" },
-    "ERROR_USER_CHANGE_PASSWORD"   : { "code" : 1704, "message" : "user must change his password" },
     "ERROR_USER_EXTERNAL"          : { "code" : 1705, "message" : "user is external" },
     "ERROR_SERVICE_INVALID_NAME"   : { "code" : 1750, "message" : "invalid service name" },
     "ERROR_SERVICE_INVALID_MOUNT"  : { "code" : 1751, "message" : "invalid mount" },

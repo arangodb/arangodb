@@ -1276,11 +1276,6 @@ constexpr int TRI_ERROR_USER_DUPLICATE                                          
 /// Will be raised when a user name is updated that does not exist.
 constexpr int TRI_ERROR_USER_NOT_FOUND                                          = 1703;
 
-/// 1704: ERROR_USER_CHANGE_PASSWORD
-/// "user must change his password"
-/// Will be raised when the user must change his password.
-constexpr int TRI_ERROR_USER_CHANGE_PASSWORD                                    = 1704;
-
 /// 1705: ERROR_USER_EXTERNAL
 /// "user is external"
 /// Will be raised when the user is authenicated by an external server.
