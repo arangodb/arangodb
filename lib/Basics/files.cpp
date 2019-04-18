@@ -303,7 +303,7 @@ bool TRI_CreateSymbolicLink(std::string const& target, std::string const& linkpa
 /// @brief resolves a symbolic link
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef __WIN32
+#ifdef _WIN32
 std::string  TRI_ResolveSymbolicLink(std::string path, bool& hadError, bool recursive) {
   return path;
 }
@@ -314,9 +314,7 @@ std::string  TRI_ResolveSymbolicLink(std::string path, bool recursive) {
 #else
 namespace {
 static bool IsSymbolicLink(char const* path, struct stat* stbuf) {
-  int res;
-
-  res = lstat(path, stbuf);
+  int res = lstat(path, stbuf);
 
   return (res == 0) && ((stbuf->st_mode & S_IFMT) == S_IFLNK);
 }
