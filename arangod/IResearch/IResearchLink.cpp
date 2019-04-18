@@ -1705,10 +1705,11 @@ arangodb::Result IResearchLink::walFlushMarker( // process marker
 
     break;
    case RecoveryState::DURING_CHECKPOINT:
-    _dataStore._recovery = // current recovery state
-      value.copyString() == _dataStore._recovery_reader.meta().filename
-      ? RecoveryState::AFTER_CHECKPOINT // do insert without matching remove
-      : RecoveryState::BEFORE_CHECKPOINT; // ignore inserts (scenario for initial state before any checkpoints were seen)
+    if (value.copyString() == _dataStore._recovery_reader.meta().filename) {
+      _dataStore._recovery = RecoveryState::AFTER_CHECKPOINT; // do insert without matching remove
+    } else if (value.copyString() != _dataStore._recovery_range_start) { // fake 'DURING_CHECKPOINT' set in initDataStore(...) as initial value to cover worst case and not in that case (seen another checkpoint)
+      _dataStore._recovery = RecoveryState::BEFORE_CHECKPOINT; // ignore inserts (scenario for initial state before any checkpoints were seen)
+    } // else fake 'DURING_CHECKPOINT' set in initDataStore(...) as initial value to cover worst case and actually in that case (leave as is)
     break;
    case RecoveryState::AFTER_CHECKPOINT:
     break; // NOOP
