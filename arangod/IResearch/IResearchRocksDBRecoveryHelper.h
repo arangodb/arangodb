@@ -82,11 +82,10 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
  private:
   void handleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key);
 
- private:
   std::set<IndexId> _recoveredIndexes;  // set of already recovered indexes
-  DatabaseFeature* _dbFeature;
-  RocksDBEngine* _engine;
-  uint32_t _documentCF;
+  DatabaseFeature* _dbFeature{};
+  RocksDBEngine* _engine{};
+  uint32_t _documentCF{};
 };
 
 }  // end namespace iresearch
