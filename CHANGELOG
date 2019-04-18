@@ -1,6 +1,8 @@
 devel
 -----
 
+* JS `query` helper function can now be used with options
+
 * db._query now handles additional arguments correctly when passing an AQL
   query object instead of a query string and separate bindVars
 

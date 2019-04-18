@@ -40,6 +40,19 @@ for (const item of cursor) {
 }
 ```
 
+It is also possible to pass options to the query helper:
+
+```js
+const cursor = query({ fullCount: true })`
+  FOR i IN 1..1000
+  LIMIT 0, 100
+  RETURN i
+`;
+const { fullCount } = cursor.getExtra().stats;
+console.log(`${fullCount} total`);
+console.log(cursor.toArray());
+```
+
 Using collections
 -----------------
 

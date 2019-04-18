@@ -601,5 +601,12 @@ exports.checkAvailableVersions = function(version) {
 };
 
 exports.query = function query (strings, ...args) {
+  if (!Array.isArray(strings)) {
+    const options = strings;
+    const extra = args;
+    return function queryWithOptions(strings, ...args) {
+      return internal.db._query(exports.aql(strings, ...args), options, ...extra);
+    };
+  }
   return internal.db._query(exports.aql(strings, ...args));
 };
