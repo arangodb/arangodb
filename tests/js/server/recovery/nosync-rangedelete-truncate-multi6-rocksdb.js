@@ -62,6 +62,7 @@ function runSetup () {
   
   c.truncate();
 
+  internal.waitForEstimatorSync();
   // turn off syncing of counters etc.  
   internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
 

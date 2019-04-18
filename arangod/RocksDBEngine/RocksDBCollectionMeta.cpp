@@ -200,7 +200,6 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   bool didWork = false;
-  // maxCommitSeq is == UINT64_MAX without any blockers
   const rocksdb::SequenceNumber maxCommitSeq = committableSeq(appliedSeq);
   const rocksdb::SequenceNumber commitSeq = applyAdjustments(maxCommitSeq, didWork);
   TRI_ASSERT(commitSeq <= appliedSeq);
@@ -260,6 +259,8 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
     RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
     if (est == nullptr) {  // does not have an estimator
+      LOG_TOPIC("ab329", TRACE, Logger::ENGINES)
+          << "index '" << idx->objectId() << "' does not have an estimator";
       continue;
     }
 
@@ -282,6 +283,9 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
         LOG_TOPIC("ff233", WARN, Logger::ENGINES) << "writing index estimates failed";
         return res.reset(rocksutils::convertStatus(s));
       }
+    } else {
+      LOG_TOPIC("ab328", TRACE, Logger::ENGINES)
+          << "index '" << idx->objectId() << "' estimator does not need to be persisted";
     }
   }
 

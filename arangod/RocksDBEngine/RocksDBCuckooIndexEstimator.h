@@ -532,8 +532,8 @@ class RocksDBCuckooIndexEstimator {
           // check for a truncate marker
           auto it = _truncateBuffer.begin();  // sorted ASC
           while (it != _truncateBuffer.end() && *it <= commitSeq) {
+            TRI_ASSERT(*it >= ignoreSeq && *it != 0);
             ignoreSeq = *it;
-            TRI_ASSERT(ignoreSeq != 0);
             foundTruncate = true;
             appliedSeq = std::max(appliedSeq, ignoreSeq);
             it = _truncateBuffer.erase(it);
@@ -567,6 +567,7 @@ class RocksDBCuckooIndexEstimator {
         }
 
         if (foundTruncate) {
+          LOG_DEVEL << "applying truncate";
           clear();  // clear estimates
         }
 
