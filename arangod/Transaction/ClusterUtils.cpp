@@ -78,7 +78,7 @@ void abortTransactionsWithFailedServers() {
   bool didWork = false;
   if (ServerState::instance()->isCoordinator()) {
     
-    // abort all transaction using a lead server
+    // abort all transactions using a lead server
     didWork = mgr->abortManagedTrx([&](TransactionState const& state) -> bool {
       for (ServerID const& sid : failed) {
         if (state.knowsServer(sid)) {
