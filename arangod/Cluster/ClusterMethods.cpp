@@ -2834,9 +2834,14 @@ arangodb::Result hotBackupList(
       return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,  "result is missing backup ids");
     }
 
-    if (!payload.isNone() && !plan.slice().isNone()) {
-      
-      return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,  "result is missing backup ids");
+    if (!payload.isNone() && plan.slice().isNone()) {
+      if (!resSlice.hasKey("agency-dump") || !resSlice.get("agency-dump").isArray() ||
+          resSlice.get("agency-dump").length() != 1) {
+        return arangodb::Result(
+          TRI_ERROR_HTTP_NOT_FOUND,
+          std::string("result ") + resSlice.toJson() +  " is missing agency dump");
+      }
+      plan.add(resSlice.get("agency-dump")[0]);
     }
 
     for (auto const& id : VPackArrayIterator(resSlice.get("id"))) {
@@ -2866,7 +2871,7 @@ arangodb::Result matchBackupServers(VPackSlice const agencyDump,
                                     std::vector<ServerID> const& dbServers,
                                     std::map<ServerID,ServerID>& match) {
 
-  std::vector<std::string> ap {"DBServers"};
+  std::vector<std::string> ap {"arango", "Plan", "DBServers"};
 
   if (!agencyDump.hasKey(ap)) {
     return Result(
@@ -3110,81 +3115,6 @@ arangodb::Result applyDBServerMatchesToPlan(
   return arangodb::Result();
 }
 
-
-arangodb::Result findLocalBackup(
-  std::string const& backupId, std::vector<ServerID> const& dbServers,
-  VPackBuilder& plan) {
-
-  // Make sure all db servers have the backup with backup Id
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr happens only during controlled shutdown
-    return arangodb::Result(TRI_ERROR_SHUTTING_DOWN, "Shutting down");
-  }
-
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder o(&builder);
-    builder.add("id", VPackValue(backupId));
-  }
-
-  std::string const url = apiStr + "list";
-  std::vector<ClusterCommRequest> requests;
-  auto body = std::make_shared<std::string>(builder.toJson());
-  for (auto const& dbServer : dbServers) {
-    requests.emplace_back("server:" + dbServer, RequestType::POST, url, body);
-  }
-
-  // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(
-    requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::HOTBACKUP, false);
-
-  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Inquiring about backup " << backupId;
-
-  // Now listen to the results:
-  for (auto const& req : requests) {
-
-    auto res = req.result;
-    int commError = handleGeneralCommErrors(&res);
-    if (commError != TRI_ERROR_NO_ERROR) {
-      // oh-oh cluster is in a bad state
-      return arangodb::Result(
-        commError, std::string("Communication error while search for backup ") +
-        backupId + " on db server " + req.destination);
-    }
-    TRI_ASSERT(res.answer != nullptr);
-    auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
-    VPackSlice resSlice = resBody->slice();
-    if (!resSlice.isObject()) {
-      // Response has invalid format
-      return arangodb::Result(
-        TRI_ERROR_HTTP_CORRUPTED_JSON,
-        std::string("result to find backup ") + backupId
-        + " failed on db server " + req.destination + "not an object");
-    }
-
-    if (!resSlice.hasKey("result") || !resSlice.get("result").isObject()) {
-      LOG_TOPIC(ERR, Logger::HOTBACKUP)
-        << "DB server " << req.destination << " responded with invalid json, "
-        << resSlice.toJson() << " ,when inquiring about backup " << backupId;
-      return arangodb::Result(
-        TRI_ERROR_FILE_NOT_FOUND,
-        std::string("no backup with id ") + backupId + " on server " + req.destination);
-    }
-
-    if (resSlice.hasKey("agency")) {
-      plan.add(resSlice.get("agency"));
-    }
-
-  }
-
-  LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
-    << "Have located backup. Replaying plan snapshot. Requesting restore " << backupId;
-
-  return arangodb::Result();
-
-}
 
 arangodb::Result hotRestoreCoordinator(VPackSlice const payload) {
 

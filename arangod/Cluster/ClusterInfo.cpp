@@ -3635,10 +3635,12 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
   // Apply only Collections and DBServers
   AgencyWriteTransaction planTransaction(
     std::vector<AgencyOperation>
-    {AgencyOperation("arango/Plan/Collections", AgencyValueOperationType::SET,
-                     plan.get("Collections")),
-     AgencyOperation("arango/Plan/Databases", AgencyValueOperationType::SET,
-                     plan.get("Databases"))});
+    {AgencyOperation(
+        "arango/Plan/Collections", AgencyValueOperationType::SET,
+        plan.get(std::vector<std::string>{"arango", "Plan", "Collections"})),
+     AgencyOperation(
+       "arango/Plan/Databases", AgencyValueOperationType::SET,
+       plan.get(std::vector<std::string>{"arango", "Plan", "Databases"}))});
 
   AgencyCommResult r = _agency.sendTransactionWithFailover(planTransaction);
   if (!r.successful()) {
