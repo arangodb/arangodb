@@ -251,8 +251,10 @@ void V8SecurityFeature::prepare() {
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
 
-  v8security->addToInternalReadWhitelist(TRI_GetTempPath(), FSAccessType::READ);
-  v8security->addToInternalReadWhitelist(TRI_GetTempPath(), FSAccessType::WRITE);
+  v8security->addToInternalWhitelist(TRI_GetTempPath(), FSAccessType::READ);
+  v8security->addToInternalWhitelist(TRI_GetTempPath(), FSAccessType::WRITE);
+  TRI_ASSERT(!_writeWhitelist.empty());
+  TRI_ASSERT(!_readWhitelist.empty());
 }
 
 void V8SecurityFeature::start() {
@@ -276,24 +278,25 @@ void V8SecurityFeature::start() {
       std::regex(_filesWhitelist, std::regex::nosubs | std::regex::ECMAScript);
 }
 
-void V8SecurityFeature::addToInternalReadWhitelist(std::string const& item, FSAccessType type) {
+void V8SecurityFeature::addToInternalWhitelist(std::string const& item, FSAccessType type) {
   // This function is not efficient and we would not need the _readWhitelist
   // to be persistent. But the persistence will help in debugging and
   // there are only a few items expected.
-  auto& set = _readWhitelistSet;
-  auto& expression = _readWhitelist;
-  auto& re = _readWhitelistRegex;
+  auto* set = &_readWhitelistSet;
+  auto* expression = &_readWhitelist;
+  auto* re = &_readWhitelistRegex;
+
   if(type == FSAccessType::WRITE) {
-    set = _writeWhitelistSet;
-    expression = _writeWhitelist;
-    re = _writeWhitelistRegex;
+    set = &_writeWhitelistSet;
+    expression = &_writeWhitelist;
+    re = &_writeWhitelistRegex;
   }
 
   auto path = "^" + canonicalpath(item) + TRI_DIR_SEPARATOR_STR;
-  set.emplace(std::move(path));
-  expression.clear();
-  convertToSingleExpression(set, expression);
-  re = std::regex(expression, std::regex::nosubs | std::regex::ECMAScript);
+  set->emplace(std::move(path));
+  expression->clear();
+  convertToSingleExpression(*set, *expression);
+  *re = std::regex(*expression, std::regex::nosubs | std::regex::ECMAScript);
 }
 
 bool V8SecurityFeature::isAllowedToControlProcesses(v8::Isolate* isolate) const {
@@ -396,5 +399,4 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
 
   return checkBlackAndWhitelist(path, !_filesWhitelist.empty(), _filesWhitelistRegex,
                                          false, _filesWhitelistRegex /*passed to match the signature but not used*/);
-
 }

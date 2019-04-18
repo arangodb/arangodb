@@ -80,7 +80,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, FSAccessType) const;
   bool isInternalContext(v8::Isolate* isolate) const;
 
-  void addToInternalReadWhitelist(std::string const& item, FSAccessType);
+  void addToInternalWhitelist(std::string const& item, FSAccessType);
 
  private:
   bool _hardenInternalModule;

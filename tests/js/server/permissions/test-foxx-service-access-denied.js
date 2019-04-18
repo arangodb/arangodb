@@ -14,8 +14,7 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'javascript.harden' : 'true',
     'javascript.files-whitelist': [
-      '^' + pu.TOP_DIR + '.*',
-      '^' + fs.getTempPath(),
+      '^' + pu.TOP_DIR,     // FIXME -- why do we still need this
     ],
     'javascript.endpoints-whitelist' : [
       'ssl://arangodb.com:443'
@@ -43,6 +42,7 @@ function testSuite() {
       try {
         FoxxManager.uninstall(mount, {force: true});
         FoxxManager.install(foxxApp, mount);
+        print(fs.getTempPath())
       } catch (e) { }
     },
 
