@@ -142,7 +142,7 @@ std::vector<std::pair<Variable const*, RegisterId>> const& TraversalExecutorInfo
 TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
-      _input{CreateInvalidInputRowHint{}},
+      _input(InvalidInputAqlItemRow),
       _rowState(ExecutionState::HASMORE),
       _traverser(infos.traverser()) {}
 

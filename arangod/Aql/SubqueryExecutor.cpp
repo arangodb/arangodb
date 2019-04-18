@@ -56,7 +56,7 @@ SubqueryExecutor::SubqueryExecutor(Fetcher& fetcher, SubqueryExecutorInfos& info
       _shutdownResult(TRI_ERROR_INTERNAL),
       _subquery(infos.getSubquery()),
       _subqueryResults(nullptr),
-      _input(CreateInvalidInputRowHint{}) {}
+      _input(InvalidInputAqlItemRow) {}
 
 SubqueryExecutor::~SubqueryExecutor() = default;
 
@@ -68,7 +68,7 @@ SubqueryExecutor::~SubqueryExecutor() = default;
  */
 
 std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRow(OutputAqlItemRow& output) {
-  if (_state == ExecutionState::DONE && !_input.isInitialized()) {
+  if (_state == ExecutionState::DONE && !_input.get().isInitialized()) {
     // We have seen DONE upstream, and we have discarded our local reference
     // to the last input, we will not be able to produce results anymore.
     return {_state, NoStats{}};
@@ -78,7 +78,7 @@ std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRow(OutputAqlItemRow
       // Continue in subquery
 
       // Const case
-      if (_infos.isConst() && !_input.isFirstRowInBlock()) {
+      if (_infos.isConst() && !_input.get().isFirstRowInBlock()) {
         // Simply write
         writeOutput(output);
         return {_state, NoStats{}};
