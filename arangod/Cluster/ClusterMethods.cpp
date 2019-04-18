@@ -3078,9 +3078,9 @@ arangodb::Result restoreOnDBServers(
         std::string("failed to restore ") + backupId + " on server " + req.destination);
     }
 
+    previous = result.get("previous").copyString();
     LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
-      << "received failsafe name " << result.get("previous").copyString()
-      << " from db server " << req.destination;
+      << "received failsafe name " << previous << " from db server " << req.destination;
   }
 
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Restored " << backupId << " successfully";
