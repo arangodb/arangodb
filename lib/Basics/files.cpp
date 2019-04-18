@@ -276,28 +276,20 @@ bool TRI_IsSymbolicLink(char const* path) {
 /// @brief creates a symbolic link
 ////////////////////////////////////////////////////////////////////////////////
 
+bool TRI_CreateSymbolicLink(std::string const& target, std::string const& linkpath, 
+                            std::string& error) {
 #ifdef _WIN32
-
-bool TRI_CreateSymbolicLink(char const* target, const char *linkpath, std::string &error) {
   // TODO : check if a file is a symbolic link - without opening the file
   return false;
-}
-
 #else
-
-bool TRI_CreateSymbolicLink(std::string const& target, std::string const& linkpath,
-                            std::string &error) {
-  int res;
-
-  res = symlink(target.c_str(), linkpath.c_str());
+  int res = symlink(target.c_str(), linkpath.c_str());
 
   if (res < 0) {
     error = "failed to create a symlink " + target + " -> " + linkpath + " - " + strerror(errno);
   }
   return res == 0;
-}
-
 #endif
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resolves a symbolic link
@@ -339,7 +331,7 @@ std::string TRI_ResolveSymbolicLink(std::string path, bool& hadError, bool recur
       hadError = true;
       break;
     }
-    if(!recursive){
+    if (!recursive) {
       break;
     }
   }
