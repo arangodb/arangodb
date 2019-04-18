@@ -30,12 +30,6 @@ Authentication
 Please note, that the user given as fourth part is the user that requested
 the login. In general it will be unavailable.
 
-### Password change required
-
-```
-2016-10-03 16:18:53 | server1 | audit-authentication | user1 | database1 | 127.0.0.1:62257 | http basic | password change required | /_api/version
-```
-
 ### JWT login succeeded
 
 ```
@@ -60,7 +54,7 @@ Authorization
 ### User not authorized to access database
 
 ```
-2016-10-03 16:20:52 | server1 | audit-authentication | user1 | database2 | 127.0.0.1:62262 | http basic | not authorized | /_api/version
+2016-10-03 16:20:52 | server1 | audit-authorization | user1 | database2 | 127.0.0.1:62262 | http basic | not authorized | /_api/version
 ```
 
 Databases

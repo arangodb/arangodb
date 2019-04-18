@@ -42,7 +42,6 @@ void CredentialsMissing(GeneralRequest const&);
 void LoggedIn(GeneralRequest const&, std::string const& username);
 void CredentialsBad(GeneralRequest const&, std::string const& username);
 void CredentialsBad(GeneralRequest const&, rest::AuthenticationMethod);
-void PasswordChangeRequired(GeneralRequest const&);
 void Authenticated(GeneralRequest const&, rest::AuthenticationMethod);
 void NotAuthorized(GeneralRequest const&);
 void CreateCollection(std::string const& db, std::string const& name, int result);
