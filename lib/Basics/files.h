@@ -65,7 +65,6 @@ bool TRI_IsSymbolicLink(char const* path);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resolves a symbolic link
 ////////////////////////////////////////////////////////////////////////////////
-
 std::string TRI_ResolveSymbolicLink(std::string path, bool& hadError, bool recursive = true);
 std::string TRI_ResolveSymbolicLink(std::string path, bool recursive = true);
 

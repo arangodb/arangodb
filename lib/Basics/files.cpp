@@ -303,16 +303,14 @@ bool TRI_CreateSymbolicLink(std::string const& target, std::string const& linkpa
 /// @brief resolves a symbolic link
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-
-std::string TRI_ResolveSymbolicLink(char const* path, bool recursive) {
-  if (path) {
-    return std::string(path);
-  } else {
-    return "";
-  }
+#ifdef __WIN32
+std::string  TRI_ResolveSymbolicLink(std::string path, bool& hadError, bool recursive) {
+  return path;
 }
 
+std::string  TRI_ResolveSymbolicLink(std::string path, bool recursive) {
+  return path;
+}
 #else
 namespace {
 static bool IsSymbolicLink(char const* path, struct stat* stbuf) {
@@ -1435,7 +1433,7 @@ std::string TRI_GetAbsolutePath(std::string const& fileName, std::string const& 
   std::string result;
 
   if (currentWorkingDirectory.back() == '\\' ||
-      currentWorkingDirectory.back() == '/' || 
+      currentWorkingDirectory.back() == '/' ||
       fileName.front() == '\\' ||
       fileName.front() == '/') {
     // we do not require a backslash
@@ -1467,7 +1465,7 @@ std::string TRI_GetAbsolutePath(std::string const& fileName, std::string const& 
   if (isAbsolute) {
     return fileName;
   }
-  
+
   std::string result;
 
   if (!currentWorkingDirectory.empty()) {
@@ -1683,7 +1681,7 @@ static bool CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string
   }
 
   TRI_Free(buf);
-#endif 
+#endif
   return rc;
 }
 
