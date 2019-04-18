@@ -233,6 +233,18 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<EnumerateCollectionExecutor
   return this->executor().skipRows(atMost);
 }
 
+template <>
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<IResearchViewExecutor<true>>::skipSome(size_t atMost) {
+  LOG_DEVEL << " SKIP ENUM COLL Special case";
+  return this->executor().skipRows(atMost);
+}
+
+template <>
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<IResearchViewExecutor<false>>::skipSome(size_t atMost) {
+  LOG_DEVEL << " SKIP ENUM COLL Special case";
+  return this->executor().skipRows(atMost);
+}
+
 /*
 template <class EnumerateCollectionExecutor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<EnumerateCollectionExecutor>::enumerateCollectionSkipSome(size_t atMost) {

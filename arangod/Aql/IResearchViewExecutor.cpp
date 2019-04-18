@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchViewExecutor.h"
+#include <arangod/VocBase/ManagedDocumentResult.h>
 
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
@@ -198,6 +199,39 @@ IResearchViewExecutor<ordered>::produceRow(OutputAqlItemRow& output) {
 }
 
 template <bool ordered>
+std::pair<ExecutionState, size_t>
+IResearchViewExecutor<ordered>::skipRows(size_t toSkip) {
+  TRI_ASSERT(_indexReadBuffer.empty());
+  size_t skipped = 0;
+
+  if (!_inputRow.isInitialized()) {
+    if (_upstreamState == ExecutionState::DONE) {
+      // There will be no more rows, stop fetching.
+      return {ExecutionState::DONE, 0};
+    }
+
+    std::tie(_upstreamState, _inputRow) = _fetcher.fetchRow();
+
+    if (_upstreamState == ExecutionState::WAITING) {
+      return {_upstreamState, 0};
+    }
+
+    if (!_inputRow.isInitialized()) {
+      return {ExecutionState::DONE, 0};
+    }
+
+    // reset must be called exactly after we've got a new and valid input row.
+    reset();
+
+    skipped = skip(toSkip);
+    return {ExecutionState::HASMORE, skipped};
+  }
+
+  return {ExecutionState::HASMORE, skipped};
+}
+
+
+template <bool ordered>
 const IResearchViewExecutorInfos& IResearchViewExecutor<ordered>::infos() const noexcept {
   return _infos;
 }
@@ -256,6 +290,26 @@ bool readPK(irs::doc_iterator& it, irs::columnstore_reader::values_reader_f cons
 
   return false;
 }
+
+/*
+template <bool ordered>
+bool IResearchViewExecutor<ordered>::readRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
+  LocalDocumentId const& documentId = _indexReadBuffer.getId(bufferEntry);
+  TRI_ASSERT(documentId.isSet());
+
+  std::shared_ptr<arangodb::LogicalCollection> const& collection =
+      _indexReadBuffer.getCollection();
+  TRI_ASSERT(collection != nullptr);
+
+  ManagedDocumentResult mdr; // TODO: we do not need any stored value. Optimize?
+  // read document from underlying storage engine, if we got an id
+  if (collection->readDocument(infos().getQuery().trx(), documentId, mdr)) {
+    // in the ordered case we have to write scores as well as a document
+    return true;
+  }
+
+  return false;
+}*/
 
 template <bool ordered>
 bool IResearchViewExecutor<ordered>::writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
@@ -416,6 +470,35 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
     }
   }
 }
+
+template <bool ordered>
+size_t IResearchViewExecutor<ordered>::skip(size_t limit) {
+  TRI_ASSERT(_indexReadBuffer.empty());
+  TRI_ASSERT(_filter);
+
+  size_t skipped{};
+
+  for (size_t count = _reader->size(); _readerOffset < count;) {
+    if (!_itr && !resetIterator()) {
+      continue;
+    }
+
+    while (limit && _itr->next()) {
+      ++skipped;
+      --limit;
+    }
+
+    if (!limit) {
+      break;  // do not change iterator if already reached limit
+    }
+
+    ++_readerOffset;
+    _itr.reset();
+  }
+
+  return skipped;
+}
+
 
 template <bool ordered>
 bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
