@@ -62,8 +62,8 @@ class SharedAqlItemBlockPtr {
 
   inline void swap(SharedAqlItemBlockPtr& other) noexcept;
 
-  inline bool operator==(std::nullptr_t) noexcept;
-  inline bool operator!=(std::nullptr_t) noexcept;
+  inline bool operator==(std::nullptr_t) const noexcept;
+  inline bool operator!=(std::nullptr_t) const noexcept;
 
   inline bool operator==(SharedAqlItemBlockPtr const&) const noexcept;
   inline bool operator!=(SharedAqlItemBlockPtr const&) const noexcept;
@@ -71,9 +71,11 @@ class SharedAqlItemBlockPtr {
  private:
   inline void incrRefCount() const noexcept;
   // decrRefCount returns ("frees") _aqlItemBlock if the ref count reaches 0
-  void decrRefCount() noexcept;
+  inline void decrRefCount() noexcept;
 
   AqlItemBlockManager& itemBlockManager() const noexcept;
+
+  void returnBlock() noexcept;
 
  private:
   AqlItemBlock* _aqlItemBlock;
@@ -162,11 +164,11 @@ void SharedAqlItemBlockPtr::incrRefCount() const noexcept {
   }
 }
 
-bool SharedAqlItemBlockPtr::operator==(std::nullptr_t) noexcept {
+bool SharedAqlItemBlockPtr::operator==(std::nullptr_t) const noexcept {
   return _aqlItemBlock == nullptr;
 }
 
-bool SharedAqlItemBlockPtr::operator!=(std::nullptr_t) noexcept {
+bool SharedAqlItemBlockPtr::operator!=(std::nullptr_t) const noexcept {
   return _aqlItemBlock != nullptr;
 }
 
@@ -194,6 +196,15 @@ void SharedAqlItemBlockPtr::swap(SharedAqlItemBlockPtr& other) noexcept {
   AqlItemBlock* tmp = _aqlItemBlock;
   _aqlItemBlock = other._aqlItemBlock;
   other._aqlItemBlock = tmp;
+}
+
+void arangodb::aql::SharedAqlItemBlockPtr::decrRefCount() noexcept {
+  if (_aqlItemBlock != nullptr) {
+    _aqlItemBlock->decrRefCount();
+    if (_aqlItemBlock->getRefCount() == 0) {
+      returnBlock();
+    }
+  }
 }
 
 }  // namespace aql
