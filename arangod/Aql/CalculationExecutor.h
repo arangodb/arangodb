@@ -115,7 +115,7 @@ class CalculationExecutor {
 
  private:
   // specialized implementations
-  inline void doEvaluation(InputAqlItemRow& input, OutputAqlItemRow& output);
+  inline void doEvaluation(InputAqlItemRow const& input, OutputAqlItemRow& output);
 
   // Only for V8Conditions
   template <CalculationType U = calculationType, typename = std::enable_if_t<U == CalculationType::V8Condition>>
@@ -171,7 +171,7 @@ bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks() cons
 
 template <>
 inline void CalculationExecutor<CalculationType::Reference>::doEvaluation(
-    InputAqlItemRow& input, OutputAqlItemRow& output) {
+    InputAqlItemRow const& input, OutputAqlItemRow& output) {
   auto const& inRegs = _infos.getExpInRegs();
   TRI_ASSERT(inRegs.size() == 1);
 
@@ -189,16 +189,17 @@ template <CalculationType calculationType>
 inline std::pair<ExecutionState, typename CalculationExecutor<calculationType>::Stats>
 CalculationExecutor<calculationType>::produceRow(OutputAqlItemRow& output) {
   ExecutionState state;
-  InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  //InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  std::reference_wrapper<InputAqlItemRow const> row = InvalidInputAqlItemRow;
   std::tie(state, row) = _fetcher.fetchRow();
 
   if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(!row);
+    TRI_ASSERT(!row.get());
     TRI_ASSERT(!_infos.getQuery().hasEnteredContext());
     return {state, NoStats{}};
   }
 
-  if (!row) {
+  if (!row.get()) {
     TRI_ASSERT(state == ExecutionState::DONE);
     TRI_ASSERT(!_infos.getQuery().hasEnteredContext());
     return {state, NoStats{}};
@@ -226,7 +227,7 @@ CalculationExecutor<calculationType>::produceRow(OutputAqlItemRow& output) {
 
 template <>
 inline void CalculationExecutor<CalculationType::Condition>::doEvaluation(
-    InputAqlItemRow& input, OutputAqlItemRow& output) {
+    InputAqlItemRow const& input, OutputAqlItemRow& output) {
   // execute the expression
   ExecutorExpressionContext ctx(&_infos.getQuery(), input,
                                 _infos.getExpInVars(), _infos.getExpInRegs());
@@ -244,7 +245,7 @@ inline void CalculationExecutor<CalculationType::Condition>::doEvaluation(
 
 template <>
 inline void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
-    InputAqlItemRow& input, OutputAqlItemRow& output) {
+    InputAqlItemRow const& input, OutputAqlItemRow& output) {
   // must have a V8 context here to protect Expression::execute().
 
   // enterContext is safe to call even if we've already entered.

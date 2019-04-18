@@ -35,6 +35,7 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
+class InputAqlItemRow;
 template<bool>
 class SingleRowFetcher;
 struct AqlValue;
@@ -43,6 +44,9 @@ struct CreateInvalidInputRowHint {
   // Forbid creating this via `{}`
   explicit CreateInvalidInputRowHint() = default;
 };
+
+using ConstInputRowRef = std::reference_wrapper<InputAqlItemRow const>;
+using InputRowRef = std::reference_wrapper<InputAqlItemRow>;
 
 /**
  * @brief One row within an AqlItemBlock, for reading.
@@ -188,6 +192,10 @@ class InputAqlItemRow {
    */
   size_t _baseIndex;
 };
+
+
+static const InputAqlItemRow InvalidInputAqlItemRow =
+    InputAqlItemRow{CreateInvalidInputRowHint{}};
 
 }  // namespace aql
 }  // namespace arangodb

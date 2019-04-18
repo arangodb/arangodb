@@ -39,9 +39,6 @@ class AqlItemBlock;
 template <bool>
 class BlockFetcher;
 
-static const InputAqlItemRow invalidInputRow =
-    InputAqlItemRow{CreateInvalidInputRowHint{}};
-
 /**
  * @brief Interface for all AqlExecutors that do only need one
  *        row at a time in order to make progress.
@@ -61,9 +58,6 @@ class SingleRowFetcher {
   SingleRowFetcher();
 
  public:
-  using ConstInputRowRef = std::reference_wrapper<InputAqlItemRow const>;
-  using InputRowRef = std::reference_wrapper<InputAqlItemRow>;
-
   /**
    * @brief Fetch one new AqlItemRow from upstream.
    *        **Guarantee**: the row returned is valid only
@@ -202,7 +196,7 @@ SingleRowFetcher<passBlocksThrough>::fetchRow(size_t atMost) {
     SharedAqlItemBlockPtr newBlock;
     std::tie(state, newBlock) = fetchBlock(atMost);
     if (state == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, invalidInputRow};
+      return {ExecutionState::WAITING, InvalidInputAqlItemRow};
     }
 
     _currentBlock = std::move(newBlock);
