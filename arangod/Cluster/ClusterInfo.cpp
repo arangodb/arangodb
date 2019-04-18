@@ -3641,7 +3641,7 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
      AgencyOperation(
        "Plan/Databases", AgencyValueOperationType::SET,
        plan.get(std::vector<std::string>{"arango", "Plan", "Databases"})),
-     AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT)});
+     AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
 
   AgencyCommResult r = _agency.sendTransactionWithFailover(planTransaction);
   if (!r.successful()) {
