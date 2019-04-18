@@ -273,8 +273,8 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
       TRI_ASSERT(output.size() > sizeof(uint64_t));
 
       LOG_TOPIC("6b761", TRACE, Logger::ENGINES)
-          << "serialized estimate for index '" << idx->objectId()
-          << "' valid through seq " << appliedSeq;
+          << "serialized estimate for index '" << idx->objectId() << "' with estimate "
+          << est->computeEstimate() << " valid through seq " << appliedSeq;
 
       key.constructIndexEstimateValue(idx->objectId());
       rocksdb::Slice value(output);

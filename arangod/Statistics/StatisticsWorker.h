@@ -72,10 +72,10 @@ class StatisticsWorker final : public Thread {
   // save one statistics object
   void saveSlice(velocypack::Slice const&, std::string const&) const;
 
-  static constexpr uint64_t STATISTICS_INTERVAL = 1;    // 10 secs
-  static constexpr uint64_t GC_INTERVAL = 1;        //  8 mins
-  static constexpr uint64_t HISTORY_INTERVAL = 1;  // 15 mins
-  static constexpr double INTERVAL = 0.01;               // 10 secs
+  static constexpr uint64_t STATISTICS_INTERVAL = 10;    // 10 secs
+  static constexpr uint64_t GC_INTERVAL = 8 * 60;        //  8 mins
+  static constexpr uint64_t HISTORY_INTERVAL = 15 * 60;  // 15 mins
+  static constexpr double INTERVAL = 10.0;               // 10 secs
 
   enum GarbageCollectionTask { GC_STATS, GC_STATS_RAW, GC_STATS_15 };
 
