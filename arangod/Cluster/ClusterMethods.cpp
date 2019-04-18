@@ -3056,7 +3056,7 @@ arangodb::Result restoreOnDBServers(
     }
 
     if (!resSlice.hasKey("error") || !resSlice.get("error").isBoolean() ||
-        resSlice.get("error").isBoolean()) {
+        resSlice.get("error").getBoolean()) {
       return arangodb::Result(
         TRI_ERROR_HOT_RESTORE_INTERNAL,
         std::string("failed to restore ") + backupId + " on server " + req.destination
