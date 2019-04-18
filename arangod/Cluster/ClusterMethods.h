@@ -261,7 +261,7 @@ arangodb::Result hotBackupCoordinator(
  * @param mode    Backup mode: consistent, dirty
  * @param timeout Wait for this attempt and bail out if not met
  */
-arangodb::Result hotRestoreCoordinator(VPackSlice const payload);
+arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& report);
 
 /**
  * @brief List all

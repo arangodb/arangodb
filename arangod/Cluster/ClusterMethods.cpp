@@ -3006,7 +3006,7 @@ arangodb::Result controlMaintenanceFeature(
 
 
 arangodb::Result restoreOnDBServers(
-  std::string const& backupId, std::vector<std::string> const& dbServers) {
+  std::string const& backupId, std::vector<std::string> const& dbServers, std::string& previous) {
 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -3055,7 +3055,24 @@ arangodb::Result restoreOnDBServers(
         std::string("result to restore request ") + req.destination + "not an object");
     }
 
-    if (!resSlice.hasKey("previous") || !resSlice.get("previous").isString()) {
+    if (!resSlice.hasKey("error") || !resSlice.get("error").isBoolean() ||
+        resSlice.get("error").isBoolean()) {
+      return arangodb::Result(
+        TRI_ERROR_HOT_RESTORE_INTERNAL,
+        std::string("failed to restore ") + backupId + " on server " + req.destination
+        + ": " + resSlice.toJson()); 
+    }
+
+    if (!resSlice.hasKey("result") || !resSlice.get("result").isObject()) {
+      return arangodb::Result(
+        TRI_ERROR_HOT_RESTORE_INTERNAL,
+        std::string("failed to restore ") + backupId + " on server " + req.destination
+        + " as response is missing result object: " + resSlice.toJson());
+    }
+
+    auto result = resSlice.get("result");
+    
+    if (!result.hasKey("previous") || !result.get("previous").isString()) {
       return arangodb::Result(
         TRI_ERROR_HOT_RESTORE_INTERNAL,
         std::string("failed to restore ") + backupId + " on server " + req.destination);
@@ -3118,7 +3135,7 @@ arangodb::Result applyDBServerMatchesToPlan(
 }
 
 
-arangodb::Result hotRestoreCoordinator(VPackSlice const payload) {
+arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& report) {
 
   // 1. Find local backup with id
   //    - fail if not found
@@ -3192,11 +3209,16 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload) {
   std::this_thread::sleep_for(std::chrono::seconds(5));
 
   // Restore all db servers
-  result = restoreOnDBServers(backupId, dbServers);
+  std::string previous;
+  result = restoreOnDBServers(backupId, dbServers, previous);
   if (!result.ok()) {  // This is disaster!
     return result;
   }
 
+  {
+    VPackObjectBuilder o(&report);
+    report.add("previous", VPackValue(previous));
+  }
   return arangodb::Result();
 
 }
