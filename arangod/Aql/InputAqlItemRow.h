@@ -97,7 +97,7 @@ class InputAqlItemRow {
     return a;
   }
 
-  std::size_t getNrRegisters() const { return block().getNrRegs(); }
+  std::size_t getNrRegisters() const noexcept { return block().getNrRegs(); }
 
   bool operator==(InputAqlItemRow const& other) const noexcept {
     TRI_ASSERT(isInitialized());
@@ -149,12 +149,12 @@ class InputAqlItemRow {
 
  private:
 
-  inline AqlItemBlock& block() {
+  inline AqlItemBlock& block() noexcept {
     TRI_ASSERT(_block != nullptr);
     return *_block;
   }
 
-  inline AqlItemBlock const& block() const {
+  inline AqlItemBlock const& block() const noexcept {
     TRI_ASSERT(_block != nullptr);
     return *_block;
   }

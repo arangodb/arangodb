@@ -27,14 +27,16 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-void SharedAqlItemBlockPtr::decrRefCount() noexcept {
-  if (_aqlItemBlock != nullptr) {
-    _aqlItemBlock->decrRefCount();
-    if (_aqlItemBlock->getRefCount() == 0) {
-      itemBlockManager().returnBlock(_aqlItemBlock);
-      TRI_ASSERT(_aqlItemBlock == nullptr);
-    }
-  }
+/*
+ * returnBlock() and itemBlockManager() cannot be moved into the header file due
+ * to the circular dependency between SharedAqlItemBlockPtr and
+ * AqlItemBlockManager. However, by extracting returnBlock(), at least the often
+ * called part of decrRefCount() can by inlined.
+ */
+
+void SharedAqlItemBlockPtr::returnBlock() noexcept {
+  itemBlockManager().returnBlock(_aqlItemBlock);
+  TRI_ASSERT(_aqlItemBlock == nullptr);
 }
 
 AqlItemBlockManager& SharedAqlItemBlockPtr::itemBlockManager() const noexcept {
