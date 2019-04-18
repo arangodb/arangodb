@@ -1903,7 +1903,6 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
 
   // copy default options (and set exclude handler in copy)
   VPackOptions vpackOptions = VPackOptions::Defaults;
-  vpackOptions.attributeExcludeHandler = basics::VelocyPackHelper::getExcludeHandler();
   VPackBuilder builder(&vpackOptions);
 
   auto doOneDocument = [&](v8::Handle<v8::Value> obj) -> void {

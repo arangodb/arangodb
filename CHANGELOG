@@ -1,9 +1,15 @@
 devel
 -----
 
+* db._query now handles additional arguments correctly when passing an AQL
+  query object instead of a query string and separate bindVars
+
 * added req.auth property to Foxx
 
 * added collection.documentId method to derive document id from key
+
+* Indexes created with the 'inBackground', will not hold an
+  exclusive collection lock for the entire index creation period (rocksdb only)
 
 * fixed internal issue #536: ArangoSearch may crash server during term lookup
 
@@ -444,6 +450,8 @@ devel
 * priority queue for maintenance jobs
 
 * do not wait for replication after each job execution in Supervision
+
+* add support for configuring custom Analyzers via JavaScript and REST
 
 v3.4.1 (XXXX-XX-XX)
 -------------------

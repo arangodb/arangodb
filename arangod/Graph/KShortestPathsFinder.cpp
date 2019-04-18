@@ -64,10 +64,10 @@ bool KShortestPathsFinder::startKShortestPathsTraversal(
   return true;
 }
 
-bool KShortestPathsFinder::computeShortestPath(
-    VertexRef const& start, VertexRef const& end,
-    std::unordered_set<VertexRef> const& forbiddenVertices,
-    std::unordered_set<Edge> const& forbiddenEdges, Path& result) {
+bool KShortestPathsFinder::computeShortestPath(VertexRef const& start, VertexRef const& end,
+                                               std::unordered_set<VertexRef> const& forbiddenVertices,
+                                               std::unordered_set<Edge> const& forbiddenEdges,
+                                               Path& result) {
   bool found = false;
   Ball left(start, FORWARD);
   Ball right(end, BACKWARD);
@@ -91,8 +91,8 @@ bool KShortestPathsFinder::computeShortestPath(
   return found;
 }
 
-void KShortestPathsFinder::computeNeighbourhoodOfVertex(
-    VertexRef vertex, Direction direction, std::vector<Step>& steps) {
+void KShortestPathsFinder::computeNeighbourhoodOfVertex(VertexRef vertex, Direction direction,
+                                                        std::vector<Step>& steps) {
   std::unique_ptr<EdgeCursor> edgeCursor;
 
   switch (direction) {
@@ -150,13 +150,16 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(
   }
 }
 
-bool KShortestPathsFinder::advanceFrontier(
-    Ball& source, Ball const& target, std::unordered_set<VertexRef> const& forbiddenVertices,
-    std::unordered_set<Edge> const& forbiddenEdges, VertexRef& join) {
+bool KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
+                                           std::unordered_set<VertexRef> const& forbiddenVertices,
+                                           std::unordered_set<Edge> const& forbiddenEdges,
+                                           VertexRef& join) {
   VertexRef vr;
-  FoundVertex* v;
+  FoundVertex *v, *w;
 
-  bool success = source._frontier.popMinimal(vr, v, true);
+  bool success = source._frontier.popMinimal(vr, v);
+  TRI_ASSERT(v != nullptr);
+  TRI_ASSERT(vr == v->_vertex);
   if (!success) {
     return false;
   }
@@ -178,22 +181,24 @@ bool KShortestPathsFinder::advanceFrontier(
         }
       } else {
         source._frontier.insert(s._vertex,
-                                new FoundVertex(s._vertex, vr, std::move(s._edge), weight));
-
-        auto found = target._frontier.find(s._vertex);
-        if (found != nullptr) {
-          join = s._vertex;
-          return true;
-        }
+                                std::make_unique<FoundVertex>(s._vertex, vr,
+                                                              std::move(s._edge), weight));
       }
     }
   }
+  v->_done = true;
+
+  w = target._frontier.find(v->_vertex);
+  if (w != nullptr && w->_done) {
+    join = v->_vertex;
+    return true;
+  }
+
   return false;
 }
 
 void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
-                                           VertexRef const& join,
-                                           Path& result) {
+                                           VertexRef const& join, Path& result) {
   result.clear();
   TRI_ASSERT(!join.empty());
   result._vertices.emplace_back(join);
@@ -276,13 +281,15 @@ bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
     //       indeed one that removes duplicates automatically
     // Sorted in reverse to have pop_back
     if (_options.useWeight()) {
-      std::sort(_candidatePaths.begin(), _candidatePaths.end(), [](Path const& p1, Path const& p2) {
-        return p1._weight > p2._weight;
-      });
+      std::sort(_candidatePaths.begin(), _candidatePaths.end(),
+                [](Path const& p1, Path const& p2) {
+                  return p1._weight > p2._weight;
+                });
     } else {
-      std::sort(_candidatePaths.begin(), _candidatePaths.end(), [](Path const& p1, Path const& p2) {
-        return p1._vertices.size() > p2._vertices.size();
-      });
+      std::sort(_candidatePaths.begin(), _candidatePaths.end(),
+                [](Path const& p1, Path const& p2) {
+                  return p1._vertices.size() > p2._vertices.size();
+                });
     }
 
     // FIXME: this is of course bad.

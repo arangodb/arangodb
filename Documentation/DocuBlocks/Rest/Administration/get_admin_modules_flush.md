@@ -222,6 +222,9 @@ One of the possible log levels.
 @RESTBODYPARAM{audit-authentication,string,optional,string}
 One of the possible log levels.
 
+@RESTBODYPARAM{audit-authorization,string,optional,string}
+One of the possible log levels.
+
 @RESTBODYPARAM{audit-database,string,optional,string}
 One of the possible log levels.
 

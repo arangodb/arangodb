@@ -1,1 +1,1 @@
---require test/setup.js --ui tdd
+--compilers js:babel-register --ui tdd

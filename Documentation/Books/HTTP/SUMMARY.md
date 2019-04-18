@@ -49,6 +49,7 @@
   * [Modifying](Views/Modifying.md)
   * [Retrieving](Views/Getting.md)
   * [ArangoSearch Views](Views/ArangoSearch.md)
+* [Analyzers](Analyzers/README.md)
 * [Transactions](Transaction/README.md)
 * [Replication](Replications/README.md)
   * [Replication Dump](Replications/ReplicationDump.md)

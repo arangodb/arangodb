@@ -286,24 +286,13 @@ TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid,
   return nullptr;
 }
 
-void TransactionState::setType(AccessMode::Type type) {
-  if (AccessMode::isWriteOrExclusive(type) && AccessMode::isWriteOrExclusive(_type)) {
-    // type already correct. do nothing
-    return;
-  }
-
-  if (AccessMode::isRead(type) && AccessMode::isWriteOrExclusive(_type)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot make a write transaction read-only");
-  }
-  if (AccessMode::isWriteOrExclusive(type) && AccessMode::isRead(_type) &&
-      _status != transaction::Status::CREATED) {
+void TransactionState::setExclusiveAccessType() {
+  if (_status != transaction::Status::CREATED) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        "cannot make a running read transaction a write transaction");
+        "cannot change the type of a running transaction");
   }
-  // all right
-  _type = type;
+  _type = AccessMode::Type::EXCLUSIVE;
 }
 
 bool TransactionState::isOnlyExclusiveTransaction() const {

@@ -308,7 +308,6 @@ ERROR_USER_INVALID_NAME,1700,"invalid user name","Will be raised when an invalid
 ERROR_USER_INVALID_PASSWORD,1701,"invalid password","Will be raised when an invalid password is used."
 ERROR_USER_DUPLICATE,1702,"duplicate user","Will be raised when a user name already exists."
 ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is updated that does not exist."
-ERROR_USER_CHANGE_PASSWORD,1704,"user must change his password","Will be raised when the user must change his password."
 ERROR_USER_EXTERNAL,1705,"user is external","Will be raised when the user is authenicated by an external server."
 
 ###############################################################################

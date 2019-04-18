@@ -317,6 +317,7 @@ TEST_CASE("KShortestPathsFinder", "[graph]") {
 
     for (size_t i = 0; i < result.length(); i++) {
       auto vert = result.vertexToAqlValue(spo->cache(), i);
+      AqlValueGuard guard(vert, true);
       if (!vert.slice().get(StaticStrings::KeyString).isEqualString(vertices.at(i))) {
         LOG_DEVEL << "expected vertex " << vertices.at(i) << " but found "
                   << vert.slice().get(StaticStrings::KeyString).toString();
@@ -328,6 +329,7 @@ TEST_CASE("KShortestPathsFinder", "[graph]") {
     CHECK((result.edgeToAqlValue(spo->cache(), 0).isNull(true)));
     for (size_t i = 1; i < result.length(); i++) {
       auto edge = result.edgeToAqlValue(spo->cache(), i);
+      AqlValueGuard guard(edge, true);
       if (!edge.slice().get(StaticStrings::FromString).isEqualString(edges.at(i).first) ||
           !edge.slice().get(StaticStrings::ToString).isEqualString(edges.at(i).second)) {
         LOG_DEVEL << "expected edge " << edges.at(i).first << " -> "
