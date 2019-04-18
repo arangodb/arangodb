@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
@@ -3636,11 +3636,12 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
   AgencyWriteTransaction planTransaction(
     std::vector<AgencyOperation>
     {AgencyOperation(
-        "arango/Plan/Collections", AgencyValueOperationType::SET,
+        "Plan/Collections", AgencyValueOperationType::SET,
         plan.get(std::vector<std::string>{"arango", "Plan", "Collections"})),
      AgencyOperation(
-       "arango/Plan/Databases", AgencyValueOperationType::SET,
-       plan.get(std::vector<std::string>{"arango", "Plan", "Databases"}))});
+       "Plan/Databases", AgencyValueOperationType::SET,
+       plan.get(std::vector<std::string>{"arango", "Plan", "Databases"})),
+     AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT)});
 
   AgencyCommResult r = _agency.sendTransactionWithFailover(planTransaction);
   if (!r.successful()) {
