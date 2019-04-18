@@ -144,7 +144,7 @@ class CollectionInfoCurrent {
   /// @brief returns the current leader and followers for a shard
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::vector<ServerID> servers(ShardID const& shardID) const {
+  TEST_VIRTUAL std::vector<ServerID> servers(ShardID const& shardID) const {
     std::vector<ServerID> v;
 
     auto it = _vpacks.find(shardID);
@@ -220,7 +220,11 @@ class CollectionInfoCurrent {
                              // underpins the data presented in this object
 };
 
+#ifdef ARANGODB_USE_CATCH_TESTS
 class ClusterInfo {
+#else
+class ClusterInfo final {
+#endif
  private:
   typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>> DatabaseCollections;
   typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
@@ -326,8 +330,8 @@ class ClusterInfo {
   /// will not throw but return nullptr if the collection isn't found.
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::shared_ptr<LogicalCollection> getCollectionNT(DatabaseID const&,
-                                                             CollectionID const&);
+  TEST_VIRTUAL std::shared_ptr<LogicalCollection> getCollectionNT(DatabaseID const&,
+                                                                  CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Format error message for TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
