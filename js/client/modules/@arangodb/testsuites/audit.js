@@ -69,11 +69,17 @@ function auditLog(onServer) {
     };
     
     options.auditLoggingEnabled = true;
+    
+    const serverOptions = {
+      'server.authentication': 'true',
+      'server.jwt-secret': 'haxxmann',
+      'log.level': 'audit-authentication=info',
+    };
 
     print(CYAN + 'Audit log server tests...' + RESET);
     let testCases = tu.scanTestPaths(testPaths['audit_' + (onServer ? 'server' : 'client')]);
 
-    return tu.performTests(options, testCases, 'audit', onServer ? tu.runThere : tu.runInArangosh);
+    return tu.performTests(options, testCases, 'audit', onServer ? tu.runThere : tu.runInArangosh, serverOptions);
   };
 }
 

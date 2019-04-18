@@ -142,6 +142,7 @@ class SortedCollectExecutor {
     bool _shouldDeleteBuilderBuffer;
 
     CollectGroup() = delete;
+    CollectGroup(CollectGroup&&) = default;
     CollectGroup(CollectGroup const&) = delete;
     CollectGroup& operator=(CollectGroup const&) = delete;
 
