@@ -1686,6 +1686,8 @@ arangodb::Result IResearchLink::walFlushMarker( // process marker
     );
   }
 
+  auto valueRef = getStringRef(value);
+
   SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock); // '_dataStore' can be asynchronously modified
 
   if (!*_asyncSelf) {
@@ -1699,15 +1701,15 @@ arangodb::Result IResearchLink::walFlushMarker( // process marker
 
   switch (_dataStore._recovery) {
    case RecoveryState::BEFORE_CHECKPOINT:
-    if (value.copyString() == _dataStore._recovery_range_start) {
+    if (valueRef == _dataStore._recovery_range_start) {
       _dataStore._recovery = RecoveryState::DURING_CHECKPOINT; // do insert with matching remove
     }
 
     break;
    case RecoveryState::DURING_CHECKPOINT:
-    if (value.copyString() == _dataStore._recovery_reader.meta().filename) {
+    if (valueRef == _dataStore._recovery_reader.meta().filename) {
       _dataStore._recovery = RecoveryState::AFTER_CHECKPOINT; // do insert without matching remove
-    } else if (value.copyString() != _dataStore._recovery_range_start) { // fake 'DURING_CHECKPOINT' set in initDataStore(...) as initial value to cover worst case and not in that case (seen another checkpoint)
+    } else if (valueRef != _dataStore._recovery_range_start) { // fake 'DURING_CHECKPOINT' set in initDataStore(...) as initial value to cover worst case and not in that case (seen another checkpoint)
       _dataStore._recovery = RecoveryState::BEFORE_CHECKPOINT; // ignore inserts (scenario for initial state before any checkpoints were seen)
     } // else fake 'DURING_CHECKPOINT' set in initDataStore(...) as initial value to cover worst case and actually in that case (leave as is)
     break;
