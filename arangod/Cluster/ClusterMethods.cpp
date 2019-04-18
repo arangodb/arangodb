@@ -3079,7 +3079,7 @@ arangodb::Result restoreOnDBServers(
     }
 
     LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
-      << "Failsafe name " << resSlice.get("previous").copyString()
+      << "received failsafe name " << result.get("previous").copyString()
       << " from db server " << req.destination;
   }
 
