@@ -620,7 +620,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
 
 template <typename V, typename E>
 void GraphStore<V, E>::storeResults(WorkerConfig* config,
-                                    std::function<void(bool)> const& cb) {
+                                    std::function<void()> cb) {
   LOG_TOPIC(INFO, Logger::PREGEL) << "Storing vertex data";
 
   _config = config;
@@ -636,7 +636,12 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
   do {
     _runningThreads++;
     SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, [this, start, end, now,
-                                                              cb](bool isDirect) {
+                                                              cb](bool cancelled) {
+      if (cancelled) {
+        cb();
+        return;
+      }
+      
       try {
         RangeIterator<VertexEntry> it = vertexIterator(start, end);
         _storeVertices(_config->globalShardIDs(), it);
@@ -650,7 +655,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
       if (_runningThreads == 0) {
         LOG_TOPIC(DEBUG, Logger::PREGEL)
             << "Storing data took " << (TRI_microtime() - now) << "s";
-        cb(isDirect);
+        cb();
       }
     });
     start = end;

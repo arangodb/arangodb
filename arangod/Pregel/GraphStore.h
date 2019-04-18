@@ -93,7 +93,7 @@ class GraphStore {
   void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
 
   /// Write results to database
-  void storeResults(WorkerConfig* config, std::function<void(bool)> const&);
+  void storeResults(WorkerConfig* config, std::function<void()>);
 
  private:
   std::map<CollectionID, std::vector<VertexShardInfo>> _allocateSpace();
