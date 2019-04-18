@@ -2763,7 +2763,7 @@ std::string const apiStr("/_admin/backup/");
 
 arangodb::Result hotBackupList(
   std::vector<ServerID> const& dbServers, VPackSlice const payload,
-  std::vector<std::string>& hotBackups) {
+  std::vector<std::string>& hotBackups, VPackBuilder& plan) {
 
   hotBackups.clear();
 
@@ -2834,12 +2834,17 @@ arangodb::Result hotBackupList(
       return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,  "result is missing backup ids");
     }
 
+    if (!payload.isNone() && !plan.slice().isNone()) {
+      
+      return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,  "result is missing backup ids");
+    }
+
     for (auto const& id : VPackArrayIterator(resSlice.get("id"))) {
       dbsBackups[id.copyString()].emplace(req.destination);
     }
   }
 
-  //LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "found: " << dbsBackups;
+  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "found: " << dbsBackups;
 
   for (auto const& i : dbsBackups) {
     if (i.second.size() == dbServers.size()) {
@@ -3199,12 +3204,12 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload) {
   }
 
   std::string const backupId = payload.get("id").copyString();
-
+  VPackBuilder plan;
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<ServerID> dbServers = ci->getCurrentDBServers();
-  VPackBuilder plan;
+  std::vector<std::string> listIds;
 
-  auto result = findLocalBackup(backupId, dbServers, plan);
+  auto result = hotBackupList(dbServers, payload, listIds, plan);
   if (!result.ok()) {
     LOG_TOPIC(ERR, Logger::HOTBACKUP)
       << "failed to find backup " << backupId << " on all db servers: "
@@ -3740,7 +3745,8 @@ arangodb::Result listHotBakupsOnCoordinator(
     }
   }
 
-  arangodb::Result result = hotBackupList(dbServers, payload, listIds);
+  VPackBuilder dummy;
+  arangodb::Result result = hotBackupList(dbServers, payload, listIds, dummy);
 
   if (!result.ok()) {
     return result;
