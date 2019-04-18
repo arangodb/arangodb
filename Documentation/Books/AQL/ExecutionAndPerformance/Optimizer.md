@@ -447,7 +447,7 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   enable follow-up optimizations.
 * `sort-limit`: will appear when a *SortNode* is followed by a *LimitNode* with no
   intervening nodes that may change the element count (e.g. a *FilterNode* which
-  could not be moved before the sort, or an source node like *EnumerateCollectionNode*).
+  could not be moved before the sort, or a source node like *EnumerateCollectionNode*).
   This is used to make the *SortNode* aware of the limit and offset from the *LimitNode*
   to enable some optimizations internal to the *SortNode* which allow for reduced
   memory usage and and in many cases, improved sorting speed. The optimizer may
