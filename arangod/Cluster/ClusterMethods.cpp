@@ -3500,10 +3500,10 @@ arangodb::Result removeLocalBackups(
         std::string("result to take snapshot on ") + req.destination + " not an object");
     }
 
-    if (!resSlice.hasKey("result") ||
-        !resSlice.get("result").isBoolean() || !resSlice.get("result").getBoolean()) {
+    if (!resSlice.hasKey("error") || !resSlice.get("error").isBoolean() ||
+        resSlice.get("error").getBoolean()) {
       LOG_TOPIC(ERR, Logger::HOTBACKUP)
-        << "DB server " << req.destination << "is missing backup " << backupId;
+        << "failed to delete backup " << backupId << " on " << req.destination;
       return arangodb::Result(
         TRI_ERROR_FILE_NOT_FOUND,
         std::string("no backup with id ") + backupId + " on server " + req.destination);
@@ -3725,8 +3725,8 @@ arangodb::Result listHotBakupsOnCoordinator(
 
 }
 
-
-arangodb::Result deleteHotBakupsOnCoordinator(VPackSlice const payload, VPackBuilder& report) {
+arangodb::Result deleteHotBakupsOnCoordinator(
+  VPackSlice const payload, VPackBuilder& report) {
 
   std::vector<std::string> listIds, deleted;
   VPackBuilder dummy;
