@@ -74,8 +74,8 @@ var _resilience = function(path) {
       options.dbServers = 5;
     }
     return tu.performTests(options, testCases, suiteName, tu.runThere);
-  }
-}
+  };
+};
 
 const resilienceMove = (new _resilience('resilience_move')).func;
 const resilienceMoveView = (new _resilience('resilience_move_view')).func;
