@@ -96,8 +96,16 @@ NS_LOCAL
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
+struct options_t: public irs::analysis::text_token_stream::options_t {
+  std::string key_;
+
+  options_t(irs::analysis::text_token_stream::options_t &&options)
+    : irs::analysis::text_token_stream::options_t(std::move(options)) {
+  };
+};
+
 typedef std::unordered_set<std::string> ignored_words_t;
-static std::unordered_map<irs::hashed_string_ref, irs::analysis::text_token_stream::options_t> cached_state_by_key;
+static std::unordered_map<irs::hashed_string_ref, options_t> cached_state_by_key;
 static std::mutex mutex;
 static auto icu_cleanup = irs::make_finally([]()->void{
   // this call will release/free all memory used by ICU (for all users)
@@ -219,12 +227,27 @@ irs::analysis::analyzer::ptr construct(
   const irs::string_ref& cache_key,
   irs::analysis::text_token_stream::options_t&& options
 ) {
+  static auto generator = [](
+      const irs::hashed_string_ref& key,
+      options_t& value
+  ) NOEXCEPT {
+    if (key.null()) {
+      return key;
+    }
+
+    value.key_ = key;
+
+    // reuse hash but point ref at value
+    return irs::hashed_string_ref(key.hash(), value.key_);
+  };
   irs::analysis::text_token_stream::options_t* options_ptr;
 
   {
     SCOPED_LOCK(mutex);
 
-    options_ptr = &(cached_state_by_key.emplace(
+    options_ptr = &(irs::map_utils::try_emplace_update_key(
+      cached_state_by_key,
+      generator,
       irs::make_hashed_ref(cache_key, std::hash<irs::string_ref>()),
       std::move(options)
     ).first->second);
