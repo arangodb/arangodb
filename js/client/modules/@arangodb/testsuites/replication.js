@@ -54,7 +54,7 @@ const testPaths = {
   'replication_ongoing': [tu.pathForTesting('server/replication/ongoing')],
   'replication_ongoing_32': [tu.pathForTesting('server/replication/ongoing/32')],
   'replication_ongoing_global': [tu.pathForTesting('server/replication/ongoing/global')],
-  'replication_ongoing_global_spec': [tu.pathForTesting('server/replication/ongoing/spec')],
+  'replication_ongoing_global_spec': [tu.pathForTesting('server/replication/ongoing/global/spec')],
   'replication_ongoing_frompresent': [tu.pathForTesting('server/replication/ongoing/frompresent')],
   'replication_ongoing_frompresent_32': [tu.pathForTesting('server/replication/ongoing/frompresent/32')],
   'replication_static': [tu.pathForTesting('server/replication/static')],
@@ -347,8 +347,8 @@ var _replicationOngoing = function(path) {
     };
   
     return tu.performTests(options, testCases, path, tu.runInArangosh, {}, startStopHandlers);
-  }
-}
+  };
+};
 
 const replicationOngoing = (new _replicationOngoing('replication_ongoing')).func;
 const replicationOngoing32 = (new _replicationOngoing('replication_ongoing_32')).func;
