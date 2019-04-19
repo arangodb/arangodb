@@ -86,7 +86,7 @@ uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
         // this is the default value, e.g. `--replicationFactor 2`
         if (parts[0] == "satellite") {
           isSatellite = true;
-        } else { 
+        } else {
           result = arangodb::basics::StringUtils::uint64(parts[0]);
         }
       }
@@ -219,7 +219,7 @@ void makeAttributesUnique(arangodb::velocypack::Builder& builder, arangodb::velo
     builder.openObject();
 
     auto it = arangodb::velocypack::ObjectIterator(slice, true);
-    
+
     while (it.valid()) {
       if (!keys.emplace(it.key().stringRef()).second) {
         // duplicate key
@@ -238,7 +238,7 @@ void makeAttributesUnique(arangodb::velocypack::Builder& builder, arangodb::velo
     builder.openArray();
 
     auto it = arangodb::velocypack::ArrayIterator(slice);
-    
+
     while (it.valid()) {
       // recurse into array
       makeAttributesUnique(builder, it.value());
@@ -456,8 +456,8 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
                                  size_t bufferSize) {
   using arangodb::basics::StringUtils::urlEncode;
   using arangodb::httpclient::SimpleHttpResult;
-   
-  // the following two structs are needed for cleaning up duplicate attributes 
+
+  // the following two structs are needed for cleaning up duplicate attributes
   arangodb::velocypack::Builder result;
   arangodb::basics::StringBuffer cleaned;
 
@@ -468,7 +468,7 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
       // out of memory
       THROW_ARANGO_EXCEPTION(res);
     }
-    
+
     arangodb::velocypack::Options options = arangodb::velocypack::Options::Defaults;
     // do *not* check duplicate attributes here (because that would throw)
     options.checkAttributeUniqueness = false;
@@ -477,7 +477,7 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
     // instead, we need to manually check for duplicate attributes...
     char const* p = buffer;
     char const* e = p + bufferSize;
-      
+
     while (p < e) {
       while (p < e && (*p == ' ' || *p == '\r' || *p == '\n' || *p == '\t')) {
         ++p;
@@ -485,13 +485,13 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
 
       // detect line ending
       size_t length;
-      char const* nl = static_cast<char const*>(memchr(p, '\n', e - p)); 
+      char const* nl = static_cast<char const*>(memchr(p, '\n', e - p));
       if (nl == nullptr) {
         length = e - p;
       } else {
         length = nl - p;
       }
-      
+
       builder.clear();
       try {
         VPackParser parser(builder, builder.options);
@@ -507,7 +507,7 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
       // recursively clean up duplicate attributes in the document
       result.clear();
       makeAttributesUnique(result, builder.slice());
-      
+
       std::string const json = result.toJson();
       cleaned.appendText(json.data(), json.size());
 
@@ -515,15 +515,15 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
         // done
         break;
       }
-      
+
       cleaned.appendChar('\n');
       // advance behind newline
       p = nl + 1;
     }
-  
-    // now point to the cleaned up data  
+
+    // now point to the cleaned up data
     buffer = cleaned.c_str();
-    bufferSize = cleaned.length(); 
+    bufferSize = cleaned.length();
   }
 
   std::string const url = "/_api/replication/restore-data?collection=" + urlEncode(cname) +
@@ -632,6 +632,7 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
 
   arangodb::Result result;
   StringBuffer buffer(true);
+  bool isGzip(false);
 
   VPackSlice const parameters = jobData.collection.get("parameters");
   std::string const cname =
@@ -641,10 +642,22 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
   std::string const collectionType(type == 2 ? "document" : "edge");
 
   // import data. check if we have a datafile
+  //  ... there are 4 possible names
   auto datafile = jobData.directory.readableFile(
       cname + "_" + arangodb::rest::SslInterface::sslMD5(cname) + ".data.json");
   if (!datafile || datafile->status().fail()) {
+    datafile = jobData.directory.readableFile(
+      cname + "_" + arangodb::rest::SslInterface::sslMD5(cname) + ".data.json.gz");
+    isGzip = true;
+  } // if
+  if (!datafile || datafile->status().fail()) {
+    datafile = jobData.directory.readableFile(
+      cname + ".data.json.gz");
+    isGzip = true;
+  } // if
+  if (!datafile || datafile->status().fail()) {
     datafile = jobData.directory.readableFile(cname + ".data.json");
+    isGzip = false;
     if (!datafile || datafile->status().fail()) {
       result = {TRI_ERROR_CANNOT_READ_FILE, "could not open file"};
       return result;
@@ -725,11 +738,19 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
       if (jobData.options.progress && fileSize > 0 &&
           numReadSinceLastReport > 1024 * 1024 * 8) {
         // report every 8MB of transferred data
+        //   currently do not have unzipped size for .gz files
+        std::stringstream percentage;
+        if (isGzip) {
+          percentage << "";
+        } else {
+          percentage << " ("
+            << int(100. * double(numReadForThisCollection) / double(fileSize)) << " %)";
+        } // else
+
         LOG_TOPIC(INFO, Logger::RESTORE)
             << "# Still loading data into " << collectionType << " collection '"
             << cname << "', " << numReadForThisCollection << " of " << fileSize
-            << " byte(s) restored ("
-            << int(100. * double(numReadForThisCollection) / double(fileSize)) << " %)";
+            << " byte(s) restored" << percentage.str();
         numReadSinceLastReport = 0;
       }
     }
@@ -1138,7 +1159,7 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
 
   options->addOption("--input-directory", "input directory",
                      new StringParameter(&_options.inputPath));
-  
+
   options->addOption("--cleanup-duplicate-attributes", "clean up duplicate attributes (use first specified value) in input documents instead of making the restore operation fail",
                      new BooleanParameter(&_options.cleanupDuplicateAttributes),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
@@ -1160,7 +1181,7 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      "override value for numberOfShards (can be specified multiple times, e.g. --numberOfShards 2 --numberOfShards myCollection=3)",
                      new VectorParameter<StringParameter>(&_options.numberOfShards))
                      .setIntroducedIn(30322).setIntroducedIn(30402);
-  
+
   options->addOption("--replication-factor",
                      "override value for replicationFactor (can be specified multiple times, e.g. --replicationFactor 2 --replicationFactor myCollection=3)",
                      new VectorParameter<StringParameter>(&_options.replicationFactor))
@@ -1174,7 +1195,7 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption(
       "--force", "continue restore even in the face of some server-side errors",
       new BooleanParameter(&_options.force));
-  
+
   // deprecated options
   options->addOption("--default-number-of-shards",
                      "default value for numberOfShards if not specified in dump",
@@ -1221,13 +1242,13 @@ void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
         << "invalid value for `--default-number-of-shards`, expecting at least 1";
     FATAL_ERROR_EXIT();
   }
-  
+
   if (_options.defaultReplicationFactor == 0) {
     LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
         << "invalid value for `--default-replication-factor, expecting at least 1";
     FATAL_ERROR_EXIT();
   }
-  
+
   for (auto& it : _options.numberOfShards) {
     auto parts = basics::StringUtils::split(it, '=');
     if (parts.size() == 1 && basics::StringUtils::uint64(parts[0]) > 0) {

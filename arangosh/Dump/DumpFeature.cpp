@@ -926,7 +926,7 @@ Result DumpFeature::storeDumpJson(VPackSlice const& body, std::string const& dbN
     meta.close();
 
     // save last tick in file
-    auto file = _directory->writableFile("dump.json", true);
+    auto file = _directory->writableFile("dump.json", true, 0, false);
     if (!::fileOk(file.get())) {
       return ::fileError(file.get(), true);
     }
