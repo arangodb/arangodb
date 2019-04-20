@@ -279,3 +279,8 @@ void TRI_FlushDebugging(char const* file, int line, char const* message) {
   Logger::flush();
   Logger::shutdown();
 }
+
+template<> char const conpar<true>::open = '{';
+template<> char const conpar<true>::close = '}';
+template<> char const conpar<false>::open = '[';
+template<> char const conpar<false>::close = ']';
