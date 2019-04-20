@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, assertEqual, assertMatch, fail */
+/* global getOptions, assertTrue, assertEqual, fail */
 'use strict';
 const fs = require('fs');
 const internal = require('internal');
@@ -42,7 +42,6 @@ function testSuite() {
       try {
         FoxxManager.uninstall(mount, {force: true});
         FoxxManager.install(foxxApp, mount);
-        print(fs.getTempPath())
       } catch (e) { }
     },
 
