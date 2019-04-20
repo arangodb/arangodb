@@ -665,10 +665,8 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   RocksDBValue value =
       RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef(toFrom));
  
-  if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // blacklist new index entry to avoid caching without committing first
-    blackListKey(fromToRef);
-  }
+  // blacklist new index entry to avoid caching without committing first
+  blackListKey(fromToRef);
   
   // acquire rocksdb transaction
   rocksdb::Status s = mthd->PutUntracked(_cf, key.ref(), value.string());

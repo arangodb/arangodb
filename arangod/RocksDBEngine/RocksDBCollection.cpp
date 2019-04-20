@@ -1267,11 +1267,9 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   key->constructDocument(_objectId, documentId);
 
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
-  if (state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // blacklist new document to avoid caching without committing first
-    blackListKey(key.ref());
-  }
-  
+  // blacklist new document to avoid caching without committing first
+  blackListKey(key.ref());
+    
   RocksDBMethods* mthds = state->rocksdbMethods();
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
@@ -1377,11 +1375,9 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
   
-  if (state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // blacklist new document to avoid caching without committing first
-    blackListKey(key.ref());
-  }
-  
+  // blacklist new document to avoid caching without committing first
+  blackListKey(key.ref());
+    
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
