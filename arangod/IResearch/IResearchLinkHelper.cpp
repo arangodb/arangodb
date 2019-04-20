@@ -236,12 +236,12 @@ arangodb::Result modifyLinks( // modify links
     normalized.openObject();
 
     // @note: DBServerAgencySync::getLocalCollections(...) generates
-    //        'not-forPersistence' definitions that are then compared in
+    //        'forPersistence' definitions that are then compared in
     //        Maintenance.cpp:compareIndexes(...) via
     //        arangodb::Index::Compare(...)
-    //        hence must use 'isCreation=false' for normalize(...) to match
+    //        hence must use 'isCreation=true' for normalize(...) to match
     auto res = arangodb::iresearch::IResearchLinkHelper::normalize( // normalize to validate analyzer definitions
-      normalized, link, false, view.vocbase() // args
+      normalized, link, true, view.vocbase() // args
     );
 
     if (!res.ok()) {
