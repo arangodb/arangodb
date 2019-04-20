@@ -518,8 +518,13 @@ class RocksDBRecoveryHelper final: public arangodb::RocksDBRecoveryHelper {
 };
 
 void registerRecoveryHelper() {
+  static bool done(false);
   static const MMFilesRecoveryHelper mmfilesHelper;
   static const RocksDBRecoveryHelper rocksDBHelper;
+
+  if (done) {
+    return; // already registered previously, avoid duplicate registration (yes this is possible)
+  }
 
   auto res = arangodb::MMFilesEngine::registerRecoveryHelper(mmfilesHelper);
 
@@ -537,6 +542,8 @@ void registerRecoveryHelper() {
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
+  done = true;
 }
 
 }

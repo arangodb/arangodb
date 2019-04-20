@@ -673,7 +673,7 @@ SECTION("test_get") {
     auto restore = irs::make_finally([&before]()->void { arangodb::ServerState::instance()->setRole(before); });
 
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    CHECK((true == !feature.get("testVocbase::test_analyzer", "TestAnalyzer", "abc", { irs::frequency::type() })));
+    CHECK((false == !feature.get("testVocbase::test_analyzer", "TestAnalyzer", "abc", { irs::frequency::type() })));
   }
 }
 
@@ -1603,9 +1603,24 @@ SECTION("test_remove") {
       sysDatabase->start(); // get system database from DatabaseFeature
     }
 
+    ClusterCommMock clusterComm;
+    auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm); // or get SIGFPE in ClusterComm::communicator() while call to ClusterInfo::createDocumentOnCoordinator(...)
+
+    // insert response for expected empty initial analyzer list
+    {
+      arangodb::ClusterCommResult response;
+      response.operationID = 1; // sequential non-zero value
+      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
+      response.answer_code = arangodb::rest::ResponseCode::CREATED;
+      response.answer = std::make_shared<GeneralRequestMock>(*(sysDatabase->use()));
+      static_cast<GeneralRequestMock*>(response.answer.get())->_payload = *arangodb::velocypack::Parser::fromJson("{ \"result\": [] }"); // empty initial result
+      clusterComm._responses.emplace_back(std::move(response));
+    }
+
     // add analyzer
     {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+      REQUIRE((true == !feature->get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2")));
       REQUIRE((true == feature->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2", "TestAnalyzer", "abc").ok()));
       REQUIRE((false == !feature->get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2")));
     }
@@ -1651,9 +1666,24 @@ SECTION("test_remove") {
       sysDatabase->start(); // get system database from DatabaseFeature
     }
 
+    ClusterCommMock clusterComm;
+    auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm); // or get SIGFPE in ClusterComm::communicator() while call to ClusterInfo::createDocumentOnCoordinator(...)
+
+    // insert response for expected empty initial analyzer list
+    {
+      arangodb::ClusterCommResult response;
+      response.operationID = 1; // sequential non-zero value
+      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
+      response.answer_code = arangodb::rest::ResponseCode::CREATED;
+      response.answer = std::make_shared<GeneralRequestMock>(*(sysDatabase->use()));
+      static_cast<GeneralRequestMock*>(response.answer.get())->_payload = *arangodb::velocypack::Parser::fromJson("{ \"result\": [] }"); // empty initial result
+      clusterComm._responses.emplace_back(std::move(response));
+    }
+
     // add analyzer
     {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+      REQUIRE((true == !feature->get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2")));
       REQUIRE((true == feature->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2", "TestAnalyzer", "abc").ok()));
       REQUIRE((false == !feature->get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2")));
     }
