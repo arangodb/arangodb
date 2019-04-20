@@ -28,7 +28,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/SmallVector.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/fasthash.h"
 #include "Logger/Logger.h"
@@ -524,8 +523,8 @@ class RocksDBCuckooIndexEstimator {
   rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq) {
     rocksdb::SequenceNumber appliedSeq = 0;
     Result res = basics::catchVoidToResult([&]() -> void {
-      SmallVector<std::vector<Key>> inserts;
-      SmallVector<std::vector<Key>> removals;
+      std::vector<std::vector<Key>> inserts;
+      std::vector<std::vector<Key>> removals;
 
       // truncate will increase this sequence
       rocksdb::SequenceNumber ignoreSeq = 0;
