@@ -57,11 +57,6 @@ struct FlushFeatureSetup {
   FlushFeatureSetup() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
-    // reset RocksDBRecoveryHelper list to avoid duplicates
-    const_cast<std::vector<std::shared_ptr<arangodb::RocksDBRecoveryHelper>>&>(
-        arangodb::RocksDBEngine::recoveryHelpers())
-        .clear();
-
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                     arangodb::LogLevel::WARN);
