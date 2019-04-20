@@ -682,7 +682,9 @@ IResearchAnalyzerFeature::AnalyzerPool::Builder::make(irs::string_ref const& typ
 
   // ArangoDB, for API consistency, only supports analyzers configurable via
   // jSON
-  return irs::analysis::analyzers::get(type, irs::text_format::json, properties);
+  return irs::analysis::analyzers::get( // get analyzer
+    type, irs::text_format::json, properties, false // args
+  );
 }
 
 IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool(irs::string_ref const& name)

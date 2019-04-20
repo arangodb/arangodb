@@ -90,11 +90,13 @@ bool makeScorer(irs::sort::ptr& scorer, irs::string_ref const& name,
       break;
     case 1: {
       // ArangoDB, for API consistency, only supports scorers configurable via jSON
-      scorer = irs::scorers::get(name, irs::text_format::json, irs::string_ref::NIL);
+      scorer = irs::scorers::get( // get scorer
+        name, irs::text_format::json, irs::string_ref::NIL, false // args
+      );
 
       if (!scorer) {
         // ArangoDB, for API consistency, only supports scorers configurable via jSON
-        scorer = irs::scorers::get(name, irs::text_format::json, "[]");  // pass arg as json array
+        scorer = irs::scorers::get(name, irs::text_format::json, "[]", false); // pass arg as json array
       }
     } break;
     default: {  // fall through
@@ -123,7 +125,9 @@ bool makeScorer(irs::sort::ptr& scorer, irs::string_ref const& name,
       builder.close();
 
       // ArangoDB, for API consistency, only supports scorers configurable via jSON
-      scorer = irs::scorers::get(name, irs::text_format::json, builder.toJson());  // pass arg as json
+      scorer = irs::scorers::get( // get scorer
+        name, irs::text_format::json, builder.toJson(), false // pass arg as json
+      );
     }
   }
 
@@ -143,7 +147,7 @@ bool fromFCall(irs::sort::ptr* scorer, irs::string_ref const& scorerName,
   if (!scorer) {
     // cheap shallow check
     // ArangoDB, for API consistency, only supports scorers configurable via jSON
-    return irs::scorers::exists(scorerName, irs::text_format::json);
+    return irs::scorers::exists(scorerName, irs::text_format::json, false);
   }
 
   // we don't support non-constant arguments for scorers now, if it
@@ -330,12 +334,14 @@ void ScorerReplacer::extract(aql::Variable const& var, std::vector<Scorer>& scor
   if (!comparer) {
     // cheap shallow check
     // ArangoDB, for API consistency, only supports scorers configurable via jSON
-    return irs::scorers::exists(scorerName, irs::text_format::json);
+    return irs::scorers::exists(scorerName, irs::text_format::json, false);
   }
 
   // create scorer with default arguments
   // ArangoDB, for API consistency, only supports scorers configurable via jSON
-  *comparer = irs::scorers::get(scorerName, irs::text_format::json, irs::string_ref::NIL);
+  *comparer = irs::scorers::get( // get scorer
+    scorerName, irs::text_format::json, irs::string_ref::NIL, false // args
+  );
 
   return bool(*comparer);
 }
