@@ -355,7 +355,7 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
     }
 
     file = std::make_unique<File>(*this, filenameCopy,
-                                  (ManagedDirectory::DefaultWriteFlags ^ flags), _writeGzip);
+                                  (ManagedDirectory::DefaultWriteFlags ^ flags), _writeGzip && gzipOk);
   } catch (...) {
     return {nullptr};
   }
