@@ -86,7 +86,7 @@ function ahuacatlProfilerTestSuite () {
 /// @brief test EnumerateCollectionBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnumerateCollectionBlock1: function () {
+    /*testEnumerateCollectionBlock1: function () {
       const col = db._create(colName);
       const prepare = (rows) => {
         col.truncate();
@@ -196,7 +196,7 @@ function ahuacatlProfilerTestSuite () {
       profHelper.runDefaultChecks(
         {query, genNodeList, prepare, bind}
       );
-    },
+    },*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test TraversalBlock: traverse a tree
@@ -206,6 +206,7 @@ function ahuacatlProfilerTestSuite () {
       const col = db._createDocumentCollection(colName);
       const edgeCol = db._createEdgeCollection(edgeColName);
       const prepare = (rows) => {
+        print("Sezp done");
         profHelper.createBinaryTree(col, edgeCol, rows);
       };
       const query = `FOR v IN 0..@rows OUTBOUND @root @@edgeCol RETURN v`;
