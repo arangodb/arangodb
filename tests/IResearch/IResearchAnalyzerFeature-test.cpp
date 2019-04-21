@@ -530,9 +530,6 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     CHECK((false == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer9", "TestAnalyzer", "abc", {irs::document::type()}).ok()));
     CHECK((true == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer9")));
   }
@@ -541,11 +538,17 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     CHECK((false == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer10", "TestAnalyzer", "abc", {irs::position::type()}).ok()));
     CHECK((true == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer10")));
+  }
+
+  // add invalid (properties too large)
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    std::string properties(1024*1024 + 1, 'x'); // +1 char longer then limit
+    CHECK((false == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer11", "TestAnalyzer", properties).ok()));
+    CHECK((true == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer11")));
   }
 
   // add static analyzer

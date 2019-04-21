@@ -68,6 +68,7 @@ namespace {
 
 static std::string const ANALYZER_COLLECTION_NAME("_analyzers");
 static char const ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars)
+static size_t const ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary value
 static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
 static std::string const FEATURE_NAME("IResearchAnalyzer");
 static irs::string_ref const IDENTITY_ANALYZER_NAME("identity");
@@ -890,6 +891,14 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
         std::string("unsupported analyzer feature '") + std::string(feature->name()) + "'" // value
       );
     }
+  }
+
+  // limit the maximum size of analyzer properties
+  if (ANALYZER_PROPERTIES_SIZE_MAX < properties.size()) {
+    return arangodb::Result( // result
+      TRI_ERROR_BAD_PARAMETER, // code
+      std::string("analyzer properties size of '") + std::to_string(properties.size()) + "' exceeds the maximum allowed limit of '" + std::to_string(ANALYZER_PROPERTIES_SIZE_MAX) + "'"
+    );
   }
 
   static const auto generator = []( // key + value generator
