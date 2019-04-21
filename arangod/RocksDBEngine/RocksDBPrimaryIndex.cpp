@@ -631,10 +631,8 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
   TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(newDoc);
   auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
   
-  if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // blacklist new index entry to avoid caching without committing first
-    blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
-  }
+  // blacklist new index entry to avoid caching without committing first
+  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string());
   if (!s.ok()) {
