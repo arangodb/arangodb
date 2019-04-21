@@ -739,17 +739,19 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
           numReadSinceLastReport > 1024 * 1024 * 8) {
         // report every 8MB of transferred data
         //   currently do not have unzipped size for .gz files
-        std::stringstream percentage;
+        std::stringstream percentage, ofFilesize;
         if (isGzip) {
+          ofFilesize << "";
           percentage << "";
         } else {
+          ofFilesize << " of " << fileSize;
           percentage << " ("
             << int(100. * double(numReadForThisCollection) / double(fileSize)) << " %)";
         } // else
 
         LOG_TOPIC(INFO, Logger::RESTORE)
             << "# Still loading data into " << collectionType << " collection '"
-            << cname << "', " << numReadForThisCollection << " of " << fileSize
+            << cname << "', " << numReadForThisCollection << ofFilesize.str()
             << " byte(s) restored" << percentage.str();
         numReadSinceLastReport = 0;
       }
