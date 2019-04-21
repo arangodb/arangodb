@@ -443,7 +443,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
     auto file = jobData.directory.writableFile(
         jobData.name + (jobData.options.clusterMode ? "" : ("_" + hexString)) +
             ".structure.json",
-        true);
+        true, 0, false);
     if (!::fileOk(file.get())) {
       return ::fileError(file.get(), true);
     }
@@ -957,7 +957,7 @@ Result DumpFeature::storeViews(VPackSlice const& views) const {
       std::string fname = nameSlice.copyString();
       fname.append(".view.json");
       // save last tick in file
-      auto file = _directory->writableFile(fname, true);
+      auto file = _directory->writableFile(fname, true, 0, false);
       if (!::fileOk(file.get())) {
         return ::fileError(file.get(), true);
       }
