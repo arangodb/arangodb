@@ -391,8 +391,6 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
             VPackSlice cachedData(finding.value()->value());
             TRI_ASSERT(cachedData.isArray());
             if (cachedData.length() / 2 < limit) {
-              LOG_DEVEL << "directly return it " << (cachedData.length() / 2);
-              
               // Directly return it, no need to copy
               _builderIterator = VPackArrayIterator(cachedData);
               while (_builderIterator.valid()) {
@@ -429,7 +427,6 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         }  // attempts
       }    // if (_cache)
 
-      LOG_DEVEL <<  "needRocksLookup: " << needRocksLookup << ": " << fromTo;
       if (needRocksLookup) {
         lookupInRocksDB(fromTo);
       }
@@ -546,7 +543,6 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         for (size_t attempts = 0; attempts < 10; attempts++) {
           auto status = cc->insert(entry);
           if (status.ok()) {
-            LOG_DEVEL << "cached " << fromTo << " with " << _builder.slice().length();
             inserted = true;
             break;
           }
