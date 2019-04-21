@@ -732,14 +732,14 @@ arangodb::Result IResearchLink::init(
   auto viewId = definition.get(StaticStrings::ViewIdField).copyString();
   auto& vocbase = _collection.vocbase();
 
-  if (arangodb::ServerState::instance()->isCoordinator()) {  // coordinator link
+  if (arangodb::ServerState::instance()->isCoordinator()) { // coordinator link
     auto* ci = arangodb::ClusterInfo::instance();
 
     if (!ci) {
-      return arangodb::Result(TRI_ERROR_INTERNAL,
-                              std::string("failure to get storage engine while "
-                                          "initializing arangosearch link '") +
-                                  std::to_string(_id) + "'");
+      return arangodb::Result( // result
+        TRI_ERROR_INTERNAL, // code
+        std::string("failure to get storage engine while initializing arangosearch link '") + std::to_string(_id) + "'"
+      );
     }
 
     auto logicalView = ci->getView(vocbase.name(), viewId);
@@ -747,37 +747,24 @@ arangodb::Result IResearchLink::init(
     // if there is no logicalView present yet then skip this step
     if (logicalView) {
       if (arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
-        return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                std::string("error finding view: '") + viewId +
-                                    "' for link '" + std::to_string(_id) +
-                                    "' : no such view");
-      }
-
-      auto* view =
-          arangodb::LogicalView::cast<IResearchViewCoordinator>(logicalView.get());
-
-      if (!view) {
-        return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                std::string("error finding view: '") + viewId +
-                                    "' for link '" + std::to_string(_id) + "'");
-      }
-
-      viewId = view->guid();  // ensue that this is a GUID (required by
-                              // operator==(IResearchView))
-
-      arangodb::velocypack::Builder builder;
-
-      builder.openObject();
-
-      // FIXME TODO move this logic into IResearchViewCoordinator
-      if (!meta.json(builder, false)) { // generate user-visible definition
         return arangodb::Result( // result
-          TRI_ERROR_INTERNAL, // code
-          std::string("failed to generate link definition while initializing link '") + std::to_string(_id) + "'"
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, // code
+          std::string("error finding view: '") + viewId + "' for link '" + std::to_string(_id) + "' : no such view"
         );
       }
 
-      builder.close();
+      auto* view = arangodb::LogicalView::cast<IResearchViewCoordinator>( // cast view
+        logicalView.get() // args
+      );
+
+      if (!view) {
+        return arangodb::Result( // result
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, // code
+          std::string("error finding view: '") + viewId + "' for link '" + std::to_string(_id) + "'"
+        );
+      }
+
+      viewId = view->guid(); // ensue that this is a GUID (required by operator==(IResearchView))
       std::swap(const_cast<IResearchLinkMeta&>(_meta), meta); // required for IResearchViewCoordinator which calls IResearchLink::properties(...)
 
       auto revert = irs::make_finally([this, &meta]()->void { // revert '_meta'

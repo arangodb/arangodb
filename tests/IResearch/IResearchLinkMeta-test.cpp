@@ -842,7 +842,7 @@ SECTION("test_writeCustomizedValues") {
   {
     std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
     std::unordered_set<std::string> expectedOverrides = { "default", "all", "some", "none" };
-    std::unordered_set<std::string> expectedAnalyzers = { arangodb::StaticStrings::SystemDatabase + "::empty", "identity" };
+    std::unordered_set<std::string> expectedAnalyzers = { "::empty", "identity" };
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
@@ -912,7 +912,7 @@ SECTION("test_writeCustomizedValues") {
             tmpSlice.isArray() &&
             1 == tmpSlice.length() &&
             tmpSlice.at(0).isString() &&
-            arangodb::StaticStrings::SystemDatabase + "::empty" == tmpSlice.at(0).copyString()
+            std::string("::empty") == tmpSlice.at(0).copyString()
           ));
         } else if ("some" == fieldOverride.copyString()) {
           CHECK((2U == sliceOverride.length()));
