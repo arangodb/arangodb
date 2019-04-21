@@ -344,7 +344,7 @@ for (name of userSet) {
             assertTrue(rootTestView(testViewName), 'Precondition failed, view was not found');
             if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
                 db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, true);
-                assertEqual(rootGetViewProps(testViewName, true)["links"][testCol1Name]["analyzers"], [db._name() + "::text_de",db._name() + "::text_en"], 'View link update reported success, but property was not updated');
+                assertEqual(rootGetViewProps(testViewName, true)["links"][testCol1Name]["analyzers"], ["text_de", "text_en"], 'View link update reported success, but property was not updated');
             } else {
                 try {
                     db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, true);
@@ -359,7 +359,7 @@ for (name of userSet) {
             assertTrue(rootTestView(testViewName), 'Precondition failed, view was not found');
             if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
                 db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, false);
-                assertEqual(rootGetViewProps(testViewName, true)["links"][testCol1Name]["analyzers"], [db._name() + "::text_de",db._name() + "::text_en"], 'View link update reported success, but property was not updated');
+                assertEqual(rootGetViewProps(testViewName, true)["links"][testCol1Name]["analyzers"], ["text_de", "text_en"], 'View link update reported success, but property was not updated');
             } else {
                 try {
                   db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, false);
