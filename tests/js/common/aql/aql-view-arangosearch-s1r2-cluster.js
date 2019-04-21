@@ -32,8 +32,8 @@ const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const base = require("fs").join(require('internal').pathForTesting('common'),
-  'aql', 'aql-view-arangosearch-disabled-cluster.js');
-require("internal").load(base);
+  'aql', 'aql-view-arangosearch-cluster.inc');
+const IResearchAqlTestSuite = require("internal").load(base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -63,3 +63,5 @@ jsunity.run(function IResearchAqlTestSuite_s1_r2() {
 
   return suite;
 });
+
+return jsunity.done();
