@@ -4,3 +4,11 @@ permissions
 permissions_server
 audit_client
 audit_server
+resilience_failover_failure
+resilience_failover_view
+resilience_failover
+resilience_move_view
+resilience_move
+resilience_repair
+resilience_sharddist
+resilience_transactions
