@@ -1032,18 +1032,19 @@ Result transaction::Methods::begin() {
 /// @brief commit / finish the transaction
 Result transaction::Methods::commit() {
   TRI_IF_FAILURE("TransactionCommitFail") { return Result(TRI_ERROR_DEBUG); }
+  Result res;
 
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
-    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
-                  "transaction not running on commit");
+    return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
+                     "transaction not running on commit");
   }
 
   ExecContext const* exe = ExecContext::CURRENT;
   if (exe != nullptr && !_state->isReadOnlyTransaction()) {
     bool cancelRW = ServerState::readOnly() && !exe->isSuperuser();
     if (exe->isCanceled() || cancelRW) {
-      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
+      return res.reset(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 
@@ -1052,46 +1053,43 @@ Result transaction::Methods::commit() {
     Result res = ClusterTrxMethods::commitTransaction(*this);
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
-          << "failed to commit on subordinates " << res.errorMessage();
+      << "failed to commit on subordinates: '" << res.errorMessage() << "'";
       return res;
     }
   }
 
-  auto res = _state->commitTransaction(this);
-  if (res.fail()) {
-    return res;
+  res = _state->commitTransaction(this);
+  if (res.ok()) {
+    applyStatusChangeCallbacks(*this, Status::COMMITTED);
   }
 
-  applyStatusChangeCallbacks(*this, Status::COMMITTED);
-
-  return Result();
+  return res;
 }
 
 /// @brief abort the transaction
 Result transaction::Methods::abort() {
+  Result res;
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
-    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
-                  "transaction not running on abort");
+    return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
+                     "transaction not running on abort");
   }
 
   if (_state->isRunningInCluster() && _state->isTopLevelTransaction()) {
     // first commit transaction on subordinate servers
-    Result res = ClusterTrxMethods::abortTransaction(*this);
+    res = ClusterTrxMethods::abortTransaction(*this);
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC("d89a8", WARN, Logger::TRANSACTIONS)
       << "failed to abort on subordinates: " << res.errorMessage();
-    }
+    }  // abort locally anyway
   }
 
-  auto res = _state->abortTransaction(this);
-  if (res.fail()) {
-    return res;
+  res = _state->abortTransaction(this);
+  if (res.ok()) {
+    applyStatusChangeCallbacks(*this, Status::ABORTED);
   }
 
-  applyStatusChangeCallbacks(*this, Status::ABORTED);
-
-  return Result();
+  return res;
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state

@@ -29,8 +29,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
-#include "Transaction/Manager.h"
-#include "Transaction/ManagerFeature.h"
+#include "Transaction/ClusterUtils.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -90,13 +89,9 @@ void handleLeadership(LogicalCollection& collection, std::string const& localLea
 
   if (plannedLeader.empty()) {   // Planned to lead
     if (!localLeader.empty()) {  // We were not leader, assume leadership
-      auto* mgr = transaction::ManagerFeature::manager();
-      if (mgr) { // abort ongoing follower transactions
-        mgr->abortAllManagedTrx(collection.id(), false);
-      }
-      
       followers->setTheLeader(std::string());
       followers->clear();
+      transaction::cluster::abortFollowerTransactionsOnShard(collection.id());
     } else {
       // If someone (the Supervision most likely) has thrown
       // out a follower from the plan, then the leader
@@ -114,10 +109,6 @@ void handleLeadership(LogicalCollection& collection, std::string const& localLea
     }
   } else {  // Planned to follow
     if (localLeader.empty()) {
-      auto* mgr = transaction::ManagerFeature::manager();
-      if (mgr) { // abort ongoing follower transactions
-        mgr->abortAllManagedTrx(collection.id(), true);
-      }
       // Note that the following does not delete the follower list
       // and that this is crucial, because in the planned leader
       // resign case, updateCurrentForCollections will report the
@@ -125,6 +116,7 @@ void handleLeadership(LogicalCollection& collection, std::string const& localLea
       // agency. If this list would be empty, then the supervision
       // would be very angry with us!
       followers->setTheLeader(plannedLeader);
+      transaction::cluster::abortLeaderTransactionsOnShard(collection.id());
     }
     // Note that if we have been a follower to some leader
     // we do not immediately adjust the leader here, even if
