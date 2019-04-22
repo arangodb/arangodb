@@ -1,8 +1,8 @@
 v3.4.6 (XXXX-XX-XX)
 -------------------
 
-* fixed wrong option name `--database.ignore-logfile-errors` in error message and
-  correct it to `--database.ignore-datafile-errors`
+* fixed internal issue #3893: correct wrong option name `--database.ignore-logfile-errors` 
+  in error message and correct it to `--database.ignore-datafile-errors`
 
 * fixed internal issue #2946: create graph autocomplete was not working under
   certain circumstances.
