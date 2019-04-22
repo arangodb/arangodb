@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InitialSyncer.h"
-#include "Basics/MutexLocker.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -33,10 +32,7 @@ InitialSyncer::InitialSyncer(ReplicationApplierConfiguration const& configuratio
     : Syncer(configuration), _progress{setter} {}
 
 InitialSyncer::~InitialSyncer() {
-  {
-    MUTEX_LOCKER(guard, _batchPingTimerMutex);
-    _batchPingTimer.reset();
-  }
+  _batchPingTimer.reset();
 
   try {
     if (!_state.isChildSyncer) {
@@ -50,7 +46,6 @@ InitialSyncer::~InitialSyncer() {
 void InitialSyncer::startRecurringBatchExtension() {
   TRI_ASSERT(!_state.isChildSyncer);
   if (isAborted()) {
-    MUTEX_LOCKER(guard, _batchPingTimerMutex);
     _batchPingTimer.reset();
     return;
   }
@@ -60,12 +55,15 @@ void InitialSyncer::startRecurringBatchExtension() {
     secs = 30;
   }
         
-  MUTEX_LOCKER(guard, _batchPingTimerMutex);
+  std::weak_ptr<Syncer> self(shared_from_this());
   _batchPingTimer = SchedulerFeature::SCHEDULER->queueDelay(
-      RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs), [this](bool cancelled) {
-        if (!cancelled && _batch.id != 0 && !isAborted()) {
-          _batch.extend(_state.connection, _progress);
-          startRecurringBatchExtension();
+      RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs), [this, self](bool cancelled) {
+        if (!cancelled) {
+          auto syncer = self.lock();
+          if (syncer && _batch.id != 0 && !isAborted()) {
+            _batch.extend(_state.connection, _progress);
+            startRecurringBatchExtension();
+          }
         }
       });
 }

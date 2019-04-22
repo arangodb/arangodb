@@ -25,7 +25,6 @@
 #define ARANGOD_REPLICATION_INITIAL_SYNCER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "Basics/asio_ns.h"
 #include "Replication/ReplicationApplierConfiguration.h"
@@ -96,7 +95,6 @@ class InitialSyncer : public Syncer {
   replutils::BatchInfo _batch;
   replutils::ProgressInfo _progress;
   
-  Mutex _batchPingTimerMutex;
   /// recurring task to keep the batch alive
   Scheduler::WorkHandle _batchPingTimer;
 };
