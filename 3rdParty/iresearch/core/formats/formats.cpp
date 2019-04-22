@@ -90,13 +90,19 @@ DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta)
   meta.segments_ = std::move(segments);
 }
 
-/*static*/ bool formats::exists(const string_ref& name) {
-  return nullptr != format_register::instance().get(name);
+/*static*/ bool formats::exists(
+    const string_ref& name,
+    bool load_library /*= true*/
+) {
+  return nullptr != format_register::instance().get(name, load_library);
 }
 
-/*static*/ format::ptr formats::get(const string_ref& name) NOEXCEPT {
+/*static*/ format::ptr formats::get(
+    const string_ref& name,
+    bool load_library /*= true*/
+) NOEXCEPT {
   try {
-    auto* factory = format_register::instance().get(name);
+    auto* factory = format_register::instance().get(name, load_library);
 
     return factory ? factory() : nullptr;
   } catch (...) {

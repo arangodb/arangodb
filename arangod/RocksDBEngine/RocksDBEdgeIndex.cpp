@@ -101,9 +101,9 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
     auto* mthds = RocksDBTransactionState::toMethods(trx);
     // intentional copy of the options
-    rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-    options.fill_cache = EdgeIndexFillBlockCache;
-    _iterator = mthds->NewIterator(options, index->columnFamily());
+    rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
+    ro.fill_cache = EdgeIndexFillBlockCache;
+    _iterator = mthds->NewIterator(ro, index->columnFamily());
   }
 
   ~RocksDBEdgeIndexLookupIterator() {
@@ -184,7 +184,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
                 // Twice advance the iterator
                 _builderIterator.next();
-                // We always have <revision,_from> pairs
+                // We always have <documentId,_from/_to> pairs
                 TRI_ASSERT(_builderIterator.valid());
                 _builderIterator.next();
               }
@@ -506,30 +506,29 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   void resetInplaceMemory() { _builder.clear(); }
 
-  void lookupInRocksDB(arangodb::velocypack::StringRef fromTo) {
+  void lookupInRocksDB(VPackStringRef fromTo) {
     // Bad case read from RocksDB
     _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
-    _iterator->Seek(_bounds.start());
     resetInplaceMemory();
     rocksdb::Comparator const* cmp = _index->comparator();
+    auto end = _bounds.end();
 
     cache::Cache* cc = _cache.get();
     _builder.openArray(true);
-    auto end = _bounds.end();
-    while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
+    for (_iterator->Seek(_bounds.start());
+         _iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0);
+         _iterator->Next()) {
       LocalDocumentId const documentId =
-          RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue,
-                                      _iterator->key());
-
-      // adding revision ID and _from or _to value
+      RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue,
+                                  _iterator->key());
+      
+      // adding documentId and _from or _to value
       _builder.add(VPackValue(documentId.id()));
-      arangodb::velocypack::StringRef vertexId =
-          RocksDBValue::vertexId(_iterator->value());
+      VPackStringRef vertexId = RocksDBValue::vertexId(_iterator->value());
       _builder.add(VPackValuePair(vertexId.data(), vertexId.size(), VPackValueType::String));
-
-      _iterator->Next();
     }
     _builder.close();
+    
     if (cc != nullptr) {
       // TODO Add cache retry on next call
       // Now we have something in _inplaceMemory.
@@ -662,12 +661,11 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
   TRI_ASSERT(toFrom.isString());
-  RocksDBValue value =
-      RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef(toFrom));
-
-  // blacklist key in cache
+  RocksDBValue value = RocksDBValue::EdgeIndexValue(VPackStringRef(toFrom));
+ 
+  // always invalidate cache entry for all edges with same _from / _to
   blackListKey(fromToRef);
-
+  
   // acquire rocksdb transaction
   rocksdb::Status s = mthd->PutUntracked(_cf, key.ref(), value.string());
 
@@ -701,7 +699,7 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   RocksDBValue value =
       RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef(toFrom));
 
-  // blacklist key in cache
+  // always invalidate cache entry for all edges with same _from / _to
   blackListKey(fromToRef);
 
   rocksdb::Status s = mthd->Delete(_cf, key.ref());
