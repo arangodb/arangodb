@@ -265,6 +265,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // it in ::start) If it is something else this will throw an error.
   ctx->normalizePath(_appPath, "javascript.app-path", false);
   v8security->addToInternalWhitelist(_appPath, FSAccessType::READ);
+  v8security->addToInternalWhitelist(_appPath, FSAccessType::WRITE);
 
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {

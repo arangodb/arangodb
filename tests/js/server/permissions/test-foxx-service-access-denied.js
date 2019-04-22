@@ -14,8 +14,11 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'javascript.harden' : 'true',
     'javascript.files-whitelist': [
-      '^' + fs.join(pu.TOP_DIR, 'tests', 'js'), //contains services to install
+        '^$',
     ],
+    // tests/js/common/test-data/apps/server-security/index.js
+    'javascript.app-path': fs.join(pu.TOP_DIR, 'tests', 'js',
+                                        'common', 'test-data', 'apps'),
     'javascript.endpoints-whitelist' : [
       'ssl://arangodb.com:443'
     ],
@@ -54,7 +57,7 @@ function testSuite() {
     },
 
     // routes are defined in:
-    // js/common/test-data/apps/server-security/index.js
+    // tests/js/common/test-data/apps/server-security/index.js
 
     testPid : function() {
       const url = endpoint + mount + "/pid";
