@@ -4,16 +4,4 @@ permissions
 permissions_server
 audit_client
 audit_server
-resilience_failover_failure
-resilience_failover_view
-resilience_failover
-resilience_move_view
-resilience_move
-resilience_repair
-resilience_sharddist
 resilience_transactions
-replication_ongoing_32
-replication_ongoing_frompresent
-replication_ongoing_frompresent_32
-replication_ongoing_global
-replication_ongoing_global_spec
