@@ -276,34 +276,26 @@ bool TRI_IsSymbolicLink(char const* path) {
 /// @brief creates a symbolic link
 ////////////////////////////////////////////////////////////////////////////////
 
+bool TRI_CreateSymbolicLink(std::string const& target, std::string const& linkpath, 
+                            std::string& error) {
 #ifdef _WIN32
-
-bool TRI_CreateSymbolicLink(char const* target, const char *linkpath, std::string &error) {
   // TODO : check if a file is a symbolic link - without opening the file
   return false;
-}
-
 #else
-
-bool TRI_CreateSymbolicLink(std::string const& target, std::string const& linkpath,
-                            std::string &error) {
-  int res;
-
-  res = symlink(target.c_str(), linkpath.c_str());
+  int res = symlink(target.c_str(), linkpath.c_str());
 
   if (res < 0) {
     error = "failed to create a symlink " + target + " -> " + linkpath + " - " + strerror(errno);
   }
   return res == 0;
-}
-
 #endif
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resolves a symbolic link
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef __WIN32
+#ifdef _WIN32
 std::string  TRI_ResolveSymbolicLink(std::string path, bool& hadError, bool recursive) {
   return path;
 }
@@ -314,9 +306,7 @@ std::string  TRI_ResolveSymbolicLink(std::string path, bool recursive) {
 #else
 namespace {
 static bool IsSymbolicLink(char const* path, struct stat* stbuf) {
-  int res;
-
-  res = lstat(path, stbuf);
+  int res = lstat(path, stbuf);
 
   return (res == 0) && ((stbuf->st_mode & S_IFMT) == S_IFLNK);
 }
@@ -341,7 +331,7 @@ std::string TRI_ResolveSymbolicLink(std::string path, bool& hadError, bool recur
       hadError = true;
       break;
     }
-    if(!recursive){
+    if (!recursive) {
       break;
     }
   }

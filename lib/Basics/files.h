@@ -65,6 +65,7 @@ bool TRI_IsSymbolicLink(char const* path);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resolves a symbolic link
 ////////////////////////////////////////////////////////////////////////////////
+
 std::string TRI_ResolveSymbolicLink(std::string path, bool& hadError, bool recursive = true);
 std::string TRI_ResolveSymbolicLink(std::string path, bool recursive = true);
 
@@ -327,7 +328,7 @@ bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_CreateSymbolicLink(std::string const& target, std::string const& linkpath,
-                            std::string &error);
+                            std::string& error);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate the installation directory
