@@ -8,3 +8,4 @@ permissions
 permissions_server
 audit_client
 audit_server
+resilience_transactions

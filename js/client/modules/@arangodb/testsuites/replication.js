@@ -30,6 +30,11 @@ const functionsDocumentation = {
   'replication_random': 'replication randomized tests for transactions',
   'replication_aql': 'replication AQL tests',
   'replication_ongoing': 'replication ongoing tests',
+  'replication_ongoing_32': 'replication ongoing "32" tests',
+  'replication_ongoing_global': 'replication ongoing "global" tests',
+  'replication_ongoing_global_spec': 'replication ongoing "global-spec" tests',
+  'replication_ongoing_frompresent': 'replication ongoing "frompresent" tests',
+  'replication_ongoing_frompresent_32': 'replication ongoing "frompresent-32" tests',
   'replication_static': 'replication static tests',
   'replication_sync': 'replication sync tests',
   'shell_replication': 'shell replication tests'
@@ -61,7 +66,7 @@ function shellReplication (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationFuzz (options) {
-  let testCases = tu.scanTestPath('js/server/tests/replication/');
+  let testCases = tu.scanTestPath('js/server/tests/replication/fuzz');
 
   options.replication = true;
   options.test = 'replication-fuzz';
@@ -120,7 +125,7 @@ function replicationFuzz (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationRandom (options) {
-  let testCases = tu.scanTestPath('js/server/tests/replication/');
+  let testCases = tu.scanTestPath('js/server/tests/replication/random');
 
   options.replication = true;
   options.test = 'replication-random';
@@ -179,7 +184,7 @@ function replicationRandom (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationAql (options) {
-  let testCases = tu.scanTestPath('js/server/tests/replication/');
+  let testCases = tu.scanTestPath('js/server/tests/replication/aql');
 
   options.replication = true;
   options.test = 'replication-aql';
@@ -234,73 +239,81 @@ function replicationAql (options) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: replication_ongoing
+// / @brief TEST: replication_ongoing*
 // //////////////////////////////////////////////////////////////////////////////
 
-function replicationOngoing (options) {
-  let testCases = tu.scanTestPath('js/server/tests/replication/');
-
-  options.replication = true;
-  if (options.test === undefined) {
-    options.test = 'replication-ongoing';
-  }
-
-  let startStopHandlers = {
-    postStart: function (options,
+var _replicationOngoing = function(path) {
+  this.func = function replicationOngoing (options) {
+    let testCases = tu.scanTestPath(path);
+    options.replication = true;
+    if (options.test === undefined) {
+      options.test = 'replication-ongoing';
+    }
+  
+    let startStopHandlers = {
+      postStart: function (options,
+                           serverOptions,
+                           instanceInfo,
+                           customInstanceInfos,
+                           startStopHandlers) {
+        let message;
+        let slave = pu.startInstance('tcp', options, {}, 'slave_ongoing');
+        let state = (typeof slave === 'object');
+  
+        if (state) {
+          message = 'failed to start slave instance!';
+        }
+  
+        return {
+          instanceInfo: slave,
+          message: message,
+          state: state,
+          env: {
+            'flatCommands': slave.endpoint
+          }
+        };
+      },
+  
+      preStop: function (options,
                          serverOptions,
                          instanceInfo,
                          customInstanceInfos,
                          startStopHandlers) {
-      let message;
-      let slave = pu.startInstance('tcp', options, {}, 'slave_ongoing');
-      let state = (typeof slave === 'object');
-
-      if (state) {
-        message = 'failed to start slave instance!';
-      }
-
-      return {
-        instanceInfo: slave,
-        message: message,
-        state: state,
-        env: {
-          'flatCommands': slave.endpoint
+        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+  
+        return {};
+      },
+  
+      postStop: function (options,
+                          serverOptions,
+                          instanceInfo,
+                          customInstanceInfos,
+                          startStopHandlers) {
+        if (options.cleanup) {
+          pu.cleanupLastDirectory(options);
         }
-      };
-    },
-
-    preStop: function (options,
-                       serverOptions,
-                       instanceInfo,
-                       customInstanceInfos,
-                       startStopHandlers) {
-      pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
-
-      return {};
-    },
-
-    postStop: function (options,
-                        serverOptions,
-                        instanceInfo,
-                        customInstanceInfos,
-                        startStopHandlers) {
-      if (options.cleanup) {
-        pu.cleanupLastDirectory(options);
+        return { state: true };
       }
-      return { state: true };
-    }
-
+  
+    };
+  
+    return tu.performTests(options, testCases, path, tu.runInArangosh, {'server.authentication':'true'}, startStopHandlers);
   };
+};
 
-  return tu.performTests(options, testCases, 'replication_ongoing', tu.runInArangosh, {'server.authentication':'true'}, startStopHandlers);
-}
+const replicationOngoing = (new _replicationOngoing('js/server/tests/replication/ongoing')).func;
+const replicationOngoing32 = (new _replicationOngoing('js/server/tests/replication/ongoing/32')).func;
+const replicationOngoingGlobal = (new _replicationOngoing('js/server/tests/replication/ongoing/global')).func;
+const replicationOngoingGlobalSpec = (new _replicationOngoing('js/server/tests/replication/ongoing/global/spec')).func;
+const replicationOngoingFrompresent = (new _replicationOngoing('js/server/tests/replication/ongoing/frompresent')).func;
+const replicationOngoingFrompresent32 = (new _replicationOngoing('js/server/tests/replication/ongoing/frompresent/32')).func;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: replication_static
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationStatic (options) {
-  let testCases = tu.scanTestPath('js/server/tests/replication/');
+  let testCases = tu.scanTestPath('js/server/tests/replication/static');
 
   options.replication = true;
   if (options.test === undefined) {
@@ -373,7 +386,7 @@ function replicationStatic (options) {
   return tu.performTests(
     options,
     testCases,
-    'master_static',
+    'replication_static',
     tu.runInArangosh,
     {
       'server.authentication': 'true'
@@ -386,7 +399,7 @@ function replicationStatic (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationSync (options) {
-  let testCases = tu.scanTestPath('js/server/tests/replication/');
+  let testCases = tu.scanTestPath('js/server/tests/replication/sync');
 
   options.replication = true;
   if (options.test === undefined) {
@@ -464,6 +477,11 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   testFns['replication_fuzz'] = replicationFuzz;
   testFns['replication_random'] = replicationRandom;
   testFns['replication_ongoing'] = replicationOngoing;
+  testFns['replication_ongoing_32'] = replicationOngoing32;
+  testFns['replication_ongoing_global'] = replicationOngoingGlobal;
+  testFns['replication_ongoing_global_spec'] = replicationOngoingGlobalSpec;
+  testFns['replication_ongoing_frompresent'] = replicationOngoingFrompresent;
+  testFns['replication_ongoing_frompresent_32'] = replicationOngoingFrompresent32;
   testFns['replication_static'] = replicationStatic;
   testFns['replication_sync'] = replicationSync;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
