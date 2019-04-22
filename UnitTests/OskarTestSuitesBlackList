@@ -12,3 +12,8 @@ resilience_move
 resilience_repair
 resilience_sharddist
 resilience_transactions
+replication_ongoing_32
+replication_ongoing_frompresent
+replication_ongoing_frompresent_32
+replication_ongoing_global
+replication_ongoing_global_spec
