@@ -714,7 +714,7 @@ arangodb::Result IResearchLink::init(
   std::string error;
   IResearchLinkMeta meta;
 
-  if (!meta.init(definition, error, &(collection().vocbase()))) { // definition should already be normalized and analyzers created if required
+  if (!meta.init(definition, error, &(collection().vocbase()), true)) { // definition should already be normalized and analyzers created if required
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error parsing view link parameters from json: ") + error

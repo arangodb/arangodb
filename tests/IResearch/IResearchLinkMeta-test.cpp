@@ -230,7 +230,7 @@ SECTION("test_inheritDefaults") {
   defaults._fields["abc"]->_fields["xyz"] = arangodb::iresearch::IResearchLinkMeta();
 
   auto json = arangodb::velocypack::Parser::fromJson("{}");
-  CHECK(true == meta.init(json->slice(), tmpString, nullptr, defaults));
+  CHECK(true == meta.init(json->slice(), tmpString, nullptr, false, defaults));
   CHECK(1U == meta._fields.size());
 
   for (auto& field: meta._fields) {
@@ -1080,7 +1080,7 @@ SECTION("test_readMaskAll") {
     \"storeValues\": \"full\", \
     \"analyzers\": [] \
   }");
-  CHECK(true == meta.init(json->slice(), tmpString, nullptr, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
+  CHECK(true == meta.init(json->slice(), tmpString, nullptr, false, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
   CHECK(true == mask._fields);
   CHECK(true == mask._includeAllFields);
   CHECK(true == mask._trackListPositions);
@@ -1094,7 +1094,7 @@ SECTION("test_readMaskNone") {
   std::string tmpString;
 
   auto json = arangodb::velocypack::Parser::fromJson("{}");
-  CHECK(true == meta.init(json->slice(), tmpString, nullptr, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
+  CHECK(true == meta.init(json->slice(), tmpString, nullptr, false, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
   CHECK(false == mask._fields);
   CHECK(false == mask._includeAllFields);
   CHECK(false == mask._trackListPositions);
@@ -1186,7 +1186,7 @@ SECTION("test_readAnalyzerDefinitions") {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((false == meta.init(json->slice(), errorField, &vocbase, true)));
     CHECK((std::string("analyzers=>empty1") == errorField));
   }
 
@@ -1200,7 +1200,7 @@ SECTION("test_readAnalyzerDefinitions") {
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((false == meta.init(json->slice(), errorField, &vocbase, true)));
     CHECK((std::string("analyzers=>empty1") == errorField));
   }
 
@@ -1211,7 +1211,7 @@ SECTION("test_readAnalyzerDefinitions") {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((false == meta.init(json->slice(), errorField, &vocbase, true)));
     CHECK((std::string("analyzers=>[0]=>name") == errorField));
   }
 
@@ -1222,7 +1222,7 @@ SECTION("test_readAnalyzerDefinitions") {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((false == meta.init(json->slice(), errorField, &vocbase, true)));
     CHECK((std::string("analyzers=>[0]=>type") == errorField));
   }
 
@@ -1233,7 +1233,7 @@ SECTION("test_readAnalyzerDefinitions") {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((false == meta.init(json->slice(), errorField, &vocbase, true)));
     CHECK((std::string("analyzers=>[0]") == errorField));
   }
 
@@ -1244,7 +1244,7 @@ SECTION("test_readAnalyzerDefinitions") {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((false == meta.init(json->slice(), errorField, &vocbase, true)));
     CHECK((std::string("analyzers=>[0]") == errorField));
   }
 
@@ -1259,7 +1259,7 @@ SECTION("test_readAnalyzerDefinitions") {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((false == meta.init(json->slice(), errorField, &vocbase, true)));
     CHECK((std::string("analyzers=>[0]") == errorField));
   }
 
@@ -1274,7 +1274,7 @@ SECTION("test_readAnalyzerDefinitions") {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((true == meta.init(json->slice(), errorField, &vocbase, true)));
     CHECK((1 == meta._analyzers.size()));
     CHECK((std::string("testVocbase::missing2") == meta._analyzers[0]._pool->name()));
     CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
@@ -1294,7 +1294,7 @@ SECTION("test_readAnalyzerDefinitions") {
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((false == meta.init(json->slice(), errorField, &vocbase, true)));
     CHECK((std::string("analyzers=>[0]") == errorField));
   }
 
@@ -1305,7 +1305,7 @@ SECTION("test_readAnalyzerDefinitions") {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((true == meta.init(json->slice(), errorField, &vocbase, true)));
     CHECK((1 == meta._analyzers.size()));
     CHECK((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
@@ -1325,7 +1325,7 @@ SECTION("test_readAnalyzerDefinitions") {
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((true == meta.init(json->slice(), errorField, &vocbase, true)));
     CHECK((1 == meta._analyzers.size()));
     CHECK((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
@@ -1342,7 +1342,7 @@ SECTION("test_readAnalyzerDefinitions") {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((true == meta.init(json->slice(), errorField, &vocbase, true)));
     CHECK((1 == meta._analyzers.size()));
     CHECK((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
@@ -1352,6 +1352,17 @@ SECTION("test_readAnalyzerDefinitions") {
     CHECK((std::string("empty") == meta._analyzers[0]._shortName));
   }
 
+  // existing analyzer (full) analyzer definition not allowed
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \
+      \"analyzers\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"de\", \"features\": [ \"frequency\" ] } ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    CHECK((false == meta.init(json->slice(), errorField, &vocbase, false)));
+    CHECK((std::string("analyzers=>[0]") == errorField));
+  }
+
   // existing analyzer (full)
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \
@@ -1359,7 +1370,7 @@ SECTION("test_readAnalyzerDefinitions") {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((true == meta.init(json->slice(), errorField, &vocbase, true)));
     CHECK((1 == meta._analyzers.size()));
     CHECK((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
@@ -1379,7 +1390,7 @@ SECTION("test_readAnalyzerDefinitions") {
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((true == meta.init(json->slice(), errorField, &vocbase, true)));
     CHECK((1 == meta._analyzers.size()));
     CHECK((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
@@ -1396,7 +1407,7 @@ SECTION("test_readAnalyzerDefinitions") {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((false == meta.init(json->slice(), errorField, &vocbase, true)));
     CHECK((std::string("analyzers=>[0]") == errorField));
   }
 
@@ -1410,7 +1421,7 @@ SECTION("test_readAnalyzerDefinitions") {
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((false == meta.init(json->slice(), errorField, &vocbase, true)));
     CHECK((std::string("analyzers=>[0]") == errorField));
   }
 }

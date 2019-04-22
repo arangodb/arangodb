@@ -188,6 +188,7 @@ bool IResearchLinkMeta::init( // initialize meta
     arangodb::velocypack::Slice const& slice, // definition
     std::string& errorField, // field causing error (out-param)
     TRI_vocbase_t const* defaultVocbase /*= nullptr*/, // fallback vocbase
+    bool readAnalyzerDefinition /*= false*/, // allow analyzer definitions
     IResearchLinkMeta const& defaults /*= DEFAULT()*/, // inherited defaults
     Mask* mask /*= nullptr*/ // initialized fields (out-param)
 ) {
@@ -260,7 +261,7 @@ bool IResearchLinkMeta::init( // initialize meta
           continue; //process next analyzer
         }
 
-        if (!value.isObject()) {
+        if (!readAnalyzerDefinition || !value.isObject()) {
           errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]";
 
           return false;
@@ -510,7 +511,7 @@ bool IResearchLinkMeta::init( // initialize meta
 
         std::string childErrorField;
 
-        if (!_fields[name]->init(value, childErrorField, defaultVocbase, subDefaults)) {
+        if (!_fields[name]->init(value, childErrorField, defaultVocbase, readAnalyzerDefinition, subDefaults)) {
           errorField = fieldName + "=>" + name + "=>" + childErrorField;
 
           return false;
