@@ -104,12 +104,6 @@ or PRs.
 
   just hangs
 
-
-- `tests/js/common/aql/aql-view-arangosearch-cluster.js`
-
-  taking too long
-
-
 - `./tests/js/server/resilience/moving-shards-with-arangosearch-view-cluster.js` always fails (and needs refactoring) due to changes from PR 7748 with
 
     [FAILED]  tests/js/server/resilience/moving-shards-with-arangosearch-view-cluster.js
