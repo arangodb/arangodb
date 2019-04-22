@@ -89,19 +89,22 @@ NS_ROOT
 
 /*static*/ bool scorers::exists(
     const string_ref& name,
-    const irs::text_format::type_id& args_format
+    const irs::text_format::type_id& args_format,
+    bool load_library /*= true*/
 ) {
-  return nullptr != scorer_register::instance().get(entry_key_t(name, args_format));
+  return nullptr != scorer_register::instance().get(entry_key_t(name, args_format),load_library);
 }
 
 /*static*/ sort::ptr scorers::get(
     const string_ref& name,
     const irs::text_format::type_id& args_format,
-    const string_ref& args
+    const string_ref& args,
+    bool load_library /*= true*/
 ) NOEXCEPT {
   try {
-    auto* factory =
-      scorer_register::instance().get(entry_key_t(name, args_format));
+    auto* factory = scorer_register::instance().get(
+      entry_key_t(name, args_format), load_library
+    );
 
     return factory ? factory(args) : nullptr;
   } catch (...) {

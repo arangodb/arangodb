@@ -74,9 +74,20 @@ class generic_register: public singleton<RegisterType> {
     return std::make_pair(itr.first->second, itr.second);
   }
 
-  entry_type get(const key_type& key) const {
+  entry_type get(const key_type& key, bool load_library) const {
     const entry_type* entry = lookup(key);
-    return entry ? *entry : load_entry_from_so(key);
+
+    if (entry) {
+      return *entry;
+    }
+
+    if (load_library) {
+      return load_entry_from_so(key);
+    }
+
+    IR_FRMT_ERROR("%s : key not found", __FUNCTION__);
+
+    return entry_type();
   }
 
   bool visit(const visitor_t& visitor) {

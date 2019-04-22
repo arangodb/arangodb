@@ -202,10 +202,10 @@ function recovery (options) {
     print(RED + 'No testcase matched the filter.' + RESET);
     return {
       ALLTESTS: {
-        status: false,
+        status: true,
         skipped: true
       },
-      status: false
+      status: true
     };
   }
 
