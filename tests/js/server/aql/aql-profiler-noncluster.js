@@ -206,7 +206,6 @@ function ahuacatlProfilerTestSuite () {
       const col = db._createDocumentCollection(colName);
       const edgeCol = db._createEdgeCollection(edgeColName);
       const prepare = (rows) => {
-        print("Sezp done");
         profHelper.createBinaryTree(col, edgeCol, rows);
       };
       const query = `FOR v IN 0..@rows OUTBOUND @root @@edgeCol RETURN v`;
