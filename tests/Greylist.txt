@@ -4,6 +4,66 @@ In this file we collect information about which tests are currently
 greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 
+- `tests/js/client/resilience/foxxmaster.js`
+
+    [FAILED]  tests/js/client/resilience/foxxmaster.js
+
+      "testQueueFailover" failed: Error: Supervision should have moved the Foxx queues and Foxx queues should have been started to run on a new coordinator - Error: Supervision should have moved the Foxx queues and Foxx queues should have been started to run on a new coordinator
+    at Object.testQueueFailover (/work/ArangoDB/tests/js/client/resilience/foxxmaster.js:196:15)
+    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:521:23)
+    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:173:24)
+    at /work/ArangoDB/tests/js/client/resilience/foxxmaster.js:263:9
+    at /work/ArangoDB/tests/js/client/resilience/foxxmaster.js:266:3
+    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:250:12)
+    at /work/ArangoDB/js/common/modules/@arangodb/testrunner.js:47:13
+    at arrayEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:516:11)
+    at Function.forEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:9344:14)
+    at runJSUnityTests (/work/ArangoDB/js/common/modules/@arangodb/testrunner.js:38:5)
+
+      "testQueueFailoverDuringJob" failed: Error: Supervision should have moved the Foxx queues and Foxx queues should have been started to run on a new coordinator - Error: Supervision should have moved the Foxx queues and Foxx queues should have been started to run on a new coordinator
+    at Object.testQueueFailoverDuringJob (/work/ArangoDB/tests/js/client/resilience/foxxmaster.js:252:15)
+    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:521:23)
+    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:173:24)
+    at /work/ArangoDB/tests/js/client/resilience/foxxmaster.js:263:9
+    at /work/ArangoDB/tests/js/client/resilience/foxxmaster.js:266:3
+    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:250:12)
+    at /work/ArangoDB/js/common/modules/@arangodb/testrunner.js:47:13
+    at arrayEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:516:11)
+    at Function.forEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:9344:14)
+    at runJSUnityTests (/work/ArangoDB/js/common/modules/@arangodb/testrunner.js:38:5)
+
+- `tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js`
+
+    [FAILED]  tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js
+
+      "Collections with distributeShardsLike with data if broken, should be repaired" failed: AssertionError: expected false to be true
+    at createBrokenClusterState (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:220:57)
+    at Context.<anonymous> (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:560:11)
+
+      "Collections with distributeShardsLike with data if interrupted, should complete repairs" failed: AssertionError: expected false to be true
+    at createBrokenClusterState (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:221:52)
+    at Context.<anonymous> (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:624:13)
+
+      "Collections with distributeShardsLike with data if called via GET, only return planned operations" failed: AssertionError: expected false to be true
+    at createBrokenClusterState (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:221:52)
+    at Context.<anonymous> (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:761:11)
+
+- `tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js`
+
+    [FAILED]  tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js
+
+      "testBasicOperationsLeaderFail4" failed: ArangoError 1457: timeout in cluster operation - ArangoError: timeout in cluster operation
+    at ArangoDatabase._drop (/work/ArangoDB/js/server/modules/@arangodb/arango-database.js:190:23)
+    at Object.tearDown (tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js:352:10)
+    at /work/ArangoDB/js/common/modules/jsunity/jsunity.js:468:16
+    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:522:15)
+    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:173:24)
+    at tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js:874:9
+    at tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js:878:3
+    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:250:12)
+    at source (eval at <anonymous> (unknown source), <anonymous>:4:52)
+
+
 - `tests/js/client/active-failover/basic.js`
 
    [FAILED]  tests/js/client/active-failover/basic.js
