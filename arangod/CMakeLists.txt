@@ -64,9 +64,6 @@ add_library(${LIB_ARANGO_IRESEARCH}
   IResearch/IResearchRocksDBRecoveryHelper.h
   IResearch/IResearchView.cpp IResearch/IResearchView.h
   IResearch/IResearchViewCoordinator.cpp IResearch/IResearchViewCoordinator.h
-  IResearch/IResearchViewOptimizerRules.cpp IResearch/IResearchViewOptimizerRules.h
-  IResearch/IResearchViewNode.cpp IResearch/IResearchViewNode.h
-  IResearch/IResearchViewBlock.cpp IResearch/IResearchViewBlock.h
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
   IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
@@ -77,6 +74,8 @@ add_library(${LIB_ARANGO_IRESEARCH}
   IResearch/VelocyPackHelper.cpp IResearch/VelocyPackHelper.h
   IResearch/ExpressionFilter.cpp IResearch/ExpressionFilter.h
   IResearch/AqlHelper.cpp IResearch/AqlHelper.h
+  RestHandler/RestAnalyzerHandler.cpp RestHandler/RestAnalyzerHandler.h
+  V8Server/v8-analyzers.cpp V8Server/v8-analyzers.h
 )
 
 target_compile_definitions(${LIB_ARANGO_IRESEARCH}
@@ -172,7 +171,7 @@ SET(ARANGOD_SOURCES
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
-  Aql/AqlItemBlockShell.cpp
+  Aql/AqlItemBlockUtils.cpp
   Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
@@ -185,7 +184,7 @@ SET(ARANGOD_SOURCES
   Aql/BlockCollector.cpp
   Aql/BlockFetcher.cpp
   Aql/CalculationExecutor.cpp
-  Aql/ClusterBlocks.cpp
+  Aql/BlocksWithClients.cpp
   Aql/ClusterNodes.cpp
   Aql/CollectNode.cpp
   Aql/CollectOptions.cpp
@@ -199,7 +198,6 @@ SET(ARANGOD_SOURCES
   Aql/CountCollectExecutor.cpp
   Aql/DistinctCollectExecutor.cpp
   Aql/DistributeExecutor.cpp
-  Aql/DocumentProducingBlock.cpp
   Aql/DocumentProducingNode.cpp
   Aql/EngineInfoContainerCoordinator.cpp
   Aql/EngineInfoContainerDBServer.cpp
@@ -222,12 +220,17 @@ SET(ARANGOD_SOURCES
   Aql/GraphNode.cpp
   Aql/Graphs.cpp
   Aql/HashedCollectExecutor.cpp
-  Aql/InAndOutRowExpressionContext.cpp
+  Aql/IResearchViewExecutor.cpp
+  Aql/IResearchViewNode.cpp
+  Aql/IResearchViewOptimizerRules.cpp
   Aql/IdExecutor.cpp
+  Aql/InAndOutRowExpressionContext.cpp
   Aql/IndexExecutor.cpp
   Aql/IndexHint.cpp
   Aql/IndexNode.cpp
   Aql/InputAqlItemRow.cpp
+  Aql/KShortestPathsExecutor.cpp
+  Aql/KShortestPathsNode.cpp
   Aql/LimitExecutor.cpp
   Aql/ModificationExecutor.cpp
   Aql/ModificationExecutorTraits.cpp
@@ -264,6 +267,7 @@ SET(ARANGOD_SOURCES
   Aql/ReturnExecutor.cpp
   Aql/ScatterExecutor.cpp
   Aql/Scopes.cpp
+  Aql/SharedAqlItemBlockPtr.cpp
   Aql/SharedQueryState.cpp
   Aql/ShortStringStorage.cpp
   Aql/ShortestPathExecutor.cpp
@@ -376,6 +380,7 @@ SET(ARANGOD_SOURCES
   Graph/Graph.cpp
   Graph/GraphManager.cpp
   Graph/GraphOperations.cpp
+  Graph/KShortestPathsFinder.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/PathEnumerator.cpp
   Graph/ShortestPathFinder.cpp
@@ -415,7 +420,6 @@ SET(ARANGOD_SOURCES
   Pregel/IncomingCache.cpp
   Pregel/OutgoingCache.cpp
   Pregel/PregelFeature.cpp
-  Pregel/Recovery.cpp
   Pregel/Utils.cpp
   Pregel/Worker-templates-algorithms.cpp
   Pregel/Worker-templates-native-types.cpp
@@ -432,6 +436,7 @@ SET(ARANGOD_SOURCES
   Replication/ReplicationApplier.cpp
   Replication/ReplicationApplierConfiguration.cpp
   Replication/ReplicationApplierState.cpp
+  Replication/ReplicationClients.cpp
   Replication/ReplicationFeature.cpp
   Replication/Syncer.cpp
   Replication/TailingSyncer.cpp

@@ -51,7 +51,7 @@ class HttpCommTask final : public GeneralCommTask {
 
   std::string authenticationRealm() const;
   ResponseCode authenticateRequest(HttpRequest*);
-  ResponseCode handleAuthHeader(HttpRequest* request) const;
+  ResponseCode handleAuthHeader(HttpRequest* request);
 
  private:
   size_t _readPosition;       // current read position

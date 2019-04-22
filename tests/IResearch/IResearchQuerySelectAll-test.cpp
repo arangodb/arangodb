@@ -88,7 +88,8 @@ struct IResearchQuerySelectAllSetup {
     arangodb::tests::init(true);
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
@@ -232,7 +233,6 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
   // populate view with the data
   {
       arangodb::OperationOptions opt;
-      TRI_voc_tick_t tick;
 
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -246,19 +246,19 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       // insert into collection_1
       for (; i < insertedDocs.size()/2; ++i) {
         auto const doc = arangodb::velocypack::Parser::fromJson("{ \"key\": " + std::to_string(i) + "}");
-        auto const res = logicalCollection1->insert(&trx, doc->slice(), insertedDocs[i], opt, tick, false);
+        auto const res = logicalCollection1->insert(&trx, doc->slice(), insertedDocs[i], opt, false);
         CHECK(res.ok());
       }
 
       // insert into collection_2
       for (; i < insertedDocs.size(); ++i) {
         auto const doc = arangodb::velocypack::Parser::fromJson("{ \"key\": " + std::to_string(i) + "}");
-        auto const res = logicalCollection1->insert(&trx, doc->slice(), insertedDocs[i], opt, tick, false);
+        auto const res = logicalCollection1->insert(&trx, doc->slice(), insertedDocs[i], opt, false);
         CHECK(res.ok());
       }
 
       CHECK((trx.commit().ok()));
-      CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
+      CHECK((arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
   }
 
   // unordered
@@ -274,9 +274,9 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
@@ -300,9 +300,9 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SORT d.key ASC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     auto expectedDoc = expectedDocs.begin();
@@ -322,9 +322,9 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SORT d.key DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     auto expectedDoc = expectedDocs.rbegin();
@@ -349,9 +349,9 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SORT TFIDF(d) RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
@@ -380,9 +380,9 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SORT TFIDF(d) DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
@@ -411,9 +411,9 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SORT BM25(d) RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
@@ -442,9 +442,9 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SORT BM25(d) DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
@@ -468,9 +468,9 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SORT TFIDF(d), d.key ASC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     auto expectedDoc = expectedDocs.begin();
@@ -490,9 +490,9 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SORT TFIDF(d), d.key DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     auto expectedDoc = expectedDocs.rbegin();

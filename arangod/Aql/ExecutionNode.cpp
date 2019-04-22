@@ -39,8 +39,10 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/Function.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
+#include "Aql/KShortestPathsNode.h"
 #include "Aql/LimitExecutor.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NoResultsExecutor.h"
@@ -58,7 +60,6 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
-#include "IResearch/IResearchViewNode.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -94,6 +95,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::UPSERT), "UpsertNode"},
     {static_cast<int>(ExecutionNode::TRAVERSAL), "TraversalNode"},
     {static_cast<int>(ExecutionNode::SHORTEST_PATH), "ShortestPathNode"},
+    {static_cast<int>(ExecutionNode::K_SHORTEST_PATHS), "KShortestPathsNode"},
     {static_cast<int>(ExecutionNode::REMOTESINGLE),
      "SingleRemoteOperationNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW),
@@ -322,6 +324,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new TraversalNode(plan, slice);
     case SHORTEST_PATH:
       return new ShortestPathNode(plan, slice);
+    case K_SHORTEST_PATHS:
+      return new KShortestPathsNode(plan, slice);
     case REMOTESINGLE:
       return new SingleRemoteOperationNode(plan, slice);
     case ENUMERATE_IRESEARCH_VIEW:
@@ -1011,7 +1015,8 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
     }
 
     case ExecutionNode::TRAVERSAL:
-    case ExecutionNode::SHORTEST_PATH: {
+    case ExecutionNode::SHORTEST_PATH:
+    case ExecutionNode::K_SHORTEST_PATHS: {
       depth++;
       auto ep = dynamic_cast<GraphNode const*>(en);
       if (ep == nullptr) {
@@ -1105,6 +1110,15 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
     }
     en->setRegsToClear(std::move(regsToClear));
   }
+}
+
+RegisterId ExecutionNode::varToRegUnchecked(Variable const& var) const {
+  std::unordered_map<VariableId, VarInfo> const& varInfo = getRegisterPlan()->varInfo;
+  auto const it = varInfo.find(var.id);
+  TRI_ASSERT(it != varInfo.end());
+  RegisterId const reg = it->second.registerId;
+
+  return reg;
 }
 
 /// @brief replace a dependency, returns true if the pointer was found and
@@ -1224,6 +1238,34 @@ RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
   RegisterId rv = it->second.registerId;
   TRI_ASSERT(rv < ExecutionNode::MaxRegisterId);
   return rv;
+}
+
+// This is the general case and will not work if e.g. there is no predecessor.
+ExecutorInfos ExecutionNode::createRegisterInfos(
+    std::shared_ptr<std::unordered_set<RegisterId>>&& readableInputRegisters,
+    std::shared_ptr<std::unordered_set<RegisterId>>&& writableOutputRegisters) const {
+  RegisterId const nrOutRegs = getNrOutputRegisters();
+  RegisterId const nrInRegs = getNrInputRegisters();
+
+  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
+  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+
+  return ExecutorInfos{std::move(readableInputRegisters),
+                       std::move(writableOutputRegisters),
+                       nrInRegs,
+                       nrOutRegs,
+                       std::move(regsToClear),
+                       std::move(regsToKeep)};
+}
+
+RegisterId ExecutionNode::getNrInputRegisters() const {
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  return getRegisterPlan()->nrRegs[previousNode->getDepth()];
+}
+
+RegisterId ExecutionNode::getNrOutputRegisters() const {
+  return getRegisterPlan()->nrRegs[getDepth()];
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -1988,18 +2030,6 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   RegisterId inputRegister = variableToRegisterId(_inVariable);
-
-  // TODO - remove LOGGING once register planning changes have been made and the ReturnExecutor is final
-  // LOG_DEVEL << "-------------------------------";
-  // LOG_DEVEL << "inputRegister:     " << inputRegister;
-  // LOG_DEVEL << "input block width: " << getRegisterPlan()->nrRegs[previousNode->getDepth()];
-  // LOG_DEVEL << "ouput block width: " << getRegisterPlan()->nrRegs[getDepth()];
-
-  // std::stringstream ss;
-  // for(auto const& a : getRegsToClear()){
-  //  ss << a << " ";
-  //}
-  // LOG_DEVEL << "registersToClear:  " << ss.rdbuf();
 
   bool const isRoot = plan()->root() == this;
 

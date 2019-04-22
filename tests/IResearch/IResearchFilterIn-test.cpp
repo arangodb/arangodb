@@ -85,7 +85,8 @@ struct IResearchFilterInSetup {
     arangodb::tests::init();
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
@@ -270,9 +271,9 @@ SECTION("BinaryIn") {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "testVocbase::test_analyzer")).term("1");
-    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "testVocbase::test_analyzer")).term("2");
-    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "testVocbase::test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "test_analyzer")).term("2");
+    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "test_analyzer")).term("3");
 
     assertFilterSuccess("FOR d IN collection FILTER ANALYZER(d.a['b']['c'][412].e.f in ['1','2','3'], 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER ANALYZER(d.a.b.c[412].e.f in ['1','2','3'], 'test_analyzer') RETURN d", expected);
@@ -296,9 +297,9 @@ SECTION("BinaryIn") {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(2.5);
-    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "testVocbase::test_analyzer")).term("1");
-    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "testVocbase::test_analyzer")).term("2");
-    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "testVocbase::test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "test_analyzer")).term("2");
+    root.add<irs::by_term>().field(mangleString("a.b.c[412].e.f", "test_analyzer")).term("3");
 
     assertFilterSuccess("FOR d IN collection FILTER ANALYZER(BOOST(d.a['b']['c'][412].e.f in ['1','2','3'], 2.5), 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER BOOST(ANALYZER(d.a.b.c[412].e.f in ['1','2','3'], 'test_analyzer'), 2.5) RETURN d", expected);
@@ -328,7 +329,7 @@ SECTION("BinaryIn") {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field(mangleString("quick.brown.fox", "testVocbase::test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("quick.brown.fox", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
@@ -370,7 +371,7 @@ SECTION("BinaryIn") {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(1.5);
-    root.add<irs::by_term>().field(mangleString("quick.brown.fox", "testVocbase::test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("quick.brown.fox", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
@@ -511,9 +512,9 @@ SECTION("BinaryIn") {
 
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("3");
 
     assertFilterSuccess("LET x=['1', 2, '3'] FOR d IN collection FILTER ANALYZER(d.a.b.c.e.f in x, 'test_analyzer') RETURN d", expected, &ctx);
   }
@@ -559,9 +560,9 @@ SECTION("BinaryIn") {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(1.5);
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("3");
 
     assertFilterSuccess("LET x=['1', 2, '3'] FOR d IN collection FILTER ANALYZER(BOOST(d.a.b.c.e.f in x, 1.5), 'test_analyzer') RETURN d", expected, &ctx);
     assertFilterSuccess("LET x=['1', 2, '3'] FOR d IN collection FILTER BOOST(ANALYZER(d.a.b.c.e.f in x, 'test_analyzer'), 1.5) RETURN d", expected, &ctx);
@@ -586,7 +587,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -694,7 +695,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -802,7 +803,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -909,7 +910,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -1017,7 +1018,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -1120,7 +1121,7 @@ SECTION("BinaryIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -1285,8 +1286,8 @@ SECTION("BinaryIn") {
 
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("1");
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("str");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("str");
     root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
     root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
@@ -1315,8 +1316,8 @@ SECTION("BinaryIn") {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(2.5);
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("1");
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("str");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("str");
     root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
     root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
@@ -2135,9 +2136,9 @@ SECTION("BinaryNotIn") {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
-    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "testVocbase::test_analyzer")).term("1");
-    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "testVocbase::test_analyzer")).term("2");
-    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "testVocbase::test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("2");
+    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("3");
 
     assertFilterSuccess("FOR d IN collection FILTER analyzer(d.a.b.c[323].e.f not in ['1','2','3'], 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER analyzer(d.a['b'].c[323].e.f not in ['1','2','3'], 'test_analyzer') RETURN d", expected);
@@ -2149,9 +2150,9 @@ SECTION("BinaryNotIn") {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
     root.boost(2.5);
-    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "testVocbase::test_analyzer")).term("1");
-    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "testVocbase::test_analyzer")).term("2");
-    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "testVocbase::test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("2");
+    root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("3");
 
     assertFilterSuccess("FOR d IN collection FILTER boost(analyzer(d.a.b.c[323].e.f not in ['1','2','3'], 'test_analyzer'), 2.5) RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER analyzer(boost(d.a['b'].c[323].e.f not in ['1','2','3'], 2.5), 'test_analyzer') RETURN d", expected);
@@ -2183,7 +2184,7 @@ SECTION("BinaryNotIn") {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
-    root.add<irs::by_term>().field(mangleString("quick.brown.fox", "testVocbase::test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("quick.brown.fox", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
@@ -2204,7 +2205,7 @@ SECTION("BinaryNotIn") {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
     root.boost(1.5);
-    root.add<irs::by_term>().field(mangleString("quick.brown.fox", "testVocbase::test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("quick.brown.fox", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
@@ -2317,9 +2318,9 @@ SECTION("BinaryNotIn") {
 
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("3");
 
     assertFilterSuccess("LET x=['1', 2, '3'] FOR d IN collection FILTER analyzer(d.a.b.c.e.f not in x, 'test_analyzer') RETURN d", expected, &ctx);
   }
@@ -2341,9 +2342,9 @@ SECTION("BinaryNotIn") {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
     root.boost(3.5);
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("3");
 
     assertFilterSuccess("LET x=['1', 2, '3'] FOR d IN collection FILTER boost(analyzer(d.a.b.c.e.f not in x, 'test_analyzer'), 3.5) RETURN d", expected, &ctx);
     assertFilterSuccess("LET x=['1', 2, '3'] FOR d IN collection FILTER analyzer(boost(d.a.b.c.e.f not in x, 3.5), 'test_analyzer') RETURN d", expected, &ctx);
@@ -2393,9 +2394,9 @@ SECTION("BinaryNotIn") {
 
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("3");
 
     // not a constant in array
     assertFilterSuccess(
@@ -2422,9 +2423,9 @@ SECTION("BinaryNotIn") {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
     root.boost(1.5);
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("1");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "testVocbase::test_analyzer")).term("3");
+    root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("3");
 
     // not a constant in array
     assertFilterSuccess(
@@ -2458,7 +2459,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2572,7 +2573,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2686,7 +2687,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2800,7 +2801,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -2915,7 +2916,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -3028,7 +3029,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);
@@ -3134,7 +3135,7 @@ SECTION("BinaryNotIn") {
     );
 
     auto const parseResult = query.parse();
-    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+    REQUIRE(parseResult.result.ok());
 
     auto* ast = query.ast();
     REQUIRE(ast);

@@ -125,7 +125,8 @@ struct V8ViewsSetup {
     arangodb::tests::v8Init(); // on-time initialize V8
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // setup required application features
     features.emplace_back(new arangodb::AuthenticationFeature(server), false); // required for VocbaseContext
@@ -212,7 +213,7 @@ SECTION("test_auth") {
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
     auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(context, &vocbase, v8g.get(), isolate.get(), arangoDBNS);
+    TRI_InitV8Views(*v8g, isolate.get(), arangoDBNS);
 
     auto fn_createView = arangoDBNS->NewInstance()->Get(TRI_V8_ASCII_STRING(isolate.get(), "_createView"));
     CHECK((fn_createView->IsFunction()));
@@ -315,7 +316,7 @@ SECTION("test_auth") {
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
     auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(context, &vocbase, v8g.get(), isolate.get(), arangoDBNS);
+    TRI_InitV8Views(*v8g, isolate.get(), arangoDBNS);
 
     auto fn_dropView = arangoDBNS->NewInstance()->Get(TRI_V8_ASCII_STRING(isolate.get(), "_dropView"));
     CHECK((fn_dropView->IsFunction()));
@@ -448,7 +449,7 @@ SECTION("test_auth") {
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
     auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(context, &vocbase, v8g.get(), isolate.get(), arangoDBNS);
+    TRI_InitV8Views(*v8g, isolate.get(), arangoDBNS);
 
     auto arangoView = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->VocbaseViewTempl)->NewInstance();
     auto fn_drop = arangoView->Get(TRI_V8_ASCII_STRING(isolate.get(), "drop"));
@@ -456,7 +457,6 @@ SECTION("test_auth") {
 
     arangoView->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate.get(), WRP_VOCBASE_VIEW_TYPE));
     arangoView->SetInternalField(SLOT_CLASS, v8::External::New(isolate.get(), logicalView.get()));
-    arangoView->SetInternalField(SLOT_EXTERNAL, v8::External::New(isolate.get(), logicalView.get()));
     std::vector<v8::Local<v8::Value>> args = {
     };
 
@@ -584,7 +584,7 @@ SECTION("test_auth") {
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
     auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(context, &vocbase, v8g.get(), isolate.get(), arangoDBNS);
+    TRI_InitV8Views(*v8g, isolate.get(), arangoDBNS);
 
     auto arangoView = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->VocbaseViewTempl)->NewInstance();
     auto fn_rename = arangoView->Get(TRI_V8_ASCII_STRING(isolate.get(), "rename"));
@@ -592,7 +592,6 @@ SECTION("test_auth") {
 
     arangoView->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate.get(), WRP_VOCBASE_VIEW_TYPE));
     arangoView->SetInternalField(SLOT_CLASS, v8::External::New(isolate.get(), logicalView.get()));
-    arangoView->SetInternalField(SLOT_EXTERNAL, v8::External::New(isolate.get(), logicalView.get()));
     std::vector<v8::Local<v8::Value>> args = {
       TRI_V8_ASCII_STRING(isolate.get(), "testView1"),
     };
@@ -762,7 +761,7 @@ SECTION("test_auth") {
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
     auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(context, &vocbase, v8g.get(), isolate.get(), arangoDBNS);
+    TRI_InitV8Views(*v8g, isolate.get(), arangoDBNS);
 
     auto arangoView = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->VocbaseViewTempl)->NewInstance();
     auto fn_properties = arangoView->Get(TRI_V8_ASCII_STRING(isolate.get(), "properties"));
@@ -770,7 +769,6 @@ SECTION("test_auth") {
 
     arangoView->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate.get(), WRP_VOCBASE_VIEW_TYPE));
     arangoView->SetInternalField(SLOT_CLASS, v8::External::New(isolate.get(), logicalView.get()));
-    arangoView->SetInternalField(SLOT_EXTERNAL, v8::External::New(isolate.get(), logicalView.get()));
     std::vector<v8::Local<v8::Value>> args = {
       TRI_VPackToV8(isolate.get(), arangodb::velocypack::Parser::fromJson("{ \"key\": \"value\" }")->slice()),
     };
@@ -971,7 +969,7 @@ SECTION("test_auth") {
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
     auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(context, &vocbase, v8g.get(), isolate.get(), arangoDBNS);
+    TRI_InitV8Views(*v8g, isolate.get(), arangoDBNS);
 
     auto fn_view = arangoDBNS->NewInstance()->Get(TRI_V8_ASCII_STRING(isolate.get(), "_view"));
     CHECK((fn_view->IsFunction()));
@@ -1121,7 +1119,7 @@ SECTION("test_auth") {
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
     auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(context, &vocbase, v8g.get(), isolate.get(), arangoDBNS);
+    TRI_InitV8Views(*v8g, isolate.get(), arangoDBNS);
 
     auto arangoView = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->VocbaseViewTempl)->NewInstance();
     auto fn_properties = arangoView->Get(TRI_V8_ASCII_STRING(isolate.get(), "properties"));
@@ -1129,7 +1127,6 @@ SECTION("test_auth") {
 
     arangoView->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate.get(), WRP_VOCBASE_VIEW_TYPE));
     arangoView->SetInternalField(SLOT_CLASS, v8::External::New(isolate.get(), logicalView.get()));
-    arangoView->SetInternalField(SLOT_EXTERNAL, v8::External::New(isolate.get(), logicalView.get()));
     std::vector<v8::Local<v8::Value>> args = {
     };
 
@@ -1276,7 +1273,7 @@ SECTION("test_auth") {
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
     auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(context, &vocbase, v8g.get(), isolate.get(), arangoDBNS);
+    TRI_InitV8Views(*v8g, isolate.get(), arangoDBNS);
 
     auto fn_views = arangoDBNS->NewInstance()->Get(TRI_V8_ASCII_STRING(isolate.get(), "_views"));
     CHECK((fn_views->IsFunction()));

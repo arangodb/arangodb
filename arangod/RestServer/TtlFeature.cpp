@@ -108,6 +108,9 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
         return Result(TRI_ERROR_BAD_PARAMETER, "expecting numeric value for frequency");
       }
       frequency = slice.get("frequency").getNumericValue<uint64_t>();
+      if (frequency < TtlProperties::minFrequency) {
+        return Result(TRI_ERROR_BAD_PARAMETER, "too low value for frequency");
+      }
     }
     if (slice.hasKey("maxTotalRemoves")) {
       if (!slice.get("maxTotalRemoves").isNumber()) {
@@ -329,14 +332,14 @@ class TtlThread final : public Thread {
           aql::Query query(false, *vocbase, aql::QueryString(::removeQuery), bindVars, nullptr, arangodb::aql::PART_MAIN);
           aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
-          if (queryResult.code != TRI_ERROR_NO_ERROR) {
+          if (queryResult.result.fail()) {
             // we can probably live with an error here...
             // the thread will try to remove the documents again on next iteration
-            if (queryResult.code != TRI_ERROR_ARANGO_READ_ONLY &&
-                queryResult.code != TRI_ERROR_ARANGO_CONFLICT &&
-                queryResult.code != TRI_ERROR_LOCKED &&
-                queryResult.code != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-              LOG_TOPIC("08300", WARN, Logger::TTL) << "error during TTL document removal for collection '" << collection->name() << "': " << queryResult.details;
+            if (!queryResult.result.is(TRI_ERROR_ARANGO_READ_ONLY) &&
+                !queryResult.result.is(TRI_ERROR_ARANGO_CONFLICT) &&
+                !queryResult.result.is(TRI_ERROR_LOCKED) &&
+                !queryResult.result.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+              LOG_TOPIC("08300", WARN, Logger::TTL) << "error during TTL document removal for collection '" << collection->name() << "': " << queryResult.result.errorMessage();
             }
           } else {
             auto extra = queryResult.extra;
@@ -437,6 +440,12 @@ void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_properties.maxCollectionRemoves == 0) {
     LOG_TOPIC("2ab82", FATAL, arangodb::Logger::STARTUP)
         << "invalid value for '--ttl.max-collection-removes'.";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_properties.frequency < TtlProperties::minFrequency) {
+    LOG_TOPIC("ea696", FATAL, arangodb::Logger::STARTUP)
+        << "too low value for '--ttl.frequency'.";
     FATAL_ERROR_EXIT();
   }
 }

@@ -110,7 +110,7 @@ bool RemoveFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   _jb->close();  // transaction object
   _jb->close();  // close array
 
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
@@ -131,7 +131,7 @@ bool RemoveFollower::start(bool&) {
     finish("", "", true, "collection has been dropped in the meantime");
     return false;
   }
-  Node collection =
+  Node const& collection =
       _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection).first;
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
@@ -183,8 +183,7 @@ bool RemoveFollower::start(bool&) {
   // Now find some new servers to remove:
   std::unordered_map<std::string, int> overview;  // get an overview over the servers
                                                   // -1 : not "GOOD", can be in sync, or leader, or not
-                                                  // >=0: number of servers for which it is in sync or confirmed
-                                                  // leader
+                                                  // >=0: number of servers for which it is in sync or confirmed leader
   bool leaderBad = false;
   for (auto const& srv : VPackArrayIterator(planned)) {
     std::string serverName = srv.copyString();
@@ -411,7 +410,7 @@ bool RemoveFollower::start(bool&) {
   }    // array for transaction done
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, trx);
+  write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     _status = FINISHED;

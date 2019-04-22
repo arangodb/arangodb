@@ -25,16 +25,22 @@ var jsUnity = exports.jsUnity = (function () {
     
   }
 
-  function hash(v) {
+  function hash(v, seen = []) {
     if (v instanceof Object && v !== null) {
       var arr = [];
       var sorted = Object.keys(v).sort(), n = sorted.length;
+      seen.push(v);
       
       for (var i = 0; i < n; i++) {
         var p = sorted[i];
         if (v.hasOwnProperty(p)) {
+          var j = seen.indexOf(v[p]);
           arr.push(p);
-          arr.push(hash(v[p]));    
+          if (j === -1) {
+            arr.push(hash(v[p], seen));
+          } else {
+            arr.push(`&${j}`);
+          }
         }
       }
       

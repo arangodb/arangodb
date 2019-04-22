@@ -88,7 +88,8 @@ struct IResearchQueryInSetup {
     arangodb::tests::init(true);
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::ERR); // suppress WARNING {aql} Suboptimal AqlItemMatrix index lookup:
@@ -262,7 +263,7 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));
-    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
+    CHECK((arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
   }
 
   // test array
@@ -271,7 +272,7 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value IN [ [ -1, 0 ], [ 1, \"abc\" ] ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
+    REQUIRE(result.result.is(TRI_ERROR_QUERY_PARSE));
   }
 
   // test array via []
@@ -280,7 +281,7 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d['value'] IN [ [ -1, 0 ], [ 1, \"abc\" ] ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
+    REQUIRE(result.result.is(TRI_ERROR_QUERY_PARSE));
   }
 
   // test bool
@@ -292,8 +293,8 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value IN [ true ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -315,8 +316,8 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d['value'] IN [ true, false ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -340,8 +341,8 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value IN [ 123, 1234 ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -364,8 +365,8 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value IN [ 123, 1234 ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 2 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -389,8 +390,8 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d['value'] IN [ 123, 1234 ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -412,8 +413,8 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value IN [ null ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -435,8 +436,8 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d['value'] IN [ null, null ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -458,7 +459,7 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value IN [ { \"a\": 7, \"b\": \"c\" } ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
+    REQUIRE(result.result.is(TRI_ERROR_QUERY_PARSE));
   }
 
   // test object via []
@@ -470,7 +471,7 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d['value'] IN [ {}, { \"a\": 7, \"b\": \"c\" } ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
+    REQUIRE(result.result.is(TRI_ERROR_QUERY_PARSE));
   }
 
   // test string
@@ -482,8 +483,8 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value IN [ \"abc\", \"xyz\" ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -505,8 +506,8 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d['value'] IN [ \"abc\", \"xyz\" ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 

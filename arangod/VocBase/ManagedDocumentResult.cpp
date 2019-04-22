@@ -23,6 +23,7 @@
 
 #include "ManagedDocumentResult.h"
 #include "Aql/AqlValue.h"
+#include "Transaction/Helpers.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -30,35 +31,35 @@
 
 using namespace arangodb;
 
-void ManagedDocumentResult::setUnmanaged(uint8_t const* vpack,
-                                         LocalDocumentId const& documentId) {
+void ManagedDocumentResult::setUnmanaged(uint8_t const* vpack) {
   _string.clear();
   _vpack = const_cast<uint8_t*>(vpack);
-  _localDocumentId = documentId;
-  _managed = false;
+  _revisionId = transaction::helpers::extractRevFromDocument(VPackSlice(vpack));
 }
 
-void ManagedDocumentResult::setManaged(uint8_t const* vpack, LocalDocumentId const& documentId) {
-  _string.assign(reinterpret_cast<char const*>(vpack), VPackSlice(vpack).byteSize());
+void ManagedDocumentResult::setManaged(uint8_t const* vpack) {
+  VPackSlice const slice(vpack);
+  _string.assign(slice.startAs<char>(), slice.byteSize());
   _vpack = nullptr;
-  _localDocumentId = documentId;
-  _managed = true;
+  _revisionId = transaction::helpers::extractRevFromDocument(slice);
+}
+
+void ManagedDocumentResult::setRevisionId() noexcept {
+  TRI_ASSERT(!this->empty());
+  _revisionId = transaction::helpers::extractRevFromDocument(VPackSlice(this->vpack()));
 }
 
 void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder,
                                          bool allowExternals) const {
-  uint8_t const* vpack;
-  if (_managed) {
-    vpack = reinterpret_cast<uint8_t const*>(_string.data());
+  TRI_ASSERT(!empty());
+  if (_vpack == nullptr) { // managed
+    TRI_ASSERT(!_string.empty());
+    builder.add(VPackSlice(_string.data()));
   } else {
-    vpack = _vpack;
-  }
-  TRI_ASSERT(vpack != nullptr);
-  auto slice = velocypack::Slice(vpack);
-  TRI_ASSERT(!slice.isExternal());
-  if (allowExternals && canUseInExternal()) {
-    builder.addExternal(slice.begin());
-  } else {
-    builder.add(slice);
+    if (allowExternals) {
+      builder.addExternal(_vpack);
+    } else {
+      builder.add(VPackSlice(_vpack));
+    }
   }
 }

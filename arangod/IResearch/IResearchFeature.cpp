@@ -456,7 +456,7 @@ arangodb::iresearch::IResearchFeature::WalFlushCallback registerRecoveryMarkerSu
     LOG_TOPIC("7007e", WARN, arangodb::iresearch::TOPIC)
       << "failed to find feature 'Flush' while registering recovery subscription";
 
-    return arangodb::iresearch::IResearchFeature::WalFlushCallback();
+    return {}; // it's an std::function so don't use a constructor or ASAN complains
   }
 
   auto& type = arangodb::iresearch::DATA_SOURCE_TYPE.name();
@@ -467,7 +467,7 @@ arangodb::iresearch::IResearchFeature::WalFlushCallback registerRecoveryMarkerSu
     LOG_TOPIC("df64a", WARN, arangodb::iresearch::TOPIC)
       << "failed to find register subscription with  feature 'Flush' while  registering recovery subscription";
 
-    return arangodb::iresearch::IResearchFeature::WalFlushCallback();
+    return {}; // it's an std::function so don't use a constructor or ASAN complains
   }
 
   auto cid = link.collection().id();

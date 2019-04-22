@@ -204,6 +204,9 @@ returned.
 @RESTRETURNCODE{404}
 If the *collection-name* is unknown, then a *HTTP 404* is returned.
 
+@RESTRETURNCODE{200}
+
+@RESTREPLYBODY{,object,required,collection_info}
 
 @EXAMPLES
 

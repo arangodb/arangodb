@@ -173,7 +173,7 @@ void ShortestPathOptions::addReverseLookupInfo(aql::ExecutionPlan* plan,
   injectLookupInfoInList(_reverseLookupInfos, plan, collectionName, attributeName, condition);
 }
 
-double ShortestPathOptions::weightEdge(VPackSlice edge) {
+double ShortestPathOptions::weightEdge(VPackSlice edge) const {
   TRI_ASSERT(useWeight());
   return arangodb::basics::VelocyPackHelper::getNumericValue<double>(
       edge, weightAttribute.c_str(), defaultWeight);
@@ -203,7 +203,8 @@ EdgeCursor* ShortestPathOptions::nextReverseCursorCoordinator(arangodb::velocypa
   return cursor.release();
 }
 
-void ShortestPathOptions::fetchVerticesCoordinator(std::deque<arangodb::velocypack::StringRef> const& vertexIds) {
+void ShortestPathOptions::fetchVerticesCoordinator(
+    std::deque<arangodb::velocypack::StringRef> const& vertexIds) {
   // TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   if (!arangodb::ServerState::instance()->isCoordinator()) {
     return;
@@ -227,5 +228,11 @@ void ShortestPathOptions::fetchVerticesCoordinator(std::deque<arangodb::velocypa
 
     fetchVerticesFromEngines(trx()->vocbase().name(), ch->engines(), fetch,
                              cache, ch->datalake(), *(leased.get()));
+  }
+}
+
+void ShortestPathOptions::isQueryKilledCallback() const {
+  if (query()->killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 }

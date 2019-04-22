@@ -61,7 +61,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   uint64_t messageId() const;
 
   GeneralRequest const* request() const { return _request.get(); }
-  std::unique_ptr<GeneralRequest> stealRequest() { return std::move(_request); }
 
   GeneralResponse* response() const { return _response.get(); }
   std::unique_ptr<GeneralResponse> stealResponse() {
@@ -139,16 +138,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void generateError(arangodb::Result const&);
 
  private:
-  enum class HandlerState {
-    PREPARE,
-    EXECUTE,
-    PAUSED,
-    CONTINUED,
-    FINALIZE,
-    DONE,
-    FAILED
-  };
-
   void runHandlerStateMachine();
 
   void prepareEngine();
@@ -160,17 +149,27 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void shutdownEngine();
 
  protected:
+  enum class HandlerState {
+    PREPARE,
+    EXECUTE,
+    PAUSED,
+    CONTINUED,
+    FINALIZE,
+    DONE,
+    FAILED
+  };
+
   std::atomic<bool> _canceled;
 
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
 
   std::atomic<RequestStatistics*> _statistics;
+  HandlerState _state;
 
  private:
   uint64_t _handlerId;
 
-  HandlerState _state;
   std::function<void(rest::RestHandler*)> _callback;
 
   mutable Mutex _executionMutex;

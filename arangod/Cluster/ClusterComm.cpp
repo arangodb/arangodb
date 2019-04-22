@@ -806,12 +806,12 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
     dueTime.push_back(startTime);
   }
 
-  size_t nrDone = 0;
   size_t nrGood = 0;
 
   std::unordered_map<OperationID, size_t> opIDtoIndex;
 
   try {
+   size_t nrDone = 0;
     while (true) {
       now = TRI_microtime();
       if (now > endTime || application_features::ApplicationServer::isStopping()) {
@@ -957,36 +957,6 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
   return nrGood;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief this method performs the given requests described by the vector
-/// of ClusterCommRequest structs in the following way:
-/// Each request is done with asyncRequest.
-/// After each request is successfully send out we drop all requests.
-/// Hence it is guaranteed that all requests are send, but
-/// we will not wait for answers of those requests.
-/// Also all reporting for the responses is lost, because we do not care.
-/// NOTE: The requests can be in any communication state after this function
-/// and you should not read them. If you care for response use performRequests
-/// instead.
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterComm::fireAndForgetRequests(std::vector<ClusterCommRequest> const& requests) {
-  if (requests.empty()) {
-    return;
-  }
-
-  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-
-  constexpr double shortTimeout = 10.0;  // Picked arbitrarily
-  for (auto const& req : requests) {
-    asyncRequest(coordinatorTransactionID, req.destination, req.requestType,
-                 req.path, req.getBodyShared(), req.getHeaders(), nullptr,
-                 shortTimeout, false, 2.0);
-  }
-  // Forget about it
-  drop(coordinatorTransactionID, 0, "");
-}
-
 std::string ClusterComm::createCommunicatorDestination(std::string const& endpoint,
                                                        std::string const& path) const {
   std::string httpEndpoint;
@@ -1002,7 +972,7 @@ std::string ClusterComm::createCommunicatorDestination(std::string const& endpoi
   }
   httpEndpoint.append(path);
 
-  return std::move(httpEndpoint);
+  return httpEndpoint;
 }
 
 std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(

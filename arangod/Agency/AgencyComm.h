@@ -306,9 +306,7 @@ class AgencyTransaction {
 
 /*struct AgencyGeneralTransaction : public AgencyTransaction {
 
-  typedef
-std::pair<std::vector<AgencyOperation>,std::vector<AgencyPrecondition>>
-TransactionType;
+  typedef std::pair<std::vector<AgencyOperation>,std::vector<AgencyPrecondition>> TransactionType;
 
   explicit AgencyGeneralTransaction(AgencyOperation const& op,
                                     AgencyPrecondition const& pre) :
@@ -373,12 +371,11 @@ struct AgencyWriteTransaction : public AgencyTransaction {
     preconditions.push_back(precondition);
   }
 
-  AgencyWriteTransaction(std::vector<AgencyOperation> const& _operations,
+  AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,
                          AgencyPrecondition const& precondition)
       : clientId(to_string(boost::uuids::random_generator()())) {
-    for (auto const& op : _operations) {
-      operations.push_back(op);
-    }
+    std::copy(opers.begin(), opers.end(),
+              std::back_inserter(operations));
     preconditions.push_back(precondition);
   }
 
@@ -386,20 +383,17 @@ struct AgencyWriteTransaction : public AgencyTransaction {
                          std::vector<AgencyPrecondition> const& precs)
       : clientId(to_string(boost::uuids::random_generator()())) {
     operations.push_back(operation);
-    for (auto const& pre : precs) {
-      preconditions.push_back(pre);
-    }
+    std::copy(precs.begin(), precs.end(),
+              std::back_inserter(preconditions));
   }
 
   AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,
                          std::vector<AgencyPrecondition> const& precs)
       : clientId(to_string(boost::uuids::random_generator()())) {
-    for (auto const& op : opers) {
-      operations.push_back(op);
-    }
-    for (auto const& pre : precs) {
-      preconditions.push_back(pre);
-    }
+    std::copy(opers.begin(), opers.end(),
+              std::back_inserter(operations));
+    std::copy(precs.begin(), precs.end(),
+              std::back_inserter(preconditions));
   }
 
   AgencyWriteTransaction() = default;
@@ -441,22 +435,19 @@ struct AgencyTransientTransaction : public AgencyTransaction {
     preconditions.push_back(precondition);
   }
 
-  AgencyTransientTransaction(std::vector<AgencyOperation> const& _operations,
+  AgencyTransientTransaction(std::vector<AgencyOperation> const& opers,
                              AgencyPrecondition const& precondition) {
-    for (auto const& op : _operations) {
-      operations.push_back(op);
-    }
+    std::copy(opers.begin(), opers.end(),
+              std::back_inserter(operations));
     preconditions.push_back(precondition);
   }
 
   AgencyTransientTransaction(std::vector<AgencyOperation> const& opers,
                              std::vector<AgencyPrecondition> const& precs) {
-    for (auto const& op : opers) {
-      operations.push_back(op);
-    }
-    for (auto const& pre : precs) {
-      preconditions.push_back(pre);
-    }
+    std::copy(opers.begin(), opers.end(),
+              std::back_inserter(operations));
+    std::copy(precs.begin(), precs.end(),
+              std::back_inserter(preconditions));
   }
 
   AgencyTransientTransaction() = default;

@@ -557,7 +557,7 @@ var tests = function (mount, options) {
 var run = function (args) {
   var version = internal.version.split('.').slice(0, 2).join('.');
   arangodb.print('NOTE: foxx-manager is deprecated and will be removed in ArangoDB 4.');
-  arangodb.print(`Please use foxx-cli instead: https://docs.arangodb.com/${version}/Manual/Foxx/Deployment/FoxxCLI/\n`);
+  arangodb.print(`Please use foxx-cli instead: https://docs.arangodb.com/${version}/Manual/Programs/FoxxCLI/\n`);
 
   if (args === undefined || args.length === 0) {
     arangodb.print('Expecting a command, please try:\n');

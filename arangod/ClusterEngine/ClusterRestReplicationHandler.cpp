@@ -21,22 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterRestReplicationHandler.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/VPackStringBufferAdapter.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Logger/Logger.h"
-#include "Replication/InitialSyncer.h"
-#include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
-#include "Transaction/StandaloneContext.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;

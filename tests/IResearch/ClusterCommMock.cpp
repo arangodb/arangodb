@@ -61,13 +61,29 @@ arangodb::OperationID ClusterCommMock::asyncRequest(
    bool singleRequest,
    arangodb::ClusterCommTimeout initTimeout
 ) {
-  auto entry = _requests.emplace(
-    std::piecewise_construct,
-    std::forward_as_tuple(++_operationId), // non-zero value
-    std::forward_as_tuple(coordTransactionID, destination, reqtype, path, body, headerFields, callback, singleRequest)
-  );
+  // execute before insertion to avoid consuming an '_operationId'
+  if (arangodb::rest::RequestType::PUT == reqtype
+      && std::string::npos != path.find("/_api/aql/shutdown/")) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED); // terminate query 'shutdown' infinite loops with exception
+  }
 
-  return entry.first->first;
+  if (_responses.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "request not expected since result not provided");
+  }
+
+  auto operationID = _responses.front().operationID; // set expected responce ID
+
+  _requests.emplace_back(coordTransactionID, destination, reqtype, path, body, headerFields, callback, singleRequest);
+
+  if (!callback) {
+    return operationID;
+  }
+
+  auto result = wait(coordTransactionID, 0, "", timeout); // OperationID == 0 same as ClusterComm::performRequests(...)
+
+  (*callback)(&result);
+
+  return operationID;
 }
 
 void ClusterCommMock::drop(
@@ -75,15 +91,7 @@ void ClusterCommMock::drop(
    arangodb::OperationID const operationID, // 0 == any opId
    arangodb::ShardID const& shardID // "" = any shardId
 ) {
-  auto itr = _responses.find(operationID);
-
-  TRI_ASSERT(itr != _responses.end());
-  TRI_ASSERT(!itr->second.empty());
-  itr->second.pop_front();
-
-  if (itr->second.empty()) {
-    _responses.erase(itr);
-  }
+  _responses.pop_front();
 }
 
 /*static*/ std::shared_ptr<ClusterCommMock> ClusterCommMock::setInstance(
@@ -92,6 +100,7 @@ void ClusterCommMock::drop(
   _theInstance = std::shared_ptr<arangodb::ClusterComm>(
     &instance, [](arangodb::ClusterComm*)->void {}
   );
+  arangodb::ClusterComm::_theInstanceInit.store(2);
 
   return std::shared_ptr<ClusterCommMock>(
     &instance,
@@ -102,25 +111,48 @@ void ClusterCommMock::drop(
   );
 }
 
+std::unique_ptr<arangodb::ClusterCommResult> ClusterCommMock::syncRequest(
+  arangodb::CoordTransactionID const coordTransactionID,
+  std::string const& destination,
+  arangodb::rest::RequestType reqtype,
+  std::string const& path,
+  std::string const& body,
+  std::unordered_map<std::string, std::string> const& headerFields,
+  arangodb::ClusterCommTimeout timeout
+) {
+  asyncRequest(
+    coordTransactionID,
+    destination,
+    reqtype,
+    path,
+    std::shared_ptr<std::string const>(&body, [](std::string const*)->void {}),
+    headerFields,
+    nullptr,
+    timeout,
+    true,
+    timeout
+  );
+
+  auto result = std::make_unique<arangodb::ClusterCommResult>(
+    wait(coordTransactionID, 0, "", timeout) // OperationID == 0 same as ClusterComm::performRequests(...)
+  );
+
+  return result;
+}
+
 arangodb::ClusterCommResult const ClusterCommMock::wait(
    arangodb::CoordTransactionID const coordTransactionID, // 0 == any trxId
    arangodb::OperationID const operationID, // 0 == any opId
    arangodb::ShardID const& shardID, // "" = any shardId
    arangodb::ClusterCommTimeout timeout
 ) {
-  auto itr = _responses.find(operationID);
-
-  if (itr == _responses.end() || itr->second.empty()) {
+  if (_responses.empty()) {
     return arangodb::ClusterCommResult();
   }
 
-  auto result = std::move(itr->second.front());
+  auto result = std::move(_responses.front());
 
-  itr->second.pop_front();
-
-  if (itr->second.empty()) {
-    _responses.erase(itr);
-  }
+  _responses.pop_front();
 
   return result;
 }

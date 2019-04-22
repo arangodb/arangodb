@@ -34,7 +34,6 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-class AqlItemBlockShell;
 template <bool>
 class BlockFetcher;
 
@@ -75,9 +74,9 @@ class AllRowsFetcher {
   // AllRowsFetcher cannot pass through. Could be implemented, but currently
   // there are no executors that could use this and not better use
   // SingleRowFetcher instead.
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t) {
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t) {
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   };
 
   /**
@@ -100,7 +99,7 @@ class AllRowsFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t);
 
   // only for ModificationNodes
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForModificationExecutor(std::size_t);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForModificationExecutor(std::size_t);
 
   // only for ModificationNodes
   ExecutionState upstreamState();
@@ -121,7 +120,7 @@ class AllRowsFetcher {
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock();
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock();
 
   /**
    * @brief Fetch blocks from upstream until done

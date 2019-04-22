@@ -74,9 +74,7 @@ SCENARIO("DistinctCollectExecutor",
                                        std::move(writeableOutputRegisters),
                                        std::move(groupRegisters), trx);
 
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
-    auto outputBlockShell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
     VPackBuilder input;
     NoStats stats{};
 
@@ -85,7 +83,7 @@ SCENARIO("DistinctCollectExecutor",
       DistinctCollectExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
@@ -98,7 +96,7 @@ SCENARIO("DistinctCollectExecutor",
       DistinctCollectExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT") {
-        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
@@ -137,9 +135,7 @@ SCENARIO("DistinctCollectExecutor",
                                        std::move(writeableOutputRegisters),
                                        std::move(groupRegisters), trx);
 
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, nrOutputRegister);
-    auto outputBlockShell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
     NoStats stats{};
 
     WHEN("the producer does not wait") {
@@ -148,7 +144,7 @@ SCENARIO("DistinctCollectExecutor",
       DistinctCollectExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
 
         std::tie(state, stats) = testee.produceRow(result);
@@ -182,7 +178,7 @@ SCENARIO("DistinctCollectExecutor",
       DistinctCollectExecutor testee(fetcher, infos);
 
       THEN("the executor should return WAIT first") {
-        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
 
         std::tie(state, stats) = testee.produceRow(result);
@@ -243,9 +239,7 @@ SCENARIO("DistinctCollectExecutor",
                                        std::move(writeableOutputRegisters),
                                        std::move(groupRegisters), trx);
 
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, nrOutputRegister);
-    auto outputBlockShell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
     NoStats stats{};
 
     WHEN("the producer does not wait") {
@@ -254,7 +248,7 @@ SCENARIO("DistinctCollectExecutor",
       DistinctCollectExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
 
         std::tie(state, stats) = testee.produceRow(result);
@@ -305,7 +299,7 @@ SCENARIO("DistinctCollectExecutor",
       DistinctCollectExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
 
         std::tie(state, stats) = testee.produceRow(result);

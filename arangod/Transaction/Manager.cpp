@@ -163,14 +163,20 @@ Manager::ManagedTrx::~ManagedTrx() {
     delete state;
     return;
   }
-  transaction::Options opts;
-  auto ctx = std::make_shared<transaction::ManagedContext>(2, state, AccessMode::Type::NONE);
-  MGMethods trx(ctx, opts); // own state now
-  trx.begin();
-  TRI_ASSERT(state->nestingLevel() == 1);
-  state->decreaseNesting();
-  TRI_ASSERT(state->isTopLevelTransaction());
-  trx.abort();
+
+  try {
+    transaction::Options opts;
+    auto ctx = std::make_shared<transaction::ManagedContext>(2, state, AccessMode::Type::NONE);
+    MGMethods trx(ctx, opts); // own state now
+    trx.begin();
+    TRI_ASSERT(state->nestingLevel() == 1);
+    state->decreaseNesting();
+    TRI_ASSERT(state->isTopLevelTransaction());
+    trx.abort();
+  } catch (...) {
+    // obviously it is not good to consume all exceptions here,
+    // but we are in a destructor and must never throw from here
+  }
 }
   
 using namespace arangodb;
@@ -202,6 +208,7 @@ bool Manager::garbageCollect(bool abortAll) {
           }
         } else {
           TRI_ASSERT(mtrx.state->isRunning() && mtrx.state->isTopLevelTransaction());
+          TRI_ASSERT(it->first == mtrx.state->id());
           if (abortAll || mtrx.expires < now) {
             gcBuffer.emplace_back(mtrx.state->id());
           }
@@ -280,20 +287,13 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
   
 Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
                                  TRI_voc_tid_t tid, VPackSlice const trxOpts) {
-  const size_t bucket = getBucket(tid);
+  Result res;
   
-  { // quick check whether ID exists
-    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-    auto& buck = _transactions[bucket];
-    auto it = buck._managed.find(tid);
-    if (it != buck._managed.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
-                                     "transaction ID already used");
-    }
+  // parse the collections to register
+  if (!trxOpts.isObject() || !trxOpts.get("collections").isObject()) {
+    return res.reset(TRI_ERROR_BAD_PARAMETER, "missing 'collections'");
   }
   
-  Result res;
   // extract the properties from the object
   transaction::Options options;
   options.fromVelocyPack(trxOpts);
@@ -302,31 +302,55 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
                      "<lockTimeout> needs to be positive");
   }
   
-  // parse the collections to register
-  if (!trxOpts.isObject() || !trxOpts.get("collections").isObject()) {
-    return res.reset(TRI_ERROR_BAD_PARAMETER, "missing 'collections'");
-  }
   auto fillColls = [](VPackSlice const& slice, std::vector<std::string>& cols) {
     if (slice.isNone()) {  // ignore nonexistant keys
       return true;
-    } else if (!slice.isArray()) {
-      return false;
+    } else if (slice.isString()) {
+      cols.emplace_back(slice.copyString());
+      return true;
     }
-    for (VPackSlice val : VPackArrayIterator(slice)) {
-      if (!val.isString() || val.getStringLength() == 0) {
-        return false;
+      
+    if (slice.isArray()) {
+      for (VPackSlice val : VPackArrayIterator(slice)) {
+        if (!val.isString() || val.getStringLength() == 0) {
+          return false;
+        }
+        cols.emplace_back(val.copyString());
       }
-      cols.emplace_back(val.copyString());
+      return true;
     }
-    return true;
+    return false;
   };
   std::vector<std::string> reads, writes, exclusives;
   VPackSlice collections = trxOpts.get("collections");
   bool isValid = fillColls(collections.get("read"), reads) &&
-  fillColls(collections.get("write"), writes) &&
-  fillColls(collections.get("exclusive"), exclusives);
+                 fillColls(collections.get("write"), writes) &&
+                 fillColls(collections.get("exclusive"), exclusives);
   if (!isValid) {
     return res.reset(TRI_ERROR_BAD_PARAMETER, "invalid 'collections' attribute");
+  }
+  
+  return createManagedTrx(vocbase, tid, reads, writes, exclusives, options);
+}
+  
+  /// @brief create managed transaction
+Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+                                 std::vector<std::string> const& readCollections,
+                                 std::vector<std::string> const& writeCollections,
+                                 std::vector<std::string> const& exclusiveCollections,
+                                 transaction::Options const& options) {
+  Result res;
+
+  const size_t bucket = getBucket(tid);
+  
+  { // quick check whether ID exists
+    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+    auto& buck = _transactions[bucket];
+    auto it = buck._managed.find(tid);
+    if (it != buck._managed.end()) {
+      return res.reset(TRI_ERROR_TRANSACTION_INTERNAL, "transaction ID already used");
+    }
   }
   
   std::unique_ptr<TransactionState> state;
@@ -334,12 +358,12 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
     // now start our own transaction
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     state = engine->createTransactionState(vocbase, tid, options);
-    TRI_ASSERT(state != nullptr);
-    TRI_ASSERT(state->id() == tid);
   } catch (basics::Exception const& e) {
     return res.reset(e.code(), e.message());
   }
-
+  TRI_ASSERT(state != nullptr);
+  TRI_ASSERT(state->id() == tid);
+  
   // lock collections
   CollectionNameResolver resolver(vocbase);
   auto lockCols = [&](std::vector<std::string> cols, AccessMode::Type mode) {
@@ -350,16 +374,29 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
       } else {  // only support local collections / shards
         cid = resolver.getCollectionIdLocal(cname);
       }
+      
       if (cid == 0) {
+        // not found
+        res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, 
+                  std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) + ":" + cname);
+      } else {
+        res.reset(state->addCollection(cid, cname, mode, /*nestingLevel*/0, false));
+      }
+
+      if (res.fail()) {
         return false;
       }
-      state->addCollection(cid, cname, mode, /*nestingLevel*/0, false);
     }
     return true;
   };
-  if (!lockCols(exclusives, AccessMode::Type::EXCLUSIVE) ||
-      !lockCols(writes, AccessMode::Type::WRITE) ||
-      !lockCols(reads, AccessMode::Type::READ)) {
+  if (!lockCols(exclusiveCollections, AccessMode::Type::EXCLUSIVE) ||
+      !lockCols(writeCollections, AccessMode::Type::WRITE) ||
+      !lockCols(readCollections, AccessMode::Type::READ)) {
+    if (res.fail()) {
+      // error already set by callback function
+      return res;
+    }
+    // no error set. so it must be "data source not found"
     return res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
   
@@ -381,6 +418,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
     }
     double expires = defaultTTL + TRI_microtime();
     TRI_ASSERT(expires > 0);
+    TRI_ASSERT(state->id() == tid);
     _transactions[bucket]._managed.emplace(std::piecewise_construct,
                                            std::forward_as_tuple(tid),
                                            std::forward_as_tuple(MetaType::Managed, state.release(),
@@ -605,7 +643,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
   trx.state()->decreaseNesting();
   TRI_ASSERT(trx.state()->isTopLevelTransaction());
   if (clearServers) {
-    state->clearKnownServers();
+    trx.state()->clearKnownServers();
   }
   if (status == transaction::Status::COMMITTED) {
     res = trx.commit();

@@ -69,7 +69,7 @@ class MultiDependencySingleRowFetcher {
      *        SingleRowFetcher. May be moved if the Fetcher implementations
      *        are moved into separate classes.
      */
-    std::shared_ptr<AqlItemBlockShell> _currentBlock;
+    SharedAqlItemBlockPtr _currentBlock;
 
     /**
      * @brief Index of the row to be returned next by fetchRow(). This is valid
@@ -92,13 +92,13 @@ class MultiDependencySingleRowFetcher {
   std::pair<ExecutionState, InputAqlItemRow> fetchRow(size_t atMost = ExecutionBlock::DefaultBatchSize()) {
     // This is not implemented for this fetcher
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t atMost) {
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost) {
     // This is not implemented for this fetcher
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost) {
@@ -154,7 +154,7 @@ class MultiDependencySingleRowFetcher {
       depInfo._currentBlock = nullptr;
 
       ExecutionState state;
-      std::shared_ptr<AqlItemBlockShell> newBlock;
+      SharedAqlItemBlockPtr newBlock;
       std::tie(state, newBlock) = fetchBlockForDependency(dependency, atMost);
       if (state == ExecutionState::WAITING) {
         return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
@@ -170,7 +170,7 @@ class MultiDependencySingleRowFetcher {
       TRI_ASSERT(depInfo._upstreamState == ExecutionState::DONE);
       rowState = ExecutionState::DONE;
     } else {
-      TRI_ASSERT(depInfo._currentBlock);
+      TRI_ASSERT(depInfo._currentBlock != nullptr);
       row = InputAqlItemRow{depInfo._currentBlock, depInfo._rowIndex};
 
       TRI_ASSERT(depInfo._upstreamState != ExecutionState::WAITING);
@@ -198,8 +198,8 @@ class MultiDependencySingleRowFetcher {
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForDependency(
-      size_t dependency, size_t atMost);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(size_t dependency,
+                                                                           size_t atMost);
 
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
@@ -207,16 +207,12 @@ class MultiDependencySingleRowFetcher {
   RegisterId getNrInputRegisters() const;
 
   bool indexIsValid(DependencyInfo const& info) const {
-    // The current block must never become invalid (i.e. !hasBlock()), unless
-    // it's passed through and therefore the output block steals it.
-    TRI_ASSERT(info._currentBlock == nullptr || info._currentBlock->hasBlock());
-    return info._currentBlock != nullptr &&
-           info._rowIndex < info._currentBlock->block().size();
+    return info._currentBlock != nullptr && info._rowIndex < info._currentBlock->size();
   }
 
   bool isLastRowInBlock(DependencyInfo const& info) const {
     TRI_ASSERT(indexIsValid(info));
-    return info._rowIndex + 1 == info._currentBlock->block().size();
+    return info._rowIndex + 1 == info._currentBlock->size();
   }
 
   size_t getRowIndex(DependencyInfo const& info) const {
@@ -234,7 +230,7 @@ class MultiDependencySingleRowFetcher {
       depInfo._currentBlock = nullptr;
 
       ExecutionState state;
-      std::shared_ptr<AqlItemBlockShell> newBlock;
+      SharedAqlItemBlockPtr newBlock;
       std::tie(state, newBlock) = fetchBlockForDependency(dependency, atMost);
       if (state == ExecutionState::WAITING) {
         return {ExecutionState::WAITING, 0};
@@ -248,8 +244,7 @@ class MultiDependencySingleRowFetcher {
       return {ExecutionState::DONE, 0};
     } else {
       if (depInfo._upstreamState == ExecutionState::DONE) {
-        return {depInfo._upstreamState,
-                depInfo._currentBlock->block().size() - depInfo._rowIndex};
+        return {depInfo._upstreamState, depInfo._currentBlock->size() - depInfo._rowIndex};
       }
       // In the HAS_MORE case we do not know exactly how many rows there are.
       // So we need to return an uppter bound (atMost) here.

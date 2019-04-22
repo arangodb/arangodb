@@ -31,6 +31,7 @@
 var db = require("@arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
+var isMMFiles = db._engine().name === "mmfiles";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -705,6 +706,8 @@ function interactionOtherRulesTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
     
     testRule1AndRule2 : function () {
+      const projectionNode = isMMFiles ? "EnumerateCollectionNode" : "IndexNode";
+      
       var queries = [ 
         // collection sharded by _key
         "FOR d IN " + cn1 + " FILTER d.age > 4 REMOVE d._key IN " + cn1,
@@ -778,7 +781,7 @@ function interactionOtherRulesTestSuite () {
                                     ],
                                     [
                                       "SingletonNode", 
-                                      "EnumerateCollectionNode", 
+                                      projectionNode, 
                                       "RemoteNode", 
                                       "GatherNode", 
                                       "ScatterNode", 
@@ -1188,4 +1191,3 @@ jsunity.run(optimizerRuleTestSuite);
 jsunity.run(interactionOtherRulesTestSuite);
 
 return jsunity.done();
-

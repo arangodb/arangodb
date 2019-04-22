@@ -20,7 +20,7 @@ reduce memory usage and, for some queries, also execution time for the sorting.
 If the optimization is applied, it will show as "sort-limit" rule in the query execution
 plan.
 
-### Index Hints in AQL
+### Index hints in AQL
 
 Users may now take advantage of the `indexHint` inline query option to override
 the internal optimizer decision regarding which index to use to serve content
@@ -190,69 +190,31 @@ other operations on the collection.
 TTL (time-to-live) Indexes
 --------------------------
 
-The new TTL indexes provided by ArangoDB can be used for removing expired documents
-from a collection. 
+The new TTL indexes feature provided by ArangoDB can be used for automatically 
+removing expired documents from a collection. 
 
-A TTL index can be set up by setting an `expireAfter` value and by picking a single 
-document attribute which contains the documents' creation date and time. Documents 
-are expired after `expireAfter` seconds after their creation time. The creation time
-is specified as either a numeric timestamp or a UTC datestring.
+TTL indexes support eventual removal of documents which are past a configured
+expiration timepoint. The expiration timepoints can be based upon the documents' 
+original insertion or last-updated timepoints, with adding a period during
+which to retain the documents.
+Alternatively, expiration timepoints can be specified as absolute values per
+document.
+It is also possible to exclude documents from automatic expiration and removal.
 
-For example, if `expireAfter` is set to 600 seconds (10 minutes) and the index
-attribute is "creationDate" and there is the following document:
+Please also note that TTL indexes are designed exactly for the purpose of removing 
+expired documents from collections. It is *not recommended* to rely on TTL indexes 
+for user-land AQL queries. This is because TTL indexes internally may store a transformed, 
+always numerical version of the index attribute value even if it was originally passed in 
+as a datestring. As a result TTL indexes will likely not be used for filtering and sort 
+operations in user-land AQL queries.
 
-    { "creationDate" : 1550165973 }
-
-This document will be indexed with a creation timestamp value of `1550165973`,
-which translates to the human-readable date string `2019-02-14T17:39:33.000Z`. The 
-document will expire 600 seconds afterwards, which is at timestamp `1550166573000` (or
-`2019-02-14T17:49:33.000Z` in the human-readable version).
-
-The actual removal of expired documents will not necessarily happen immediately. 
-Expired documents will eventually removed by a background thread that is periodically
-going through all TTL indexes and removing the expired documents.
-
-There is no guarantee when exactly the removal of expired documents will be carried
-out, so queries may still find and return documents that have already expired. These
-will eventually be removed when the background thread kicks in and has capacity to
-remove the expired documents. It is guaranteed however that only documents which are 
-past their expiration time will actually be removed.
-
-Please note that the numeric timestamp values for the index attribute should be 
-specified in seconds since January 1st 1970 (Unix timestamp). To calculate the current 
-timestamp from JavaScript in this format, there is `Date.now() / 1000`, to calculate it 
-from an arbitrary Date instance, there is `Date.getTime() / 1000`.
-
-Alternatively, the index attribute values can be specified as a date string in format
-`YYYY-MM-DDTHH:MM:SS` with optional milliseconds. All date strings will be interpreted 
-as UTC dates.
-    
-The above example document using a datestring attribute value would be
-
-    { "creationDate" : "2019-02-14T17:39:33.000Z" }
-
-In case the index attribute does not contain a numeric value nor a proper date string, 
-the document will not be stored in the TTL index and thus will not become a candidate 
-for expiration and removal. Providing either a non-numeric value or even no value for 
-the index attribute is a supported way of keeping documents from being expired and removed.
-
-There can at most be one TTL index per collection. It is not recommended to use
-TTL indexes for user-land AQL queries, as TTL indexes may store a transformed,
-always numerical version of the index attribute value.
-
-The frequency for invoking the background removal thread can be configured 
-using the `--ttl.frequency` startup option. 
-In order to avoid "random" load spikes by the background thread suddenly kicking 
-in and removing a lot of documents at once, the number of to-be-removed documents
-per thread invocation can be capped.
-The total maximum number of documents to be removed per thread invocation is
-controlled by the startup option `--ttl.max-total-removes`. The maximum number of
-documents in a single collection at once can be controlled by the startup option
-`--ttl.max-collection-removes`.
+Also see the [TTL Indexes](../Indexing/Ttl.md) page.
 
 
 HTTP API extensions
 -------------------
+
+### Extended index API
 
 The HTTP API for creating indexes at POST `/_api/index` has been extended two-fold:
 
@@ -263,15 +225,104 @@ The HTTP API for creating indexes at POST `/_api/index` has been extended two-fo
 
 * to create an index in background, the attribute `inBackground` can be set to `true`.
 
+### API for querying the responsible shard
+
+The HTTP API for collections has got an additional route for retrieving the responsible
+shard for a document at PUT `/_api/collection/<name>/responsibleShard`.
+
+When calling this route, the request body is supposed to contain the document for which
+the responsible shard should be determined. The response will contain an attribute `shardId`
+containing the ID of the shard that is responsible for that document.
+
+A method `collection.getResponsibleShard(document)` was added to the JS API as well.
+
+It does not matter if the document actually exists or not, as the shard responsibility 
+is determined from the document's attribute values only. 
+
+Please note that this API is only meaningful and available on a cluster coordinator.
+
+### Foxx API for running tests
+
+The HTTP API for running Foxx service tests now supports a `filter` attribute,
+which can be used to limit which test cases should be executed.
+
 
 Web interface
 -------------
 
-For the RocksDB engine, the selection of index types "persistent" and "skiplist" 
+When using the RocksDB engine, the selection of index types "persistent" and "skiplist" 
 has been removed from the web interface when creating new indexes. 
 
 The index types "hash", "skiplist" and "persistent" are just aliases of each other 
-when using the RocksDB engine, so there is no need to offer all of them in parallel.
+when using the RocksDB engine, so there is no need to offer them all.
+
+
+JavaScript
+----------
+
+### V8 updated
+
+The bundled version of the V8 JavaScript engine has been upgraded from 5.7.492.77 to 
+7.1.302.28.
+
+Among other things, the new version of V8 provides a native JavaScript `BigInt` type which 
+can be used to store arbitrary-precision integers. However, to store such `BigInt` objects
+in ArangoDB, they need to be explicitly converted to either strings or simple JavaScript
+numbers.
+Converting BigInts to strings for storage is preferred because converting a BigInt to a 
+simple number may lead to precision loss.
+
+```js
+// will fail with "bad parameter" error:
+value = BigInt("123456789012345678901234567890");
+db.collection.insert({ value });
+
+// will succeed:
+db.collection.insert({ value: String(value) });
+
+// will succeed, but lead to precision loss:
+db.collection.insert({ value: Number(value) });
+```
+
+The new V8 version also changes the default timezone of date strings to be conditional 
+on whether a time part is included:
+
+```js
+> new Date("2019-04-01");
+Mon Apr 01 2019 02:00:00 GMT+0200 (Central European Summer Time)
+
+> new Date("2019-04-01T00:00:00");
+Mon Apr 01 2019 00:00:00 GMT+0200 (Central European Summer Time)
+```
+If the timezone is explicitly set in the date string, then the specified timezone will
+always be honored: 
+
+```js
+> new Date("2019-04-01Z");
+Mon Apr 01 2019 02:00:00 GMT+0200 (Central European Summer Time)
+> new Date("2019-04-01T00:00:00Z");
+Mon Apr 01 2019 02:00:00 GMT+0200 (Central European Summer Time)
+```
+
+### API improvements
+
+Collections now provide the `documentId` method to derive document ids from keys.
+
+Before:
+
+```js
+const collection = context.collection("users");
+const documentKey = "my-document-key";
+const documentId = `${collection.name()}/${documentKey}`;
+```
+
+After:
+
+```js
+const collection = context.collection("users");
+const documentKey = "my-document-key";
+const documentId = collection.documentId(documentKey);
+```
 
 
 Client tools
@@ -344,13 +395,17 @@ them as well.
 
 ### Fewer system collections
 
-The system collections `_routing` and `_modules` are not created anymore for new
-new databases, as both are only needed for legacy functionality.
+The system collections `_frontend`, `_modules` and `_routing` are not created 
+anymore for new databases by default. 
 
+`_modules` and `_routing` are only needed for legacy functionality.
 Existing `_routing` collections will not be touched as they may contain user-defined
 entries, and will continue to work.
 
 Existing `_modules` collections will also remain functional.
+
+The `_frontend` collection may still be required for actions triggered by the
+web interface, but it will automatically be created lazily if needed.
 
 ### Named indices
 
@@ -383,12 +438,7 @@ format.
 
 This can be fixed adjusting any existing log message parsers and making them aware
 of the ID values. The ID values are always 5 byte strings, consisting of the characters
-`[0-9a-f]`. ID values are placed directly behind the log level (e.g. `INFO`) for
-general log messages that do not contain a log topic, and directly behind the log
-topic for messages that contain a topic, e.g. 
-
-    2019-03-25T21:23:19Z [8144] INFO [cf3f4] ArangoDB (version 3.5.0 enterprise [linux]) is ready for business. Have fun!.
-    2019-03-25T21:23:16Z [8144] INFO {authentication} [3844e] Authentication is turned on (system only), authentication for unix sockets is turned on
+`[0-9a-f]`. ID values are placed directly behind the log level (e.g. `INFO`).
 
 Alternatively, the log IDs can be suppressed in all log messages by setting the startup
 option `--log.ids false` when starting arangod or any of the client tools.
@@ -402,9 +452,22 @@ features and guarantees that this standard has in stock.
 To compile ArangoDB from source, a compiler that supports C++14 is now required.
 
 The bundled JEMalloc memory allocator used in ArangoDB release packages has been
-upgraded from version 5.0.1 to version 5.1.0.
+upgraded from version 5.0.1 to version 5.2.0.
 
 The bundled version of the RocksDB library has been upgraded from 5.16 to 6.0.
 
-The bundled version of the V8 JavaScript engine has been upgraded from 5.7.492.77 to 
-7.1.302.28.
+
+Foxx
+----
+
+Request credentials are now exposed via the `auth` property:
+
+```js
+const tokens = context.collection("tokens");
+router.get("/authorized", (req, res) => {
+    if (!req.auth || !req.auth.bearer || !tokens.exists(req.auth.bearer)) {
+        res.throw(403, "Not authenticated");
+    }
+    // ...
+});
+```

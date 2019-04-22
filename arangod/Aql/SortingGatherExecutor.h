@@ -118,13 +118,7 @@ class SortingGatherExecutor {
 
   void adjustNrDone(size_t dependency);
 
-  inline size_t numberOfRowsInFlight() const {
-    // For every not-done dependency we have one row in the buffers.
-    // Initially _numberDependencies is == 0 and _nrDone == 0 as well.
-    // This is due to the fact that dependencies are built AFTER this node
-    // and the number is yet unknown.
-    return _numberDependencies - _nrDone;
-  }
+  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
   ExecutionState init();

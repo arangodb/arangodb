@@ -213,6 +213,21 @@ used as a lower bound approximation of the disk usage.
     @endDocuBlock collectionFigures
 
 
+GetResponsibleShard
+-------------------
+
+<!-- arangod/V8Server/v8-collection.cpp -->
+
+
+returns the responsible shard for the given document.
+`collection.getResponsibleShard(document)`
+
+Returns a string with the responsible shard's ID. Note that the
+returned shard ID is the ID of responsible shard for the document's
+shard key values, and it will be returned even if no such document exists.
+
+**Note**: this function can only be used on a coordinator in a cluster.
+
 
 Load
 ----

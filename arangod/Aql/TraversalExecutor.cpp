@@ -26,6 +26,7 @@
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Graph/Traverser.h"
+#include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 
 using namespace arangodb;
@@ -154,8 +155,8 @@ TraversalExecutor::~TraversalExecutor() {
       // The InAndOutRowExpressionContext in the PruneExpressionEvaluator holds
       // an InputAqlItemRow. As the Plan holds the PruneExpressionEvaluator and
       // is destroyed after the Engine, this must be deleted by
-      // unPrepareContext() - otherwise, the AqlItemBlockShell referenced by the
-      // row will return its AqlItemBlock to an already destroyed
+      // unPrepareContext() - otherwise, the SharedAqlItemBlockPtr referenced by
+      // the row will return its AqlItemBlock to an already destroyed
       // AqlItemBlockManager.
       evaluator->unPrepareContext();
     }
@@ -177,6 +178,7 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
         // we are done
         s.addFiltered(_traverser.getAndResetFilteredPaths());
         s.addScannedIndex(_traverser.getAndResetReadDocuments());
+        s.addHttpRequests(_traverser.getAndResetHttpRequests());
         return {_rowState, s};
       }
       std::tie(_rowState, _input) = _fetcher.fetchRow();
@@ -184,6 +186,7 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
         TRI_ASSERT(!_input.isInitialized());
         s.addFiltered(_traverser.getAndResetFilteredPaths());
         s.addScannedIndex(_traverser.getAndResetReadDocuments());
+        s.addHttpRequests(_traverser.getAndResetHttpRequests());
         return {_rowState, s};
       }
 
@@ -192,6 +195,7 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
         TRI_ASSERT(_rowState == ExecutionState::DONE);
         s.addFiltered(_traverser.getAndResetFilteredPaths());
         s.addScannedIndex(_traverser.getAndResetReadDocuments());
+        s.addHttpRequests(_traverser.getAndResetHttpRequests());
         return {_rowState, s};
       }
       if (!resetTraverser()) {
@@ -225,6 +229,7 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
       }
       s.addFiltered(_traverser.getAndResetFilteredPaths());
       s.addScannedIndex(_traverser.getAndResetReadDocuments());
+      s.addHttpRequests(_traverser.getAndResetHttpRequests());
       return {computeState(), s};
     }
   }
@@ -242,6 +247,8 @@ ExecutionState TraversalExecutor::computeState() const {
 }
 
 bool TraversalExecutor::resetTraverser() {
+  _traverser.traverserCache()->clear();
+
   // Initialize the Expressions within the options.
   // We need to find the variable and read its value here. Everything is
   // computed right now.

@@ -53,7 +53,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   ~ExecutionBlockImpl() override = default;
 
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override;
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
 
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
@@ -73,12 +73,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 #endif
 
  private:
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> traceGetSomeEnd(
-      ExecutionState state, std::unique_ptr<AqlItemBlock> result);
-
-  std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
-
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutTrace(size_t atMost);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
 
   std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
 
@@ -135,6 +130,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// @brief Mutex to cover against the race, that a getSome request
   ///        is responded before the ticket id is registered.
   arangodb::Mutex _communicationMutex;
+  std::atomic<std::thread::id> _communicationMutexOwner; // current thread owning '_communicationMutex' lock (workaround for non-recusrive MutexLocker)
 
   OperationID _lastTicketId;
 

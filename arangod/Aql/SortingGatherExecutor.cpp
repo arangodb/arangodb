@@ -325,3 +325,32 @@ ExecutionState SortingGatherExecutor::init() {
   _strategy->prepare(_inputRows);
   return ExecutionState::HASMORE;
 }
+
+std::pair<ExecutionState, size_t> SortingGatherExecutor::expectedNumberOfRows(size_t atMost) const {
+  ExecutionState state;
+  size_t expectedNumberOfRows;
+  std::tie(state, expectedNumberOfRows) = _fetcher.preFetchNumberOfRows(atMost);
+  if (state == ExecutionState::WAITING) {
+    return {state, 0};
+  }
+  if (expectedNumberOfRows >= atMost) {
+    // We do not care, we have more than atMost anyways.
+    return {state, expectedNumberOfRows};
+  }
+  // Now we need to figure out a more precise state
+  for (auto const& inRow : _inputRows) {
+    if (inRow.state == ExecutionState::HASMORE) {
+      // This block is not fully fetched, we do NOT know how many rows
+      // will be in the next batch, overestimate!
+      return {ExecutionState::HASMORE, atMost};
+    }
+    if (inRow.row.isInitialized()) {
+      // This dependency is in owned by this Executor
+      expectedNumberOfRows++;
+    }
+  }
+  if (expectedNumberOfRows == 0) {
+    return {ExecutionState::DONE, 0};
+  }
+  return {ExecutionState::HASMORE, expectedNumberOfRows};
+}

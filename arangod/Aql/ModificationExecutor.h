@@ -102,23 +102,23 @@ struct BoolWrapper {
 };
 
 struct ProducesResults : BoolWrapper {
-  explicit ProducesResults(bool b) : BoolWrapper(b){};
+  explicit ProducesResults(bool b) : BoolWrapper(b){}
 };
 struct ConsultAqlWriteFilter : BoolWrapper {
-  explicit ConsultAqlWriteFilter(bool b) : BoolWrapper(b){};
+  explicit ConsultAqlWriteFilter(bool b) : BoolWrapper(b){}
 };
 struct IgnoreErrors : BoolWrapper {
-  explicit IgnoreErrors(bool b) : BoolWrapper(b){};
+  explicit IgnoreErrors(bool b) : BoolWrapper(b){}
 };
 struct DoCount : BoolWrapper {
-  explicit DoCount(bool b) : BoolWrapper(b){};
+  explicit DoCount(bool b) : BoolWrapper(b){}
 };
 struct IsReplace : BoolWrapper {
-  explicit IsReplace(bool b) : BoolWrapper(b){};
+  explicit IsReplace(bool b) : BoolWrapper(b){}
 };
 
 struct IgnoreDocumentNotFound : BoolWrapper {
-  explicit IgnoreDocumentNotFound(bool b) : BoolWrapper(b){};
+  explicit IgnoreDocumentNotFound(bool b) : BoolWrapper(b){}
 };
 
 struct ModificationExecutorInfos : public ExecutorInfos {
@@ -233,7 +233,12 @@ class ModificationExecutor : public ModificationExecutorBase<FetcherType> {
    * This executor immedieately  returns every actually consumed row
    * All other rows belong to the fetcher.
    */
-  inline size_t numberOfRowsInFlight() const { return 0; }
+  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Logic_error, prefetching number fo rows not supported");
+  }
 
  private:
   Modifier _modifier;

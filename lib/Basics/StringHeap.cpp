@@ -58,6 +58,23 @@ arangodb::velocypack::StringRef StringHeap::registerString(char const* ptr, size
   return arangodb::velocypack::StringRef(position, length);
 }
 
+void StringHeap::clear() {
+  _current = nullptr;
+  _end = nullptr;
+
+  for (auto& it : _blocks) {
+    delete[] it;
+  }
+  _blocks.clear();
+}
+
+void StringHeap::merge(StringHeap&& heap) {
+  _blocks.reserve(_blocks.size() + heap._blocks.size());
+  _blocks.insert(_blocks.end(), heap._blocks.begin(), heap._blocks.end());
+  heap._blocks.clear();
+  heap._current = nullptr;
+}
+
 /// @brief allocate a new block of memory
 void StringHeap::allocateBlock() {
   char* buffer = new char[_blockSize];

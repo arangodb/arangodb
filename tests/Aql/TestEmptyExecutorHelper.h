@@ -38,7 +38,6 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
-class ExecutorInfos;
 template <bool>
 class SingleRowFetcher;
 
@@ -53,18 +52,8 @@ class TestEmptyExecutorHelperInfos : public ExecutorInfos {
   TestEmptyExecutorHelperInfos(TestEmptyExecutorHelperInfos&&) = default;
   TestEmptyExecutorHelperInfos(TestEmptyExecutorHelperInfos const&) = delete;
   ~TestEmptyExecutorHelperInfos() = default;
-
-  RegisterId getInputRegister() const noexcept { return _inputRegister; };
-
- private:
-  // This is exactly the value in the parent member ExecutorInfo::_inRegs,
-  // respectively getInputRegisters().
-  RegisterId _inputRegister;
 };
 
-/**
- * @brief Implementation of Filter Node
- */
 class TestEmptyExecutorHelper {
  public:
   struct Properties {
@@ -73,13 +62,13 @@ class TestEmptyExecutorHelper {
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = TestEmptyExecutorHelperInfos;
+  using Infos = ExecutorInfos;
   using Stats = FilterStats;
 
   TestEmptyExecutorHelper() = delete;
   TestEmptyExecutorHelper(TestEmptyExecutorHelper&&) = default;
   TestEmptyExecutorHelper(TestEmptyExecutorHelper const&) = delete;
-  TestEmptyExecutorHelper(Fetcher& fetcher, Infos&);
+  TestEmptyExecutorHelper(Fetcher&, Infos&);
   ~TestEmptyExecutorHelper();
 
   /**
@@ -89,13 +78,12 @@ class TestEmptyExecutorHelper {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
-  inline size_t numberOfRowsInFlight() const { return 0; }
-
- public:
-  Infos& _infos;
-
- private:
-  Fetcher& _fetcher;
+  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Logic_error, prefetching number of rows not supported");
+  }
 };
 
 }  // namespace aql

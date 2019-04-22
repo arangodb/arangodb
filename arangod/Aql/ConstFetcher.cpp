@@ -35,7 +35,7 @@ ConstFetcher::ConstFetcher() : _currentBlock{nullptr}, _rowIndex(0) {}
 ConstFetcher::ConstFetcher(BlockFetcher& executionBlock)
     : _currentBlock{nullptr}, _rowIndex(0) {}
 
-void ConstFetcher::injectBlock(std::shared_ptr<AqlItemBlockShell> block) {
+void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block) {
   _currentBlock = block;
   _blockForPassThrough = std::move(block);
   _rowIndex = 0;
@@ -47,7 +47,7 @@ std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow() {
   if (!indexIsValid()) {
     return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
-  TRI_ASSERT(_currentBlock);
+  TRI_ASSERT(_currentBlock != nullptr);
 
   //set state
   ExecutionState rowState = ExecutionState::HASMORE;
@@ -59,15 +59,15 @@ std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow() {
 }
 
 bool ConstFetcher::indexIsValid() {
-  return _currentBlock != nullptr && _rowIndex+1 <= _currentBlock->block().size();
+  return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->size();
 }
 
 bool ConstFetcher::isLastRowInBlock() {
   TRI_ASSERT(indexIsValid());
-  return _rowIndex + 1 == _currentBlock->block().size();
+  return _rowIndex + 1 == _currentBlock->size();
 }
 
-std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> ConstFetcher::fetchBlockForPassthrough(size_t) {
+std::pair<ExecutionState, SharedAqlItemBlockPtr> ConstFetcher::fetchBlockForPassthrough(size_t) {
   // Should only be called once, and then _blockForPassThrough should be
   // initialized. However, there are still some blocks left that ask their
   // parent even after they got DONE the last time, and I don't currently have

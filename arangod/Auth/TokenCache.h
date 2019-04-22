@@ -53,7 +53,7 @@ class TokenCache {
 
    public:
     explicit Entry(std::string const& username, bool a, double t)
-        : _username(username), _authenticated(a), _expiry(t) {}
+        : _username(username), _authenticated(a), _expiry(t), _allowedPaths() {}
 
     static Entry Unauthenticated() { return Entry("", false, 0); }
 
@@ -70,6 +70,8 @@ class TokenCache {
     bool _authenticated;
     /// expiration time (in seconds since epoch) of this entry
     double _expiry;
+    // paths that are valid for this token
+    std::vector<std::string> _allowedPaths;
   };
 
  public:

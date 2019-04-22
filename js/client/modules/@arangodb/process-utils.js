@@ -829,23 +829,31 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = f
 // / @brief dump the state of the agency to disk. if we still can get one.
 // //////////////////////////////////////////////////////////////////////////////
 function dumpAgency(instanceInfo, options) {
+  function dumpAgent(arangod, path, method, fn) {
+    let opts = {
+      method: method,
+      jwt: crypto.jwtEncode(instanceInfo.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256')
+    };
+    print('--------------------------------- '+ fn + ' -----------------------------------------------');
+    let agencyReply = download(arangod.url + path, method === 'POST' ? '[["/"]]' : '', opts);
+    if (agencyReply.code === 200) {
+      let agencyValue = JSON.parse(agencyReply.body);
+      fs.write(fs.join(options.testOutputDirectory, fn + '_' + arangod.pid + ".json"), JSON.stringify(agencyValue, null, 2));
+    } else {
+      print(agencyReply);
+    }
+  }
   instanceInfo.arangods.forEach((arangod) => {
     if (arangod.role === "agent") {
       if (arangod.hasOwnProperty('exitStatus')) {
-        print(Date() + " this agent is already dead: " + arangod);
+        print(Date() + " this agent is already dead: " + JSON.stringify(arangod));
       } else {
-        print(Date() + " Attempting to dump Agent: " + arangod);
-        let agencyConfig = arangod.GET('_api/agency/config');
-        print(JSON.stringify(agencyConfig));
-        fs.write(fs.join(options.testOutputDirectory, "agencyConfig_" + arangod.pid + ".json"), agencyConfig);
+        print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod));
+        dumpAgent(arangod, '/_api/agency/config', 'GET', 'agencyConfig');
 
-        let agencyState = arangod.GET('_api/agency/state');
-        print(JSON.stringify(agencyState));
-        fs.write(fs.join(options.testOutputDirectory, "agencyState_" + arangod.pid + ".json"), agencyState);
+        dumpAgent(arangod, '/_api/agency/state', 'GET', 'agencyState');
 
-        let agencyPlan = arangod.GET('_api/agency/read');
-        print(JSON.stringify(agencyPlan));
-        fs.write(fs.join(options.testOutputDirectory, "agencyPlan_" + arangod.pid + ".json"), agencyPlan);
+        dumpAgent(arangod, '/_api/agency/read', 'POST', 'agencyPlan');
       }
     }
   });
@@ -1029,6 +1037,10 @@ function shutdownArangod (arangod, options, forceTerminate) {
   if (options.valgrind) {
     waitOnServerForGC(arangod, options, 60);
   }
+  if (options.rr && forceTerminate) {
+    forceTerminate = false;
+    options.useKillExternal = true;
+  }
   if ((!arangod.hasOwnProperty('exitStatus')) ||
       (arangod.exitStatus.status === 'RUNNING')) {
     if (forceTerminate) {
@@ -1042,6 +1054,7 @@ function shutdownArangod (arangod, options, forceTerminate) {
     } else {
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
+      requestOptions.timeout = 60; // 60 seconds hopefully are enough for getting a response
       print(Date() + ' ' + arangod.url + '/_admin/shutdown');
       let sockStat = getSockStat(arangod, options, "Sock stat for: ");
       const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
@@ -1142,6 +1155,9 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     timeout *= 2;
   }
 
+  if ((toShutdown.length > 0) && (options.cluster === true) && (options.dumpAgencyOnError === true)) {
+    dumpAgency(instanceInfo, options);
+  }
   var shutdownTime = internal.time();
   while (toShutdown.length > 0) {
     toShutdown = toShutdown.filter(arangod => {
@@ -1322,6 +1338,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       primaryArgs['cluster.my-address'] = endpoint;
       primaryArgs['cluster.my-role'] = 'PRIMARY';
       primaryArgs['cluster.agency-endpoint'] = agencyEndpoint;
+      primaryArgs['javascript.enabled'] = 'false';
 
       startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, 'dbserver', primaryArgs), 'dbserver');
     }
@@ -1465,6 +1482,11 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   args['server.endpoint'] = endpoint;
   args['database.directory'] = dataDir;
   args['log.file'] = fs.join(rootDir, 'log');
+  if (options.auditLoggingEnabled) {
+    args['audit.output'] = 'file://' + fs.join(rootDir, 'audit.log');
+    args['server.statistics'] = false;
+    args['foxx.queues'] = false;
+  }
 
   if (protocol === 'ssl') {
     args['ssl.keyfile'] = fs.join('UnitTests', 'server.pem');
@@ -1516,6 +1538,7 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
   for (let i = 0; i < N; i++) {
     let instanceArgs = _.clone(addArgs);
     instanceArgs['log.file'] = fs.join(rootDir, 'log' + String(i));
+    instanceArgs['javascript.enabled'] = 'false';
     instanceArgs['agency.activate'] = 'true';
     instanceArgs['agency.size'] = String(N);
     instanceArgs['agency.pool-size'] = String(N);

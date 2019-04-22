@@ -415,7 +415,8 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"FIRST_DOCUMENT", ".|+", flags, &Functions::FirstDocument});
   add({"PARSE_IDENTIFIER", ".", flags, &Functions::ParseIdentifier});
   add({"IS_SAME_COLLECTION", ".h,.h", flags, &Functions::IsSameCollection});
-  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable)});  // only native function without a
+  add({"DECODE_REV", ".", flags, &Functions::DecodeRev});
+  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable)});  // only function without a
                                                                             // C++ implementation
 
   // special flags:
