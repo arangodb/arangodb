@@ -29,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-const db = require("@arangodb").db;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const base = require("fs").join(require('internal').pathForTesting('common'),
   'aql', 'aql-view-arangosearch-cluster.inc');
