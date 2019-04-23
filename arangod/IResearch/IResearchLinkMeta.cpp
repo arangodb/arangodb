@@ -30,6 +30,7 @@
 #include "utils/locale_utils.hpp"
 
 #include "Basics/StringUtils.h"
+#include "Cluster/ServerState.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VelocyPackHelper.h"
 #include "velocypack/Builder.h"
@@ -397,7 +398,11 @@ bool IResearchLinkMeta::init( // initialize meta
           }
         }
 
-        auto analyzer = analyzers->get(name, true); // true because analyzer should have been populated via 'analyzerDefinitions' above
+        // for cluster only check cache to avoid ClusterInfo locking issues
+        // analyzer should have been populated via 'analyzerDefinitions' above
+        auto analyzer = analyzers->get( // get analyzer
+          name, arangodb::ServerState::instance()->isClusterRole() // args
+        );
 
         if (!analyzer) {
           errorField = fieldName + "=>" + value.copyString(); // original (non-normalized) 'name' value
