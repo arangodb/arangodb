@@ -556,15 +556,22 @@ bool IResearchLinkMeta::json( // append meta jSON
           return false;
         }
 
-        // @note: must always use 'expandVocbasePrefix' because in the cluster
-        //        shmutz++ (in DBServerAgencySync::execute()) is hardcoded to
-        //        use the non-forPersistence index definitions and compare them
-        //        (in Maintenance.cpp compareIndexes(...)) without access to
+        // @note: DBServerAgencySync::getLocalCollections(...) generates
+        //        'forPersistence' definitions that are then compared in
+        //        Maintenance.cpp:compareIndexes(...) via
+        //        arangodb::Index::Compare(...) without access to
         //        'defaultVocbase', hence the generated definitions must not
         //        rely on 'defaultVocbase'
-        //        for 'writeAnalyzerDefinition' it doesn't matter
+        //        hence must use 'expandVocbasePrefix==true' if
+        //        'writeAnalyzerDefinition==true' for normalize
+        //        for 'writeAnalyzerDefinition==false' must use
+        //        'expandVocbasePrefix==false' so that dump/restore an restore
+        //        definitions into differently named databases
         name = IResearchAnalyzerFeature::normalize( // normalize
-          entry._pool->name(), *defaultVocbase, *sysVocbase, true // args
+          entry._pool->name(), // analyzer name
+          *defaultVocbase, // active vocbase
+          *sysVocbase, // system vocbase
+          writeAnalyzerDefinition // expand vocbase prefix
         );
       } else {
         name = entry._pool->name(); // verbatim (assume already normalized)
