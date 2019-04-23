@@ -167,12 +167,10 @@ std::pair<ExecutionState, size_t> EnumerateCollectionExecutor::skipRows(size_t t
     std::tie(_state, _input) = _fetcher.fetchRow();
 
     if (_state == ExecutionState::WAITING) {
-      LOG_DEVEL << "returned waiting";
       return {_state, 0};
     }
 
     if (!_input) {
-      LOG_DEVEL << "no input, we're done. returning done,";
       TRI_ASSERT(_state == ExecutionState::DONE);
       return {_state, 0};
     }
@@ -192,7 +190,6 @@ std::pair<ExecutionState, size_t> EnumerateCollectionExecutor::skipRows(size_t t
   _cursorHasMore = _cursor->hasMore();
 
   if (actuallySkipped == toSkip && !_cursorHasMore) {
-    LOG_DEVEL << "returned done and skipped with: " << actuallySkipped;
     return {ExecutionState::DONE, actuallySkipped};
   }
 
@@ -204,7 +201,6 @@ std::pair<ExecutionState, size_t> EnumerateCollectionExecutor::skipRows(size_t t
     return {ExecutionState::HASMORE, stats};
   }*/
 
-  LOG_DEVEL << "returned HASMORE and skipped with: " << actuallySkipped;
   return {ExecutionState::HASMORE, actuallySkipped};
 }
 
