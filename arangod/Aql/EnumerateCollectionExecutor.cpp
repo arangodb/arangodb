@@ -136,7 +136,7 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
           [&](LocalDocumentId const&, VPackSlice slice) {
             _documentProducer(_input, output, slice, _infos.getOutputRegisterId());
             stats.incrScanned();
-          }, 1 /*atMost*/);
+          }, output.numRowsLeft() /*atMost*/);
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
@@ -145,7 +145,7 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
             _documentProducer(_input, output, VPackSlice::nullSlice(),
                               _infos.getOutputRegisterId());
             stats.incrScanned();
-          }, 1 /*atMost*/);
+          }, output.numRowsLeft() /*atMost*/);
     }
 
     if (_state == ExecutionState::DONE && !_cursorHasMore) {
