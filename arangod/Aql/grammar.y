@@ -739,8 +739,8 @@ for_statement:
       auto variableNamesNode = static_cast<AstNode*>($2);
       TRI_ASSERT(variableNamesNode != nullptr);
       TRI_ASSERT(variableNamesNode->type == NODE_TYPE_ARRAY);
-      if (variableNamesNode->numMembers() > 2) {
-          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "ShortestPath only has one or two return variables", yylloc.first_line, yylloc.first_column);
+      if (variableNamesNode->numMembers() > 1) {
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "k Shortest Paths only has one return variable", yylloc.first_line, yylloc.first_column);
       }
       auto variablesNode = TransformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);

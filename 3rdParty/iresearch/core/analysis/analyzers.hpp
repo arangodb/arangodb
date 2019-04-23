@@ -78,7 +78,9 @@ class IRESEARCH_API analyzers {
   /// @brief checks whether an analyzer with the specified name is registered
   ////////////////////////////////////////////////////////////////////////////////
   static bool exists(
-    const string_ref& name, const irs::text_format::type_id& args_format
+    const string_ref& name,
+    const irs::text_format::type_id& args_format,
+    bool load_library = true
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +92,8 @@ class IRESEARCH_API analyzers {
   static analyzer::ptr get(
     const string_ref& name,
     const irs::text_format::type_id& args_format,
-    const string_ref& args
+    const string_ref& args,
+    bool load_library = true
   ) NOEXCEPT;
 
   ////////////////////////////////////////////////////////////////////////////////

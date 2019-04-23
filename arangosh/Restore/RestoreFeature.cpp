@@ -902,20 +902,6 @@ arangodb::Result processInputDirectory(
       jobs.push_back(std::move(jobData));
     }
 
-    // Step 3: create views
-    if (options.importStructure && !views.empty()) {
-      LOG_TOPIC("f723c", INFO, Logger::RESTORE) << "# Creating views...";
-      // Step 3: recreate all views
-      for (VPackBuilder const& viewDefinition : views) {
-        LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
-            << "# Creating view: " << viewDefinition.toJson();
-        Result res = ::restoreView(httpClient, options, viewDefinition.slice());
-        if (res.fail()) {
-          return res;
-        }
-      }
-    }
-
     // Step 4: fire up data transfer
     for (auto& job : jobs) {
       if (!jobQueue.queueJob(std::move(job))) {
@@ -979,6 +965,23 @@ arangodb::Result processInputDirectory(
       }
     }
 
+    // Step 5: create views
+    // @note: done after collection population since views might depend on data
+    //        in restored collections
+    if (options.importStructure && !views.empty()) {
+      LOG_TOPIC("f723c", INFO, Logger::RESTORE) << "# Creating views...";
+
+      for (auto const& viewDefinition : views) {
+        LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
+          << "# Creating view: " << viewDefinition.toJson();
+
+        auto res = ::restoreView(httpClient, options, viewDefinition.slice());
+
+        if (!res.ok()) {
+          return res;
+        }
+      }
+    }
   } catch (std::exception const& ex) {
     return {TRI_ERROR_INTERNAL,
             std::string(
