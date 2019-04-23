@@ -55,6 +55,8 @@ const testPaths = {
 function shellClient (options) {
   let testCases = tu.scanTestPaths(testPaths.shell_client);
 
+  testCases = tu.splitBuckets(options, testCases);
+
   return tu.performTests(options, testCases, 'shell_client', tu.runInLocalArangosh);
 }
 
@@ -67,6 +69,8 @@ function shellServer (options) {
 
   let testCases = tu.scanTestPaths(testPaths.shell_server);
 
+  testCases = tu.splitBuckets(options, testCases);
+
   return tu.performTests(options, testCases, 'shell_server', tu.runThere);
 }
 
@@ -76,6 +80,8 @@ function shellServer (options) {
 
 function shellServerOnly (options) {
   let testCases = tu.scanTestPaths(testPaths.shell_server_only);
+
+  testCases = tu.splitBuckets(options, testCases);
 
   return tu.performTests(options, testCases, 'shell_server_only', tu.runThere);
 }
