@@ -329,7 +329,7 @@ SECTION("test_normalize") {
     auto restore = irs::make_finally([&inRecoveryBefore]()->void { StorageEngineMock::inRecoveryResult = inRecoveryBefore; });
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    CHECK((false == arangodb::iresearch::IResearchLinkHelper::normalize(builder, json->slice(), false, *sysVocbase).ok()));
+    CHECK((true == arangodb::iresearch::IResearchLinkHelper::normalize(builder, json->slice(), false, *sysVocbase).ok()));
     CHECK((true == !analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer5")));
   }
 

@@ -1325,7 +1325,7 @@ SECTION("test_readAnalyzerDefinitions") {
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     CHECK((false == meta.init(json->slice(), true, errorField, &vocbase)));
-    CHECK((std::string("analyzerDefinitions=>[0]") == errorField));
+    CHECK((std::string("analyzers=>missing3") == errorField)); // not in the persisted collection
   }
 
   // existing analyzer (name only)
