@@ -524,6 +524,22 @@ function kAttributeWeightShortestPathTestSuite() {
 
 }
 
+function kShortestPathsSyntaxTestSuite() {
+  return {
+    testTooManyVariables: function () {
+      const query = `
+        FOR a, b IN OUTBOUND K_SHORTEST_PATHS "x" TO "y" GRAPH "G" RETURN a`;
+      try {
+        db._query(query).toArray();
+      } catch (e) {
+	assertEqual(e.errorMessage, "AQL: k Shortest Paths only has one return variable near 'RETURN a' at position 2:68 (while parsing)");
+      }
+    }
+  };
+}
+
+
+jsunity.run(kShortestPathsSyntaxTestSuite);
 jsunity.run(kConstantWeightShortestPathTestSuite);
 jsunity.run(kAttributeWeightShortestPathTestSuite);
 

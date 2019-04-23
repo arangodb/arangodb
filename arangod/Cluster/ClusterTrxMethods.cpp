@@ -226,8 +226,6 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
   std::shared_ptr<std::string> body;
   std::vector<ClusterCommRequest> requests;
   for (std::string const& server : state.knownServers()) {
-    LOG_TOPIC("d8457", DEBUG, Logger::TRANSACTIONS) << "Leader "
-    << transaction::statusString(status) << " on " << server;
     requests.emplace_back("server:" + server, rtype, path, body);
   }
   

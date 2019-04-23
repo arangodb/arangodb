@@ -144,7 +144,7 @@ class CollectionInfoCurrent {
   /// @brief returns the current leader and followers for a shard
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::vector<ServerID> servers(ShardID const& shardID) const {
+  TEST_VIRTUAL std::vector<ServerID> servers(ShardID const& shardID) const {
     std::vector<ServerID> v;
 
     auto it = _vpacks.find(shardID);
@@ -220,7 +220,11 @@ class CollectionInfoCurrent {
                              // underpins the data presented in this object
 };
 
+#ifdef ARANGODB_USE_CATCH_TESTS
 class ClusterInfo {
+#else
+class ClusterInfo final {
+#endif
  private:
   typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>> DatabaseCollections;
   typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
@@ -251,7 +255,7 @@ class ClusterInfo {
   /// @brief shuts down library
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ~ClusterInfo();
+  TEST_VIRTUAL ~ClusterInfo();
 
  public:
   static void createInstance(AgencyCallbackRegistry*);
@@ -314,8 +318,8 @@ class ClusterInfo {
   /// Throwing version, deprecated.
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
-                                                           CollectionID const&);
+  TEST_VIRTUAL std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
+                                                                CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection
@@ -326,8 +330,8 @@ class ClusterInfo {
   /// will not throw but return nullptr if the collection isn't found.
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::shared_ptr<LogicalCollection> getCollectionNT(DatabaseID const&,
-                                                             CollectionID const&);
+  TEST_VIRTUAL std::shared_ptr<LogicalCollection> getCollectionNT(DatabaseID const&,
+                                                                  CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Format error message for TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
@@ -338,7 +342,7 @@ class ClusterInfo {
   /// @brief ask about all collections of a database
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::vector<std::shared_ptr<LogicalCollection>> const getCollections(DatabaseID const&);
+  TEST_VIRTUAL std::vector<std::shared_ptr<LogicalCollection>> const getCollections(DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a view
@@ -360,8 +364,8 @@ class ClusterInfo {
   /// If it is not found in the cache, the cache is reloaded once.
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(DatabaseID const&,
-                                                                      CollectionID const&);
+  TEST_VIRTUAL std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(DatabaseID const&,
+                                                                           CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create database in coordinator
@@ -595,7 +599,7 @@ class ClusterInfo {
 
   std::unordered_map<ServerID, std::string> getServers();
 
-  virtual std::unordered_map<ServerID, std::string> getServerAliases();
+  TEST_VIRTUAL std::unordered_map<ServerID, std::string> getServerAliases();
 
   std::unordered_map<ServerID, std::string> getServerAdvertisedEndpoints();
 
