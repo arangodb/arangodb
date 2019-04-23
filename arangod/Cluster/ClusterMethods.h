@@ -274,7 +274,7 @@ arangodb::Result listHotBakupsOnCoordinator(VPackSlice const payload, VPackBuild
  * @brief Delete specific hot backup
  * @param backupId  BackupId to delete
  */
-arangodb::Result deleteHotBakupsOnCoordinator(VPackSlice const payload);
+arangodb::Result deleteHotBakupsOnCoordinator(VPackSlice const payload, VPackBuilder& report);
 
 #ifdef USE_ENTERPRISE
 /**

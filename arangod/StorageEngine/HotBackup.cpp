@@ -87,6 +87,8 @@ arangodb::Result HotBackup::executeCoordinator(
       TRI_ERROR_NOT_IMPLEMENTED, "backup locks not implemented on coordinators");
   } else if (command == "restore") {
     return hotRestoreCoordinator(payload, report);
+  } else if (command == "delete") {
+    return deleteHotBakupsOnCoordinator(payload, report);
   } else if (command == "list") {
     return listHotBakupsOnCoordinator(payload, report);
 #ifdef USE_ENTERPRISE

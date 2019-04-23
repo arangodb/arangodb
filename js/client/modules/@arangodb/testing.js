@@ -50,6 +50,7 @@ let optionsDocumentation = [
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
   '   - `skipGrey`: if set, grey tests are skipped.',
+  '   - `onlyGrey`: if set, only grey tests are executed.',
   '   - `testBuckets`: split tests in to buckets and execute on, for example',
   '       10/2 will split into 10 buckets and execute the third bucket.',
   '',
@@ -120,7 +121,7 @@ let optionsDocumentation = [
 ];
 
 const optionsDefaults = {
-  'dumpAgencyOnError': true,
+  'dumpAgencyOnError': false,
   'agencySize': 3,
   'agencyWaitForSync': false,
   'agencySupervision': true,
@@ -162,6 +163,7 @@ const optionsDefaults = {
   'skipNightly': true,
   'skipNondeterministic': false,
   'skipGrey': false,
+  'onlyGrey': false,
   'skipTimeCritical': false,
   'storageEngine': 'rocksdb',
   'test': undefined,

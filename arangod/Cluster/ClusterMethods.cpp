@@ -3450,7 +3450,8 @@ arangodb::Result hotBackupDBServers(
  * @brief delete all backups with backupId from the db servers
  */
 arangodb::Result removeLocalBackups(
-  std::string const& backupId, std::vector<ServerID> const& dbServers) {
+  std::string const& backupId, std::vector<ServerID> const& dbServers,
+  std::vector<std::string>& deleted) {
 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -3496,13 +3497,13 @@ arangodb::Result removeLocalBackups(
       // Response has invalid format
       return arangodb::Result(
         TRI_ERROR_HTTP_CORRUPTED_JSON,
-        std::string("result to take snapshot on ") + req.destination + " not an object");
+        std::string("failed to remove backup from ") + req.destination + ", result not an object");
     }
 
-    if (!resSlice.hasKey("result") ||
-        !resSlice.get("result").isBoolean() || !resSlice.get("result").getBoolean()) {
+    if (!resSlice.hasKey("error") || !resSlice.get("error").isBoolean() ||
+        resSlice.get("error").getBoolean()) {
       LOG_TOPIC(ERR, Logger::HOTBACKUP)
-        << "DB server " << req.destination << "is missing backup " << backupId;
+        << "failed to delete backup " << backupId << " on " << req.destination;
       return arangodb::Result(
         TRI_ERROR_FILE_NOT_FOUND,
         std::string("no backup with id ") + backupId + " on server " + req.destination);
@@ -3510,8 +3511,9 @@ arangodb::Result removeLocalBackups(
 
   }
 
-  LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
-    << "Have located backup. Replaying plan snapshot. Requesting restore " << backupId;
+  deleted.emplace_back(backupId);
+
+  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Have located and deleted " << backupId;
 
   return arangodb::Result();
 
@@ -3643,7 +3645,8 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         std::string ("failed to hot backup on all db servers: ") + result.errorMessage());
       LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
-      removeLocalBackups(backupId, dbServers);
+      std::vector<std::string> dummy;
+      removeLocalBackups(backupId, dbServers, dummy);
       return result;
     }
 
@@ -3721,9 +3724,41 @@ arangodb::Result listHotBakupsOnCoordinator(
 
 }
 
+arangodb::Result deleteHotBakupsOnCoordinator(
+  VPackSlice const payload, VPackBuilder& report) {
+
+  std::vector<std::string> listIds, deleted;
+  VPackBuilder dummy;
+  arangodb::Result result;
+  
+  ClusterInfo* ci = ClusterInfo::instance();
+  std::vector<ServerID> dbServers = ci->getCurrentDBServers();
+
+  result = hotBackupList(dbServers, payload, listIds, dummy);
+  if (!result.ok()) {
+    return result;
+  }
+
+  result = removeLocalBackups(listIds.front(), dbServers, deleted);
+  if (result.ok()) {
+    return result;
+  }
+
+  {
+    VPackObjectBuilder o(&report);
+    report.add(VPackValue("id"));
+    {
+      VPackArrayBuilder a(&report);
+      for (auto const& i : deleted) {
+        report.add(VPackValue(i));
+      }
+    }
+  }
+
+  result.reset();
+  return result;
+  
+}
 
 }  // namespace arangodb
-
-
-
 

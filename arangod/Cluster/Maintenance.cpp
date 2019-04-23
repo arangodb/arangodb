@@ -737,6 +737,7 @@ static VPackBuilder assembleLocalCollectionInfo(
     }
     return ret;
   } catch (std::exception const& e) {
+    ret.clear();
     std::string errorMsg(
         "Maintenance::assembleLocalCollectionInfo: Failed to lookup database ");
     errorMsg += database;
@@ -819,7 +820,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     if (!cur.hasKey(cdbpath)) {
       auto const localDatabaseInfo = assembleLocalDatabaseInfo(dbName, allErrors);
       TRI_ASSERT(!localDatabaseInfo.slice().isNone());
-      if (!localDatabaseInfo.slice().isEmptyObject()) {
+      if (!localDatabaseInfo.slice().isEmptyObject() && !localDatabaseInfo.slice().isNone()) {
         report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
         {
           VPackObjectBuilder o(&report);
@@ -841,7 +842,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             assembleLocalCollectionInfo(shSlice, shardMap.slice().get(shName),
                                         dbName, shName, serverId, allErrors);
         // Collection no longer exists
-        if (localCollectionInfo.slice().isEmptyObject()) {
+        TRI_ASSERT(!localCollectionInfo.slice().isNone());
+        if (localCollectionInfo.slice().isEmptyObject() || localCollectionInfo.slice().isNone()) {
           continue;
         }
 

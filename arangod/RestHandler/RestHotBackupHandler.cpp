@@ -77,6 +77,7 @@ RestStatus RestHotBackupHandler::execute() {
     display.add("result", report.slice());
   }
   generateResult(rest::ResponseCode::OK, display.slice());
+
   return RestStatus::DONE;
 
 } // RestHotBackupHandler::execute
@@ -126,5 +127,6 @@ arangodb::Result RestHotBackupHandler::parseHotBackupParams(
   }
 
   return arangodb::Result();
+
 
 } // RestHotBackupHander::parseHotBackupParams

@@ -213,6 +213,7 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
   TRI_ASSERT(resultObject.isObject());
 
   VPackSlice const backups = resultObject.get("id");
+  
   if (!backups.isArray()) {
     result.reset(TRI_ERROR_INTERNAL,
                  "expected 'result.hotbackups' to be an array");
@@ -238,6 +239,7 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
 arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
                                arangodb::BackupFeature::Options const& options) {
   arangodb::Result result;
+
 
   std::string const url = "/_admin/backup/create";
   VPackBuilder bodyBuilder;
@@ -266,7 +268,6 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
     return result;
   }
   VPackSlice const resBody = parsedBody->slice();
-
   if (!resBody.isObject()) {
     result.reset(TRI_ERROR_INTERNAL, "expected response to be an object");
     return result;

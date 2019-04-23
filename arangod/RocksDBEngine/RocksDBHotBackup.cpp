@@ -23,7 +23,6 @@
 
 #include "RocksDBHotBackup.h"
 
-#include <ctype.h>
 #include <thread>
 
 #include "Agency/TimeString.h"
@@ -48,7 +47,6 @@
 #endif
 
 #include <velocypack/Parser.h>
-
 #include <rocksdb/utilities/checkpoint.h>
 
 namespace {
@@ -116,6 +114,7 @@ std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
   } else {
     // if no operation selected, give base class which defaults to "bad"
     operation.reset(new RocksDBHotBackup(body, report));
+
   } // if
 
   return operation;
@@ -128,8 +127,7 @@ std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
 //
 RocksDBHotBackup::RocksDBHotBackup(VPackSlice body, VPackBuilder& report)
   : _body(body), _valid(true), _success(false), _respCode(rest::ResponseCode::BAD),
-    _respError(TRI_ERROR_HTTP_BAD_PARAMETER), _result(report), _timeoutSeconds(10)
-{
+    _respError(TRI_ERROR_HTTP_BAD_PARAMETER), _result(report), _timeoutSeconds(10) {
   _isSingle = ServerState::instance()->isSingleServer();
   return;
 }
@@ -401,7 +399,7 @@ RocksDBHotBackupCreate::RocksDBHotBackupCreate(
 
 
 void RocksDBHotBackupCreate::parseParameters() {
-  
+
   // single server create, we generate the timestamp
   if (_isSingle && _isCreate) {
     _timestamp = timepointToString(std::chrono::system_clock::now());
@@ -541,6 +539,7 @@ void RocksDBHotBackupCreate::executeCreate() {
           << "RocksDBHotBackupCreate caught exception.";
       }
     }
+
   } // if
 
   // set response codes
@@ -578,7 +577,6 @@ void RocksDBHotBackupCreate::executeCreate() {
 ///              (was previously deleted)
 void RocksDBHotBackupCreate::executeDelete() {
   std::string dirToDelete;
-
   dirToDelete = rebuildPath(_id);
   _success = clearPath(dirToDelete);
 
