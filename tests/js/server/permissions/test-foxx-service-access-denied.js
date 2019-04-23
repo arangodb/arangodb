@@ -13,6 +13,7 @@ if (getOptions === true) {
     'temp.path': fs.getTempPath(), // Adjust the temp-path to match our current temp path
     'server.harden': 'true',
     'server.authentication': 'true',
+    'server.jwt-secret': 'abc123',
     'javascript.harden' : 'true',
     'javascript.files-whitelist': [
         '^' + testPath, // we need to call isDirectory (internal.pathForTesting) in

@@ -39,7 +39,7 @@ const executeExternalAndWait = require('internal').executeExternalAndWait;
 
 const platform = require('internal').platform;
 
-// const BLUE = require('internal').COLORS.COLOR_BLUE;
+const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
 const GREEN = require('internal').COLORS.COLOR_GREEN;
 const RED = require('internal').COLORS.COLOR_RED;
@@ -76,6 +76,8 @@ function permissions_server(options) {
       let instanceInfo = pu.startInstance(options.protocol, options, paramsFistRun, "permissions_server", rootDir); // fist start
       pu.cleanupDBDirectoriesAppend(instanceInfo.rootDir);      
       try {
+        print(BLUE + '================================================================================' + RESET);
+        print(CYAN + 'Running Setup of: ' + testFile + RESET);
         let content = fs.read(testFile);
         content = `(function(){ const getOptions = true; ${content} 
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
@@ -90,8 +92,11 @@ function permissions_server(options) {
         return;
       }
 
+      if (paramsSecondRun.hasOwnProperty('server.jwt-secret')) {
+        clonedOpts['server.jwt-secret'] = paramsSecondRun['server.jwt-secret'];
+      }
       pu.shutdownInstance(instanceInfo, clonedOpts, false);                                     // stop
-      pu.reStartInstance(options, instanceInfo, paramsSecondRun);      // restart with restricted permissions
+      pu.reStartInstance(clonedOpts, instanceInfo, paramsSecondRun);      // restart with restricted permissions
       results[testFile] = tu.runInLocalArangosh(options, instanceInfo, testFile, {});
       pu.shutdownInstance(instanceInfo, clonedOpts, false);
       if (!results[testFile].status) {
