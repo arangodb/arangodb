@@ -3748,7 +3748,7 @@ arangodb::Result deleteHotBakupsOnCoordinator(
   {
     VPackObjectBuilder o(&report);
     report.add(VPackValue("id"));
-    { 
+    {
       VPackArrayBuilder a(&report);
       for (auto const& i : deleted) {
         report.add(VPackValue(i));
@@ -3761,9 +3761,5 @@ arangodb::Result deleteHotBakupsOnCoordinator(
   
 }
 
-
 }  // namespace arangodb
-
-
-
 
