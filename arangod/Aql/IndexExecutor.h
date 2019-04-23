@@ -198,7 +198,8 @@ class IndexExecutor {
   void createCursor();
 
   /// @brief continue fetching of documents
-  bool readIndex(IndexIterator::DocumentCallback const&, bool& hasWritten);
+  bool readIndex(OutputAqlItemRow& output,
+                 IndexIterator::DocumentCallback const&, bool& hasWritten);
 
   /// @brief reset the cursor at given position
   void resetCursor(size_t pos) { _cursors[pos]->reset(); };

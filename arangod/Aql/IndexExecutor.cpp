@@ -230,7 +230,9 @@ void IndexExecutor::createCursor() {
 }
 
 // this is called every time we need to fetch data from the indexes
-bool IndexExecutor::readIndex(IndexIterator::DocumentCallback const& callback, bool& hasWritten) {
+bool IndexExecutor::readIndex(OutputAqlItemRow& output,
+                              IndexIterator::DocumentCallback const& callback,
+                              bool& hasWritten) {
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
   // again (although there might be multiple calls to this function).
@@ -255,7 +257,7 @@ bool IndexExecutor::readIndex(IndexIterator::DocumentCallback const& callback, b
           [&callback](LocalDocumentId const& id) {
             callback(id, VPackSlice::nullSlice());
           },
-          1);
+          output.numRowsLeft());
     } else {
       // check if the *current* cursor supports covering index queries or not
       // if we can optimize or not must be stored in our instance, so the
@@ -267,10 +269,10 @@ bool IndexExecutor::readIndex(IndexIterator::DocumentCallback const& callback, b
       if (_allowCoveringIndexOptimization &&
           !_infos.getCoveringIndexAttributePositions().empty()) {
         // index covers all projections
-        res = getCursor()->nextCovering(callback, 1);
+        res = getCursor()->nextCovering(callback, output.numRowsLeft());
       } else {
         // we need the documents later on. fetch entire documents
-        res = getCursor()->nextDocument(callback, 1);
+        res = getCursor()->nextDocument(callback, output.numRowsLeft());
       }
     }
 
@@ -483,7 +485,7 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     TRI_ASSERT(!getIndexesExhausted());
 
     // Read the next elements from the indexes
-    bool more = readIndex(callback, hasWritten);
+    bool more = readIndex(output, callback, hasWritten);
     TRI_ASSERT(getCursor() != nullptr || !more);
 
     if (!more) {
