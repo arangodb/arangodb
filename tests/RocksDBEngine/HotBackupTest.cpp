@@ -181,7 +181,6 @@ public:
     TRI_CreateDirectory(_id.c_str(), systemError, errorMessage);
 
     _idRestore = "SNGL-9231534b-e1aa-4eb6-881a-0b6c798c6677_2019-02-15T20.51.13Z";
-
   }
 
   //RocksDBHotBackupRestoreTest(const VPackSlice body) : RocksDBHotBackup(body) {};
@@ -317,7 +316,6 @@ TEST_CASE("RocksDBHotBackupRestore directories", "[rocksdb][devel][hotbackup]") 
   SECTION("test createRestoringDirectory") {
     VPackBuilder report;
     RocksDBHotBackupRestoreTest testee(VPackSlice(), report);
-
     testee.createHotDirectory();
 
     retBool = testee.createRestoringDirectory(restoringDir);

@@ -87,6 +87,7 @@ protected:
   int _respError;
   std::string _errorMessage;
   VPackBuilder& _result;
+  
   bool _isSingle;       // is single db server (not cluster)
 
   unsigned _timeoutSeconds; // used to stop transaction, used again to stop rocksdb
@@ -140,7 +141,6 @@ protected:
   std::string _id;   // required for Delete
   VPackSlice _agencyDump;   // required for Create from Coordinator
 
-
 };// class RocksDBHotBackupCreate
 
 
@@ -163,7 +163,6 @@ public:
   // @brief accessors to the parameters
   std::string const& getTimestampCurrent() const {return _timestampCurrent;}
   std::string const& getDirectoryRestore() const {return _idRestore;}
-
   bool createRestoringDirectory(std::string& nameOutput);
 
  protected:
