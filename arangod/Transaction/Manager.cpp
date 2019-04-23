@@ -178,25 +178,24 @@ Manager::ManagedTrx::~ManagedTrx() {
     // but we are in a destructor and must never throw from here
   }
 }
-  
+
 using namespace arangodb;
-  
+
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
   bool didWork = false;
-  
   std::vector<TRI_voc_tid_t> gcBuffer;
 
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
     WRITE_LOCKER(locker, _transactions[bucket]._lock);
-
     double now = TRI_microtime();
     auto it = _transactions[bucket]._managed.begin();
+
     while (it != _transactions[bucket]._managed.end()) {
-      
       ManagedTrx& mtrx = it->second;
-      
+
       if (mtrx.type == MetaType::Managed) {
         TRI_ASSERT(mtrx.state != nullptr);
         TRY_READ_LOCKER(tryGuard, mtrx.rwlock); // needs lock to access state
@@ -214,29 +213,34 @@ bool Manager::garbageCollect(bool abortAll) {
           }
         }
       } else if (mtrx.type == MetaType::StandaloneAQL && mtrx.expires < now) {
-        LOG_TOPIC("7ad2f", INFO, Logger::TRANSACTIONS) << "expired AQL query transaction '"
-        << it->first << "'";
+        LOG_TOPIC("7ad3f", INFO, Logger::TRANSACTIONS)
+          << "expired AQL query transaction '" << it->first << "'";
       } else if (mtrx.type == MetaType::Tombstone && mtrx.expires < now) {
         TRI_ASSERT(mtrx.state == nullptr);
         TRI_ASSERT(mtrx.finalStatus != transaction::Status::UNDEFINED);
         it = _transactions[bucket]._managed.erase(it);
         continue;
       }
+
       ++it;  // next
     }
   }
-  
+
   for (TRI_voc_tid_t tid : gcBuffer) {
     Result res = abortManagedTrx(tid);
+
     if (res.fail()) {
       LOG_TOPIC("0a07f", INFO, Logger::TRANSACTIONS) << "error while GC collecting "
       "transaction: '" << res.errorMessage() << "'";
     }
+
     didWork = true;
   }
+
   if (didWork) {
     LOG_TOPIC("e5b31", INFO, Logger::TRANSACTIONS) << "collecting expired transactions";
   }
+
   return didWork;
 }
 

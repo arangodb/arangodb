@@ -303,18 +303,18 @@ std::shared_ptr<arangodb::LogicalCollection> getAnalyzerCollection( // get colle
       return ci->getCollectionNT(vocbase.name(), ANALYZER_COLLECTION_NAME);
     }
 
-    LOG_TOPIC(, WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("00001", WARN, arangodb::iresearch::TOPIC)
       << "failure to find 'ClusterInfo' instance while looking up Analyzer collection '" << ANALYZER_COLLECTION_NAME << "' in vocbase '" << vocbase.name() << "'";
   } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(, WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("00002", WARN, arangodb::iresearch::TOPIC)
       << "caught exception while looking up Analyzer collection '" << ANALYZER_COLLECTION_NAME << "' in vocbase '" << vocbase.name() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
-    LOG_TOPIC(, WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("00003", WARN, arangodb::iresearch::TOPIC)
       << "caught exception while looking up Analyzer collection '" << ANALYZER_COLLECTION_NAME << "' in vocbase '" << vocbase.name() << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(, WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("00004", WARN, arangodb::iresearch::TOPIC)
       << "caught exception while looking up Analyzer collection '" << ANALYZER_COLLECTION_NAME << "' in vocbase '" << vocbase.name() << "'";
     IR_LOG_EXCEPTION();
   }
