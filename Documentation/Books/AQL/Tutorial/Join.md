@@ -311,14 +311,12 @@ and for each document reference in this array, it loops over the *Traits*
 collections. There is a condition to match the document key with the key
 reference. The inner `FOR` loop and the `FILTER` get transformed to a primary
 index lookup in this case instead of building up a Cartesian product only to
-filter away everything but a single match (document keys within a collection
-are unique).
+filter away everything but a single match: Document keys within a collection
+are unique, thus there can only be one match.
 
-The English trait label is returned and the spelled out traits are merged
-with the character document, so the result is identical to the previous query.
-However, this approach is not limited to primary keys. You can do this with
-any other attribute as well. For an efficient lookup, make sure you add a
-hash index for this attribute. If its values are unique, then also set the
-index option to unique. Then the query optimizer will know that it can stop
-after one match. If you actually want to match multiple documents, that is
-possible too of course.
+Each written-out, English trait is returned and all the traits are then merged
+with the character document. The result is identical to the query using
+`DOCUMENT()`. However, this approach with a nested `FOR` loop and a `FILTER`
+is not limited to primary keys. You can do this with any other attribute as well.
+For an efficient lookup, make sure you add a hash index for this attribute.
+If its values are unique, then also set the index option to unique.
