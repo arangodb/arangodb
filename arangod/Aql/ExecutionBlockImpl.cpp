@@ -227,6 +227,8 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
   }
 }
 
+namespace arangodb {
+namespace aql {
 template <>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<EnumerateCollectionExecutor>::skipSome(size_t atMost) {
   LOG_DEVEL << " SKIP ENUM COLL Special case";
@@ -244,6 +246,8 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<IResearchViewExecutor<false
   LOG_DEVEL << " SKIP ENUM COLL Special case";
   return this->executor().skipRows(atMost);
 }
+}  // namespace aql
+}  // namespace arangodb
 
 /*
 template <class EnumerateCollectionExecutor>
