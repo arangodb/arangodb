@@ -40,6 +40,7 @@ if (getOptions === true) {
   return {
     'server.harden': 'true',
     'server.authentication': 'true',
+    'server.jwt-secret': 'abc123'
   };
 }
 var jsunity = require('jsunity');
