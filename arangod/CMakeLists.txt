@@ -534,6 +534,7 @@ SET(ARANGOD_SOURCES
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
   StorageEngine/WalAccess.cpp
+  Transaction/ClusterUtils.cpp
   Transaction/Context.cpp
   Transaction/CountCache.cpp
   Transaction/Helpers.cpp
