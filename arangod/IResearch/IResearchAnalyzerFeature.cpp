@@ -987,8 +987,8 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
       return res;
     }
 
-    auto allowCreation = // should analyzer creation be allowed
-      isEmplace || arangodb::ServerState::instance()->isDBServer();
+    auto allowCreation = // should analyzer creation be allowed (always for cluster)
+      isEmplace || arangodb::ServerState::instance()->isClusterRole();
     bool erase = itr.second; // an insertion took place
     auto cleanup = irs::make_finally([&erase, this, &itr]()->void {
       if (erase) {

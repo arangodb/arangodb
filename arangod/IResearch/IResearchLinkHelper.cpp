@@ -282,7 +282,7 @@ arangodb::Result modifyLinks( // modify links
     std::string error;
     arangodb::iresearch::IResearchLinkMeta linkMeta;
 
-    if (!linkMeta.init(namedJson.slice(), error, nullptr, true)) { // validated and normalized with 'isCreation=true' above via normalize(...)
+    if (!linkMeta.init(namedJson.slice(), true, error)) { // validated and normalized with 'isCreation=true' above via normalize(...)
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string("error parsing link parameters from json for arangosearch view '") + view.name() + "' collection '" + collectionName + "' error '" + error + "'"
@@ -563,8 +563,8 @@ namespace iresearch {
   IResearchLinkMeta lhsMeta;
   IResearchLinkMeta rhsMeta;
 
-  return lhsMeta.init(lhs, errorField) // left side meta valid (for db-server analyzer validation should have already apssed on coordinator)
-         && rhsMeta.init(rhs, errorField) // right side meta valid (for db-server analyzer validation should have already apssed on coordinator)
+  return lhsMeta.init(lhs, true, errorField) // left side meta valid (for db-server analyzer validation should have already apssed on coordinator)
+         && rhsMeta.init(rhs, true, errorField) // right side meta valid (for db-server analyzer validation should have already apssed on coordinator)
          && lhsMeta == rhsMeta; // left meta equal right meta
 }
 
@@ -630,7 +630,7 @@ namespace iresearch {
   //        IResearchLinkHelper::normalize(...) if creating via collection API
   //        ::modifyLinks(...) (via call to normalize(...) prior to getting
   //        superuser) if creating via IResearchLinkHelper API
-  if (!meta.init(definition, error, &vocbase, true)) {
+  if (!meta.init(definition, true, error, &vocbase)) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error parsing arangosearch link parameters from json: ") + error
@@ -733,7 +733,7 @@ namespace iresearch {
     std::string errorField;
 
     if (!linkDefinition.isNull() // have link definition
-        && !meta.init(linkDefinition, errorField, &vocbase, false)) { // for db-server analyzer validation should have already applied on coordinator
+        && !meta.init(linkDefinition, false, errorField, &vocbase)) { // for db-server analyzer validation should have already applied on coordinator
       return arangodb::Result( // result
         TRI_ERROR_BAD_PARAMETER, // code
         errorField.empty()

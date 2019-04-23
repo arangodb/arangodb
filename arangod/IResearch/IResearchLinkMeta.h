@@ -131,9 +131,9 @@ struct IResearchLinkMeta {
   ////////////////////////////////////////////////////////////////////////////////
   bool init( // initialize meta
     arangodb::velocypack::Slice const& slice, // definition
+    bool readAnalyzerDefinition, // allow reading analyzer definitions instead of just name
     std::string& errorField, // field causing error (out-param)
     TRI_vocbase_t const* defaultVocbase = nullptr, // fallback vocbase
-    bool readAnalyzerDefinition = false, // allow reading analyzer definitions instead of just name
     IResearchLinkMeta const& defaults = DEFAULT(), // inherited defaults
     Mask* mask = nullptr // initialized fields (out-param)
   );

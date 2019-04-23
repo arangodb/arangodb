@@ -186,9 +186,9 @@ bool IResearchLinkMeta::operator!=(IResearchLinkMeta const& other) const noexcep
 
 bool IResearchLinkMeta::init( // initialize meta
     arangodb::velocypack::Slice const& slice, // definition
+    bool readAnalyzerDefinition, // allow analyzer definitions
     std::string& errorField, // field causing error (out-param)
     TRI_vocbase_t const* defaultVocbase /*= nullptr*/, // fallback vocbase
-    bool readAnalyzerDefinition /*= false*/, // allow analyzer definitions
     IResearchLinkMeta const& defaults /*= DEFAULT()*/, // inherited defaults
     Mask* mask /*= nullptr*/ // initialized fields (out-param)
 ) {
@@ -511,7 +511,7 @@ bool IResearchLinkMeta::init( // initialize meta
 
         std::string childErrorField;
 
-        if (!_fields[name]->init(value, childErrorField, defaultVocbase, readAnalyzerDefinition, subDefaults)) {
+        if (!_fields[name]->init(value, readAnalyzerDefinition, childErrorField, defaultVocbase, subDefaults)) {
           errorField = fieldName + "=>" + name + "=>" + childErrorField;
 
           return false;
