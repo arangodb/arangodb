@@ -32,6 +32,7 @@
 #include "VocBase/voc-types.h"
 
 #include <atomic>
+#include <functional>
 #include <map>
 #include <set>
 #include <vector>
@@ -47,6 +48,7 @@ namespace transaction {
 class Context;
 struct Options;
 
+/// @bried Tracks TransasctionState instances 
 class Manager final {
   static constexpr size_t numBuckets = 16;
   static constexpr double defaultTTL = 10.0 * 60.0;   // 10 minutes
@@ -80,9 +82,6 @@ class Manager final {
   uint64_t getActiveTransactionCount();
   
  public:
-
-  /// @brief collect forgotten transactions
-  bool garbageCollect(bool abortAll);
   
   /// @brief register a AQL transaction
   void registerAQLTrx(TransactionState*);
@@ -110,20 +109,11 @@ class Manager final {
   Result commitManagedTrx(TRI_voc_tid_t);
   Result abortManagedTrx(TRI_voc_tid_t);
   
-  /// @brief abort all transactions on a given shard
-  void abortAllManagedTrx(TRI_voc_cid_t, bool leader);
+  /// @brief collect forgotten transactions
+  bool garbageCollect(bool abortAll);
   
-#ifdef ARANGODB_USE_CATCH_TESTS
-  /// statistics struct
-  struct TrxCounts {
-    uint32_t numManaged;
-    uint32_t numStandaloneAQL;
-    uint32_t numTombstones;
-
-  };
-  /// @brief fetch managed trx counts
-  TrxCounts getManagedTrxCount() const;
-#endif
+  /// @brief abort all transactions matching
+  bool abortManagedTrx(std::function<bool(TransactionState const&)>);
   
  private:
   // hashes the transaction id into a bucket
