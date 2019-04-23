@@ -109,6 +109,12 @@ class BlockFetcher {
     return _dependencies.size();
   }
 
+  inline void reset() {
+    _blockQueue.clear();
+    _blockPassThroughQueue.clear();
+    _currentDependency = 0;
+  }
+
  protected:
   inline AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
   inline AqlItemBlockManager const& itemBlockManager() const {
