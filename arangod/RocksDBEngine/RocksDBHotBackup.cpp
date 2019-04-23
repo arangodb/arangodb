@@ -127,7 +127,7 @@ std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
 //
 RocksDBHotBackup::RocksDBHotBackup(VPackSlice body, VPackBuilder& report)
   : _body(body), _valid(true), _success(false), _respCode(rest::ResponseCode::BAD),
-    _respError(TRI_ERROR_HTTP_BAD_PARAMETER), _result(report), _timeoutSeconds(10)
+    _respError(TRI_ERROR_HTTP_BAD_PARAMETER), _result(report), _timeoutSeconds(10) {
   _isSingle = ServerState::instance()->isSingleServer();
   return;
 }
