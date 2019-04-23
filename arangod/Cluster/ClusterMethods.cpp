@@ -3497,7 +3497,7 @@ arangodb::Result removeLocalBackups(
       // Response has invalid format
       return arangodb::Result(
         TRI_ERROR_HTTP_CORRUPTED_JSON,
-        std::string("result to take snapshot on ") + req.destination + " not an object");
+        std::string("failed to remove backup from ") + req.destination + ", result not an object");
     }
 
     if (!resSlice.hasKey("error") || !resSlice.get("error").isBoolean() ||
@@ -3513,8 +3513,7 @@ arangodb::Result removeLocalBackups(
 
   deleted.emplace_back(backupId);
 
-  LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
-    << "Have located backup. Replaying plan snapshot. Requesting restore " << backupId;
+  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Have located and deleted " << backupId;
 
   return arangodb::Result();
 
