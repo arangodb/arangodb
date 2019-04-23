@@ -4,20 +4,33 @@ HTTP Interface for Transactions
 ### Transactions
 
 ArangoDB's transactions are executed on the server. Transactions can be 
-initiated by clients by sending the transaction description for execution to
-the server.
+executed by clients in two different ways:
 
-Transactions in ArangoDB do not offer separate *BEGIN*, *COMMIT* and *ROLLBACK*
-operations as they are available in many other database products. 
-Instead, ArangoDB transactions are described by a JavaScript function, and the 
-code inside the JavaScript function will then be executed transactionally.
-At the end of the function, the transaction is automatically committed, and all
-changes done by the transaction will be persisted. If an exception is thrown
-during transaction execution, all operations performed in the transaction are
-rolled back.
+1. Via the [Stream Transaction](StreamTransaction.md) API
+2. Via the [JavaScript Transaction](JsTransaction.md) API
 
-For a more detailed description of how transactions work in ArangoDB please
+The difference between these two is not difficult to understand, a short primer 
+is listed below. 
+For a more detailed description of how transactions work in ArangoDB and
+what guarantees ArangoDB can deliver please
 refer to [Transactions](../../Manual/Transactions/index.html). 
 
-<!-- js/actions/api-transaction.js -->
-@startDocuBlock post_api_transaction
+
+### Stream Transactions
+
+The [Stream Transactions](StreamTransaction.md) allows you to perform a multi-document transaction 
+with individual begin and commit / abort commands. This is similar to
+the way traditional RDBMS do it with *BEGIN*, *COMMIT* and *ROLLBACK* operations.
+
+This the recommended API for larger transactions. However the client is responsible
+for making sure that the transaction is committed or aborted when it is no longer needed,
+to avoid taking up resources.
+
+###  JavaScript Transactions
+
+The [JS-Transaction API](JsTransaction.md) allows you to send the server
+a dedicated peace of JavaScript code (i.e. a function), which will be executed transactionally.
+
+At the end of the function, the transaction is automatically committed, and all
+changes done by the transaction will be persisted. No interaction is required by 
+the client beyond the initial start request.

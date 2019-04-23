@@ -483,11 +483,7 @@ transaction::Status Manager::getManagedTrxStatus(TRI_voc_tid_t tid) const {
   if (mtrx.type == MetaType::Tombstone) {
     return mtrx.finalStatus;
   } else if (mtrx.expires > TRI_microtime() && mtrx.state != nullptr) {
-    TRY_READ_LOCKER(tryGuard, mtrx.rwlock);
-    if (!tryGuard.isLocked()) {
-      return transaction::Status::UNDEFINED;
-    }
-    return mtrx.state->status();
+    return transaction::Status::RUNNING;
   } else {
     return transaction::Status::ABORTED;
   }
