@@ -961,7 +961,9 @@ if test -n "${TARGET_DIR}";  then
                             ${SED} 's/\r//' | \
                             ${SED} -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"  -e "s;\([a-zA-Z]*\):;/cygdrive/\1;"
                   )
+            set +e
             DLLS=$(find "${SSLDIR}" -name \*.dll |grep -i release)
+            set -e
             # shellcheck disable=SC2086
             if test -n "${DLLS}"; then
                 cp ${DLLS} "bin/${BUILD_CONFIG}"
