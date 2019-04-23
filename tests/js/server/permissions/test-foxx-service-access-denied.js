@@ -7,6 +7,7 @@ const pu = require('@arangodb/process-utils');
 
 if (getOptions === true) {
   let users = require("@arangodb/users");
+  let testPath = fs.join(pu.TOP_DIR, internal.pathForTesting(''));
 
   return {
     'temp.path': fs.getTempPath(), // Adjust the temp-path to match our current temp path
@@ -14,11 +15,11 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'javascript.harden' : 'true',
     'javascript.files-whitelist': [
-        '^$',
+        '^' + testPath, // we need to call isDirectory (internal.pathForTesting) in
+                        // the server which is for bidden in not whitelisted paths
     ],
     // tests/js/common/test-data/apps/server-security/index.js
-    'javascript.app-path': fs.join(pu.TOP_DIR, 'tests', 'js',
-                                        'common', 'test-data', 'apps'),
+    'javascript.app-path': fs.join(testPath, 'common', 'test-data', 'apps'),
     'javascript.endpoints-whitelist' : [
       'ssl://arangodb.com:443'
     ],
