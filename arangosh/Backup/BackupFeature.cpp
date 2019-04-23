@@ -27,10 +27,12 @@
 #include <thread>
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/FileUtils.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -45,9 +47,14 @@ constexpr auto OperationCreate = "create";
 constexpr auto OperationDelete = "delete";
 constexpr auto OperationList = "list";
 constexpr auto OperationRestore = "restore";
+constexpr auto OperationUpload = "upload";
+constexpr auto OperationDownload = "download";
 std::unordered_set<std::string> const Operations = {OperationCreate, OperationDelete,
-                                                    OperationList, OperationRestore};
-
+                                                    OperationList, OperationRestore,
+#ifdef USE_ENTERPRISE
+                                                    OperationUpload, OperationDownload,
+#endif
+                                                    };
 /// @brief generic error for if server returns bad/unexpected json
 const arangodb::Result ErrorMalformedJsonResponse = {
     TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
@@ -406,6 +413,176 @@ arangodb::Result executeDelete(arangodb::httpclient::SimpleHttpClient& client,
   return result;
 }
 
+#ifdef USE_ENTERPRISE
+struct TransfereType {
+  enum type {
+    UPLOAD,
+    DOWNLOAD
+  };
+
+  static std::string asString(type t) {
+    switch (t) {
+      case UPLOAD:
+        return "upload";
+      case DOWNLOAD:
+        return "download";
+      default:
+        TRI_ASSERT(false);
+    }
+  }
+
+  static std::string asAdminPath(type t) {
+    switch (t) {
+      case UPLOAD:
+        return "/_admin/backup/upload";
+      case DOWNLOAD:
+        return "/_admin/backup/download";
+      default:
+        TRI_ASSERT(false);
+    }
+  }
+
+  static std::string asJsonId(type t) {
+    switch (t) {
+      case UPLOAD:
+        return "uploadId";
+      case DOWNLOAD:
+        return "downloadId";
+      default:
+        TRI_ASSERT(false);
+    }
+  }
+};
+
+arangodb::Result executeStatusQuery(arangodb::httpclient::SimpleHttpClient& client,
+  arangodb::BackupFeature::Options const& options, TransfereType::type type) {
+  arangodb::Result result;
+
+  std::string const url = TransfereType::asAdminPath(type);
+  VPackBuilder bodyBuilder;
+  {
+    VPackObjectBuilder guard(&bodyBuilder);
+    bodyBuilder.add(TransfereType::asJsonId(type), VPackValue(options.statusId));
+  }
+  std::string const body = bodyBuilder.slice().toJson();
+  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
+      client.request(arangodb::rest::RequestType::POST, url, body.c_str(), body.size()));
+  result = ::checkHttpResponse(client, response);
+  if (result.fail()) {
+    return result;
+  }
+
+  // extract vpack body from response
+  std::shared_ptr<VPackBuilder> parsedBody;
+  try {
+    parsedBody = response->getBodyVelocyPack();
+  } catch (...) {
+    result.reset(::ErrorMalformedJsonResponse);
+    return result;
+  }
+  VPackSlice const resBody = parsedBody->slice();
+
+  VPackSlice const resultObject = resBody.get("result");
+  if (!resultObject.isObject()) {
+    result.reset(TRI_ERROR_INTERNAL, "expected 'result' to be an object");
+    return result;
+  }
+  TRI_ASSERT(resultObject.isObject());
+
+  // Display status
+  VPackSlice const dbserversObject = resultObject.get("DBServers");
+
+  for (auto const& server : VPackObjectIterator(dbserversObject)) {
+    std::string statusMessage = server.key.copyString();
+
+    if (server.value.hasKey("Status")) {
+      statusMessage += " Status: " + server.value.get("Status").copyString();
+    }
+    LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << statusMessage;
+
+
+    if (server.value.hasKey("Progress")) {
+      VPackSlice const progressSlice = server.value.get("Progress");
+
+      LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "Last progress update " << progressSlice.get("Time").copyString()
+        << ": " << progressSlice.get("Done").getInt() << "/" << progressSlice.get("Total").getInt() << " files done";
+    }
+  }
+
+  return result;
+}
+
+arangodb::Result executeInitiateTransfere(arangodb::httpclient::SimpleHttpClient& client,
+  arangodb::BackupFeature::Options const& options, TransfereType::type type) {
+  arangodb::Result result;
+
+  // Load configuration file
+  std::shared_ptr<VPackBuilder> configFile;
+
+  result = arangodb::basics::catchVoidToResult([&options, &configFile](){
+    std::string configFileSource = arangodb::basics::FileUtils::slurp(options.rcloneConfigFile);
+    auto configFileParsed = arangodb::velocypack::Parser::fromJson(configFileSource);
+    configFile.swap(configFileParsed);
+  });
+
+  if (result.fail()) {
+    return result;
+  }
+
+  // Initiate transfere
+  std::string const url = TransfereType::asAdminPath(type);
+  VPackBuilder bodyBuilder;
+  {
+    VPackObjectBuilder guard(&bodyBuilder);
+    bodyBuilder.add("id", VPackValue(options.identifier));
+    bodyBuilder.add("remoteBackupDir", VPackValue(options.remoteDirectory));
+    bodyBuilder.add("config", configFile->slice());
+  }
+  std::string const body = bodyBuilder.slice().toJson();
+  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
+      client.request(arangodb::rest::RequestType::POST, url, body.c_str(), body.size()));
+  result = ::checkHttpResponse(client, response);
+  if (result.fail()) {
+    return result;
+  }
+
+  // Print command for checking status
+  std::shared_ptr<VPackBuilder> parsedBody;
+  try {
+    parsedBody = response->getBodyVelocyPack();
+  } catch (...) {
+    result.reset(::ErrorMalformedJsonResponse);
+    return result;
+  }
+  VPackSlice const resBody = parsedBody->slice();
+
+  VPackSlice const resultObject = resBody.get("result");
+  if (!resultObject.isObject()) {
+    result.reset(TRI_ERROR_INTERNAL, "expected 'result' to be an object");
+    return result;
+  }
+  TRI_ASSERT(resultObject.isObject());
+
+  std::string transfereId = resultObject.get(TransfereType::asJsonId(type)).copyString();
+
+  LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "Backup initiated, use ";
+  LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "    arangobackup " << TransfereType::asString(type) << " --status-id=" << transfereId;
+  LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "to query progress.";
+  return result;
+}
+
+arangodb::Result executeTransfere(arangodb::httpclient::SimpleHttpClient& client,
+  arangodb::BackupFeature::Options const& options, TransfereType::type type) {
+
+  if (!options.statusId.empty()) {
+    // This is a status query
+    return executeStatusQuery(client, options, type);
+  } else {
+    // This is a transfere
+    return executeInitiateTransfere(client, options, type);
+  }
+}
+#endif
 }  // namespace
 
 namespace arangodb {
@@ -478,7 +655,21 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "whether to save the current state as a backup before "
                      "restoring to another state",
                      new BooleanParameter(&_options.saveCurrent));
+#ifdef USE_ENTERPRISE
+  options->addOption("--status-id",
+                     "returns the status of a transfere process",
+                     new StringParameter(&_options.statusId));
 
+  options->addOption("--rclone-config-file",
+                     "filename of the rclone configuration file used for"
+                     "file transfere",
+                     new StringParameter(&_options.rcloneConfigFile));
+
+  options->addOption("--remote-path",
+                     "remote rclone path of directory used to store or "
+                     "receive backups",
+                     new StringParameter(&_options.remoteDirectory));
+#endif
   /*
     options->addSection(
         "remote", "Options detailing a remote connection to use for operations");
@@ -548,6 +739,25 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
       FATAL_ERROR_EXIT();
     }
   }
+#ifdef USE_ENTERPRISE
+  if (_options.operation == ::OperationUpload || _options.operation == ::OperationDownload) {
+
+    if (_options.statusId.empty() == _options.identifier.empty()) {
+      // Either both or none are set
+      LOG_TOPIC(FATAL, Logger::BACKUP) << "either --status-id or --identifier"
+                                          "must be set";
+      FATAL_ERROR_EXIT();
+    }
+
+    if (!_options.identifier.empty()) {
+      if (_options.rcloneConfigFile.empty() || _options.remoteDirectory.empty()) {
+        LOG_TOPIC(FATAL, Logger::BACKUP) << "for data transfere --rclone-config-file"
+                                            " and --remote-path must be set";
+        FATAL_ERROR_EXIT();
+      }
+    }
+  }
+#endif
 }
 
 void BackupFeature::start() {
@@ -562,6 +772,12 @@ void BackupFeature::start() {
     result = ::executeRestore(*client, _options, _clientManager);
   } else if (_options.operation == OperationDelete) {
     result = ::executeDelete(*client, _options);
+#ifdef USE_ENTERPRISE
+  } else if (_options.operation == OperationUpload) {
+    result = ::executeTransfere(*client, _options, TransfereType::type::UPLOAD);
+  } else if (_options.operation == OperationDownload) {
+    result = ::executeTransfere(*client, _options, TransfereType::type::DOWNLOAD);
+#endif
   }
 
   if (result.fail()) {

@@ -59,6 +59,9 @@ class BackupFeature : public application_features::ApplicationFeature {
     bool force = false;
     std::string identifier = "";
     std::string label = "";
+    std::string statusId = "";
+    std::string rcloneConfigFile = "";
+    std::string remoteDirectory = "";
     double maxWaitForLock = 60.0;
     double maxWaitForRestart = 0.0;
     std::string operation = "list";
