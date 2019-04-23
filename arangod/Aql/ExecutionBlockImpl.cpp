@@ -241,7 +241,7 @@ struct InitializeCursor<true> {
     typedef char no[2];                                 \
                                                         \
     template <typename C>                               \
-    static yes& test(typeof(&C::methodName));           \
+    static yes& test(decltype(&C::methodName));         \
     template <typename>                                 \
     static no& test(...);                               \
                                                         \
@@ -263,8 +263,12 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   constexpr bool customInit = hasInitializeCursor<Executor>::value;
   // IndexExecutor and EnumerateCollectionExecutor have initializeCursor implemented,
   // so assert this implementation is used.
-  static_assert(!std::is_same<Executor, EnumerateCollectionExecutor>::value || customInit);
-  static_assert(!std::is_same<Executor, IndexExecutor>::value || customInit);
+  static_assert(!std::is_same<Executor, EnumerateCollectionExecutor>::value || customInit,
+                "EnumerateCollectionExecutor is expected to implement a custom "
+                "initializeCursor method!");
+  static_assert(!std::is_same<Executor, IndexExecutor>::value || customInit,
+                "IndexExecutor is expected to implement a custom "
+                "initializeCursor method!");
   InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
 
   // // use this with c++17 instead of specialisation below
