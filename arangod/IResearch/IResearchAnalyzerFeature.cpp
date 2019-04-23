@@ -1057,12 +1057,13 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
 }
 
 IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
-    irs::string_ref const& name // analyzer name
+    irs::string_ref const& name, // analyzer name
+    bool onlyCached /*= false*/ // check only locally cached analyzers
 ) const noexcept {
   try {
     auto split = splitAnalyzerName(name);
 
-    if (!split.first.null()) { // do not trigger load for static-analyzer requests
+    if (!split.first.null() && !onlyCached) { // do not trigger load for static-analyzer requests
       auto res = // load analyzers for database
         const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(split.first);
 
