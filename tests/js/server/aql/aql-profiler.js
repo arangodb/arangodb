@@ -470,7 +470,7 @@ function ahuacatlProfilerTestSuite () {
       const genNodeList = (rows, batches) => [
         {type: SingletonBlock, calls: 1, items: 1},
         {type: CalculationBlock, calls: 1, items: 1},
-        {type: EnumerateListBlock, calls: batches, items: limit(rows) + skip(rows)},
+        {type: EnumerateListBlock, calls: limitBatches(rows) + (skip(rows) > 0 ? 1 : 0), items: limit(rows) + skip(rows)},
         {type: LimitBlock, calls: limitBatches(rows), items: limit(rows)},
         {type: ReturnBlock, calls: limitBatches(rows), items: limit(rows)},
       ];
