@@ -64,18 +64,19 @@ will respond with *HTTP 409*.
 
 Committing a transaction:
 
-@EXAMPLE_ARANGOSH_RUN{RestTransactionCommit}
-    db._drop("products");
-    db._create("products");
+@EXAMPLE_ARANGOSH_RUN{RestTransactionBeginAbort}
+    const cn = "products";
+    db._drop(cn);
+    db._create(cn);
     let body = {
       collections: {
-        read : "products"
+        read : cn
       }
     };
     let trx = db._createTransaction(body);
     let url = "/_api/transaction/" + trx.id();
 
-    var response = logCurlRequest('PUT', url);
+    var response = logCurlRequest('PUT', url, "");
     assert(response.code === 200);
 
     logJsonResponse(response);

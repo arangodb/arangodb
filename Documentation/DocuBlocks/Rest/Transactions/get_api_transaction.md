@@ -47,13 +47,13 @@ Get transaction status
     let trx = db._createTransaction(body);
     let url = "/_api/transaction/" + trx.id();
 
-    var response = logCurlRequest('GET', url);
+    let response = logCurlRequest('GET', url);
     assert(response.code === 200);
 
     logJsonResponse(response);
 
   ~ trx.abort();
-  ~ db._drop(cn);
+  ~ db._drop("products");
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock

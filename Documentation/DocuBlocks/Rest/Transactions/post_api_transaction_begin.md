@@ -85,27 +85,26 @@ Executing a transaction on a single collection
 @EXAMPLE_ARANGOSH_RUN{RestTransactionBeginSingle}
     const cn = "products";
     db._drop(cn);
-    let products = db._create(cn);
+    db._create(cn);
     let url = "/_api/transaction/begin";
     let body = {
       collections: {
-        write : "products"
+        write : cn
       },
     };
 
     let response = logCurlRequest('POST', url, body);
     assert(response.code === 201);
-
     logJsonResponse(response);
 
-    url = "/_api/transaction/" + response.result.id;
+    url = "/_api/transaction/" + JSON.parse(response.body).result.id;
     db._connection.DELETE(url);
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
 Referring to a non-existing collection
 
-@EXAMPLE_ARANGOSH_RUN{RestTransactionNonExisting}
+@EXAMPLE_ARANGOSH_RUN{RestTransactionBeginNonExisting}
     const cn = "products";
     db._drop(cn);
     let url = "/_api/transaction/begin";

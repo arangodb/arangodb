@@ -64,12 +64,13 @@ will respond with *HTTP 409*.
 
 Aborting a transaction:
 
-@EXAMPLE_ARANGOSH_RUN{RestTransactionCommit}
-    db._drop("products");
-    db._create("products");
+@EXAMPLE_ARANGOSH_RUN{RestTransactionBeginCommit}
+    const cn = "products";
+    db._drop(cn);
+    db._create(cn);
     let body = {
       collections: {
-        read : "products"
+        read : cn
       }
     };
     let trx = db._createTransaction(body);

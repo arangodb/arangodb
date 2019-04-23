@@ -88,7 +88,7 @@ void RestTransactionHandler::executeGetState() {
     return;
   }
 
-  TRI_voc_tid_t tid = StringUtils::uint64(_request->suffixes()[1]);
+  TRI_voc_tid_t tid = StringUtils::uint64(_request->suffixes()[0]);
   if (tid == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "Illegal transaction ID");
@@ -219,7 +219,7 @@ void RestTransactionHandler::generateTransactionResult(rest::ResponseCode code,
   tmp.close();
   tmp.close();
   
-  generateResult(rest::ResponseCode::OK, std::move(buffer));
+  generateResult(code, std::move(buffer));
 }
 
 // ====================== V8 stuff ===================
