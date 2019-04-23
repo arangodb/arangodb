@@ -250,7 +250,7 @@ SECTION("test_defaults") {
     auto builder = link->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
     std::string error;
 
-    CHECK((actualMeta.init(builder->slice(), error) && expectedMeta == actualMeta));
+    CHECK((actualMeta.init(builder->slice(), false, error) && expectedMeta == actualMeta));
     auto slice = builder->slice();
     CHECK((
       slice.hasKey("view")
@@ -301,7 +301,7 @@ SECTION("test_defaults") {
       auto builder = link->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
       std::string error;
 
-      CHECK((actualMeta.init(builder->slice(), error) && expectedMeta == actualMeta));
+      CHECK((actualMeta.init(builder->slice(), false, error) && expectedMeta == actualMeta));
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")

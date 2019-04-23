@@ -44,6 +44,7 @@
 #endif
 
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Indexes/IndexFactory.h"
 #include "IResearch/AgencyMock.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
@@ -63,13 +64,44 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8Server/V8DealerFeature.h"
+#include "velocypack/Slice.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/Methods/Indexes.h"
 
 namespace {
 
 std::string const ANALYZER_COLLECTION_NAME("_analyzers");
+
+struct TestIndex: public arangodb::Index {
+  TestIndex(
+      TRI_idx_iid_t id,
+      arangodb::LogicalCollection& collection,
+      arangodb::velocypack::Slice const& definition
+  ): arangodb::Index(id, collection, definition) {
+  }
+  bool canBeDropped() const override { return false; }
+  bool hasSelectivityEstimate() const override { return false; }
+  bool isHidden() const override { return false; }
+  bool isPersistent() const override { return false; }
+  bool isSorted() const override { return false; }
+  arangodb::IndexIterator* iteratorForCondition(
+      arangodb::transaction::Methods* trx,
+      arangodb::aql::AstNode const* node,
+      arangodb::aql::Variable const* variable,
+      arangodb::IndexIteratorOptions const& operations
+  ) override {
+    return nullptr;
+  }
+  void load() override {}
+  size_t memory() const override { return sizeof(Index); }
+  arangodb::Index::IndexType type() const override {
+    return arangodb::Index::TRI_IDX_TYPE_UNKNOWN;
+  }
+  char const* typeName() const override { return "testType"; }
+  void unload() override {}
+};
 
 struct TestAttribute: public irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
@@ -570,6 +602,8 @@ SECTION("test_get") {
     arangodb::DatabaseFeature
   >("Database");
   REQUIRE((false == !dbFeature));
+  arangodb::AqlFeature aqlFeature(s.server);
+  aqlFeature.start(); // required for Query::Query(...), must not call ~AqlFeature() for the duration of the test
 
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -677,6 +711,143 @@ SECTION("test_get") {
 
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
     CHECK((false == !feature.get("testVocbase::test_analyzer", "TestAnalyzer", "abc", { irs::frequency::type() })));
+  }
+
+  // add index factory
+  {
+    struct IndexTypeFactory: public arangodb::IndexTypeFactory {
+      virtual bool equal(
+          arangodb::velocypack::Slice const& lhs,
+          arangodb::velocypack::Slice const& rhs
+      ) const override {
+        return false;
+      }
+
+      virtual arangodb::Result instantiate(
+          std::shared_ptr<arangodb::Index>& index,
+          arangodb::LogicalCollection& collection,
+          arangodb::velocypack::Slice const& definition,
+          TRI_idx_iid_t id,
+          bool isClusterConstructor
+      ) const override {
+        auto* ci = arangodb::ClusterInfo::instance();
+        REQUIRE((nullptr != ci));
+        auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+        REQUIRE((feature));
+        ci->invalidatePlan(); // invalidate plan to test recursive lock aquisition in ClusterInfo::loadPlan()
+        CHECK((true == !feature->get(arangodb::StaticStrings::SystemDatabase + "::missing", "TestAnalyzer", irs::string_ref::NIL, irs::flags())));
+        index = std::make_shared<TestIndex>(id, collection, definition);
+        return arangodb::Result();
+      }
+
+      virtual arangodb::Result normalize(
+          arangodb::velocypack::Builder& normalized,
+          arangodb::velocypack::Slice definition,
+          bool isCreation,
+          TRI_vocbase_t const& vocbase
+      ) const override {
+        CHECK((arangodb::iresearch::mergeSlice(normalized, definition)));
+        return arangodb::Result();
+      }
+    };
+    static const IndexTypeFactory indexTypeFactory;
+    auto& indexFactory = const_cast<arangodb::IndexFactory&>(arangodb::EngineSelectorFeature::ENGINE->indexFactory());
+    indexFactory.emplace("testType", indexTypeFactory);
+  }
+
+  // get missing via link creation (coordinator) ensure no recursive ClusterInfo::loadPlan() call
+  {
+    auto createCollectionJson = arangodb::velocypack::Parser::fromJson(std::string("{ \"id\": 42, \"name\": \"") + ANALYZER_COLLECTION_NAME + "\", \"isSystem\": true, \"shards\": { \"same-as-dummy-shard-id\": [ \"shard-server-does-not-matter\" ] }, \"type\": 2 }"); // 'id' and 'shards' required for coordinator tests
+    auto collectionId = std::to_string(42);
+    auto before = arangodb::ServerState::instance()->getRole();
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
+    auto restore = irs::make_finally([&before]()->void { arangodb::ServerState::instance()->setRole(before); });
+
+    // create a new instance of an ApplicationServer and fill it with the required features
+    // cannot use the existing server since its features already have some state
+    std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
+      }
+    );
+    arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
+    arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+    arangodb::iresearch::IResearchAnalyzerFeature* feature;
+    arangodb::DatabaseFeature* dbFeature;
+    arangodb::SystemDatabaseFeature* sysDatabase;
+    server.addFeature(new arangodb::ClusterFeature(server)); // required to create ClusterInfo instance
+    server.addFeature(dbFeature = new arangodb::DatabaseFeature(server)); // required for IResearchAnalyzerFeature::emplace(...)
+    server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
+    server.addFeature(new arangodb::ShardingFeature(server)); // required for Collections::create(...)
+    server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server)); // required for IResearchAnalyzerFeature::start()
+    server.addFeature(new arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase(...)
+    server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(server)); // required for SimpleHttpClient::doRequest()
+    server.addFeature(feature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for running upgrade task
+    arangodb::aql::OptimizerRulesFeature(server).prepare(); // required for Query::preparePlan(...)
+    auto clearOptimizerRules = irs::make_finally([&s]()->void { arangodb::aql::OptimizerRulesFeature(s.server).unprepare(); });
+
+    // create system vocbase (before feature start)
+    {
+      auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
+      CHECK((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+      sysDatabase->start(); // get system database from DatabaseFeature
+    }
+
+    server.getFeature<arangodb::ClusterFeature>("Cluster")->prepare(); // create ClusterInfo instance
+    server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare(); // required for Collections::create(...), register sharding types
+    arangodb::AgencyCommManager::MANAGER->start(); // initialize agency
+
+    ClusterCommMock clusterComm;
+    auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm);
+    auto* ci = arangodb::ClusterInfo::instance();
+    REQUIRE((nullptr != ci));
+
+    auto system = sysDatabase->use();
+    REQUIRE((ci->createCollectionCoordinator(system->name(), collectionId, 0, 1, false, createCollectionJson->slice(), 0.0).ok()));
+    auto logicalCollection = ci->getCollection(system->name(), collectionId);
+    REQUIRE((false == !logicalCollection));
+
+    // simulate heartbeat thread
+    {
+      auto const colPath = "/Current/Collections/_system/42";
+      auto const colValue = arangodb::velocypack::Parser::fromJson("{ \"same-as-dummy-shard-id\": { \"indexes\": [ { \"id\": \"1\" } ], \"servers\": [ \"same-as-dummy-shard-server\" ] } }"); // '1' must match 'idString' in ClusterInfo::ensureIndexCoordinatorInner(...)
+      CHECK(arangodb::AgencyComm().setValue(colPath, colValue->slice(), 0.0).successful());
+      auto const dummyPath = "/Plan/Collections";
+      auto const dummyValue = arangodb::velocypack::Parser::fromJson("{ \"_system\": { \"42\": { \"name\": \"testCollection\", \"shards\": { \"same-as-dummy-shard-id\": [ \"same-as-dummy-shard-server\" ] } } } }");
+      CHECK(arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
+      auto const versionPath = "/Plan/Version";
+      auto const versionValue = arangodb::velocypack::Parser::fromJson(std::to_string(ci->getPlanVersion() + 1));
+      CHECK((arangodb::AgencyComm().setValue(versionPath, versionValue->slice(), 0.0).successful())); // force loadPlan() update
+      ci->invalidateCurrent(); // force reload of 'Current'
+    }
+
+    // insert response for expected analyzer lookup
+    {
+      arangodb::ClusterCommResult response;
+      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
+      response.result = std::make_shared<arangodb::httpclient::SimpleHttpResult>();
+      response.result->getBody().appendText("{ \"result\": { \"snippets\": { \"6:shard-id-does-not-matter\": \"value-does-not-matter\" } } }").ensureNullTerminated(); // '6' must match GATHER Node id in ExecutionEngine::createBlocks(...)
+      clusterComm._responses.emplace_back(std::move(response));
+    }
+
+    // insert response for expected analyzer reload from collection
+    {
+      arangodb::ClusterCommResult response;
+      response.status = arangodb::ClusterCommOpStatus::CL_COMM_SENT;
+      response.result = std::make_shared<arangodb::httpclient::SimpleHttpResult>();
+      response.result->getBody().appendText("{ \"done\": true, \"nrItems\": 1, \"nrRegs\": 1, \"data\": [ 1 ], \"raw\": [ null, null, { \"_key\": \"key-does-not-matter\", \"name\": \"abc\", \"type\": \"TestAnalyzer\", \"properties\": \"abc\" } ] }").ensureNullTerminated(); // 'data' value must be 1 as per AqlItemBlock::AqlItemBlock(...), first 2 'raw' values ignored, 'nrRegs' must be 1 or assertion failure in ExecutionBlockImpl<Executor>::requestWrappedBlock(...)
+      clusterComm._responses.emplace_back(std::move(response));
+    }
+
+    arangodb::velocypack::Builder builder;
+    arangodb::velocypack::Builder tmp;
+
+    builder.openObject();
+    builder.add(arangodb::StaticStrings::IndexType, arangodb::velocypack::Value("testType"));
+    builder.add(arangodb::StaticStrings::IndexFields, arangodb::velocypack::Slice::emptyArraySlice());
+    builder.close();
+    CHECK((arangodb::methods::Indexes::ensureIndex(logicalCollection.get(), builder.slice(), true, tmp).ok()));
   }
 }
 
