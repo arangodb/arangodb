@@ -995,7 +995,7 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback) 
     if (!ref) {
       return arangodb::Result( // result
         TRI_ERROR_ARANGO_ILLEGAL_STATE, // code
-        std::string("failed to find checkpoint file matching the latest data store state for arangosearch link '") + std::to_string(id()) + "', path: " + _dataStore._path.utf8()
+        std::string("failed to find checkpoint file matching the latest data store state for arangosearch link '") + std::to_string(id()) + "', expecting file '" + checkpointFile + "' in path: " + _dataStore._path.utf8()
       );
     }
 
