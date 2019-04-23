@@ -594,9 +594,10 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
                      .setIntroducedIn(30322).setIntroducedIn(30402);
 
   options->addOption("--compress-output",
-                     "compress files contain database contents using gzip format",
-                     new BooleanParameter(&_options.useGzip));
-
+                     "compress files containing database contents using gzip format",
+                     new BooleanParameter(&_options.useGzip))
+                     .setIntroducedIn(30323).setIntroducedIn(30406)
+                     .setIntroducedIn(30500);
 }
 
 void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
