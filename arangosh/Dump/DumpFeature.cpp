@@ -592,6 +592,11 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
   options->addOption("--maskings", "file with maskings definition",
                      new StringParameter(&_options.maskingsFile))
                      .setIntroducedIn(30322).setIntroducedIn(30402);
+
+  options->addOption("--compress-output",
+                     "compress files contain database contents using gzip format",
+                     new BooleanParameter(&_options.useGzip));
+
 }
 
 void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -1009,7 +1014,8 @@ void DumpFeature::start() {
 
   // set up the output directory, not much else
   _directory = std::make_unique<ManagedDirectory>(_options.outputPath,
-                                                  !_options.overwrite, true);
+                                                  !_options.overwrite, true,
+                                                  _options.useGzip);
   if (_directory->status().fail()) {
     switch (_directory->status().errorNumber()) {
       case TRI_ERROR_FILE_EXISTS:
