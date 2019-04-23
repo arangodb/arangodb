@@ -1752,14 +1752,14 @@ function reStartInstance(options, instanceInfo, moreArgs) {
 
   if (options.cluster) {
     checkClusterAlive(options, instanceInfo, {}); // todo addArgs
+    arango.reconnect(instanceInfo.endpoint,
+                     '_system',
+                     options.username,
+                     options.password,
+                     false
+                    );
   }
 
-  arango.reconnect(instanceInfo.endpoint,
-                   '_system',
-                   options.username,
-                   options.password,
-                   false
-                  );
   launchFinalize(options, instanceInfo, startTime);
 }
 
