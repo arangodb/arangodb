@@ -33,7 +33,7 @@ if (getOptions === true) {
   return {
     'server.harden': 'true',
     'server.authentication': 'true',
-    'server.jwt-secret': 'abc123'
+    'server.jwt-secret': 'abc123',
     'javascript.harden' : 'true',
     'javascript.files-whitelist' : [
       '^$'
