@@ -109,6 +109,12 @@ class BlockFetcher {
     return _dependencies.size();
   }
 
+  inline void reset() {
+    _blockQueue.clear();
+    _blockPassThroughQueue.clear();
+    _currentDependency = 0;
+  }
+
  protected:
   inline AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
   inline AqlItemBlockManager const& itemBlockManager() const {
@@ -138,9 +144,11 @@ class BlockFetcher {
   AqlItemBlockManager& _itemBlockManager;
   std::shared_ptr<std::unordered_set<RegisterId> const> const _inputRegisters;
   RegisterId const _nrInputRegisters;
-  std::queue<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockQueue;
+
+  // A queue would suffice, but for the clear() call in reset().
+  std::deque<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockQueue;
   // only used in case of allowBlockPassthrough:
-  std::queue<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockPassThroughQueue;
+  std::deque<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockPassThroughQueue;
   // only modified in case of multiple dependencies + Passthrough otherwise always 0
   size_t _currentDependency;
 };

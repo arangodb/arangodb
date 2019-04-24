@@ -38,5 +38,5 @@ By default, the server will log all audit events. Some low-priority events, such
 as statistics operations, are logged with the `debug` log level. To keep such
 events from cluttering the log, set the appropriate topic to `info`. All other
 messages will be logged at the `info` level. Audit topics include
-`audit-authentication`, `audit-collection`, `audit-database`, `audit-document`,
-`audit-service`, and `audit-view`. 
+`audit-authentication`, `audit-authorization`, `audit-collection`,
+`audit-database`, `audit-document`, `audit-service`, and `audit-view`. 

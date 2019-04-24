@@ -68,7 +68,7 @@ TransactionState::~TransactionState() {
 
 /// @brief return the collection from a transaction
 TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid,
-                                                    AccessMode::Type accessType) {
+                                                    AccessMode::Type accessType) const {
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 

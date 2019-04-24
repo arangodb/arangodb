@@ -44,15 +44,19 @@ NS_ROOT
 // --SECTION--                                                attribute::type_id
 // -----------------------------------------------------------------------------
 
-/*static*/ bool attribute::type_id::exists(const string_ref& name) {
-  return nullptr != attribute_register::instance().get(name);
+/*static*/ bool attribute::type_id::exists(
+    const string_ref& name,
+    bool load_library /*= true*/
+) {
+  return nullptr != attribute_register::instance().get(name, load_library);
 }
 
 /*static*/ const attribute::type_id* attribute::type_id::get(
-    const string_ref& name
+    const string_ref& name,
+    bool load_library /*= true*/
 ) NOEXCEPT {
   try {
-    return attribute_register::instance().get(name);
+    return attribute_register::instance().get(name, load_library);
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting an attribute instance");
     IR_LOG_EXCEPTION();

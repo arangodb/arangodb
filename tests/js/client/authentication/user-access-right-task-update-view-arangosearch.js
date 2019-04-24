@@ -496,7 +496,7 @@ if (hasIResearch(db)) {
 			    tasks.register(task);
 			    wait(keySpaceId, name);
 			    assertTrue(getKey(keySpaceId, `${name}_status`), `${name} could not update the view with sufficient rights`);
-			    assertEqual(rootGetViewProps(testViewName)["links"][testCol1Name]["analyzers"], [db._name() + "::text_de",db._name() + "::text_en"], 'View link update reported success, but property was not updated');
+			    assertEqual(rootGetViewProps(testViewName)["links"][testCol1Name]["analyzers"], ["text_de", "text_en"], 'View link update reported success, but property was not updated');
 			} else {
 			    tasks.register(task);
 			    wait(keySpaceId, name);
