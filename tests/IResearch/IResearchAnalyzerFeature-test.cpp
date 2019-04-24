@@ -554,7 +554,7 @@ SECTION("test_emplace") {
     auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
-    CHECK((false == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer8", "TestAnalyzer", "abc").ok()));
+    CHECK((true == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer8", "TestAnalyzer", "abc").ok()));
     CHECK((true == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer8")));
   }
 
