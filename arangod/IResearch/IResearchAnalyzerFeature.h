@@ -226,7 +226,7 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   /// @param type the underlying IResearch analyzer type
   /// @param properties the configuration for the underlying IResearch type
   /// @param features the expected features the analyzer should produce
-  /// @param allowCreation false == treat as an error if creation is required
+  /// @param isEmplace request coming from emplace(...)
   /// @return success
   /// @note ensure while inRecovery() will not allow new analyzer persistance
   ///       valid because for existing links the analyzer definition should
@@ -241,7 +241,7 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     irs::string_ref const& type, // analyzer type
     irs::string_ref const& properties, // analyzer properties
     irs::flags const& features, // analyzer features
-    bool allowCreation
+    bool isEmplace
   );
 
   //////////////////////////////////////////////////////////////////////////////
