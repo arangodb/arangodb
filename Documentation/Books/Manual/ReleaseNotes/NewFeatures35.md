@@ -247,6 +247,19 @@ The HTTP API for running Foxx service tests now supports a `filter` attribute,
 which can be used to limit which test cases should be executed.
 
 
+### Stream Transaction API
+
+There is a new HTTP API for transactions. This API allows clients to add operations to a
+transaction in a streaming fashion. A transaction can consist of a series of supported
+transactional operations, followed by a commit or abort command.
+This allows clients to construct larger transactions in a more efficent way then
+with the JavaScript based transactions.
+
+Note that this requires client applications to abort transactions which are no 
+longer necessary. Otherwise resources and locks acquired by the transactions
+will hang around until the server decides to garbage collect them.
+
+
 Web interface
 -------------
 
