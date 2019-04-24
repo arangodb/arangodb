@@ -1,8 +1,8 @@
 k Shortest Paths in AQL
-====================
+==============================
 
 General query idea
-------------------
+--------------------
 
 This type of query is supposed to find the first *k* paths in order of length
 (or weight) between two given documents, *startVertex* and *targetVertex* in
@@ -10,9 +10,9 @@ your graph.
 
 Every such path will be returned as a JSON object with three components:
 
-1. an array of the vertices on the path,
-2. an array of the edges on the path, and
-3. the weight of the path.
+1. an array containing the `verticex` on the path,
+2. an array containing the `edges` on the path, and
+3. the `weight` of the path, that is the sum of all edge weights.
 
 If no *weightAttribute* is given, the weight of the path is just its length.
 
@@ -60,8 +60,9 @@ FOR path
 
 - `FOR`: emits the variable **path** which contains one path as an object containing 
    vertices, edges, and the weight of the path.
-- `IN` `OUTBOUND|INBOUND|ANY`: defines in which direction edges are followed
-  (outgoing, incoming, or both)
+- `IN` `OUTBOUND|INBOUND|ANY`: defines in which direction
+  edges are followed (outgoing, incoming, or both)
+- `K_SHORTEST_PATHS`: the keyword to compute k Shortest Paths
 - **startVertex** `TO` **targetVertex** (both string|object): the two vertices between
   which the paths will be computed. This can be specified in the form of
   an ID string or in the form of a document with the attribute `_id`. All other
@@ -113,6 +114,7 @@ direction for each collection in your path search.
 
 Examples
 --------
+
 We create a graph that reflects some possible train connections in Europe and North America.
 This graph has no claim to accuracy or completeness.
 
@@ -129,7 +131,10 @@ This graph has no claim to accuracy or completeness.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHKSP_01_create_graph
 
-Suppose we want to query a route from **Aberdeen** to **London**, and compare the outputs of SHORTEST_PATH and K_SHORTEST_PATHS with LIMIT 1. Note that while SHORTEST_PATH and K_SHORTEST_PATH with LIMIT 1 should return a path of the same length (or weight), they do not need to return the same path.
+Suppose we want to query a route from **Aberdeen** to **London**, and compare
+the outputs of SHORTEST_PATH and K_SHORTEST_PATHS with LIMIT 1. Note that while
+SHORTEST_PATH and K_SHORTEST_PATH with LIMIT 1 should return a path of the same
+length (or weight), they do not need to return the same path.
 
     @startDocuBlockInline GRAPHKSP_02_Aberdeen_to_London
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_02_Aberdeen_to_London}
