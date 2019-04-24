@@ -93,7 +93,6 @@ function testSuite() {
        const res = download(url);
        assertEqual(200, res.code);
        let body = JSON.parse(res.body);
-       assertTrue(body.startsWith("/tmp"));
      },
 
      testGetTmpFile : function() {
@@ -101,7 +100,6 @@ function testSuite() {
        const res = download(url);
        assertEqual(200, res.code);
        let body = JSON.parse(res.body);
-       assertTrue(body.startsWith("/tmp"));
      },
 
      testWriteTmpFile : function() {
