@@ -282,7 +282,7 @@ HTTP layer:
   * OPTIONS
 
   Please note that not all server actions allow using all of these HTTP methods.
-  You should look up up the supported methods for each method you intend to use
+  You should look up the supported methods for each method you intend to use
   in the manual.
 
   Requests using any other HTTP method (such as for example CONNECT, TRACE etc.)
