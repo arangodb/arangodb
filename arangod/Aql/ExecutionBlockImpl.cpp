@@ -75,6 +75,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _executor(_rowFetcher, _infos),
       _outputItemRow(),
       _query(*engine->getQuery()) {
+
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
@@ -290,6 +291,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<ShortestPathExecutor>::shut
   return this->executor().shutdown(errorCode);
 }
 
+
 template <>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<KShortestPathsExecutor>::shutdown(int errorCode) {
   ExecutionState state;
@@ -353,7 +355,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
     TRI_ASSERT(block->getNrRegs() == nrRegs);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // Check that all output registers are empty.
-    if (!std::is_same<Executor, ReturnExecutor>::value) {
+    if (!std::is_same<Executor, ReturnExecutor<true>>::value) {
       for (auto const& reg : *infos().getOutputRegisters()) {
         for (size_t row = 0; row < block->size(); row++) {
           AqlValue const& val = block->getValueReference(row, reg);
@@ -386,8 +388,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
 
 /// @brief request an AqlItemBlock from the memory manager
 template <class Executor>
-SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
-                                                                 RegisterId nrRegs) {
+SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems, RegisterId nrRegs) {
   return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
 }
 
@@ -424,7 +425,8 @@ template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecu
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Replace>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Upsert>>;
 template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;

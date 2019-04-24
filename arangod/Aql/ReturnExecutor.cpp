@@ -23,6 +23,7 @@
 #include "ReturnExecutor.h"
 #include "Aql/AqlValue.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 
 #include <algorithm>
@@ -44,7 +45,12 @@ ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId nr
       _doCount(doCount),
       _returnInheritedResults(returnInheritedResults) {}
 
-ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
+template <bool passBlocksThrough>
+ReturnExecutor<passBlocksThrough>::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher){};
 
-ReturnExecutor::~ReturnExecutor() = default;
+template <bool passBlocksThrough>
+ReturnExecutor<passBlocksThrough>::~ReturnExecutor() = default;
+
+template class ::arangodb::aql::ReturnExecutor<true>;
+template class ::arangodb::aql::ReturnExecutor<false>;
