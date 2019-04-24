@@ -170,8 +170,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
   }
 
   this->setProducingFunction(
-      buildCallback(_documentProducer, _infos.getOutVariable(),
-                    _infos.getProduceResult(), _infos.getProjections(),
+      buildCallback(_infos.getProduceResult(), _infos.getProjections(),
                     _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
                     _allowCoveringIndexOptimization,  // reference here is important
                     _infos.getUseRawDocumentPointers()));

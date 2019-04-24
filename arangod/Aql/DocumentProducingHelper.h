@@ -78,10 +78,10 @@ inline void handleProjections(std::vector<std::string> const& projections,
 }
 
 static DocumentProducingFunction buildCallback(
-    DocumentProducingFunction documentProducer, Variable const* outVariable,
     bool produceResult, std::vector<std::string> const& projections,
     transaction::Methods* trxPtr, std::vector<size_t> const& coveringIndexAttributePositions,
     bool& allowCoveringIndexOptimization, bool useRawDocumentPointers) {
+  DocumentProducingFunction documentProducer;
   if (!produceResult) {
     // no result needed
     documentProducer = [](InputAqlItemRow& input, OutputAqlItemRow& output,
