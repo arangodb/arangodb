@@ -43,10 +43,11 @@ The syntax for k Shortest Paths queries is similar to the one for [Shortest Path
 You have two options: either use a named graph, or a set of edge
 collections.
 
+{% hint 'warning' %}
 It is highly recommended that you use a **LIMIT** statement,
-as k Shortest Paths is an expensive operation, and on large graphs can lead to a large
-number of paths being returned, or an expensive (but unsuccessful) search for more shortest paths
-might be performed.
+as k Shortest Paths is a potentially expensive operation. On large connected graphs it can return 
+a large number of paths, or perform an expensive (but unsuccessful) search for more short paths.
+{% endhint %}
 
 ### Working with named graphs
 
