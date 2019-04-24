@@ -10,7 +10,6 @@
 The transaction identifier,
 
 @RESTDESCRIPTION
-
 Commit a running server-side transaction. Committing is an idempotent operation. 
 It is not an error to commit a transaction more than once.
 

@@ -2,7 +2,7 @@
 @startDocuBlock delete_api_transaction
 @brief abort a server-side transaction
 
-@RESTHEADER{PUT /_api/transaction/{transaction-id}, Abort transaction}
+@RESTHEADER{DELETE /_api/transaction/{transaction-id}, Abort transaction}
 
 @RESTURLPARAMETERS
 
@@ -10,7 +10,6 @@
 The transaction identifier,
 
 @RESTDESCRIPTION
-
 Abort a running server-side transaction. Aborting is an idempotent operation. 
 It is not an error to abort a transaction more than once.
 

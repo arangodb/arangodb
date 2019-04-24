@@ -15,7 +15,7 @@ It has at least the following attributes:
 
 - *id*: the identifier of the transaction
 
-- *status*: the status of the transaction. One of 'running', 'committed' or 'aborted'.
+- *status*: the status of the transaction. One of "running", "committed" or "aborted".
 
 @RESTRETURNCODES
 
