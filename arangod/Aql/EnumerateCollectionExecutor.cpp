@@ -155,6 +155,14 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
   }
 }
 
+void EnumerateCollectionExecutor::initializeCursor() {
+  _state = ExecutionState::HASMORE;
+  _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  _allowCoveringIndexOptimization = true;
+  _cursorHasMore = false;
+  _cursor->reset();
+}
+
 #ifndef USE_ENTERPRISE
 bool EnumerateCollectionExecutor::waitForSatellites(ExecutionEngine* engine,
                                                     Collection const* collection) const {

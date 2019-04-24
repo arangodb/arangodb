@@ -156,9 +156,9 @@ void SubqueryExecutor::writeOutput(OutputAqlItemRow& output) {
     TRI_ASSERT(_infos.returnsData() || _subqueryResults->empty());
     AqlValue resultDocVec{_subqueryResults.get()};
     AqlValueGuard guard{resultDocVec, true};
-    output.moveValueInto(_infos.outputRegister(), _input, guard);
     // Responsibility is handed over
     _subqueryResults.release();
+    output.moveValueInto(_infos.outputRegister(), _input, guard);
     TRI_ASSERT(_subqueryResults == nullptr);
   } else {
     // In this case we can simply reference the last written value
