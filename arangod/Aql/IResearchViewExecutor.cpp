@@ -496,6 +496,24 @@ size_t IResearchViewExecutor<ordered>::skip(size_t limit) {
     _itr.reset();
   }
 
+  // CID is constant until the next resetIterator(). Save the corresponding
+  // collection so we don't have to look it up every time.
+
+  TRI_voc_cid_t const cid = _reader->cid(_readerOffset);
+  Query& query = infos().getQuery();
+  std::shared_ptr<arangodb::LogicalCollection> collection =
+      lookupCollection(*query.trx(), cid, query);
+
+  if (!collection) {
+    std::stringstream msg;
+    msg << "failed to find collection while reading document from "
+           "arangosearch view, cid '"
+        << cid << "'";
+    query.registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
+  }
+
+  _indexReadBuffer.setCollectionAndReset(std::move(collection));
+
   return skipped;
 }
 

@@ -31,6 +31,7 @@
 var jsunity = require("jsunity");
 // var errors = require("internal").errors;
 var internal = require("internal");
+var analyzers = require("@arangodb/analyzers");
 var helper = require("@arangodb/aql-helper");
 var db = internal.db;
 
@@ -154,11 +155,109 @@ function aqlSkippingTestsuite () {
 
 }
 
+function aqlSkippingIResearchTestsuite () {
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
+      db._drop("UnitTestsCollection");
+      c = db._create("UnitTestsCollection");
+
+      db._drop("UnitTestsCollection2");
+      c2 = db._create("UnitTestsCollection2");
+
+      db._drop("AnotherUnitTestsCollection");
+      var ac = db._create("AnotherUnitTestsCollection");
+
+      db._dropView("UnitTestsView");
+      v = db._createView("UnitTestsView", "arangosearch", {});
+      var meta = {
+        links: { 
+          "UnitTestsCollection": { 
+            includeAllFields: true,
+            storeValues: "id",
+            fields: {
+              text: { analyzers: [ "text_en" ] }
+            }
+          }
+        }
+      };
+      v.properties(meta);
+
+      db._drop("CompoundView");
+      v2 = db._createView("CompoundView", "arangosearch",
+        { links : {
+          UnitTestsCollection: { includeAllFields: true },
+          UnitTestsCollection2 : { includeAllFields: true }
+        }}
+      );
+
+      ac.save({ a: "foo", id : 0 });
+      ac.save({ a: "ba", id : 1 });
+
+      for (let i = 0; i < 5; i++) {
+        c.save({ a: "foo", b: "bar", c: i });
+        c.save({ a: "foo", b: "baz", c: i });
+        c.save({ a: "bar", b: "foo", c: i });
+        c.save({ a: "baz", b: "foo", c: i });
+
+        c2.save({ a: "foo", b: "bar", c: i });
+        c2.save({ a: "bar", b: "foo", c: i });
+        c2.save({ a: "baz", b: "foo", c: i });
+      }
+
+      c.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
+      c.save({ name: "half", text: "quick fox over lazy" });
+      c.save({ name: "other half", text: "the brown jumps the dog" });
+      c.save({ name: "quarter", text: "quick over" });
+
+      c.save({ name: "numeric", anotherNumericField: 0 });
+      c.save({ name: "null", anotherNullField: null });
+      c.save({ name: "bool", anotherBoolField: true });
+      c.save({ _key: "foo", xyz: 1 });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      var meta = { links : { "UnitTestsCollection": null } };
+      v.properties(meta);
+      v.drop();
+      v2.drop();
+      db._drop("UnitTestsCollection");
+      db._drop("UnitTestsCollection2");
+      db._drop("AnotherUnitTestsCollection");
+    },
+
+    testPassSkipArangoSearch: function () {
+      // skip half (5 out of 10)
+      var result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] }" +
+        " LIMIT 5,5 RETURN doc").toArray();
+
+      assertEqual(result.length, 5);
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        assertTrue(res._id.startsWith('UnitTestsCollection/'));
+      });
+    },
+
+    //testPassSkipArangoSearchWithFullCount1: function () {},
+
+  };
+
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(aqlSkippingTestsuite);
+jsunity.run(aqlSkippingIResearchTestsuite);
 
 return jsunity.done();
-

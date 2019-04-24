@@ -192,22 +192,6 @@ enum class SkipVariants {
   CUSTOM
 };
 
-/*
-template<class Variant, class Executor>
-void static skipSome();
-
-template<>
-void static skipSome<SkipVariants::DEFAULT>() {
-
-}
-template<>
-void static skipSome<PASSTHROUGH>() {}
-template<>
-void static skipSome<CUSTOM>() {}
-
-skipSome<DEFAULT>();
-*/
-
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
@@ -220,6 +204,12 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
     return traceSkipSomeEnd(passSkipSome(atMost));
   } else if (std::is_same<Executor, EnumerateCollectionExecutor>::value) {
     LOG_DEVEL << "SKIP ENUM COLLECTION";
+    return traceSkipSomeEnd(skipSome((atMost)));
+  } else if (std::is_same<Executor, IResearchViewExecutor<true>>::value) {
+    LOG_DEVEL << "SKIP IRES true COLLECTION";
+    return traceSkipSomeEnd(defaultSkipSome(atMost));
+  } else if (std::is_same<Executor, IResearchViewExecutor<false>>::value) {
+    LOG_DEVEL << "SKIP IRES false COLLECTION";
     return traceSkipSomeEnd(skipSome((atMost)));
   } else {
     LOG_DEVEL << "DEFAULT SKIP SOME";
@@ -237,13 +227,13 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<EnumerateCollectionExecutor
 
 template <>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<IResearchViewExecutor<true>>::skipSome(size_t atMost) {
-  LOG_DEVEL << " SKIP ENUM COLL Special case";
+  LOG_DEVEL << " SKIP IRESEARCH true case";
   return this->executor().skipRows(atMost);
 }
 
 template <>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<IResearchViewExecutor<false>>::skipSome(size_t atMost) {
-  LOG_DEVEL << " SKIP ENUM COLL Special case";
+  LOG_DEVEL << " SKIP IRESEARCH false case";
   return this->executor().skipRows(atMost);
 }
 }  // namespace aql
