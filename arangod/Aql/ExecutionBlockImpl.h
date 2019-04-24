@@ -70,7 +70,7 @@ class ExecutionEngine;
  *             // Whether input blocks can be reused as output blocks. This
  *             // can be true if:
  *             // - There will be exactly one output row per input row.
- *             // - produceRow() for row i will be called after fetchRow() of
+ *             // - produceRows() for row i will be called after fetchRow() of
  *             //   row i.
  *             // - The order of rows is preserved. i.e. preservesOrder
  *             // - The register planning must reserve the output register(s),
@@ -84,12 +84,16 @@ class ExecutionEngine;
  *
  *           } properties;
  *           Executor(Fetcher&, Infos&);
- *           std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+ *           std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
  *         }
  *         The Executor is the implementation of one AQLNode.
- *         It is only allowed to produce one outputRow at a time, but can fetch
- *         as many rows from above as it likes. It can only follow the
- *         xxxFetcher interface to get AqlItemRows from Upstream.
+ *         It may produce zero, one, or multiple outputRows at a time. The
+ *         OutputAqlItemRow imposes a restriction (e.g. atMost) on how many.
+ *         Currently, this is just the size of the block (because this is always
+ *         restricted by atMost anyway). Later this may be replaced by a
+ *         separate limit. It can fetch as many rows from above as it likes.
+ *         It can only follow the xxxFetcher interface to get AqlItemRows from
+ *         Upstream.
  */
 template <class Executor>
 class ExecutionBlockImpl final : public ExecutionBlock {

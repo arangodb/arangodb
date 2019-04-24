@@ -65,7 +65,7 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
       NoStats stats{};
 
       THEN("the executor should return DONE and produce nothing") {
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
         REQUIRE(fetcher.nrCalled() == 0);
@@ -78,13 +78,13 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
       NoStats stats{};
 
       THEN("the executor should return DONE and produce nothing") {
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
         REQUIRE(fetcher.nrCalled() == 0);
 
         AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRows(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
           REQUIRE(fetcher.nrCalled() == 0);
@@ -102,13 +102,13 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
       NoStats stats{};
 
       THEN("the executor should return DONE and produce nothing") {
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
         REQUIRE(fetcher.nrCalled() == 0);
 
         AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRows(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
           REQUIRE(fetcher.nrCalled() == 0);
@@ -122,13 +122,13 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
       NoStats stats{};
 
       THEN("the executor should return DONE and produce nothing") {
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
         REQUIRE(fetcher.nrCalled() == 0);
 
         AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRows(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
           REQUIRE(fetcher.nrCalled() == 0);

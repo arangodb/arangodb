@@ -227,7 +227,7 @@ class ModificationExecutor : public ModificationExecutorBase<FetcherType> {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   /**
    * This executor immedieately  returns every actually consumed row

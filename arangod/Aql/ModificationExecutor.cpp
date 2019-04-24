@@ -60,7 +60,7 @@ ModificationExecutor<Modifier, FetcherType>::~ModificationExecutor() = default;
 
 template <typename Modifier, typename FetcherType>
 std::pair<ExecutionState, typename ModificationExecutor<Modifier, FetcherType>::Stats>
-ModificationExecutor<Modifier, FetcherType>::produceRow(OutputAqlItemRow& output) {
+ModificationExecutor<Modifier, FetcherType>::produceRows(OutputAqlItemRow& output) {
   ExecutionState state = ExecutionState::HASMORE;
   ModificationExecutor::Stats stats;
 

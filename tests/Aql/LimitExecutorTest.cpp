@@ -69,7 +69,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       THEN("the executor should return DONE with nullptr") {
         OutputAqlItemRow result{std::move(block), outputRegisters,
                                 registersToKeep, infos.registersToClear()};
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
         REQUIRE(stats.getFullCount() == 0);
@@ -84,13 +84,13 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       THEN("the executor should first return WAIT") {
         OutputAqlItemRow result{std::move(block), outputRegisters,
                                 registersToKeep, infos.registersToClear()};
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
         REQUIRE(stats.getFullCount() == 0);
 
         AND_THEN("the executor should return DONE") {
-          std::tie(state, stats) = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRows(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
           REQUIRE(stats.getFullCount() == 0);
@@ -111,12 +111,12 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
         OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
                              infos.registersToClear()};
 
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(row.produced());
         row.advanceRow();
 
         AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRow(row);
+          std::tie(state, stats) = testee.produceRows(row);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!row.produced());
         }
@@ -134,14 +134,14 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
         OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
                              infos.registersToClear()};
 
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
 
         row.advanceRow();
 
         AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRow(row);
+          std::tie(state, stats) = testee.produceRows(row);
           REQUIRE(!row.produced());
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(stats.getFullCount() == 3);
@@ -165,14 +165,14 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
         OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
                              infos.registersToClear()};
 
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
 
         row.advanceRow();
 
         AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRow(row);
+          std::tie(state, stats) = testee.produceRows(row);
           REQUIRE(!row.produced());
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(stats.getFullCount() == 2);
@@ -196,18 +196,18 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
         OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
                              infos.registersToClear()};
 
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
 
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(row.produced());
 
         row.advanceRow();
 
         AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRow(row);
+          std::tie(state, stats) = testee.produceRows(row);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!row.produced());
         }
@@ -230,30 +230,30 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
         OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
                              infos.registersToClear()};
 
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
 
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
 
         row.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
 
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
 
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
 
         AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRow(row);
+          std::tie(state, stats) = testee.produceRows(row);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(stats.getFullCount() == 1);
           REQUIRE(!row.produced());

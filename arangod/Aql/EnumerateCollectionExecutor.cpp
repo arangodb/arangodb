@@ -97,9 +97,9 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
 
-std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor::produceRow(
+std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor::produceRows(
     OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRow") {
+  TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   EnumerateCollectionStats stats{};

@@ -415,8 +415,8 @@ bool IndexExecutor::advanceCursor() {
   return true;
 }
 
-std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("IndexExecutor::produceRow") {
+std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("IndexExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   IndexStats stats{};

@@ -136,7 +136,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
   // The loop has to be entered at least once!
   TRI_ASSERT(!_outputItemRow->isFull());
   while (!_outputItemRow->isFull()) {
-    std::tie(state, executorStats) = _executor.produceRow(*_outputItemRow);
+    std::tie(state, executorStats) = _executor.produceRows(*_outputItemRow);
     // Count global but executor-specific statistics, like number of filtered
     // rows.
     _engine->_stats += executorStats;

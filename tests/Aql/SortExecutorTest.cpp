@@ -98,13 +98,13 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
       // Use this instead of std::ignore, so the tests will be noticed and
       // updated when someone changes the stats type in the return value of
-      // EnumerateListExecutor::produceRow().
+      // EnumerateListExecutor::produceRows().
       NoStats stats{};
 
       THEN("the executor should return DONE with nullptr") {
         OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear()};
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
       }
@@ -115,18 +115,18 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
       // Use this instead of std::ignore, so the tests will be noticed and
       // updated when someone changes the stats type in the return value of
-      // EnumerateListExecutor::produceRow().
+      // EnumerateListExecutor::produceRows().
       NoStats stats{};
 
       THEN("the executor should first return WAIT with nullptr") {
         OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear()};
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
 
         AND_THEN("the executor should return DONE with nullptr") {
-          std::tie(state, stats) = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRows(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
         }
@@ -143,7 +143,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
       // Use this instead of std::ignore, so the tests will be noticed and
       // updated when someone changes the stats type in the return value of
-      // EnumerateListExecutor::produceRow().
+      // EnumerateListExecutor::produceRows().
       NoStats stats{};
 
       THEN("we will hit waiting 5 times") {
@@ -151,37 +151,37 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
                                 infos.registersToKeep(), infos.registersToClear()};
         // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
         for (size_t i = 0; i < 5; ++i) {
-          std::tie(state, stats) = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRows(result);
           REQUIRE(state == ExecutionState::WAITING);
           REQUIRE(!result.produced());
         }
 
         AND_THEN("we produce the rows in order") {
-          std::tie(state, stats) = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRows(result);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(result.produced());
 
           result.advanceRow();
 
-          std::tie(state, stats) = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRows(result);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(result.produced());
 
           result.advanceRow();
 
-          std::tie(state, stats) = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRows(result);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(result.produced());
 
           result.advanceRow();
 
-          std::tie(state, stats) = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRows(result);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(result.produced());
 
           result.advanceRow();
 
-          std::tie(state, stats) = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRows(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(result.produced());
 

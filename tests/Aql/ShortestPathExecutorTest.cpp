@@ -229,7 +229,7 @@ static void TestExecutor(ShortestPathExecutorInfos& infos,
       auto path = finder.findPath(resultPaths[i]);
       for (auto const& v : path) {
         REQUIRE(state == ExecutionState::HASMORE);
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         INFO("Should produce vertex " << v);
         CHECK(result.produced());
         result.advanceRow();
@@ -240,7 +240,7 @@ static void TestExecutor(ShortestPathExecutorInfos& infos,
     }
     if (resultPaths.empty()) {
       // We need to fetch once
-      std::tie(state, stats) = testee.produceRow(result);
+      std::tie(state, stats) = testee.produceRows(result);
     }
     CHECK(!result.produced());
     CHECK(state == ExecutionState::DONE);
@@ -255,14 +255,14 @@ static void TestExecutor(ShortestPathExecutorInfos& infos,
     for (size_t i = 0; i < resultPaths.size(); ++i) {
       CHECK(state == ExecutionState::HASMORE);
       // if we pull, we always wait
-      std::tie(state, stats) = testee.produceRow(result);
+      std::tie(state, stats) = testee.produceRows(result);
       CHECK(state == ExecutionState::WAITING);
       CHECK(!result.produced());
       state = ExecutionState::HASMORE;  // For simplicity on path fetching.
       auto path = finder.findPath(resultPaths[i]);
       for (auto const& v : path) {
         REQUIRE(state == ExecutionState::HASMORE);
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         INFO("Should produce vertex " << v);
         CHECK(result.produced());
         result.advanceRow();
@@ -273,11 +273,11 @@ static void TestExecutor(ShortestPathExecutorInfos& infos,
     }
     if (resultPaths.empty()) {
       // Fetch at least twice, one waiting
-      std::tie(state, stats) = testee.produceRow(result);
+      std::tie(state, stats) = testee.produceRows(result);
       CHECK(state == ExecutionState::WAITING);
       CHECK(!result.produced());
       // One no findings
-      std::tie(state, stats) = testee.produceRow(result);
+      std::tie(state, stats) = testee.produceRows(result);
     }
 
     CHECK(state == ExecutionState::DONE);

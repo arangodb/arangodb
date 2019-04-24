@@ -213,8 +213,8 @@ ExecutionState HashedCollectExecutor::init() {
   return ExecutionState::DONE;
 }
 
-std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("HashedCollectExecutor::produceRow") {
+std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("HashedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

@@ -62,7 +62,7 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
       NoStats stats{};
 
       THEN("the executor should return DONE with no block produced") {
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!row.produced());
       }
@@ -78,23 +78,23 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
       NoStats stats{};
 
       THEN("the executor should return the rows") {
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
         row.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
         row.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(row.produced());
         row.advanceRow();
 
         AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRow(row);
+          std::tie(state, stats) = testee.produceRows(row);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!row.produced());
         }
