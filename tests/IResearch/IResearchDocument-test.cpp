@@ -581,7 +581,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
   arangodb::iresearch::IResearchLinkMeta linkMeta;
 
   std::string error;
-  REQUIRE(linkMeta.init(linkMetaJson->slice(), error));
+  REQUIRE(linkMeta.init(linkMetaJson->slice(), false, error));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
@@ -1110,7 +1110,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   arangodb::iresearch::IResearchLinkMeta linkMeta;
 
   std::string error;
-  REQUIRE((linkMeta.init(linkMetaJson->slice(), error, sysVocbase.get())));
+  REQUIRE((linkMeta.init(linkMetaJson->slice(), false, error, sysVocbase.get())));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
