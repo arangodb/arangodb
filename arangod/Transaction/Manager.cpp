@@ -612,19 +612,17 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
   bool didWork = false;
-
   SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
   SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
 
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
     WRITE_LOCKER(locker, _transactions[bucket]._lock);
-
     double now = TRI_microtime();
     auto it = _transactions[bucket]._managed.begin();
 
     while (it != _transactions[bucket]._managed.end()) {
-
       ManagedTrx& mtrx = it->second;
 
       if (mtrx.type == MetaType::Managed) {
@@ -632,6 +630,7 @@ bool Manager::garbageCollect(bool abortAll) {
 
         if (abortAll || mtrx.expires < now) {
           TRY_READ_LOCKER(tryGuard, mtrx.rwlock); // needs lock to access state
+
           if (tryGuard.isLocked()) {
             TRI_ASSERT(mtrx.state->isRunning() && mtrx.state->isTopLevelTransaction());
             TRI_ASSERT(it->first == mtrx.state->id());
@@ -641,16 +640,17 @@ bool Manager::garbageCollect(bool abortAll) {
             didWork = true;
           }
         }
-
       } else if (mtrx.type == MetaType::StandaloneAQL && mtrx.expires < now) {
-        LOG_TOPIC("7ad2f", INFO, Logger::TRANSACTIONS) << "expired AQL query transaction '"
-        << it->first << "'";
+        LOG_TOPIC("7ad3f", INFO, Logger::TRANSACTIONS)
+          << "expired AQL query transaction '" << it->first << "'";
       } else if (mtrx.type == MetaType::Tombstone && mtrx.expires < now) {
         TRI_ASSERT(mtrx.state == nullptr);
         TRI_ASSERT(mtrx.finalStatus != transaction::Status::UNDEFINED);
         it = _transactions[bucket]._managed.erase(it);
+
         continue;
       }
+
       ++it;  // next
     }
   }
@@ -660,17 +660,20 @@ bool Manager::garbageCollect(bool abortAll) {
     "transaction: '" << tid << "'";
     Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/true);
     if (res.fail()) {
+
       LOG_TOPIC("0a07f", INFO, Logger::TRANSACTIONS) << "error while aborting "
       "transaction: '" << res.errorMessage() << "'";
     }
+
     didWork = true;
   }
+
   if (didWork) {
     LOG_TOPIC("e5b31", INFO, Logger::TRANSACTIONS) << "aborted expired transactions";
   }
+
   return didWork;
 }
-
 
 /// @brief abort all transactions matching
 bool Manager::abortManagedTrx(std::function<bool(TransactionState const&)> cb) {

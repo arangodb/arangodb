@@ -68,6 +68,7 @@ namespace {
 
 static std::string const ANALYZER_COLLECTION_NAME("_analyzers");
 static char const ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars)
+static size_t const ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary value
 static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
 static std::string const FEATURE_NAME("IResearchAnalyzer");
 static irs::string_ref const IDENTITY_ANALYZER_NAME("identity");
@@ -302,18 +303,18 @@ std::shared_ptr<arangodb::LogicalCollection> getAnalyzerCollection( // get colle
       return ci->getCollectionNT(vocbase.name(), ANALYZER_COLLECTION_NAME);
     }
 
-    LOG_TOPIC(, WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("00001", WARN, arangodb::iresearch::TOPIC)
       << "failure to find 'ClusterInfo' instance while looking up Analyzer collection '" << ANALYZER_COLLECTION_NAME << "' in vocbase '" << vocbase.name() << "'";
   } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(, WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("00002", WARN, arangodb::iresearch::TOPIC)
       << "caught exception while looking up Analyzer collection '" << ANALYZER_COLLECTION_NAME << "' in vocbase '" << vocbase.name() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
-    LOG_TOPIC(, WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("00003", WARN, arangodb::iresearch::TOPIC)
       << "caught exception while looking up Analyzer collection '" << ANALYZER_COLLECTION_NAME << "' in vocbase '" << vocbase.name() << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(, WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("00004", WARN, arangodb::iresearch::TOPIC)
       << "caught exception while looking up Analyzer collection '" << ANALYZER_COLLECTION_NAME << "' in vocbase '" << vocbase.name() << "'";
     IR_LOG_EXCEPTION();
   }
@@ -892,6 +893,14 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
     }
   }
 
+  // limit the maximum size of analyzer properties
+  if (ANALYZER_PROPERTIES_SIZE_MAX < properties.size()) {
+    return arangodb::Result( // result
+      TRI_ERROR_BAD_PARAMETER, // code
+      std::string("analyzer properties size of '") + std::to_string(properties.size()) + "' exceeds the maximum allowed limit of '" + std::to_string(ANALYZER_PROPERTIES_SIZE_MAX) + "'"
+    );
+  }
+
   static const auto generator = []( // key + value generator
     irs::hashed_string_ref const& key, // source key
     AnalyzerPool::ptr const& value // source value
@@ -949,7 +958,7 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
   irs::string_ref const& type, // analyzer type
   irs::string_ref const& properties, // analyzer properties
   irs::flags const& features, // analyzer features
-  bool allowCreation
+  bool isEmplace
 ) {
   try {
     auto split = splitAnalyzerName(name);
@@ -958,10 +967,11 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
     SCOPED_LOCK(mutex);
 
     if (!split.first.null()) { // do not trigger load for static-analyzer requests
-      // do not trigger load of analyzers on db-server to avoid recursive lock
-      // aquisition in ClusterInfo::loadPlan() if called due IResearchLink creation,
+      // do not trigger load of analyzers on coordinator or db-server to avoid
+      // recursive lock aquisition in ClusterInfo::loadPlan() if called due to
+      // IResearchLink creation,
       // also avoids extra cluster calls if it can be helped (optimization)
-      if (allowCreation && arangodb::ServerState::instance()->isDBServer()) {
+      if (!isEmplace && arangodb::ServerState::instance()->isClusterRole()) {
         auto itr = _analyzers.find( // find analyzer previous definition
          irs::make_hashed_ref(name, std::hash<irs::string_ref>())
         );
@@ -986,6 +996,8 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
       return res;
     }
 
+    auto allowCreation = // should analyzer creation be allowed (always for cluster)
+      isEmplace || arangodb::ServerState::instance()->isClusterRole();
     bool erase = itr.second; // an insertion took place
     auto cleanup = irs::make_finally([&erase, this, &itr]()->void {
       if (erase) {
@@ -1117,7 +1129,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
     type, // analyzer type
     properties, // analyzer properties
     features, // analyzer features
-    arangodb::ServerState::instance()->isDBServer() // create analyzer only if on db-server
+    false
   );
 
   if (!res.ok()) {

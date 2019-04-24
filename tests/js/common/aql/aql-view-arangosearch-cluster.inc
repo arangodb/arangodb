@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function() {
-  const db = require("@arangodb").db;
+  var db = require("@arangodb").db;
   const analyzers = require("@arangodb/analyzers");
   const ERRORS = require("@arangodb").errors;
 
