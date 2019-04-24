@@ -81,8 +81,8 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
           VPackBuilder input;
 
           WHEN("the producer does not wait") {
-            SingleRowFetcherHelper<passBlocksThrough> fetcher(input.steal(), false);
-            ReturnExecutor<passBlocksThrough> testee(fetcher, infos);
+            SingleRowFetcherHelper<true> fetcher(input.steal(), false);
+            ReturnExecutor testee(fetcher, infos);
             CountStats stats{};
 
             THEN("the executor should return DONE with nullptr") {
@@ -95,8 +95,8 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
           }
 
           WHEN("the producer waits") {
-            SingleRowFetcherHelper<passBlocksThrough> fetcher(input.steal(), true);
-            ReturnExecutor<passBlocksThrough> testee(fetcher, infos);
+            SingleRowFetcherHelper<true> fetcher(input.steal(), true);
+            ReturnExecutor testee(fetcher, infos);
             CountStats stats{};
 
             THEN("the executor should first return WAIT with nullptr") {
@@ -121,8 +121,8 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
           auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
 
           WHEN("the producer does not wait") {
-            SingleRowFetcherHelper<passBlocksThrough> fetcher(input->buffer(), false);
-            ReturnExecutor<passBlocksThrough> testee(fetcher, infos);
+            SingleRowFetcherHelper<true> fetcher(input->buffer(), false);
+            ReturnExecutor testee(fetcher, infos);
             CountStats stats{};
 
             THEN("the executor should return the rows") {
@@ -166,8 +166,8 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
           }    // WHEN
 
           WHEN("the producer waits") {
-            SingleRowFetcherHelper<passBlocksThrough> fetcher(input->steal(), true);
-            ReturnExecutor<passBlocksThrough> testee(fetcher, infos);
+            SingleRowFetcherHelper<true> fetcher(input->steal(), true);
+            ReturnExecutor testee(fetcher, infos);
             CountStats stats{};
 
             THEN("the executor should return the rows") {

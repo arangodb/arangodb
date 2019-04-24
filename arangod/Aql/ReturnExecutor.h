@@ -27,6 +27,7 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
 namespace arangodb {
@@ -74,13 +75,12 @@ class ReturnExecutorInfos : public ExecutorInfos {
 /**
  * @brief Implementation of Return Node
  */
-template <bool passBlocksThrough>
 class ReturnExecutor {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = passBlocksThrough;
-    /* This could be set to true after some investigation/fixes */
+    static const bool allowsBlockPassthrough = true;
+    /* allowsBlockPassthrough overrules inputSizeRestriction */
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -102,17 +102,11 @@ class ReturnExecutor {
     InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
     std::tie(state, inputRow) = _fetcher.fetchRow();
 
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(!inputRow);
-      return {state, stats};
-    }
-
     if (!inputRow) {
-      TRI_ASSERT(state == ExecutionState::DONE);
+      TRI_ASSERT(state != ExecutionState::HASMORE);
       return {state, stats};
     }
 
-    TRI_ASSERT(passBlocksThrough == _infos.returnInheritedResults());
     if (_infos.returnInheritedResults()) {
       output.copyRow(inputRow);
     } else {
@@ -129,7 +123,7 @@ class ReturnExecutor {
     }
     return {state, stats};
   }
-  
+
   inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(

@@ -617,9 +617,7 @@ ExecutionNode const* ExecutionNode::getLoop() const {
     auto type = node->getType();
 
     if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
-        type == ENUMERATE_LIST || type == SHORTEST_PATH
-        || type == ENUMERATE_IRESEARCH_VIEW
-    ) {
+        type == ENUMERATE_LIST || type == SHORTEST_PATH || type == ENUMERATE_IRESEARCH_VIEW) {
       return node;
     }
   }
@@ -1762,17 +1760,16 @@ bool SubqueryNode::mayAccessCollections() {
 
   // if the subquery contains any of these nodes, it may access data from
   // a collection
-  std::vector<ExecutionNode::NodeType> const types = {
-      ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
-      ExecutionNode::ENUMERATE_COLLECTION,
-      ExecutionNode::INDEX,
-      ExecutionNode::INSERT,
-      ExecutionNode::UPDATE,
-      ExecutionNode::REPLACE,
-      ExecutionNode::REMOVE,
-      ExecutionNode::UPSERT,
-      ExecutionNode::TRAVERSAL,
-      ExecutionNode::SHORTEST_PATH};
+  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+                                                      ExecutionNode::ENUMERATE_COLLECTION,
+                                                      ExecutionNode::INDEX,
+                                                      ExecutionNode::INSERT,
+                                                      ExecutionNode::UPDATE,
+                                                      ExecutionNode::REPLACE,
+                                                      ExecutionNode::REMOVE,
+                                                      ExecutionNode::UPSERT,
+                                                      ExecutionNode::TRAVERSAL,
+                                                      ExecutionNode::SHORTEST_PATH};
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
@@ -2041,13 +2038,8 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
                             getRegisterPlan()->nrRegs[getDepth()], _count,
                             returnInheritedResults);
-  if (returnInheritedResults) {
-    return std::make_unique<ExecutionBlockImpl<ReturnExecutor<true>>>(&engine, this,
-                                                                      std::move(infos));
-  } else {
-    return std::make_unique<ExecutionBlockImpl<ReturnExecutor<false>>>(&engine, this,
-                                                                       std::move(infos));
-  }
+  return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,
+                                                              std::move(infos));
 }
 
 /// @brief clone ExecutionNode recursively
