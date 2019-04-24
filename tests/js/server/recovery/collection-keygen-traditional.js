@@ -40,8 +40,13 @@ function runSetup () {
   // write a documents with a large numeric key
   db._drop('UnitTestsRecovery1');
   c = db._create('UnitTestsRecovery1', { keyOptions: { type: 'traditional'} } );
+  for (let i = 0; i < 5000; i++) {
+    c.save({some: 'valuexxxxxxxxxxxxx'});
+  }
   c.save({ _key: String(bigNumber) });
-  c.save({some: 'value'});
+  for (let i = 0; i < 5000; i++) {
+    c.save({some: 'valuexxxxxxxxxxxxx'});
+  }
 
   // write to other collection 
   db._drop('UnitTestsRecovery2');
@@ -71,10 +76,9 @@ function recoverySuite () {
     testCollectionKeyGenRocksDB: function () {
 
       let c = db._collection('UnitTestsRecovery1');
-      assertEqual(c.count(), 2);
+      assertEqual(c.count(), 10001);
 
       let d = c.save({ value: 'a'});
-      print(d);
       assertTrue(parseInt(d._key) > bigNumber + 1);
 
       // check that the second collection is unaffected
@@ -83,6 +87,7 @@ function recoverySuite () {
       assertEqual(c.count(), 2);
 
       d = c.save({ value: 'a'});
+      print(d);
       assertTrue(parseInt(d._key) < bigNumber);
     }
 
