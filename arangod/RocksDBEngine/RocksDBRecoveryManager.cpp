@@ -163,9 +163,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
   void storeMaxTick(uint64_t tick) {
-    LOG_DEVEL << "max tick " << tick;
     if (tick > _maxTick) {
-      LOG_DEVEL << "store max tick " << tick;
       _maxTick = tick;
     }
   }
