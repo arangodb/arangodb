@@ -40,11 +40,8 @@ function runSetup () {
   // write a documents with a large numeric key
   db._drop('UnitTestsRecovery1');
   c = db._create('UnitTestsRecovery1', { keyOptions: { type: 'traditional'} } );
-  for (let i = 0; i < 5000; i++) {
-    c.save({some: 'valuexxxxxxxxxxxxx'});
-  }
   c.save({ _key: String(bigNumber) });
-  for (let i = 0; i < 5000; i++) {
+  for (let i = 0; i < 10000; i++) { // fill up the WAL
     c.save({some: 'valuexxxxxxxxxxxxx'});
   }
 
