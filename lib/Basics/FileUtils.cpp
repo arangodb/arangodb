@@ -204,6 +204,35 @@ void slurp(std::string const& filename, StringBuffer& result) {
   fillStringBuffer(fd, filename, result, chunkSize);
 }
 
+Result slurpNoEx(std::string const& filename, StringBuffer& result) {
+  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+
+  if (fd == -1) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    int res = TRI_errno();
+    std::string message("read failed for file '" + filename + "': " + strerror(res));
+    LOG_TOPIC("a1898", TRACE, arangodb::Logger::FIXME) << message;
+    return {TRI_ERROR_SYS_ERROR, message};
+  }
+
+  TRI_DEFER(TRI_CLOSE(fd));
+
+  result.reset();
+  constexpr size_t chunkSize = 8192;
+  fillStringBuffer(fd, filename, result, chunkSize);
+  return {};
+}
+
+Result slurp(std::string const& filename, std::string& result) {
+  constexpr size_t chunkSize = 8192;
+  StringBuffer buffer(chunkSize, false);
+
+  auto status = slurpNoEx(filename, buffer);
+
+  result = std::string(buffer.data(), buffer.length());
+  return status;
+}
+
 static void throwFileWriteError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
