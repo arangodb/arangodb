@@ -160,12 +160,14 @@ struct IResearchLinkMetaSetup {
     analyzers->emplace(result, "testVocbase::empty", "empty", "de", irs::flags{ irs::frequency::type() }); // cache the 'empty' analyzer for 'testVocbase'
 
     // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCYCOMM.name(), arangodb::LogLevel::FATAL);
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
   ~IResearchLinkMetaSetup() {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCYCOMM.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
@@ -230,7 +232,7 @@ SECTION("test_inheritDefaults") {
   defaults._fields["abc"]->_fields["xyz"] = arangodb::iresearch::IResearchLinkMeta();
 
   auto json = arangodb::velocypack::Parser::fromJson("{}");
-  CHECK(true == meta.init(json->slice(), tmpString, nullptr, defaults));
+  CHECK(true == meta.init(json->slice(), false, tmpString, nullptr, defaults));
   CHECK(1U == meta._fields.size());
 
   for (auto& field: meta._fields) {
@@ -277,7 +279,7 @@ SECTION("test_readDefaults") {
   {
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string tmpString;
-    CHECK((true == meta.init(json->slice(), tmpString)));
+    CHECK((true == meta.init(json->slice(), false, tmpString)));
     CHECK((true == meta._fields.empty()));
     CHECK((false == meta._includeAllFields));
     CHECK((false == meta._trackListPositions));
@@ -295,7 +297,7 @@ SECTION("test_readDefaults") {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string tmpString;
-    CHECK((true == meta.init(json->slice(), tmpString, &vocbase)));
+    CHECK((true == meta.init(json->slice(), false, tmpString, &vocbase)));
     CHECK((true == meta._fields.empty()));
     CHECK((false == meta._includeAllFields));
     CHECK((false == meta._trackListPositions));
@@ -333,7 +335,7 @@ SECTION("test_readCustomizedValues") {
   {
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string tmpString;
-    CHECK(false == meta.init(json->slice(), tmpString));
+    CHECK(false == meta.init(json->slice(), false, tmpString));
   }
 
   // with active vocbase
@@ -344,7 +346,7 @@ SECTION("test_readCustomizedValues") {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string tmpString;
-    CHECK((true == meta.init(json->slice(), tmpString, &vocbase)));
+    CHECK((true == meta.init(json->slice(), false, tmpString, &vocbase)));
     CHECK((3U == meta._fields.size()));
 
     for (auto& field: meta._fields) {
@@ -482,7 +484,7 @@ SECTION("test_writeDefaults") {
 
     auto slice = builder.slice();
 
-    CHECK((5U == slice.length()));
+    CHECK((6U == slice.length()));
     tmpSlice = slice.get("fields");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
     tmpSlice = slice.get("includeAllFields");
@@ -492,6 +494,13 @@ SECTION("test_writeDefaults") {
     tmpSlice = slice.get("storeValues");
     CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
     tmpSlice = slice.get("analyzers");
+    CHECK((
+      true == tmpSlice.isArray()
+      && 1 == tmpSlice.length()
+      && tmpSlice.at(0).isString()
+      && std::string("identity") == tmpSlice.at(0).copyString()
+    ));
+    tmpSlice = slice.get("analyzerDefinitions");
     CHECK((
       true == tmpSlice.isArray()
       && 1 == tmpSlice.length()
@@ -548,7 +557,7 @@ SECTION("test_writeDefaults") {
 
     auto slice = builder.slice();
 
-    CHECK((5U == slice.length()));
+    CHECK((6U == slice.length()));
     tmpSlice = slice.get("fields");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
     tmpSlice = slice.get("includeAllFields");
@@ -558,6 +567,13 @@ SECTION("test_writeDefaults") {
     tmpSlice = slice.get("storeValues");
     CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
     tmpSlice = slice.get("analyzers");
+    CHECK((
+      true == tmpSlice.isArray()
+      && 1 == tmpSlice.length()
+      && tmpSlice.at(0).isString()
+      && std::string("identity") == tmpSlice.at(0).copyString()
+    ));
+    tmpSlice = slice.get("analyzerDefinitions");
     CHECK((
       true == tmpSlice.isArray()
       && 1 == tmpSlice.length()
@@ -721,7 +737,8 @@ SECTION("test_writeCustomizedValues") {
   {
     std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
     std::unordered_set<std::string> expectedOverrides = { "default", "all", "some", "none" };
-    std::set<std::pair<std::string, std::string>> expectedAnalyzers = {
+    std::unordered_set<std::string> expectedAnalyzers = { arangodb::StaticStrings::SystemDatabase + "::empty", "identity" };
+    std::set<std::pair<std::string, std::string>> expectedAnalyzerDefinitions = {
       { arangodb::StaticStrings::SystemDatabase + "::empty", "en" },
       { "identity", "" },
     };
@@ -734,7 +751,7 @@ SECTION("test_writeCustomizedValues") {
 
     auto slice = builder.slice();
 
-    CHECK((5U == slice.length()));
+    CHECK((6U == slice.length()));
     tmpSlice = slice.get("fields");
     CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
 
@@ -768,11 +785,8 @@ SECTION("test_writeCustomizedValues") {
           CHECK((
             true == tmpSlice.isArray()
             && 1 == tmpSlice.length()
-            && tmpSlice.at(0).isObject()
-            && tmpSlice.at(0).get("name").isString() && std::string("identity") == tmpSlice.at(0).get("name").copyString()
-            && tmpSlice.at(0).get("type").isString() && std::string("identity") == tmpSlice.at(0).get("type").copyString()
-            && tmpSlice.at(0).get("properties").isNull()
-            && tmpSlice.at(0).get("features").isArray() && 2 == tmpSlice.at(0).get("features").length() // frequency+norm
+            && tmpSlice.at(0).isString()
+            && std::string("identity") == tmpSlice.at(0).copyString()
           ));
         } else if ("all" == fieldOverride.copyString()) {
           std::unordered_set<std::string> expectedFields = { "x", "y" };
@@ -793,12 +807,8 @@ SECTION("test_writeCustomizedValues") {
           CHECK((
             true == tmpSlice.isArray()
             && 1 == tmpSlice.length()
-            && tmpSlice.at(0).isObject()
-            && tmpSlice.at(0).get("name").isString() && arangodb::StaticStrings::SystemDatabase + "::empty" == tmpSlice.at(0).get("name").copyString()
-            && tmpSlice.at(0).get("type").isString() && std::string("empty") == tmpSlice.at(0).get("type").copyString()
-            && tmpSlice.at(0).get("properties").isString() && std::string("en") == tmpSlice.at(0).get("properties").copyString()
-            && tmpSlice.at(0).get("features").isArray() && 1 == tmpSlice.at(0).get("features").length()
-            && tmpSlice.at(0).get("features").at(0).isString() && std::string("frequency") == tmpSlice.at(0).get("features").at(0).copyString()
+            && tmpSlice.at(0).isString()
+            && arangodb::StaticStrings::SystemDatabase + "::empty" == tmpSlice.at(0).copyString()
           ));
         } else if ("some" == fieldOverride.copyString()) {
           CHECK((2U == sliceOverride.length()));
@@ -824,6 +834,15 @@ SECTION("test_writeCustomizedValues") {
     CHECK((true == tmpSlice.isArray() && 2 == tmpSlice.length()));
 
     for (arangodb::velocypack::ArrayIterator analyzersItr(tmpSlice); analyzersItr.valid(); ++analyzersItr) {
+      auto key = *analyzersItr;
+      CHECK((true == key.isString() && 1 == expectedAnalyzers.erase(key.copyString())));
+    }
+
+    CHECK((true == expectedAnalyzers.empty()));
+    tmpSlice = slice.get("analyzerDefinitions");
+    CHECK((true == tmpSlice.isArray() && 2 == tmpSlice.length()));
+
+    for (arangodb::velocypack::ArrayIterator analyzersItr(tmpSlice); analyzersItr.valid(); ++analyzersItr) {
       auto value = *analyzersItr;
       CHECK((
         true == value.isObject()
@@ -831,14 +850,14 @@ SECTION("test_writeCustomizedValues") {
         && value.hasKey("type") && value.get("type").isString()
         && value.hasKey("properties") && (value.get("properties").isString() || value.get("properties").isNull())
         && value.hasKey("features") && value.get("features").isArray() && (1 == value.get("features").length() || 2 == value.get("features").length()) // empty/identity 1/2
-        && 1 == expectedAnalyzers.erase(std::make_pair(value.get("name").copyString(), value.get("properties").isNull() ? "" : value.get("properties").copyString()))
+        && 1 == expectedAnalyzerDefinitions.erase(std::make_pair(value.get("name").copyString(), value.get("properties").isNull() ? "" : value.get("properties").copyString()))
      ));
     }
 
-    CHECK((true == expectedAnalyzers.empty()));
+    CHECK((true == expectedAnalyzerDefinitions.empty()));
   }
 
-  // with active vocbase (no fullAnalyzerDefinition)
+  // with active vocbase (not fullAnalyzerDefinition)
   {
     std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
     std::unordered_set<std::string> expectedOverrides = { "default", "all", "some", "none" };
@@ -949,7 +968,8 @@ SECTION("test_writeCustomizedValues") {
   {
     std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
     std::unordered_set<std::string> expectedOverrides = { "default", "all", "some", "none" };
-    std::set<std::pair<std::string, std::string>> expectedAnalyzers = {
+    std::unordered_set<std::string> expectedAnalyzers = { arangodb::StaticStrings::SystemDatabase + "::empty", "identity" };
+    std::set<std::pair<std::string, std::string>> expectedAnalyzerDefinitions = {
       { arangodb::StaticStrings::SystemDatabase + "::empty", "en" },
       { "identity", "" },
     };
@@ -963,7 +983,7 @@ SECTION("test_writeCustomizedValues") {
 
     auto slice = builder.slice();
 
-    CHECK((5U == slice.length()));
+    CHECK((6U == slice.length()));
     tmpSlice = slice.get("fields");
     CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
 
@@ -997,11 +1017,8 @@ SECTION("test_writeCustomizedValues") {
           CHECK((
             true == tmpSlice.isArray()
             && 1 == tmpSlice.length()
-            && tmpSlice.at(0).isObject()
-            && tmpSlice.at(0).get("name").isString() && std::string("identity") == tmpSlice.at(0).get("name").copyString()
-            && tmpSlice.at(0).get("type").isString() && std::string("identity") == tmpSlice.at(0).get("type").copyString()
-            && tmpSlice.at(0).get("properties").isNull()
-            && tmpSlice.at(0).get("features").isArray() && 2 == tmpSlice.at(0).get("features").length()  // frequency+norm
+            && tmpSlice.at(0).isString()
+            && std::string("identity") == tmpSlice.at(0).copyString()
           ));
         } else if ("all" == fieldOverride.copyString()) {
           std::unordered_set<std::string> expectedFields = { "x", "y" };
@@ -1022,12 +1039,8 @@ SECTION("test_writeCustomizedValues") {
           CHECK((
             true == tmpSlice.isArray()
             && 1 == tmpSlice.length()
-            && tmpSlice.at(0).isObject()
-            && tmpSlice.at(0).get("name").isString() && arangodb::StaticStrings::SystemDatabase + "::empty" == tmpSlice.at(0).get("name").copyString()
-            && tmpSlice.at(0).get("type").isString() && std::string("empty") == tmpSlice.at(0).get("type").copyString()
-            && tmpSlice.at(0).get("properties").isString() && std::string("en") == tmpSlice.at(0).get("properties").copyString()
-            && tmpSlice.at(0).get("features").isArray() && 1 == tmpSlice.at(0).get("features").length()
-            && tmpSlice.at(0).get("features").at(0).isString() && std::string("frequency") == tmpSlice.at(0).get("features").at(0).copyString()
+            && tmpSlice.at(0).isString()
+            && arangodb::StaticStrings::SystemDatabase + "::empty" == tmpSlice.at(0).copyString()
           ));
         } else if ("some" == fieldOverride.copyString()) {
           CHECK((2U == sliceOverride.length()));
@@ -1053,6 +1066,15 @@ SECTION("test_writeCustomizedValues") {
     CHECK((true == tmpSlice.isArray() && 2 == tmpSlice.length()));
 
     for (arangodb::velocypack::ArrayIterator analyzersItr(tmpSlice); analyzersItr.valid(); ++analyzersItr) {
+      auto key = *analyzersItr;
+      CHECK((true == key.isString() && 1 == expectedAnalyzers.erase(key.copyString())));
+    }
+
+    CHECK((true == expectedAnalyzers.empty()));
+    tmpSlice = slice.get("analyzerDefinitions");
+    CHECK((true == tmpSlice.isArray() && 2 == tmpSlice.length()));
+
+    for (arangodb::velocypack::ArrayIterator analyzersItr(tmpSlice); analyzersItr.valid(); ++analyzersItr) {
       auto value = *analyzersItr;
       CHECK((
         true == value.isObject()
@@ -1060,11 +1082,11 @@ SECTION("test_writeCustomizedValues") {
         && value.hasKey("type") && value.get("type").isString()
         && value.hasKey("properties") && (value.get("properties").isString() || value.get("properties").isNull())
         && value.hasKey("features") && value.get("features").isArray() && (1 == value.get("features").length() || 2 == value.get("features").length()) // empty/identity 1/2
-        && 1 == expectedAnalyzers.erase(std::make_pair(value.get("name").copyString(), value.get("properties").isNull() ? "" : value.get("properties").copyString()))
+        && 1 == expectedAnalyzerDefinitions.erase(std::make_pair(value.get("name").copyString(), value.get("properties").isNull() ? "" : value.get("properties").copyString()))
      ));
     }
 
-    CHECK((true == expectedAnalyzers.empty()));
+    CHECK((true == expectedAnalyzerDefinitions.empty()));
   }
 }
 
@@ -1080,7 +1102,7 @@ SECTION("test_readMaskAll") {
     \"storeValues\": \"full\", \
     \"analyzers\": [] \
   }");
-  CHECK(true == meta.init(json->slice(), tmpString, nullptr, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
+  CHECK(true == meta.init(json->slice(), false, tmpString, nullptr, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
   CHECK(true == mask._fields);
   CHECK(true == mask._includeAllFields);
   CHECK(true == mask._trackListPositions);
@@ -1094,7 +1116,7 @@ SECTION("test_readMaskNone") {
   std::string tmpString;
 
   auto json = arangodb::velocypack::Parser::fromJson("{}");
-  CHECK(true == meta.init(json->slice(), tmpString, nullptr, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
+  CHECK(true == meta.init(json->slice(), false, tmpString, nullptr, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
   CHECK(false == mask._fields);
   CHECK(false == mask._includeAllFields);
   CHECK(false == mask._trackListPositions);
@@ -1135,12 +1157,13 @@ SECTION("test_writeMaskAll") {
 
     auto slice = builder.slice();
 
-    CHECK((5U == slice.length()));
+    CHECK((6U == slice.length()));
     CHECK(true == slice.hasKey("fields"));
     CHECK(true == slice.hasKey("includeAllFields"));
     CHECK(true == slice.hasKey("trackListPositions"));
     CHECK(true == slice.hasKey("storeValues"));
     CHECK(true == slice.hasKey("analyzers"));
+    CHECK(true == slice.hasKey("analyzerDefinitions"));
   }
 }
 
@@ -1186,7 +1209,7 @@ SECTION("test_readAnalyzerDefinitions") {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((false == meta.init(json->slice(), true, errorField, &vocbase)));
     CHECK((std::string("analyzers=>empty1") == errorField));
   }
 
@@ -1200,52 +1223,56 @@ SECTION("test_readAnalyzerDefinitions") {
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((false == meta.init(json->slice(), true, errorField, &vocbase)));
     CHECK((std::string("analyzers=>empty1") == errorField));
   }
 
   // missing analyzer (full) no name (fail) required
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"analyzers\": [ { \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ] \
+      \"analyzerDefinitions\": [ { \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"empty\" ] \
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
-    CHECK((std::string("analyzers=>[0]=>name") == errorField));
+    CHECK((false == meta.init(json->slice(), true, errorField, &vocbase)));
+    CHECK((std::string("analyzerDefinitions=>[0]=>name") == errorField));
   }
 
   // missing analyzer (full) no type (fail) required
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"analyzers\": [ { \"name\": \"missing0\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ] \
+      \"analyzerDefinitions\": [ { \"name\": \"missing0\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"missing0\" ] \
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
-    CHECK((std::string("analyzers=>[0]=>type") == errorField));
+    CHECK((false == meta.init(json->slice(), true, errorField, &vocbase)));
+    CHECK((std::string("analyzerDefinitions=>[0]=>type") == errorField));
   }
 
   // missing analyzer (full) analyzer creation not allowed (fail)
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"analyzers\": [ { \"name\": \"missing0\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ] \
+      \"analyzerDefinitions\": [ { \"name\": \"missing0\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"missing0\" ] \
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
-    CHECK((std::string("analyzers=>[0]") == errorField));
+    CHECK((false == meta.init(json->slice(), true, errorField, &vocbase)));
+    CHECK((std::string("analyzerDefinitions=>[0]") == errorField));
   }
 
   // missing analyzer (full) single-server
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"analyzers\": [ { \"name\": \"missing0\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ] \
+      \"analyzerDefinitions\": [ { \"name\": \"missing0\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"missing0\" ] \
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
-    CHECK((std::string("analyzers=>[0]") == errorField));
+    CHECK((false == meta.init(json->slice(), true, errorField, &vocbase)));
+    CHECK((std::string("analyzerDefinitions=>[0]") == errorField));
   }
 
   // missing analyzer (full) coordinator
@@ -1255,12 +1282,13 @@ SECTION("test_readAnalyzerDefinitions") {
     auto restore = irs::make_finally([&before]()->void { arangodb::ServerState::instance()->setRole(before); });
 
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"analyzers\": [ { \"name\": \"missing1\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ] \
+      \"analyzerDefinitions\": [ { \"name\": \"missing1\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"missing1\" ] \
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
-    CHECK((std::string("analyzers=>[0]") == errorField));
+    CHECK((false == meta.init(json->slice(), true, errorField, &vocbase)));
+    CHECK((std::string("analyzerDefinitions=>[0]") == errorField));
   }
 
   // missing analyzer (full) db-server
@@ -1270,11 +1298,12 @@ SECTION("test_readAnalyzerDefinitions") {
     auto restore = irs::make_finally([&before]()->void { arangodb::ServerState::instance()->setRole(before); });
 
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"analyzers\": [ { \"name\": \"missing2\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ] \
+      \"analyzerDefinitions\": [ { \"name\": \"missing2\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"missing2\" ] \
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((true == meta.init(json->slice(), true, errorField, &vocbase)));
     CHECK((1 == meta._analyzers.size()));
     CHECK((std::string("testVocbase::missing2") == meta._analyzers[0]._pool->name()));
     CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
@@ -1287,15 +1316,16 @@ SECTION("test_readAnalyzerDefinitions") {
   // missing analyzer (full) inRecovery
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"analyzers\": [ { \"name\": \"missing3\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ] \
+      \"analyzerDefinitions\": [ { \"name\": \"missing3\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"missing3\" ] \
     }");
     auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
-    CHECK((std::string("analyzers=>[0]") == errorField));
+    CHECK((false == meta.init(json->slice(), true, errorField, &vocbase)));
+    CHECK((std::string("analyzers=>missing3") == errorField)); // not in the persisted collection
   }
 
   // existing analyzer (name only)
@@ -1305,7 +1335,7 @@ SECTION("test_readAnalyzerDefinitions") {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((true == meta.init(json->slice(), true, errorField, &vocbase)));
     CHECK((1 == meta._analyzers.size()));
     CHECK((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
@@ -1325,7 +1355,7 @@ SECTION("test_readAnalyzerDefinitions") {
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((true == meta.init(json->slice(), true, errorField, &vocbase)));
     CHECK((1 == meta._analyzers.size()));
     CHECK((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
@@ -1338,11 +1368,12 @@ SECTION("test_readAnalyzerDefinitions") {
   // existing analyzer (full) analyzer creation not allowed (pass)
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"analyzers\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"de\", \"features\": [ \"frequency\" ] } ] \
+      \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"de\", \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"empty\" ] \
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((true == meta.init(json->slice(), true, errorField, &vocbase)));
     CHECK((1 == meta._analyzers.size()));
     CHECK((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
@@ -1352,14 +1383,27 @@ SECTION("test_readAnalyzerDefinitions") {
     CHECK((std::string("empty") == meta._analyzers[0]._shortName));
   }
 
-  // existing analyzer (full)
+  // existing analyzer (full) analyzer definition not allowed
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"analyzers\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"de\", \"features\": [ \"frequency\" ] } ] \
+      \"analyzers\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"de\", \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"empty\" ] \
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((false == meta.init(json->slice(), false, errorField, &vocbase)));
+    CHECK((std::string("analyzers=>[0]") == errorField));
+  }
+
+  // existing analyzer (full)
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \
+      \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"de\", \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"empty\" ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    CHECK((true == meta.init(json->slice(), true, errorField, &vocbase)));
     CHECK((1 == meta._analyzers.size()));
     CHECK((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
@@ -1372,14 +1416,15 @@ SECTION("test_readAnalyzerDefinitions") {
   // existing analyzer (full) inRecovery
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"analyzers\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"de\", \"features\": [ \"frequency\" ] } ] \
+      \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"de\", \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"empty\" ] \
     }");
     auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((true == meta.init(json->slice(), errorField, &vocbase)));
+    CHECK((true == meta.init(json->slice(), true, errorField, &vocbase)));
     CHECK((1 == meta._analyzers.size()));
     CHECK((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     CHECK((std::string("empty") == meta._analyzers[0]._pool->type()));
@@ -1392,26 +1437,28 @@ SECTION("test_readAnalyzerDefinitions") {
   // existing analyzer (definition mismatch)
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"analyzers\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ] \
+      \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"empty\" ] \
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
-    CHECK((std::string("analyzers=>[0]") == errorField));
+    CHECK((false == meta.init(json->slice(), true, errorField, &vocbase)));
+    CHECK((std::string("analyzerDefinitions=>[0]") == errorField));
   }
 
   // existing analyzer (definition mismatch) inRecovery
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"analyzers\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ] \
+      \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"empty\" ] \
     }");
     auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    CHECK((false == meta.init(json->slice(), errorField, &vocbase)));
-    CHECK((std::string("analyzers=>[0]") == errorField));
+    CHECK((false == meta.init(json->slice(), true, errorField, &vocbase)));
+    CHECK((std::string("analyzerDefinitions=>[0]") == errorField));
   }
 }
 

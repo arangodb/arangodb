@@ -378,6 +378,10 @@ var jsUnity = exports.jsUnity = (function () {
       jsUnity.log.info(plural(total, "test") + " found");
     },
 
+    beginSetUp: function(index, testName) {},
+
+    endSetUp: function(index, testName) {},
+        
     pass: function (index, testName) {
       jsUnity.tap.write(fmt("ok ? - ?", index, testName));
       jsUnity.log.info("[PASSED] " + testName);
@@ -390,7 +394,11 @@ var jsUnity = exports.jsUnity = (function () {
       jsUnity.tap.write("  ...");
       jsUnity.log.info(fmt("[FAILED] ?: ?", testName, message));
     },
+    
+    beginTeardown: function(index, testName) {},
 
+    endTeardown: function(index, testName) {},
+    
     end: function (passed, failed, duration) {
       jsUnity.log.info(plural(passed, "test") + " passed");
       jsUnity.log.info(plural(failed, "test") + " failed");
@@ -517,9 +525,16 @@ var jsUnity = exports.jsUnity = (function () {
             counter = 0;
             
             try {
+              this.results.beginSetUp(suite.scope, test.name);
               setUp(test.name);
+              this.results.endSetUp(suite.scope, test.name);
+              
               test.fn.call(suite.scope, test.name);
+
+
+              this.results.beginTeardown(suite.scope, test.name);
               tearDown(test.name);
+              this.results.endTeardown(suite.scope, test.name);
 
               this.results.pass(j + 1, test.name);
 
