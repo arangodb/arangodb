@@ -263,11 +263,6 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
     return it;
   }
 
-  // must create new group
-  GroupKeyType group;
-  group.reserve(_infos.getGroupRegisters().size());
-  group.swap(_nextGroupValues);
-
   // this builds a new group with aggregate functions beeing prepared.
   auto aggregateValues = std::make_unique<AggregateValuesType>();
   aggregateValues->reserve(_aggregatorFactories.size());
@@ -277,9 +272,14 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
   }
 
   // note: aggregateValues may be a nullptr!
-  auto emplaceResult = _allGroups.emplace(std::move(group), std::move(aggregateValues));
+  auto emplaceResult =
+      _allGroups.emplace(std::move(_nextGroupValues), std::move(aggregateValues));
   // emplace must not fail
   TRI_ASSERT(emplaceResult.second);
+
+  // Moving _nextGroupValues left us with an empty vector of minimum capacity.
+  // So in order to have correct capacity reserve again.
+  _nextGroupValues.reserve(_infos.getGroupRegisters().size());
 
   return emplaceResult.first;
 };
