@@ -23,6 +23,7 @@
 
 #include "tests_shared.hpp"
 #include "index/index_tests.hpp"
+#include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/phrase_filter.hpp"
 #include "search/prefix_filter.hpp"
@@ -33,6 +34,7 @@
 #include "search/term_filter.hpp"
 #include "search/tfidf.hpp"
 #include "utils/utf8_path.hpp"
+#include "utils/type_limits.hpp"
 
 NS_LOCAL
 
@@ -876,6 +878,31 @@ TEST_P(tfidf_test, test_query) {
       );
       ASSERT_EQ(expected_entry.second, entry.second);
     }
+  }
+
+  // all
+  {
+    irs::all filter;
+    filter.boost(1.5f);
+
+    irs::bytes_ref actual_value;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto& score = docs->attributes().get<irs::score>();
+    ASSERT_TRUE(bool(score));
+
+    // ensure that we avoid COW for pre c++11 std::basic_string
+    const irs::bytes_ref score_value = score->value();
+
+    irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
+    while(docs->next()) {
+      ASSERT_EQ(doc, docs->value());
+      score->evaluate();
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ++doc;
+      ASSERT_EQ(1.5f, *reinterpret_cast<const float_t*>(score_value.c_str()));
+    }
+    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
   }
 }
 

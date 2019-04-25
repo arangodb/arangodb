@@ -37,8 +37,7 @@ NS_ROOT
 typedef block_pool<byte_type, 32768> byte_block_pool;
 
 struct posting {
-  doc_id_t doc_code;
-  doc_id_t doc;
+  uint64_t doc_code;
   // ...........................................................................
   // store pointers to data in the following way:
   // [0] - pointer to freq stream end
@@ -47,6 +46,7 @@ struct posting {
   // [3] - pointer to prox stream begin
   // ...........................................................................
   size_t int_start;
+  doc_id_t doc;
   uint32_t freq;
   uint32_t pos;
   uint32_t offs = 0;

@@ -87,25 +87,25 @@ set(IResearch_core_sources
   ./utils/string.cpp
   ./analysis/analyzer.cpp
   ./analysis/analyzers.cpp
-  ./analysis/token_attributes.cpp 
-  ./analysis/token_streams.cpp 
-  ./error/error.cpp 
-  ./formats/formats.cpp 
-  ./formats/format_utils.cpp 
-  ./formats/skip_list.cpp 
+  ./analysis/token_attributes.cpp
+  ./analysis/token_streams.cpp
+  ./error/error.cpp
+  ./formats/formats.cpp
+  ./formats/format_utils.cpp
+  ./formats/skip_list.cpp
   ./index/directory_reader.cpp
   ./index/field_data.cpp
-  ./index/field_meta.cpp 
-  ./index/file_names.cpp 
-  ./index/index_meta.cpp 
-  ./index/index_writer.cpp 
+  ./index/field_meta.cpp
+  ./index/file_names.cpp
+  ./index/index_meta.cpp
+  ./index/index_writer.cpp
   ./index/index_reader.cpp
   ./index/iterators.cpp
   ./index/merge_writer.cpp
   ./index/postings.cpp
-  ./index/segment_reader.cpp 
-  ./index/segment_writer.cpp 
-  ./index/transaction_store.cpp
+  ./index/segment_reader.cpp
+  ./index/segment_writer.cpp
+  ./index/sorted_column.cpp
   ./iql/parser.cc
   ./iql/parser_common.cpp
   ./iql/parser_context.cpp
@@ -126,6 +126,7 @@ set(IResearch_core_sources
   ./search/phrase_filter.cpp
   ./search/column_existence_filter.cpp
   ./search/same_position_filter.cpp
+  ./search/sorting_doc_iterator.cpp
   ./search/range_query.cpp
   ./search/term_query.cpp
   ./search/boolean_filter.cpp
@@ -157,7 +158,6 @@ set(IResearch_core_sources
   ./utils/utf8_path.cpp
   ./utils/locale_utils.cpp
   ./utils/log.cpp
-  ./utils/unicode_utils.cpp
   ./utils/so_utils.cpp
   ./utils/process_utils.cpp
   ./utils/network_utils.cpp
@@ -186,7 +186,6 @@ set(IResearch_core_headers
   ./index/iterators.hpp
   ./index/segment_reader.hpp
   ./index/segment_writer.hpp
-  ./index/transaction_store.hpp
   ./index/index_writer.hpp
   ./iql/parser_common.hpp
   ./iql/parser_context.hpp
@@ -241,7 +240,6 @@ set(IResearch_core_headers
   ./utils/log.hpp
   ./utils/thread_utils.hpp
   ./utils/object_pool.hpp
-  ./utils/unicode_utils.hpp
   ./utils/so_utils.hpp
   ./utils/process_utils.hpp
   ./utils/network_utils.hpp
@@ -496,11 +494,13 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${BFD_SHARED_LIBS}
   ${Boost_SHARED_sharedRT_LIBRARIES}
   ${Lz4_SHARED_LIB}
-  ${ICU_LIBS}
+  $<TARGET_PROPERTY:icu-shared,IMPORTED_LOCATION> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
+  $<TARGET_PROPERTY:icu-shared,INTERFACE_LINK_LIBRARIES> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
   ${Unwind_SHARED_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_SHARED}
+  ${ATOMIC_LIBRARY}
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
@@ -530,7 +530,8 @@ if(MSVC)
     ${BFD_SHARED_LIBS}
     ${Boost_SHARED_sharedRT_LIBRARIES}
     ${Lz4_SHARED_LIB}
-    ${ICU_LIBS}
+    $<TARGET_PROPERTY:icu-shared,IMPORTED_LOCATION> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
+    $<TARGET_PROPERTY:icu-shared,INTERFACE_LINK_LIBRARIES> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
     ${Unwind_SHARED_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
@@ -564,7 +565,9 @@ if (MSVC)
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
     ${Unwind_STATIC_LIBS}
-    ${ICU_LIBS}
+    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
+    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
+    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
@@ -623,7 +626,9 @@ if (MSVC)
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_RELEASE}>"
     ${Unwind_STATIC_LIBS}
-    ${ICU_LIBS}
+    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
+    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
+    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt>"
@@ -683,7 +688,9 @@ elseif (APPLE)
     ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
     ${Unwind_STATIC_LIBS}
-    ${ICU_LIBS}
+    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
+    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
+    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
@@ -742,7 +749,9 @@ else()
     ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
     ${Unwind_STATIC_LIBS}
-    ${ICU_LIBS}
+    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
+    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
+    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"

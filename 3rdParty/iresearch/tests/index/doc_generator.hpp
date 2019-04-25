@@ -217,7 +217,7 @@ class particle: irs::util::noncopyable {
 
   ifield& back() const { return *fields_.back(); }
   bool contains(const irs::string_ref& name) const;
-  std::vector<const ifield*> find(const irs::string_ref& name) const;
+  std::vector<ifield::ptr> find(const irs::string_ref& name) const;
 
   template<typename T>
   T& back() const {
@@ -263,6 +263,7 @@ class particle: irs::util::noncopyable {
 struct document: irs::util::noncopyable {
   document() = default;
   document(document&& rhs) NOEXCEPT;
+  virtual ~document() = default;
 
   void insert(const ifield::ptr& field, bool indexed = true, bool stored = true) {
     if (indexed) this->indexed.push_back(field);
@@ -281,6 +282,7 @@ struct document: irs::util::noncopyable {
 
   particle indexed;
   particle stored;
+  ifield::ptr sorted;
 }; // document
 
 /* -------------------------------------------------------------------
@@ -289,13 +291,56 @@ struct document: irs::util::noncopyable {
 
 /* Base class for document generators */
 struct doc_generator_base {
-  DECLARE_UNIQUE_PTR( doc_generator_base );
+  DECLARE_UNIQUE_PTR(doc_generator_base);
   DEFINE_FACTORY_INLINE(doc_generator_base)
 
   virtual const tests::document* next() = 0;
   virtual void reset() = 0;
 
-  virtual ~doc_generator_base() { }
+  virtual ~doc_generator_base() = default;
+};
+
+class limiting_doc_generator : public doc_generator_base {
+ public:
+  limiting_doc_generator(doc_generator_base& gen, size_t offset, size_t limit)
+    : gen_(&gen), begin_(offset), end_(offset + limit) {
+  }
+
+  virtual const tests::document* next() override {
+    while (pos_ < begin_) {
+      if (!gen_->next()) {
+        // exhausted
+        pos_ = end_;
+        return nullptr;
+      }
+
+      ++pos_;
+    }
+
+    if (pos_ < end_) {
+      auto* doc = gen_->next();
+      if (!doc) {
+        // exhausted
+        pos_ = end_;
+        return nullptr;
+      }
+      ++pos_;
+      return doc;
+    }
+
+    return nullptr;
+  }
+
+  virtual void reset() override {
+    pos_ = 0;
+    gen_->reset();
+  }
+
+ private:
+  doc_generator_base* gen_;
+  size_t pos_{0};
+  const size_t begin_;
+  const size_t end_;
 };
 
 /* Generates documents from UTF-8 encoded file 
@@ -465,7 +510,7 @@ bool insert(
   auto ctx = writer.documents();
   auto doc = ctx.insert();
 
-  return doc.insert(irs::action::index, ibegin, iend);
+  return doc.insert<irs::Action::INDEX>(ibegin, iend);
 }
 
 template<typename Indexed, typename Stored>
@@ -476,8 +521,25 @@ bool insert(
   auto ctx = writer.documents();
   auto doc = ctx.insert();
 
-  return doc.insert(irs::action::index, ibegin, iend)
-         && doc.insert(irs::action::store, sbegin, send);
+  return doc.insert<irs::Action::INDEX>(ibegin, iend)
+         && doc.insert<irs::Action::STORE>(sbegin, send);
+}
+
+template<typename Indexed, typename Stored, typename Sorted>
+bool insert(
+    irs::index_writer& writer,
+    Indexed ibegin, Indexed iend,
+    Stored sbegin, Stored send,
+    Sorted sorted = nullptr) {
+  auto ctx = writer.documents();
+  auto doc = ctx.insert();
+
+  if (sorted && !doc.insert<irs::Action::STORE_SORTED>(*sorted)) {
+    return false;
+  }
+
+  return doc.insert<irs::Action::INDEX>(ibegin, iend)
+         && doc.insert<irs::Action::STORE>(sbegin, send);
 }
 
 template<typename Indexed>
@@ -488,7 +550,7 @@ bool update(
   auto ctx = writer.documents();
   auto doc = ctx.replace(filter);
 
-  return doc.insert(irs::action::index, ibegin, iend);
+  return doc.insert<irs::Action::INDEX>(ibegin, iend);
 }
 
 template<typename Indexed, typename Stored>
@@ -500,8 +562,8 @@ bool update(
   auto ctx = writer.documents();
   auto doc = ctx.replace(filter);
 
-  return doc.insert(irs::action::index, ibegin, iend)
-         && doc.insert(irs::action::store, sbegin, send);
+  return doc.insert<irs::Action::INDEX>(ibegin, iend)
+         && doc.insert<irs::Action::STORE>(sbegin, send);
 }
 
 template<typename Indexed>
@@ -512,7 +574,7 @@ bool update(
   auto ctx = writer.documents();
   auto doc = ctx.replace(std::move(filter));
 
-  return doc.insert(irs::action::index, ibegin, iend);
+  return doc.insert<irs::Action::INDEX>(ibegin, iend);
 }
 
 template<typename Indexed, typename Stored>
@@ -524,8 +586,8 @@ bool update(
   auto ctx = writer.documents();
   auto doc = ctx.replace(std::move(filter));
 
-  return doc.insert(irs::action::index, ibegin, iend)
-         && doc.insert(irs::action::store, sbegin, send);
+  return doc.insert<irs::Action::INDEX>(ibegin, iend)
+         && doc.insert<irs::Action::STORE>(sbegin, send);
 }
 
 template<typename Indexed>
@@ -536,7 +598,7 @@ bool update(
   auto ctx = writer.documents();
   auto doc = ctx.replace(filter);
 
-  return doc.insert(irs::action::index, ibegin, iend);
+  return doc.insert<irs::Action::INDEX>(ibegin, iend);
 }
 
 template<typename Indexed, typename Stored>
@@ -548,8 +610,8 @@ bool update(
   auto ctx = writer.documents();
   auto doc = ctx.replace(filter);
 
-  return doc.insert(irs::action::index, ibegin, iend)
-         && doc.insert(irs::action::store, sbegin, send);
+  return doc.insert<irs::Action::INDEX>(ibegin, iend)
+         && doc.insert<irs::Action::STORE>(sbegin, send);
 }
 
 NS_END // tests

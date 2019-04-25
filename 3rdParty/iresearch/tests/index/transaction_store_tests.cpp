@@ -41,8 +41,8 @@ void add_segment(
 
   while ((src = gen.next())) {
     auto inserter = [&src](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, src->indexed.begin(), src->indexed.end());
-      doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
+      doc.insert<irs::Action::INDEX>(src->indexed.begin(), src->indexed.end());
+      doc.insert<irs::Action::STORE>(src->stored.begin(), src->stored.end());
       return false; // break the loop
     };
 
@@ -151,8 +151,8 @@ class transaction_store_tests: public test_base {
           irs::store_writer writer(store);
           csv_doc_template_t csv_doc_template;
           auto csv_doc_inserter = [&csv_doc_template](irs::store_writer::document& doc)->bool {
-            doc.insert(irs::action::index, csv_doc_template.indexed.begin(), csv_doc_template.indexed.end());
-            doc.insert(irs::action::store, csv_doc_template.stored.begin(), csv_doc_template.stored.end());
+            doc.insert<irs::Action::INDEX>(csv_doc_template.indexed.begin(), csv_doc_template.indexed.end());
+            doc.insert<irs::Action::STORE>(csv_doc_template.stored.begin(), csv_doc_template.stored.end());
             return false;
           };
           tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
@@ -276,8 +276,8 @@ class transaction_store_tests: public test_base {
               ASSERT_TRUE(writer.update(
                 std::move(filter),
                 [&csv_doc_template](irs::store_writer::document& doc)->bool {
-                  doc.insert(irs::action::index, csv_doc_template.indexed.begin(), csv_doc_template.indexed.end());
-                  doc.insert(irs::action::store, csv_doc_template.stored.begin(), csv_doc_template.stored.end());
+                  doc.insert<irs::Action::INDEX>(csv_doc_template.indexed.begin(), csv_doc_template.indexed.end());
+                  doc.insert<irs::Action::STORE>(csv_doc_template.stored.begin(), csv_doc_template.stored.end());
                   return false;
                 }
               ));
@@ -453,7 +453,7 @@ TEST_F(transaction_store_tests, check_fields_order) {
     auto inserter = [&field, &names](irs::store_writer::document& doc)->bool {
       for (auto& name: names) {
         field.name_ = name;
-        doc.insert(irs::action::index, field);
+        doc.insert<irs::Action::INDEX>(field);
       }
       return false; // break the loop
     };
@@ -636,7 +636,7 @@ TEST_F(transaction_store_tests, check_attributes_order) {
     auto inserter = [&field, &names](irs::store_writer::document& doc) {
       for (auto& name : names) {
         field.name_ = name;
-        doc.insert(irs::action::store, field);
+        doc.insert<irs::Action::STORE>(field);
       }
       return false; // break the loop
     };
@@ -812,23 +812,23 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
 
     // fields + attributes
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc4](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end());
-      doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
+      doc.insert<irs::Action::INDEX>(doc4->indexed.begin(), doc4->indexed.end());
+      doc.insert<irs::Action::STORE>(doc4->stored.begin(), doc4->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -1112,8 +1112,8 @@ TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
 
     while ((src = gen.next())) {
       auto inserter = [&src](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, src->indexed.begin(), src->indexed.end());
-        doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
+        doc.insert<irs::Action::INDEX>(src->indexed.begin(), src->indexed.end());
+        doc.insert<irs::Action::STORE>(src->stored.begin(), src->stored.end());
         return false; // break the loop
       };
 
@@ -1553,13 +1553,13 @@ TEST_F(transaction_store_tests, cleanup_store) {
   {
     irs::store_writer writer(store);
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -1571,8 +1571,8 @@ TEST_F(transaction_store_tests, cleanup_store) {
     irs::store_writer writer(store);
     writer.remove(*query_doc2.filter);
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -1611,8 +1611,8 @@ TEST_F(transaction_store_tests, cleanup_store) {
     irs::store_writer writer(store);
     writer.remove(*query_doc3.filter);
     ASSERT_TRUE(writer.insert([doc4](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end());
-      doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
+      doc.insert<irs::Action::INDEX>(doc4->indexed.begin(), doc4->indexed.end());
+      doc.insert<irs::Action::STORE>(doc4->stored.begin(), doc4->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -1657,8 +1657,8 @@ TEST_F(transaction_store_tests, clear_store) {
   {
     irs::store_writer writer(store);
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -1692,8 +1692,8 @@ TEST_F(transaction_store_tests, clear_store) {
   // modifications that should not apply because of call to clear()
   {
     ASSERT_TRUE(writer0.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     writer0.remove(*query_doc3.filter);
@@ -1714,8 +1714,8 @@ TEST_F(transaction_store_tests, clear_store) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -1772,8 +1772,8 @@ TEST_F(transaction_store_tests, clear_store) {
     irs::store_writer writer(store); // writer for generation #0
 
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     writer.remove(std::move(query_doc3.filter));
@@ -1815,8 +1815,8 @@ TEST_F(transaction_store_tests, flush_store) {
   {
     irs::store_writer writer(store);
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -1851,8 +1851,8 @@ TEST_F(transaction_store_tests, flush_store) {
   {
     irs::store_writer writer(store);
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -1940,19 +1940,19 @@ TEST_F(transaction_store_tests, read_empty_doc_attributes) {
 
     // fields only
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc4](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc4->indexed.begin(), doc4->indexed.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -2012,28 +2012,28 @@ TEST_F(transaction_store_tests, read_multipart_doc_attributes) {
 
     // fields only
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc4](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end());
-      doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
+      doc.insert<irs::Action::INDEX>(doc4->indexed.begin(), doc4->indexed.end());
+      doc.insert<irs::Action::STORE>(doc4->stored.begin(), doc4->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc5](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc5->indexed.begin(), doc5->indexed.end());
-      doc.insert(irs::action::store, doc5->stored.begin(), doc5->stored.end());
+      doc.insert<irs::Action::INDEX>(doc5->indexed.begin(), doc5->indexed.end());
+      doc.insert<irs::Action::STORE>(doc5->stored.begin(), doc5->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -2196,8 +2196,8 @@ TEST_F(transaction_store_tests, check_writer_open_modes) {
     );
     tests::document const* doc1 = gen.next();
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -2230,15 +2230,15 @@ TEST_F(transaction_store_tests, writer_transaction_isolation) {
 
   irs::store_writer writer0(store); // start transaction #0
   ASSERT_TRUE(writer0.insert([doc1](irs::store_writer::document& doc)->bool {
-    doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-    doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+    doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+    doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
     return false;
   }));
 
   irs::store_writer writer1(store); // start transaction #1
   ASSERT_TRUE(writer1.insert([doc2](irs::store_writer::document& doc)->bool {
-    doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-    doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+    doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+    doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
     return false;
   }));
   ASSERT_TRUE(writer1.commit()); // finish transaction #1
@@ -2405,54 +2405,54 @@ TEST_F(transaction_store_tests, writer_bulk_insert) {
     switch (i) {
       case 0: { // doc0
         indexed_field indexed("indexed", "doc0");
-        state &= doc.insert(irs::action::index, indexed);
+        state &= doc.insert<irs::Action::INDEX>(indexed);
         stored_field stored("stored", "doc0");
-        state &= doc.insert(irs::action::store, stored);
+        state &= doc.insert<irs::Action::STORE>(stored);
         indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc0");
-        state &= doc.insert(irs::action::index_store, indexed_and_stored);
+        state &= doc.insert<irs::Action::INDEX | irs::Action::STORE>(indexed_and_stored);
       } break;
       case 1: { // doc1
         // indexed and stored fields can be indexed/stored only
         indexed_and_stored_field indexed("indexed", "doc1");
-        state &= doc.insert(irs::action::index, indexed);
+        state &= doc.insert<irs::Action::INDEX>(indexed);
         indexed_and_stored_field stored("stored", "doc1");
-        state &= doc.insert(irs::action::store, stored);
+        state &= doc.insert<irs::Action::STORE>(stored);
       } break;
       case 2: { // doc2 (will be dropped since it contains invalid stored field)
         indexed_and_stored_field indexed("indexed", "doc2");
-        state &= doc.insert(irs::action::index, indexed);
+        state &= doc.insert<irs::Action::INDEX>(indexed);
         stored_field stored("stored", "doc2", false);
-        state &= doc.insert(irs::action::store, stored);
+        state &= doc.insert<irs::Action::STORE>(stored);
       } break;
       case 3: { // doc3 (will be dropped since it contains invalid indexed field)
         indexed_field indexed("indexed", "doc3", false);
-        state &= doc.insert(irs::action::index, indexed);
+        state &= doc.insert<irs::Action::INDEX>(indexed);
         stored_field stored("stored", "doc3");
-        state &= doc.insert(irs::action::store, stored);
+        state &= doc.insert<irs::Action::STORE>(stored);
       } break;
       case 4: { // doc4 (will be dropped since it contains invalid indexed and stored field)
         indexed_and_stored_field indexed_and_stored("indexed", "doc4", false, false);
-        state &= doc.insert(irs::action::index_store, indexed_and_stored);
+        state &= doc.insert<irs::Action::INDEX | irs::Action::STORE>(indexed_and_stored);
         stored_field stored("stored", "doc4");
-        state &= doc.insert(irs::action::store, stored);
+        state &= doc.insert<irs::Action::STORE>(stored);
       } break;
       case 5: { // doc5 (will be dropped since it contains failed stored field)
         indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc5", false); // will fail on store, but will pass on index
-        state &= doc.insert(irs::action::index_store, indexed_and_stored);
+        state &= doc.insert<irs::Action::INDEX | irs::Action::STORE>(indexed_and_stored);
         stored_field stored("stored", "doc5");
-        state &= doc.insert(irs::action::store, stored);
+        state &= doc.insert<irs::Action::STORE>(stored);
       } break;
       case 6: { // doc6 (will be dropped since it contains failed indexed field)
         indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc6", true, false); // will fail on index, but will pass on store
-        state &= doc.insert(irs::action::index_store, indexed_and_stored);
+        state &= doc.insert<irs::Action::INDEX | irs::Action::STORE>(indexed_and_stored);
         stored_field stored("stored", "doc6");
-        state &= doc.insert(irs::action::store, stored);
+        state &= doc.insert<irs::Action::STORE>(stored);
       } break;
       case 7: { // valid insertion of last doc will mark bulk insert result as valid
         indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc7", true, true); // will be indexed, and will be stored
-        state &= doc.insert(irs::action::index_store, indexed_and_stored);
+        state &= doc.insert<irs::Action::INDEX | irs::Action::STORE>(indexed_and_stored);
         stored_field stored("stored", "doc7");
-        state &= doc.insert(irs::action::store, stored);
+        state &= doc.insert<irs::Action::STORE>(stored);
       } break;
     }
 
@@ -2563,8 +2563,8 @@ TEST_F(transaction_store_tests, writer_begin_rollback) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
   }
@@ -2579,16 +2579,16 @@ TEST_F(transaction_store_tests, writer_begin_rollback) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
 
     ASSERT_TRUE(writer.commit());
 
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
   }
@@ -2647,7 +2647,7 @@ TEST_F(transaction_store_tests, insert_null_empty_term) {
     doc0.emplace_back(std::string("name"), irs::string_ref("", 0));
     doc0.emplace_back(std::string("name"), irs::string_ref::NIL);
     ASSERT_TRUE(writer.insert([&doc0](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc0.begin(), doc0.end());
+      doc.insert<irs::Action::INDEX>(doc0.begin(), doc0.end());
       return false;
     }));
 
@@ -2657,7 +2657,7 @@ TEST_F(transaction_store_tests, insert_null_empty_term) {
     doc1.emplace_back(std::string("name1"), irs::string_ref("", 0));
     doc1.emplace_back(std::string("name"), irs::string_ref::NIL);
     ASSERT_TRUE(writer.insert([&doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1.begin(), doc1.end());
+      doc.insert<irs::Action::INDEX>(doc1.begin(), doc1.end());
       return false;
     }));
 
@@ -2745,8 +2745,8 @@ TEST_F(transaction_store_tests, concurrent_read_single_column_smoke_mt) {
 
     for (auto* src = gen.next(); src; src = gen.next()) {
       ASSERT_TRUE(writer.insert([src](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, src->indexed.begin(), src->indexed.end());
-        doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
+        doc.insert<irs::Action::INDEX>(src->indexed.begin(), src->indexed.end());
+        doc.insert<irs::Action::STORE>(src->stored.begin(), src->stored.end());
         return false;
       }));
       expected_docs.push_back(src);
@@ -2855,8 +2855,8 @@ TEST_F(transaction_store_tests, concurrent_read_multiple_columns_mt) {
 
     while ((src = gen.next())) {
       ASSERT_TRUE(writer.insert([src](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, src->indexed.begin(), src->indexed.end());
-        doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
+        doc.insert<irs::Action::INDEX>(src->indexed.begin(), src->indexed.end());
+        doc.insert<irs::Action::STORE>(src->stored.begin(), src->stored.end());
         return false;
       }));
     }
@@ -3275,8 +3275,8 @@ TEST_F(transaction_store_tests, concurrent_add_mt) {
         auto* src = docs[i];
 
         ASSERT_TRUE(writer.insert([src](irs::store_writer::document& doc)->bool {
-          doc.insert(irs::action::index, src->indexed.begin(), src->indexed.end());
-          doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
+          doc.insert<irs::Action::INDEX>(src->indexed.begin(), src->indexed.end());
+          doc.insert<irs::Action::STORE>(src->stored.begin(), src->stored.end());
           return false;
         }));
 
@@ -3295,8 +3295,8 @@ TEST_F(transaction_store_tests, concurrent_add_mt) {
         auto* src = docs[i];
 
         ASSERT_TRUE(writer.insert([src](irs::store_writer::document& doc)->bool {
-          doc.insert(irs::action::index, src->indexed.begin(), src->indexed.end());
-          doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
+          doc.insert<irs::Action::INDEX>(src->indexed.begin(), src->indexed.end());
+          doc.insert<irs::Action::STORE>(src->stored.begin(), src->stored.end());
           return false;
         }));
 
@@ -3339,8 +3339,8 @@ TEST_F(transaction_store_tests, concurrent_add_flush_mt) {
         auto* src = docs[i];
 
         ASSERT_TRUE(writer.insert([src](irs::store_writer::document& doc)->bool {
-          doc.insert(irs::action::index, src->indexed.begin(), src->indexed.end());
-          doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
+          doc.insert<irs::Action::INDEX>(src->indexed.begin(), src->indexed.end());
+          doc.insert<irs::Action::STORE>(src->stored.begin(), src->stored.end());
           return false;
         }));
 
@@ -3359,8 +3359,8 @@ TEST_F(transaction_store_tests, concurrent_add_flush_mt) {
         auto* src = docs[i];
 
         ASSERT_TRUE(writer.insert([src](irs::store_writer::document& doc)->bool {
-          doc.insert(irs::action::index, src->indexed.begin(), src->indexed.end());
-          doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
+          doc.insert<irs::Action::INDEX>(src->indexed.begin(), src->indexed.end());
+          doc.insert<irs::Action::STORE>(src->stored.begin(), src->stored.end());
           return false;
         }));
 
@@ -3448,8 +3448,8 @@ TEST_F(transaction_store_tests, concurrent_add_remove_mt) {
       size_t records = 0;
       auto* src = docs[0];
       ASSERT_TRUE(writer.insert([src](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, src->indexed.begin(), src->indexed.end());
-        doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
+        doc.insert<irs::Action::INDEX>(src->indexed.begin(), src->indexed.end());
+        doc.insert<irs::Action::STORE>(src->stored.begin(), src->stored.end());
         return false;
       }));
       ASSERT_TRUE(writer.commit());
@@ -3458,8 +3458,8 @@ TEST_F(transaction_store_tests, concurrent_add_remove_mt) {
       for (size_t i = 2, count = docs.size(); i < count; i += 2) { // skip first doc
         src = docs[i];
         ASSERT_TRUE(writer.insert([src](irs::store_writer::document& doc)->bool {
-          doc.insert(irs::action::index, src->indexed.begin(), src->indexed.end());
-          doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
+          doc.insert<irs::Action::INDEX>(src->indexed.begin(), src->indexed.end());
+          doc.insert<irs::Action::STORE>(src->stored.begin(), src->stored.end());
           return false;
         }));
 
@@ -3477,8 +3477,8 @@ TEST_F(transaction_store_tests, concurrent_add_remove_mt) {
       for (size_t i = 1, count = docs.size(); i < count; i += 2) {
         auto* src = docs[i];
         ASSERT_TRUE(writer.insert([src](irs::store_writer::document& doc)->bool {
-          doc.insert(irs::action::index, src->indexed.begin(), src->indexed.end());
-          doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
+          doc.insert<irs::Action::INDEX>(src->indexed.begin(), src->indexed.end());
+          doc.insert<irs::Action::STORE>(src->stored.begin(), src->stored.end());
           return false;
         }));
 
@@ -3555,8 +3555,8 @@ TEST_F(transaction_store_tests, doc_removal) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -3585,13 +3585,13 @@ TEST_F(transaction_store_tests, doc_removal) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     writer.remove(*(query_doc1.filter.get()));
@@ -3621,13 +3621,13 @@ TEST_F(transaction_store_tests, doc_removal) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     writer.remove(std::move(query_doc1.filter));
@@ -3658,13 +3658,13 @@ TEST_F(transaction_store_tests, doc_removal) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     writer.remove(std::shared_ptr<irs::filter>(std::move(query_doc1.filter)));
@@ -3695,14 +3695,14 @@ TEST_F(transaction_store_tests, doc_removal) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     writer.remove(std::move(query_doc2.filter)); // not present yet
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -3734,14 +3734,14 @@ TEST_F(transaction_store_tests, doc_removal) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     writer.remove(std::move(query_doc1.filter));
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -3771,18 +3771,18 @@ TEST_F(transaction_store_tests, doc_removal) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
     writer.remove(std::move(query_doc3.filter));
@@ -3814,20 +3814,20 @@ TEST_F(transaction_store_tests, doc_removal) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
     writer.remove(std::move(query_doc1_doc2.filter));
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -3856,19 +3856,19 @@ TEST_F(transaction_store_tests, doc_removal) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
     writer.remove(std::move(query_doc2.filter));
@@ -3902,24 +3902,24 @@ TEST_F(transaction_store_tests, doc_removal) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc4](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end());
-      doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
+      doc.insert<irs::Action::INDEX>(doc4->indexed.begin(), doc4->indexed.end());
+      doc.insert<irs::Action::STORE>(doc4->stored.begin(), doc4->stored.end());
       return false;
     }));
     writer.remove(std::move(query_doc1_doc3.filter));
@@ -3955,52 +3955,52 @@ TEST_F(transaction_store_tests, doc_removal) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     })); // A
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     })); // B
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     })); // C
     ASSERT_TRUE(writer.insert([doc4](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end());
-      doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
+      doc.insert<irs::Action::INDEX>(doc4->indexed.begin(), doc4->indexed.end());
+      doc.insert<irs::Action::STORE>(doc4->stored.begin(), doc4->stored.end());
       return false;
     })); // D
     writer.remove(std::move(query_doc4.filter));
     ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.insert([doc5](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc5->indexed.begin(), doc5->indexed.end());
-      doc.insert(irs::action::store, doc5->stored.begin(), doc5->stored.end());
+      doc.insert<irs::Action::INDEX>(doc5->indexed.begin(), doc5->indexed.end());
+      doc.insert<irs::Action::STORE>(doc5->stored.begin(), doc5->stored.end());
       return false;
     })); // E
     ASSERT_TRUE(writer.insert([doc6](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc6->indexed.begin(), doc6->indexed.end());
-      doc.insert(irs::action::store, doc6->stored.begin(), doc6->stored.end());
+      doc.insert<irs::Action::INDEX>(doc6->indexed.begin(), doc6->indexed.end());
+      doc.insert<irs::Action::STORE>(doc6->stored.begin(), doc6->stored.end());
       return false;
     })); // F
     ASSERT_TRUE(writer.insert([doc7](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc7->indexed.begin(), doc7->indexed.end());
-      doc.insert(irs::action::store, doc7->stored.begin(), doc7->stored.end());
+      doc.insert<irs::Action::INDEX>(doc7->indexed.begin(), doc7->indexed.end());
+      doc.insert<irs::Action::STORE>(doc7->stored.begin(), doc7->stored.end());
       return false;
     })); // G
     writer.remove(std::move(query_doc3_doc7.filter));
     ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.insert([doc8](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc8->indexed.begin(), doc8->indexed.end());
-      doc.insert(irs::action::store, doc8->stored.begin(), doc8->stored.end());
+      doc.insert<irs::Action::INDEX>(doc8->indexed.begin(), doc8->indexed.end());
+      doc.insert<irs::Action::STORE>(doc8->stored.begin(), doc8->stored.end());
       return false;
     })); // H
     ASSERT_TRUE(writer.insert([doc9](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc9->indexed.begin(), doc9->indexed.end());
-      doc.insert(irs::action::store, doc9->stored.begin(), doc9->stored.end());
+      doc.insert<irs::Action::INDEX>(doc9->indexed.begin(), doc9->indexed.end());
+      doc.insert<irs::Action::STORE>(doc9->stored.begin(), doc9->stored.end());
       return false;
     })); // I
     writer.remove(std::move(query_doc2_doc6_doc9.filter));
@@ -4056,15 +4056,15 @@ TEST_F(transaction_store_tests, doc_update) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.update(
       *(query_doc1.filter.get()),
       [doc2](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-        doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+        doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+        doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
         return false;
       }
     ));
@@ -4094,15 +4094,15 @@ TEST_F(transaction_store_tests, doc_update) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.update(
       std::move(query_doc1.filter),
       [doc2](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-        doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+        doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+        doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
         return false;
       }
     ));
@@ -4132,15 +4132,15 @@ TEST_F(transaction_store_tests, doc_update) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.update(
       std::shared_ptr<irs::filter>(std::move(query_doc1.filter)),
       [doc2](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-        doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+        doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+        doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
         return false;
       }
     ));
@@ -4170,21 +4170,21 @@ TEST_F(transaction_store_tests, doc_update) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.update(
       std::move(query_doc1.filter),
       [doc3](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-        doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+        doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+        doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
         return false;
       }
     ));
@@ -4219,31 +4219,31 @@ TEST_F(transaction_store_tests, doc_update) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.update(
       std::move(query_doc1.filter),
       [doc2](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-        doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+        doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+        doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
         return false;
       }
     ));
     ASSERT_TRUE(writer.update(
       std::move(query_doc2.filter),
         [doc3](irs::store_writer::document& doc)->bool {
-          doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-          doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+          doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+          doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
           return false;
         }
       ));
     ASSERT_TRUE(writer.update(
       std::move(query_doc3.filter),
       [doc4](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end());
-        doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
+        doc.insert<irs::Action::INDEX>(doc4->indexed.begin(), doc4->indexed.end());
+        doc.insert<irs::Action::STORE>(doc4->stored.begin(), doc4->stored.end());
         return false;
       }
     ));
@@ -4275,16 +4275,16 @@ TEST_F(transaction_store_tests, doc_update) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.update(
       std::move(query_doc1.filter),
       [doc2](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-        doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+        doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+        doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
         return false;
       }
     ));
@@ -4292,8 +4292,8 @@ TEST_F(transaction_store_tests, doc_update) {
     ASSERT_TRUE(writer.update(
       std::move(query_doc2.filter),
       [doc3](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-        doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+        doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+        doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
         return false;
       }
     ));
@@ -4301,8 +4301,8 @@ TEST_F(transaction_store_tests, doc_update) {
     ASSERT_TRUE(writer.update(
       std::move(query_doc3.filter),
       [doc4](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end());
-        doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
+        doc.insert<irs::Action::INDEX>(doc4->indexed.begin(), doc4->indexed.end());
+        doc.insert<irs::Action::STORE>(doc4->stored.begin(), doc4->stored.end());
         return false;
       }
     ));
@@ -4332,16 +4332,16 @@ TEST_F(transaction_store_tests, doc_update) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.update(
       std::move(query_doc2.filter),
       [doc2](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-        doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+        doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+        doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
         return false;
       }
     )); // non-existent document
@@ -4371,20 +4371,20 @@ TEST_F(transaction_store_tests, doc_update) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.update(
       *(query_doc2.filter),
       [doc3](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-        doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+        doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+        doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
         return false;
       }
     ));
@@ -4418,21 +4418,21 @@ TEST_F(transaction_store_tests, doc_update) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.update(
       *(query_doc2.filter),
       [doc3](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-        doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+        doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+        doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
         return false;
       }
     ));
@@ -4467,21 +4467,21 @@ TEST_F(transaction_store_tests, doc_update) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     writer.remove(*(query_doc2.filter));
     ASSERT_TRUE(writer.update(
       *(query_doc2.filter),
       [doc3](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-        doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+        doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+        doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
         return false;
       }
     )); // update no longer existent
@@ -4511,13 +4511,13 @@ TEST_F(transaction_store_tests, doc_update) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -4526,8 +4526,8 @@ TEST_F(transaction_store_tests, doc_update) {
     ASSERT_TRUE(writer.update(
       *(query_doc2.filter),
       [doc3](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-        doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+        doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+        doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
         return false;
       }
     )); // update no longer existent
@@ -4558,29 +4558,29 @@ TEST_F(transaction_store_tests, doc_update) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     writer.remove(*(query_doc2.filter));
     ASSERT_TRUE(writer.update(
       *(query_doc2.filter),
       [doc3](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-        doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+        doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+        doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
         return false;
       }
     ));
     ASSERT_TRUE(writer.update(
       *(query_doc3.filter),
       [doc4](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end());
-        doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
+        doc.insert<irs::Action::INDEX>(doc4->indexed.begin(), doc4->indexed.end());
+        doc.insert<irs::Action::STORE>(doc4->stored.begin(), doc4->stored.end());
         return false;
       }
     ));
@@ -4611,13 +4611,13 @@ TEST_F(transaction_store_tests, doc_update) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -4626,8 +4626,8 @@ TEST_F(transaction_store_tests, doc_update) {
     ASSERT_TRUE(writer.update(
       *(query_doc2.filter),
       [doc3](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-        doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+        doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+        doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
         return false;
       }
     ));
@@ -4635,8 +4635,8 @@ TEST_F(transaction_store_tests, doc_update) {
     ASSERT_TRUE(writer.update(
       *(query_doc3.filter),
       [doc4](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end());
-        doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
+        doc.insert<irs::Action::INDEX>(doc4->indexed.begin(), doc4->indexed.end());
+        doc.insert<irs::Action::STORE>(doc4->stored.begin(), doc4->stored.end());
         return false;
       }
     ));
@@ -4712,25 +4712,25 @@ TEST_F(transaction_store_tests, doc_update) {
     const_cast<tests::document*>(doc4)->insert(test_field3, true, true); // inject field
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     // field features subset
     ASSERT_FALSE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
     // serializer returns false
     ASSERT_FALSE(writer.insert([doc4](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end());
-      doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
+      doc.insert<irs::Action::INDEX>(doc4->indexed.begin(), doc4->indexed.end());
+      doc.insert<irs::Action::STORE>(doc4->stored.begin(), doc4->stored.end());
       return false;
     }));
     // field features differ for doc3, doc5 OK
@@ -4738,8 +4738,8 @@ TEST_F(transaction_store_tests, doc_update) {
     ASSERT_FALSE(writer.update(
       *(query_doc1.filter.get()),
       [&doc53](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc53.back()->indexed.begin(), doc53.back()->indexed.end());
-        doc.insert(irs::action::store, doc53.back()->stored.begin(), doc53.back()->stored.end());
+        doc.insert<irs::Action::INDEX>(doc53.back()->indexed.begin(), doc53.back()->indexed.end());
+        doc.insert<irs::Action::STORE>(doc53.back()->stored.begin(), doc53.back()->stored.end());
         doc53.pop_back();
         return !doc53.empty();
       }
@@ -4834,13 +4834,13 @@ TEST_F(transaction_store_tests, refresh_reader) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -4925,13 +4925,13 @@ TEST_F(transaction_store_tests, refresh_reader) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc4](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end());
-      doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
+      doc.insert<irs::Action::INDEX>(doc4->indexed.begin(), doc4->indexed.end());
+      doc.insert<irs::Action::STORE>(doc4->stored.begin(), doc4->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -5146,8 +5146,8 @@ TEST_F(transaction_store_tests, segment_flush) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     writer.remove(std::move(query_doc1.filter));
@@ -5172,8 +5172,8 @@ TEST_F(transaction_store_tests, segment_flush) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -5221,21 +5221,21 @@ TEST_F(transaction_store_tests, segment_flush) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
     auto flushed = store.flush();
     ASSERT_TRUE(flushed && dir_writer->import(flushed));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
     writer.remove(std::move(query_doc1_doc2.filter));
@@ -5282,19 +5282,19 @@ TEST_F(transaction_store_tests, segment_flush) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
     writer.remove(std::move(query_doc1_doc2.filter));
@@ -5387,8 +5387,8 @@ TEST_F(transaction_store_tests, segment_flush) {
       irs::store_writer writer(store);
 
       ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-        doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+        doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+        doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
         return false;
       }));
     }
@@ -5398,8 +5398,8 @@ TEST_F(transaction_store_tests, segment_flush) {
       irs::store_writer writer(store);
 
       ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-        doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+        doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+        doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
         return false;
       }));
       ASSERT_TRUE(writer.commit());
@@ -5430,13 +5430,13 @@ TEST_F(transaction_store_tests, segment_flush) {
       irs::store_writer writer(store);
 
       ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-        doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+        doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+        doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
         return false;
       }));
       ASSERT_TRUE(writer.insert([doc4](irs::store_writer::document& doc)->bool {
-        doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end());
-        doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
+        doc.insert<irs::Action::INDEX>(doc4->indexed.begin(), doc4->indexed.end());
+        doc.insert<irs::Action::STORE>(doc4->stored.begin(), doc4->stored.end());
         return false;
       }));
       ASSERT_TRUE(writer.commit());
@@ -5475,8 +5475,8 @@ TEST_F(transaction_store_tests, rollback_uncommited) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -5491,8 +5491,8 @@ TEST_F(transaction_store_tests, rollback_uncommited) {
     }
 
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
   }
@@ -5511,8 +5511,8 @@ TEST_F(transaction_store_tests, rollback_uncommited) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
   }
@@ -5545,13 +5545,13 @@ TEST_F(transaction_store_tests, read_old_generation) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
-      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -5570,14 +5570,14 @@ TEST_F(transaction_store_tests, read_old_generation) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
     writer.remove(std::move(query_doc1.filter));
     ASSERT_TRUE(writer.insert([doc4](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end());
-      doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
+      doc.insert<irs::Action::INDEX>(doc4->indexed.begin(), doc4->indexed.end());
+      doc.insert<irs::Action::STORE>(doc4->stored.begin(), doc4->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -5651,8 +5651,8 @@ TEST_F(transaction_store_tests, read_reopen) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
-      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());
@@ -5689,8 +5689,8 @@ TEST_F(transaction_store_tests, read_reopen) {
     irs::store_writer writer(store);
 
     ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
-      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
-      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      doc.insert<irs::Action::INDEX>(doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
       return false;
     }));
     ASSERT_TRUE(writer.commit());

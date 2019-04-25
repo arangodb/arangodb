@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,31 +15,47 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DIRECTORYTESTS_H
-#define IRESEARCH_DIRECTORYTESTS_H
+#include "sorting_doc_iterator.hpp"
 
-#include "tests_shared.hpp"
-#include "store/directory.hpp"
+NS_ROOT
 
-class directory_test_case {
- public:
-  void list();
-  void visit();
-  void smoke_index_io();
-  void smoke_store();
-  void string_read_write();
-  void read_multiple_streams();
-  void lock_obtain_release();
-  void directory_size();
+bool sorting_doc_iterator::next() {
+  if (doc_limits::eof(doc_)) {
+    return false;
+  }
 
- protected:
-  iresearch::directory::ptr dir_;
-};
+  while (lead_) {
+    auto begin = heap_.begin();
+    auto it = heap_.end() - lead_--;
 
-#endif
+    segment& lead = *it;
+    if (!lead.next()) {
+      if (!remove_lead(it)) {
+        doc_ = doc_limits::eof();
+        attrs_ = &attribute_view::empty_instance();
+        return false;
+      }
+      continue;
+    }
+
+    std::push_heap(begin, ++it, less_);
+  }
+
+  assert(!heap_.empty());
+  std::pop_heap(heap_.begin(), heap_.end(), less_);
+
+  const segment& lead = heap_.back();
+  doc_ = lead.value();
+  attrs_ = &lead.attributes();
+  lead_ = 1;
+
+  return true;
+}
+
+NS_END // ROOT
