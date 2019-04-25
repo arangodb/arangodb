@@ -379,6 +379,21 @@ function optimizerCountTestSuite () {
         var plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
+    },
+
+    testCollectAggregateUndefined: function () {
+      var randomDocumentID = db["UnitTestsCollection"].any()._id;
+      print(randomDocumentID);
+      var query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key for i in [] collect aggregate count = count(i) return {count, start}';
+      var bindParams = {};
+      var options = {optimizer: {rules: ['-remove-unnecessary-calculations','-remove-unnecessary-calculations-2']}};
+
+      var results = db._query(query, bindParams, options).toArray();
+      // expectation is that we exactly get one result
+      // count will be 0, start will be undefined
+      assertEqual(1, results.length);
+      assertEqual(0, results[0].count);
+      assertEqual(undefined, results[0].start);
     }
 
   };
