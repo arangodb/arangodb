@@ -30,8 +30,8 @@
 #include <queue>
 
 #include "Aql/AllRowsFetcher.h"
-#include "Aql/DependencyProxy.h"
 #include "Aql/ConstFetcher.h"
+#include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
@@ -40,7 +40,6 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "OutputAqlItemRow.h"
-
 
 namespace arangodb {
 namespace aql {

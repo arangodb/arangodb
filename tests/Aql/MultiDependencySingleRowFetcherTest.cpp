@@ -109,7 +109,7 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
 
     WHEN("the producer returns DONE immediately") {
       dependencyProxyMock.getDependencyMock(0).shouldReturn(ExecutionState::DONE,
-                                                         std::move(block));
+                                                            std::move(block));
 
       {
         MultiDependencySingleRowFetcher testee(dependencyProxyMock);
@@ -427,11 +427,11 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
 
     WHEN("the producer returns DONE immediately") {
       dependencyProxyMock.getDependencyMock(0).shouldReturn(ExecutionState::DONE,
-                                                         std::move(blockDep1));
+                                                            std::move(blockDep1));
       dependencyProxyMock.getDependencyMock(1).shouldReturn(ExecutionState::DONE,
-                                                         std::move(blockDep2));
+                                                            std::move(blockDep2));
       dependencyProxyMock.getDependencyMock(2).shouldReturn(ExecutionState::DONE,
-                                                         std::move(blockDep3));
+                                                            std::move(blockDep3));
 
       {
         MultiDependencySingleRowFetcher testee(dependencyProxyMock);
@@ -633,7 +633,7 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
           .shouldReturn(ExecutionState::HASMORE, std::move(block1Dep2))
           .andThenReturn(ExecutionState::DONE, std::move(block2Dep2));
       dependencyProxyMock.getDependencyMock(2).shouldReturn(ExecutionState::DONE,
-                                                         std::move(block1Dep3));
+                                                            std::move(block1Dep3));
 
       {
         MultiDependencySingleRowFetcher testee(dependencyProxyMock);

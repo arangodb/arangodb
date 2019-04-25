@@ -69,13 +69,12 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
       _dependencyProxy(_dependencies, engine->itemBlockManager(),
-                    infos.getInputRegisters(), infos.numberOfInputRegisters()),
+                       infos.getInputRegisters(), infos.numberOfInputRegisters()),
       _rowFetcher(_dependencyProxy),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
       _outputItemRow(),
       _query(*engine->getQuery()) {
-
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
@@ -208,7 +207,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   _dependencyProxy.~DependencyProxy();
   new (&_dependencyProxy)
       DependencyProxy(_dependencies, _engine->itemBlockManager(),
-                   _infos.getInputRegisters(), _infos.numberOfInputRegisters());
+                      _infos.getInputRegisters(), _infos.numberOfInputRegisters());
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
@@ -246,7 +245,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   _dependencyProxy.~DependencyProxy();
   new (&_dependencyProxy)
       DependencyProxy(_dependencies, _engine->itemBlockManager(),
-                   infos().getInputRegisters(), infos().numberOfInputRegisters());
+                      infos().getInputRegisters(), infos().numberOfInputRegisters());
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();

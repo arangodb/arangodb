@@ -146,7 +146,8 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
     }
 
     WHEN("the producer returns HASMORE, then DONE with a nullptr") {
-      dependencyProxyMock.shouldReturn(ExecutionState::HASMORE, std::move(block))
+      dependencyProxyMock
+          .shouldReturn(ExecutionState::HASMORE, std::move(block))
           .andThenReturn(ExecutionState::DONE, nullptr);
 
       {
@@ -263,7 +264,8 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
                           block3 = buildBlock<1>(itemBlockManager, {{{6}}});
 
     WHEN("the producer does not wait") {
-      dependencyProxyMock.shouldReturn(ExecutionState::HASMORE, std::move(block1))
+      dependencyProxyMock
+          .shouldReturn(ExecutionState::HASMORE, std::move(block1))
           .andThenReturn(ExecutionState::HASMORE, std::move(block2))
           .andThenReturn(ExecutionState::DONE, std::move(block3));
 

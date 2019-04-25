@@ -41,10 +41,10 @@ using namespace arangodb::aql;
 // constructor will not access it.
 template <bool passBlocksThrough>
 DependencyProxyMock<passBlocksThrough>::DependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
-                                                      ::arangodb::aql::RegisterId nrRegisters)
+                                                            ::arangodb::aql::RegisterId nrRegisters)
     : DependencyProxy<passBlocksThrough>({}, _itemBlockManager,
-                                      std::shared_ptr<std::unordered_set<RegisterId>>(),
-                                      nrRegisters),
+                                         std::shared_ptr<std::unordered_set<RegisterId>>(),
+                                         nrRegisters),
       _itemsToReturn(),
       _fetchedBlocks(),
       _numFetchBlockCalls(0),
@@ -151,8 +151,8 @@ MultiDependencyProxyMock<passBlocksThrough>::MultiDependencyProxyMock(
     arangodb::aql::ResourceMonitor& monitor,
     ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps)
     : DependencyProxy<passBlocksThrough>({}, _itemBlockManager,
-                                      std::shared_ptr<std::unordered_set<RegisterId>>(),
-                                      nrRegisters),
+                                         std::shared_ptr<std::unordered_set<RegisterId>>(),
+                                         nrRegisters),
       _itemBlockManager(&monitor) {
   _dependencyMocks.reserve(nrDeps);
   for (size_t i = 0; i < nrDeps; ++i) {
@@ -163,7 +163,7 @@ MultiDependencyProxyMock<passBlocksThrough>::MultiDependencyProxyMock(
 template <bool passBlocksThrough>
 std::pair<arangodb::aql::ExecutionState, SharedAqlItemBlockPtr>
 MultiDependencyProxyMock<passBlocksThrough>::fetchBlockForDependency(size_t dependency,
-                                                                  size_t atMost) {
+                                                                     size_t atMost) {
   return getDependencyMock(dependency).fetchBlock(atMost);
 }
 

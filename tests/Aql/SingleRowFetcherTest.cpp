@@ -24,8 +24,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlockHelper.h"
-#include "RowFetcherHelper.h"
 #include "DependencyProxyMock.h"
+#include "RowFetcherHelper.h"
 #include "catch.hpp"
 
 #include "Aql/AqlItemBlock.h"
@@ -103,7 +103,8 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
       }
 
       WHEN("the producer waits") {
-    dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr).andThenReturn(ExecutionState::DONE, nullptr);
+    dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
+        .andThenReturn(ExecutionState::DONE, nullptr);
 
     {
       SingleRowFetcher<passBlocksThrough> testee(dependencyProxyMock);

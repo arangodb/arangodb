@@ -65,9 +65,9 @@ class DependencyProxy {
    * DependencyProxyMock) to create them *after* the parent class was constructed.
    */
   DependencyProxy(std::vector<ExecutionBlock*> const& dependencies,
-               AqlItemBlockManager& itemBlockManager,
-               std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
-               RegisterId nrInputRegisters)
+                  AqlItemBlockManager& itemBlockManager,
+                  std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
+                  RegisterId nrInputRegisters)
       : _dependencies(dependencies),
         _itemBlockManager(itemBlockManager),
         _inputRegisters(std::move(inputRegisters)),

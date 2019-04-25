@@ -54,7 +54,7 @@ FilterExecutor::~FilterExecutor() = default;
 
 std::pair<ExecutionState, FilterStats> FilterExecutor::produceRows(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("FilterExecutor::produceRows") {
-     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   ExecutionState state;
   FilterStats stats{};
