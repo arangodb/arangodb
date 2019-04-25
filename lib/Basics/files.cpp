@@ -88,6 +88,15 @@ struct LockfileRemover {
 
 /// @brief this instance will remove all lockfiles in its dtor
 static LockfileRemover remover;
+
+#ifdef _WIN32
+std::wstring toWString(std::string const& in) {
+  icu::UnicodeString utf16(in.c_str());
+  static_assert(sizeof(wchar_t) == sizeof(UChar));
+  return std::wstring(reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()));
+}
+#endif
+
 }  // namespace
 
 /// @brief read buffer size (used for bulk file reading)
@@ -276,16 +285,25 @@ bool TRI_IsSymbolicLink(char const* path) {
 /// @brief creates a symbolic link
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CreateSymbolicLink(std::string const& target, std::string const& linkpath, 
-                            std::string& error) {
+bool TRI_CreateSymbolicLink(std::string const& target,
+                            std::string const& linkpath, std::string& error) {
 #ifdef _WIN32
-  // TODO : check if a file is a symbolic link - without opening the file
-  return false;
+  bool created = ::CreateSymbolicLinkW(toWString(linkpath).data(), toWString(target).data(), 0x0);
+  if (!created) {
+    DWORD errorNum = ::GetLastError();
+    error = "failed to create a symlink " + target + " -> " + linkpath + " - " +
+            std::to_string(errorNum);
+    if (errorNum == 1314) {
+      error += " insufficient permissions to create a symlink";
+    }
+  }
+  return created;
 #else
   int res = symlink(target.c_str(), linkpath.c_str());
 
   if (res < 0) {
-    error = "failed to create a symlink " + target + " -> " + linkpath + " - " + strerror(errno);
+    error = "failed to create a symlink " + target + " -> " + linkpath + " - " +
+            strerror(errno);
   }
   return res == 0;
 #endif
