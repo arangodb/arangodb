@@ -94,7 +94,7 @@ std::wstring toWString(std::string const& validUTF8String) {
   icu::UnicodeString utf16(validUTF8String.c_str());
   using bufferType = std::remove_pointer_t<decltype(utf16.getTerminatedBuffer())>;
   // --no terse assert without c++17-- static_assert(sizeof(std::wchar_t) == sizeof(bufferType));
-  return std::wstring(reinterpret_cast<std::wchar_t const*>(utf16.getTerminatedBuffer()));
+  return std::wstring(reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()));
 }
 #endif
 
