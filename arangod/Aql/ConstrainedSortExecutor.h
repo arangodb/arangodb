@@ -76,7 +76,7 @@ class ConstrainedSortExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   /**
    * @brief This Executor knows how many rows it will produce and most by itself

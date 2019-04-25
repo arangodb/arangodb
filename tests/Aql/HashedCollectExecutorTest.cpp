@@ -23,7 +23,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BlockFetcherHelper.h"
+#include "RowFetcherHelper.h"
 #include "catch.hpp"
 #include "fakeit.hpp"
 
@@ -94,7 +94,7 @@ SCENARIO("HashedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
       THEN("the executor should return DONE") {
         OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
       }
@@ -107,12 +107,12 @@ SCENARIO("HashedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
       THEN("the executor should first return WAIT") {
         OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
 
         AND_THEN("the executor should return DONE") {
-          std::tie(state, stats) = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRows(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
         }
@@ -164,17 +164,17 @@ SCENARIO("HashedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
         OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 
@@ -206,22 +206,22 @@ SCENARIO("HashedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
         OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 
@@ -258,22 +258,22 @@ SCENARIO("HashedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
         OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 
@@ -310,17 +310,17 @@ SCENARIO("HashedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
         OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 
@@ -352,25 +352,25 @@ SCENARIO("HashedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
         OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 
@@ -441,17 +441,17 @@ SCENARIO("HashedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
         OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 
@@ -538,22 +538,22 @@ SCENARIO("HashedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
         OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 
@@ -651,22 +651,22 @@ SCENARIO("HashedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
         OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 

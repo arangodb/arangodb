@@ -216,7 +216,7 @@ SortingGatherExecutor::~SortingGatherExecutor() = default;
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRows(OutputAqlItemRow& output) {
   TRI_ASSERT(_strategy != nullptr);
   if (!_initialized) {
     ExecutionState state = init();
@@ -230,7 +230,7 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRow(OutputAqlIt
     if (_inputRows[_dependencyToFetch].state == ExecutionState::DONE) {
       _inputRows[_dependencyToFetch].row = InputAqlItemRow{CreateInvalidInputRowHint()};
     } else {
-      // This is executed on every produceRow, and will replace the row that we have returned last time
+      // This is executed on every produceRows, and will replace the row that we have returned last time
       std::tie(_inputRows[_dependencyToFetch].state,
                _inputRows[_dependencyToFetch].row) =
           _fetcher.fetchRowForDependency(_dependencyToFetch);

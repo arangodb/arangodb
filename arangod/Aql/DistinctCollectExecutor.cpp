@@ -72,8 +72,8 @@ DistinctCollectExecutor::~DistinctCollectExecutor() {
   }
 }
 
-std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("DistinctCollectExecutor::produceRow") {
+std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("DistinctCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   NoStats stats{};

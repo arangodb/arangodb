@@ -24,8 +24,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlockHelper.h"
-#include "BlockFetcherHelper.h"
-#include "BlockFetcherMock.h"
+#include "RowFetcherHelper.h"
 #include "TestEmptyExecutorHelper.h"
 #include "TestExecutorHelper.h"
 #include "WaitingExecutionBlockMock.h"
@@ -103,11 +102,6 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
   TestEmptyExecutorHelperInfos emptyInfos(0, 1, 1, {}, {0});
 
   GIVEN("there is a block in the upstream with no rows inside") {
-    VPackBuilder input;
-    BlockFetcherMock<false> blockFetcherMock{monitor, 0};
-
-    SharedAqlItemBlockPtr block = nullptr;
-
     WHEN("the executor does wait, using getSome") {
       std::deque<SharedAqlItemBlockPtr> blockDeque;
       SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
@@ -161,9 +155,6 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
   }
 
   GIVEN("there are multiple blocks in the upstream with no rows inside") {
-    VPackBuilder input;
-    BlockFetcherMock<false> blockFetcherMock{monitor, 0};
-
     SharedAqlItemBlockPtr block = nullptr;
 
     WHEN("the executor does wait - using getSome - one block") {
@@ -358,9 +349,6 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
   }
 
   GIVEN("there is an invalid/empty block in the upstream") {
-    VPackBuilder input;
-    BlockFetcherMock<false> blockFetcherMock{monitor, 0};
-
     WHEN("the executor does wait, using getSome") {
       std::deque<SharedAqlItemBlockPtr> blockDeque;
       SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});

@@ -180,7 +180,9 @@ void UpgradeFeature::upgradeDatabase() {
 
   bool ignoreDatafileErrors = false;
   {
-    VPackBuilder options = server()->options(std::unordered_set<std::string>());
+    VPackBuilder options = server()->options([](std::string const& name) {
+      return (name.find("database.ignore-datafile-errors") != std::string::npos);
+    });
     VPackSlice s = options.slice();
     if (s.get("database.ignore-datafile-errors").isBoolean()) {
       ignoreDatafileErrors = s.get("database.ignore-datafile-errors").getBool();

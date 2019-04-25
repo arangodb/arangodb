@@ -275,87 +275,68 @@ SECTION("tst_filesize_non") {
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_absolute_paths") {
-  char* path;
+  std::string path;
 
 #ifdef _WIN32
   path = TRI_GetAbsolutePath("the-fox", "\\tmp");
 
   CHECK(std::string("\\tmp\\the-fox") == path);
-  TRI_Free(path);
 
   path = TRI_GetAbsolutePath("the-fox.lol", "\\tmp");
   CHECK(std::string("\\tmp\\the-fox.lol") == path);
-  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("the-fox.lol", "\\tmp\\the-fox");
   CHECK(std::string("\\tmp\\the-fox\\the-fox.lol") == path);
-  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("file", "\\");
   CHECK(std::string("\\file") == path);
-  TRI_Free(path);
   
   path = TRI_GetAbsolutePath(".\\file", "\\");
   CHECK(std::string("\\.\\file") == path);
-  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("\\file", "\\tmp");
   CHECK(std::string("\\tmp\\file") == path);
-  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("\\file\\to\\file", "\\tmp");
   CHECK(std::string("\\tmp\\file\\to\\file") == path);
-  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("file\\to\\file", "\\tmp");
   CHECK(std::string("\\tmp\\file\\to\\file") == path);
-  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("c:\\file\\to\\file", "abc");
   CHECK(std::string("c:\\file\\to\\file") == path);
-  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("c:\\file\\to\\file", "\\tmp");
   CHECK(std::string("c:\\file\\to\\file") == path);
-  TRI_Free(path);
 
 #else
 
   path = TRI_GetAbsolutePath("the-fox", "/tmp");
   CHECK(std::string("/tmp/the-fox") == path);
-  TRI_Free(path);
 
   path = TRI_GetAbsolutePath("the-fox.lol", "/tmp");
   CHECK(std::string("/tmp/the-fox.lol") == path);
-  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("the-fox.lol", "/tmp/the-fox");
   CHECK(std::string("/tmp/the-fox/the-fox.lol") == path);
-  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("file", "/");
   CHECK(std::string("/file") == path);
-  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("./file", "/");
   CHECK(std::string("/./file") == path);
-  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("/file", "/tmp");
   CHECK(std::string("/file") == path);
-  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("/file/to/file", "/tmp");
   CHECK(std::string("/file/to/file") == path);
-  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("file/to/file", "/tmp");
   CHECK(std::string("/tmp/file/to/file") == path);
-  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("c:file/to/file", "/tmp");
   CHECK(std::string("c:file/to/file") == path);
-  TRI_Free(path);
 #endif
 }
 

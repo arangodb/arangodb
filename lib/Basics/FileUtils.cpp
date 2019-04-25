@@ -590,14 +590,9 @@ void makePathAbsolute(std::string& path) {
   std::string cwd = FileUtils::currentDirectory().result();
 
   if (path.empty()) {
-    path = cwd;
+    path = std::move(cwd);
   } else {
-    char* p = TRI_GetAbsolutePath(path.c_str(), cwd.c_str());
-
-    if (p != nullptr) {
-      path = p;
-      TRI_FreeString(p);
-    }
+    path = TRI_GetAbsolutePath(path, cwd);
   }
 }
 

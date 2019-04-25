@@ -140,6 +140,11 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
                      .FromMaybe(v8::Local<v8::Value>()));
   }
 
+  if(isSystem && !v8g->_securityContext.isInternal()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "Only Internal Context may create System Tasks");
+
+  }
+
   // offset in seconds into period or from now on if no period
   double offset = 0.0;
 

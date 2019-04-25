@@ -78,16 +78,19 @@ inline void handleProjections(std::vector<std::string> const& projections,
 }
 
 static DocumentProducingFunction buildCallback(
-    DocumentProducingFunction documentProducer, Variable const* outVariable,
     bool produceResult, std::vector<std::string> const& projections,
     transaction::Methods* trxPtr, std::vector<size_t> const& coveringIndexAttributePositions,
     bool& allowCoveringIndexOptimization, bool useRawDocumentPointers) {
+  DocumentProducingFunction documentProducer;
   if (!produceResult) {
     // no result needed
     documentProducer = [](InputAqlItemRow& input, OutputAqlItemRow& output,
                           VPackSlice, RegisterId registerId) {
       // TODO: optimize this within the register planning mechanism?
+      TRI_ASSERT(!output.isFull());
       output.cloneValueInto(registerId, input, AqlValue(AqlValueHintNull()));
+      TRI_ASSERT(output.produced());
+      output.advanceRow();
     };
     return documentProducer;
   }
@@ -145,7 +148,10 @@ static DocumentProducingFunction buildCallback(
 
         AqlValue v(b.get());
         AqlValueGuard guard{v, true};
+        TRI_ASSERT(!output.isFull());
         output.moveValueInto(registerId, input, guard);
+        TRI_ASSERT(output.produced());
+        output.advanceRow();
       };
       return documentProducer;
     }
@@ -162,7 +168,10 @@ static DocumentProducingFunction buildCallback(
 
       AqlValue v(b.get());
       AqlValueGuard guard{v, true};
+      TRI_ASSERT(!output.isFull());
       output.moveValueInto(registerId, input, guard);
+      TRI_ASSERT(output.produced());
+      output.advanceRow();
     };
     return documentProducer;
   }
@@ -174,12 +183,18 @@ static DocumentProducingFunction buildCallback(
     uint8_t const* vpack = slice.begin();
     if (useRawDocumentPointers) {
       // With NoCopy we do not clone anyways
+      TRI_ASSERT(!output.isFull());
       output.cloneValueInto(registerId, input, AqlValue(AqlValueHintDocumentNoCopy(vpack)));
+      TRI_ASSERT(output.produced());
+      output.advanceRow();
     } else {
       // Here we do a clone, so clone once, then move into
       AqlValue v{AqlValueHintCopy{vpack}};
       AqlValueGuard guard{v, true};
+      TRI_ASSERT(!output.isFull());
       output.moveValueInto(registerId, input, guard);
+      TRI_ASSERT(output.produced());
+      output.advanceRow();
     }
   };
   return documentProducer;

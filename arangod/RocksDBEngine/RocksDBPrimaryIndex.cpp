@@ -364,8 +364,9 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     while (limit > 0) {
       LocalDocumentId documentId = RocksDBValue::documentId(_iterator->value());
       arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(_iterator->key());
-  
-      builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String)); 
+
+      builder->clear();
+      builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
       cb(documentId, builder->slice());
 
       --limit;

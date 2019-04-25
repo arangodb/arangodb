@@ -89,18 +89,17 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                        " did not come into sync in time (" +
                                        std::to_string(maxWait) + ")");
   }
-  this->setProducingFunction(buildCallback(
-        _documentProducer, _infos.getOutVariable(), _infos.getProduceResult(),
-        _infos.getProjections(), _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
-        _allowCoveringIndexOptimization, _infos.getUseRawDocumentPointers()));
-
+  this->setProducingFunction(
+      buildCallback(_infos.getProduceResult(), _infos.getProjections(),
+                    _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
+                    _allowCoveringIndexOptimization, _infos.getUseRawDocumentPointers()));
 }
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
 
-std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor::produceRow(
+std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor::produceRows(
     OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRow") {
+  TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   EnumerateCollectionStats stats{};
@@ -136,7 +135,7 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
           [&](LocalDocumentId const&, VPackSlice slice) {
             _documentProducer(_input, output, slice, _infos.getOutputRegisterId());
             stats.incrScanned();
-          }, 1 /*atMost*/);
+          }, output.numRowsLeft() /*atMost*/);
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
@@ -145,7 +144,7 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
             _documentProducer(_input, output, VPackSlice::nullSlice(),
                               _infos.getOutputRegisterId());
             stats.incrScanned();
-          }, 1 /*atMost*/);
+          }, output.numRowsLeft() /*atMost*/);
     }
 
     if (_state == ExecutionState::DONE && !_cursorHasMore) {
@@ -153,6 +152,14 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
     }
     return {ExecutionState::HASMORE, stats};
   }
+}
+
+void EnumerateCollectionExecutor::initializeCursor() {
+  _state = ExecutionState::HASMORE;
+  _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  _allowCoveringIndexOptimization = true;
+  _cursorHasMore = false;
+  _cursor->reset();
 }
 
 #ifndef USE_ENTERPRISE
