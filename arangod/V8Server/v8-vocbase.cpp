@@ -57,7 +57,7 @@
 #include "Rest/Version.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -65,7 +65,6 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "V8/JSLoader.h"
-#include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-helper.h"
 #include "V8/v8-utils.h"
@@ -188,60 +187,6 @@ static void JS_EnableNativeBacktraces(v8::FunctionCallbackInfo<v8::Value> const&
   }
 
   arangodb::basics::Exception::SetVerbose(TRI_ObjectToBoolean(isolate, args[0]));
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-extern V8LineEditor* theConsole;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts a debugging console
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_Debug(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-
-  v8::Local<v8::String> name(TRI_V8_ASCII_STRING(isolate, "debug loop"));
-  v8::Local<v8::String> debug(TRI_V8_ASCII_STRING(isolate, "debug"));
-
-  v8::Local<v8::Object> callerScope;
-  if (args.Length() >= 1) {
-    TRI_AddGlobalVariableVocbase(isolate, debug, args[0]);
-  }
-
-  MUTEX_LOCKER(mutexLocker, ConsoleThread::serverConsoleMutex);
-  V8LineEditor* console = ConsoleThread::serverConsole;
-
-  if (console != nullptr) {
-    while (true) {
-      ShellBase::EofType eof;
-      std::string input = console->prompt("debug> ", "debug>", eof);
-
-      if (eof == ShellBase::EOF_FORCE_ABORT) {
-        break;
-      }
-
-      if (input.empty()) {
-        continue;
-      }
-
-      console->addHistory(input);
-
-      {
-        v8::HandleScope scope(isolate);
-        v8::TryCatch tryCatch(isolate);
-        ;
-
-        TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
-                                    TRI_V8_STD_STRING(isolate, input), name, true);
-
-        if (tryCatch.HasCaught()) {
-          std::cout << TRI_StringifyV8Exception(isolate, &tryCatch);
-        }
-      }
-    }
-  }
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -530,41 +475,6 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief registers a warning for the currently running AQL query
-/// this function is called from aql.js
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_WarningAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("AQL_WARNING(<code>, <message>)");
-  }
-
-  // get the query string
-  if (!args[1]->IsString()) {
-    TRI_V8_THROW_TYPE_ERROR("expecting string for <message>");
-  }
-
-  TRI_GET_GLOBALS();
-
-  if (v8g->_query != nullptr) {
-    // only register the error if we have a query...
-    // note: we may not have a query if the AQL functions are called without
-    // a query, e.g. during tests
-    int code = static_cast<int>(TRI_ObjectToInt64(isolate, args[0]));
-    std::string const message = TRI_ObjectToString(isolate, args[1]);
-
-    auto query = static_cast<arangodb::aql::Query*>(v8g->_query);
-    query->registerWarning(code, message.c_str());
-  }
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief explains an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -706,10 +616,12 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  TRI_GET_GLOBALS();
+  auto queryRegistry = QueryRegistryFeature::registry();
+  TRI_ASSERT(queryRegistry != nullptr);
+
   arangodb::aql::Query query(true, vocbase, queryBuilder, options, arangodb::aql::PART_MAIN);
   aql::QueryResult queryResult =
-      query.executeSync(static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
+      query.executeSync(static_cast<arangodb::aql::QueryRegistry*>(queryRegistry));
 
   if (queryResult.result.fail()) {
     events::QueryDocument(vocbase.name(), queryBuilder->slice(), queryResult.result.errorNumber());
@@ -812,8 +724,10 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
+  auto queryRegistry = QueryRegistryFeature::registry();
+  TRI_ASSERT(queryRegistry != nullptr);
+
   // bind parameters will be freed by the query later
-  TRI_GET_GLOBALS();
   arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
                              bindVars, options, arangodb::aql::PART_MAIN);
 
@@ -823,7 +737,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   aql::QueryResultV8 queryResult;
   while (true) {
     auto state =
-        query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry),
+        query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(queryRegistry),
                         queryResult);
     if (state != aql::ExecutionState::WAITING) {
       break;
@@ -1101,23 +1015,6 @@ static void JS_QueriesKillAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a query is killed
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_QueryIsKilledAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  TRI_GET_GLOBALS();
-  if (v8g->_query != nullptr && static_cast<arangodb::aql::Query*>(v8g->_query)->killed()) {
-    TRI_V8_RETURN_TRUE();
-  }
-
-  TRI_V8_RETURN_FALSE();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief configures the AQL query cache
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1206,71 +1103,6 @@ static void JS_ThrowCollectionNotLoaded(v8::FunctionCallbackInfo<v8::Value> cons
     TRI_V8_THROW_EXCEPTION_USAGE("THROW_COLLECTION_NOT_LOADED(<value>)");
   }
 
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sleeps and checks for query abortion in between
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_QuerySleepAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  // extract arguments
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("sleep(<seconds>)");
-  }
-
-  TRI_GET_GLOBALS();
-  arangodb::aql::Query* query = static_cast<arangodb::aql::Query*>(v8g->_query);
-
-  if (query == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_QUERY_NOT_FOUND);
-  }
-
-  double n = TRI_ObjectToDouble(isolate, args[0]);
-  double const until = TRI_microtime() + n;
-
-  while (TRI_microtime() < until) {
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
-
-    if (query != nullptr) {
-      if (query->killed()) {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-      }
-    }
-  }
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes a V8 object
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_ObjectHash(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  // extract arguments
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("hash(<object>)");
-  }
-
-  VPackBuilder builder;
-  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  // throw away the top bytes so the hash value can safely be used
-  // without precision loss when storing in JavaScript etc.
-  uint64_t hash = builder.slice().normalizedHash() & 0x0007ffffffffffffULL;
-
-  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(hash)));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1600,7 +1432,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
 
-  if (!v8g->_allowUseDatabase) {
+  if (!v8g->_securityContext.canUseDatabase()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -1995,10 +1827,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   v8g->_transactionContext = new transaction::V8Context(vocbase, true);
   static_cast<transaction::V8Context*>(v8g->_transactionContext)->makeGlobal();
 
-  // register the query registry
-  TRI_ASSERT(queryRegistry != nullptr);
-  v8g->_queryRegistry = queryRegistry;
-
   // register the database
   v8g->_vocbase = &vocbase;
 
@@ -2083,9 +1911,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate, "AQL_PARSE"),
                                JS_ParseAql, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "AQL_WARNING"),
-                               JS_WarningAql, true);
-  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "AQL_QUERIES_PROPERTIES"),
                                JS_QueriesPropertiesAql, true);
@@ -2099,13 +1924,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "AQL_QUERIES_KILL"),
                                JS_QueriesKillAql, true);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_SLEEP"),
-                               JS_QuerySleepAql, true);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "AQL_QUERY_IS_KILLED"),
-                               JS_QueryIsKilledAql, true);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_CACHE_PROPERTIES"),
       JS_QueryCachePropertiesAql, true);
@@ -2116,10 +1934,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_CACHE_INVALIDATE"),
       JS_QueryCacheInvalidateAql, true);
-
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "OBJECT_HASH"),
-                               JS_ObjectHash, true);
 
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "THROW_COLLECTION_NOT_LOADED"),
@@ -2154,9 +1968,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "ENABLE_NATIVE_BACKTRACES"),
                                JS_EnableNativeBacktraces, true);
-
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "Debug"),
-                               JS_Debug, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,

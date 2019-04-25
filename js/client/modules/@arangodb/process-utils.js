@@ -1289,6 +1289,67 @@ function detectCurrentLeader(instanceInfo) {
   });
   return leaderInstance;
 }
+
+function checkClusterAlive(options, instanceInfo, addArgs) {
+  // disabled because not in use (jslint)
+  // let coordinatorUrl = instanceInfo.url
+  // let response
+  let httpOptions = makeAuthorizationHeaders(options);
+  httpOptions.method = 'POST';
+  httpOptions.returnBodyOnError = true;
+
+  // scrape the jwt token
+  instanceInfo.authOpts = _.clone(options);
+  if (addArgs['server.jwt-secret'] && !instanceInfo.authOpts['server.jwt-secret']) {
+    instanceInfo.authOpts['server.jwt-secret'] = addArgs['server.jwt-secret'];
+  }
+
+  let count = 0;
+  while (true) {
+    ++count;
+
+    instanceInfo.arangods.forEach(arangod => {
+      const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(instanceInfo.authOpts));
+      if (!reply.error && reply.code === 200) {
+        arangod.upAndRunning = true;
+        return true;
+      }
+
+      if (!checkArangoAlive(arangod, options)) {
+        instanceInfo.arangods.forEach(arangod => {
+          if (!arangod.hasOwnProperty('exitStatus') ||
+              (arangod.exitStatus.status === 'RUNNING')) {
+            arangod.exitStatus = killExternal(arangod.pid, abortSignal);
+          }
+          analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
+        });
+
+        throw new Error(`cluster startup: pid ${arangod.pid} no longer alive! bailing out!`);
+      }
+      wait(0.5, false);
+      return true;
+    });
+
+    let upAndRunning = 0;
+    instanceInfo.arangods.forEach(arangod => {
+      if (arangod.upAndRunning) {
+        upAndRunning += 1;
+      }
+    });
+    if (upAndRunning === instanceInfo.arangods.length) {
+      break;
+    }
+
+    // Didn't startup in 10 minutes? kill it, give up.
+    if (count > 1200) {
+      instanceInfo.arangods.forEach(arangod => {
+        arangod.exitStatus = killExternal(arangod.pid, abortSignal);
+        analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
+      });
+      throw new Error('cluster startup timed out after 10 minutes!');
+    }
+  }
+}
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief starts an instance
 // /
@@ -1370,65 +1431,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       sleep(1.0);
     }
   }
-
-  // disabled because not in use (jslint)
-  // let coordinatorUrl = instanceInfo.url
-  // let response
-  let httpOptions = makeAuthorizationHeaders(options);
-  httpOptions.method = 'POST';
-  httpOptions.returnBodyOnError = true;
-
-  // scrape the jwt token
-  instanceInfo.authOpts = _.clone(options);
-  if (addArgs['server.jwt-secret'] && !instanceInfo.authOpts['server.jwt-secret']) {
-    instanceInfo.authOpts['server.jwt-secret'] = addArgs['server.jwt-secret'];
-  }
-
-  let count = 0;
-  while (true) {
-    ++count;
-
-    instanceInfo.arangods.forEach(arangod => {
-      const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(instanceInfo.authOpts));
-      if (!reply.error && reply.code === 200) {
-        arangod.upAndRunning = true;
-        return true;
-      }
-
-      if (!checkArangoAlive(arangod, options)) {
-        instanceInfo.arangods.forEach(arangod => {
-          if (!arangod.hasOwnProperty('exitStatus') ||
-              (arangod.exitStatus.status === 'RUNNING')) {
-            arangod.exitStatus = killExternal(arangod.pid, abortSignal);
-          }
-          analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
-        });
-
-        throw new Error(`cluster startup: pid ${arangod.pid} no longer alive! bailing out!`);
-      }
-      wait(0.5, false);
-      return true;
-    });
-
-    let upAndRunning = 0;
-    instanceInfo.arangods.forEach(arangod => {
-      if (arangod.upAndRunning) {
-        upAndRunning += 1;
-      }
-    });
-    if (upAndRunning === instanceInfo.arangods.length) {
-      break;
-    }
-
-    // Didn't startup in 10 minutes? kill it, give up.
-    if (count > 1200) {
-      instanceInfo.arangods.forEach(arangod => {
-        arangod.exitStatus = killExternal(arangod.pid, abortSignal);
-        analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
-      });
-      throw new Error('cluster startup timed out after 10 minutes!');
-    }
-  }
+  checkClusterAlive(options, instanceInfo, addArgs);
 
   // we need to find the leading server
   if (options.activefailover) {
@@ -1443,6 +1446,58 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
   arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
   return true;
+}
+
+function launchFinalize(options, instanceInfo, startTime) {
+  if (!options.cluster) {
+    let count = 0;
+    instanceInfo.arangods.forEach(arangod => {
+      while (true) {
+        wait(0.5, false);
+        if (options.useReconnect) {
+          try {
+            arango.reconnect(instanceInfo.endpoint,
+                             '_system',
+                             options.username,
+                             options.password,
+                             count > 50
+                            );
+            break;
+          } catch (e) {
+          }
+        } else {
+          const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(options));
+
+          if (!reply.error && reply.code === 200) {
+            break;
+          }
+        }
+        ++count;
+
+        if (count % 60 === 0) {
+          if (!checkArangoAlive(arangod, options)) {
+            throw new Error('startup failed! bailing out!');
+          }
+        }
+      }
+    });
+  }
+  print(CYAN + Date() + ' up and running in ' + (time() - startTime) + ' seconds' + RESET);
+  var matchPort = /.*:.*:([0-9]*)/;
+  var ports = [];
+  var processInfo = [];
+  instanceInfo.arangods.forEach(arangod => {
+    let res = matchPort.exec(arangod.endpoint);
+    if (!res) {
+      return;
+    }
+    var port = res[1];
+    ports.push('port ' + port);
+    processInfo.push('  [' + arangod.role + '] up with pid ' + arangod.pid + ' on port ' + port);
+  });
+
+  print(Date() + ' sniffing template:\n  tcpdump -ni lo -s0 -w /tmp/out.pcap ' + ports.join(' or ') + '\n');
+  print(processInfo.join('\n') + '\n');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1503,6 +1558,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   }
 
   instanceInfo.url = endpointToURL(instanceInfo.endpoint);
+  instanceInfo.args = args;
   try {
     instanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(args), options).pid;
   } catch (x) {
@@ -1628,60 +1684,83 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
                                 addArgs, rootDir, 'single');
     }
 
-    if (!options.cluster) {
-      let count = 0;
-      instanceInfo.arangods.forEach(arangod => {
-        while (true) {
-          wait(0.5, false);
-          if (options.useReconnect) {
-            try {
-              arango.reconnect(instanceInfo.endpoint,
-                               '_system',
-                               options.username,
-                               options.password,
-                               count > 50
-                              );
-              break;
-            } catch (e) {
-            }
-          } else {
-            const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(options));
-
-            if (!reply.error && reply.code === 200) {
-              break;
-            }
-          }
-          ++count;
-
-          if (count % 60 === 0) {
-            if (!checkArangoAlive(arangod, options)) {
-              throw new Error('startup failed! bailing out!');
-            }
-          }
-        }
-      });
-    }
-    print(CYAN + Date() + ' up and running in ' + (time() - startTime) + ' seconds' + RESET);
-    var matchPort = /.*:.*:([0-9]*)/;
-    var ports = [];
-    var processInfo = [];
-    instanceInfo.arangods.forEach(arangod => {
-      let res = matchPort.exec(arangod.endpoint);
-      if (!res) {
-        return;
-      }
-      var port = res[1];
-      ports.push('port ' + port);
-      processInfo.push('  [' + arangod.role + '] up with pid ' + arangod.pid + ' on port ' + port);
-    });
-
-    print(Date() + ' sniffing template:\n  tcpdump -ni lo -s0 -w /tmp/out.pcap ' + ports.join(' or ') + '\n');
-    print(processInfo.join('\n') + '\n');
+    launchFinalize(options, instanceInfo, startTime);
   } catch (e) {
     print(e, e.stack);
     return false;
   }
   return instanceInfo;
+}
+
+function reStartInstance(options, instanceInfo, moreArgs) {
+  let launchInstance = function(options, oneInstanceInfo) {
+    try {
+      Object.assign(oneInstanceInfo.args, moreArgs);
+      oneInstanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(oneInstanceInfo.args), options).pid;
+    } catch (x) {
+      print(Date() + ' failed to run arangod - ' + JSON.stringify(x));
+      
+      throw x;
+    }
+    if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
+      runProcdump(options, oneInstanceInfo, oneInstanceInfo.rootDir, oneInstanceInfo.pid);
+    }
+  };
+  
+  const startTime = time();
+
+  instanceInfo.arangods.forEach(function (oneInstance, i) {
+    delete(oneInstance.exitStatus);
+    delete(oneInstance.pid);
+    oneInstance.upAndRunning = false;
+  });
+  
+  if (options.cluster) {
+    let agencyInstance = {arangods: []};
+    instanceInfo.arangods.forEach(function (oneInstance, i) {
+      if (oneInstance.role === 'agent') {
+        print("relaunching: " + JSON.stringify(oneInstance));
+        launchInstance(options, oneInstance);
+        agencyInstance.arangods.push(_.clone(oneInstance));
+      }
+    });
+    let agencyEndpoint = instanceInfo.endpoint;
+    if (!checkInstanceAlive(agencyInstance, options)) {
+      throw new Error('startup of agency failed! bailing out!');
+    }
+  }
+
+  instanceInfo.arangods.forEach(function (oneInstance, i) {
+    if ((oneInstance.role === 'PRIMARY') ||
+        (oneInstance.role === 'primary') ||
+        (oneInstance.role === 'dbserver')) {
+      print("relaunching: " + JSON.stringify(oneInstance));
+      launchInstance(options, oneInstance);
+    }
+  });
+  instanceInfo.arangods.forEach(function (oneInstance, i) {
+    if ((oneInstance.role === 'COORDINATOR') || (oneInstance.role === 'coordinator')) {
+      print("relaunching: " + JSON.stringify(oneInstance));
+      launchInstance(options, oneInstance);
+    }
+  });
+  instanceInfo.arangods.forEach(function (oneInstance, i) {
+    if (oneInstance.role === 'single') {
+      launchInstance(options, oneInstance);
+    }
+  });
+
+  if (options.cluster) {
+    checkClusterAlive(options, instanceInfo, {}); // todo addArgs
+    arango.reconnect(instanceInfo.endpoint,
+                     '_system',
+                     options.username,
+                     options.password,
+                     false
+                    );
+  }
+
+  launchFinalize(options, instanceInfo, startTime);
 }
 
 // exports.analyzeServerCrash = analyzeServerCrash;
@@ -1716,6 +1795,7 @@ exports.run = {
 exports.shutdownInstance = shutdownInstance;
 exports.startArango = startArango;
 exports.startInstance = startInstance;
+exports.reStartInstance = reStartInstance;
 exports.setupBinaries = setupBinaries;
 exports.executableExt = executableExt;
 exports.serverCrashed = serverCrashedLocal;

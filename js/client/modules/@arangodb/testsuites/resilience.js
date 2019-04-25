@@ -73,7 +73,10 @@ var _resilience = function(path) {
     if (options.dbServers < 5) {
       options.dbServers = 5;
     }
-    return tu.performTests(options, testCases, suiteName, tu.runThere);
+    return tu.performTests(options, testCases, suiteName, tu.runThere, {
+      'javascript.allow-external-process-control': 'true',
+      'javascript.allow-port-testing': 'true',
+    });
   };
 };
 
@@ -97,7 +100,10 @@ function clientResilience (options) {
     options.coordinators = 2;
   }
 
-  return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh);
+  return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh, {
+    'javascript.allow-external-process-control': 'true',
+    'javascript.allow-port-testing': 'true',
+  });
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -121,7 +127,9 @@ function activeFailover (options) {
   options.disableMonitor = true;
   return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh, {
     'server.authentication': 'true',
-    'server.jwt-secret': 'haxxmann'
+    'server.jwt-secret': 'haxxmann',
+    'javascript.allow-external-process-control': 'true',
+    'javascript.allow-port-testing': 'true',
   });
 }
 

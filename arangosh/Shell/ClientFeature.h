@@ -93,6 +93,15 @@ class ClientFeature final : public application_features::ApplicationFeature,
 
   bool getWarnConnect() { return _warnConnect; }
 
+  static std::string buildConnectedMessage(
+    std::string const& endpointSpecification,
+    std::string const& version,
+    std::string const& role,
+    std::string const& mode,
+    std::string const& databaseName,
+    std::string const& user
+  );
+
   static int runMain(int argc, char* argv[],
                      std::function<int(int argc, char* argv[])> const& mainFunc);
 
