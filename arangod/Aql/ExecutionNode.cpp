@@ -2037,7 +2037,8 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   // This is an important performance improvement:
   // If we have inherited results, we do move the block through
   // and do not modify it in any way.
-  // In
+  // In the other case it is important to shrink the matrix to exactly
+  // one register that is stored within the DOCVEC.
   RegisterId const numberOutputRegisters =
       returnInheritedResults ? getRegisterPlan()->nrRegs[getDepth()] : 1;
 
