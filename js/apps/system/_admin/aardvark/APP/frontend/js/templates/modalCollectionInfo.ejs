@@ -84,6 +84,17 @@
               </th>
             </tr>
           <% } %>
+          
+          <% if (figuresData.distributeShardsLike) { %>
+            <tr>
+              <th class="collectionInfoTh2">Distribute shards like:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.distributeShardsLike%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
 
           <% if (figuresData.shardKeys) { %>
             <tr>

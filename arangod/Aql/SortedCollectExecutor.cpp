@@ -283,8 +283,8 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
   }
 }
 
-std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("SortedCollectExecutor::produceRow") {
+std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("SortedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

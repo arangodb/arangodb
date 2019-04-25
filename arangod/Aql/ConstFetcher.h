@@ -33,7 +33,7 @@ namespace aql {
 
 class AqlItemBlock;
 template <bool>
-class BlockFetcher;
+class DependencyProxy;
 
 /**
  * @brief Interface for all AqlExecutors that do only need one
@@ -44,14 +44,14 @@ class BlockFetcher;
  *        of fetchRow.
  */
 class ConstFetcher {
-  using BlockFetcher = aql::BlockFetcher<true>;
+  using DependencyProxy = aql::DependencyProxy<true>;
 
  public:
-  explicit ConstFetcher(BlockFetcher& executionBlock);
+  explicit ConstFetcher(DependencyProxy& executionBlock);
   TEST_VIRTUAL ~ConstFetcher() = default;
 
  protected:
-  // only for testing! Does not initialize _blockFetcher!
+  // only for testing! Does not initialize _dependencyProxy!
   ConstFetcher();
 
  public:

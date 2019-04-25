@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAdminStatisticsHandler.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/StatisticsFeature.h"
 
@@ -35,6 +36,17 @@ RestAdminStatisticsHandler::RestAdminStatisticsHandler(GeneralRequest* request,
 RestStatus RestAdminStatisticsHandler::execute() {
   if (_request->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+  
+  ServerSecurityFeature* security =
+      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
+          "ServerSecurity");
+  TRI_ASSERT(security != nullptr);
+  
+  if (!security->canAccessHardenedApi()) {
+    // dont leak information about server internals here
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN); 
     return RestStatus::DONE;
   }
 

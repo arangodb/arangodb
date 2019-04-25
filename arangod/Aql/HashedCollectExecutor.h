@@ -125,7 +125,7 @@ class HashedCollectExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   /**
    * @brief This Executor does not know how many distinct rows will be fetched

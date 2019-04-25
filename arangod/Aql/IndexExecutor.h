@@ -173,7 +173,7 @@ class IndexExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
  public:
   typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
@@ -189,6 +189,8 @@ class IndexExecutor {
         "Logic_error, prefetching number fo rows not supported");
   }
 
+  void initializeCursor();
+
  private:
   bool advanceCursor();
   void executeExpressions(InputAqlItemRow& input);
@@ -198,7 +200,8 @@ class IndexExecutor {
   void createCursor();
 
   /// @brief continue fetching of documents
-  bool readIndex(IndexIterator::DocumentCallback const&, bool& hasWritten);
+  bool readIndex(OutputAqlItemRow& output,
+                 IndexIterator::DocumentCallback const&, size_t& numWritten);
 
   /// @brief reset the cursor at given position
   void resetCursor(size_t pos) { _cursors[pos]->reset(); };

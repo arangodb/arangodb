@@ -76,6 +76,7 @@ struct IResearchLinkMeta {
     operator bool() const noexcept { return false == !_pool; }
   };
   struct Mask {
+    bool _analyzerDefinitions;
     bool _analyzers;
     bool _fields;
     bool _includeAllFields;
@@ -131,6 +132,7 @@ struct IResearchLinkMeta {
   ////////////////////////////////////////////////////////////////////////////////
   bool init( // initialize meta
     arangodb::velocypack::Slice const& slice, // definition
+    bool readAnalyzerDefinition, // allow reading analyzer definitions instead of just name
     std::string& errorField, // field causing error (out-param)
     TRI_vocbase_t const* defaultVocbase = nullptr, // fallback vocbase
     IResearchLinkMeta const& defaults = DEFAULT(), // inherited defaults
@@ -145,13 +147,15 @@ struct IResearchLinkMeta {
   ///        return success or set TRI_set_errno(...) and return false
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
+  /// @param usedAnalyzers add to this map analyzers used in meta,
   ////////////////////////////////////////////////////////////////////////////////
   bool json( // append meta jSON
     arangodb::velocypack::Builder& builder, // output buffer (out-param)
     bool writeAnalyzerDefinition, // output full analyzer definition instead of just name
     IResearchLinkMeta const* ignoreEqual = nullptr, // values to ignore if equal
     TRI_vocbase_t const* defaultVocbase = nullptr, // fallback vocbase
-    Mask const* mask = nullptr // values to ignore always
+    Mask const* mask = nullptr, // values to ignore always
+    std::map<std::string, IResearchAnalyzerFeature::AnalyzerPool::ptr>* usedAnalyzers = nullptr // append analyzers used in definition
   ) const;
 
   ////////////////////////////////////////////////////////////////////////////////
