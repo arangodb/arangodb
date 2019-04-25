@@ -269,7 +269,7 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
   for (auto const& reg : _infos.getGroupRegisters()) {
     _nextGroupValues.emplace_back(input.stealValue(reg.second));
   }
-  // this builds a new group with aggregate functions beeing prepared.
+  // this builds a new group with aggregate functions being prepared.
   auto aggregateValues = std::make_unique<AggregateValuesType>();
   aggregateValues->reserve(_aggregatorFactories.size());
   auto trx = _infos.getTransaction();
