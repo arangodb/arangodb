@@ -50,7 +50,11 @@ ExecutorInfos::ExecutorInfos(
   if (_outRegs == nullptr) {
     _outRegs = std::make_shared<decltype(_outRegs)::element_type>();
   }
-  TRI_ASSERT(nrInputRegisters <= nrOutputRegisters);
+  // The second assert part is from ReturnExecutor special case, we shrink all
+  // results into a single Register column.
+  TRI_ASSERT((nrInputRegisters <= nrOutputRegisters) ||
+             (nrOutputRegisters == 1 && _registersToKeep->empty() &&
+              _registersToClear->empty()));
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   for (RegisterId const inReg : *_inRegs) {
