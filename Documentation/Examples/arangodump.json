@@ -42,6 +42,24 @@
     "section" : "",
     "type" : "string..."
   },
+  "compress-output" : {
+    "category" : "option",
+    "default" : false,
+    "deprecatedIn" : null,
+    "description" : "compress files containing database contents using gzip format",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.3.23",
+      "v3.4.6",
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "",
+    "type" : "boolean"
+  },
   "config" : {
     "category" : "option",
     "default" : "",
