@@ -92,8 +92,9 @@ static LockfileRemover remover;
 #ifdef _WIN32
 std::wstring toWString(std::string const& validUTF8String) {
   icu::UnicodeString utf16(validUTF8String.c_str());
-  static_assert(sizeof(wchar_t) == sizeof(UChar));
-  return std::wstring(reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()));
+  using bufferType = std::remove_pointer_t<decltype(utf16.getTerminatedBuffer())>;
+  static_assert(sizeof(std::wchar_t) == sizeof(bufferType));
+  return std::wstring(reinterpret_cast<std::wchar_t const*>(utf16.getTerminatedBuffer()));
 }
 #endif
 
