@@ -26,14 +26,14 @@
 #include "SingleRowFetcher.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/BlockFetcher.h"
+#include "Aql/DependencyProxy.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 template <bool passBlocksThrough>
-SingleRowFetcher<passBlocksThrough>::SingleRowFetcher(BlockFetcher<passBlocksThrough>& executionBlock)
-    : _blockFetcher(&executionBlock),
+SingleRowFetcher<passBlocksThrough>::SingleRowFetcher(DependencyProxy<passBlocksThrough>& executionBlock)
+    : _dependencyProxy(&executionBlock),
       _upstreamState(ExecutionState::HASMORE),
       _rowIndex(0),
       _currentRow{CreateInvalidInputRowHint{}} {}
@@ -46,7 +46,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> SingleRowFetcher<passBlocksThro
   // DONE the last time, and I don't currently have time to track them down.
   // Thus the following assert is commented out.
   // TRI_ASSERT(_upstreamState != ExecutionState::DONE);
-  auto res = _blockFetcher->fetchBlock(atMost);
+  auto res = _dependencyProxy->fetchBlock(atMost);
 
   _upstreamState = res.first;
 
@@ -55,12 +55,12 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> SingleRowFetcher<passBlocksThro
 
 template <bool passBlocksThrough>
 SingleRowFetcher<passBlocksThrough>::SingleRowFetcher()
-    : _blockFetcher(nullptr), _rowIndex(0), _currentRow{CreateInvalidInputRowHint{}} {}
+    : _dependencyProxy(nullptr), _rowIndex(0), _currentRow{CreateInvalidInputRowHint{}} {}
 
 template <bool passBlocksThrough>
 std::pair<ExecutionState, SharedAqlItemBlockPtr>
 SingleRowFetcher<passBlocksThrough>::fetchBlockForPassthrough(size_t atMost) {
-  return _blockFetcher->fetchBlockForPassthrough(atMost);
+  return _dependencyProxy->fetchBlockForPassthrough(atMost);
 }
 
 template class ::arangodb::aql::SingleRowFetcher<false>;

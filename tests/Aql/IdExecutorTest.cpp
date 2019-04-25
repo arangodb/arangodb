@@ -20,7 +20,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BlockFetcherHelper.h"
+#include "RowFetcherHelper.h"
 #include "catch.hpp"
 
 #include "Aql/AqlItemBlock.h"
@@ -31,7 +31,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
 
-#include "tests/Aql/BlockFetcherHelper.h"
+#include "tests/Aql/RowFetcherHelper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

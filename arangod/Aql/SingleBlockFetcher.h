@@ -25,7 +25,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemMatrix.h"
-#include "Aql/BlockFetcher.h"
+#include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SortExecutor.h"
@@ -39,7 +39,7 @@ namespace aql {
 
 class AqlItemBlock;
 template <bool>
-class BlockFetcher;
+class DependencyProxy;
 
 /**
  * @brief Interface for all AqlExecutors that do need all
@@ -48,16 +48,16 @@ class BlockFetcher;
 template <bool pass>
 class SingleBlockFetcher {
  public:
-  explicit SingleBlockFetcher(BlockFetcher<pass>& executionBlock)
+  explicit SingleBlockFetcher(DependencyProxy<pass>& executionBlock)
       : _prefetched(false),
-        _blockFetcher(&executionBlock),
+        _dependencyProxy(&executionBlock),
         _currentBlock(nullptr),
         _upstreamState(ExecutionState::HASMORE) {}
 
   TEST_VIRTUAL ~SingleBlockFetcher() = default;
 
  protected:
-  // only for testing! Does not initialize _blockFetcher!
+  // only for testing! Does not initialize _dependencyProxy!
   SingleBlockFetcher() = default;
 
  public:
@@ -96,7 +96,7 @@ class SingleBlockFetcher {
       return {_upstreamState, _currentBlock};
     }
 
-    auto res = _blockFetcher->fetchBlock(limit);
+    auto res = _dependencyProxy->fetchBlock(limit);
     _upstreamState = res.first;
     _currentBlock = res.second;
 
@@ -133,7 +133,7 @@ class SingleBlockFetcher {
   bool _prefetched;
 
  private:
-  BlockFetcher<pass>* _blockFetcher;
+  DependencyProxy<pass>* _dependencyProxy;
   SharedAqlItemBlockPtr _currentBlock;
   ExecutionState _upstreamState;
 
@@ -142,7 +142,7 @@ class SingleBlockFetcher {
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
   RegisterId getNrInputRegisters() const {
-    return _blockFetcher->getNrInputRegisters();
+    return _dependencyProxy->getNrInputRegisters();
   }
 };
 

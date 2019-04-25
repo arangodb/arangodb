@@ -68,9 +68,9 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
                                                  typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
-      _blockFetcher(_dependencies, engine->itemBlockManager(),
+      _dependencyProxy(_dependencies, engine->itemBlockManager(),
                     infos.getInputRegisters(), infos.numberOfInputRegisters()),
-      _rowFetcher(_blockFetcher),
+      _rowFetcher(_dependencyProxy),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
       _outputItemRow(),
@@ -204,15 +204,15 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
 
 template <class Executor>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
-  // destroy and re-create the BlockFetcher
-  _blockFetcher.~BlockFetcher();
-  new (&_blockFetcher)
-      BlockFetcher(_dependencies, _engine->itemBlockManager(),
+  // destroy and re-create the DependencyProxy
+  _dependencyProxy.~DependencyProxy();
+  new (&_dependencyProxy)
+      DependencyProxy(_dependencies, _engine->itemBlockManager(),
                    _infos.getInputRegisters(), _infos.numberOfInputRegisters());
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
-  new (&_rowFetcher) Fetcher(_blockFetcher);
+  new (&_rowFetcher) Fetcher(_dependencyProxy);
 
   // destroy and re-create the Executor
   _executor.~Executor();
@@ -242,15 +242,15 @@ namespace aql {
 template <>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
     InputAqlItemRow const& input) {
-  // destroy and re-create the BlockFetcher
-  _blockFetcher.~BlockFetcher();
-  new (&_blockFetcher)
-      BlockFetcher(_dependencies, _engine->itemBlockManager(),
+  // destroy and re-create the DependencyProxy
+  _dependencyProxy.~DependencyProxy();
+  new (&_dependencyProxy)
+      DependencyProxy(_dependencies, _engine->itemBlockManager(),
                    infos().getInputRegisters(), infos().numberOfInputRegisters());
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
-  new (&_rowFetcher) Fetcher(_blockFetcher);
+  new (&_rowFetcher) Fetcher(_dependencyProxy);
 
   SharedAqlItemBlockPtr block =
       input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),

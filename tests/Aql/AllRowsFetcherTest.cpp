@@ -24,7 +24,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlockHelper.h"
-#include "BlockFetcherMock.h"
+#include "DependencyProxyMock.h"
 #include "catch.hpp"
 
 #include "Aql/AllRowsFetcher.h"
@@ -44,13 +44,13 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
   GIVEN("there are no blocks upstream") {
     VPackBuilder input;
     ResourceMonitor monitor;
-    BlockFetcherMock<false> blockFetcherMock{monitor, 0};
+    DependencyProxyMock<false> dependencyProxyMock{monitor, 0};
 
     WHEN("the producer does not wait") {
-      blockFetcherMock.shouldReturn(ExecutionState::DONE, nullptr);
+      dependencyProxyMock.shouldReturn(ExecutionState::DONE, nullptr);
 
       {
-        AllRowsFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(dependencyProxyMock);
 
         THEN("the fetcher should return DONE with an empty matrix") {
           std::tie(state, matrix) = testee.fetchAllRows();
@@ -69,16 +69,16 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
-      REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 1);
+      REQUIRE(dependencyProxyMock.allBlocksFetched());
+      REQUIRE(dependencyProxyMock.numFetchBlockCalls() == 1);
     }
 
     WHEN("the producer waits") {
-      blockFetcherMock.shouldReturn(ExecutionState::WAITING, nullptr)
+      dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
           .andThenReturn(ExecutionState::DONE, nullptr);
 
       {
-        AllRowsFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(dependencyProxyMock);
 
         THEN("the fetcher should first return WAIT with nullptr") {
           std::tie(state, matrix) = testee.fetchAllRows();
@@ -103,8 +103,8 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
-      REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 2);
+      REQUIRE(dependencyProxyMock.allBlocksFetched());
+      REQUIRE(dependencyProxyMock.numFetchBlockCalls() == 2);
     }
   }
 
@@ -112,15 +112,15 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
     VPackBuilder input;
     ResourceMonitor monitor;
     AqlItemBlockManager itemBlockManager{&monitor};
-    BlockFetcherMock<false> blockFetcherMock{monitor, 1};
+    DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
 
     SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
 
     WHEN("the producer returns DONE immediately") {
-      blockFetcherMock.shouldReturn(ExecutionState::DONE, std::move(block));
+      dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
 
       {
-        AllRowsFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(dependencyProxyMock);
 
         THEN("the fetcher should return the matrix with DONE") {
           std::tie(state, matrix) = testee.fetchAllRows();
@@ -141,16 +141,16 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
-      REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 1);
+      REQUIRE(dependencyProxyMock.allBlocksFetched());
+      REQUIRE(dependencyProxyMock.numFetchBlockCalls() == 1);
     }
 
     WHEN("the producer returns HASMORE, then DONE with a nullptr") {
-      blockFetcherMock.shouldReturn(ExecutionState::HASMORE, std::move(block))
+      dependencyProxyMock.shouldReturn(ExecutionState::HASMORE, std::move(block))
           .andThenReturn(ExecutionState::DONE, nullptr);
 
       {
-        AllRowsFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(dependencyProxyMock);
 
         THEN("the fetcher should return the matrix with DONE") {
           std::tie(state, matrix) = testee.fetchAllRows();
@@ -171,16 +171,16 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
-      REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 2);
+      REQUIRE(dependencyProxyMock.allBlocksFetched());
+      REQUIRE(dependencyProxyMock.numFetchBlockCalls() == 2);
     }
 
     WHEN("the producer WAITs, then returns DONE") {
-      blockFetcherMock.shouldReturn(ExecutionState::WAITING, nullptr)
+      dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
           .andThenReturn(ExecutionState::DONE, std::move(block));
 
       {
-        AllRowsFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(dependencyProxyMock);
 
         THEN("the fetcher should first return WAIT with nullptr") {
           std::tie(state, matrix) = testee.fetchAllRows();
@@ -207,17 +207,17 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
-      REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 2);
+      REQUIRE(dependencyProxyMock.allBlocksFetched());
+      REQUIRE(dependencyProxyMock.numFetchBlockCalls() == 2);
     }
 
     WHEN("the producer WAITs, returns HASMORE, then DONE") {
-      blockFetcherMock.shouldReturn(ExecutionState::WAITING, nullptr)
+      dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
           .andThenReturn(ExecutionState::HASMORE, std::move(block))
           .andThenReturn(ExecutionState::DONE, nullptr);
 
       {
-        AllRowsFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(dependencyProxyMock);
 
         THEN("the fetcher should first return WAIT with nullptr") {
           std::tie(state, matrix) = testee.fetchAllRows();
@@ -244,8 +244,8 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
-      REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 3);
+      REQUIRE(dependencyProxyMock.allBlocksFetched());
+      REQUIRE(dependencyProxyMock.numFetchBlockCalls() == 3);
     }
   }
 
@@ -254,7 +254,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
   GIVEN("there are multiple blocks upstream") {
     ResourceMonitor monitor;
     AqlItemBlockManager itemBlockManager{&monitor};
-    BlockFetcherMock<false> blockFetcherMock{monitor, 1};
+    DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
 
     // three 1-column matrices with 3, 2 and 1 rows, respectively
     SharedAqlItemBlockPtr block1 =
@@ -263,12 +263,12 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
                           block3 = buildBlock<1>(itemBlockManager, {{{6}}});
 
     WHEN("the producer does not wait") {
-      blockFetcherMock.shouldReturn(ExecutionState::HASMORE, std::move(block1))
+      dependencyProxyMock.shouldReturn(ExecutionState::HASMORE, std::move(block1))
           .andThenReturn(ExecutionState::HASMORE, std::move(block2))
           .andThenReturn(ExecutionState::DONE, std::move(block3));
 
       {
-        AllRowsFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(dependencyProxyMock);
 
         THEN("the fetcher should return the matrix with DONE") {
           std::tie(state, matrix) = testee.fetchAllRows();
@@ -295,12 +295,12 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
-      REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 3);
+      REQUIRE(dependencyProxyMock.allBlocksFetched());
+      REQUIRE(dependencyProxyMock.numFetchBlockCalls() == 3);
     }
 
     WHEN("the producer waits") {
-      blockFetcherMock.shouldReturn(ExecutionState::WAITING, nullptr)
+      dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
           .andThenReturn(ExecutionState::HASMORE, std::move(block1))
           .andThenReturn(ExecutionState::WAITING, nullptr)
           .andThenReturn(ExecutionState::HASMORE, std::move(block2))
@@ -308,7 +308,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
           .andThenReturn(ExecutionState::DONE, std::move(block3));
 
       {
-        AllRowsFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(dependencyProxyMock);
 
         THEN("the fetcher should return WAITING three times") {
           // wait when fetching the 1st and 2nd block
@@ -347,12 +347,12 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
-      REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 6);
+      REQUIRE(dependencyProxyMock.allBlocksFetched());
+      REQUIRE(dependencyProxyMock.numFetchBlockCalls() == 6);
     }
 
     WHEN("the producer waits and does not return DONE asap") {
-      blockFetcherMock.shouldReturn(ExecutionState::WAITING, nullptr)
+      dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
           .andThenReturn(ExecutionState::HASMORE, std::move(block1))
           .andThenReturn(ExecutionState::WAITING, nullptr)
           .andThenReturn(ExecutionState::HASMORE, std::move(block2))
@@ -361,7 +361,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
           .andThenReturn(ExecutionState::DONE, nullptr);
 
       {
-        AllRowsFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(dependencyProxyMock);
 
         THEN("the fetcher should return WAITING three times") {
           // wait when fetching the 1st and 2nd block
@@ -400,8 +400,8 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
-      REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 7);
+      REQUIRE(dependencyProxyMock.allBlocksFetched());
+      REQUIRE(dependencyProxyMock.numFetchBlockCalls() == 7);
     }
   }
 }

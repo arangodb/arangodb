@@ -30,7 +30,7 @@
 #include <queue>
 
 #include "Aql/AllRowsFetcher.h"
-#include "Aql/BlockFetcher.h"
+#include "Aql/DependencyProxy.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
@@ -100,8 +100,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   using Fetcher = typename Executor::Fetcher;
   using ExecutorStats = typename Executor::Stats;
   using Infos = typename Executor::Infos;
-  using BlockFetcher =
-      typename aql::BlockFetcher<Executor::Properties::allowsBlockPassthrough>;
+  using DependencyProxy =
+      typename aql::DependencyProxy<Executor::Properties::allowsBlockPassthrough>;
 
   static_assert(
       !Executor::Properties::allowsBlockPassthrough || Executor::Properties::preservesOrder,
@@ -216,7 +216,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * @brief Used to allow the row Fetcher to access selected methods of this
    *        ExecutionBlock object.
    */
-  BlockFetcher _blockFetcher;
+  DependencyProxy _dependencyProxy;
 
   /**
    * @brief Fetcher used by the Executor. Calls this->fetchBlock() and handles

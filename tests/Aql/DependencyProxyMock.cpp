@@ -20,7 +20,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BlockFetcherMock.h"
+#include "DependencyProxyMock.h"
 
 #include <lib/Basics/Common.h>
 
@@ -40,9 +40,9 @@ using namespace arangodb::aql;
 // and only then gets instantiated. That is okay, however, because the
 // constructor will not access it.
 template <bool passBlocksThrough>
-BlockFetcherMock<passBlocksThrough>::BlockFetcherMock(arangodb::aql::ResourceMonitor& monitor,
+DependencyProxyMock<passBlocksThrough>::DependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
                                                       ::arangodb::aql::RegisterId nrRegisters)
-    : BlockFetcher<passBlocksThrough>({}, _itemBlockManager,
+    : DependencyProxy<passBlocksThrough>({}, _itemBlockManager,
                                       std::shared_ptr<std::unordered_set<RegisterId>>(),
                                       nrRegisters),
       _itemsToReturn(),
@@ -54,7 +54,7 @@ BlockFetcherMock<passBlocksThrough>::BlockFetcherMock(arangodb::aql::ResourceMon
 template <bool passBlocksThrough>
 std::pair<ExecutionState, SharedAqlItemBlockPtr>
 // NOLINTNEXTLINE google-default-arguments
-BlockFetcherMock<passBlocksThrough>::fetchBlock(size_t) {
+DependencyProxyMock<passBlocksThrough>::fetchBlock(size_t) {
   _numFetchBlockCalls++;
 
   if (_itemsToReturn.empty()) {
@@ -69,7 +69,7 @@ BlockFetcherMock<passBlocksThrough>::fetchBlock(size_t) {
     auto blockPtr = reinterpret_cast<AqlItemBlockPtr>(returnValue.second.get());
     bool didInsert;
     std::tie(std::ignore, didInsert) = _fetchedBlocks.insert(blockPtr);
-    // BlockFetcherMock<passBlocksThrough>::fetchBlock() should not return the same block twice:
+    // DependencyProxyMock<passBlocksThrough>::fetchBlock() should not return the same block twice:
     REQUIRE(didInsert);
   }
 
@@ -81,7 +81,7 @@ BlockFetcherMock<passBlocksThrough>::fetchBlock(size_t) {
  * * * * * * * * * * * * */
 
 template <bool passBlocksThrough>
-BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::shouldReturn(
+DependencyProxyMock<passBlocksThrough>& DependencyProxyMock<passBlocksThrough>::shouldReturn(
     ExecutionState state, SharedAqlItemBlockPtr const& block) {
   // Should only be called once on each instance
   TRI_ASSERT(_itemsToReturn.empty());
@@ -90,7 +90,7 @@ BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::should
 }
 
 template <bool passBlocksThrough>
-BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::shouldReturn(
+DependencyProxyMock<passBlocksThrough>& DependencyProxyMock<passBlocksThrough>::shouldReturn(
     std::pair<ExecutionState, SharedAqlItemBlockPtr> firstReturnValue) {
   // Should only be called once on each instance
   TRI_ASSERT(_itemsToReturn.empty());
@@ -99,7 +99,7 @@ BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::should
 }
 
 template <bool passBlocksThrough>
-BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::shouldReturn(
+DependencyProxyMock<passBlocksThrough>& DependencyProxyMock<passBlocksThrough>::shouldReturn(
     std::vector<std::pair<ExecutionState, SharedAqlItemBlockPtr>> firstReturnValues) {
   // Should only be called once on each instance
   TRI_ASSERT(_itemsToReturn.empty());
@@ -108,16 +108,10 @@ BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::should
 }
 
 template <bool passBlocksThrough>
-BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::andThenReturn(
+DependencyProxyMock<passBlocksThrough>& DependencyProxyMock<passBlocksThrough>::andThenReturn(
     ExecutionState state, SharedAqlItemBlockPtr const& block) {
   auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
   // add all registers as input
-  /* Note: without the `this->` in the following line, I'm getting this error:
-  /home/tobias/Documents/ArangoDB/arangodb/arangodb/tests/Aql/BlockFetcherMock.cpp:112:30: error: use of undeclared identifier 'getNrInputRegisters'
-    for (RegisterId i = 0; i < getNrInputRegisters(); i++) {
-                               ^
-   * wth? with clang version 6.0.0-1ubuntu2
-   */
   for (RegisterId i = 0; i < this->getNrInputRegisters(); i++) {
     inputRegisters->emplace(i);
   }
@@ -125,7 +119,7 @@ BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::andThe
 }
 
 template <bool passBlocksThrough>
-BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::andThenReturn(
+DependencyProxyMock<passBlocksThrough>& DependencyProxyMock<passBlocksThrough>::andThenReturn(
     std::pair<ExecutionState, SharedAqlItemBlockPtr> additionalReturnValue) {
   _itemsToReturn.push(std::move(additionalReturnValue));
 
@@ -133,7 +127,7 @@ BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::andThe
 }
 
 template <bool passBlocksThrough>
-BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::andThenReturn(
+DependencyProxyMock<passBlocksThrough>& DependencyProxyMock<passBlocksThrough>::andThenReturn(
     std::vector<std::pair<ExecutionState, SharedAqlItemBlockPtr>> additionalReturnValues) {
   for (auto& it : additionalReturnValues) {
     andThenReturn(std::move(it));
@@ -143,38 +137,38 @@ BlockFetcherMock<passBlocksThrough>& BlockFetcherMock<passBlocksThrough>::andThe
 }
 
 template <bool passBlocksThrough>
-bool BlockFetcherMock<passBlocksThrough>::allBlocksFetched() const {
+bool DependencyProxyMock<passBlocksThrough>::allBlocksFetched() const {
   return _itemsToReturn.empty();
 }
 
 template <bool passBlocksThrough>
-size_t BlockFetcherMock<passBlocksThrough>::numFetchBlockCalls() const {
+size_t DependencyProxyMock<passBlocksThrough>::numFetchBlockCalls() const {
   return _numFetchBlockCalls;
 }
 
 template <bool passBlocksThrough>
-MultiBlockFetcherMock<passBlocksThrough>::MultiBlockFetcherMock(
+MultiDependencyProxyMock<passBlocksThrough>::MultiDependencyProxyMock(
     arangodb::aql::ResourceMonitor& monitor,
     ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps)
-    : BlockFetcher<passBlocksThrough>({}, _itemBlockManager,
+    : DependencyProxy<passBlocksThrough>({}, _itemBlockManager,
                                       std::shared_ptr<std::unordered_set<RegisterId>>(),
                                       nrRegisters),
       _itemBlockManager(&monitor) {
   _dependencyMocks.reserve(nrDeps);
   for (size_t i = 0; i < nrDeps; ++i) {
-    _dependencyMocks.emplace_back(BlockFetcherMock<passBlocksThrough>{monitor, nrRegisters});
+    _dependencyMocks.emplace_back(DependencyProxyMock<passBlocksThrough>{monitor, nrRegisters});
   }
 }
 
 template <bool passBlocksThrough>
 std::pair<arangodb::aql::ExecutionState, SharedAqlItemBlockPtr>
-MultiBlockFetcherMock<passBlocksThrough>::fetchBlockForDependency(size_t dependency,
+MultiDependencyProxyMock<passBlocksThrough>::fetchBlockForDependency(size_t dependency,
                                                                   size_t atMost) {
   return getDependencyMock(dependency).fetchBlock(atMost);
 }
 
 template <bool passBlocksThrough>
-bool MultiBlockFetcherMock<passBlocksThrough>::allBlocksFetched() const {
+bool MultiDependencyProxyMock<passBlocksThrough>::allBlocksFetched() const {
   for (auto& dep : _dependencyMocks) {
     if (!dep.allBlocksFetched()) {
       return false;
@@ -184,7 +178,7 @@ bool MultiBlockFetcherMock<passBlocksThrough>::allBlocksFetched() const {
 }
 
 template <bool passBlocksThrough>
-size_t MultiBlockFetcherMock<passBlocksThrough>::numFetchBlockCalls() const {
+size_t MultiDependencyProxyMock<passBlocksThrough>::numFetchBlockCalls() const {
   size_t res = 0;
   for (auto& dep : _dependencyMocks) {
     res += dep.numFetchBlockCalls();
@@ -196,8 +190,8 @@ size_t MultiBlockFetcherMock<passBlocksThrough>::numFetchBlockCalls() const {
 }  // namespace tests
 }  // namespace arangodb
 
-template class ::arangodb::tests::aql::BlockFetcherMock<true>;
-template class ::arangodb::tests::aql::BlockFetcherMock<false>;
+template class ::arangodb::tests::aql::DependencyProxyMock<true>;
+template class ::arangodb::tests::aql::DependencyProxyMock<false>;
 
 // Multiblock does not pass through
-template class ::arangodb::tests::aql::MultiBlockFetcherMock<false>;
+template class ::arangodb::tests::aql::MultiDependencyProxyMock<false>;

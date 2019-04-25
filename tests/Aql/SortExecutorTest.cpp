@@ -26,7 +26,7 @@
 #include "catch.hpp"
 #include "fakeit.hpp"
 
-#include "BlockFetcherHelper.h"
+#include "RowFetcherHelper.h"
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
