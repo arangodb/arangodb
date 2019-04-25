@@ -591,12 +591,14 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
 
   options->addOption("--maskings", "file with maskings definition",
                      new StringParameter(&_options.maskingsFile))
-                     .setIntroducedIn(30322).setIntroducedIn(30402);
+                     .setIntroducedIn(30322)
+                     .setIntroducedIn(30402);
 
   options->addOption("--compress-output",
-                     "compress files containing database contents using gzip format",
+                     "compress files containing collection contents using gzip format",
                      new BooleanParameter(&_options.useGzip))
-                     .setIntroducedIn(30323).setIntroducedIn(30406)
+                     .setIntroducedIn(30323)
+                     .setIntroducedIn(30406)
                      .setIntroducedIn(30500);
 }
 

@@ -46,7 +46,7 @@
     "category" : "option",
     "default" : false,
     "deprecatedIn" : null,
-    "description" : "compress files containing database contents using gzip format",
+    "description" : "compress files containing collection contents using gzip format",
     "dynamic" : false,
     "enterpriseOnly" : false,
     "hidden" : false,

@@ -1,8 +1,10 @@
 v3.4.6 (XXXX-XX-XX)
 -------------------
-* add --compress-output flag to arangodump.  Activates gzip compress on json files
-  containing database content.  Metadata files, such as structure and view json,
-  do not compress.
+
+* add --compress-output flag to arangodump. Activates gzip compression for
+  collection data. Metadata files, such as .structure.json and .view.json,
+  do not get compressed. No option is needed for arangorestore to restore
+  .data.gz files.
 
 * fixed internal issue #2946: create graph autocomplete was not working under
   certain circumstances.
@@ -37,7 +39,7 @@ v3.4.5 (2019-03-27)
 * fixed internal issue #3789: restricted the allowed query names for user-
   defined custom queries within the web ui.
 
-* fixed internal issuel #3546: improved the shards view in the web ui if there
+* fixed internal issue #3546: improved the shards view in the web ui if there
   is only one shard to display.
 
 * fixed a display issues when editing a graph within the web ui
@@ -45,7 +47,7 @@ v3.4.5 (2019-03-27)
 * fixed internal-issue #3787: Let user know about conflicting attribute in
   AQL queries if information is available.
 
-* fixed issue #8294: wrong equals behaviour on arrays with ArangoSearch
+* fixed issue #8294: wrong equals behavior on arrays with ArangoSearch
 
 * fixed internal issue #528: ArangoSearch range query sometimes doesn't work
   correctly with numeric values
