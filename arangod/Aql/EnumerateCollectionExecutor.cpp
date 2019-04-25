@@ -72,9 +72,13 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
 EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
+      _documentProducer(nullptr),
+      _documentProducingFunctionContext(_infos.getProduceResult(),
+                                        _infos.getProjections(), _infos.getTrxPtr(),
+                                        _infos.getCoveringIndexAttributePositions(),
+                                        true, _infos.getUseRawDocumentPointers()),
       _state(ExecutionState::HASMORE),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _allowCoveringIndexOptimization(true),
       _cursorHasMore(false) {
   _cursor = std::make_unique<OperationCursor>(
       _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
@@ -89,10 +93,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                        " did not come into sync in time (" +
                                        std::to_string(maxWait) + ")");
   }
-  this->setProducingFunction(
-      buildCallback(_infos.getProduceResult(), _infos.getProjections(),
-                    _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
-                    _allowCoveringIndexOptimization, _infos.getUseRawDocumentPointers()));
+  this->setProducingFunction(buildCallback(_documentProducingFunctionContext));
 }
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
@@ -157,7 +158,7 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
 void EnumerateCollectionExecutor::initializeCursor() {
   _state = ExecutionState::HASMORE;
   _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  _allowCoveringIndexOptimization = true;
+  setAllowCoveringIndexOptimization(true);
   _cursorHasMore = false;
   _cursor->reset();
 }

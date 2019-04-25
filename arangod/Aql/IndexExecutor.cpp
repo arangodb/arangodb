@@ -105,9 +105,13 @@ IndexExecutorInfos::IndexExecutorInfos(
 IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
+      _documentProducingFunctionContext(_infos.getProduceResult(),
+                                        _infos.getProjections(), _infos.getTrxPtr(),
+                                        _infos.getCoveringIndexAttributePositions(),
+                                        false, _infos.getUseRawDocumentPointers()),
+      _documentProducer(nullptr),
       _state(ExecutionState::HASMORE),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _allowCoveringIndexOptimization(false),
       _cursor(nullptr),
       _cursors(_infos.getIndexes().size()),
       _currentIndex(0),
@@ -168,17 +172,13 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
     }
   }
 
-  this->setProducingFunction(
-      buildCallback(_infos.getProduceResult(), _infos.getProjections(),
-                    _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
-                    _allowCoveringIndexOptimization,  // reference here is important
-                    _infos.getUseRawDocumentPointers()));
+  this->setProducingFunction(buildCallback(_documentProducingFunctionContext));
 };
 
 void IndexExecutor::initializeCursor() {
   _state = ExecutionState::HASMORE;
   _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  _allowCoveringIndexOptimization = false;
+  setAllowCoveringIndexOptimization(false);
   _currentIndex = 0;
   _alreadyReturned.clear();
   _indexesExhausted = false;
@@ -272,9 +272,9 @@ bool IndexExecutor::readIndex(OutputAqlItemRow& output,
       // DocumentProducingBlock can access the flag
 
       TRI_ASSERT(getCursor() != nullptr);
-      _allowCoveringIndexOptimization = getCursor()->hasCovering();
+      setAllowCoveringIndexOptimization(getCursor()->hasCovering());
 
-      if (_allowCoveringIndexOptimization &&
+      if (getAllowCoveringIndexOptimization() &&
           !_infos.getCoveringIndexAttributePositions().empty()) {
         // index covers all projections
         res = getCursor()->nextCovering(callback, output.numRowsLeft());
