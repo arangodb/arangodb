@@ -263,6 +263,12 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
     return it;
   }
 
+  _nextGroupValues.clear();
+  // for inserting into group we need to clone the values
+  // and take over ownership
+  for (auto const& reg : _infos.getGroupRegisters()) {
+    _nextGroupValues.emplace_back(input.stealValue(reg.second));
+  }
   // this builds a new group with aggregate functions beeing prepared.
   auto aggregateValues = std::make_unique<AggregateValuesType>();
   aggregateValues->reserve(_aggregatorFactories.size());
