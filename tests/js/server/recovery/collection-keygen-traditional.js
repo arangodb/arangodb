@@ -1,7 +1,7 @@
 /* jshint globalstrict:false, strict:false, unused: false */
 /* global assertTrue, assertFalse, assertEqual */
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief tests for transactions
+// / @brief tests for traditional keygenerator
 // /
 // / @file
 // /
@@ -70,7 +70,7 @@ function recoverySuite () {
     // / @brief test whether the server properly handles large numeric keys
     // //////////////////////////////////////////////////////////////////////////////
 
-    testCollectionKeyGenRocksDB: function () {
+    testCollectionKeyGenTraditional: function () {
 
       let c = db._collection('UnitTestsRecovery1');
       assertEqual(c.count(), 10001);
@@ -84,7 +84,6 @@ function recoverySuite () {
       assertEqual(c.count(), 2);
 
       d = c.save({ value: 'a'});
-      print(d);
       assertTrue(parseInt(d._key) < bigNumber);
     }
 
