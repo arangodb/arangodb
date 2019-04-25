@@ -227,6 +227,10 @@ class OutputAqlItemRow {
 #endif
     _baseIndex = index;
   }
+  // Use this function with caution! We need it only for the SortedCollectExecutor
+  void setAllowSourceRowUninitialized() {
+    _allowSourceRowUninitialized = true;
+  }
 
   // This function can be used to restore the row's invariant.
   // After setting this value numRowsWritten() rather returns
@@ -299,6 +303,8 @@ class OutputAqlItemRow {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _setBaseIndexNotUsed;
 #endif
+  // need this special bool for allowing an empty AqlValue inside the SortedCollectExecutor
+  bool _allowSourceRowUninitialized;
 
  private:
   size_t nextUnwrittenIndex() const noexcept { return numRowsWritten(); }
