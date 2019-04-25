@@ -158,8 +158,6 @@ class HashedCollectExecutor {
   static std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*>
   createAggregatorFactories(HashedCollectExecutor::Infos const& infos);
 
-  std::pair<GroupValueType, GroupKeyType> buildNewGroup(InputAqlItemRow& input, size_t n);
-
   GroupMapType::iterator findOrEmplaceGroup(InputAqlItemRow& input);
 
   void consumeInputRow(InputAqlItemRow& input);
@@ -185,6 +183,8 @@ class HashedCollectExecutor {
   std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> _aggregatorFactories;
 
   size_t _returnedGroups;
+
+  GroupKeyType _nextGroupValues;
 };
 
 }  // namespace aql
