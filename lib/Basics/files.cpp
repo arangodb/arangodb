@@ -90,8 +90,8 @@ struct LockfileRemover {
 static LockfileRemover remover;
 
 #ifdef _WIN32
-std::wstring toWString(std::string const& in) {
-  icu::UnicodeString utf16(in.c_str());
+std::wstring toWString(std::string const& validUTF8String) {
+  icu::UnicodeString utf16(validUTF8String.c_str());
   static_assert(sizeof(wchar_t) == sizeof(UChar));
   return std::wstring(reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()));
 }
