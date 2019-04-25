@@ -38,6 +38,7 @@ const actions = require('@arangodb/actions');
 actions.defineHttp({
   url: '_admin/echo',
   prefix: true,
+  isSystem: false,
 
   callback: function (req, res) {
     res.responseCode = actions.HTTP_OK;

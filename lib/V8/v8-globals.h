@@ -25,8 +25,8 @@
 #define ARANGODB_V8_V8__GLOBALS_H 1
 
 #include "Basics/Common.h"
-
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "V8/JavaScriptSecurityContext.h"
 
 struct TRI_vocbase_t;
 
@@ -728,12 +728,6 @@ struct TRI_v8_global_t {
   /// @brief information about the currently running transaction
   void* _transactionContext;
 
-  /// @brief query registry - note: this shouldn't be changed once set
-  void* _queryRegistry;
-
-  /// @brief current AQL query
-  void* _query;
-
   /// @brief pointer to the vocbase (TRI_vocbase_t*)
   TRI_vocbase_t* _vocbase;
 
@@ -743,8 +737,8 @@ struct TRI_v8_global_t {
   /// @brief cancel has been caught
   bool _canceled;
 
-  /// @brief whether or not useDatabase() is allowed
-  bool _allowUseDatabase;
+  /// @brief the current security context
+  arangodb::JavaScriptSecurityContext _securityContext;
 
  private:
   /// @brief shared pointer mapping for weak pointers, holds shared pointers so
