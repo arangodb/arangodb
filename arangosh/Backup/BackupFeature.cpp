@@ -213,7 +213,7 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
   TRI_ASSERT(resultObject.isObject());
 
   VPackSlice const backups = resultObject.get("id");
-  
+
   if (!backups.isArray()) {
     result.reset(TRI_ERROR_INTERNAL,
                  "expected 'result.hotbackups' to be an array");
@@ -507,6 +507,14 @@ arangodb::Result executeStatusQuery(arangodb::httpclient::SimpleHttpClient& clie
 
       LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "Last progress update " << progressSlice.get("Time").copyString()
         << ": " << progressSlice.get("Done").getInt() << "/" << progressSlice.get("Total").getInt() << " files done";
+    }
+
+    if (server.value.hasKey("Error")) {
+      LOG_TOPIC(ERR, arangodb::Logger::BACKUP) << "Error: " << server.value.get("Error").getInt();
+    }
+
+    if (server.value.hasKey("ErrorMessage")) {
+      LOG_TOPIC(ERR, arangodb::Logger::BACKUP) << "ErrorMessage: " << server.value.get("ErrorMessage").copyString();
     }
   }
 
