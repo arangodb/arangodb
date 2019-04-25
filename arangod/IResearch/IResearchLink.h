@@ -231,7 +231,6 @@ class IResearchLink {
   );
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the current data-store recovery state of the link
   //////////////////////////////////////////////////////////////////////////////
@@ -259,6 +258,27 @@ class IResearchLink {
     operator bool() const noexcept { return _directory && _writer; }
   };
 
+  class VPackComparer final : public irs::comparer {
+   public:
+    VPackComparer();
+
+    void reset(IResearchViewSort const& sort) noexcept {
+      _sort = &sort;
+    }
+
+    bool empty() const noexcept {
+      return _sort->empty();
+    }
+
+   protected:
+    virtual bool less(irs::bytes_ref const& lhs,
+                      irs::bytes_ref const& rhs) const override;
+
+   private:
+    IResearchViewSort const* _sort;
+  }; // VPackComparer
+
+  VPackComparer _comparer;
   IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
   AsyncLinkPtr _asyncSelf; // 'this' for the lifetime of the link (for use with asynchronous calls)
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
