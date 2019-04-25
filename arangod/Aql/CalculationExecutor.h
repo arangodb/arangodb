@@ -182,8 +182,6 @@ inline void CalculationExecutor<CalculationType::Reference>::doEvaluation(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  TRI_ASSERT(!input.requiresDestruction());
-
   // We assume here that the output block (which must be the same as the input
   // block) is already responsible for this value, so we must not destroy it.
   // Plus, we do not want to copy it.
