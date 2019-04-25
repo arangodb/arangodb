@@ -88,6 +88,15 @@ struct LockfileRemover {
 
 /// @brief this instance will remove all lockfiles in its dtor
 static LockfileRemover remover;
+
+#ifdef _WIN32
+std::wstring toWString(std::string const& in) {
+  icu::UnicodeString utf16(in.c_str());
+  static_assert(sizeof(wchar_t) == sizeof(UChar));
+  return std::wstring(reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()));
+}
+#endif
+
 }  // namespace
 
 /// @brief read buffer size (used for bulk file reading)
@@ -279,7 +288,7 @@ bool TRI_IsSymbolicLink(char const* path) {
 bool TRI_CreateSymbolicLink(std::string const& target,
                             std::string const& linkpath, std::string& error) {
 #ifdef _WIN32
-  bool created = ::CreateSymbolicLinkA(linkpath.c_str(), target.c_str(), 0x0);
+  bool created = ::CreateSymbolicLinkW(toWString(linkpath).data(), toWString(target).data(), 0x0);
   if (!created) {
     DWORD errorNum = ::GetLastError();
     error = "failed to create a symlink " + target + " -> " + linkpath + " - " +
