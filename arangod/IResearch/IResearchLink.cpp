@@ -23,6 +23,7 @@
 
 #include "store/mmap_directory.hpp"
 #include "store/store_utils.hpp"
+#include "index/index_writer.hpp"
 
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"

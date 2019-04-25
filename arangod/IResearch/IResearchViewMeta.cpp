@@ -558,13 +558,19 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
   {
     // optional object
     static VPackStringRef const fieldName("sort");
+    std::string errorSubField;
 
     auto const field = slice.get(fieldName);
     mask->_primarySort = !field.isNone();
 
     if (!mask->_primarySort) {
       _primarySort = defaults._primarySort;
-    } else if (!_primarySort.fromVelocyPack(field, errorField)) {
+    } else if (!_primarySort.fromVelocyPack(field, errorSubField)) {
+      errorField = fieldName.toString();
+      if (!errorSubField.empty()) {
+       errorField += "=>" + errorSubField;
+      }
+
       return false;
     }
   }
@@ -630,6 +636,7 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
   }
 
   if ((!ignoreEqual || _primarySort != ignoreEqual->_primarySort) && (!mask || mask->_primarySort)) {
+    velocypack::ObjectBuilder scope(&builder, "sort");
     _primarySort.toVelocyPack(builder);
   }
 

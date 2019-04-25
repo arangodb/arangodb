@@ -241,7 +241,7 @@ arangodb::Result modifyLinks( // modify links
     //        arangodb::Index::Compare(...)
     //        hence must use 'isCreation=true' for normalize(...) to match
     auto res = arangodb::iresearch::IResearchLinkHelper::normalize( // normalize to validate analyzer definitions
-      normalized, link, true, view.vocbase() // args
+      normalized, link, true, view.vocbase(), &view.primarySort() // args
     );
 
     if (!res.ok()) {
@@ -611,10 +611,11 @@ namespace iresearch {
 }
 
 /*static*/ arangodb::Result IResearchLinkHelper::normalize( // normalize definition
-  arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
-  arangodb::velocypack::Slice definition, // source definition
-  bool isCreation, // definition for index creation
-  TRI_vocbase_t const& vocbase // index vocbase
+    arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+    arangodb::velocypack::Slice definition, // source definition
+    bool isCreation, // definition for index creation
+    TRI_vocbase_t const& vocbase, // index vocbase
+    IResearchViewSort const* primarySort /* = nullptr */
 ) {
   if (!normalized.isOpenObject()) {
     return arangodb::Result(
@@ -635,6 +636,11 @@ namespace iresearch {
       TRI_ERROR_BAD_PARAMETER,
       std::string("error parsing arangosearch link parameters from json: ") + error
     );
+  }
+
+  if (primarySort) {
+    // normalize sort if specified
+    meta._sort = *primarySort;
   }
 
   auto res = canUseAnalyzers(meta, vocbase); // same validation as in modifyLinks(...) for Views API
