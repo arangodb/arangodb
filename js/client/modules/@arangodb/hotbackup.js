@@ -40,9 +40,9 @@ var ArangoError = require('@arangodb').ArangoError;
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.get =  function () {
-  let reply = internal.db._connection.POST('_admin/hotbackup/list', null);
-  if (!reply.error && reply.code === 200 && reply.result.hasOwnProperty('hotbackups')) {
-    return reply.result.hotbackups;
+  let reply = internal.db._connection.POST('_admin/backup/list', null);
+  if (!reply.error && reply.code === 200 && reply.result.hasOwnProperty('backups')) {
+    return reply.result.backups;
   }
   throw new ArangoError(reply);
 };
@@ -56,7 +56,7 @@ exports.create = function (userString = undefined) {
   if (userString !== undefined) {
     postData['userString'] = userString;
   }
-  let reply = internal.db._connection.POST('_admin/hotbackup/create', postData);
+  let reply = internal.db._connection.POST('_admin/backup/create', postData);
   if (!reply.error && reply.code === 200) {
     return reply.result;
   }
@@ -118,7 +118,7 @@ const waitForRestart = (maxWait, originalUptime) => {
 
 exports.restore = function(restoreBackupName, maxWait) {
   let originalUptime = this.getUptime();
-  let reply = internal.db._connection.POST('_admin/hotbackup/restore', { directory: restoreBackupName });
+  let reply = internal.db._connection.POST('_admin/backup/restore', { identifier: restoreBackupName });
   if (!reply.error && reply.code === 200) {
     waitForRestart(maxWait, originalUptime);
     return reply.result;
@@ -131,7 +131,7 @@ exports.restore = function(restoreBackupName, maxWait) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.delete = function(deleteBackupName) {
-  let reply = internal.db._connection.DELETE('_admin/hotbackup/create', { directory: deleteBackupName });
+  let reply = internal.db._connection.POST('_admin/backup/delete', { identifier: deleteBackupName });
   if (!reply.error && reply.code === 200) {
     return reply.result;
   }
@@ -143,7 +143,7 @@ exports.delete = function(deleteBackupName) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.store = function(storeBackupName) {
-  let reply = internal.db._connection.GET('_admin/hotbackup/store', { directory: storeBackupName });
+  let reply = internal.db._connection.GET('_admin/backup/upload', { identifier: storeBackupName });
   if (!reply.error && reply.code === 200) {
     return reply.result;
   }
@@ -156,7 +156,7 @@ exports.store = function(storeBackupName) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.retrieve = function(backupName) {
-  let reply = internal.db._connection.POST('_admin/hotbackup/retrieve', { directory: backupName });
+  let reply = internal.db._connection.POST('_admin/backup/download', { identifier: backupName });
   if (!reply.error && reply.code === 200) {
     return reply.result;
   }
@@ -169,7 +169,7 @@ exports.retrieve = function(backupName) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.getPolicy = function() {
-  let reply = internal.db._connection.GET('_admin/hotbackup/policy');
+  let reply = internal.db._connection.GET('_admin/backup/policy');
   if (!reply.error && reply.code === 200) {
     return reply.result;
   }
@@ -181,7 +181,7 @@ exports.getPolicy = function() {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.setPolicy = function(policy) {
-  let reply = internal.db._connection.POST('_admin/hotbackup/policy', {policy: policy });
+  let reply = internal.db._connection.POST('_admin/backup/policy', {policy: policy });
   if (!reply.error && reply.code === 200) {
     return reply.result;
   }
