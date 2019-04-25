@@ -174,6 +174,7 @@ class IndexExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, size_t> skipRows(size_t toSkip);
 
  public:
   typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
@@ -199,6 +200,7 @@ class IndexExecutor {
 
   /// @brief continue fetching of documents
   bool readIndex(IndexIterator::DocumentCallback const&, bool& hasWritten);
+  bool skipIndex(size_t toSkip, IndexStats& stats);
 
   /// @brief reset the cursor at given position
   void resetCursor(size_t pos) { _cursors[pos]->reset(); };
@@ -227,12 +229,8 @@ class IndexExecutor {
   void setIsLastIndex(bool flag) { _isLastIndex = flag; }
 
   void setCurrentIndex(size_t pos) { _currentIndex = pos; }
-  void decrCurrentIndex() {
-    _currentIndex--;
-  }
-  void incrCurrentIndex() {
-    _currentIndex++;
-  }
+  void decrCurrentIndex() { _currentIndex--; }
+  void incrCurrentIndex() { _currentIndex++; }
   size_t getCurrentIndex() const noexcept { return _currentIndex; }
 
  private:
@@ -268,6 +266,11 @@ class IndexExecutor {
   /// @brief Flag if the current index pointer is the last of the list.
   ///        Used in uniqueness checks.
   bool _isLastIndex;
+
+  /// @brief Counter how many documents have been returned/skipped
+  ///        during one call. Retained during WAITING situations.
+  ///        Needs to be 0 after we return a result.
+  size_t _returned;
 };
 
 }  // namespace aql

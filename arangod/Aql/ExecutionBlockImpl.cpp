@@ -236,6 +236,13 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<IResearchViewExecutor<false
   LOG_DEVEL << " SKIP IRESEARCH false case";
   return this->executor().skipRows(atMost);
 }
+
+template <>
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<IndexExecutor>::skipSome(size_t atMost) {
+  LOG_DEVEL << " SKIP INDEX case";
+  return this->executor().skipRows(atMost);
+}
+
 }  // namespace aql
 }  // namespace arangodb
 

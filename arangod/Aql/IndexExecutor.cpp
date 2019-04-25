@@ -113,7 +113,8 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _currentIndex(0),
       _alreadyReturned(),
       _indexesExhausted(false),
-      _isLastIndex(false) {
+      _isLastIndex(false),
+      _returned(0) {
   TRI_ASSERT(!_infos.getIndexes().empty());
 
   if (_infos.getCondition() != nullptr) {
@@ -284,6 +285,39 @@ bool IndexExecutor::readIndex(IndexIterator::DocumentCallback const& callback, b
       return false;
     }
   }
+}
+
+bool IndexExecutor::skipIndex(size_t toSkip, IndexStats& stats) {
+  if (_cursor == nullptr || _indexesExhausted) {
+    // All indexes exhausted
+    return false;
+  }
+
+  while (getCursor() != nullptr) {
+    if (!getCursor()->hasMore()) {
+      // startNextCursor();
+      bool res = advanceCursor();
+      if (!res) {
+        return false;
+      }
+      continue;
+    }
+
+    if (_returned == toSkip) {
+      // We have skipped enough, do not check if we have more
+      return true;
+    }
+
+    TRI_IF_FAILURE("IndexBlock::readIndex") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    uint64_t returned = 0;
+    getCursor()->skip(toSkip - _returned, returned);
+    stats.incrScanned(returned);
+    _returned += static_cast<size_t>(returned);
+  }
+  return false;
 }
 
 bool IndexExecutor::initIndexes(InputAqlItemRow& input) {
@@ -499,5 +533,51 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
       }
       return {ExecutionState::HASMORE, stats};
     }
+  }
+}
+
+std::pair<ExecutionState, size_t> IndexExecutor::skipRows(size_t toSkip) {
+  TRI_IF_FAILURE("IndexExecutor::skipRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  IndexStats stats{};
+
+  while (_returned < toSkip) {
+    if (!_input) {
+      if (_state == ExecutionState::DONE) {
+        return {_state, _returned};
+      }
+
+      std::tie(_state, _input) = _fetcher.fetchRow();
+
+      if (_state == ExecutionState::WAITING) {
+        return {_state, 0};
+      }
+
+      if (!_input) {
+        TRI_ASSERT(_state == ExecutionState::DONE);
+        return {_state, _returned};
+      }
+
+      if (!initIndexes(_input)) {
+        _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+        continue;
+      }
+    }
+
+    // Skip the next elements from the indexes
+    setIndexesExhausted(!skipIndex(toSkip, stats));
+
+    if (_indexesExhausted) {
+      _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      continue;
+    }
+  }
+
+  if (getCursor() != nullptr && getCursor()->hasMore()) {
+    return {ExecutionState::HASMORE, _returned};
+  } else {
+    return {ExecutionState::DONE, _returned};
   }
 }
