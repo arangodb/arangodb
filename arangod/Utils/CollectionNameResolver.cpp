@@ -260,7 +260,7 @@ std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) 
       return name;
     } else {
       // most likely collection not found. now try again
-      ClusterInfo::instance()->flush();
+      ClusterInfo::instance()->invalidatePlan();
     }
   }
 
