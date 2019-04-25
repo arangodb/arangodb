@@ -103,7 +103,14 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
   TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  EnumerateCollectionStats stats{};
+  // Allocate this on the stack, not the heap.
+  struct {
+    EnumerateCollectionExecutor& executor;
+    OutputAqlItemRow& output;
+    EnumerateCollectionStats stats;
+  } context{*this, output, {}};
+  // just a shorthand
+  EnumerateCollectionStats& stats = context.stats;
 
   while (true) {
     if (!_cursorHasMore) {
@@ -133,19 +140,23 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
       // properly build up results by fetching the actual documents
       // using nextDocument()
       _cursorHasMore = _cursor->nextDocument(
-          [&](LocalDocumentId const&, VPackSlice slice) {
-            _documentProducer(_input, output, slice, _infos.getOutputRegisterId());
-            stats.incrScanned();
-          }, output.numRowsLeft() /*atMost*/);
+          [&context](LocalDocumentId const&, VPackSlice slice) {
+            context.executor._documentProducer(context.executor._input, context.output, slice,
+                                               context.executor._infos.getOutputRegisterId());
+            context.stats.incrScanned();
+          },
+          output.numRowsLeft() /*atMost*/);
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
       _cursorHasMore = _cursor->next(
-          [&](LocalDocumentId const&) {
-            _documentProducer(_input, output, VPackSlice::nullSlice(),
-                              _infos.getOutputRegisterId());
-            stats.incrScanned();
-          }, output.numRowsLeft() /*atMost*/);
+          [&context](LocalDocumentId const&) {
+            context.executor._documentProducer(context.executor._input, context.output,
+                                               VPackSlice::nullSlice(),
+                                               context.executor._infos.getOutputRegisterId());
+            context.stats.incrScanned();
+          },
+          output.numRowsLeft() /*atMost*/);
     }
 
     if (_state == ExecutionState::DONE && !_cursorHasMore) {
