@@ -189,7 +189,8 @@ inline void CalculationExecutor<CalculationType::Reference>::doEvaluation(
   // Plus, we do not want to copy it.
   // TODO assert that input and output blocks are the same
   bool constexpr mustDestroy = false;
-  AqlValueGuard guard{input.getValue(inRegs[0]), mustDestroy};
+  // TODO remove the const_cast hack
+  AqlValueGuard guard{const_cast<AqlValue&>(input.getValue(inRegs[0])), mustDestroy};
   output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
 }
 
