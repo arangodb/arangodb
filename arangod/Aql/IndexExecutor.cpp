@@ -162,7 +162,6 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
         ++expansions;
         if (expansions > 1 || i > 0) {
           infos.setHasMultipleExpansions(true);
-          ;
           break;
         }
       }
@@ -176,6 +175,16 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
                     _allowCoveringIndexOptimization,  // reference here is important
                     _infos.getUseRawDocumentPointers()));
 };
+
+void IndexExecutor::initializeCursor() {
+  _state = ExecutionState::HASMORE;
+  _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  _allowCoveringIndexOptimization = false;
+  _currentIndex = 0;
+  _alreadyReturned.clear();
+  _indexesExhausted = false;
+  _isLastIndex = false;
+}
 
 IndexExecutor::~IndexExecutor() = default;
 

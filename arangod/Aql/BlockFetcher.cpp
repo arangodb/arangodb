@@ -63,9 +63,9 @@ ExecutionState BlockFetcher<passBlocksThrough>::prefetchBlock(size_t atMost) {
   }
   if /* constexpr */ (passBlocksThrough) {
     // Reposit block for pass-through executors.
-    _blockPassThroughQueue.push({state, block});
+    _blockPassThroughQueue.push_back({state, block});
   }
-  _blockQueue.push({state, std::move(block)});
+  _blockQueue.push_back({state, std::move(block)});
 
   return ExecutionState::HASMORE;
 }
@@ -89,7 +89,7 @@ BlockFetcher<passBlocksThrough>::fetchBlock(size_t atMost) {
   ExecutionState state;
   SharedAqlItemBlockPtr block;
   std::tie(state, block) = _blockQueue.front();
-  _blockQueue.pop();
+  _blockQueue.pop_front();
 
   return {state, std::move(block)};
 }
@@ -146,7 +146,7 @@ BlockFetcher<allowBlockPassthrough>::fetchBlockForPassthrough(size_t atMost) {
   ExecutionState state;
   SharedAqlItemBlockPtr block;
   std::tie(state, block) = _blockPassThroughQueue.front();
-  _blockPassThroughQueue.pop();
+  _blockPassThroughQueue.pop_front();
 
   return {state, std::move(block)};
 }

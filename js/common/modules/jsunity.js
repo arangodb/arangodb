@@ -38,6 +38,12 @@ var DURATION = 0;
 var RESULTS = {};
 var COMPLETE = {};
 
+var SETUPS = 0;
+var TEARDOWNS = 0;
+
+var TOTALSETUPS = 0;
+var TOTALTEARDOWNS = 0;
+
 var jsUnity = require('./jsunity/jsunity').jsUnity;
 var STARTTEST = 0.0;
 var testFilter = "undefined";
@@ -58,7 +64,6 @@ jsUnity.results.begin = function (total, suiteName) {
 jsUnity.results.pass = function (index, testName) {
   var newtime = jsUnity.env.getDate();
 
-  RESULTS[testName] = {};
   RESULTS[testName].status = true;
   RESULTS[testName].duration = newtime - STARTTEST;
 
@@ -71,7 +76,6 @@ jsUnity.results.pass = function (index, testName) {
 jsUnity.results.fail = function (index, testName, message) {
   var newtime = jsUnity.env.getDate();
 
-  RESULTS[testName] = {};
   RESULTS[testName].status = false;
   RESULTS[testName].message = message;
   RESULTS[testName].duration = newtime - STARTTEST;
@@ -91,6 +95,22 @@ jsUnity.results.end = function (passed, failed, duration) {
     failed + ' test(s) failed' + internal.COLORS.COLOR_RESET);
   print(' ' + duration + ' millisecond(s) elapsed');
   print();
+};
+
+jsUnity.results.beginSetUp = function(index, testName) {
+  RESULTS[testName] = {};
+  SETUPS = jsUnity.env.getDate();
+};
+jsUnity.results.endSetUp = function(index, testName) {
+  RESULTS[testName].setUpDuration = jsUnity.env.getDate() - SETUPS;
+  TOTALSETUPS += RESULTS[testName].setUpDuration;
+};
+jsUnity.results.beginTeardown = function(index, testName) {
+  TEARDOWNS = jsUnity.env.getDate();
+};
+jsUnity.results.endTeardown = function(index, testName) {
+  RESULTS[testName].tearDownDuration = jsUnity.env.getDate() - TEARDOWNS;
+  TOTALTEARDOWNS += RESULTS[testName].tearDownDuration;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -151,10 +171,12 @@ function Run (testsuite) {
       suiteName: suite.suiteName,
       message: err,
       duration: 0,
+      setUpDuration: 0,
+      tearDownDuration: 0,
       passed: 0,
       status: false,
       failed: 1,
-      total: 1,
+      total: 1
     };
     TOTAL += 1;
     FAILED += 2;
@@ -175,7 +197,8 @@ function Run (testsuite) {
   PASSED += result.passed;
   FAILED += result.failed;
   DURATION += result.duration;
-
+  
+  
   let duplicates = [];
   for (var attrname in RESULTS) {
     if (RESULTS.hasOwnProperty(attrname)) {
@@ -207,6 +230,8 @@ function Done (suiteName) {
   COMPLETE.failed = FAILED;
   COMPLETE.total = TOTAL;
   COMPLETE.suiteName = suiteName;
+  COMPLETE.totalSetUp = TOTALSETUPS;
+  COMPLETE.totalTearDown = TOTALTEARDOWNS;
 
   TOTAL = 0;
   PASSED = 0;

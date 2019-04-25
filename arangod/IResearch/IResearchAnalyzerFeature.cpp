@@ -996,8 +996,11 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
       return res;
     }
 
+    auto* engine = arangodb::EngineSelectorFeature::ENGINE;
     auto allowCreation = // should analyzer creation be allowed (always for cluster)
-      isEmplace || arangodb::ServerState::instance()->isClusterRole();
+      isEmplace // if it's a user creation request
+      || arangodb::ServerState::instance()->isClusterRole() // always for cluster
+      || (engine && engine->inRecovery()); // always during recovery since analyzer collection might not be available yet
     bool erase = itr.second; // an insertion took place
     auto cleanup = irs::make_finally([&erase, this, &itr]()->void {
       if (erase) {
@@ -1022,10 +1025,12 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
         );
       }
 
-      // persist only on coordinator and single-server
-      res = arangodb::ServerState::instance()->isCoordinator() // coordinator
-            || arangodb::ServerState::instance()->isSingleServer() // single-server
-          ? storeAnalyzer(*pool) : arangodb::Result();
+      // persist only on coordinator and single-server while not in recovery
+      if ((!engine || !engine->inRecovery()) // do not persist during recovery
+          && (arangodb::ServerState::instance()->isCoordinator() // coordinator
+              || arangodb::ServerState::instance()->isSingleServer())) {// single-server
+        res = storeAnalyzer(*pool);
+      }
 
       if (res.ok()) {
         result = std::make_pair(pool, itr.second);
@@ -1057,12 +1062,13 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
 }
 
 IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
-    irs::string_ref const& name // analyzer name
+    irs::string_ref const& name, // analyzer name
+    bool onlyCached /*= false*/ // check only locally cached analyzers
 ) const noexcept {
   try {
     auto split = splitAnalyzerName(name);
 
-    if (!split.first.null()) { // do not trigger load for static-analyzer requests
+    if (!split.first.null() && !onlyCached) { // do not trigger load for static-analyzer requests
       auto res = // load analyzers for database
         const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(split.first);
 
@@ -1332,11 +1338,15 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers( // load
     };
 
     if (!vocbase) {
+      if (engine && engine->inRecovery()) {
+        return arangodb::Result(); // database might not have come up yet
+      }
+
       cleanupAnalyzers(*this, itr, database); // cleanup any analyzers for 'database'
 
       return arangodb::Result( // result
         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, // code
-        std::string("failed to find database '") + std::string(database) + " while loading analyzers"
+        std::string("failed to find database '") + std::string(database) + "' while loading analyzers"
       );
     }
 

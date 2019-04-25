@@ -130,6 +130,8 @@ class EnumerateCollectionExecutor {
         "Logic_error, prefetching number fo rows not supported");
   }
 
+  void initializeCursor();
+
  private:
   bool waitForSatellites(ExecutionEngine* engine, Collection const* collection) const;
 
