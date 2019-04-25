@@ -169,8 +169,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
   }
 
   this->setProducingFunction(
-      buildCallback(_documentProducer, _infos.getOutVariable(),
-                    _infos.getProduceResult(), _infos.getProjections(),
+      buildCallback(_infos.getProduceResult(), _infos.getProjections(),
                     _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
                     _allowCoveringIndexOptimization,  // reference here is important
                     _infos.getUseRawDocumentPointers()));
@@ -424,8 +423,8 @@ bool IndexExecutor::advanceCursor() {
   return true;
 }
 
-std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("IndexExecutor::produceRow") {
+std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("IndexExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   IndexStats stats{};

@@ -49,7 +49,7 @@ template <class UsedFetcher>
 IdExecutor<UsedFetcher>::~IdExecutor() = default;
 
 template <class UsedFetcher>
-std::pair<ExecutionState, NoStats> IdExecutor<UsedFetcher>::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> IdExecutor<UsedFetcher>::produceRows(OutputAqlItemRow& output) {
   ExecutionState state;
   NoStats stats;
 

@@ -96,7 +96,7 @@ class ReturnExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  inline std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output) {
+  inline std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output) {
     ExecutionState state;
     ReturnExecutor::Stats stats;
     InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};

@@ -68,14 +68,13 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
                                                  typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
-      _blockFetcher(_dependencies, engine->itemBlockManager(),
-                    infos.getInputRegisters(), infos.numberOfInputRegisters()),
-      _rowFetcher(_blockFetcher),
+      _dependencyProxy(_dependencies, engine->itemBlockManager(),
+                       infos.getInputRegisters(), infos.numberOfInputRegisters()),
+      _rowFetcher(_dependencyProxy),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
       _outputItemRow(),
       _query(*engine->getQuery()) {
-
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
@@ -136,7 +135,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
   // The loop has to be entered at least once!
   TRI_ASSERT(!_outputItemRow->isFull());
   while (!_outputItemRow->isFull()) {
-    std::tie(state, executorStats) = _executor.produceRow(*_outputItemRow);
+    std::tie(state, executorStats) = _executor.produceRows(*_outputItemRow);
     // Count global but executor-specific statistics, like number of filtered
     // rows.
     _engine->_stats += executorStats;
@@ -253,12 +252,12 @@ CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
 
 template <class Executor>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
-  // reinitialize the BlockFetcher
-  _blockFetcher.reset();
+  // reinitialize the DependencyProxy
+  _dependencyProxy.reset();
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
-  new (&_rowFetcher) Fetcher(_blockFetcher);
+  new (&_rowFetcher) Fetcher(_dependencyProxy);
 
   constexpr bool customInit = hasInitializeCursor<Executor>::value;
   // IndexExecutor and EnumerateCollectionExecutor have initializeCursor implemented,
@@ -296,12 +295,12 @@ namespace aql {
 template <>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
     InputAqlItemRow const& input) {
-  // reinitialize the BlockFetcher
-  _blockFetcher.reset();
+  // reinitialize the DependencyProxy
+  _dependencyProxy.reset();
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
-  new (&_rowFetcher) Fetcher(_blockFetcher);
+  new (&_rowFetcher) Fetcher(_dependencyProxy);
 
   SharedAqlItemBlockPtr block =
       input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),

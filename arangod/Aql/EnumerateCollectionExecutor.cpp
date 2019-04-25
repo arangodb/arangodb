@@ -89,18 +89,17 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                        " did not come into sync in time (" +
                                        std::to_string(maxWait) + ")");
   }
-  this->setProducingFunction(buildCallback(
-        _documentProducer, _infos.getOutVariable(), _infos.getProduceResult(),
-        _infos.getProjections(), _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
-        _allowCoveringIndexOptimization, _infos.getUseRawDocumentPointers()));
-
+  this->setProducingFunction(
+      buildCallback(_infos.getProduceResult(), _infos.getProjections(),
+                    _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
+                    _allowCoveringIndexOptimization, _infos.getUseRawDocumentPointers()));
 }
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
 
-std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor::produceRow(
+std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor::produceRows(
     OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRow") {
+  TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   EnumerateCollectionStats stats{};

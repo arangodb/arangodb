@@ -113,7 +113,7 @@ SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher), _input(nullptr), _returnNext(0){};
 SortExecutor::~SortExecutor() = default;
 
-std::pair<ExecutionState, NoStats> SortExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> SortExecutor::produceRows(OutputAqlItemRow& output) {
   ExecutionState state;
   if (_input == nullptr) {
     // We need to get data
