@@ -42,6 +42,26 @@ class IResearchFeature; // forward declaration
 class IResearchView; // forward declaration
 template<typename T> class TypedResourceMutex; // forward declaration
 
+class VPackComparer final : public irs::comparer {
+ public:
+  VPackComparer();
+
+  void reset(IResearchViewSort const& sort) noexcept {
+    _sort = &sort;
+  }
+
+  bool empty() const noexcept {
+    return _sort->empty();
+  }
+
+ protected:
+  virtual bool less(irs::bytes_ref const& lhs,
+                    irs::bytes_ref const& rhs) const override;
+
+ private:
+  IResearchViewSort const* _sort;
+}; // VPackComparer
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView
@@ -257,26 +277,6 @@ class IResearchLink {
     irs::index_writer::ptr _writer;
     operator bool() const noexcept { return _directory && _writer; }
   };
-
-  class VPackComparer final : public irs::comparer {
-   public:
-    VPackComparer();
-
-    void reset(IResearchViewSort const& sort) noexcept {
-      _sort = &sort;
-    }
-
-    bool empty() const noexcept {
-      return _sort->empty();
-    }
-
-   protected:
-    virtual bool less(irs::bytes_ref const& lhs,
-                      irs::bytes_ref const& rhs) const override;
-
-   private:
-    IResearchViewSort const* _sort;
-  }; // VPackComparer
 
   VPackComparer _comparer;
   IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)

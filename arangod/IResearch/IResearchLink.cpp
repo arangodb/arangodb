@@ -31,6 +31,7 @@
 #include "IResearchPrimaryKeyFilter.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
+#include "VelocyPackHelper.h"
 #include "Aql/QueryCache.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
@@ -166,28 +167,6 @@ irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeatu
   return dataPath;
 }
 
-struct SortedField {
-  bool write(irs::data_output& out) const {
-    out.write_bytes(slice.start(), slice.byteSize());
-    return true;
-  }
-
-  void reset(VPackSlice doc, std::vector<arangodb::basics::AttributeName> const& attribute) {
-    slice = VPackSlice::nullSlice();
-
-    for (size_t i = 0, size = attribute.size(); i < size; ++i) {
-      slice = slice.get(attribute[i].name);
-
-      if (slice.isNone() || (i + 1 < size && !slice.isObject())) {
-        slice = VPackSlice::nullSlice();
-        break;
-      }
-    }
-  }
-
-  VPackSlice slice;
-}; // SortedField
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts ArangoDB document into an IResearch data store
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,9 +198,17 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
 
   // Sorted field
   {
-    SortedField field;
+    struct SortedField {
+      bool write(irs::data_output& out) const {
+        out.write_bytes(slice.start(), slice.byteSize());
+        return true;
+      }
+
+      VPackSlice slice;
+    } field; // SortedField
+
     for (auto& sortField : meta._sort.fields()) {
-      field.reset(document, sortField);
+      field.slice = arangodb::iresearch::get(document, sortField, VPackSlice::nullSlice());
       doc.insert<irs::Action::STORE_SORTED>(field);
     }
   }
@@ -253,11 +240,11 @@ static constexpr const int MULTIPLIER[] { -1, 1 };
 namespace arangodb {
 namespace iresearch {
 
-IResearchLink::VPackComparer::VPackComparer()
+VPackComparer::VPackComparer()
   : _sort(&IResearchViewMeta::DEFAULT()._primarySort) {
 }
 
-bool IResearchLink::VPackComparer::less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
+bool VPackComparer::less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
   TRI_ASSERT(_sort);
   TRI_ASSERT(!lhs.empty());
   TRI_ASSERT(!rhs.empty());
