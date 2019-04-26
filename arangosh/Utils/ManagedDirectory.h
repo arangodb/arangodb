@@ -216,6 +216,7 @@ class ManagedDirectory {
    * @param  name      The filename, relative to the directory
    * @param  overwrite Whether to overwrite file if it exists (otherwise fail)
    * @param  flags     Flags (will be XORed with `DefaultWriteFlags`
+   * @param  gzipOk    Flag whether this file is suitable for gzip (when enabled)
    * @return           Unique pointer to file, if opened
    */
   std::unique_ptr<File> writableFile(std::string const& filename,

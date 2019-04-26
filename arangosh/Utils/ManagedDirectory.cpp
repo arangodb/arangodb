@@ -466,6 +466,8 @@ void ManagedDirectory::File::write(char const* data, size_t length) {
     if (!written) {
       _status = _context->status();
     }
+  } else if (isGzip()) {
+    gzwrite(_gzFile, data, length);
   } else {
     ::rawWrite(_fd, data, length, _status, _path, _flags);
   }
@@ -474,7 +476,7 @@ void ManagedDirectory::File::write(char const* data, size_t length) {
     gzwrite(_gzFile, data, length);
   } else {
     ::rawWrite(_fd, data, length, _status, _path, _flags);
-  } // write
+  } // else
 #endif
 }
 
@@ -490,6 +492,8 @@ ssize_t ManagedDirectory::File::read(char* buffer, size_t length) {
     if (bytesRead < 0) {
       _status = _context->status();
     }
+  } else if (isGzip()) {
+    bytesRead = gzread(_gzFile, buffer, length);
   } else {
     bytesRead = ::rawRead(_fd, buffer, length, _status, _path, _flags);
   }
