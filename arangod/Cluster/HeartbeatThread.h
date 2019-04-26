@@ -82,6 +82,9 @@ class HeartbeatThread : public CriticalThread,
 
   void dispatchedJobResult(DBServerAgencySyncResult);
 
+  /// @brief trigger a reload of Current in the next round
+  void pleaseLoadCurrent();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the thread has run at least once.
   /// this is used on the coordinator only

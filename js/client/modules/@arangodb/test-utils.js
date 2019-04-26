@@ -253,8 +253,9 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             continue;
           }
           let delta = diffArray(collectionsBefore, collectionsAfter).filter(function(name) {
-              return ! ((name[0] === '_') || (name === "compact") || (name === "election")
-			|| (name === "log")); // exclude system/agency collections from the comparison
+            return ! ((name[0] === '_') || (name === "compact") || (name === "election")
+                     || (name === "log")); // exclude system/agency collections from the comparison
+            return (name[0] !== '_'); // exclude system collections from the comparison
           });
 
           if (delta.length !== 0) {
@@ -467,6 +468,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if (testname.indexOf('-grey') === -1 && options.onlyGrey) {
+    whichFilter.filter = 'grey';
+    return false;
+  }
+
   if (testname.indexOf('-graph') !== -1 && options.skipGraph) {
     whichFilter.filter = 'graph';
     return false;
@@ -587,7 +593,7 @@ function runThere (options, instanceInfo, file) {
 
     let httpOptions = pu.makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
-    httpOptions.timeout = 2700;
+    httpOptions.timeout = 1800;
 
     if (options.valgrind) {
       httpOptions.timeout *= 2;
@@ -609,7 +615,8 @@ function runThere (options, instanceInfo, file) {
             (reply.message.search('timeout during read') >= 0 ) ||
             (reply.message.search('Connection closed by remote') >= 0 )
           )) {
-        print(RED + Date() + " request timeout reached, aborting test execution" + RESET);
+        print(RED + Date() + " request timeout reached (" + reply.message +
+              "), aborting test execution" + RESET);
         return {
           status: false,
           message: reply.message,

@@ -97,4 +97,4 @@ dd if=/dev/random bs=1 count=32 of=yourSecretKeyFile
 ```
 
 For security, it is best to create these keys offline (away from your database servers) and
-directly store them in you secret management tool.
+directly store them in your secret management tool.

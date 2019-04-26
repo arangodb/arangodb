@@ -1,6 +1,9 @@
 v3.4.6 (XXXX-XX-XX)
 -------------------
 
+* fixed internal issue #2946: create graph autocomplete was not working under
+  certain circumstances.
+
 * fixed a memory leak in PRUNE operation for traversals.
   The leak occurred only when PRUNE was actively used in queries.
 
@@ -11,6 +14,7 @@ v3.4.6 (XXXX-XX-XX)
   if phase 1 is slow
 
 * port back timestamp replication in agency from devel
+
 
 v3.4.5 (2019-03-27)
 -------------------
