@@ -55,6 +55,7 @@
 #include <algorithm>
 #include <numeric>
 #include <vector>
+#include <random>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -537,7 +538,7 @@ static void collectResultsFromAllShards(
 /// @brief compute a shard distribution for a new collection, the list
 /// dbServers must be a list of DBserver ids to distribute across.
 /// If this list is empty, the complete current list of DBservers is
-/// fetched from ClusterInfo and with random_shuffle to mix it up.
+/// fetched from ClusterInfo and with shuffle to mix it up.
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> DistributeShardsEvenly(
@@ -552,7 +553,10 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
     if (dbServers.empty()) {
       return shards;
     }
-    random_shuffle(dbServers.begin(), dbServers.end());
+
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(dbServers.begin(), dbServers.end(), g);
   }
 
   // mop: distribute satellite collections on all servers
@@ -2935,7 +2939,10 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
                                      }),
                       dbServers.end());
     }
-    std::random_shuffle(dbServers.begin(), dbServers.end());
+
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(dbServers.begin(), dbServers.end(), g);
     shards = DistributeShardsEvenly(ci, numberOfShards, replicationFactor,
                                     dbServers, !col->system());
   }

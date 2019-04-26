@@ -32,6 +32,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <algorithm>
+#include <random>
+
 using namespace arangodb;
 using namespace arangodb::pregel;
 
@@ -124,7 +127,10 @@ void ArrayInCache<M>::mergeCache(WorkerConfig const& config, InCache<M> const* o
   // ranomize access to buckets, don't wait for the lock
   std::set<PregelShard> const& shardIDs = config.localPregelShardIDs();
   std::vector<PregelShard> randomized(shardIDs.begin(), shardIDs.end());
-  std::random_shuffle(randomized.begin(), randomized.end());
+
+  std::random_device rd;
+  std::mt19937 g(rd());
+  std::shuffle(randomized.begin(), randomized.end(), g);
 
   size_t i = 0;
   do {
@@ -235,7 +241,9 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config, InCache<M> cons
   // ranomize access to buckets, don't wait for the lock
   std::set<PregelShard> const& shardIDs = config.localPregelShardIDs();
   std::vector<PregelShard> randomized(shardIDs.begin(), shardIDs.end());
-  std::random_shuffle(randomized.begin(), randomized.end());
+  std::random_device rd;
+  std::mt19937 g(rd());
+  std::shuffle(randomized.begin(), randomized.end(), g);
 
   size_t i = 0;
   do {
