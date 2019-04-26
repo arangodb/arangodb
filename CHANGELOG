@@ -1,6 +1,11 @@
 devel
 -----
 
+* add --compress-output flag to arangodump. Activates gzip compression for
+  collection data. Metadata files, such as .structure.json and .view.json,
+  do not get compressed. No option is needed for arangorestore to restore
+  .data.json.gz files.
+
 * added options to make server more secure:
 
   - `--server.harden`: denies access to certain REST APIs that return server internals
