@@ -121,7 +121,7 @@ let optionsDocumentation = [
 ];
 
 const optionsDefaults = {
-  'dumpAgencyOnError': true,
+  'dumpAgencyOnError': false,
   'agencySize': 3,
   'agencyWaitForSync': false,
   'agencySupervision': true,
