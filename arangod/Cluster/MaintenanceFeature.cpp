@@ -35,6 +35,7 @@
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 #include "Agency/AgencyComm.h"
+#include "Agency/TimeString.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterFeature.h"
 
@@ -167,30 +168,6 @@ void MaintenanceFeature::beginShutdown() {
 
     AgencyComm am;
 
-    // copy jobId and serverId by value
-    /*auto jobCallback = [shared](VPackSlice const& result) -> bool {
-      std::unique_lock<std::mutex> lock(shared->_mutex);
-      shared->_completed = true;
-      shared->_cv.notify_one();
-      return false;
-    };
-
-
-
-    auto acr = ClusterFeature::instance()->agencyCallbackRegistry();
-
-    // register agency callback
-    //  false, false -> we don't care about the value
-    auto callbackOnFailed = std::make_shared<AgencyCallback>(am, "Target/Failed/" + std::to_string(shared->_jobId), jobCallback, false, false);
-    auto callbackOnFinished = std::make_shared<AgencyCallback>(am, "Target/Finished/" + std::to_string(shared->_jobId), jobCallback, false, false);
-
-    acr->registerCallback(callbackOnFailed);
-    acr->registerCallback(callbackOnFinished);
-    auto cbGuard = scopeGuard([&] {
-      acr->unregisterCallback(callbackOnFailed);
-      acr->unregisterCallback(callbackOnFinished);
-    });*/
-
     std::string serverId = ServerState::instance()->getId();
     VPackBuilder jobDesc;
     {
@@ -198,7 +175,7 @@ void MaintenanceFeature::beginShutdown() {
       jobDesc.add("type", VPackValue("resignLeadership"));
       jobDesc.add("server", VPackValue(serverId));
       jobDesc.add("jobId", VPackValue(std::to_string(shared->_jobId)));
-      jobDesc.add("timeCreated", VPackValue("2019-04-10T11:34:19Z"));
+      jobDesc.add("timeCreated", VPackValue(timepointToString(std::chrono::system_clock::now())));
       jobDesc.add("creator", VPackValue(serverId));
     }
 
@@ -217,13 +194,10 @@ void MaintenanceFeature::beginShutdown() {
       try {
         AgencyCommResult result = am.getValues("Target/" + path + "/" + std::to_string(jobId));
         if (result.successful()) {
-          LOG_DEVEL << result.slice().toJson();
           VPackSlice value = result.slice()[0].get(std::vector<std::string>{AgencyCommManager::path(), "Target", path, std::to_string(jobId)});
           if (value.isObject() && value.hasKey("jobId") && value.get("jobId").isEqualString(std::to_string(jobId))) {
             return true;
           }
-        } else {
-          LOG_DEVEL << "Failed to read agency";
         }
       } catch(...) {
         LOG_TOPIC(ERR, arangodb::Logger::CLUSTER) <<
