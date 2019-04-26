@@ -1,7 +1,7 @@
 HTTP Interface for Stream Transactions
 ======================================
 
-*Stream Transactions* allows you to perform a multi-document transaction 
+*Stream Transactions* allow you to perform a multi-document transaction 
 with individual begin and commit / abort commands. This is similar to
 the way traditional RDBMS do it with *BEGIN*, *COMMIT* and *ROLLBACK* operations.
 

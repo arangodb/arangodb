@@ -18,7 +18,7 @@ refer to [Transactions](../../Manual/Transactions/index.html).
 
 ### Stream Transactions
 
-The [Stream Transactions](StreamTransaction.md) allows you to perform a multi-document transaction 
+[Stream Transactions](StreamTransaction.md) allow you to perform a multi-document transaction 
 with individual begin and commit / abort commands. This is similar to
 the way traditional RDBMS do it with *BEGIN*, *COMMIT* and *ROLLBACK* operations.
 
@@ -28,8 +28,8 @@ to avoid taking up resources.
 
 ###  JavaScript Transactions
 
-The [JS-Transaction API](JsTransaction.md) allows you to send the server
-a dedicated peace of JavaScript code (i.e. a function), which will be executed transactionally.
+[JS-Transactions](JsTransaction.md) allow you to send the server
+a dedicated piece of JavaScript code (i.e. a function), which will be executed transactionally.
 
 At the end of the function, the transaction is automatically committed, and all
 changes done by the transaction will be persisted. No interaction is required by 
