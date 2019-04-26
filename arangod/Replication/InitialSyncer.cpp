@@ -57,12 +57,12 @@ void InitialSyncer::startRecurringBatchExtension() {
         
   std::weak_ptr<Syncer> self(shared_from_this());
   _batchPingTimer = SchedulerFeature::SCHEDULER->queueDelay(
-      RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs), [this, self](bool cancelled) {
+      RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs), [self](bool cancelled) {
         if (!cancelled) {
           auto syncer = self.lock();
-          if (syncer && _batch.id != 0 && !isAborted()) {
-            _batch.extend(_state.connection, _progress);
-            startRecurringBatchExtension();
+          if (syncer && syncer->_batch.id != 0 && !syncer->isAborted()) {
+            syncer->_batch.extend(syncer->_state.connection, syncer->_progress);
+            syncer->startRecurringBatchExtension();
           }
         }
       });
