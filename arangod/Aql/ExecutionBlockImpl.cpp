@@ -68,14 +68,13 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
                                                  typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
-      _blockFetcher(_dependencies, engine->itemBlockManager(),
-                    infos.getInputRegisters(), infos.numberOfInputRegisters()),
-      _rowFetcher(_blockFetcher),
+      _dependencyProxy(_dependencies, engine->itemBlockManager(),
+                       infos.getInputRegisters(), infos.numberOfInputRegisters()),
+      _rowFetcher(_dependencyProxy),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
       _outputItemRow(),
       _query(*engine->getQuery()) {
-
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
@@ -136,7 +135,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
   // The loop has to be entered at least once!
   TRI_ASSERT(!_outputItemRow->isFull());
   while (!_outputItemRow->isFull()) {
-    std::tie(state, executorStats) = _executor.produceRow(*_outputItemRow);
+    std::tie(state, executorStats) = _executor.produceRows(*_outputItemRow);
     // Count global but executor-specific statistics, like number of filtered
     // rows.
     _engine->_stats += executorStats;
@@ -202,21 +201,75 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
   return traceSkipSomeEnd(res.first, skipped);
 }
 
+template<bool customInit>
+struct InitializeCursor {};
+
+template<>
+struct InitializeCursor<false> {
+  template<class Executor>
+  static void init(Executor& executor, typename Executor::Fetcher& rowFetcher, typename Executor::Infos& infos) {
+    // destroy and re-create the Executor
+    executor.~Executor();
+    new (&executor) Executor(rowFetcher, infos);
+  }
+};
+
+template<>
+struct InitializeCursor<true> {
+  template<class Executor>
+  static void init(Executor& executor, typename Executor::Fetcher&, typename Executor::Infos&) {
+    // re-initialize the Executor
+    executor.initializeCursor();
+  }
+};
+
+
+/*
+ * Creates a metafunction `checkName` that tests whether a class has a method
+ * named `methodName`, used like this:
+ *
+ * CREATE_HAS_MEMBER_CHECK(someMethod, hasSomeMethod);
+ * ...
+ * constexpr bool someClassHasSomeMethod = hasSomeMethod<SomeClass>::value;
+ */
+
+#define CREATE_HAS_MEMBER_CHECK(methodName, checkName)  \
+  template <typename T>                                 \
+  class checkName {                                     \
+    typedef char yes[1];                                \
+    typedef char no[2];                                 \
+                                                        \
+    template <typename C>                               \
+    static yes& test(decltype(&C::methodName));         \
+    template <typename>                                 \
+    static no& test(...);                               \
+                                                        \
+   public:                                              \
+    enum { value = sizeof(test<T>(0)) == sizeof(yes) }; \
+  }
+
+CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
+
 template <class Executor>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
-  // destroy and re-create the BlockFetcher
-  _blockFetcher.~BlockFetcher();
-  new (&_blockFetcher)
-      BlockFetcher(_dependencies, _engine->itemBlockManager(),
-                   _infos.getInputRegisters(), _infos.numberOfInputRegisters());
+  // reinitialize the DependencyProxy
+  _dependencyProxy.reset();
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
-  new (&_rowFetcher) Fetcher(_blockFetcher);
+  new (&_rowFetcher) Fetcher(_dependencyProxy);
 
-  // destroy and re-create the Executor
-  _executor.~Executor();
-  new (&_executor) Executor(_rowFetcher, _infos);
+  constexpr bool customInit = hasInitializeCursor<Executor>::value;
+  // IndexExecutor and EnumerateCollectionExecutor have initializeCursor implemented,
+  // so assert this implementation is used.
+  static_assert(!std::is_same<Executor, EnumerateCollectionExecutor>::value || customInit,
+                "EnumerateCollectionExecutor is expected to implement a custom "
+                "initializeCursor method!");
+  static_assert(!std::is_same<Executor, IndexExecutor>::value || customInit,
+                "IndexExecutor is expected to implement a custom "
+                "initializeCursor method!");
+  InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+
   // // use this with c++17 instead of specialisation below
   // if constexpr (std::is_same_v<Executor, IdExecutor>) {
   //   if (items != nullptr) {
@@ -242,15 +295,12 @@ namespace aql {
 template <>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
     InputAqlItemRow const& input) {
-  // destroy and re-create the BlockFetcher
-  _blockFetcher.~BlockFetcher();
-  new (&_blockFetcher)
-      BlockFetcher(_dependencies, _engine->itemBlockManager(),
-                   infos().getInputRegisters(), infos().numberOfInputRegisters());
+  // reinitialize the DependencyProxy
+  _dependencyProxy.reset();
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
-  new (&_rowFetcher) Fetcher(_blockFetcher);
+  new (&_rowFetcher) Fetcher(_dependencyProxy);
 
   SharedAqlItemBlockPtr block =
       input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
@@ -258,9 +308,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
 
   _rowFetcher.injectBlock(block);
 
-  // destroy and re-create the Executor
-  _executor.~IdExecutor<ConstFetcher>();
-  new (&_executor) IdExecutor<ConstFetcher>(_rowFetcher, _infos);
+  constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
+  InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
 
   // end of default initializeCursor
   return ExecutionBlock::initializeCursor(input);

@@ -20,10 +20,10 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TESTS_BLOCK_FETCHER_MOCK_H
-#define ARANGOD_AQL_TESTS_BLOCK_FETCHER_MOCK_H
+#ifndef ARANGOD_AQL_TESTS_DEPENDENCY_PROXY_MOCK_H
+#define ARANGOD_AQL_TESTS_DEPENDENCY_PROXY_MOCK_H
 
-#include "Aql/BlockFetcher.h"
+#include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
@@ -36,10 +36,10 @@ namespace tests {
 namespace aql {
 
 template <bool passBlocksThrough>
-class BlockFetcherMock : public ::arangodb::aql::BlockFetcher<passBlocksThrough> {
+class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksThrough> {
  public:
-  explicit BlockFetcherMock(arangodb::aql::ResourceMonitor& monitor,
-                            ::arangodb::aql::RegisterId nrRegisters);
+  explicit DependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
+                               ::arangodb::aql::RegisterId nrRegisters);
 
  public:
   // mock methods
@@ -54,14 +54,14 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher<passBlocksThrough>
 
  public:
   // additional test methods
-  BlockFetcherMock& shouldReturn(arangodb::aql::ExecutionState,
-                                 arangodb::aql::SharedAqlItemBlockPtr const&);
-  BlockFetcherMock& shouldReturn(FetchBlockReturnItem);
-  BlockFetcherMock& shouldReturn(std::vector<FetchBlockReturnItem>);
-  BlockFetcherMock& andThenReturn(FetchBlockReturnItem);
-  BlockFetcherMock& andThenReturn(arangodb::aql::ExecutionState,
-                                  arangodb::aql::SharedAqlItemBlockPtr const&);
-  BlockFetcherMock& andThenReturn(std::vector<FetchBlockReturnItem>);
+  DependencyProxyMock& shouldReturn(arangodb::aql::ExecutionState,
+                                    arangodb::aql::SharedAqlItemBlockPtr const&);
+  DependencyProxyMock& shouldReturn(FetchBlockReturnItem);
+  DependencyProxyMock& shouldReturn(std::vector<FetchBlockReturnItem>);
+  DependencyProxyMock& andThenReturn(FetchBlockReturnItem);
+  DependencyProxyMock& andThenReturn(arangodb::aql::ExecutionState,
+                                     arangodb::aql::SharedAqlItemBlockPtr const&);
+  DependencyProxyMock& andThenReturn(std::vector<FetchBlockReturnItem>);
 
   bool allBlocksFetched() const;
   size_t numFetchBlockCalls() const;
@@ -79,10 +79,11 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher<passBlocksThrough>
 };
 
 template <bool passBlocksThrough>
-class MultiBlockFetcherMock : public ::arangodb::aql::BlockFetcher<passBlocksThrough> {
+class MultiDependencyProxyMock
+    : public ::arangodb::aql::DependencyProxy<passBlocksThrough> {
  public:
-  MultiBlockFetcherMock(arangodb::aql::ResourceMonitor& monitor,
-                        ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps);
+  MultiDependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
+                           ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps);
 
  public:
   // mock methods
@@ -105,7 +106,7 @@ class MultiBlockFetcherMock : public ::arangodb::aql::BlockFetcher<passBlocksThr
 
  public:
   // additional test methods
-  BlockFetcherMock<passBlocksThrough>& getDependencyMock(size_t dependency) {
+  DependencyProxyMock<passBlocksThrough>& getDependencyMock(size_t dependency) {
     TRI_ASSERT(dependency < _dependencyMocks.size());
     return _dependencyMocks[dependency];
   }
@@ -114,7 +115,7 @@ class MultiBlockFetcherMock : public ::arangodb::aql::BlockFetcher<passBlocksThr
   size_t numFetchBlockCalls() const;
 
  private:
-  std::vector<BlockFetcherMock<passBlocksThrough>> _dependencyMocks;
+  std::vector<DependencyProxyMock<passBlocksThrough>> _dependencyMocks;
   ::arangodb::aql::AqlItemBlockManager _itemBlockManager;
 };
 
@@ -122,4 +123,4 @@ class MultiBlockFetcherMock : public ::arangodb::aql::BlockFetcher<passBlocksThr
 }  // namespace tests
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_TESTS_BLOCK_FETCHER_MOCK_H
+#endif  // ARANGOD_AQL_TESTS_DEPENDENCY_PROXY_MOCK_H

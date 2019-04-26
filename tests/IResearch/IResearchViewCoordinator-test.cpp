@@ -1267,7 +1267,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         expectedMeta._includeAllFields = true;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -1281,7 +1281,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         expectedMeta._trackListPositions = true;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -1294,7 +1294,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         arangodb::iresearch::IResearchLinkMeta expectedMeta;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -1332,7 +1332,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -1378,7 +1378,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -1423,7 +1423,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -1507,7 +1507,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         expectedMeta._includeAllFields = true;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -1520,7 +1520,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         arangodb::iresearch::IResearchLinkMeta expectedMeta;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -1558,7 +1558,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -1604,7 +1604,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -1842,7 +1842,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         expectedMeta._includeAllFields = true;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -1855,7 +1855,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         arangodb::iresearch::IResearchLinkMeta expectedMeta;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -1893,7 +1893,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -1938,7 +1938,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -2024,7 +2024,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         expectedMeta._includeAllFields = true;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -2038,7 +2038,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         expectedMeta._trackListPositions = true;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -2051,7 +2051,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         arangodb::iresearch::IResearchLinkMeta expectedMeta;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -2089,7 +2089,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -2136,7 +2136,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -2182,7 +2182,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -2479,7 +2479,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         expectedMeta._includeAllFields = true;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -2492,7 +2492,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         arangodb::iresearch::IResearchLinkMeta expectedMeta;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -2530,7 +2530,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -2575,7 +2575,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -2676,7 +2676,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         expectedMeta._trackListPositions = true;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -2714,7 +2714,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -2804,7 +2804,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         expectedMeta._includeAllFields = true;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -2842,7 +2842,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -3083,7 +3083,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         expectedMeta._includeAllFields = true;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -3097,7 +3097,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         expectedMeta._trackListPositions = true;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -3110,7 +3110,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         arangodb::iresearch::IResearchLinkMeta expectedMeta;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -3148,7 +3148,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -3195,7 +3195,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -3240,7 +3240,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      CHECK(actualMeta.init(builder->slice(), error));
+      CHECK(actualMeta.init(builder->slice(), false, error));
       CHECK(error.empty());
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
@@ -3492,7 +3492,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         expectedMeta._includeAllFields = true;
         arangodb::iresearch::IResearchLinkMeta actualMeta;
         std::string error;
-        CHECK(actualMeta.init(value, error));
+        CHECK(actualMeta.init(value, false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
       }
@@ -3533,7 +3533,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
             arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
         std::string error;
-        CHECK(actualMeta.init(builder->slice(), error));
+        CHECK(actualMeta.init(builder->slice(), false, error));
         CHECK(error.empty());
         CHECK(expectedMeta == actualMeta);
         auto const slice = builder->slice();

@@ -237,10 +237,7 @@ void ExportFeature::start() {
   }
 
   // successfully connected
-  std::cout << "Connected to ArangoDB '" << httpClient->getEndpointSpecification()
-            << "', version " << httpClient->getServerVersion()
-            << ", database: '" << client->databaseName() << "', username: '"
-            << client->username() << "'" << std::endl;
+  std::cout << ClientFeature::buildConnectedMessage(httpClient->getEndpointSpecification(), httpClient->getServerVersion(), /*role*/ "", /*mode*/ "", client->databaseName(), client->username()) << std::endl;
 
   uint64_t exportedSize = 0;
 

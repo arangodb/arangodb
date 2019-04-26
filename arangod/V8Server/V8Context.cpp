@@ -37,16 +37,6 @@ std::string const GlobalContextMethods::CodeReloadRouting =
 std::string const GlobalContextMethods::CodeReloadAql =
     "try { require(\"@arangodb/aql\").reload(); } catch (err) { }";
 
-std::string const GlobalContextMethods::CodeCollectGarbage =
-    "require(\"internal\").wait(0.01, true);";
-
-std::string const GlobalContextMethods::CodeBootstrapCoordinator =
-    "require('internal').loadStartup('server/bootstrap/autoload.js').startup();"
-    "require('internal').loadStartup('server/bootstrap/routing.js').startup();";
-
-std::string const GlobalContextMethods::CodeWarmupExports =
-    "require(\"@arangodb/actions\").warmupExports()";
-
 V8Context::V8Context(size_t id, v8::Isolate* isolate)
     : _id(id),
       _isolate(isolate),
@@ -158,8 +148,11 @@ void V8Context::handleGlobalContextMethods() {
         << "executing global context method '" << func << "' for context " << _id;
 
     TRI_GET_GLOBALS2(_isolate);
-    bool allowUseDatabase = v8g->_allowUseDatabase;
-    v8g->_allowUseDatabase = true;
+
+    // save old security context settings
+    JavaScriptSecurityContext old(v8g->_securityContext);
+
+    v8g->_securityContext = JavaScriptSecurityContext::createInternalContext();
 
     try {
       v8::TryCatch tryCatch(_isolate);
@@ -180,7 +173,8 @@ void V8Context::handleGlobalContextMethods() {
           << "caught exception during global context method '" << func << "'";
     }
 
-    v8g->_allowUseDatabase = allowUseDatabase;
+    // restore old security settings
+    v8g->_securityContext = old;
   }
 }
 

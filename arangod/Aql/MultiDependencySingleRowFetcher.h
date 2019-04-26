@@ -34,7 +34,7 @@ namespace aql {
 
 class AqlItemBlock;
 template <bool>
-class BlockFetcher;
+class DependencyProxy;
 
 /**
  * @brief Interface for all AqlExecutors that do need one
@@ -81,11 +81,11 @@ class MultiDependencySingleRowFetcher {
   };
 
  public:
-  explicit MultiDependencySingleRowFetcher(BlockFetcher<false>& executionBlock);
+  explicit MultiDependencySingleRowFetcher(DependencyProxy<false>& executionBlock);
   TEST_VIRTUAL ~MultiDependencySingleRowFetcher() = default;
 
  protected:
-  // only for testing! Does not initialize _blockFetcher!
+  // only for testing! Does not initialize _dependencyProxy!
   MultiDependencySingleRowFetcher();
 
  public:
@@ -187,7 +187,7 @@ class MultiDependencySingleRowFetcher {
   }
 
  private:
-  BlockFetcher<false>* _blockFetcher;
+  DependencyProxy<false>* _dependencyProxy;
 
   /**
    * @brief Holds the information for all dependencies
