@@ -23,7 +23,7 @@ to another.
 
 ![ArangoDB DC2DC](dc2dc.png)
 
-The replication done by _ArangoSync_ in **asynchronous**. That means that when
+The replication done by _ArangoSync_ is **asynchronous**. That means that when
 a client is writing data into the source datacenter, it will consider the
 request finished before the data has been replicated to the other datacenter.
 The time needed to completely replicate changes to the other datacenter is
@@ -45,3 +45,12 @@ Once configured, _ArangoSync_ will replicate both **structure and data** of an
 **entire cluster**. This means that there is no need to make additional configuration
 changes when adding/removing databases or collections.
 <br/>Also meta data such as users, Foxx application & jobs are automatically replicated.
+
+A message queue is used for replication. You can use either of the following:
+
+- **DirectMQ** (recommended):
+  Message queue developed by ArangoDB in Go. Tailored for DC2DC replication.
+  Available since ArangoSync version 0.5.0.
+- **Kafka**:
+  Complex general purpose message queue system. Requires Java and potentially
+  fine-tuning. A too small message size can cause problems with ArangoSync.
