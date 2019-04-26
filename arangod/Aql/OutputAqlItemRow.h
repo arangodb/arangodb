@@ -150,6 +150,17 @@ class OutputAqlItemRow {
     doCopyRow(sourceRow, ignoreMissing);
   }
 
+  void copyBlockInternalRegister(InputAqlItemRow const& sourceRow,
+                                 RegisterId input, RegisterId output) {
+    // This method is only allowed if the block of the input row is the same as
+    // the block of the output row!
+    TRI_ASSERT(sourceRow.internalBlockIs(_block));
+
+    AqlValue const& value = sourceRow.getValue(input);
+
+    block().setValue(_baseIndex, output, value);
+  }
+
   std::size_t getNrRegisters() const { return block().getNrRegs(); }
 
   /**

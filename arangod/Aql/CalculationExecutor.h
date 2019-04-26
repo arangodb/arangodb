@@ -183,13 +183,9 @@ inline void CalculationExecutor<CalculationType::Reference>::doEvaluation(
   }
 
   // We assume here that the output block (which must be the same as the input
-  // block) is already responsible for this value, so we must not destroy it.
-  // Plus, we do not want to copy it.
-  // TODO assert that input and output blocks are the same
-  bool constexpr mustDestroy = false;
-  // TODO remove the const_cast hack
-  AqlValueGuard guard{const_cast<AqlValue&>(input.getValue(inRegs[0])), mustDestroy};
-  output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
+  // block) is already responsible for this value.
+  // Thus we do not want to clone it.
+  output.copyBlockInternalRegister(input, inRegs[0], _infos.getOutputRegisterId());
 }
 
 template <CalculationType calculationType>
