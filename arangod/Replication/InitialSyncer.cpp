@@ -60,9 +60,12 @@ void InitialSyncer::startRecurringBatchExtension() {
       RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs), [self](bool cancelled) {
         if (!cancelled) {
           auto syncer = self.lock();
-          if (syncer && syncer->_batch.id != 0 && !syncer->isAborted()) {
-            syncer->_batch.extend(syncer->_state.connection, syncer->_progress);
-            syncer->startRecurringBatchExtension();
+          if (syncer) {
+            InitialSyncer* s = static_cast<InitialSyncer*>(syncer.get());
+            if (s->_batch.id != 0 && !s->isAborted()) {
+              s->_batch.extend(s->_state.connection, s->_progress);
+              s->startRecurringBatchExtension();
+            }
           }
         }
       });
