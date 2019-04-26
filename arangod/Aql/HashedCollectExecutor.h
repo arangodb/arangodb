@@ -125,7 +125,7 @@ class HashedCollectExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   /**
    * @brief This Executor does not know how many distinct rows will be fetched
@@ -158,8 +158,6 @@ class HashedCollectExecutor {
   static std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*>
   createAggregatorFactories(HashedCollectExecutor::Infos const& infos);
 
-  std::pair<GroupValueType, GroupKeyType> buildNewGroup(InputAqlItemRow& input, size_t n);
-
   GroupMapType::iterator findOrEmplaceGroup(InputAqlItemRow& input);
 
   void consumeInputRow(InputAqlItemRow& input);
@@ -185,6 +183,8 @@ class HashedCollectExecutor {
   std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> _aggregatorFactories;
 
   size_t _returnedGroups;
+
+  GroupKeyType _nextGroupValues;
 };
 
 }  // namespace aql

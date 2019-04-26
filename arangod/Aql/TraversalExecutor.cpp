@@ -169,7 +169,7 @@ std::pair<ExecutionState, Result> TraversalExecutor::shutdown(int errorCode) {
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRows(OutputAqlItemRow& output) {
   TraversalStats s;
 
   while (true) {

@@ -67,7 +67,7 @@ SubqueryExecutor::~SubqueryExecutor() = default;
  * If we do not have a subquery ongoing, we fetch a row and we start a new Subquery and ask it for hasMore.
  */
 
-std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRows(OutputAqlItemRow& output) {
   if (_state == ExecutionState::DONE && !_input.isInitialized()) {
     // We have seen DONE upstream, and we have discarded our local reference
     // to the last input, we will not be able to produce results anymore.
