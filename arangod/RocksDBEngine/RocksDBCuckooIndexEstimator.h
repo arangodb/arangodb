@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/SmallVector.h"
 #include "Basics/StringRef.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/fasthash.h"
@@ -525,79 +526,72 @@ class RocksDBCuckooIndexEstimator {
   rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq) {
     rocksdb::SequenceNumber appliedSeq = 0;
     Result res = basics::catchVoidToResult([&]() -> void {
-      std::vector<Key> inserts;
-      std::vector<Key> removals;
+      SmallVector<std::vector<Key>> inserts;
+      SmallVector<std::vector<Key>> removals;
 
       // truncate will increase this sequence
       rocksdb::SequenceNumber ignoreSeq = 0;
-      while (true) {
-        bool foundTruncate = false;
-        // find out if we have buffers to apply
-        {
-          WRITE_LOCKER(locker, _lock);
-
-          // check for a truncate marker
-          auto it = _truncateBuffer.begin();  // sorted ASC
-          while (it != _truncateBuffer.end() && *it <= commitSeq) {
-            ignoreSeq = *it;
-            TRI_ASSERT(ignoreSeq != 0);
-            foundTruncate = true;
-            appliedSeq = std::max(appliedSeq, ignoreSeq);
-            it = _truncateBuffer.erase(it);
-          }
-
-          // check for inserts
-          if (!_insertBuffers.empty()) {
-            auto it = _insertBuffers.begin();  // sorted ASC
-            if (it->first <= commitSeq) {
-              if (it->first >= ignoreSeq) {
-                inserts = std::move(it->second);
-                TRI_ASSERT(!inserts.empty());
-              }
-              appliedSeq = std::max(appliedSeq, it->first);
-              _insertBuffers.erase(it);
-            }
-          }
-
-          // check for removals
-          if (!_removalBuffers.empty()) {
-            auto it = _removalBuffers.begin();  // sorted ASC
-            if (it->first <= commitSeq) {
-              if (it->first >= ignoreSeq) {
-                removals = std::move(it->second);
-                TRI_ASSERT(!removals.empty());
-              }
-              appliedSeq = std::max(appliedSeq, it->first);
-              _removalBuffers.erase(it);
-            }
-          }
+      bool foundTruncate = false;
+      // find out if we have buffers to apply
+      {
+        WRITE_LOCKER(locker, _lock);
+        
+        // check for a truncate marker
+        auto it = _truncateBuffer.begin();  // sorted ASC
+        while (it != _truncateBuffer.end() && *it <= commitSeq) {
+          TRI_ASSERT(*it >= ignoreSeq && *it != 0);
+          ignoreSeq = *it;
+          foundTruncate = true;
+          appliedSeq = std::max(appliedSeq, ignoreSeq);
+          it = _truncateBuffer.erase(it);
         }
-
-        if (foundTruncate) {
-          clear();  // clear estimates
-        }
-
-        // no inserts or removals left to apply, drop out of loop
-        if (inserts.empty() && removals.empty()) {
-          break;
-        }
-
-        if (!inserts.empty()) {
-          // apply inserts
-          for (auto const& key : inserts) {
-            insert(key);
+        
+        // check for inserts
+        while (!_insertBuffers.empty()) {
+          auto it = _insertBuffers.begin();  // sorted ASC
+          if (it->first > commitSeq) {
+            break;
           }
-          inserts.clear();
-        }
-
-        if (!removals.empty()) {
-          // apply removals
-          for (auto const& key : removals) {
-            remove(key);
+          if (it->first > ignoreSeq) {
+            inserts.emplace_back(std::move(it->second));
+            TRI_ASSERT(!inserts.empty());
           }
-          removals.clear();
+          appliedSeq = std::max(appliedSeq, it->first);
+          _insertBuffers.erase(it);
         }
-      }  // </while(true)>
+        
+        // check for removals
+        while (!_removalBuffers.empty()) {
+          auto it = _removalBuffers.begin();  // sorted ASC
+          if (it->first > commitSeq) {
+            break;
+          }
+          if (it->first > ignoreSeq) {
+            removals.emplace_back(std::move(it->second));
+            TRI_ASSERT(!removals.empty());
+          }
+          appliedSeq = std::max(appliedSeq, it->first);
+          _removalBuffers.erase(it);
+        }
+      }
+      
+      if (foundTruncate) {
+        clear();  // clear estimates
+      }
+      
+      for (auto const& batch : inserts) {
+        // apply inserts
+        for (auto const& key : *batch) {
+          insert(key);
+        }
+      }
+      
+      for (auto const& batch : removals) {
+        // apply removals
+        for (auto const& key : *batch) {
+          remove(key);
+        }
+      }
     });
     return appliedSeq;
   }
