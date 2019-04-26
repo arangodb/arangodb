@@ -91,10 +91,12 @@ static LockfileRemover remover;
 
 #ifdef _WIN32
 std::wstring toWString(std::string const& validUTF8String) {
-  icu::UnicodeString utf16(validUTF8String.c_str());
-  using bufferType = std::remove_pointer_t<decltype(utf16.getTerminatedBuffer())>;
-  // --no terse assert without c++17-- static_assert(sizeof(std::wchar_t) == sizeof(bufferType));
-  return std::wstring(reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()));
+  icu::UnicodeString utf16(validUTF8String.c_str(), validUTF8String.size());
+  // // probably required for newer c++ versions
+  // using bufferType = std::remove_pointer_t<decltype(utf16.getTerminatedBuffer())>;
+  // static_assert(sizeof(std::wchar_t) == sizeof(bufferType), "sizes do not match");
+  // return std::wstring(reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()), utf16.length());
+  return std::wstring(utf16.getTerminatedBuffer(), utf16.length());
 }
 #endif
 
@@ -415,8 +417,7 @@ bool TRI_ExistsFile(char const* path) {
 int TRI_ChMod(char const* path, long mode, std::string& err) {
   int res;
 #ifdef _WIN32
-  icu::UnicodeString wpath(path);
-  res = _wchmod(reinterpret_cast<const wchar_t*>(wpath.getTerminatedBuffer()), static_cast<int>(mode));
+  res = _wchmod(toWString(path).data());
 #else
   res = chmod(path, mode);
 #endif
@@ -745,9 +746,8 @@ std::vector<std::string> TRI_FilesDirectory(char const* path) {
 
   struct _wfinddata_t fd;
 
-  icu::UnicodeString wfilter(filter.c_str());
 
-  intptr_t handle = _wfindfirst(reinterpret_cast<const wchar_t*>(wfilter.getTerminatedBuffer()), &fd);
+  intptr_t handle = _wfindfirst(toWString(filter).data(), &fd);
 
   if (handle == -1) {
     return result;
@@ -821,11 +821,8 @@ int TRI_RenameFile(char const* old, char const* filename, long* systemError,
 #ifdef _WIN32
   BOOL moveResult = 0;
 
-  icu::UnicodeString oldf(old);
-  icu::UnicodeString newf(filename);
-
-  moveResult = MoveFileExW(reinterpret_cast<const wchar_t*>(oldf.getTerminatedBuffer()),
-                           reinterpret_cast<const wchar_t*>(newf.getTerminatedBuffer()),
+  moveResult = MoveFileExW(toWString(old).data(),
+                           toWString(filename).data(),
                            MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
 
   if (!moveResult) {
@@ -1058,8 +1055,7 @@ int TRI_CreateLockFile(char const* filename) {
     }
   }
 
-  icu::UnicodeString fn(filename);
-  HANDLE fd = CreateFileW(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()), GENERIC_WRITE, 0, NULL,
+  HANDLE fd = CreateFileW(toWString(filename).data(), GENERIC_WRITE, 0, NULL,
                           CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
   if (fd == INVALID_HANDLE_VALUE) {
@@ -1702,15 +1698,12 @@ bool TRI_CopyFile(std::string const& src, std::string const& dst, std::string& e
 #ifdef _WIN32
   TRI_ERRORBUF;
 
-  icu::UnicodeString s(src.c_str());
-  icu::UnicodeString d(dst.c_str());
-
-  bool rc = CopyFileW(reinterpret_cast<const wchar_t*>(s.getTerminatedBuffer()),
-                      reinterpret_cast<const wchar_t*>(d.getTerminatedBuffer()), true) != 0;
+  bool rc = CopyFileW(toWString(src).data(), toWString(des).data(), true) != 0;
   if (!rc) {
     TRI_SYSTEM_ERROR();
     error = "failed to copy " + src + " to " + dst + ": " + TRI_GET_ERRORBUF;
   }
+
   return rc;
 #else
   size_t dsize;
@@ -2387,8 +2380,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
 
 bool TRI_PathIsAbsolute(std::string const& path) {
 #if _WIN32
-  icu::UnicodeString upath(path.c_str(), (uint16_t)path.length());
-  return !PathIsRelativeW(reinterpret_cast<const wchar_t*>(upath.getTerminatedBuffer()));
+  return !PathIsRelativeW(toWString(path).data());
 #else
   return (!path.empty()) && path.c_str()[0] == '/';
 #endif
@@ -2411,8 +2403,7 @@ void TRI_ShutdownFiles() {}
 
 bool TRI_GETENV(char const* which, std::string& value) {
 #ifdef _WIN32
-  icu::UnicodeString uwhich(which);
-  wchar_t const* v = _wgetenv(reinterpret_cast<const wchar_t*>(uwhich.getTerminatedBuffer()));
+  wchar_t const* v = _wgetenv(toWString(which).data());
 
   if (v == nullptr) {
     return false;
