@@ -638,11 +638,6 @@ namespace iresearch {
     );
   }
 
-  if (primarySort) {
-    // normalize sort if specified
-    meta._sort = *primarySort;
-  }
-
   auto res = canUseAnalyzers(meta, vocbase); // same validation as in modifyLinks(...) for Views API
 
   if (!res.ok()) {
@@ -673,6 +668,11 @@ namespace iresearch {
       arangodb::StaticStrings::IndexInBackground, // key
       definition.get(arangodb::StaticStrings::IndexInBackground) // value
     );
+  }
+
+  if (primarySort) {
+    // normalize sort if specified
+    meta._sort = *primarySort;
   }
 
   if (!meta.json(normalized, isCreation, nullptr, &vocbase)) { // 'isCreation' is set when forPersistence

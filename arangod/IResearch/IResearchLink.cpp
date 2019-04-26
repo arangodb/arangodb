@@ -787,7 +787,7 @@ arangodb::Result IResearchLink::init(
 
   auto viewId = definition.get(StaticStrings::ViewIdField).copyString();
   auto& vocbase = _collection.vocbase();
-  _comparer.reset(_meta._sort);
+  bool const sorted = !meta._sort.empty();
 
   if (arangodb::ServerState::instance()->isCoordinator()) { // coordinator link
     auto* ci = arangodb::ClusterInfo::instance();
@@ -849,7 +849,7 @@ arangodb::Result IResearchLink::init(
     if (!clusterWideLink) {
       // prepare data-store which can then update options
       // via the IResearchView::link(...) call
-      auto const res = initDataStore(initCallback);
+      auto const res = initDataStore(initCallback, sorted);
 
       if (!res.ok()) {
         return res;
@@ -919,7 +919,7 @@ arangodb::Result IResearchLink::init(
   } else if (arangodb::ServerState::instance()->isSingleServer()) {  // single-server link
     // prepare data-store which can then update options
     // via the IResearchView::link(...) call
-    auto const res = initDataStore(initCallback);
+    auto const res = initDataStore(initCallback, sorted);
 
     if (!res.ok()) {
       return res;
@@ -964,11 +964,12 @@ arangodb::Result IResearchLink::init(
 
   const_cast<std::string&>(_viewGuid) = std::move(viewId);
   const_cast<IResearchLinkMeta&>(_meta) = std::move(meta);
+  _comparer.reset(_meta._sort);
 
   return arangodb::Result();
 }
 
-arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback) {
+arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorted) {
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
 
   if (_asyncFeature) {
@@ -1115,7 +1116,7 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback) 
   options.lock_repository = false; // do not lock index, ArangoDB has it's own lock
 
   // set comparator if requested
-  if (!_comparer.empty()) {
+  if (sorted) {
     options.comparator = &_comparer;
   }
 

@@ -315,7 +315,7 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result initDataStore(InitCallback const& initCallback);
+  arangodb::Result initDataStore(InitCallback const& initCallback, bool sorted);
 };  // IResearchLink
 
 }  // namespace iresearch
