@@ -3561,7 +3561,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     auto end = steady_clock::now() + milliseconds(static_cast<uint64_t>(1000*timeout));
     ClusterInfo* ci = ClusterInfo::instance();
 
-    // Go to backup mode for *timeoute* if and only if not already in
+    // Go to backup mode for *timeout* if and only if not already in
     // backup mode. Otherwise we cannot know, why backup mode was activated
     // We specifically want to make sure that no other backup is going on.
     bool supervisionOff = false;
