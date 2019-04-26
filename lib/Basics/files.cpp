@@ -98,6 +98,17 @@ std::wstring toWString(std::string const& validUTF8String) {
   // return std::wstring(reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()), utf16.length());
   return std::wstring(utf16.getTerminatedBuffer(), utf16.length());
 }
+
+std::string fromWString(wchar_t const* validUTF16String, std::size_t size) {
+  std::string out;
+  icu::UnicodeString ICUString(validUTF16String, size);
+  ICUString.toUTF8String<std::string>(out);
+  return out;
+}
+
+std::string fromWString(std::wstring const& validUTF16String) {
+  return fromWString(validUTF16String.data(), validUTF16String.size());
+}
 #endif
 
 }  // namespace
@@ -417,7 +428,7 @@ bool TRI_ExistsFile(char const* path) {
 int TRI_ChMod(char const* path, long mode, std::string& err) {
   int res;
 #ifdef _WIN32
-  res = _wchmod(toWString(path).data());
+  res = _wchmod(toWString(path).data(), static_cast<int>(mode));
 #else
   res = chmod(path, mode);
 #endif
@@ -1525,12 +1536,7 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
     }
 
     size_t len = q - buff;
-
-    icu::UnicodeString fn(buff, static_cast<int32_t>(len));
-    std::string ufn;
-    fn.toUTF8String<std::string>(ufn);
-
-    return ufn;
+    return fromWString(buff, len);
   }
 
   return std::string();
@@ -1698,7 +1704,7 @@ bool TRI_CopyFile(std::string const& src, std::string const& dst, std::string& e
 #ifdef _WIN32
   TRI_ERRORBUF;
 
-  bool rc = CopyFileW(toWString(src).data(), toWString(des).data(), true) != 0;
+  bool rc = CopyFileW(toWString(src).data(), toWString(dst).data(), true) != 0;
   if (!rc) {
     TRI_SYSTEM_ERROR();
     error = "failed to copy " + src + " to " + dst + ": " + TRI_GET_ERRORBUF;
@@ -1962,9 +1968,7 @@ static std::string getTempPath() {
         << ":dwReturnValue=" << dwReturnValue;
   }
 
-  icu::UnicodeString tmpPathW(tempPathName, dwReturnValue);
-  std::string result;
-  tmpPathW.toUTF8String<std::string>(result);
+  std::string result = fromWString(tempPathName, dwReturnValue);
   // ...........................................................................
   // Whether or not UNICODE is defined, we assume that the temporary file name
   // fits in the ascii set of characters. This is a small compromise so that
