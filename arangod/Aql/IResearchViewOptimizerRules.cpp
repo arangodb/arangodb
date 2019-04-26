@@ -282,12 +282,11 @@ void handleViewsRule(arangodb::aql::Optimizer* opt,
     TRI_ASSERT(node && EN::ENUMERATE_IRESEARCH_VIEW == node->getType());
     auto& viewNode = *EN::castTo<IResearchViewNode*>(node);
 
-    //FIXME uncomment
-    //if (!viewNode.isInInnerLoop()) {
-    //  // check if we can optimize away a sort that follows the EnumerateView node
-    //  // this is only possible if the view node itself is not contained in another loop
-    //  modified = optimizeSort(viewNode, plan.get());
-    //}
+    if (!viewNode.isInInnerLoop() && !ServerState::instance()->isCoordinator()) {
+      // check if we can optimize away a sort that follows the EnumerateView node
+      // this is only possible if the view node itself is not contained in another loop
+      modified = optimizeSort(viewNode, plan.get());
+    }
 
     if (!optimizeSearchCondition(viewNode, query, *plan)) {
       continue;
