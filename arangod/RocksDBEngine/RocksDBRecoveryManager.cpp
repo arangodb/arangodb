@@ -136,10 +136,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   std::map<uint64_t, uint64_t> _generators;
 
   // max tick found
-  uint64_t _maxTick = 0;
-  uint64_t _maxHLC = 0;
+  uint64_t _maxTick;
+  uint64_t _maxHLC;
   /// @brief last document removed
-  TRI_voc_rid_t _lastRemovedDocRid = 0;
+  TRI_voc_rid_t _lastRemovedDocRid;
 
   rocksdb::SequenceNumber _startSequence;    /// start of batch sequence nr
   rocksdb::SequenceNumber _currentSequence;  /// current sequence nr
@@ -148,7 +148,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
  public:
   /// @param seqs sequence number from which to count operations
   explicit WBReader(std::map<uint64_t, rocksdb::SequenceNumber> const& seqs)
-      : _startSequence(0), _currentSequence(0) {
+      : _maxTick(TRI_NewTickServer()),
+        _maxHLC(0),
+        _lastRemovedDocRid(0),
+        _startSequence(0),
+        _currentSequence(0) {
     for (auto const& pair : seqs) {
       try {
         _deltas.emplace(pair.first, Operations(pair.second));
@@ -162,6 +166,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     _startSequence = startSequence;
     _currentSequence = startSequence;
     _startOfBatch = true;
+    TRI_ASSERT(_maxTick > 0);
   }
 
   Result shutdownWBReader() {
@@ -374,7 +379,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         if (valid) {
           // if no previous _maxTick set or the numeric value found is
           // "near" our previous _maxTick, then we update it
-          if (tick > _maxTick && (_maxTick == 0 || tick - _maxTick < 2048)) {
+          if (tick > _maxTick && (tick - _maxTick) < 2048) {
             storeMaxTick(tick);
           }
         }
