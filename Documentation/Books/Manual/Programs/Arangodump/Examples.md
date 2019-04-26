@@ -69,7 +69,7 @@ Cluster Backup
 --------------
 
 Starting with Version 2.1 of ArangoDB, the *arangodump* tool also
-supports sharding and can be used to backup data from a Cluster. 
+supports sharding and can be used to backup data from a Cluster.
 Simply point it to one of the _Coordinators_ and it
 will behave exactly as described above, working on sharded collections
 in the Cluster.
@@ -177,14 +177,14 @@ arangorestore --collection "secret-collection" dump --create-collection true --e
 
 Using a different key will lead to the backup being non-recoverable.
 
-Note that encrypted backups can be used together with the already existing 
+Note that encrypted backups can be used together with the already existing
 RocksDB encryption-at-rest feature, but they can also be used for the MMFiles
 engine, which does not have encryption-at-rest.
 
 Compression
 -----------
 
-<small>Introduced in: v3.3.23, v3.4.6, v3.5.0</small>
+<small>Introduced in:  v3.4.6, v3.5.0</small>
 
 `--compress-output`
 
@@ -193,7 +193,7 @@ The `--compress-output` option can not be used together with [Encryption](#encry
 
 If compression is enabled, no `.data.json` files are written. Instead, the
 collection data gets compressed using the Gzip algorithm and for each collection
-a `.data.gz` file is written. Metadata files such as `.structure.json` and
+a `.data.json.gz` file is written. Metadata files such as `.structure.json` and
 `.view.json` do not get compressed.
 
 ```
