@@ -41,6 +41,8 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
@@ -206,6 +208,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   std::vector<arangodb::velocypack::Builder> insertedDocs;
+  std::shared_ptr<arangodb::LogicalCollection> collection0;
+  std::shared_ptr<arangodb::LogicalCollection> collection1;
   arangodb::LogicalView* view;
 
   // create collection0
@@ -213,6 +217,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
     auto collection = vocbase.createCollection(createJson->slice());
     REQUIRE((nullptr != collection));
+    collection0 = collection;
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
       arangodb::velocypack::Parser::fromJson("{ \"seq\": -6, \"value\": null }"),
@@ -246,6 +251,7 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
     auto collection = vocbase.createCollection(createJson->slice());
     REQUIRE((nullptr != collection));
+    collection1 = collection;
 
     irs::utf8_path resource;
     resource/=irs::string_ref(IResearch_test_resource_dir);
@@ -294,7 +300,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));
-    CHECK(impl->commit().ok());
+    CHECK((arangodb::iresearch::IResearchLinkHelper::find(*collection0, *view)->commit().ok()));
+    CHECK((arangodb::iresearch::IResearchLinkHelper::find(*collection1, *view)->commit().ok()));
   }
 
   // d.value > false && d.value <= true
@@ -306,8 +313,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH IN_RANGE(d.value, false, true, false, true) SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -330,8 +337,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH IN_RANGE(d.value, null, null, true, true) SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -353,8 +360,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH IN_RANGE(d.value, null, null, false, true) SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -377,8 +384,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'A', true, true) SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -400,8 +407,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH IN_RANGE(d.name, 'B', 'A', true, true) SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -428,8 +435,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'E', true, true) SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -455,8 +462,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'E', true, false) SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -482,8 +489,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'E', false, true) SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -508,8 +515,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'E', false, false) SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -531,8 +538,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH IN_RANGE(d.seq, 5, -1, true, true) SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -559,8 +566,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH IN_RANGE(d.seq, 1, 5, true, true) SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -589,8 +596,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH IN_RANGE(d.seq, -2, 5, false, true) SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -615,8 +622,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH IN_RANGE(d.seq, 1, 5, false, false) SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -642,8 +649,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH IN_RANGE(d.seq, 1, 5, true, false) SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -666,8 +673,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH IN_RANGE(d.value, 3, 4, false, false) SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -690,8 +697,8 @@ TEST_CASE("IResearchQueryInRange", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH IN_RANGE(d.value, -4, -3, false, false) SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 

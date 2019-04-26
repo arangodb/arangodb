@@ -281,18 +281,20 @@ void IResearchRocksDBRecoveryHelper::DeleteRangeCF(uint32_t column_family_id,
 }
 
 void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
-  TRI_ASSERT(_dbFeature);
-
   RocksDBLogType const type = RocksDBLogValue::type(blob);
 
   switch (type) {
     case RocksDBLogType::IndexCreate: {
+      TRI_ASSERT(_dbFeature);
+      TRI_ASSERT(_engine);
       TRI_voc_tick_t const dbId = RocksDBLogValue::databaseId(blob);
       TRI_voc_cid_t const collectionId = RocksDBLogValue::collectionId(blob);
       auto const indexSlice = RocksDBLogValue::indexSlice(blob);
       ensureLink(*_dbFeature, _recoveredIndexes, dbId, collectionId, indexSlice);
     } break;
     case RocksDBLogType::CollectionTruncate: {
+      TRI_ASSERT(_dbFeature);
+      TRI_ASSERT(_engine);
       uint64_t objectId = RocksDBLogValue::objectId(blob);
       auto coll = lookupCollection(*_dbFeature, *_engine, objectId);
 

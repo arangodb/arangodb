@@ -337,7 +337,6 @@ SECTION("test_create_drop") {
     CHECK((updatedCollection0.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
-    CHECK((true == index->hasBatchInsert()));
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
@@ -353,7 +352,7 @@ SECTION("test_create_drop") {
     auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    CHECK(actualMeta.init(builder->slice(), error));
+    CHECK(actualMeta.init(builder->slice(), false, error));
     CHECK(error.empty());
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -392,7 +391,7 @@ SECTION("test_create_drop") {
       auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
       std::string error;
 
-      CHECK((actualMeta.init(builder->slice(), error) && expectedMeta == actualMeta));
+      CHECK((actualMeta.init(builder->slice(), false, error) && expectedMeta == actualMeta));
       auto slice = builder->slice();
       CHECK(error.empty());
       CHECK((
@@ -445,7 +444,6 @@ SECTION("test_create_drop") {
     CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
-    CHECK((true == index->hasBatchInsert()));
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
@@ -462,7 +460,7 @@ SECTION("test_create_drop") {
       auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
       std::string error;
 
-      CHECK((actualMeta.init(builder->slice(), error) && expectedMeta == actualMeta));
+      CHECK((actualMeta.init(builder->slice(), false, error) && expectedMeta == actualMeta));
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")

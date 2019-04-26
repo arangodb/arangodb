@@ -150,12 +150,25 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds(
 }
 
 /// @brief returns the shard keys of a collection
-std::vector<std::string> Collection::shardKeys() const {
+std::vector<std::string> Collection::shardKeys(bool normalize) const {
   auto coll = getCollection();
-  std::vector<std::string> keys;
-  for (auto const& x : coll->shardKeys()) {
-    keys.emplace_back(x);
+  auto const& originalKeys = coll->shardKeys();
+    
+  if (normalize && 
+      coll->isSmart() && coll->type() == TRI_COL_TYPE_DOCUMENT) {
+    // smart vertex collection always has ["_key:"] as shard keys
+    TRI_ASSERT(originalKeys.size() == 1);
+    TRI_ASSERT(originalKeys[0] == "_key:");
+    // now normalize it this to _key
+    return std::vector<std::string>{ StaticStrings::KeyString };
   }
+  
+  std::vector<std::string> keys;
+  keys.reserve(originalKeys.size());
+  for (auto const& key : originalKeys) {
+    keys.emplace_back(key);
+  }
+
   return keys;
 }
 

@@ -33,6 +33,24 @@ using namespace arangodb::rocksutils;
 
 const char RocksDBKey::_stringSeparator = '\0';
   
+RocksDBKey::RocksDBKey(std::string* leased)
+      : _type(RocksDBEntryType::Document),  // placeholder
+        _local(),
+        _buffer(leased != nullptr ? leased : &_local) {}
+
+RocksDBKey::RocksDBKey(rocksdb::Slice slice)
+      : _type(static_cast<RocksDBEntryType>(slice.data()[0])),
+        _local(slice.data(), slice.size()),
+        _buffer(&_local) {}
+  
+RocksDBKey::RocksDBKey(RocksDBKey&& other) noexcept
+      : _type(other._type),
+        _local(),
+        _buffer(&_local) {
+  _local.assign(std::move(*(other._buffer)));
+  other._buffer = &(other._local);
+}
+  
 /// @brief verify that a key actually contains the given local document id
 bool RocksDBKey::containsLocalDocumentId(LocalDocumentId const& documentId) const {
   switch (_type) {
@@ -406,7 +424,7 @@ TRI_voc_cid_t RocksDBKey::viewId(char const* data, size_t size) {
 
 TRI_voc_cid_t RocksDBKey::objectId(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(size > sizeof(uint64_t));
+  TRI_ASSERT(size >= sizeof(uint64_t));
   return uint64FromPersistent(data);
 }
 

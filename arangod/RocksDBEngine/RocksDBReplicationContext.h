@@ -118,7 +118,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  RocksDBReplicationContext(double ttl, TRI_server_id_t server_id);
+  RocksDBReplicationContext(double ttl, std::string const& clientId);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;  // batchId
@@ -152,7 +152,7 @@ class RocksDBReplicationContext {
     bool fail() const { return _result.fail(); }
     int errorNumber() const { return _result.errorNumber(); }
     std::string errorMessage() const { return _result.errorMessage(); }
-    bool is(uint64_t code) const { return _result.is(code); }
+    bool is(int code) const { return _result.is(code); }
 
     // access methods
     Result const& result() const& { return _result; }
@@ -203,8 +203,8 @@ class RocksDBReplicationContext {
   void extendLifetime(double ttl);
 
   // buggy clients may not send the serverId
-  TRI_server_id_t replicationClientId() const {
-    return _serverId != 0 ? _serverId : _id;
+  std::string const& replicationClientId() const {
+    return _clientId;
   }
 
  private:
@@ -217,7 +217,7 @@ class RocksDBReplicationContext {
 
  private:
   mutable Mutex _contextLock;
-  TRI_server_id_t const _serverId;
+  std::string _clientId;
   TRI_voc_tick_t const _id;  // batch id
 
   uint64_t _snapshotTick;  // tick in WAL from _snapshot

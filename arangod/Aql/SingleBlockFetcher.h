@@ -25,7 +25,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemMatrix.h"
-#include "Aql/BlockFetcher.h"
+#include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SortExecutor.h"
@@ -38,9 +38,8 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-class AqlItemBlockShell;
 template <bool>
-class BlockFetcher;
+class DependencyProxy;
 
 /**
  * @brief Interface for all AqlExecutors that do need all
@@ -49,16 +48,16 @@ class BlockFetcher;
 template <bool pass>
 class SingleBlockFetcher {
  public:
-  explicit SingleBlockFetcher(BlockFetcher<pass>& executionBlock)
+  explicit SingleBlockFetcher(DependencyProxy<pass>& executionBlock)
       : _prefetched(false),
-        _blockFetcher(&executionBlock),
+        _dependencyProxy(&executionBlock),
         _currentBlock(nullptr),
         _upstreamState(ExecutionState::HASMORE) {}
 
   TEST_VIRTUAL ~SingleBlockFetcher() = default;
 
  protected:
-  // only for testing! Does not initialize _blockFetcher!
+  // only for testing! Does not initialize _dependencyProxy!
   SingleBlockFetcher() = default;
 
  public:
@@ -84,7 +83,7 @@ class SingleBlockFetcher {
   // there are no executors that could use this and not better use
   // SingleRowFetcher instead.
 
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock(
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(
       std::size_t limit = ExecutionBlock::DefaultBatchSize(), bool prefetch = false) {
     if (_prefetched) {
       TRI_ASSERT(!prefetch);
@@ -97,47 +96,45 @@ class SingleBlockFetcher {
       return {_upstreamState, _currentBlock};
     }
 
-    auto res = _blockFetcher->fetchBlock(limit);
+    auto res = _dependencyProxy->fetchBlock(limit);
     _upstreamState = res.first;
     _currentBlock = res.second;
 
-    if (prefetch && _currentBlock && _currentBlock->hasBlock()) {
+    if (prefetch && _currentBlock != nullptr) {
       _prefetched = prefetch;
     }
 
     return res;
   }
 
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForModificationExecutor(
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForModificationExecutor(
       std::size_t limit = ExecutionBlock::DefaultBatchSize()) {
     return fetchBlock(limit);
   }
 
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t) {
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   };
 
   std::pair<ExecutionState, std::size_t> preFetchNumberOfRows(std::size_t) {
     fetchBlock(true);
-    return {_upstreamState, _currentBlock != nullptr ? _currentBlock->block().size() : 0};
+    return {_upstreamState, _currentBlock != nullptr ? _currentBlock->size() : 0};
   }
 
   InputAqlItemRow accessRow(std::size_t index) {
-    TRI_ASSERT(_currentBlock);
-    TRI_ASSERT(index < _currentBlock->block().size());
+    TRI_ASSERT(_currentBlock != nullptr);
+    TRI_ASSERT(index < _currentBlock->size());
     return InputAqlItemRow{_currentBlock, index};
   }
 
   ExecutionState upstreamState() const { return _upstreamState; }
-  std::shared_ptr<AqlItemBlockShell> currentBlock() const {
-    return _currentBlock;
-  }
+  SharedAqlItemBlockPtr currentBlock() const { return _currentBlock; }
 
   bool _prefetched;
 
  private:
-  BlockFetcher<pass>* _blockFetcher;
-  std::shared_ptr<AqlItemBlockShell> _currentBlock;
+  DependencyProxy<pass>* _dependencyProxy;
+  SharedAqlItemBlockPtr _currentBlock;
   ExecutionState _upstreamState;
 
  private:
@@ -145,7 +142,7 @@ class SingleBlockFetcher {
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
   RegisterId getNrInputRegisters() const {
-    return _blockFetcher->getNrInputRegisters();
+    return _dependencyProxy->getNrInputRegisters();
   }
 };
 

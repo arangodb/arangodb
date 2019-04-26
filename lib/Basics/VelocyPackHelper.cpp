@@ -57,7 +57,6 @@ static arangodb::velocypack::StringRef const idRef("id");
 static arangodb::velocypack::StringRef const cidRef("cid");
 
 static std::unique_ptr<VPackAttributeTranslator> translator;
-static std::unique_ptr<VPackAttributeExcludeHandler> excludeHandler;
 static std::unique_ptr<VPackCustomTypeHandler>customTypeHandler;
 
 template<bool useUtf8, typename Comparator>
@@ -168,30 +167,6 @@ struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
   }
 };
 
-// attribute exclude handler for skipping over system attributes
-struct SystemAttributeExcludeHandler final : public VPackAttributeExcludeHandler {
-  bool shouldExclude(VPackSlice const& key, int nesting) override final {
-    VPackValueLength keyLength;
-    char const* p = key.getString(keyLength);
-
-    if (p == nullptr || *p != '_' || keyLength < 3 || keyLength > 5 || nesting > 0) {
-      // keep attribute
-      return true;
-    }
-
-    // exclude these attributes (but not _key!)
-    if ((keyLength == 3 && memcmp(p, "_id", static_cast<size_t>(keyLength)) == 0) ||
-        (keyLength == 4 && memcmp(p, "_rev", static_cast<size_t>(keyLength)) == 0) ||
-        (keyLength == 3 && memcmp(p, "_to", static_cast<size_t>(keyLength)) == 0) ||
-        (keyLength == 5 && memcmp(p, "_from", static_cast<size_t>(keyLength)) == 0)) {
-      return true;
-    }
-
-    // keep attribute
-    return false;
-  }
-};
-
 /// @brief static initializer for all VPack values
 void VelocyPackHelper::initialize() {
   LOG_TOPIC("bbce8", TRACE, arangodb::Logger::FIXME) << "initializing vpack";
@@ -245,19 +220,11 @@ void VelocyPackHelper::initialize() {
              StaticStrings::FromString);
   TRI_ASSERT(VPackSlice(::translator->translate(ToAttribute - AttributeBase)).copyString() ==
              StaticStrings::ToString);
-
-  // initialize exclude handler for system attributes
-  ::excludeHandler.reset(new SystemAttributeExcludeHandler);
 }
 
 /// @brief turn off assembler optimizations in vpack
 void VelocyPackHelper::disableAssemblerFunctions() {
   arangodb::velocypack::disableAssemblerFunctions();
-}
-
-/// @brief return the (global) attribute exclude handler instance
-arangodb::velocypack::AttributeExcludeHandler* VelocyPackHelper::getExcludeHandler() {
-  return ::excludeHandler.get();
 }
 
 /// @brief return the (global) attribute translator instance
@@ -911,6 +878,7 @@ void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
   }
 #else
   // other platforms support unaligned writes
+  // cppcheck-suppress *
   *reinterpret_cast<double*>(p + 1) = value;
 #endif
 }

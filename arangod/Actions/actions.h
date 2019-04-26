@@ -46,7 +46,11 @@ class TRI_action_result_t {
 /// @brief action descriptor
 class TRI_action_t {
  public:
-  TRI_action_t() : _urlParts(0), _isPrefix(false), _allowUseDatabase(false) {}
+  TRI_action_t() : 
+    _urlParts(0), 
+    _isPrefix(false), 
+    _allowUseDatabase(false),
+    _isSystem(false) {}
 
   virtual ~TRI_action_t() {}
 
@@ -69,6 +73,7 @@ class TRI_action_t {
 
   bool _isPrefix;
   bool _allowUseDatabase;
+  bool _isSystem;
 };
 
 /// @brief fake action class used only inside /_admin/execute RestHandler 

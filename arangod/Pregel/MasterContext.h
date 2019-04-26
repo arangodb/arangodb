@@ -77,9 +77,14 @@ class MasterContext {
     b.close();
     _aggregators->setAggregatedValues(b.slice());
   }
-
-  inline IAggregator* getAggregator(std::string const& name) {
-    return _aggregators->getAggregator(name);
+  
+  template <typename T>
+  inline T* getAggregator(std::string const& name) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return dynamic_cast<T*>(_aggregators->getAggregator(name));
+#else
+    return reinterpret_cast<T*>(_aggregators->getAggregator(name));
+#endif
   }
 
   inline void enterNextGlobalSuperstep() { _enterNextGSS = true; }

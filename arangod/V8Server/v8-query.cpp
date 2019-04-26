@@ -27,6 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/V8Context.h"
@@ -58,9 +59,10 @@ using namespace arangodb::basics;
 aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection const* col,
                             std::string const& aql, std::shared_ptr<VPackBuilder> bindVars) {
   TRI_ASSERT(col != nullptr);
+  
+  auto queryRegistry = QueryRegistryFeature::registry();
+  TRI_ASSERT(queryRegistry != nullptr);
 
-  TRI_GET_GLOBALS();
-  // If we execute an AQL query from V8 we need to unset the nolock headers
   arangodb::aql::Query query(true, col->vocbase(), arangodb::aql::QueryString(aql),
                              bindVars, nullptr, arangodb::aql::PART_MAIN);
 
@@ -70,7 +72,7 @@ aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection co
   aql::QueryResultV8 queryResult;
   while (true) {
     auto state =
-        query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry),
+        query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(queryRegistry),
                         queryResult);
     if (state != aql::ExecutionState::WAITING) {
       break;
@@ -78,13 +80,13 @@ aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection co
     ss->waitForAsyncResponse();
   }
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        queryResult.code == TRI_ERROR_QUERY_KILLED) {
+  if (queryResult.result.fail()) {
+    if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+        queryResult.result.is(TRI_ERROR_QUERY_KILLED)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
 
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
   return queryResult;
@@ -189,8 +191,8 @@ static void EdgesQuery(TRI_edge_direction_e direction,
       "FOR doc IN @@collection " + filter + " RETURN doc";
   auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
-  if (!queryResult.result.IsEmpty()) {
-    TRI_V8_RETURN(queryResult.result);
+  if (!queryResult.data.IsEmpty()) {
+    TRI_V8_RETURN(queryResult.data);
   }
 
   TRI_V8_RETURN_NULL();
@@ -425,8 +427,8 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  if (!queryResult.result.IsEmpty()) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "documents"), queryResult.result);
+  if (!queryResult.data.IsEmpty()) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "documents"), queryResult.data);
   }
 
   TRI_V8_RETURN(result);

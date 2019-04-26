@@ -52,9 +52,9 @@ FilterExecutorInfos::FilterExecutorInfos(RegisterId inputRegister, RegisterId nr
 FilterExecutor::FilterExecutor(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher) {}
 FilterExecutor::~FilterExecutor() = default;
 
-std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("FilterExecutor::produceRow") {
-     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+std::pair<ExecutionState, FilterStats> FilterExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("FilterExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   ExecutionState state;
   FilterStats stats{};
@@ -86,3 +86,11 @@ std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemR
     TRI_ASSERT(state == ExecutionState::HASMORE);
   }
 }
+
+
+std::pair<ExecutionState, size_t> FilterExecutor::expectedNumberOfRows(size_t atMost) const {
+  // This block cannot know how many elements will be returned exactly.
+  // but it is upper bounded by the input.
+  return _fetcher.preFetchNumberOfRows(atMost);
+}
+

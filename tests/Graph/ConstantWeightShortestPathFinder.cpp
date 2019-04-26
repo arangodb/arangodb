@@ -350,7 +350,7 @@ TEST_CASE("ConstantWeightShortestPathFinder", "[graph]") {
     auto end = velocypack::Parser::fromJson("\"v/0\"");
     ShortestPathResult result;
 
-    REQUIRE(true == finder->shortestPath(start->slice(), end->slice(), result, []() {}));
+    REQUIRE(true == finder->shortestPath(start->slice(), end->slice(), result));
   }
 
   SECTION("no path exists") {
@@ -358,7 +358,7 @@ TEST_CASE("ConstantWeightShortestPathFinder", "[graph]") {
     auto end = velocypack::Parser::fromJson("\"v/1\"");
     ShortestPathResult result;
 
-    REQUIRE(false == finder->shortestPath(start->slice(), end->slice(), result, []() {}));
+    REQUIRE(false == finder->shortestPath(start->slice(), end->slice(), result));
     CHECK(result.length() == 0);
   }
 
@@ -367,7 +367,7 @@ TEST_CASE("ConstantWeightShortestPathFinder", "[graph]") {
     auto end = velocypack::Parser::fromJson("\"v/2\"");
     ShortestPathResult result;
 
-    auto rr = finder->shortestPath(start->slice(), end->slice(), result, []() {});
+    auto rr = finder->shortestPath(start->slice(), end->slice(), result);
     REQUIRE(rr);
     REQUIRE(checkPath(result, {"1", "2"}, {{}, {"v/1", "v/2"}}));
   }
@@ -377,7 +377,7 @@ TEST_CASE("ConstantWeightShortestPathFinder", "[graph]") {
     auto end = velocypack::Parser::fromJson("\"v/4\"");
     ShortestPathResult result;
 
-    auto rr = finder->shortestPath(start->slice(), end->slice(), result, []() {});
+    auto rr = finder->shortestPath(start->slice(), end->slice(), result);
     REQUIRE(rr);
     REQUIRE(checkPath(result, {"1", "2", "3", "4"},
                       {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}));
@@ -390,7 +390,7 @@ TEST_CASE("ConstantWeightShortestPathFinder", "[graph]") {
     ShortestPathResult result;
 
     {
-      auto rr = finder->shortestPath(start->slice(), end->slice(), result, []() {});
+      auto rr = finder->shortestPath(start->slice(), end->slice(), result);
 
       REQUIRE(rr);
       // One of the two has to be returned
@@ -410,7 +410,7 @@ TEST_CASE("ConstantWeightShortestPathFinder", "[graph]") {
     }
 
     {
-      auto rr = finder->shortestPath(end->slice(), start->slice(), result, []() {});
+      auto rr = finder->shortestPath(end->slice(), start->slice(), result);
 
       REQUIRE(!rr);
     }

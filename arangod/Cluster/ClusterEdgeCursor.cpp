@@ -43,7 +43,8 @@ ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, u
     : _position(0),
       _resolver(opts->trx()->resolver()),
       _opts(opts),
-      _cache(static_cast<ClusterTraverserCache*>(opts->cache())) {
+      _cache(static_cast<ClusterTraverserCache*>(opts->cache())),
+      _httpRequests(0) {
   TRI_ASSERT(_cache != nullptr);
   auto trx = _opts->trx();
   transaction::BuilderLeaser leased(trx);
@@ -53,6 +54,7 @@ ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, u
   fetchEdgesFromEngines(trx->vocbase().name(), _cache->engines(), b->slice(), depth,
                         _cache->cache(), _edgeList, _cache->datalake(), *(leased.get()),
                         _cache->filteredDocuments(), _cache->insertedDocuments());
+  _httpRequests += _cache->engines()->size();
 }
 
 // ShortestPath variant
@@ -60,7 +62,8 @@ ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, b
     : _position(0),
       _resolver(opts->trx()->resolver()),
       _opts(opts),
-      _cache(static_cast<ClusterTraverserCache*>(opts->cache())) {
+      _cache(static_cast<ClusterTraverserCache*>(opts->cache())),
+      _httpRequests(0) {
   TRI_ASSERT(_cache != nullptr);
   auto trx = _opts->trx();
   transaction::BuilderLeaser leased(trx);
@@ -70,6 +73,7 @@ ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, b
   fetchEdgesFromEngines(trx->vocbase().name(), _cache->engines(), b->slice(),
                         backward, _cache->cache(), _edgeList, _cache->datalake(),
                         *(leased.get()), _cache->insertedDocuments());
+  _httpRequests += _cache->engines()->size();
 }
 
 bool ClusterEdgeCursor::next(EdgeCursor::Callback const& callback) {

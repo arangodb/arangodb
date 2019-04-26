@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterMethods.h"
-
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"

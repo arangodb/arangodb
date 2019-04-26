@@ -34,6 +34,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
+#include "DocumentProducingHelper.h"
 #include "Indexes/IndexIterator.h"
 #include "Utils/OperationCursor.h"
 
@@ -76,8 +77,6 @@ class IndexExecutorInfos : public ExecutorInfos {
   std::vector<size_t> const& getCoveringIndexAttributePositions() {
     return _coveringIndexAttributePositions;
   }
-  std::vector<std::vector<Variable const*>> getInVars() { return _inVars; }
-  std::vector<std::vector<RegisterId>> getInRegs() { return _inRegs; }
   bool getProduceResult() { return _produceResult; }
   bool getUseRawDocumentPointers() { return _useRawDocumentPointers; }
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() {
@@ -175,16 +174,21 @@ class IndexExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
  public:
-  typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
-
   void setProducingFunction(DocumentProducingFunction documentProducer) {
     _documentProducer = std::move(documentProducer);
   }
 
-  inline size_t numberOfRowsInFlight() const { return 0; }
+  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Logic_error, prefetching number fo rows not supported");
+  }
+
+  void initializeCursor();
 
  private:
   bool advanceCursor();
@@ -195,7 +199,8 @@ class IndexExecutor {
   void createCursor();
 
   /// @brief continue fetching of documents
-  bool readIndex(IndexIterator::DocumentCallback const&, bool& hasWritten);
+  bool readIndex(OutputAqlItemRow& output,
+                 IndexIterator::DocumentCallback const&, size_t& numWritten);
 
   /// @brief reset the cursor at given position
   void resetCursor(size_t pos) { _cursors[pos]->reset(); };
@@ -216,31 +221,36 @@ class IndexExecutor {
   inline arangodb::OperationCursor* getCursor(size_t pos) {
     return _cursors[pos].get();
   }
-  std::vector<std::unique_ptr<OperationCursor>>& getCursors() {
-    return _cursors;
-  }
 
   void setIndexesExhausted(bool flag) { _indexesExhausted = flag; }
   bool getIndexesExhausted() { return _indexesExhausted; }
 
-  void setLastIndex(bool flag) { _isLastIndex = flag; }
   bool isLastIndex() { return _isLastIndex; }
+  void setIsLastIndex(bool flag) { _isLastIndex = flag; }
 
   void setCurrentIndex(size_t pos) { _currentIndex = pos; }
   void decrCurrentIndex() { _currentIndex--; }
   void incrCurrentIndex() { _currentIndex++; }
   size_t getCurrentIndex() const noexcept { return _currentIndex; }
 
+  void setAllowCoveringIndexOptimization(bool const allowCoveringIndexOptimization) {
+    _documentProducingFunctionContext.setAllowCoveringIndexOptimization(allowCoveringIndexOptimization);
+  }
+
+  /// @brief whether or not we are allowed to use the covering index
+  /// optimization in a callback
+  bool getAllowCoveringIndexOptimization() const noexcept {
+    return _documentProducingFunctionContext.getAllowCoveringIndexOptimization();
+  }
+
  private:
   Infos& _infos;
   Fetcher& _fetcher;
+  DocumentProducingFunctionContext _documentProducingFunctionContext;
   DocumentProducingFunction _documentProducer;
   ExecutionState _state;
   InputAqlItemRow _input;
 
-  /// @brief whether or not we are allowed to use the covering index
-  /// optimization in a callback
-  bool _allowCoveringIndexOptimization;
 
   /// @brief _cursor: holds the current index cursor found using
   /// createCursor (if any) so that it can be read in chunks and not

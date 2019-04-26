@@ -270,7 +270,7 @@ Limitations
 
 The smart join optimization is currently triggered only for data selection queries,
 but not for any data-manipulation operations such as INSERT, UPDATE, REPLACE, REMOVE
-or UPSERT, neither traversals or subqueries.
+or UPSERT, neither traversals, subqueries or views.
 
 It will only be applied when joining two collections with an identical sharding setup. 
 This requires the second collection to be created with its *distributeShardsLike* 

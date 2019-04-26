@@ -87,9 +87,9 @@ class FilterExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-  inline size_t numberOfRowsInFlight() const { return 0; }
+  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
   Infos& _infos;

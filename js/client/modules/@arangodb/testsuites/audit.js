@@ -26,7 +26,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'audit': 'audit log tests'
+  'audit_server': 'audit log tests executed on server',
+  'audit_client': 'audit log tests executed in client'
 };
 
 const optionsDocumentation = [
@@ -45,40 +46,47 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
-  audit: [tu.pathForTesting('server/audit')]
+  audit_server: [tu.pathForTesting('common/audit'), tu.pathForTesting('server/audit')],
+  audit_client: [tu.pathForTesting('common/audit'), tu.pathForTesting('client/audit')]
 };
 
-const sharedConf = {
-  'audit.output': 'file://' + fs.getTempFile()
-};
-
-function auditLog(options) {
-  if (options.skipAudit === true) {
-    print('skipping audit log tests!');
-    return {
-      auditLog: {
-        status: true,
-        skipped: true
+function auditLog(onServer) {
+  return function(options) {
+    if (options.skipAudit === true) {
+      print('skipping audit log tests!');
+      return {
+        auditLog: {
+          status: true,
+          skipped: true
+        }
+      };
+    }
+    
+    let opts = {
+      audit: {
+        name: 'audit_' + onServer ? 'server' : 'client'
       }
     };
-  }
-  
-  let opts = {
-    audit: {
-      name: 'audit',
-      conf: sharedConf
-    }
+    
+    options.auditLoggingEnabled = true;
+    
+    const serverOptions = {
+      'server.authentication': 'true',
+      'server.jwt-secret': 'haxxmann',
+      'log.level': 'audit-authentication=info',
+    };
+
+    print(CYAN + 'Audit log server tests...' + RESET);
+    let testCases = tu.scanTestPaths(testPaths['audit_' + (onServer ? 'server' : 'client')]);
+
+    return tu.performTests(options, testCases, 'audit', onServer ? tu.runThere : tu.runInArangosh, serverOptions);
   };
-
-  print(CYAN + 'Audit log tests...' + RESET);
-  let testCases = tu.scanTestPaths(testPaths.audit);
-
-  return tu.performTests(options, testCases, 'audit', tu.runThere, opts.audit.conf);
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
-  testFns['audit'] = auditLog;
+  testFns['audit_server'] = auditLog(true);
+  testFns['audit_client'] = auditLog(false);
 
   // turn off test by default.
   opts['skipAudit'] = true;

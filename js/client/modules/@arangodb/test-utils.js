@@ -468,6 +468,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if (testname.indexOf('-grey') === -1 && options.onlyGrey) {
+    whichFilter.filter = 'grey';
+    return false;
+  }
+
   if (testname.indexOf('-graph') !== -1 && options.skipGraph) {
     whichFilter.filter = 'graph';
     return false;
@@ -528,6 +533,8 @@ function splitBuckets (options, cases) {
 
   let result = [];
 
+  cases.sort();
+
   for (let i = s % m; i < cases.length; i = i + r) {
     result.push(cases[i]);
   }
@@ -586,7 +593,7 @@ function runThere (options, instanceInfo, file) {
 
     let httpOptions = pu.makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
-    httpOptions.timeout = 1800;
+    httpOptions.timeout = 2700;
 
     if (options.valgrind) {
       httpOptions.timeout *= 2;
@@ -608,7 +615,8 @@ function runThere (options, instanceInfo, file) {
             (reply.message.search('timeout during read') >= 0 ) ||
             (reply.message.search('Connection closed by remote') >= 0 )
           )) {
-        print(RED + Date() + " request timeout reached, aborting test execution" + RESET);
+        print(RED + Date() + " request timeout reached (" + reply.message +
+              "), aborting test execution" + RESET);
         return {
           status: false,
           message: reply.message,
@@ -731,6 +739,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   }
   
   let testCode;
+  // \n's in testCode are required because of content could contain '//' at the very EOF
   if (file.indexOf('-spec') === -1) {
     let testCase = JSON.stringify(options.testCase);
     if (options.testCase === undefined) {

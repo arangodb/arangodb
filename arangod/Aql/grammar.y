@@ -12,7 +12,7 @@
 // Bison reports all its errors via the function `Aqlerror`, which
 // will receive the error message as a constant string. So we
 // must not free the string inside `Aqlerror`, and we cannot even
-// tell if the error message is a dynamically allocated error 
+// tell if the error message is a dynamically allocated error
 // message or a hard-coded error message that resides in some
 // static part of the program.
 // Even worse, `Aqlerror` does not return control to Bison but throws
@@ -55,9 +55,9 @@ using namespace arangodb::aql;
 
 /// @brief forward for lexer function defined in Aql/tokens.ll
 int Aqllex(YYSTYPE*, YYLTYPE*, void*);
- 
+
 /// @brief register parse error (this will also abort the currently running query)
-void Aqlerror(YYLTYPE* locp, 
+void Aqlerror(YYLTYPE* locp,
               arangodb::aql::Parser* parser,
               char const* message) {
   parser->registerParseError(TRI_ERROR_QUERY_PARSE, message, locp->first_line, locp->first_column);
@@ -71,7 +71,7 @@ static void CheckIntoVariables(Parser* parser, AstNode const* expression,
   if (expression == nullptr) {
     return;
   }
-  
+
   arangodb::HashSet<Variable const*> varsInAssignment;
   Ast::getReferencedVariables(expression, varsInAssignment);
 
@@ -85,12 +85,12 @@ static void CheckIntoVariables(Parser* parser, AstNode const* expression,
 }
 
 /// @brief register variables in the scope
-static void RegisterAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes, 
+static void RegisterAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes,
                                     int line, int column,
-                                    arangodb::HashSet<Variable const*>& variablesIntroduced, 
+                                    arangodb::HashSet<Variable const*>& variablesIntroduced,
                                     AstNode const* vars) {
   arangodb::HashSet<Variable const*> varsInAssignment;
-   
+
   size_t const n = vars->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
@@ -99,7 +99,7 @@ static void RegisterAssignVariables(Parser* parser, arangodb::aql::Scopes* scope
     if (member != nullptr) {
       TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
       // check if any of the assignment refers to a variable introduced by this very
-      // same COLLECT, e.g. COLLECT aggregate x = .., y = x 
+      // same COLLECT, e.g. COLLECT aggregate x = .., y = x
       varsInAssignment.clear();
       Ast::getReferencedVariables(member->getMember(1), varsInAssignment);
       for (auto const& it : varsInAssignment) {
@@ -127,7 +127,7 @@ static bool ValidateAggregates(Parser* parser, AstNode const* aggregates) {
 
     if (member != nullptr) {
       TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
-      
+
       auto func = member->getMember(1);
 
       bool isValid = true;
@@ -154,7 +154,7 @@ static bool ValidateAggregates(Parser* parser, AstNode const* aggregates) {
 }
 
 /// @brief start a new scope for the collect
-static bool StartCollectScope(arangodb::aql::Scopes* scopes) { 
+static bool StartCollectScope(arangodb::aql::Scopes* scopes) {
   // check if we are in the main scope
   if (scopes->type() == arangodb::aql::AQL_SCOPE_MAIN) {
     return false;
@@ -231,6 +231,7 @@ static AstNode* TransformOutputVariables(Parser* parser, AstNode const* names) {
 
 %token T_GRAPH "GRAPH keyword"
 %token T_SHORTEST_PATH "SHORTEST_PATH keyword"
+%token T_K_SHORTEST_PATHS "K_SHORTEST_PATHS keyword"
 %token T_DISTINCT "DISTINCT modifier"
 
 %token T_REMOVE "REMOVE command"
@@ -352,6 +353,7 @@ static AstNode* TransformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> for_output_variables;
 %type <node> traversal_graph_info;
 %type <node> shortest_path_graph_info;
+%type <node> k_shortest_paths_graph_info;
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
 %type <node> for_options;
@@ -607,7 +609,28 @@ shortest_path_graph_info:
     }
   ;
 
-
+k_shortest_paths_graph_info:
+    graph_direction T_K_SHORTEST_PATHS expression T_STRING expression graph_subject options {
+      if (!TRI_CaseEqualString($4.value, "TO")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'TO'", $4.value, yylloc.first_line, yylloc.first_column);
+      }
+      auto infoNode = parser->ast()->createNodeArray();
+      auto dirNode = parser->ast()->createNodeValueInt($1);
+      // Direction
+      infoNode->addMember(dirNode);
+      // Source
+      infoNode->addMember($3);
+      // Target
+      infoNode->addMember($5);
+      // Graph
+      infoNode->addMember($6);
+      // Opts
+      auto opts = parser->ast()->createNodeOptions($7);
+      TRI_ASSERT(opts != nullptr);
+      infoNode->addMember(opts);
+      $$ = infoNode;
+    }
+  ;
 
 for_statement:
     T_FOR for_output_variables T_IN expression {
@@ -633,10 +656,10 @@ for_statement:
       AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
 
       Variable* variable = static_cast<Variable*>(variableNode->getData());
-     
-      AstNode* node = nullptr; 
-      AstNode* search = nullptr; 
-      AstNode* options = nullptr; 
+
+      AstNode* node = nullptr;
+      AstNode* search = nullptr;
+      AstNode* options = nullptr;
 
       if ($6 != nullptr) {
         // we got a SEARCH and/or OPTIONS clause
@@ -656,16 +679,16 @@ for_statement:
       if (search != nullptr) {
         // we got a SEARCH clause. this is always a view.
         node = parser->ast()->createNodeForView(variable, $4, search, options);
-        
+
         if ($4->type != NODE_TYPE_PARAMETER_DATASOURCE &&
-            $4->type != NODE_TYPE_VIEW && 
+            $4->type != NODE_TYPE_VIEW &&
             $4->type != NODE_TYPE_COLLECTION) {
           parser->registerParseError(TRI_ERROR_QUERY_PARSE, "SEARCH condition used on non-view", yylloc.first_line, yylloc.first_column);
         }
       } else {
         node = parser->ast()->createNodeFor(variable, $4, options);
       }
-        
+
       parser->ast()->addOperation(node);
     }
   | T_FOR for_output_variables T_IN traversal_graph_info {
@@ -707,8 +730,27 @@ for_statement:
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
       auto node = parser->ast()->createNodeShortestPath(variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
- 
+
     }
+  | T_FOR for_output_variables T_IN k_shortest_paths_graph_info {
+      // first open a new scope (after expression is evaluated)
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
+      // K Shortest Paths
+      auto variableNamesNode = static_cast<AstNode*>($2);
+      TRI_ASSERT(variableNamesNode != nullptr);
+      TRI_ASSERT(variableNamesNode->type == NODE_TYPE_ARRAY);
+      if (variableNamesNode->numMembers() > 1) {
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "k Shortest Paths only has one return variable", yylloc.first_line, yylloc.first_column);
+      }
+      auto variablesNode = TransformOutputVariables(parser, variableNamesNode);
+      auto graphInfoNode = static_cast<AstNode*>($4);
+      TRI_ASSERT(graphInfoNode != nullptr);
+      TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
+      auto node = parser->ast()->createNodeKShortestPaths(variablesNode, graphInfoNode);
+      parser->ast()->addOperation(node);
+
+    }
+
   ;
 
 filter_statement:
@@ -1181,11 +1223,11 @@ upsert_statement:
       auto index = parser->ast()->createNodeValueInt(0);
       auto firstDoc = parser->ast()->createNodeLet(variableNode, parser->ast()->createNodeIndexedAccess(parser->ast()->createNodeReference(subqueryName), index));
       parser->ast()->addOperation(firstDoc);
-      
+
       parser->pushStack(forNode);
     } T_INSERT expression update_or_replace expression in_or_into_collection options {
       AstNode* forNode = static_cast<AstNode*>(parser->popStack());
-      forNode->changeMember(1, $9); 
+      forNode->changeMember(1, $9);
 
       if (!parser->configureWriteQuery($9, $10)) {
         YYABORT;
@@ -1482,7 +1524,7 @@ for_options:
         // found SEARCH
         node->addMember($2);
         node->addMember(parser->ast()->createNodeNop());
-      } else { 
+      } else {
         // everything else must be OPTIONS
         if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
           parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' or 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
@@ -1498,7 +1540,7 @@ for_options:
       if ($2 == nullptr) {
         ABORT_OOM
       }
-      
+
       // two extra qualifiers. we expect them in the order: SEARCH, then OPTIONS
 
       if (!TRI_CaseEqualString($1.value, "SEARCH") ||

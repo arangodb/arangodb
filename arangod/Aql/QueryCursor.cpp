@@ -50,9 +50,9 @@ QueryResultCursor::QueryResultCursor(TRI_vocbase_t& vocbase,
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, hasCount),
       _guard(vocbase),
       _result(std::move(result)),
-      _iterator(_result.result->slice()),
+      _iterator(_result.data->slice()),
       _cached(_result.cached) {
-  TRI_ASSERT(_result.result->slice().isArray());
+  TRI_ASSERT(_result.data->slice().isArray());
 }
 
 VPackSlice QueryResultCursor::extra() const {
@@ -74,7 +74,7 @@ bool QueryResultCursor::hasNext() {
 
 /// @brief return the next element
 VPackSlice QueryResultCursor::next() {
-  TRI_ASSERT(_result.result != nullptr);
+  TRI_ASSERT(_result.data != nullptr);
   TRI_ASSERT(_iterator.valid());
   VPackSlice slice = _iterator.value();
   _iterator.next();
@@ -205,7 +205,6 @@ QueryStreamCursor::~QueryStreamCursor() {
     cleanupStateCallback();
 
     while (!_queryResults.empty()) {
-      _query->engine()->itemBlockManager().returnBlock(std::move(_queryResults.front()));
       _queryResults.pop_front();
     }
 
@@ -284,7 +283,7 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
     aql::ExecutionEngine* engine = _query->engine();
     TRI_ASSERT(engine != nullptr);
 
-    std::unique_ptr<AqlItemBlock> value;
+    SharedAqlItemBlockPtr value;
 
     ExecutionState state = ExecutionState::WAITING;
 
@@ -337,7 +336,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
 
     size_t rowsWritten = 0;
     while (rowsWritten < batchSize() && !_queryResults.empty()) {
-      std::unique_ptr<AqlItemBlock>& block = _queryResults.front();
+      SharedAqlItemBlockPtr& block = _queryResults.front();
       TRI_ASSERT(_queryResultPos < block->size());
 
       while (rowsWritten < batchSize() && _queryResultPos < block->size()) {
@@ -352,7 +351,6 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
       if (_queryResultPos == block->size()) {
         // get next block
         TRI_ASSERT(_queryResultPos == block->size());
-        engine->itemBlockManager().returnBlock(std::move(block));
         _queryResults.pop_front();
         _queryResultPos = 0;
       }
@@ -437,7 +435,7 @@ ExecutionState QueryStreamCursor::prepareDump() {
   // We want to fill a result of batchSize if possible and have at least
   // one row left (or be definitively DONE) to set "hasMore" reliably.
   while (state != ExecutionState::DONE && numBufferedRows <= batchSize()) {
-    std::unique_ptr<AqlItemBlock> resultBlock;
+    SharedAqlItemBlockPtr resultBlock;
     std::tie(state, resultBlock) = engine->getSome(batchSize());
     if (state == ExecutionState::WAITING) {
       break;

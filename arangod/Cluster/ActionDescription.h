@@ -65,9 +65,10 @@ struct ActionDescription {
    * @param  desc  Descriminatory properties, which are considered for hash
    * @param  supp  Non discriminatory properties
    */
-  explicit ActionDescription(std::map<std::string, std::string> const& desc,
-                             std::shared_ptr<VPackBuilder> const& suppl =
-                                 std::make_shared<VPackBuilder>());
+  explicit ActionDescription(
+      std::map<std::string, std::string> const& desc,
+      int priority,
+      std::shared_ptr<VPackBuilder> const& properties = std::make_shared<VPackBuilder>());
 
   /**
    * @brief Clean up
@@ -100,8 +101,7 @@ struct ActionDescription {
   /**
    * @brief Get a string value from description
    * @param  key   Key to get
-   * @exception    std::out_of_range if the we do not have this key in
-   * discrimatory container
+   * @exception    std::out_of_range if the we do not have this key in discrimatory container
    * @return       Value to specified key
    */
   std::string get(std::string const& key) const;
@@ -109,8 +109,7 @@ struct ActionDescription {
   /**
    * @brief Get a string value from description
    * @param  key   Key to get
-   * @exception    std::out_of_range if the we do not have this key in
-   * discrimatory container
+   * @exception    std::out_of_range if the we do not have this key in discrimatory container
    * @return       Value to specified key
    */
   std::string operator()(std::string const& key) const;
@@ -157,12 +156,23 @@ struct ActionDescription {
    */
   std::shared_ptr<VPackBuilder> const properties() const;
 
+  /**
+   * @brief Get priority, the higher the more priority, 1 is default
+   * @return int
+   */
+  int priority() const {
+    return _priority;
+  }
+
  private:
   /** @brief discriminatory properties */
   std::map<std::string, std::string> const _description;
 
   /** @brief non-discriminatory properties */
   std::shared_ptr<VPackBuilder> const _properties;
+
+  /** @brief priority */
+  int _priority;
 };
 
 }  // namespace maintenance

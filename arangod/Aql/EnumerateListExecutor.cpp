@@ -39,11 +39,11 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
-    RegisterId inputRegister, RegisterId outputRegister, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters,
-  // cppcheck-suppress passedByValue
+    RegisterId inputRegister, RegisterId outputRegister,
+    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToClear,
-  // cppcheck-suppress passedByValue
+    // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep)
     : ExecutorInfos(make_shared_unordered_set({inputRegister}),
                     make_shared_unordered_set({outputRegister}),
@@ -60,7 +60,7 @@ EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher, EnumerateListExec
       _inputArrayPosition(0),
       _inputArrayLength(0){};
 
-std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRows(OutputAqlItemRow& output) {
   while (true) {
     // HIT in first run, because pos and length are initiliazed
     // both with 0

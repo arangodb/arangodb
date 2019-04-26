@@ -33,6 +33,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -246,7 +247,7 @@ void RestCollectionHandler::handleCommandGet() {
       skipGenerate = true;
       this->generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                           "expecting one of the resources 'checksum', 'count', "
-                          "'figures', 'properties', 'revision', 'shards'");
+                          "'figures', 'properties', 'responsibleShard', 'revision', 'shards'");
     }
   });
 
@@ -267,6 +268,7 @@ void RestCollectionHandler::handleCommandPost() {
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
+    events::CreateCollection(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
 
@@ -274,6 +276,7 @@ void RestCollectionHandler::handleCommandPost() {
   if (!body.isObject() || !(nameSlice = body.get("name")).isString() ||
       nameSlice.getStringLength() == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    events::CreateCollection(_vocbase.name(), "", TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return;
   }
 
@@ -294,7 +297,7 @@ void RestCollectionHandler::handleCommandPost() {
     type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
   }
 
-  // for some "security" a white-list of allowed parameters
+  // for some "security" a whitelist of allowed parameters
   VPackBuilder filtered = VPackCollection::keep(
       body, std::unordered_set<std::string>{
                 "doCompact", StaticStrings::DataSourceSystem,
@@ -391,6 +394,19 @@ void RestCollectionHandler::handleCommandPut() {
         collectionRepresentation(builder, name, /*showProperties*/ false,
                                  /*showFigures*/ false, /*showCount*/ false,
                                  /*detailedCount*/ true);
+      }
+    } else if (sub == "responsibleShard") {
+      if (!ServerState::instance()->isCoordinator()) {
+        res.reset(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
+      } else {
+        std::string shardId;
+        res = coll->getResponsibleShard(body, false, shardId);
+
+        if (res.ok()) {
+          builder.openObject();
+          builder.add("shardId", VPackValue(shardId));
+          builder.close();
+        }
       }
     } else if (sub == "truncate") {
       {
@@ -492,6 +508,7 @@ void RestCollectionHandler::handleCommandDelete() {
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected DELETE /_api/collection/<collection-name>");
+    events::DropCollection(_vocbase.name(), "", TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
@@ -513,6 +530,7 @@ void RestCollectionHandler::handleCommandDelete() {
       });
 
   if (found.fail()) {
+    events::DropCollection(_vocbase.name(), name, found.errorNumber());
     generateError(found);
   } else if (res.fail()) {
     generateError(res);

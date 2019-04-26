@@ -51,6 +51,7 @@
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
@@ -277,6 +278,14 @@ void Query::setExecutionTime() {
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
   }
 }
+    
+/// @brief increase number of HTTP requests. this is normally
+/// called during the setup of a query
+void Query::incHttpRequests(size_t requests) {
+  if (_engine != nullptr) {
+    _engine->_stats.requests += requests;
+  }
+}
 
 /// @brief register an error, with an optional parameter inserted into printf
 /// this also makes the query abort
@@ -304,6 +313,10 @@ void Query::registerErrorCustom(int code, char const* details) {
   errorMessage.append(details);
 
   THROW_ARANGO_EXCEPTION_MESSAGE(code, errorMessage);
+}
+
+void Query::registerWarning(int code, std::string const& details) {
+  registerWarning(code, details.c_str());
 }
 
 /// @brief register a warning
@@ -364,14 +377,21 @@ void Query::prepare(QueryRegistry* registry) {
 
       enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
-      int res = trx->addCollections(*_collections.collections());
+      Result res = trx->addCollections(*_collections.collections());
 
-      if (res == TRI_ERROR_NO_ERROR) {
+      if (res.ok()) {
         res = _trx->begin();
       }
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(res, buildErrorMessage(res));
+      if (res.fail()) {
+        if (!_queryString.empty() && _queryOptions.verboseErrors) {
+          std::string msg = res.errorMessage();
+          msg.append("\nwhile executing:\n");
+          _queryString.append(msg);
+          msg.push_back('\n');
+        }
+
+        THROW_ARANGO_EXCEPTION(res);
       }
 
       enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
@@ -509,6 +529,7 @@ ExecutionPlan* Query::preparePlan() {
     enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
     Result res = trx->addCollections(*_collections.collections());
+
     if (res.ok()) {
       res = _trx->begin();
     }
@@ -579,7 +600,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
               // create a mimimal context to build the result
               queryResult.context = transaction::StandaloneContext::Create(_vocbase);
               TRI_ASSERT(cacheEntry->_queryResult != nullptr);
-              queryResult.result = cacheEntry->_queryResult;
+              queryResult.data = cacheEntry->_queryResult;
               queryResult.extra = cacheEntry->_stats;
               queryResult.cached = true;
 
@@ -655,8 +676,6 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
             }
           }
 
-          _engine->itemBlockManager().returnBlock(std::move(res.second));
-
           if (res.first == ExecutionState::DONE) {
             break;
           }
@@ -684,7 +703,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
               );
         }
 
-        queryResult.result = std::move(_resultBuilder);
+        queryResult.data = std::move(_resultBuilder);
         queryResult.context = _trx->transactionContext();
         _executionPhase = ExecutionPhase::FINALIZE;
       }
@@ -701,27 +720,22 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
   } catch (arangodb::basics::Exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngineSync(ex.code());
-    queryResult.set(ex.code(), "AQL: " + ex.message() +
-                                   QueryExecutionState::toStringWithPrefix(_state));
+    queryResult.reset(Result(ex.code(), "AQL: " + ex.message() + QueryExecutionState::toStringWithPrefix(_state)));
     return ExecutionState::DONE;
   } catch (std::bad_alloc const&) {
     setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_OUT_OF_MEMORY);
-    queryResult.set(TRI_ERROR_OUT_OF_MEMORY,
-                    TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
-                        QueryExecutionState::toStringWithPrefix(_state));
+    queryResult.reset(Result(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + QueryExecutionState::toStringWithPrefix(_state)));
     return ExecutionState::DONE;
   } catch (std::exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
-    queryResult.set(TRI_ERROR_INTERNAL,
-                    ex.what() + QueryExecutionState::toStringWithPrefix(_state));
+    queryResult.reset(Result(TRI_ERROR_INTERNAL, ex.what() + QueryExecutionState::toStringWithPrefix(_state)));
     return ExecutionState::DONE;
   } catch (...) {
     setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
-    queryResult.set(TRI_ERROR_INTERNAL, TRI_errno_string(TRI_ERROR_INTERNAL) +
-                                            QueryExecutionState::toStringWithPrefix(_state));
+    queryResult.reset(Result(TRI_ERROR_INTERNAL, TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toStringWithPrefix(_state)));
     return ExecutionState::DONE;
   }
 }
@@ -796,7 +810,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
               TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(),
                             queryResult.context->getVPackOptions());
           TRI_ASSERT(values->IsArray());
-          queryResult.result = v8::Handle<v8::Array>::Cast(values);
+          queryResult.data = v8::Handle<v8::Array>::Cast(values);
           queryResult.extra = cacheEntry->_stats;
           queryResult.cached = true;
           return ExecutionState::DONE;
@@ -821,7 +835,6 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
 
     // this is the RegisterId our results can be found in
     auto const resultRegister = _engine->resultRegister();
-    std::unique_ptr<AqlItemBlock> value;
 
     // following options and builder only required for query cache
     VPackOptions options = VPackOptions::Defaults;
@@ -846,7 +859,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
           res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
           state = res.first;
         }
-        value.swap(res.second);
+        SharedAqlItemBlockPtr value = std::move(res.second);
 
         // value == nullptr => state == DONE
         TRI_ASSERT(value != nullptr || state == ExecutionState::DONE);
@@ -874,8 +887,6 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
             }
           }
         }
-
-        _engine->itemBlockManager().returnBlock(std::move(value));
       }
 
       builder->close();
@@ -886,7 +897,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
       throw;
     }
 
-    queryResult.result = resArray;
+    queryResult.data = resArray;
     queryResult.context = _trx->transactionContext();
 
     if (useQueryCache && _warnings.empty()) {
@@ -915,24 +926,19 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
   } catch (arangodb::basics::Exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngineSync(ex.code());
-    queryResult.set(ex.code(), "AQL: " + ex.message() +
-                                   QueryExecutionState::toStringWithPrefix(_state));
+    queryResult.reset(Result(ex.code(), "AQL: " + ex.message() + QueryExecutionState::toStringWithPrefix(_state)));
   } catch (std::bad_alloc const&) {
     setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_OUT_OF_MEMORY);
-    queryResult.set(TRI_ERROR_OUT_OF_MEMORY,
-                    TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
-                        QueryExecutionState::toStringWithPrefix(_state));
+    queryResult.reset(Result(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + QueryExecutionState::toStringWithPrefix(_state)));
   } catch (std::exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
-    queryResult.set(TRI_ERROR_INTERNAL,
-                    ex.what() + QueryExecutionState::toStringWithPrefix(_state));
+    queryResult.reset(Result(TRI_ERROR_INTERNAL, ex.what() + QueryExecutionState::toStringWithPrefix(_state)));
   } catch (...) {
     setExecutionTime();
     cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
-    queryResult.set(TRI_ERROR_INTERNAL, TRI_errno_string(TRI_ERROR_INTERNAL) +
-                                            QueryExecutionState::toStringWithPrefix(_state));
+    queryResult.reset(Result(TRI_ERROR_INTERNAL, TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toStringWithPrefix(_state)));
   }
 
   return ExecutionState::DONE;
@@ -1007,16 +1013,15 @@ QueryResult Query::parse() {
     Parser parser(this);
     return parser.parseWithDetails();
   } catch (arangodb::basics::Exception const& ex) {
-    return QueryResult(ex.code(), ex.message());
+    return QueryResult(Result(ex.code(), ex.message()));
   } catch (std::bad_alloc const&) {
     cleanupPlanAndEngineSync(TRI_ERROR_OUT_OF_MEMORY);
-    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    return QueryResult(Result(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY)));
   } catch (std::exception const& ex) {
     cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
-    return QueryResult(TRI_ERROR_INTERNAL, ex.what());
+    return QueryResult(Result(TRI_ERROR_INTERNAL, ex.what()));
   } catch (...) {
-    return QueryResult(TRI_ERROR_INTERNAL,
-                       "an unknown error occurred while parsing the query");
+    return QueryResult(Result(TRI_ERROR_INTERNAL, "an unknown error occurred while parsing the query"));
   }
 }
 
@@ -1056,7 +1061,7 @@ QueryResult Query::explain() {
 
     if (plan == nullptr) {
       // oops
-      return QueryResult(TRI_ERROR_INTERNAL, "unable to create plan from AST");
+      return QueryResult(Result(TRI_ERROR_INTERNAL, "unable to create plan from AST"));
     }
 
     // Run the query optimizer:
@@ -1067,12 +1072,12 @@ QueryResult Query::explain() {
 
     enterState(QueryExecutionState::ValueType::FINALIZATION);
 
-    QueryResult result(TRI_ERROR_NO_ERROR);
+    QueryResult result;
 
     if (_queryOptions.allPlans) {
-      result.result = std::make_shared<VPackBuilder>();
+      result.data = std::make_shared<VPackBuilder>();
       {
-        VPackArrayBuilder guard(result.result.get());
+        VPackArrayBuilder guard(result.data.get());
 
         auto const& plans = opt.getPlans();
         for (auto& it : plans) {
@@ -1081,7 +1086,7 @@ QueryResult Query::explain() {
 
           plan->findVarUsage();
           plan->planRegisters();
-          plan->toVelocyPack(*result.result.get(), parser.ast(), _queryOptions.verbosePlans);
+          plan->toVelocyPack(*result.data.get(), parser.ast(), _queryOptions.verbosePlans);
         }
       }
       // cacheability not available here
@@ -1094,7 +1099,7 @@ QueryResult Query::explain() {
       bestPlan->findVarUsage();
       bestPlan->planRegisters();
 
-      result.result = bestPlan->toVelocyPack(parser.ast(), _queryOptions.verbosePlans);
+      result.data = bestPlan->toVelocyPack(parser.ast(), _queryOptions.verbosePlans);
 
       // cacheability
       result.cached = (!_queryString.empty() && !_isModificationQuery &&
@@ -1117,19 +1122,13 @@ QueryResult Query::explain() {
 
     return result;
   } catch (arangodb::basics::Exception const& ex) {
-    return QueryResult(ex.code(),
-                       ex.message() + QueryExecutionState::toStringWithPrefix(_state));
+    return QueryResult(Result(ex.code(), ex.message() + QueryExecutionState::toStringWithPrefix(_state)));
   } catch (std::bad_alloc const&) {
-    return QueryResult(TRI_ERROR_OUT_OF_MEMORY,
-                       TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
-                           QueryExecutionState::toStringWithPrefix(_state));
+    return QueryResult(Result(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + QueryExecutionState::toStringWithPrefix(_state)));
   } catch (std::exception const& ex) {
-    return QueryResult(TRI_ERROR_INTERNAL,
-                       ex.what() + QueryExecutionState::toStringWithPrefix(_state));
+    return QueryResult(Result(TRI_ERROR_INTERNAL, ex.what() + QueryExecutionState::toStringWithPrefix(_state)));
   } catch (...) {
-    return QueryResult(TRI_ERROR_INTERNAL,
-                       TRI_errno_string(TRI_ERROR_INTERNAL) +
-                           QueryExecutionState::toStringWithPrefix(_state));
+    return QueryResult(Result(TRI_ERROR_INTERNAL, TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toStringWithPrefix(_state)));
   }
 }
 
@@ -1178,7 +1177,8 @@ void Query::enterContext() {
                                        "V8 engine is disabled");
       }
       TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
-      _context = V8DealerFeature::DEALER->enterContext(&_vocbase, false);
+      JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createQueryContext();
+      _context = V8DealerFeature::DEALER->enterContext(&_vocbase, securityContext);
 
       if (_context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1262,11 +1262,11 @@ void Query::init() {
 
   TRI_ASSERT(_profile == nullptr);
   // adds query to QueryList which is needed for /_api/query/current
-  _profile.reset(new QueryProfile(this));
+  _profile = std::make_unique<QueryProfile>(this);
   enterState(QueryExecutionState::ValueType::INITIALIZATION);
 
   TRI_ASSERT(_ast == nullptr);
-  _ast.reset(new Ast(this));
+  _ast = std::make_unique<Ast>(this);
 }
 
 /// @brief calculate a hash for the query, once
@@ -1343,19 +1343,6 @@ bool Query::canUseQueryCache() const {
   }
 
   return false;
-}
-
-/// @brief neatly format exception messages for the users
-std::string Query::buildErrorMessage(int errorCode) const {
-  std::string err(TRI_errno_string(errorCode));
-
-  if (!_queryString.empty() && _queryOptions.verboseErrors) {
-    err += "\nwhile executing:\n";
-    _queryString.append(err);
-    err += "\n";
-  }
-
-  return err;
 }
 
 /// @brief enter a new state

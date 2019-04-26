@@ -50,6 +50,7 @@ let optionsDocumentation = [
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
   '   - `skipGrey`: if set, grey tests are skipped.',
+  '   - `onlyGrey`: if set, only grey tests are executed.',
   '   - `testBuckets`: split tests in to buckets and execute on, for example',
   '       10/2 will split into 10 buckets and execute the third bucket.',
   '',
@@ -83,6 +84,7 @@ let optionsDocumentation = [
   '   - `configDir`: the directory containing the config files, defaults to',
   '                  etc/testing',
   '   - `writeXmlReport`:  Write junit xml report files',
+  '   - `dumpAgencyOnError`: if we should create an agency dump if an error occurs',
   '   - `prefix`:    prefix for the tests in the xml reports',
   '',
   '   - `disableMonitor`: if set to true on windows, procdump will not be attached.',
@@ -121,6 +123,7 @@ let optionsDocumentation = [
 ];
 
 const optionsDefaults = {
+  'dumpAgencyOnError': false,
   'agencySize': 3,
   'agencyWaitForSync': false,
   'agencySupervision': true,
@@ -138,7 +141,7 @@ const optionsDefaults = {
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
-  'getSockStat': true,
+  'getSockStat': false,
   'arangosearch':true,
   'jsonReply': false,
   'loopEternal': false,
@@ -162,6 +165,7 @@ const optionsDefaults = {
   'skipNightly': true,
   'skipNondeterministic': false,
   'skipGrey': false,
+  'onlyGrey': false,
   'skipTimeCritical': false,
   'storageEngine': 'rocksdb',
   'test': undefined,
@@ -174,7 +178,7 @@ const optionsDefaults = {
   'valgrindHosts': false,
   'verbose': false,
   'walFlushTimeout': 30000,
-  'writeXmlReport': true,
+  'writeXmlReport': false,
   'testFailureText': 'testfailures.txt',
   'testCase': undefined,
   'disableMonitor': false

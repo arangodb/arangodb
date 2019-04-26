@@ -4,24 +4,40 @@ In this file we collect information about which tests are currently
 greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 
- - `./tests/js/server/replication/fuzz/replication-fuzz.js` often fails with
 
-    [FAILED]  tests/js/server/replication/fuzz/replication-fuzz.js
+- `tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js`
 
-      "testFuzz" failed: at assertion #5: assertEqual: (edge1lPYZAhDaHTXARyb1553464982839-7-6243638505965989336primary-["_key"]edge-["_from","_to"]fuchs5NcDJ5W7op5FaurO1553464981502-2994-2799813630684851127primary-["_key"]fuchsdIE7aXAEAJNemsAo1553465047639-2006-12100265488340768412primary-["_key"]hash-["qSO6vCeQ0NFNyRqb1553464994849"]skiplist-["VrXYo1SlNE8Uzf141553465023423"]fuchsWhIJSLoR4ohvwETO1553465028502-6-2495317728447060923primary-["_key"]testErZaaOqAixhMcViW1553465028081-3-1834778075040168125primary-["_key"]) is not equal to (edge1lPYZAhDaHTXARyb1553464982839-0-0primary-["_key"]edge-["_from","_to"]fuchs5NcDJ5W7op5FaurO1553464981502-2994-2799813630684851127primary-["_key"]fuchsdIE7aXAEAJNemsAo1553465047639-2006-12100265488340768412primary-["_key"]fuchsWhIJSLoR4ohvwETO1553465028502-6-2495317728447060923primary-["_key"]testErZaaOqAixhMcViW1553465028081-0-0primary-["_key"])
-(Error
-    at assertEqual (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:103:19)
-    at /work/ArangoDB/tests/js/server/replication/replication-fuzz.js:506:11
-    at compare (/work/ArangoDB/tests/js/server/replication/replication-fuzz.js:141:5)
-    at Object.testFuzz (/work/ArangoDB/tests/js/server/replication/replication-fuzz.js:183:7)
-    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:515:23)
-    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:171:24)
-    at /work/ArangoDB/tests/js/server/replication/replication-fuzz.js:518:9
-    at /work/ArangoDB/tests/js/server/replication/replication-fuzz.js:521:3
-    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:248:12)
-    at /work/ArangoDB/js/common/modules/@arangodb/testrunner.js:47:13)
+    [FAILED]  tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js
 
-   Suites failed: 1 Tests Failed: 1
+      "Collections with distributeShardsLike with data if broken, should be repaired" failed: AssertionError: expected false to be true
+    at createBrokenClusterState (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:220:57)
+    at Context.<anonymous> (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:560:11)
+
+      "Collections with distributeShardsLike with data if interrupted, should complete repairs" failed: AssertionError: expected false to be true
+    at createBrokenClusterState (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:221:52)
+    at Context.<anonymous> (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:624:13)
+
+      "Collections with distributeShardsLike with data if called via GET, only return planned operations" failed: AssertionError: expected false to be true
+    at createBrokenClusterState (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:221:52)
+    at Context.<anonymous> (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:761:11)
+
+
+- `tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js`
+
+    [FAILED]  tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js
+
+      "testBasicOperationsLeaderFail4" failed: ArangoError 1457: timeout in cluster operation - ArangoError: timeout in cluster operation
+    at ArangoDatabase._drop (/work/ArangoDB/js/server/modules/@arangodb/arango-database.js:190:23)
+    at Object.tearDown (tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js:352:10)
+    at /work/ArangoDB/js/common/modules/jsunity/jsunity.js:468:16
+    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:522:15)
+    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:173:24)
+    at tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js:874:9
+    at tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js:878:3
+    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:250:12)
+    at source (eval at <anonymous> (unknown source), <anonymous>:4:52)
+
+
 
 - `./tests/js/server/resilience/moving-shards-with-arangosearch-view-cluster.js` always fails (and needs refactoring) due to changes from PR 7748 with
 

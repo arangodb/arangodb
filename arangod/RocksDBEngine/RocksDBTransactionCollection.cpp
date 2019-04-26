@@ -38,8 +38,7 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx
                                                            TRI_voc_cid_t cid,
                                                            AccessMode::Type accessType,
                                                            int nestingLevel)
-    : TransactionCollection(trx, cid, accessType),
-      _nestingLevel(nestingLevel),
+    : TransactionCollection(trx, cid, accessType, nestingLevel),
       _initialNumberDocuments(0),
       _revision(0),
       _numInserts(0),
@@ -70,29 +69,6 @@ bool RocksDBTransactionCollection::canAccess(AccessMode::Type accessType) const 
   }
 
   return true;
-}
-
-int RocksDBTransactionCollection::updateUsage(AccessMode::Type accessType, int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    if (nestingLevel > 0) {
-      // trying to write access a collection that is only marked with
-      // read-access
-      return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
-    }
-
-    TRI_ASSERT(nestingLevel == 0);
-
-    // upgrade collection type to write-access
-    _accessType = accessType;
-  }
-
-  if (nestingLevel < _nestingLevel) {
-    _nestingLevel = nestingLevel;
-  }
-
-  // all correct
-  return TRI_ERROR_NO_ERROR;
 }
 
 int RocksDBTransactionCollection::use(int nestingLevel) {
@@ -163,6 +139,14 @@ void RocksDBTransactionCollection::unuse(int nestingLevel) {
 }
 
 void RocksDBTransactionCollection::release() {
+  // questionable, but seems to work
+  if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
+      _transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+    TRI_ASSERT(!_usageLocked);
+    _collection = nullptr;
+    return;
+  }
+
   if (isLocked()) {
     // unlock our own r/w locks
     doUnlock(_accessType, 0);
@@ -178,7 +162,6 @@ void RocksDBTransactionCollection::release() {
       _transaction->vocbase().releaseCollection(_collection.get());
       _usageLocked = false;
     }
-
     _collection = nullptr;
   } else {
     TRI_ASSERT(!_usageLocked);
@@ -225,7 +208,7 @@ void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
   }
 }
 
-void RocksDBTransactionCollection::commitCounts(uint64_t trxId, uint64_t commitSeq) {
+void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq) {
   TRI_ASSERT(_collection != nullptr);
 
   // Update the collection count
@@ -269,14 +252,14 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId, uint64_t commitS
   _trackedIndexOperations.clear();
 }
 
-void RocksDBTransactionCollection::trackIndexInsert(uint64_t idxObjectId, uint64_t hash) {
+void RocksDBTransactionCollection::trackIndexInsert(TRI_idx_iid_t iid, uint64_t hash) {
   // First list is Inserts
-  _trackedIndexOperations[idxObjectId].inserts.emplace_back(hash);
+  _trackedIndexOperations[iid].inserts.emplace_back(hash);
 }
 
-void RocksDBTransactionCollection::trackIndexRemove(uint64_t idxObjectId, uint64_t hash) {
+void RocksDBTransactionCollection::trackIndexRemove(TRI_idx_iid_t iid, uint64_t hash) {
   // Second list is Removes
-  _trackedIndexOperations[idxObjectId].removals.emplace_back(hash);
+  _trackedIndexOperations[iid].removals.emplace_back(hash);
 }
 
 /// @brief lock a collection

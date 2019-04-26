@@ -26,6 +26,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -453,6 +454,7 @@ Result ReplicationApplier::resetState(bool reducedSet) {
   }
 
   LOG_TOPIC("87584", DEBUG, Logger::REPLICATION)
+    << "stopped replication applier for database '" << _databaseName
     << "' with lastProcessedContinuousTick: " << _state._lastProcessedContinuousTick
     << ", lastAppliedContinuousTick: " << _state._lastAppliedContinuousTick
     << ", safeResumeTick: " << _state._safeResumeTick;

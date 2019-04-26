@@ -23,7 +23,7 @@
 #include "MultiDependencySingleRowFetcher.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/BlockFetcher.h"
+#include "Aql/DependencyProxy.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -31,10 +31,10 @@ using namespace arangodb::aql;
 MultiDependencySingleRowFetcher::DependencyInfo::DependencyInfo()
     : _upstreamState{ExecutionState::HASMORE}, _rowIndex{0} {}
 
-MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher(BlockFetcher<false>& executionBlock)
-    : _blockFetcher(&executionBlock) {}
+MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher(DependencyProxy<false>& executionBlock)
+    : _dependencyProxy(&executionBlock) {}
 
-std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> MultiDependencySingleRowFetcher::fetchBlockForDependency(
+std::pair<ExecutionState, SharedAqlItemBlockPtr> MultiDependencySingleRowFetcher::fetchBlockForDependency(
     size_t dependency, size_t atMost) {
   TRI_ASSERT(!_dependencyInfos.empty());
   atMost = (std::min)(atMost, ExecutionBlock::DefaultBatchSize());
@@ -44,7 +44,7 @@ std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> MultiDependencySin
   // DONE the last time, and I don't currently have time to track them down.
   // Thus the following assert is commented out.
   // TRI_ASSERT(_upstreamState != ExecutionState::DONE);
-  auto res = _blockFetcher->fetchBlockForDependency(dependency, atMost);
+  auto res = _dependencyProxy->fetchBlockForDependency(dependency, atMost);
   auto& depInfo = _dependencyInfos[dependency];
   depInfo._upstreamState = res.first;
 
@@ -52,18 +52,18 @@ std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> MultiDependencySin
 }
 
 MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher()
-    : _blockFetcher(nullptr) {}
+    : _dependencyProxy(nullptr) {}
 
 RegisterId MultiDependencySingleRowFetcher::getNrInputRegisters() const {
-  return _blockFetcher->getNrInputRegisters();
+  return _dependencyProxy->getNrInputRegisters();
 }
 
 size_t MultiDependencySingleRowFetcher::numberDependencies() {
   if (_dependencyInfos.empty()) {
     // Need to setup the dependencies, they are injected lazily.
-    TRI_ASSERT(_blockFetcher->numberDependencies() > 0);
-    _dependencyInfos.reserve(_blockFetcher->numberDependencies());
-    for (size_t i = 0; i < _blockFetcher->numberDependencies(); ++i) {
+    TRI_ASSERT(_dependencyProxy->numberDependencies() > 0);
+    _dependencyInfos.reserve(_dependencyProxy->numberDependencies());
+    for (size_t i = 0; i < _dependencyProxy->numberDependencies(); ++i) {
       _dependencyInfos.emplace_back(DependencyInfo{});
     }
   }

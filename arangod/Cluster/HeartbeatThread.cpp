@@ -41,7 +41,6 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Recovery.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -50,6 +49,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/ClusterUtils.h"
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
@@ -392,7 +392,8 @@ void HeartbeatThread::runDBServer() {
         // from other cluster servers
         AgencyReadTransaction trx(std::vector<std::string>(
             {AgencyCommManager::path("Shutdown"),
-             AgencyCommManager::path("Current/Version"), "/.agency"}));
+             AgencyCommManager::path("Current/Version"),
+             AgencyCommManager::path("Target/FailedServers"), "/.agency"}));
 
         AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
         if (!result.successful()) {
@@ -410,6 +411,20 @@ void HeartbeatThread::runDBServer() {
           if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
             ApplicationServer::server->beginShutdown();
             break;
+          }
+          
+          VPackSlice failedServersSlice = result.slice()[0].get(std::vector<std::string>(
+                                    {AgencyCommManager::path(), "Target", "FailedServers"}));
+          if (failedServersSlice.isObject()) {
+            std::vector<ServerID> failedServers = {};
+            for (auto const& server : VPackObjectIterator(failedServersSlice)) {
+              failedServers.push_back(server.key.copyString());
+            }
+            ClusterInfo::instance()->setFailedServers(failedServers);
+            transaction::cluster::abortTransactionsWithFailedServers();
+          } else {
+            LOG_TOPIC("80491", WARN, Logger::HEARTBEAT)
+            << "FailedServers is not an object. ignoring for now";
           }
 
           VPackSlice s = result.slice()[0].get(std::vector<std::string>(
@@ -966,19 +981,7 @@ void HeartbeatThread::runCoordinator() {
             failedServers.push_back(server.key.copyString());
           }
           ClusterInfo::instance()->setFailedServers(failedServers);
-
-          std::shared_ptr<pregel::PregelFeature> prgl = pregel::PregelFeature::instance();
-          if (prgl != nullptr && failedServers.size() > 0) {
-            pregel::RecoveryManager* mngr = prgl->recoveryManager();
-            if (mngr != nullptr) {
-              try {
-                mngr->updatedFailedServers(failedServers);
-              } catch (std::exception const& e) {
-                LOG_TOPIC("f5603", ERR, Logger::HEARTBEAT)
-                    << "Got an exception in coordinator heartbeat: " << e.what();
-              }
-            }
-          }
+          transaction::cluster::abortTransactionsWithFailedServers();
         } else {
           LOG_TOPIC("cd95f", WARN, Logger::HEARTBEAT)
               << "FailedServers is not an object. ignoring for now";

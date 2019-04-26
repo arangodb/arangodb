@@ -87,6 +87,8 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (SchedulerFeature::SCHEDULER == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
+  } else if (application_features::ApplicationServer::isStopping()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
   if (args.Length() != 1 || !args[0]->IsObject()) {
@@ -136,6 +138,11 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     isSystem = TRI_ObjectToBoolean(
         isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "isSystem"))
                      .FromMaybe(v8::Local<v8::Value>()));
+  }
+
+  if(isSystem && !v8g->_securityContext.isInternal()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "Only Internal Context may create System Tasks");
+
   }
 
   // offset in seconds into period or from now on if no period

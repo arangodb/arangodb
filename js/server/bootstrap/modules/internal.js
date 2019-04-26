@@ -42,13 +42,20 @@
   exports.db = global.db;
   delete global.db;
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief ArangoAnalyzers
+  ////////////////////////////////////////////////////////////////////////////////
+
+  exports.ArangoAnalyzers = global.ArangoAnalyzers;
+  delete global.ArangoAnalyzers;
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ArangoCollection
   // //////////////////////////////////////////////////////////////////////////////
 
   exports.ArangoCollection = global.ArangoCollection;
   delete global.ArangoCollection;
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ArangoView
   // //////////////////////////////////////////////////////////////////////////////
@@ -62,7 +69,7 @@
 
   exports.ArangoUsers = global.ArangoUsers;
   delete global.ArangoUsers;
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ArangoGeneralGraphModule
   // //////////////////////////////////////////////////////////////////////////////
@@ -149,13 +156,13 @@
       return global.WAL_WAITCOLLECTOR.apply(null, arguments);
     }
   };
-  
+
   // / @brief ttlStatistics
   if (global.SYS_TTL_STATISTICS) {
     exports.ttlStatistics = global.SYS_TTL_STATISTICS;
     delete global.SYS_TTL_STATISTICS;
   }
-  
+
   // / @brief ttlProperties
   if (global.SYS_TTL_PROPERTIES) {
     exports.ttlProperties = global.SYS_TTL_PROPERTIES;
@@ -170,6 +177,22 @@
     exports.defineAction = global.SYS_DEFINE_ACTION;
     delete global.SYS_DEFINE_ACTION;
   }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief expose configuration
+  // //////////////////////////////////////////////////////////////////////////////
+
+
+  if (global.SYS_IS_FOXX_API_DISABLED) {
+    exports.isFoxxApiDisabled = global.SYS_IS_FOXX_API_DISABLED;
+    delete global.SYS_IS_FOXX_API_DISABLED;
+  }
+
+  if (global.SYS_IS_FOXX_STORE_DISABLED) {
+    exports.isFoxxStoreDisabled = global.SYS_IS_FOXX_STORE_DISABLED;
+    delete global.SYS_IS_FOXX_STORE_DISABLED;
+  }
+
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief throw-collection-not-loaded
@@ -199,7 +222,7 @@
       }
 
       modules = modules.byExample({ autoload: true }).toArray();
-        
+
       modules.forEach(function (module) {
         // this module is only meant to be executed in one thread
         if (exports.threadNumber !== 0 && !module.perThread) {
@@ -231,19 +254,25 @@
 
     console.debug('autoloading actions finished');
   };
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief executes a string in all V8 contexts
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION) {
-    exports.executeGlobalContextFunction = global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
-  } else {
-    exports.executeGlobalContextFunction = function () {
-      // nothing to do. we're probably in --no-server mode
-    };
-  }
   
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief clientStatistics
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_CLIENT_STATISTICS) {
+    exports.clientStatistics = global.SYS_CLIENT_STATISTICS;
+    delete global.SYS_CLIENT_STATISTICS;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief httpStatistics
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_HTTP_STATISTICS) {
+    exports.httpStatistics = global.SYS_HTTP_STATISTICS;
+    delete global.SYS_HTTP_STATISTICS;
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief getCurrentRequest
   // //////////////////////////////////////////////////////////////////////////////
@@ -268,11 +297,10 @@
 
   if (global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION) {
     exports.reloadAqlFunctions = function () {
-      exports.executeGlobalContextFunction('reloadAql');
+      global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION('reloadAql');
       require('@arangodb/aql').reload();
     };
-    delete global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
-  }else {
+  } else {
     exports.reloadAqlFunctions = function () {
       require('@arangodb/aql').reload();
     };

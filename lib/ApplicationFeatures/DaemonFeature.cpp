@@ -80,12 +80,10 @@ void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   // make the pid filename absolute
   std::string currentDir = FileUtils::currentDirectory().result();
+  std::string absoluteFile = TRI_GetAbsolutePath(_pidFile, currentDir);
 
-  char* absoluteFile = TRI_GetAbsolutePath(_pidFile.c_str(), currentDir.c_str());
-
-  if (absoluteFile != nullptr) {
-    _pidFile = std::string(absoluteFile);
-    TRI_Free(absoluteFile);
+  if (!absoluteFile.empty()) {
+    _pidFile = absoluteFile;
     LOG_TOPIC("79662", DEBUG, arangodb::Logger::FIXME)
         << "using absolute pid file '" << _pidFile << "'";
   } else {

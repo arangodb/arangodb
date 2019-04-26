@@ -58,6 +58,7 @@ void DBServerAgencySync::work() {
 }
 
 Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
+
   using namespace arangodb::basics;
   Result result;
   DatabaseFeature* dbfeature = nullptr;
@@ -89,19 +90,21 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
           std::string const colname = collection->name();
 
           collections.add(VPackValue(colname));
+
           VPackObjectBuilder col(&collections);
-          collection->properties(collections, /*detailed*/true,
-                                 /*forPersistence*/false);
+
+          // generate a collection definition identical to that which would be
+          // persisted in the case of SingleServer
+          collection->properties(collections, true, true); // detailed + forPersistence
 
           auto const& folls = collection->followers();
           std::string const theLeader = folls->getLeader();
           bool theLeaderTouched = folls->getLeaderTouched();
 
-          // Note that whenever theLeader was set explicitly since the
-          // collection object was created, we believe it. Otherwise, we do not
-          // accept that we are the leader. This is to circumvent the problem
-          // that after a restart we would implicitly be assumed to be the
-          // leader.
+          // Note that whenever theLeader was set explicitly since the collection
+          // object was created, we believe it. Otherwise, we do not accept
+          // that we are the leader. This is to circumvent the problem that
+          // after a restart we would implicitly be assumed to be the leader.
           collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : "NOT_YET_TOUCHED"));
           collections.add("theLeaderTouched", VPackValue(theLeaderTouched));
 
@@ -115,7 +118,9 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
               VPackArrayBuilder guard(&collections);
 
               collections.add(VPackValue(arangodb::ServerState::instance()->getId()));
+
               std::shared_ptr<std::vector<ServerID> const> srvs = folls->get();
+
               for (auto const& s : *srvs) {
                 collections.add(VPackValue(s));
               }
@@ -191,13 +196,35 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     VPackObjectBuilder o(&rb);
 
+    auto startTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseOne";
     tmp = arangodb::maintenance::phaseOne(plan->slice(), local.slice(),
                                           serverId, *mfeature, rb);
+    auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne done";
 
-    LOG_TOPIC("ef730", DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo";
+    if (endTimePhaseOne - startTimePhaseOne >
+        std::chrono::milliseconds(200)) {
+      // We take this as indication that many shards are in the system,
+      // in this case: give some asynchronous jobs created in phaseOne a
+      // chance to complete before we collect data for phaseTwo:
+      LOG_TOPIC("ef730", DEBUG, Logger::MAINTENANCE)
+        << "DBServerAgencySync::hesitating between phases 1 and 2 for 0.1s...";
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    auto current = clusterInfo->getCurrent();
+    if (current == nullptr) {
+      // TODO increase log level, except during shutdown?
+      LOG_TOPIC("ab562", DEBUG, Logger::MAINTENANCE)
+          << "DBServerAgencySync::execute no current";
+      result.errorMessage = "DBServerAgencySync::execute no current";
+      return result;
+    }
+    LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
+        << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
+
     local.clear();
     glc = getLocalCollections(local);
     // We intentionally refetch local collections here, such that phase 2
@@ -210,16 +237,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       return result;
     }
 
-    auto current = clusterInfo->getCurrent();
-    if (current == nullptr) {
-      // TODO increase log level, except during shutdown?
-      LOG_TOPIC("f5cac", DEBUG, Logger::MAINTENANCE)
-          << "DBServerAgencySync::execute no current";
-      result.errorMessage = "DBServerAgencySync::execute no current";
-      return result;
-    }
-    LOG_TOPIC("deb49", TRACE, Logger::MAINTENANCE)
-        << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
+    LOG_TOPIC("652ff", DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo";
 
     tmp = arangodb::maintenance::phaseTwo(plan->slice(), current->slice(),
                                           local.slice(), serverId, *mfeature, rb);
@@ -243,21 +261,30 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         // Report to current
         if (!agency.isEmptyObject()) {
           std::vector<AgencyOperation> operations;
+          std::vector<AgencyPrecondition> preconditions;
           for (auto const& ao : VPackObjectIterator(agency)) {
             auto const key = ao.key.copyString();
             auto const op = ao.value.get("op").copyString();
+
+            if (ao.value.hasKey("precondition")) {
+              auto const precondition = ao.value.get("precondition");
+              preconditions.push_back(
+                AgencyPrecondition(
+                  precondition.keyAt(0).copyString(), AgencyPrecondition::Type::VALUE, precondition.valueAt(0)));
+            }
+            
             if (op == "set") {
               auto const value = ao.value.get("payload");
               operations.push_back(AgencyOperation(key, AgencyValueOperationType::SET, value));
             } else if (op == "delete") {
               operations.push_back(AgencyOperation(key, AgencySimpleOperationType::DELETE_OP));
             }
+            
           }
           operations.push_back(AgencyOperation("Current/Version",
                                                AgencySimpleOperationType::INCREMENT_OP));
-          AgencyPrecondition precondition("Plan/Version",
-            AgencyPrecondition::Type::VALUE, plan->slice().get("Version"));
-          AgencyWriteTransaction currentTransaction(operations, precondition);
+
+          AgencyWriteTransaction currentTransaction(operations, preconditions);
           AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
           if (!r.successful()) {
             LOG_TOPIC("d73b8", INFO, Logger::MAINTENANCE)

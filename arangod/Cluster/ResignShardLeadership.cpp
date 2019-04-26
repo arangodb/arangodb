@@ -29,8 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
-#include "Transaction/Manager.h"
-#include "Transaction/ManagerFeature.h"
+#include "Transaction/ClusterUtils.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/DatabaseGuard.h"
@@ -123,10 +122,7 @@ bool ResignShardLeadership::first() {
     col->followers()->setTheLeader("LEADER_NOT_YET_KNOWN");  // resign
     trx.abort(); // unlock
     
-    auto* mgr = transaction::ManagerFeature::manager();
-    if (mgr) {  // abort ongoing leader transactions
-      mgr->abortAllManagedTrx(col->id(), /*leader*/true);
-    }
+    transaction::cluster::abortLeaderTransactionsOnShard(col->id());
 
   } catch (std::exception const& e) {
     std::stringstream error;

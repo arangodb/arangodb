@@ -23,7 +23,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BlockFetcherHelper.h"
+#include "RowFetcherHelper.h"
 #include "catch.hpp"
 #include "fakeit.hpp"
 
@@ -114,9 +114,7 @@ SCENARIO("EnumerateCollectionExecutor",
                                            &trx, coveringIndexAttributePositions,
                                            useRawPointers, random);
 
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
-    auto outputBlockShell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
@@ -124,13 +122,13 @@ SCENARIO("EnumerateCollectionExecutor",
       EnumerateCollectionExecutor testee(fetcher, infos);
       // Use this instead of std::ignore, so the tests will be noticed and
       // updated when someone changes the stats type in the return value of
-      // EnumerateCollectionExecutor::produceRow().
+      // EnumerateCollectionExecutor::produceRows().
       EnumerateCollectionStats stats{};
 
       THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
       }
@@ -141,18 +139,18 @@ SCENARIO("EnumerateCollectionExecutor",
       EnumerateCollectionExecutor testee(fetcher, infos);
       // Use this instead of std::ignore, so the tests will be noticed and
       // updated when someone changes the stats type in the return value of
-      // EnumerateCollectionExecutor::produceRow().
+      // EnumerateCollectionExecutor::produceRows().
       EnumerateCollectionStats stats{};
 
       THEN("the executor should first return WAIT") {
-        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
 
         AND_THEN("the executor should return DONE") {
-          std::tie(state, stats) = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRows(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
         }

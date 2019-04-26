@@ -1181,41 +1181,22 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC("748e2", TRACE, Logger::AGENCYCOMM) << "checking if agency is initialized";
 
-  while (true) {
-    while (shouldInitializeStructure()) {
-      LOG_TOPIC("17e16", TRACE, Logger::AGENCYCOMM)
-          << "Agency is fresh. Needs initial structure.";
-      // mop: we are the chosen one .. great success
+  while (!application_features::ApplicationServer::isStopping() &&
+         shouldInitializeStructure()) {
 
-      if (tryInitializeStructure()) {
-        LOG_TOPIC("4c5aa", TRACE, Logger::AGENCYCOMM)
-            << "Successfully initialized agency";
-        break;
-      }
-
-      LOG_TOPIC("e05d1", WARN, Logger::AGENCYCOMM)
-          << "Initializing agency failed. We'll try again soon";
-      // We should really have exclusive access, here, this is strange!
-      std::this_thread::sleep_for(std::chrono::seconds(1));
+    LOG_TOPIC("17e16", TRACE, Logger::AGENCYCOMM)
+      << "Agency is fresh. Needs initial structure.";
+    
+    if (tryInitializeStructure()) {
+      LOG_TOPIC("4c5aa", TRACE, Logger::AGENCYCOMM)
+        << "Successfully initialized agency";
+      break;
     }
-
-    AgencyCommResult result = getValues("InitDone");
-
-    if (result.successful()) {
-      VPackSlice value = result.slice()[0].get(
-          std::vector<std::string>({AgencyCommManager::path(), "InitDone"}));
-      if (value.isBoolean() && value.getBoolean()) {
-        // expecting a value of "true"
-        LOG_TOPIC("e8450", TRACE, Logger::AGENCYCOMM) << "Found an initialized agency";
-        break;
-      }
-    } else {
-      if (result.httpCode() == 401) {
-        // unauthorized
-        LOG_TOPIC("e0376", FATAL, Logger::STARTUP) << "Unauthorized. Wrong credentials.";
-        FATAL_ERROR_EXIT();
-      }
-    }
+    
+    LOG_TOPIC("63f7b", WARN, Logger::AGENCYCOMM)
+      << "Initializing agency failed. We'll try again soon";
+    // We should really have exclusive access, here, this is strange!
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     LOG_TOPIC("9d265", TRACE, Logger::AGENCYCOMM)
         << "Waiting for agency to get initialized";
@@ -1346,10 +1327,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   auto waitSomeTime = [&waitInterval, &result]() -> bool {
     // Returning true means timeout because of shutdown:
-    auto serverFeature = application_features::ApplicationServer::getFeature<ServerFeature>(
-        "Server");
-    if (serverFeature->isStopping() ||
-        !application_features::ApplicationServer::isRetryOK()) {
+    if (!application_features::ApplicationServer::isRetryOK()) {
       LOG_TOPIC("53e58", INFO, Logger::AGENCYCOMM)
           << "Unsuccessful AgencyComm: Timeout because of shutdown "
           << "errorCode: " << result.errorCode()
@@ -1367,6 +1345,17 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
     } else if (waitInterval.count() < 5.0) {
       waitInterval *= 1.0749292929292;
     }
+
+    // Check again for shutdown, since some time has passed:
+    if (!application_features::ApplicationServer::isRetryOK()) {
+      LOG_TOPIC("afe45", INFO, Logger::AGENCYCOMM)
+          << "Unsuccessful AgencyComm: Timeout because of shutdown "
+          << "errorCode: " << result.errorCode()
+          << " errorMessage: " << result.errorMessage()
+          << " errorDetails: " << result.errorDetails();
+      return true;
+    }
+
     return false;
   };
 
@@ -1404,8 +1393,6 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
     // Some reporting:
     if (tries > 20) {
       auto serverState = application_features::ApplicationServer::server->state();
-      application_features::ApplicationServer::getFeature<ServerFeature>(
-          "Server");
       std::string serverStateStr;
       switch (serverState) {
         case arangodb::application_features::ServerState::UNINITIALIZED:
@@ -1485,6 +1472,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
       if (isWriteTrans && !clientIds.empty() && result._sent &&
           (result._statusCode == 0 || result._statusCode == 503)) {
         isInquiry = true;
+        conTimeout = 16.0;
       }
 
       // This leaves the redirect, timeout and 503 cases, which are handled
@@ -1532,8 +1520,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
             continue;
           }
         } else {
-          // How odd, we are supposed to get at least {results=[...]}, let's
-          // retry...
+          // How odd, we are supposed to get at least {results=[...]}, let's retry...
           isInquiry = false;
           continue;
         }
@@ -1560,7 +1547,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
     // In case of a timeout, we increase the patience:
     if (result._statusCode == 0) {
-      if (conTimeout < 15.0) {  // double until we have 16s
+      if (conTimeout < 33.0) {  // double until we have 64s
         conTimeout *= 2;
       }
     }
@@ -1749,7 +1736,9 @@ bool AgencyComm::tryInitializeStructure() {
     {
       VPackObjectBuilder c(&builder);
       builder.add("LatestID", VPackValue(1));
+      addEmptyVPackObject("Problems", builder);
       builder.add("UserVersion", VPackValue(1));
+      addEmptyVPackObject("ServerStates", builder);
       builder.add("HeartbeatIntervalMs", VPackValue(1000));
     }
 
@@ -1767,6 +1756,8 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add("NumberOfCoordinators", VPackSlice::nullSlice());
       builder.add("NumberOfDBServers", VPackSlice::nullSlice());
       builder.add(VPackValue("CleanedServers"));
+      { VPackArrayBuilder dd(&builder); }
+      builder.add(VPackValue("ToBeCleanedServers"));
       { VPackArrayBuilder dd(&builder); }
       builder.add(VPackValue("FailedServers"));
       { VPackObjectBuilder dd(&builder); }
@@ -1796,10 +1787,9 @@ bool AgencyComm::tryInitializeStructure() {
     LOG_TOPIC("58ffe", TRACE, Logger::AGENCYCOMM)
         << "Initializing agency with " << builder.toJson();
 
-    AgencyOperation initOperation("", AgencyValueOperationType::SET, builder.slice());
-
-    AgencyWriteTransaction initTransaction;
-    initTransaction.operations.push_back(initOperation);
+    AgencyWriteTransaction initTransaction(
+      AgencyOperation("", AgencyValueOperationType::SET, builder.slice()),
+      AgencyPrecondition("Plan", AgencyPrecondition::Type::EMPTY, true));
 
     AgencyCommResult result = sendTransactionWithFailover(initTransaction);
     if (result.httpCode() == TRI_ERROR_HTTP_UNAUTHORIZED) {
@@ -1820,19 +1810,60 @@ bool AgencyComm::tryInitializeStructure() {
 }
 
 bool AgencyComm::shouldInitializeStructure() {
-  VPackBuilder builder;
-  builder.add(VPackValue(false));
 
-  // "InitDone" key should not previously exist
-  auto result = casValue("InitDone", builder.slice(), false, 60.0,
-                         AgencyCommManager::CONNECTION_OPTIONS._requestTimeout);
+  size_t nFail = 0;
 
-  if (!result.successful()) {
-    // somebody else has or is initializing the agency
-    LOG_TOPIC("8a39b", TRACE, Logger::AGENCYCOMM)
-        << "someone else is initializing the agency";
-    return false;
+  while (!application_features::ApplicationServer::isStopping()) {
+
+    auto result = getValues("Plan");
+
+    if (!result.successful()) { // Not 200 - 299
+      
+      if (result.httpCode() == 401) {
+        // unauthorized
+        LOG_TOPIC("32781", FATAL, Logger::STARTUP) << "Unauthorized. Wrong credentials.";
+        FATAL_ERROR_EXIT();
+      }
+      
+      // Agency not ready yet
+      LOG_TOPIC("36253", TRACE, Logger::AGENCYCOMM)
+        << "waiting for agency to become ready";
+      continue;
+      
+    } else {
+
+      // Sanity
+      if (result.slice().isArray() && result.slice().length() == 1) {
+
+        // No plan entry? Should initialise
+        if (result.slice()[0] == VPackSlice::emptyObjectSlice()) {
+          LOG_TOPIC("98732", DEBUG, Logger::AGENCYCOMM)
+            << "agency initialisation should be performed";
+          return true;
+        } else {
+          LOG_TOPIC("abedb", DEBUG, Logger::AGENCYCOMM)
+            << "agency initialisation under way or done";
+          return false;
+        }
+      } else {
+        // Should never get here
+        TRI_ASSERT(false);
+        if (nFail++ < 3) {
+          LOG_TOPIC("fed52", DEBUG, Logger::AGENCYCOMM) << "What the hell just happened?";
+        } else {
+          LOG_TOPIC("54fea", FATAL, Logger::AGENCYCOMM)
+            << "Illegal response from agency during bootstrap: "
+            << result.slice().toJson();
+          FATAL_ERROR_EXIT();
+        }
+        continue;
+      }
+      
+    }
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+
   }
 
-  return true;
+  return false;
 }

@@ -70,7 +70,8 @@ arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* res
 
 namespace arangodb {
 
-ClientManager::ClientManager(LogTopic& topic) : _topic{topic} {}
+ClientManager::ClientManager(LogTopic& topic) : 
+    _topic{topic} {}
 
 ClientManager::~ClientManager() {}
 
@@ -107,6 +108,11 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
     }
 
     return {errorCode};
+  }
+
+  if (versionString.empty() || versionString == "arango") {
+    // server running in hardened mode?
+    return {TRI_ERROR_NO_ERROR};
   }
 
   if (logServerVersion) {

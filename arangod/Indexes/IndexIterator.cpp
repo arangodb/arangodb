@@ -109,6 +109,37 @@ bool MultiIndexIterator::next(LocalDocumentIdCallback const& callback, size_t li
 ///        If one iterator is exhausted, the next one is used.
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
+bool MultiIndexIterator::nextDocument(DocumentCallback const& callback, size_t limit) {
+  auto cb = [&limit, &callback](LocalDocumentId const& token, arangodb::velocypack::Slice slice) {
+    --limit;
+    callback(token, slice);
+  };
+  while (limit > 0) {
+    if (_current == nullptr) {
+      return false;
+    }
+    if (!_current->nextDocument(cb, limit)) {
+      _currentIdx++;
+      if (_currentIdx >= _iterators.size()) {
+        _current = nullptr;
+        return false;
+      } else {
+        _current = _iterators.at(_currentIdx);
+      }
+    }
+  }
+  return true;
+}
+
+bool MultiIndexIterator::nextExtra(ExtraCallback const& callback, size_t limit) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested extra values from an index iterator that does not support it");
+}
+
+
+/// @brief Get the next elements
+///        If one iterator is exhausted, the next one is used.
+///        If callback is called less than limit many times
+///        all iterators are exhausted
 bool MultiIndexIterator::nextCovering(DocumentCallback const& callback, size_t limit) {
   TRI_ASSERT(hasCovering());
   auto cb = [&limit, &callback](LocalDocumentId const& token,
