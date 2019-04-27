@@ -998,7 +998,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         {
           VPackObjectBuilder o(&report);
           report.add(OP, VP_SET);
-          report.add(VPackSlice("payload"));
+          report.add(VPackValue("payload"));
           {
             VPackObjectBuilder pp(&report);
             VPackSlice errs(static_cast<uint8_t const*>(p.second->data()));
