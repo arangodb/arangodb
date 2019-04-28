@@ -133,6 +133,9 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
 }
 
 template<typename Impl>
+struct IResearchViewExecutorTraits;
+
+template<typename Impl, typename Traits = IResearchViewExecutorTraits<Impl>>
 class IResearchViewExecutorBase {
  public:
   struct Properties {
@@ -180,8 +183,11 @@ class IResearchViewExecutorBase {
     IndexIterator::DocumentCallback const callback;
   };  // ReadContext
 
+  template<typename ValueType>
   class IndexReadBuffer;
+
   class IndexReadBufferEntry {
+    template<typename ValueType>
     friend class IndexReadBuffer;
 
     IndexReadBufferEntry() = delete;
@@ -192,23 +198,24 @@ class IResearchViewExecutorBase {
   };
 
   // Holds and encapsulates the data read from the iresearch index.
+  template<typename ValueType>
   class IndexReadBuffer {
    public:
     class ScoreIterator {
      public:
       ScoreIterator() = delete;
       inline ScoreIterator(std::vector<AqlValue>& scoreBuffer,
-                           std::size_t keyIdx, std::size_t numScores)
+                           std::size_t keyIdx, std::size_t numScores) noexcept
           : _scoreBuffer(scoreBuffer),
             _scoreBaseIdx(keyIdx * numScores),
             _numScores(numScores) {
         TRI_ASSERT(_scoreBaseIdx + _numScores <= _scoreBuffer.size());
       }
 
-      inline std::vector<AqlValue>::iterator begin() {
+      inline std::vector<AqlValue>::iterator begin() noexcept {
         return _scoreBuffer.begin() + _scoreBaseIdx;
       }
-      inline std::vector<AqlValue>::iterator end() {
+      inline std::vector<AqlValue>::iterator end() noexcept {
         return _scoreBuffer.begin() + _scoreBaseIdx + _numScores;
       }
 
@@ -223,29 +230,23 @@ class IResearchViewExecutorBase {
     explicit IndexReadBuffer(std::size_t const numScoreRegisters)
         : _keyBuffer(),
           _scoreBuffer(),
-          _collection(nullptr),
           _numScoreRegisters(numScoreRegisters),
           _keyBaseIdx(0) {}
 
-    inline LocalDocumentId const& getId(IndexReadBufferEntry const bufferEntry) const {
+    inline ValueType const& getValue(IndexReadBufferEntry const bufferEntry) const noexcept {
       assertSizeCoherence();
       TRI_ASSERT(bufferEntry._keyIdx < _keyBuffer.size());
       return _keyBuffer[bufferEntry._keyIdx];
     }
 
-    inline std::shared_ptr<arangodb::LogicalCollection> const& getCollection() const {
-      assertSizeCoherence();
-      TRI_ASSERT(_collection != nullptr);
-      return _collection;
-    }
-
-    inline ScoreIterator getScores(IndexReadBufferEntry const bufferEntry) {
+    inline ScoreIterator getScores(IndexReadBufferEntry const bufferEntry) noexcept {
       assertSizeCoherence();
       return ScoreIterator{_scoreBuffer, bufferEntry._keyIdx, _numScoreRegisters};
     }
 
-    inline void pushDocument(LocalDocumentId const documentId) {
-      _keyBuffer.emplace_back(documentId);
+    template<typename... Args>
+    inline void pushValue(Args&&... args) {
+      _keyBuffer.emplace_back(std::forward<Args>(args)...);
     }
 
     // A note on the scores: instead of saving an array of AqlValues, we could
@@ -258,24 +259,22 @@ class IResearchViewExecutorBase {
 
     inline void pushScoreNone() { _scoreBuffer.emplace_back(); }
 
-    inline void setCollectionAndReset(std::shared_ptr<arangodb::LogicalCollection>&& collection) {
+    inline void reset() noexcept {
       // Should only be called after everything was consumed
       TRI_ASSERT(empty());
-      _collection = std::move(collection);
-      TRI_ASSERT(_collection != nullptr);
       _keyBaseIdx = 0;
       _keyBuffer.clear();
       _scoreBuffer.clear();
     }
 
-    inline std::size_t size() const {
+    inline std::size_t size() const noexcept {
       assertSizeCoherence();
       return _keyBuffer.size() - _keyBaseIdx;
     }
 
-    inline bool empty() const { return size() == 0; }
+    inline bool empty() const noexcept { return size() == 0; }
 
-    inline IndexReadBufferEntry pop_front() {
+    inline IndexReadBufferEntry pop_front() noexcept {
       TRI_ASSERT(!empty());
       TRI_ASSERT(_keyBaseIdx < _keyBuffer.size());
       assertSizeCoherence();
@@ -291,18 +290,17 @@ class IResearchViewExecutorBase {
     };
 
    private:
-    // _keyBuffer, _scoreBuffer and _collection together hold all the
-    // information read from the iresearch index. All document ids in _keyBuffer
-    // belong to the collection _collection. For the _scoreBuffer, it holds that
+    // _keyBuffer, _scoreBuffer together hold all the
+    // information read from the iresearch index.
+    // For the _scoreBuffer, it holds that
     //   _scoreBuffer.size() == _keyBuffer.size() * infos().getNumScoreRegisters()
     // and all entries
     //   _scoreBuffer[i]
     // correspond to
     //   _keyBuffer[i / getNumScoreRegisters()]
     // .
-    std::vector<LocalDocumentId> _keyBuffer;
+    std::vector<ValueType> _keyBuffer;
     std::vector<AqlValue> _scoreBuffer;
-    std::shared_ptr<arangodb::LogicalCollection> _collection;
     std::size_t _numScoreRegisters;
     std::size_t _keyBaseIdx;
   };
@@ -323,6 +321,7 @@ class IResearchViewExecutorBase {
 
   bool writeRow(ReadContext& ctx,
                 IndexReadBufferEntry bufferEntry,
+                LocalDocumentId const& documentId,
                 LogicalCollection const& collection);
 
   void reset();
@@ -335,7 +334,7 @@ class IResearchViewExecutorBase {
   Fetcher& _fetcher;
   InputAqlItemRow _inputRow;
   ExecutionState _upstreamState;
-  IndexReadBuffer _indexReadBuffer;
+  IndexReadBuffer<typename Traits::IndexBufferValueType> _indexReadBuffer;
 
   // IResearchViewBlockBase members:
   irs::attribute_view _filterCtx;  // filter context
@@ -356,8 +355,6 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
 
-  static constexpr const bool Ordered = ordered;
-
   IResearchViewExecutor(IResearchViewExecutor&&) = default;
   IResearchViewExecutor(Fetcher& fetcher, Infos&);
 
@@ -371,21 +368,35 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
 
   void fillBuffer(ReadContext& ctx);
 
-  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
+  inline bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
+    TRI_ASSERT(_collection);
+
+    return Base::writeRow(ctx,
+                          bufferEntry,
+                          this->_indexReadBuffer.getValue(bufferEntry),
+                          *_collection);
+  }
 
   bool resetIterator();
 
   void reset();
 
  private:
-  // IResearchViewUnorderedBlock members:
   irs::columnstore_reader::values_reader_f _pkReader;  // current primary key reader
   irs::doc_iterator::ptr _itr;
   size_t _readerOffset;
+  LogicalCollection const* _collection{};
 
-  // IResearchViewBlock members (i.e., case ordered only):
+  // case ordered only:
   irs::score const* _scr;
   irs::bytes_ref _scrVal;
+};
+
+template<>
+template<bool ordered>
+struct IResearchViewExecutorTraits<IResearchViewExecutor<ordered>> {
+  using IndexBufferValueType = LocalDocumentId;
+  static constexpr const bool Ordered = ordered;
 };
 
 template <bool ordered>
@@ -449,9 +460,13 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
       assert(i < (*_segments).size());
       auto& segment = (*_segments)[i];
       while (segment.docs->next()) {
-        if (segment.sortReader(segment.docs->value(), segment.sortValue)) {
+        auto const doc = segment.docs->value();
+
+        if (segment.sortReader(doc, segment.sortValue)) {
           return true;
         }
+
+        // FIXME read pk as well
       }
       return false;
     }
@@ -471,13 +486,28 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
 
   void fillBuffer(ReadContext& ctx);
 
-  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
+  inline bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
+    auto const& id = this->_indexReadBuffer.getValue(bufferEntry);
+    LocalDocumentId const& documentId = id.first;
+    TRI_ASSERT(documentId.isSet());
+    LogicalCollection const* collection = id.second;
+    TRI_ASSERT(collection);
+
+    return Base::writeRow(ctx, bufferEntry, documentId, *collection);
+  }
 
   void reset();
 
  private:
   std::vector<Segment> _segments;
   irs::external_heap_iterator<MinHeapContext> _heap_it;
+};
+
+template<>
+template<bool ordered>
+struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered>> {
+  using IndexBufferValueType = std::pair<LocalDocumentId, LogicalCollection const*>;
+  static constexpr const bool Ordered = ordered;
 };
 
 }  // namespace aql

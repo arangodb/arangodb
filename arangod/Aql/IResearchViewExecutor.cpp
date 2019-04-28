@@ -235,9 +235,9 @@ bool IResearchViewExecutorInfos::volatileFilter() const noexcept {
 /// --SECTION--                                       IResearchViewExecutorBase
 ///////////////////////////////////////////////////////////////////////////////
 
-template<typename Impl>
+template<typename Impl, typename Traits>
 IndexIterator::DocumentCallback
-IResearchViewExecutorBase<Impl>::ReadContext::copyDocumentCallback(ReadContext& ctx) {
+IResearchViewExecutorBase<Impl, Traits>::ReadContext::copyDocumentCallback(ReadContext& ctx) {
   auto* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
 
@@ -267,8 +267,8 @@ IResearchViewExecutorBase<Impl>::ReadContext::copyDocumentCallback(ReadContext& 
   return callbackFactories[size_t(engine->useRawDocumentPointers())](ctx);
 }
 
-template<typename Impl>
-IResearchViewExecutorBase<Impl>::IResearchViewExecutorBase(IResearchViewExecutorBase::Fetcher& fetcher,
+template<typename Impl, typename Traits>
+IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(IResearchViewExecutorBase::Fetcher& fetcher,
                                                            IResearchViewExecutorBase::Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
@@ -290,9 +290,9 @@ IResearchViewExecutorBase<Impl>::IResearchViewExecutorBase(IResearchViewExecutor
   _filterCtx.emplace(_execCtx);
 }
 
-template<typename Impl>
-std::pair<ExecutionState, typename IResearchViewExecutorBase<Impl>::Stats>
-IResearchViewExecutorBase<Impl>::produceRows(OutputAqlItemRow& output) {
+template<typename Impl, typename Traits>
+std::pair<ExecutionState, typename IResearchViewExecutorBase<Impl, Traits>::Stats>
+IResearchViewExecutorBase<Impl, Traits>::produceRows(OutputAqlItemRow& output) {
   IResearchViewStats stats{};
   bool documentWritten = false;
 
@@ -333,8 +333,8 @@ IResearchViewExecutorBase<Impl>::produceRows(OutputAqlItemRow& output) {
   return {ExecutionState::HASMORE, stats};
 }
 
-template <typename Impl>
-bool IResearchViewExecutorBase<Impl>::next(ReadContext& ctx) {
+template <typename Impl, typename Traits>
+bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx) {
   auto& impl = static_cast<Impl&>(*this);
 
   if (_indexReadBuffer.empty()) {
@@ -356,12 +356,12 @@ bool IResearchViewExecutorBase<Impl>::next(ReadContext& ctx) {
   return false;
 }
 
-template<typename Impl>
-void IResearchViewExecutorBase<Impl>::fillScores(
+template<typename Impl, typename Traits>
+void IResearchViewExecutorBase<Impl, Traits>::fillScores(
     ReadContext const& ctx,
     float_t const* begin,
     float_t const* end) {
-  TRI_ASSERT(Impl::Ordered);
+  TRI_ASSERT(Traits::Ordered);
 
   // scorer register are placed consecutively after the document output register
   // is used here currently only for assertions.
@@ -386,8 +386,8 @@ void IResearchViewExecutorBase<Impl>::fillScores(
   TRI_ASSERT(scoreReg - ctx.docOutReg - 1 == infos().getNumScoreRegisters());
 }
 
-template<typename Impl>
-void IResearchViewExecutorBase<Impl>::reset() {
+template<typename Impl, typename Traits>
+void IResearchViewExecutorBase<Impl, Traits>::reset() {
   _ctx._inputRow = _inputRow;
 
   ExecutionPlan const* plan = &infos().plan();
@@ -433,17 +433,17 @@ void IResearchViewExecutorBase<Impl>::reset() {
   }
 }
 
-template<typename Impl>
-bool IResearchViewExecutorBase<Impl>::writeRow(ReadContext& ctx,
-                                               IndexReadBufferEntry bufferEntry,
-                                               LogicalCollection const& collection) {
-  LocalDocumentId const& documentId = _indexReadBuffer.getId(bufferEntry);
+template<typename Impl, typename Traits>
+bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
+                                                       IndexReadBufferEntry bufferEntry,
+                                                       LocalDocumentId const& documentId,
+                                                       LogicalCollection const& collection) {
   TRI_ASSERT(documentId.isSet());
 
   // read document from underlying storage engine, if we got an id
   if (collection.readDocumentWithCallback(infos().getQuery().trx(), documentId, ctx.callback)) {
     // in the ordered case we have to write scores as well as a document
-    if /* constexpr */ (Impl::Ordered) {
+    if /* constexpr */ (Traits::Ordered) {
       // scorer register are placed consecutively after the document output register
       RegisterId scoreReg = ctx.docOutReg + 1;
 
@@ -478,15 +478,6 @@ IResearchViewExecutor<ordered>::IResearchViewExecutor(Fetcher& fetcher, Infos& i
       _scr(&irs::score::no_score()),
       _scrVal() {
   TRI_ASSERT(ordered == (infos.getNumScoreRegisters() != 0));
-}
-
-template <bool ordered>
-bool IResearchViewExecutor<ordered>::writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
-  std::shared_ptr<arangodb::LogicalCollection> const& collection =
-      this->_indexReadBuffer.getCollection();
-  TRI_ASSERT(collection != nullptr);
-
-  return Base::writeRow(ctx, bufferEntry, *collection);
 }
 
 template <bool ordered>
@@ -545,7 +536,8 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
         continue;
       }
 
-      this->_indexReadBuffer.setCollectionAndReset(std::move(collection));
+      _collection = collection.get();
+      this->_indexReadBuffer.reset();
     }
 
     TRI_ASSERT(_pkReader);
@@ -567,9 +559,9 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
     }
 
     // The CID must stay the same for all documents in the buffer
-    TRI_ASSERT(this->_indexReadBuffer.getCollection()->id() == this->_reader->cid(_readerOffset));
+    TRI_ASSERT(this->_collection->id() == this->_reader->cid(_readerOffset));
 
-    this->_indexReadBuffer.pushDocument(documentId);
+    this->_indexReadBuffer.pushValue(documentId);
 
     // in the ordered case we have to write scores as well as a document
     if /* constexpr */ (ordered) {
@@ -770,7 +762,7 @@ void IResearchViewMergeExecutor<ordered>::fillBuffer(ReadContext& ctx) {
       continue;
     }
 
-    this->_indexReadBuffer.pushDocument(documentId);
+    this->_indexReadBuffer.pushValue(documentId, segment.collection);
 
     // in the ordered case we have to write scores as well as a document
     if /* constexpr */ (ordered) {
@@ -785,15 +777,6 @@ void IResearchViewMergeExecutor<ordered>::fillBuffer(ReadContext& ctx) {
       break;
     }
   }
-}
-
-template <bool ordered>
-bool IResearchViewMergeExecutor<ordered>::writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
-  std::shared_ptr<arangodb::LogicalCollection> const& collection =
-      this->_indexReadBuffer.getCollection();
-  TRI_ASSERT(collection != nullptr);
-
-  return Base::writeRow(ctx, bufferEntry, *collection);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
