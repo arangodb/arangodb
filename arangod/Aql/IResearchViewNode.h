@@ -27,6 +27,7 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
 #include "IResearch/IResearchOrderFactory.h"
+#include "IResearch/IResearchViewSort.h"
 
 namespace arangodb {
 
@@ -167,8 +168,11 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief output variable to write to
   aql::Variable const* _outVariable;
 
-  /// @brief filter node to pass to view
+  /// @brief filter node to pass to the view
   aql::AstNode const* _filterCondition;
+
+  /// @brief sort condition covered by the view
+  IResearchViewSort const* _sort{};
 
   /// @brief scorers related to the view
   std::vector<Scorer> _scorers;

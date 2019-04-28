@@ -1067,12 +1067,23 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                                 numScoreRegisters,
                                                 *engine.getQuery(),
                                                 scorers(),
+                                                _sort,
                                                 *plan(),
                                                 outVariable(),
                                                 filterCondition(),
                                                 volatility(),
                                                 getRegisterPlan()->varInfo,
                                                 getDepth()};
+
+  if (_sort) {
+    if (!ordered) {
+      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false>>>(
+          &engine, this, std::move(executorInfos));
+    }
+
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<true>>>(
+        &engine, this, std::move(executorInfos));
+  }
 
   if (!ordered) {
     return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false>>>(

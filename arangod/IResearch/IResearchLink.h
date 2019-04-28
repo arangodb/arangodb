@@ -45,6 +45,9 @@ template<typename T> class TypedResourceMutex; // forward declaration
 class VPackComparer final : public irs::comparer {
  public:
   VPackComparer();
+  explicit VPackComparer(IResearchViewSort const& sort) noexcept
+    : _sort(&sort) {
+  }
 
   void reset(IResearchViewSort const& sort) noexcept {
     _sort = &sort;
