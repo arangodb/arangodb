@@ -63,6 +63,7 @@ add_library(${LIB_ARANGO_IRESEARCH}
   IResearch/IResearchRocksDBRecoveryHelper.cpp
   IResearch/IResearchRocksDBRecoveryHelper.h
   IResearch/IResearchView.cpp IResearch/IResearchView.h
+  IResearch/IResearchVPackComparer.cpp IResearch/IResearchVPackComparer.h
   IResearch/IResearchViewSort.cpp IResearch/IResearchViewSort.h
   IResearch/IResearchViewCoordinator.cpp IResearch/IResearchViewCoordinator.h
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h

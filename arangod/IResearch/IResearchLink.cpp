@@ -61,11 +61,6 @@ const irs::string_ref IRESEARCH_CHECKPOINT_SUFFIX(".checkpoint");
 ////////////////////////////////////////////////////////////////////////////////
 const irs::string_ref IRESEARCH_STORE_FORMAT("1_1");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reverse multiplier to use in VPackComparer
-////////////////////////////////////////////////////////////////////////////////
-constexpr const int MULTIPLIER[] { -1, 1 };
-
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
@@ -243,36 +238,6 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
 
 namespace arangodb {
 namespace iresearch {
-
-VPackComparer::VPackComparer()
-  : _sort(&IResearchViewMeta::DEFAULT()._primarySort) {
-}
-
-bool VPackComparer::less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
-  TRI_ASSERT(_sort);
-  TRI_ASSERT(!lhs.empty());
-  TRI_ASSERT(!rhs.empty());
-
-  VPackSlice lhsSlice(lhs.c_str());
-  VPackSlice rhsSlice(rhs.c_str());
-
-  for (size_t i = 0, size = _sort->size(); i < size; ++i) {
-    TRI_ASSERT(!lhsSlice.isNone());
-    TRI_ASSERT(!rhsSlice.isNone());
-
-    auto const res = arangodb::basics::VelocyPackHelper::compare(lhsSlice, rhsSlice, true);
-
-    if (res) {
-      return (MULTIPLIER[size_t(_sort->direction(i))] * res) < 0;
-    }
-
-    // move to the next value
-    lhsSlice = VPackSlice(lhsSlice.start() + lhsSlice.byteSize());
-    rhsSlice = VPackSlice(rhsSlice.start() + rhsSlice.byteSize());
-  }
-
-  return false;
-}
 
 IResearchLink::IResearchLink( // constructor
     TRI_idx_iid_t iid, // index id

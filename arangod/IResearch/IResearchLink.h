@@ -31,6 +31,7 @@
 
 #include "IResearchLinkMeta.h"
 #include "IResearchViewMeta.h"
+#include "IResearchVPackComparer.h"
 #include "Indexes/Index.h"
 #include "Transaction/Status.h"
 
@@ -41,29 +42,6 @@ class AsyncMeta; // forward declaration
 class IResearchFeature; // forward declaration
 class IResearchView; // forward declaration
 template<typename T> class TypedResourceMutex; // forward declaration
-
-class VPackComparer final : public irs::comparer {
- public:
-  VPackComparer();
-  explicit VPackComparer(IResearchViewSort const& sort) noexcept
-    : _sort(&sort) {
-  }
-
-  void reset(IResearchViewSort const& sort) noexcept {
-    _sort = &sort;
-  }
-
-  bool empty() const noexcept {
-    return _sort->empty();
-  }
-
- protected:
-  virtual bool less(irs::bytes_ref const& lhs,
-                    irs::bytes_ref const& rhs) const override;
-
- private:
-  IResearchViewSort const* _sort;
-}; // VPackComparer
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common base class for functionality required to link an ArangoDB

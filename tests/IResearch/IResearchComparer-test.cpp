@@ -29,7 +29,7 @@
 
 #include "velocypack/Iterator.h"
 #include "IResearch/IResearchViewSort.h"
-#include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchVPackComparer.h"
 
 TEST_CASE("IResearchComparerTests", "[iresearch][iresearch-link]") {
 

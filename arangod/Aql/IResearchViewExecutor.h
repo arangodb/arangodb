@@ -31,7 +31,7 @@
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchView.h"
-#include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchVPackComparer.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/LocalDocumentId.h"
 

@@ -21,8 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_SORT_H
-#define ARANGODB_IRESEARCH__IRESEARCH_SORT_H 1
+#ifndef ARANGODB_IRESEARCH__IRESEARCH_VIEW_SORT_H
+#define ARANGODB_IRESEARCH__IRESEARCH_VIEW_SORT_H 1
 
 #include "Basics/AttributeNameParser.h"
 #include "velocypack/Slice.h"
@@ -120,5 +120,4 @@ class IResearchViewSort {
 } // iresearch
 } // arangodb
 
-#endif // ARANGODB_IRESEARCH__IRESEARCH_SORT_H
-
+#endif // ARANGODB_IRESEARCH__IRESEARCH_VIEW_SORT_H
