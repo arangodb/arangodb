@@ -164,7 +164,7 @@ void CheckVersionFeature::checkVersion() {
         LOG_TOPIC(WARN, Logger::STARTUP)
             << "in order to automatically fix the VERSION file on startup, "
             << "please start the server with option "
-               "`--database.ignore-logfile-errors true`";
+               "`--database.ignore-datafile-errors true`";
       }
     }
 

@@ -737,6 +737,7 @@ static VPackBuilder assembleLocalCollectionInfo(
     }
     return ret;
   } catch (std::exception const& e) {
+    ret.clear();
     std::string errorMsg(
         "Maintenance::assembleLocalCollectionInfo: Failed to lookup database ");
     errorMsg += database;
@@ -787,6 +788,7 @@ static VPackBuilder assembleLocalDatabaseInfo(std::string const& database,
 
     return ret;
   } catch (std::exception const& e) {
+    ret.clear(); // In case the above has mid air collision.
     std::string errorMsg(
         "Maintenance::assembleLocalDatabaseInfo: Failed to lookup database ");
     errorMsg += database;
@@ -817,7 +819,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
     if (!cur.hasKey(cdbpath)) {
       auto const localDatabaseInfo = assembleLocalDatabaseInfo(dbName, allErrors);
-      if (!localDatabaseInfo.slice().isEmptyObject()) {
+      TRI_ASSERT(!localDatabaseInfo.slice().isNone());
+      if (!localDatabaseInfo.slice().isEmptyObject() && !localDatabaseInfo.slice().isNone()) {
         report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
         {
           VPackObjectBuilder o(&report);
@@ -839,7 +842,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             assembleLocalCollectionInfo(shSlice, shardMap.slice().get(shName),
                                         dbName, shName, serverId, allErrors);
         // Collection no longer exists
-        if (localCollectionInfo.slice().isEmptyObject()) {
+        TRI_ASSERT(!localCollectionInfo.slice().isNone());
+        if (localCollectionInfo.slice().isEmptyObject() || localCollectionInfo.slice().isNone()) {
           continue;
         }
 
@@ -992,7 +996,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         {
           VPackObjectBuilder o(&report);
           report.add(OP, VP_SET);
-          report.add(VPackSlice("payload"));
+          report.add(VPackValue("payload"));
           {
             VPackObjectBuilder pp(&report);
             VPackSlice errs(static_cast<uint8_t const*>(p.second->data()));

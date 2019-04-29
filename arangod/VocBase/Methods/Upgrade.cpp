@@ -110,14 +110,14 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
         // give it another try
         LOG_TOPIC(WARN, Logger::STARTUP)
             << "overwriting unparsable VERSION file with default value "
-            << "because option `--database.ignore-logfile-errors` is set";
+            << "because option `--database.ignore-datafile-errors` is set";
         vinfo = methods::Version::check(&vocbase);
       }
     } else {
       LOG_TOPIC(WARN, Logger::STARTUP)
           << "in order to automatically fix the VERSION file on startup, "
           << "please start the server with option "
-             "`--database.ignore-logfile-errors true`";
+             "`--database.ignore-datafile-errors true`";
     }
   }
 
