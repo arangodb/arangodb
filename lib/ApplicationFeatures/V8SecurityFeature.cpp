@@ -278,7 +278,7 @@ void V8SecurityFeature::start() {
       std::regex(_filesWhitelist, std::regex::nosubs | std::regex::ECMAScript);
 }
 
-void V8SecurityFeature::addToInternalWhitelist(std::string const& item, FSAccessType type) {
+void V8SecurityFeature::addToInternalWhitelist(std::string const& inItem, FSAccessType type) {
   // This function is not efficient and we would not need the _readWhitelist
   // to be persistent. But the persistence will help in debugging and
   // there are only a few items expected.
@@ -292,6 +292,8 @@ void V8SecurityFeature::addToInternalWhitelist(std::string const& item, FSAccess
     re = &_writeWhitelistRegex;
   }
 
+
+  auto item = arangodb::basics::StringUtils::escapeRegexParams(inItem);
   auto path = "^" + canonicalpath(item) + TRI_DIR_SEPARATOR_STR;
   set->emplace(std::move(path));
   expression->clear();

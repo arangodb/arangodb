@@ -20,12 +20,12 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BlockFetcher.h"
+#include "DependencyProxy.h"
 
 using namespace arangodb::aql;
 
 template <bool passBlocksThrough>
-ExecutionState BlockFetcher<passBlocksThrough>::prefetchBlock(size_t atMost) {
+ExecutionState DependencyProxy<passBlocksThrough>::prefetchBlock(size_t atMost) {
   TRI_ASSERT(atMost > 0);
   ExecutionState state;
   SharedAqlItemBlockPtr block;
@@ -73,7 +73,7 @@ ExecutionState BlockFetcher<passBlocksThrough>::prefetchBlock(size_t atMost) {
 template <bool passBlocksThrough>
 std::pair<ExecutionState, SharedAqlItemBlockPtr>
 // NOLINTNEXTLINE google-default-arguments
-BlockFetcher<passBlocksThrough>::fetchBlock(size_t atMost) {
+DependencyProxy<passBlocksThrough>::fetchBlock(size_t atMost) {
   if (_blockQueue.empty()) {
     ExecutionState state = prefetchBlock(atMost);
     // prefetchBlock returns HASMORE iff it pushed a block onto _blockQueue.
@@ -97,7 +97,7 @@ BlockFetcher<passBlocksThrough>::fetchBlock(size_t atMost) {
 template <bool passBlocksThrough>
 std::pair<ExecutionState, SharedAqlItemBlockPtr>
 // NOLINTNEXTLINE google-default-arguments
-BlockFetcher<passBlocksThrough>::fetchBlockForDependency(size_t dependency, size_t atMost) {
+DependencyProxy<passBlocksThrough>::fetchBlockForDependency(size_t dependency, size_t atMost) {
   TRI_ASSERT(!passBlocksThrough);
   ExecutionBlock& upstream = upstreamBlockForDependency(dependency);
 
@@ -128,7 +128,7 @@ BlockFetcher<passBlocksThrough>::fetchBlockForDependency(size_t dependency, size
 
 template <bool allowBlockPassthrough>
 std::pair<ExecutionState, SharedAqlItemBlockPtr>
-BlockFetcher<allowBlockPassthrough>::fetchBlockForPassthrough(size_t atMost) {
+DependencyProxy<allowBlockPassthrough>::fetchBlockForPassthrough(size_t atMost) {
   TRI_ASSERT(allowBlockPassthrough);  // TODO check this with enable_if in the header already
 
   if (_blockPassThroughQueue.empty()) {
@@ -151,5 +151,5 @@ BlockFetcher<allowBlockPassthrough>::fetchBlockForPassthrough(size_t atMost) {
   return {state, std::move(block)};
 }
 
-template class ::arangodb::aql::BlockFetcher<true>;
-template class ::arangodb::aql::BlockFetcher<false>;
+template class ::arangodb::aql::DependencyProxy<true>;
+template class ::arangodb::aql::DependencyProxy<false>;

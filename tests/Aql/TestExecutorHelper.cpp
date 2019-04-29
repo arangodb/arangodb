@@ -41,9 +41,9 @@ using namespace arangodb::aql;
 TestExecutorHelper::TestExecutorHelper(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher){};
 TestExecutorHelper::~TestExecutorHelper() = default;
 
-std::pair<ExecutionState, FilterStats> TestExecutorHelper::produceRow(OutputAqlItemRow &output) {
-  TRI_IF_FAILURE("TestExecutorHelper::produceRow") {
-     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+std::pair<ExecutionState, FilterStats> TestExecutorHelper::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("TestExecutorHelper::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   ExecutionState state;
   FilterStats stats{};

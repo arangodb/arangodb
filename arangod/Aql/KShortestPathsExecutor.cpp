@@ -137,7 +137,7 @@ std::pair<ExecutionState, Result> KShortestPathsExecutor::shutdown(int errorCode
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::pair<ExecutionState, NoStats> KShortestPathsExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> KShortestPathsExecutor::produceRows(OutputAqlItemRow& output) {
   NoStats s;
 
   while (true) {
