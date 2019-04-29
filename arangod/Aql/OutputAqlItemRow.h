@@ -156,9 +156,32 @@ class OutputAqlItemRow {
     // the block of the output row!
     TRI_ASSERT(sourceRow.internalBlockIs(_block));
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (!isOutputRegister(output)) {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_IN_WRONG_REGISTER);
+    }
+    // This is already implicitly asserted by isOutputRegister:
+    TRI_ASSERT(output < getNrRegisters());
+    if (_numValuesWritten >= numRegistersToWrite()) {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS);
+    }
+    if (!block().getValueReference(_baseIndex, output).isNone()) {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_OUTPUT_REGISTER_TWICE);
+    }
+#endif
+
     AqlValue const& value = sourceRow.getValue(input);
 
     block().setValue(_baseIndex, output, value);
+    _numValuesWritten++;
+    // allValuesWritten() must be called only *after* _numValuesWritten was
+    // increased.
+    if (allValuesWritten()) {
+      copyRow(sourceRow);
+    }
   }
 
   std::size_t getNrRegisters() const { return block().getNrRegs(); }
