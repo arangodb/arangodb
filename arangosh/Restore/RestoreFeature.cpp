@@ -1329,7 +1329,7 @@ void RestoreFeature::start() {
 
   std::unique_ptr<SimpleHttpClient> httpClient;
   Result result = _clientManager.getConnectedClient(httpClient, _options.force,
-                                                    true, !_options.createDatabase);
+                                                    true, !_options.createDatabase, false);
   if (result.is(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
     LOG_TOPIC(FATAL, Logger::RESTORE)
         << "cannot create server connection, giving up!";
@@ -1352,7 +1352,7 @@ void RestoreFeature::start() {
     client->setDatabaseName(dbName);
 
     // re-check connection and version
-    result = _clientManager.getConnectedClient(httpClient, _options.force, true, true);
+    result = _clientManager.getConnectedClient(httpClient, _options.force, true, true, false);
   }
 
   if (result.fail() && !_options.force) {
