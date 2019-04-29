@@ -58,6 +58,23 @@ std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow() {
   return {rowState, InputAqlItemRow{_currentBlock, _rowIndex++}};
 }
 
+std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::skipRow() { // TODO implement
+  // This fetcher never waits because it can return only its
+  // injected block and does not have the ability to pull.
+  if (!indexIsValid()) {
+    return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
+  }
+  TRI_ASSERT(_currentBlock != nullptr);
+
+  //set state
+  ExecutionState rowState = ExecutionState::HASMORE;
+  if (isLastRowInBlock()) {
+    rowState = ExecutionState::DONE;
+  }
+
+  return {rowState, InputAqlItemRow{_currentBlock, _rowIndex++}};
+}
+
 bool ConstFetcher::indexIsValid() {
   return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->size();
 }

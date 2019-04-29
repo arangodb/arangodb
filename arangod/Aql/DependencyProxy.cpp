@@ -63,52 +63,6 @@ ExecutionState DependencyProxy<passBlocksThrough>::prefetchBlock(size_t atMost) 
   }
   if /* constexpr */ (passBlocksThrough) {
     // Reposit block for pass-through executors.
-    _blockPassThroughQueue.push({state, block});
-  }
-  _blockQueue.push({state, std::move(block)});
-
-  return ExecutionState::HASMORE;
-}
-
-template <bool passBlocksThrough>
-ExecutionState BlockFetcher<passBlocksThrough>::prefetchSkipBlock(size_t atMost) {
-  TRI_ASSERT(atMost > 0);
-  ExecutionState state;
-  SharedAqlItemBlockPtr block;
-  do {
-    // Note: upstreamBlock will return next dependency
-    // if we need to lopp here
-    std::tie(state, block) = upstreamBlock().getSome(atMost);
-    TRI_IF_FAILURE("ExecutionBlock::getBlock") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(block == nullptr);
-      return state;
-    }
-
-    if (block == nullptr) {
-      // We're not waiting and didn't get a block, so we have to be done.
-      TRI_ASSERT(state == ExecutionState::DONE);
-      if (!advanceDependency()) {
-        return state;
-      }
-    }
-  } while (block == nullptr);
-
-  // Now we definitely have a block.
-  TRI_ASSERT(block != nullptr);
-
-  if (state == ExecutionState::DONE) {
-    // We need to modify the state here s.t. on next call we fetch from
-    // next dependency and do not return DONE on first dependency
-    if (advanceDependency()) {
-      state = ExecutionState::HASMORE;
-    }
-  }
-  if /* constexpr */ (passBlocksThrough) {
-    // Reposit block for pass-through executors.
     _blockPassThroughQueue.push_back({state, block});
   }
   _blockQueue.push_back({state, std::move(block)});
@@ -145,6 +99,8 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr>
 // NOLINTNEXTLINE google-default-arguments
 DependencyProxy<passBlocksThrough>::fetchBlockForDependency(size_t dependency, size_t atMost) {
   TRI_ASSERT(!passBlocksThrough);
+  LOG_DEVEL << "depdendency: " << dependency;
+  LOG_DEVEL << "at Most : " << atMost;
   ExecutionBlock& upstream = upstreamBlockForDependency(dependency);
 
   TRI_ASSERT(atMost > 0);
@@ -174,7 +130,7 @@ DependencyProxy<passBlocksThrough>::fetchBlockForDependency(size_t dependency, s
 
 template <bool allowBlockPassthrough>
 std::pair<ExecutionState, size_t>
-BlockFetcher<allowBlockPassthrough>::skipSome(size_t toSkip) {
+DependencyProxy<allowBlockPassthrough>::skipSome(size_t toSkip) {
   TRI_ASSERT(_blockPassThroughQueue.empty());
   TRI_ASSERT(_blockQueue.empty());
 

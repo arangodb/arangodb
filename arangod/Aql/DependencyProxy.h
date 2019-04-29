@@ -107,7 +107,6 @@ class DependencyProxy {
   //  - upstream returned WAITING - then so does prefetchBlock().
   //  - or upstream returned a nullptr with DONE - then so does prefetchBlock().
   ExecutionState prefetchBlock(size_t atMost = ExecutionBlock::DefaultBatchSize());
-  ExecutionState prefetchSkipBlock(size_t atMost = ExecutionBlock::DefaultBatchSize());
 
   TEST_VIRTUAL inline size_t numberDependencies() const {
     return _dependencies.size();

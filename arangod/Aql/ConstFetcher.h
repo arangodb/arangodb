@@ -73,6 +73,7 @@ class ConstFetcher {
    *           If DONE => Row can be a nullptr (nothing received) or valid.
    */
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow();
+  TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> skipRow(); // TODO implement
   void injectBlock(SharedAqlItemBlockPtr block);
 
   // Argument will be ignored!

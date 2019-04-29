@@ -198,7 +198,11 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough && !std::is_same<Executor, SubqueryExecutor>::value) {  // TODO: check for modifications inside a subquery
     // TODO forbid modify executors
     // LOG_DEVEL << "PASS SKIP SOME route";
-    return traceSkipSomeEnd(passSkipSome(atMost));
+    if (std::is_same<Fetcher, SingleRowFetcher<true>>::value || std::is_same<Fetcher, ConstFetcher>::value) {
+      return traceSkipSomeEnd(passSkipSome(atMost));
+    } else {
+      return traceSkipSomeEnd(defaultSkipSome(atMost));
+    }
   } else if (std::is_same<Executor, EnumerateCollectionExecutor>::value) {
     LOG_DEVEL << "SKIP ENUM COLLECTION";
     return traceSkipSomeEnd(skipSome((atMost)));
@@ -269,7 +273,13 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::defaultSkipSome(
 
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::passSkipSome(size_t atMost) {
-  return _blockFetcher.skipSome(atMost);
+  //return _blockFetcher.skipSome(atMost);
+  // return _rowFetcher.skipSome(atMost);
+  if (std::is_same<Fetcher, SingleRowFetcher<true>>::value) {
+    dynamic_cast<SingleRowFetcher<true>&>(_rowFetcher).skipRows(atMost); // todo without cast?
+  } else if (std::is_same<Fetcher, ConstFetcher>::value) {
+    dynamic_cast<ConstFetcher&>(_rowFetcher).skipRow(); // todo implement me properly
+  }
 }
 
 template<bool customInit>
