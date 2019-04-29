@@ -241,7 +241,7 @@ negatively impact the write performance:
   This will allow you to maintain steady write throughput even under very high load.
 - Transactions are held in-memory before they are committed.
   This means that transactions have to be split if they become too big, see the
-  [limitations section](../Transactions/Limitations.md#with-rocksdb-storage-engine).
+  [limitations section](../Transactions/Limitations.md#rocksdb-storage-engine).
 
 ### Improving Update Query Perfromance
 
