@@ -305,21 +305,19 @@ EncryptionFeature const* ManagedDirectory::encryptionFeature() const {
 
 std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(std::string const& filename,
                                                                        int flags) {
-  std::unique_ptr<File> file{nullptr};
+  std::unique_ptr<File> file;
 
-  if (_status.fail()) {  // directory is in a bad state
-    return file;
-  }
-
-  try {
-    bool gzFlag = (0 == filename.substr(filename.size() - 3).compare(".gz"));
-    file = std::make_unique<File>(*this, filename,
-                                  (ManagedDirectory::DefaultReadFlags ^ flags), gzFlag);
-  } catch (...) {
-    _status.reset(TRI_ERROR_CANNOT_READ_FILE, "error opening file " +
-                                                  ::filePath(*this, filename) +
-                                                  " for reading");
-    return {nullptr};
+  if (!_status.fail()) {  // directory is in a bad state?
+    try {
+      bool gzFlag = (0 == filename.substr(filename.size() - 3).compare(".gz"));
+      file = std::make_unique<File>(*this, filename,
+                                    (ManagedDirectory::DefaultReadFlags ^ flags), gzFlag);
+    } catch (...) {
+      _status.reset(TRI_ERROR_CANNOT_READ_FILE, "error opening file " +
+                                                    ::filePath(*this, filename) +
+                                                    " for reading");
+      file.reset();
+    }
   }
 
   return file;
@@ -327,7 +325,7 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(std::stri
 
 std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
   std::string const& filename, bool overwrite, int flags, bool gzipOk) {
-  std::unique_ptr<File> file{nullptr};
+  std::unique_ptr<File> file;
 
   if (_status.fail()) {  // directory is in a bad state
     return file;
@@ -352,7 +350,7 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
       }
     }
 
-    file = std::make_unique<File>(*this, filename,
+    file = std::make_unique<File>(*this, filenameCopy,
                                   (ManagedDirectory::DefaultWriteFlags ^ flags), _writeGzip && gzipOk);
   } catch (...) {
     return {nullptr};
@@ -490,38 +488,31 @@ ssize_t ManagedDirectory::File::read(char* buffer, size_t length) {
     if (bytesRead < 0) {
       _status = _context->status();
     }
-  } else if (isGzip()) {
-    bytesRead = gzread(_gzFile, buffer, length);
-  } else {
-    bytesRead = ::rawRead(_fd, buffer, length, _status, _path, _flags);
+    return bytesRead;
   }
-#else
+#endif
   if (isGzip()) {
     bytesRead = gzread(_gzFile, buffer, length);
   } else {
     bytesRead = ::rawRead(_fd, buffer, length, _status, _path, _flags);
   } // else
-#endif
   return bytesRead;
 }
 
 std::string ManagedDirectory::File::slurp() {
   std::string content;
-  if (!::isReadable(_fd, _flags, _path, _status)) {
-    return content;
-  }
-
-  char buffer[::DefaultIOChunkSize];
-  while (true) {
-    ssize_t bytesRead = read(buffer, ::DefaultIOChunkSize);
-    if (_status.ok()) {
-      content.append(buffer, bytesRead);
-    }
-    if (bytesRead <= 0) {
-      break;
+  if (::isReadable(_fd, _flags, _path, _status)) {
+    char buffer[::DefaultIOChunkSize];
+    while (true) {
+      ssize_t bytesRead = read(buffer, ::DefaultIOChunkSize);
+      if (_status.ok()) {
+        content.append(buffer, bytesRead);
+      }
+      if (bytesRead <= 0) {
+        break;
+      }
     }
   }
-
   return content;
 }
 

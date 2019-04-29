@@ -72,9 +72,9 @@ bool ListenTask::start() {
 }
 
 void ListenTask::accept() {
-  auto self(shared_from_this());
+  auto self = shared_from_this();
 
-  auto handler = [this, self](asio_ns::error_code const& ec) {
+  auto handler = [this, self = std::move(self)](asio_ns::error_code const& ec) {
     TRI_ASSERT(_acceptor != nullptr);
 
     if (ec) {

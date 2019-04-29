@@ -447,7 +447,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   auto const lane = handler->getRequestLane();
   auto self = shared_from_this();
 
-  bool ok = SchedulerFeature::SCHEDULER->queue(lane, [self, this, handler]() {
+  bool ok = SchedulerFeature::SCHEDULER->queue(lane, [self = std::move(self), this, handler]() {
     handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(handler));
   });
 
@@ -466,11 +466,11 @@ void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHan
   TRI_ASSERT(doLock || _peer->runningInThisThread());
 
   auto self = shared_from_this();
-  handler->runHandler([self, this](rest::RestHandler* handler) {
+  handler->runHandler([self = std::move(self), this](rest::RestHandler* handler) {
     RequestStatistics* stat = handler->stealStatistics();
     auto h = handler->shared_from_this();
     // Pass the response the io context
-    _peer->post([self, this, stat, h]() { addResponse(*(h->response()), stat); });
+    _peer->post([self, this, stat, h = std::move(h)]() { addResponse(*(h->response()), stat); });
   });
 }
 
@@ -484,14 +484,14 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
-    return SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self, handler] {
+    return SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self = std::move(self), handler = std::move(handler)] {
       handler->runHandler([](RestHandler* h) {
         GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
       });
     });
   } else {
     // here the response will just be ignored
-    return SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self, handler] {
+    return SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self = std::move(self), handler = std::move(handler)] {
       handler->runHandler([](RestHandler*) {});
     });
   }

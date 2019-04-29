@@ -85,12 +85,13 @@ SocketTask::~SocketTask() {
   }
 
   asio_ns::error_code err;
-  if (_keepAliveTimerActive.load(std::memory_order_relaxed)) {
+  if (_useKeepAliveTimer &&
+      _keepAliveTimerActive.exchange(false, std::memory_order_relaxed)) {
     _keepAliveTimer->cancel(err);
-  }
-
-  if (err) {
-    LOG_TOPIC("985c1", ERR, Logger::COMMUNICATION) << "unable to cancel _keepAliveTimer";
+  
+    if (err) {
+      LOG_TOPIC("985c1", ERR, Logger::COMMUNICATION) << "unable to cancel _keepAliveTimer";
+    }
   }
 
   // _peer could be nullptr if it was moved out of a HttpCommTask, during
@@ -129,8 +130,7 @@ bool SocketTask::start() {
       << _connectionInfo.clientAddress << ":" << _connectionInfo.clientPort;
 
   auto self = shared_from_this();
-
-  _peer->post([self, this]() { asyncReadSome(); });
+  _peer->post([self = std::move(self), this]() { asyncReadSome(); });
 
   return true;
 }
@@ -191,8 +191,7 @@ void SocketTask::closeStream() {
   // strand::dispatch may execute this immediately if this
   // is called on a thread inside the same strand
   auto self = shared_from_this();
-
-  _peer->post([self, this] { closeStreamNoLock(); });
+  _peer->post([self = std::move(self), this] { closeStreamNoLock(); });
 }
 
 // caller must hold the _lock
@@ -212,8 +211,10 @@ void SocketTask::closeStreamNoLock() {
   _closedSend.store(true, std::memory_order_release);
   _closedReceive.store(true, std::memory_order_release);
   _closeRequested.store(false, std::memory_order_release);
-  _keepAliveTimer->cancel();
-  _keepAliveTimerActive.store(false, std::memory_order_relaxed);
+  if (_useKeepAliveTimer &&
+      _keepAliveTimerActive.exchange(false, std::memory_order_relaxed)) {
+    _keepAliveTimer->cancel();
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -230,32 +231,33 @@ void SocketTask::addToReadBuffer(char const* data, std::size_t len) {
 
 // does not need lock
 void SocketTask::resetKeepAlive() {
-  if (_useKeepAliveTimer) {
-    asio_ns::error_code err;
-    _keepAliveTimer->expires_from_now(_keepAliveTimeout, err);
-    if (err) {
-      closeStream();
-      return;
-    }
-
-    _keepAliveTimerActive.store(true, std::memory_order_relaxed);
-    auto self = shared_from_this();
-    _keepAliveTimer->async_wait([self, this](const asio_ns::error_code& error) {
-      if (!error) {  // error will be true if timer was canceled
-        LOG_TOPIC("5c1e0", ERR, Logger::COMMUNICATION)
-            << "keep alive timout - closing stream!";
-        closeStream();
-      }
-    });
+  if (!_useKeepAliveTimer) {
+    return;
   }
+
+  asio_ns::error_code err;
+  _keepAliveTimer->expires_from_now(_keepAliveTimeout, err);
+  if (err) {
+    closeStream();
+    return;
+  }
+
+  _keepAliveTimerActive.store(true, std::memory_order_relaxed);
+  auto self = shared_from_this();
+  _keepAliveTimer->async_wait([this, self = std::move(self)](asio_ns::error_code const& error) {
+    if (!error) {  // error will be true if timer was canceled
+      LOG_TOPIC("5c1e0", ERR, Logger::COMMUNICATION)
+          << "keep alive timeout - closing stream!";
+      closeStream();
+    }
+  });
 }
 
 // caller must hold the _lock
 void SocketTask::cancelKeepAlive() {
-  if (_useKeepAliveTimer && _keepAliveTimerActive.load(std::memory_order_relaxed)) {
-    asio_ns::error_code err;
-    _keepAliveTimer->cancel(err);
-    _keepAliveTimerActive.store(false, std::memory_order_relaxed);
+  if (_useKeepAliveTimer && 
+      _keepAliveTimerActive.exchange(false, std::memory_order_relaxed)) {
+    _keepAliveTimer->cancel();
   }
 }
 
@@ -425,7 +427,7 @@ void SocketTask::asyncReadSome() {
 
   TRI_ASSERT(_peer != nullptr);
   _peer->asyncRead(asio_ns::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
-                   [self, this](const asio_ns::error_code& ec, std::size_t transferred) {
+                   [self = std::move(self), this](asio_ns::error_code const& ec, std::size_t transferred) {
                      if (_abandoned.load(std::memory_order_acquire)) {
                        return;
                      } else if (ec) {
@@ -516,9 +518,8 @@ void SocketTask::asyncWriteSome() {
   // so the code could have blocked at this point or not all data
   // was written in one go, begin writing at offset (written)
   auto self = shared_from_this();
-
   _peer->asyncWrite(asio_ns::buffer(_writeBuffer._buffer->begin() + written, total - written),
-                    [self, this](const asio_ns::error_code& ec, std::size_t transferred) {
+                    [self = std::move(self), this](asio_ns::error_code const& ec, std::size_t transferred) {
                       if (_abandoned.load(std::memory_order_acquire)) {
                         return;
                       }
@@ -591,6 +592,5 @@ void SocketTask::returnStringBuffer(StringBuffer* buffer) {
 void SocketTask::triggerProcessAll() {
   // try to process remaining request data
   auto self = shared_from_this();
-
-  _peer->post([self, this] { processAll(); });
+  _peer->post([self = std::move(self), this] { processAll(); });
 }
