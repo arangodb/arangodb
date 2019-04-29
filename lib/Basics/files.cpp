@@ -777,14 +777,9 @@ std::vector<std::string> TRI_FilesDirectory(char const* path) {
     return result;
   }
 
-  std::string ufn;
-  icu::UnicodeString fn;
   do {
     if (wcscmp(fd.name, L".") != 0 && wcscmp(fd.name, L"..") != 0) {
-      ufn.clear();
-      fn = fd.name;
-      fn.toUTF8String<std::string>(ufn);
-      result.emplace_back(ufn);
+      result.emplace_back(fromWString(fd.name));
     }
   } while (_wfindnext(handle, &fd) != -1);
 
@@ -2003,21 +1998,22 @@ static std::string getTempPath() {
 }
 
 static int mkDTemp(char* s, size_t bufferSize) {
-  std::string out;
-  icu::UnicodeString sw(s);
-  auto w = std::make_unique<wchar_t[]>(bufferSize);
-  static_assert(sizeof(wchar_t) == sizeof(char16_t),
-                "icu utf16 type needs to match wchar_t");
-  memcpy(w.get(), sw.getTerminatedBuffer(), sizeof(wchar_t) * bufferSize);
-  // this will overwrite the _XXX part of the string:
-  auto rc = _wmktemp_s(w.get(), bufferSize);
+  std::string tmp(s, bufferSize);
+  auto ws = toWString(tmp);
+
+  // get writeable copy of wstring buffer and replace the _XXX part in the buffer
+  auto writeBuffer = make_unique<wchar_t[]>(new wchar_t[ws.size()]);
+  memcpy(writeBuffer.get(), ws.data(), sizeof(wchar_t) * ws.size());
+  auto rc = _wmktemp_s(writeBuffer.get(), ws.size()); // requires writeable buffer
+
   if (rc == 0) {
     // if it worked out, we need to return the utf8 version:
-    sw = w.get();
-    sw.toUTF8String<std::string>(out);
-    memcpy(s, out.c_str(), bufferSize);
+    ws = std::wstring(writeBuffer.get(), ws.size()); // write back to wstring
+    tmp = fromWString(ws);
+    memcpy(s, tmp.data(), bufferSize); // copy back into parameter
     rc = TRI_MKDIR(s, 0700);
   }
+
   return rc;
 }
 
@@ -2422,14 +2418,13 @@ void TRI_ShutdownFiles() {}
 
 bool TRI_GETENV(char const* which, std::string& value) {
 #ifdef _WIN32
-  wchar_t const* v = _wgetenv(toWString(which).data());
+  wchar_t const* wideBuffer = _wgetenv(toWString(which).data());
 
-  if (v == nullptr) {
+  if (wideBuffer == nullptr) {
     return false;
   }
-  value.clear();
-  icu::UnicodeString vu(v);
-  vu.toUTF8String<std::string>(value);
+
+  value = fromWString(wideBuffer);
   return true;
 #else
   char const* v = getenv(which);
