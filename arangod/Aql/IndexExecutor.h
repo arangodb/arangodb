@@ -271,6 +271,7 @@ class IndexExecutor {
   ///        during one call. Retained during WAITING situations.
   ///        Needs to be 0 after we return a result.
   size_t _returned;
+  size_t _done;
 };
 
 }  // namespace aql

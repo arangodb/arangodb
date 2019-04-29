@@ -31,6 +31,52 @@ ExecutionState BlockFetcher<passBlocksThrough>::prefetchBlock(size_t atMost) {
   SharedAqlItemBlockPtr block;
   do {
     // Note: upstreamBlock will return next dependency
+    // if we need to loop here
+    std::tie(state, block) = upstreamBlock().getSome(atMost);
+    TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(block == nullptr);
+      return state;
+    }
+
+    if (block == nullptr) {
+      // We're not waiting and didn't get a block, so we have to be done.
+      TRI_ASSERT(state == ExecutionState::DONE);
+      if (!advanceDependency()) {
+        return state;
+      }
+    }
+  } while (block == nullptr);
+
+  // Now we definitely have a block.
+  TRI_ASSERT(block != nullptr);
+
+  if (state == ExecutionState::DONE) {
+    // We need to modify the state here s.t. on next call we fetch from
+    // next dependency and do not return DONE on first dependency
+    if (advanceDependency()) {
+      state = ExecutionState::HASMORE;
+    }
+  }
+  if /* constexpr */ (passBlocksThrough) {
+    // Reposit block for pass-through executors.
+    _blockPassThroughQueue.push({state, block});
+  }
+  _blockQueue.push({state, std::move(block)});
+
+  return ExecutionState::HASMORE;
+}
+
+template <bool passBlocksThrough>
+ExecutionState BlockFetcher<passBlocksThrough>::prefetchSkipBlock(size_t atMost) {
+  TRI_ASSERT(atMost > 0);
+  ExecutionState state;
+  SharedAqlItemBlockPtr block;
+  do {
+    // Note: upstreamBlock will return next dependency
     // if we need to lopp here
     std::tie(state, block) = upstreamBlock().getSome(atMost);
     TRI_IF_FAILURE("ExecutionBlock::getBlock") {
@@ -128,14 +174,42 @@ BlockFetcher<passBlocksThrough>::fetchBlockForDependency(size_t dependency, size
 
 template <bool allowBlockPassthrough>
 std::pair<ExecutionState, size_t>
-BlockFetcher<allowBlockPassthrough>::skipSome(size_t atMost) {
+BlockFetcher<allowBlockPassthrough>::skipSome(size_t toSkip) {
   TRI_ASSERT(_blockPassThroughQueue.empty());
   TRI_ASSERT(_blockQueue.empty());
 
-  TRI_ASSERT(_dependencies.size() == 1);
-  ExecutionBlock& upstream = upstreamBlock();
+  TRI_ASSERT(toSkip > 0);
+  ExecutionState state;
+  size_t totallySkipped = 0;
 
-  return upstream.skipSome(atMost);
+  while (totallySkipped < toSkip) {
+    size_t skipped = 0;
+
+    // Note: upstreamBlock will return next dependency
+    // if we need to loop here
+    std::tie(state, skipped) = upstreamBlock().skipSome(toSkip);
+    TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    totallySkipped += skipped;
+
+    if (state == ExecutionState::WAITING) {
+      return {state, 0};
+    }
+
+    if (skipped == toSkip) {
+      return {state, skipped};
+    }
+
+    if (!advanceDependency()) {
+      return {state, skipped};
+    } else {
+      return {ExecutionState::HASMORE, skipped};
+    }
+  }
+
+  return {ExecutionState::DONE, 0};
 }
 
 

@@ -196,11 +196,9 @@ template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
 
-  bool temp = false; // TODO: remove me, just a temp variable to disable first if statement
-
-  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough && !std::is_same<Executor, SubqueryExecutor>::value && temp) {  // TODO: check for modifications inside a subquery
+  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough && !std::is_same<Executor, SubqueryExecutor>::value) {  // TODO: check for modifications inside a subquery
     // TODO forbid modify executors
-    LOG_DEVEL << "PASS SKIP SOME";
+    // LOG_DEVEL << "PASS SKIP SOME route";
     return traceSkipSomeEnd(passSkipSome(atMost));
   } else if (std::is_same<Executor, EnumerateCollectionExecutor>::value) {
     LOG_DEVEL << "SKIP ENUM COLLECTION";
@@ -212,6 +210,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
     LOG_DEVEL << "SKIP IRES false COLLECTION";
     return traceSkipSomeEnd(skipSome((atMost)));
   } else {
+    LOG_DEVEL << typeid(Executor).name();
     LOG_DEVEL << "DEFAULT SKIP SOME";
     return traceSkipSomeEnd(defaultSkipSome(atMost));
   }

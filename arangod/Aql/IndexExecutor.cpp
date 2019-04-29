@@ -114,7 +114,8 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _alreadyReturned(),
       _indexesExhausted(false),
       _isLastIndex(false),
-      _returned(0) {
+      _returned(0),
+      _done(false) {
   TRI_ASSERT(!_infos.getIndexes().empty());
 
   if (_infos.getCondition() != nullptr) {
@@ -543,9 +544,14 @@ std::pair<ExecutionState, size_t> IndexExecutor::skipRows(size_t toSkip) {
 
   IndexStats stats{};
 
+  if (_done) {
+    return {ExecutionState::DONE, 0};
+  }
+
   while (_returned < toSkip) {
     if (!_input) {
       if (_state == ExecutionState::DONE) {
+        _done = true;
         return {_state, _returned};
       }
 
@@ -557,6 +563,7 @@ std::pair<ExecutionState, size_t> IndexExecutor::skipRows(size_t toSkip) {
 
       if (!_input) {
         TRI_ASSERT(_state == ExecutionState::DONE);
+        _done = true;
         return {_state, _returned};
       }
 
@@ -578,6 +585,7 @@ std::pair<ExecutionState, size_t> IndexExecutor::skipRows(size_t toSkip) {
   if (getCursor() != nullptr && getCursor()->hasMore()) {
     return {ExecutionState::HASMORE, _returned};
   } else {
+    _done = true;
     return {ExecutionState::DONE, _returned};
   }
 }
