@@ -127,7 +127,7 @@ struct DocumentProducingFunctionContext {
   bool const _useRawDocumentPointers;
 };
 
-static DocumentProducingFunction buildCallback(DocumentProducingFunctionContext& context) {
+inline DocumentProducingFunction buildCallback(DocumentProducingFunctionContext& context) {
   DocumentProducingFunction documentProducer;
   if (!context.getProduceResult()) {
     // no result needed

@@ -29,6 +29,7 @@
 
 #include <velocypack/Slice.h>
 
+#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Geo/Shapes.h"
 

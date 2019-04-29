@@ -31,6 +31,7 @@
 #include "VelocyPackHelper.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Common.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/SystemDatabaseFeature.h"

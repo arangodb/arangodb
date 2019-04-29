@@ -31,6 +31,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Result.h"
+#include "Basics/Common.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
