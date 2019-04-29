@@ -97,6 +97,12 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
 );
 
+std::unique_ptr<arangodb::aql::ExecutionPlan> optimizedPlanFromQuery(
+  TRI_vocbase_t& vocbase,
+  std::string const& queryString,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
+);
+
 uint64_t getCurrentPlanVersion();
 
 void setDatabasePath(arangodb::DatabasePathFeature& feature);

@@ -58,6 +58,7 @@ set(IRESEARCH_TESTS_SOURCES
   IResearch/IResearchQueryAggregate-test.cpp
   IResearch/IResearchQueryTraversal-test.cpp
   IResearch/IResearchQueryOptions-test.cpp
+  IResearch/IResearchViewSorted-test.cpp
   IResearch/RestHandlerMock.cpp
   IResearch/IResearchViewNode-test.cpp
   IResearch/VelocyPackHelper-test.cpp

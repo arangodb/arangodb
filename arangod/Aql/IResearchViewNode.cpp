@@ -879,7 +879,8 @@ std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::co
 }
 
 /// @brief clone ExecutionNode recursively
-aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan, bool withDependencies,
+aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
+                                             bool withDependencies,
                                              bool withProperties) const {
   TRI_ASSERT(plan);
 
@@ -896,6 +897,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan, bool with
   node->_shards = _shards;
   node->_options = _options;
   node->_volatilityMask = _volatilityMask;
+  node->_sort = _sort;
 
   return cloneHelper(std::move(node), withDependencies, withProperties);
 }

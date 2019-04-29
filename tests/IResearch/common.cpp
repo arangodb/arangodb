@@ -31,6 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Ast.h"
+#include "Aql/QueryRegistry.h"
 #include "Aql/IResearchViewNode.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Random/RandomGenerator.h"
@@ -381,6 +382,34 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   }
 
   return arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast());
+}
+
+std::unique_ptr<arangodb::aql::ExecutionPlan> optimizedPlanFromQuery(
+  TRI_vocbase_t& vocbase,
+  std::string const& queryString,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */
+) {
+  auto options = arangodb::velocypack::Parser::fromJson(
+//    "{ \"tracing\" : 1 }"
+    "{ }"
+  );
+
+  arangodb::aql::Query query(
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    nullptr,
+    options,
+    arangodb::aql::PART_MAIN
+  );
+
+  query.prepare(arangodb::QueryRegistryFeature::registry());
+
+  if (!query.plan()) {
+    return nullptr;
+  }
+
+  return std::unique_ptr<arangodb::aql::ExecutionPlan>{ query.plan()->clone() };
 }
 
 uint64_t getCurrentPlanVersion() {
