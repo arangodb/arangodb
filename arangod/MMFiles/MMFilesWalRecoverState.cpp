@@ -917,7 +917,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         std::string const filename(
             arangodb::basics::FileUtils::buildFilename(physical->path(), indexName));
 
-        bool const forceSync = state->willBeDropped(databaseId, collectionId);
+        bool const forceSync = !state->willBeDropped(databaseId, collectionId);
         bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(filename, payloadSlice,
                                                                        forceSync);
 
