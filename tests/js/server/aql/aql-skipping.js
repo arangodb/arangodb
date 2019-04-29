@@ -245,9 +245,7 @@ function aqlSkippingIResearchTestsuite () {
         assertEqual(res.a, "foo");
         assertTrue(res._id.startsWith('UnitTestsCollection/'));
       });
-    },
-
-    //testPassSkipArangoSearchWithFullCount1: function () {},
+    }
 
   };
 
@@ -259,5 +257,9 @@ function aqlSkippingIResearchTestsuite () {
 
 jsunity.run(aqlSkippingTestsuite);
 jsunity.run(aqlSkippingIResearchTestsuite);
+
+// jsunity.run(aqlSkippingIndexTestsuite);
+// not needed, tests already in cluded in:
+// tests/js/server/aql/aql-skipping.js
 
 return jsunity.done();
