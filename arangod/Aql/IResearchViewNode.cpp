@@ -765,18 +765,27 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
   // primary sort
   auto const primarySortSlice = base.get("primarySort");
 
-  if (primarySortSlice.isBool() && primarySortSlice.getBool()) {
-    TRI_ASSERT(_view);
-    auto& primarySort = LogicalView::cast<IResearchView>(*_view).primarySort();
-
-    if (primarySort.empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "primary sort for 'IResearchViewNode' is set, but view '" + _view->name() + "' is not sorted");
-    }
-
-    _sort = &primarySort; // set sort from corresponding view
+  std::string error;
+  IResearchViewSort sort;
+  if (!sort.fromVelocyPack(primarySortSlice, error)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      "failed to parse 'IResearchViewNode' primary sort: "
+        + primarySortSlice.toString() + ", error: '" + error + "'");
   }
+
+  TRI_ASSERT(_view);
+  auto& primarySort = LogicalView::cast<IResearchView>(*_view).primarySort();
+
+  if (sort != primarySort) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      "primary sort " + primarySortSlice.toString()
+        + " for 'IResearchViewNode' doesn't match the one specified in view '"
+        + _view->name() + "'");
+  }
+
+  _sort = &primarySort; // set sort from corresponding view
 }
 
 void IResearchViewNode::planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHere,
@@ -859,7 +868,10 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) 
   nodes.add("volatility", VPackValue(_volatilityMask));
 
   // primarySort
-  nodes.add("primarySort", VPackValue(nullptr != _sort));
+  if (_sort && !_sort->empty()) {
+    VPackArrayBuilder arrayScope(&nodes, "primarySort");
+    _sort->toVelocyPack(nodes);
+  }
 
   nodes.close();
 }
