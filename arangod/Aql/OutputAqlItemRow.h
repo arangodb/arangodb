@@ -74,22 +74,11 @@ class OutputAqlItemRow {
   // responsibility of possibly referenced external memory.
   void moveValueInto(RegisterId registerId, InputAqlItemRow const& sourceRow,
                      AqlValueGuard& guard) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    if (!isOutputRegister(registerId)) {
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_IN_WRONG_REGISTER);
-    }
+    TRI_ASSERT(isOutputRegister(registerId));
     // This is already implicitly asserted by isOutputRegister:
     TRI_ASSERT(registerId < getNrRegisters());
-    if (_numValuesWritten >= numRegistersToWrite()) {
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS);
-    }
-    if (!block().getValueReference(_baseIndex, registerId).isNone()) {
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_OUTPUT_REGISTER_TWICE);
-    }
-#endif
+    TRI_ASSERT(_numValuesWritten < numRegistersToWrite());
+    TRI_ASSERT(block().getValueReference(_baseIndex, registerId).isNone());
 
     block().setValue(_baseIndex, registerId, guard.value());
     guard.steal();
@@ -106,12 +95,7 @@ class OutputAqlItemRow {
   // If the reusing does not work this call will return `false` caller needs to
   // react accordingly.
   bool reuseLastStoredValue(RegisterId registerId, InputAqlItemRow const& sourceRow) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    if (!isOutputRegister(registerId)) {
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_IN_WRONG_REGISTER);
-    }
-#endif
+    TRI_ASSERT(isOutputRegister(registerId));
     if (_lastBaseIndex == _baseIndex) {
       return false;
     }
@@ -155,23 +139,11 @@ class OutputAqlItemRow {
     // This method is only allowed if the block of the input row is the same as
     // the block of the output row!
     TRI_ASSERT(sourceRow.internalBlockIs(_block));
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    if (!isOutputRegister(output)) {
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_IN_WRONG_REGISTER);
-    }
+    TRI_ASSERT(isOutputRegister(output));
     // This is already implicitly asserted by isOutputRegister:
     TRI_ASSERT(output < getNrRegisters());
-    if (_numValuesWritten >= numRegistersToWrite()) {
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS);
-    }
-    if (!block().getValueReference(_baseIndex, output).isNone()) {
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_OUTPUT_REGISTER_TWICE);
-    }
-#endif
+    TRI_ASSERT(_numValuesWritten < numRegistersToWrite());
+    TRI_ASSERT(block().getValueReference(_baseIndex, output).isNone());
 
     AqlValue const& value = sourceRow.getValue(input);
 
@@ -192,17 +164,9 @@ class OutputAqlItemRow {
    * been called.
    */
   void advanceRow() {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(produced());
-    if (!allValuesWritten()) {
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS);
-    }
-    if (!_inputRowCopied) {
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INPUT_REGISTERS_NOT_COPIED);
-    }
-#endif
+    TRI_ASSERT(allValuesWritten());
+    TRI_ASSERT(_inputRowCopied);
     _lastBaseIndex = _baseIndex++;
     _inputRowCopied = false;
     _numValuesWritten = 0;
