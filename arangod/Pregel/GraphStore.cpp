@@ -100,7 +100,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocate
 
   std::map<CollectionID, std::vector<VertexShardInfo>> result;
 
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Allocating memory";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Allocating memory"; 
   uint64_t totalMemory = TRI_totalSystemMemory();
 
   // Contains the shards located on this db server in the right order
