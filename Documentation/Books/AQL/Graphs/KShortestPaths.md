@@ -57,6 +57,7 @@ FOR path
   startVertex TO targetVertex
   GRAPH graphName
   [OPTIONS options]
+  [LIMIT offset, count]
 ```
 
 - `FOR`: emits the variable **path** which contains one path as an object containing 
@@ -79,6 +80,9 @@ FOR path
   - **defaultWeight** (number): this value will be used as fallback if there is
   no *weightAttribute* in the edge document, or if it's not a number. The default
   is 1.
+- `LIMIT` (as described [here](../Operations/Limit.html), *optional*) the
+  maximal number of paths to return. It is highly recommended to use
+  a `LIMIT` for `K_SHORTEST_PATHS`.
 
 ### Working with collection sets
 
@@ -88,6 +92,7 @@ FOR path
   startVertex TO targetVertex
   edgeCollection1, ..., edgeCollectionN
   [OPTIONS options]
+  [LIMIT offset, count]
 ```
 
 Instead of `GRAPH graphName` you can specify a list of edge collections.
