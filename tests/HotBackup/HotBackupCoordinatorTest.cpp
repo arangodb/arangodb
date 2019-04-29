@@ -55,7 +55,14 @@ VPackBuilder parseToBuilder(char const* c) {
   parser.parse(c);
 
   VPackBuilder builder;
-  builder.add(parser.steal()->slice());
+  {
+    VPackObjectBuilder o(&builder);
+    builder.add(VPackValue("arango"));
+    {
+      VPackObjectBuilder o(&builder);
+      builder.add("Plan", parser.steal()->slice());
+    }
+  }
   return builder;
 
 }
@@ -73,10 +80,12 @@ int countSubstring(std::string const& str, std::string const& sub) {
   return count;
 }
 
+std::vector<std::string> dbsPath {"arango","Plan","DBServers"};
+std::vector<std::string> colPath {"arango","Plan","Collections"};
+
 TEST_CASE("HotBackup on coordinators", "[cluster][hotbackup]") {
   VPackBuilder pb = parseToBuilder(planFile);
   VPackSlice plan = pb.slice();
-  
 
   SECTION("Test db server matching") {
     std::shared_ptr<VPackBuilder> props;
@@ -84,7 +93,7 @@ TEST_CASE("HotBackup on coordinators", "[cluster][hotbackup]") {
     std::vector<ServerID> dbServers;
     std::map<ServerID,ServerID> matches;
 
-    for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
+    for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
       dbServers.push_back(i.key.copyString());
     }
     
@@ -100,7 +109,7 @@ TEST_CASE("HotBackup on coordinators", "[cluster][hotbackup]") {
     std::vector<ServerID> dbServers;
     std::map<ServerID,ServerID> matches;
 
-    for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
+    for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
       dbServers.push_back(i.key.copyString());
     }
 
@@ -119,7 +128,7 @@ TEST_CASE("HotBackup on coordinators", "[cluster][hotbackup]") {
     std::vector<ServerID> dbServers;
     std::map<ServerID,ServerID> matches;
 
-    for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
+    for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
       dbServers.push_back(i.key.copyString());
     }
 
@@ -138,7 +147,7 @@ TEST_CASE("HotBackup on coordinators", "[cluster][hotbackup]") {
     std::vector<ServerID> dbServers;
     std::map<ServerID,ServerID> matches;
 
-    for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
+    for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
       dbServers.push_back(i.key.copyString());
     }
 
@@ -159,7 +168,7 @@ TEST_CASE("HotBackup on coordinators", "[cluster][hotbackup]") {
     std::vector<ServerID> dbServers;
     std::map<ServerID,ServerID> matches;
 
-    for (size_t i = 0; i < plan.get("DBServers").length(); ++i) {
+    for (size_t i = 0; i < plan.get(dbsPath).length(); ++i) {
       dbServers.push_back(std::string("PRMR_")
                           + to_string(boost::uuids::random_generator()()));
     }
@@ -176,7 +185,7 @@ TEST_CASE("HotBackup on coordinators", "[cluster][hotbackup]") {
     std::vector<ServerID> dbServers;
     std::map<ServerID,ServerID> matches;
 
-    for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
+    for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
       dbServers.push_back(i.key.copyString());
     }
     dbServers.push_back(std::string("PRMR_")
@@ -194,7 +203,7 @@ TEST_CASE("HotBackup on coordinators", "[cluster][hotbackup]") {
     std::vector<ServerID> dbServers;
     std::map<ServerID,ServerID> matches;
 
-    for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
+    for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
       dbServers.push_back(i.key.copyString());
     }
     dbServers.pop_back();
@@ -211,7 +220,7 @@ TEST_CASE("HotBackup on coordinators", "[cluster][hotbackup]") {
     std::vector<ServerID> dbServers;
     std::map<ServerID,ServerID> matches;
 
-    for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
+    for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
       dbServers.push_back(i.key.copyString());
     }
     dbServers.front() = std::string("PRMR_")
@@ -225,10 +234,10 @@ TEST_CASE("HotBackup on coordinators", "[cluster][hotbackup]") {
     res = applyDBServerMatchesToPlan(plan, matches, newPlan);
 
     for (auto const& m : matches) {
-      REQUIRE(countSubstring(newPlan.slice().get("Collections").toJson(), m.first) == 0);
-      REQUIRE(countSubstring(plan.get("Collections").toJson(), m.second) == 0);
-      REQUIRE(countSubstring(newPlan.slice().get("Collections").toJson(), m.second) ==
-        countSubstring(plan.get("Collections").toJson(), m.first));
+      REQUIRE(countSubstring(newPlan.slice().get(colPath).toJson(), m.first) == 0);
+      REQUIRE(countSubstring(plan.get(colPath).toJson(), m.second) == 0);
+      REQUIRE(countSubstring(newPlan.slice().get(colPath).toJson(), m.second) ==
+        countSubstring(plan.get(colPath).toJson(), m.first));
     }
     
   }
@@ -239,7 +248,7 @@ TEST_CASE("HotBackup on coordinators", "[cluster][hotbackup]") {
     std::vector<ServerID> dbServers;
     std::map<ServerID,ServerID> matches;
 
-    for (auto const& i : VPackObjectIterator(plan.get("DBServers"))) {
+    for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
       dbServers.push_back(i.key.copyString());
     }
     dbServers.front() = std::string("PRMR_")
@@ -256,10 +265,10 @@ TEST_CASE("HotBackup on coordinators", "[cluster][hotbackup]") {
 
     VPackSlice const nplan = newPlan.slice();
     for (auto const& m : matches) {
-      REQUIRE(countSubstring(nplan.get("Collections").toJson(), m.first) == 0);
-      REQUIRE(countSubstring(plan.get("Collections").toJson(), m.second) == 0);
-      REQUIRE(countSubstring(nplan.get("Collections").toJson(), m.second) ==
-        countSubstring(plan.get("Collections").toJson(), m.first));
+      REQUIRE(countSubstring(nplan.get(colPath).toJson(), m.first) == 0);
+      REQUIRE(countSubstring(plan.get(colPath).toJson(), m.second) == 0);
+      REQUIRE(countSubstring(nplan.get(colPath).toJson(), m.second) ==
+        countSubstring(plan.get(colPath).toJson(), m.first));
     }
     
   }
@@ -270,7 +279,7 @@ TEST_CASE("HotBackup on coordinators", "[cluster][hotbackup]") {
     std::vector<ServerID> dbServers;
     std::map<ServerID,ServerID> matches;
 
-    for (size_t i = 0; i < plan.get("DBServers").length(); ++i) {
+    for (size_t i = 0; i < plan.get(dbsPath).length(); ++i) {
       dbServers.push_back(std::string("PRMR_")
                           + to_string(boost::uuids::random_generator()()));
     }
@@ -284,10 +293,10 @@ TEST_CASE("HotBackup on coordinators", "[cluster][hotbackup]") {
 
     VPackSlice const nplan = newPlan.slice();
     for (auto const& m : matches) {
-      REQUIRE(countSubstring(nplan.get("Collections").toJson(), m.first) == 0);
-      REQUIRE(countSubstring(plan.get("Collections").toJson(), m.second) == 0);
-      REQUIRE(countSubstring(nplan.get("Collections").toJson(), m.second) ==
-        countSubstring(plan.get("Collections").toJson(), m.first));
+      REQUIRE(countSubstring(nplan.get(colPath).toJson(), m.first) == 0);
+      REQUIRE(countSubstring(plan.get(colPath).toJson(), m.second) == 0);
+      REQUIRE(countSubstring(nplan.get(colPath).toJson(), m.second) ==
+        countSubstring(plan.get(colPath).toJson(), m.first));
     }
     
   }
@@ -311,10 +320,10 @@ TEST_CASE("HotBackup on coordinators", "[cluster][hotbackup]") {
 
     VPackSlice const nplan = newPlan.slice();
     for (auto const& m : matches) {
-      REQUIRE(countSubstring(nplan.get("Collections").toJson(), m.first) == 0);
-      REQUIRE(countSubstring(plan.get("Collections").toJson(), m.second) == 0);
-      REQUIRE(countSubstring(nplan.get("Collections").toJson(), m.second) ==
-        countSubstring(plan.get("Collections").toJson(), m.first));
+      REQUIRE(countSubstring(nplan.get(colPath).toJson(), m.first) == 0);
+      REQUIRE(countSubstring(plan.get(colPath).toJson(), m.second) == 0);
+      REQUIRE(countSubstring(nplan.get(colPath).toJson(), m.second) ==
+        countSubstring(plan.get(colPath).toJson(), m.first));
     }
     
   }

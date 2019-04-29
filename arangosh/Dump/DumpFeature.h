@@ -79,6 +79,7 @@ class DumpFeature : public application_features::ApplicationFeature {
     bool includeSystemCollections{false};
     bool overwrite{false};
     bool progress{true};
+    bool useGzip{false};
   };
 
   /// @brief Stores stats about the overall dump progress
