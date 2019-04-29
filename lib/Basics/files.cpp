@@ -362,14 +362,15 @@ std::string TRI_ResolveSymbolicLink(std::string path, bool& hadError, bool recur
   while (IsSymbolicLink(path.data(), &sb)) {
     // if file is a symlink this contains the targets file name length
     // instead of the file size
-    ssize_t bufsize = sb.st_size + 1;
+    ssize_t buffsize = sb.st_size + 1;
 
     // resolve symlinks
-    auto buf = std::unique_ptr<char, void (*)(char*)>((char*)std::malloc(bufsize), &deleteBuf);
-    auto written = ::readlink(path.c_str(), buf.get(), bufsize);
+    std::vector<char> buff;
+    buff.resize(buffsize);
+    auto written = ::readlink(path.c_str(), buff.data(), buff.size());
 
     if (written) {
-      path = std::string(buf.get(), bufsize);
+      path = std::string(buff.data(), buff.size());
     } else {
       // error occured while resolving
       hadError = true;
@@ -1999,21 +2000,23 @@ static std::string getTempPath() {
 
 static int mkDTemp(char* s, size_t bufferSize) {
   std::string tmp(s, bufferSize);
-  auto ws = toWString(tmp);
+  std::wstring ws = toWString(tmp);
 
   // get writeable copy of wstring buffer and replace the _XXX part in the buffer
-  auto writeBuffer = make_unique<wchar_t[]>(new wchar_t[ws.size()]);
-  memcpy(writeBuffer.get(), ws.data(), sizeof(wchar_t) * ws.size());
-  auto rc = _wmktemp_s(writeBuffer.get(), ws.size()); // requires writeable buffer
+  std::vector<wchar_t> writeBuffer;
+  writeBuffer.resize(ws.size());
+  memcpy(writeBuffer.data(), ws.data(), sizeof(wchar_t) * ws.size());
+  auto rc = _wmktemp_s(writeBuffer.data(), writeBuffer.size());  // requires writeable buffer -- returns errno_t
 
-  if (rc == 0) {
+  if (rc == 0) {  // error of 0 is ok
     // if it worked out, we need to return the utf8 version:
-    ws = std::wstring(writeBuffer.get(), ws.size()); // write back to wstring
+    ws = std::wstring(writeBuffer.data(), writeBuffer.size());  // write back to wstring
     tmp = fromWString(ws);
-    memcpy(s, tmp.data(), bufferSize); // copy back into parameter
+    memcpy(s, tmp.data(), bufferSize);  // copy back into parameter
     rc = TRI_MKDIR(s, 0700);
   }
 
+  // should error be translated to arango error code?
   return rc;
 }
 
