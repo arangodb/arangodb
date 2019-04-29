@@ -105,7 +105,8 @@ IndexExecutorInfos::IndexExecutorInfos(
 IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
-      _documentProducingFunctionContext(_infos.getProduceResult(),
+      _documentProducingFunctionContext(_input, nullptr, _infos.getOutputRegisterId(),
+                                        _infos.getProduceResult(),
                                         _infos.getProjections(), _infos.getTrxPtr(),
                                         _infos.getCoveringIndexAttributePositions(),
                                         false, _infos.getUseRawDocumentPointers()),
@@ -436,6 +437,9 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRo
     size_t numWritten;
   } context{*this, output, 0};
 
+  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
+  _documentProducingFunctionContext.setOutputRow(&output);
+
   while (true) {
     if (!_input) {
       if (_state == ExecutionState::DONE) {
@@ -482,18 +486,18 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRo
             return;
           }
         }
-        context.executor._documentProducer(context.executor._input, context.output, slice,
-                                           context.executor._infos.getOutputRegisterId());
+        context.executor._documentProducer(token, slice);
         ++context.numWritten;
       };
     } else {
       // No uniqueness checks
-      callback = [&context](LocalDocumentId const&, VPackSlice slice) {
-        context.executor._documentProducer(context.executor._input, context.output, slice,
-                                           context.executor._infos.getOutputRegisterId());
+      callback = [&context](LocalDocumentId const& token, VPackSlice slice) {
+        context.executor._documentProducer(token, slice);
         ++context.numWritten;
       };
     }
+
+    TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == context.numWritten);
 
     // We only get here with non-exhausted indexes.
     // At least one of them is prepared and ready to read.

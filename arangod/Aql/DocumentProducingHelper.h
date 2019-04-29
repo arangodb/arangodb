@@ -38,7 +38,7 @@ namespace arangodb {
 namespace aql {
 
 using DocumentProducingFunction =
-    std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)>;
+    std::function<void(LocalDocumentId const&, VPackSlice slice)>;
 
 inline void handleProjections(std::vector<std::string> const& projections,
                               transaction::Methods const* trxPtr, VPackSlice slice,
@@ -80,19 +80,26 @@ inline void handleProjections(std::vector<std::string> const& projections,
 
 struct DocumentProducingFunctionContext {
  public:
-  DocumentProducingFunctionContext(bool produceResult,
-                                   std::vector<std::string> const& projections,
-                                   transaction::Methods* trxPtr,
-                                   std::vector<size_t> const& coveringIndexAttributePositions,
-                                   bool allowCoveringIndexOptimization, bool useRawDocumentPointers)
-      : _produceResult(produceResult),
+  DocumentProducingFunctionContext(
+      InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
+      RegisterId const outputRegister, bool produceResult,
+      std::vector<std::string> const& projections, transaction::Methods* trxPtr,
+      std::vector<size_t> const& coveringIndexAttributePositions,
+      bool allowCoveringIndexOptimization, bool useRawDocumentPointers)
+      : _inputRow(inputRow),
+        _outputRow(outputRow),
+        _outputRegister(outputRegister),
+        _produceResult(produceResult),
         _projections(projections),
         _trxPtr(trxPtr),
         _coveringIndexAttributePositions(coveringIndexAttributePositions),
         _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
-        _useRawDocumentPointers(useRawDocumentPointers) {}
+        _useRawDocumentPointers(useRawDocumentPointers),
+        _numScanned(0) {}
 
   DocumentProducingFunctionContext() = delete;
+
+  void setOutputRow(OutputAqlItemRow* outputRow) { _outputRow = outputRow; }
 
   bool getProduceResult() const noexcept { return _produceResult; }
 
@@ -118,135 +125,205 @@ struct DocumentProducingFunctionContext {
     _allowCoveringIndexOptimization = allowCoveringIndexOptimization;
   }
 
+  void incrScanned() noexcept {
+    ++_numScanned;
+  }
+
+  size_t getAndResetNumScanned() noexcept {
+    size_t const numScanned = _numScanned;
+    _numScanned = 0;
+    return numScanned;
+  }
+
+  InputAqlItemRow const& getInputRow() const noexcept { return _inputRow; }
+
+  OutputAqlItemRow& getOutputRow() const noexcept { return *_outputRow; }
+
+  RegisterId getOutputRegister() const noexcept { return _outputRegister; }
+
  private:
+  InputAqlItemRow const& _inputRow;
+  OutputAqlItemRow* _outputRow;
+  RegisterId const _outputRegister;
   bool const _produceResult;
   std::vector<std::string> const& _projections;
   transaction::Methods* const _trxPtr;
   std::vector<size_t> const& _coveringIndexAttributePositions;
   bool _allowCoveringIndexOptimization;
   bool const _useRawDocumentPointers;
+  size_t _numScanned;
 };
 
-static DocumentProducingFunction buildCallback(DocumentProducingFunctionContext& context) {
-  DocumentProducingFunction documentProducer;
+enum class DocumentProducingCallbackVariant {
+  NoResult,
+  WithProjectionsCoveredByIndex,
+  WithProjectionsNotCoveredByIndex,
+  DocumentWithRawPointer,
+  DocumentCopy
+};
+
+template<DocumentProducingCallbackVariant variant>
+inline DocumentProducingFunction getCallback(DocumentProducingFunctionContext& context);
+
+template <>
+inline DocumentProducingFunction getCallback<DocumentProducingCallbackVariant::NoResult>(
+    DocumentProducingFunctionContext& context) {
+  return [&context](LocalDocumentId const&, VPackSlice) {
+    InputAqlItemRow const& input = context.getInputRow();
+    OutputAqlItemRow& output = context.getOutputRow();
+    RegisterId registerId = context.getOutputRegister();
+    // TODO: optimize this within the register planning mechanism?
+    TRI_ASSERT(!output.isFull());
+    output.cloneValueInto(registerId, input, AqlValue(AqlValueHintNull()));
+    TRI_ASSERT(output.produced());
+    output.advanceRow();
+    context.incrScanned();
+  };
+}
+
+template <>
+inline DocumentProducingFunction getCallback<DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex>(
+    DocumentProducingFunctionContext& context) {
+  return [&context](LocalDocumentId const&, VPackSlice slice) {
+    InputAqlItemRow const& input = context.getInputRow();
+    OutputAqlItemRow& output = context.getOutputRow();
+    RegisterId registerId = context.getOutputRegister();
+    transaction::BuilderLeaser b(context.getTrxPtr());
+    b->openObject(true);
+
+    if (context.getAllowCoveringIndexOptimization()) {
+      // a potential call by a covering index iterator...
+      bool const isArray = slice.isArray();
+      size_t i = 0;
+      VPackSlice found;
+      for (auto const& it : context.getProjections()) {
+        if (isArray) {
+          // we will get a Slice with an array of index values. now we need
+          // to look up the array values from the correct positions to
+          // populate the result with the projection values this case will
+          // be triggered for indexes that can be set up on any number of
+          // attributes (hash/skiplist)
+          found = slice.at(context.getCoveringIndexAttributePositions()[i]);
+          ++i;
+        } else {
+          // no array Slice... this case will be triggered for indexes that
+          // contain simple string values, such as the primary index or the
+          // edge index
+          found = slice;
+        }
+        if (found.isNone()) {
+          // attribute not found
+          b->add(it, VPackValue(VPackValueType::Null));
+        } else {
+          if (context.getUseRawDocumentPointers()) {
+            b->add(VPackValue(it));
+            b->addExternal(found.begin());
+          } else {
+            b->add(it, found);
+          }
+        }
+      }
+    } else {
+      // projections from a "real" document
+      handleProjections(context.getProjections(), context.getTrxPtr(), slice,
+        *b.get(), context.getUseRawDocumentPointers());
+    }
+
+    b->close();
+
+    AqlValue v(b.get());
+    AqlValueGuard guard{v, true};
+    TRI_ASSERT(!output.isFull());
+    output.moveValueInto(registerId, input, guard);
+    TRI_ASSERT(output.produced());
+    output.advanceRow();
+    context.incrScanned();
+  };
+}
+
+template <>
+inline DocumentProducingFunction getCallback<DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex>(
+    DocumentProducingFunctionContext& context) {
+  return [&context](LocalDocumentId const&, VPackSlice slice) {
+    InputAqlItemRow const& input = context.getInputRow();
+    OutputAqlItemRow& output = context.getOutputRow();
+    RegisterId registerId = context.getOutputRegister();
+    transaction::BuilderLeaser b(context.getTrxPtr());
+    b->openObject(true);
+    handleProjections(context.getProjections(), context.getTrxPtr(), slice,
+                      *b.get(), context.getUseRawDocumentPointers());
+    b->close();
+
+    AqlValue v(b.get());
+    AqlValueGuard guard{v, true};
+    TRI_ASSERT(!output.isFull());
+    output.moveValueInto(registerId, input, guard);
+    TRI_ASSERT(output.produced());
+    output.advanceRow();
+    context.incrScanned();
+  };
+}
+
+template <>
+inline DocumentProducingFunction getCallback<DocumentProducingCallbackVariant::DocumentWithRawPointer>(
+    DocumentProducingFunctionContext& context) {
+  return [&context](LocalDocumentId const&, VPackSlice slice) {
+    InputAqlItemRow const& input = context.getInputRow();
+    OutputAqlItemRow& output = context.getOutputRow();
+    RegisterId registerId = context.getOutputRegister();
+    uint8_t const* vpack = slice.begin();
+    // With NoCopy we do not clone anyways
+    TRI_ASSERT(!output.isFull());
+    output.cloneValueInto(registerId, input, AqlValue(AqlValueHintDocumentNoCopy(vpack)));
+    TRI_ASSERT(output.produced());
+    output.advanceRow();
+    context.incrScanned();
+  };
+}
+
+template <>
+inline DocumentProducingFunction getCallback<DocumentProducingCallbackVariant::DocumentCopy>(
+    DocumentProducingFunctionContext& context) {
+  return [&context](LocalDocumentId const&, VPackSlice slice) {
+    InputAqlItemRow const& input = context.getInputRow();
+    OutputAqlItemRow& output = context.getOutputRow();
+    RegisterId registerId = context.getOutputRegister();
+    uint8_t const* vpack = slice.begin();
+
+    // Here we do a clone, so clone once, then move into
+    AqlValue v{AqlValueHintCopy{vpack}};
+    AqlValueGuard guard{v, true};
+    TRI_ASSERT(!output.isFull());
+    output.moveValueInto(registerId, input, guard);
+    TRI_ASSERT(output.produced());
+    output.advanceRow();
+    context.incrScanned();
+  };
+}
+
+inline DocumentProducingFunction buildCallback(DocumentProducingFunctionContext& context) {
   if (!context.getProduceResult()) {
     // no result needed
-    documentProducer = [](InputAqlItemRow& input, OutputAqlItemRow& output,
-                          VPackSlice, RegisterId registerId) {
-      // TODO: optimize this within the register planning mechanism?
-      TRI_ASSERT(!output.isFull());
-      output.cloneValueInto(registerId, input, AqlValue(AqlValueHintNull()));
-      TRI_ASSERT(output.produced());
-      output.advanceRow();
-    };
-    return documentProducer;
+    return getCallback<DocumentProducingCallbackVariant::NoResult>(context);
   }
 
   if (!context.getProjections().empty()) {
     // return a projection
     if (!context.getCoveringIndexAttributePositions().empty()) {
       // projections from an index value (covering index)
-      documentProducer = [&context](InputAqlItemRow& input, OutputAqlItemRow& output,
-                                    VPackSlice slice, RegisterId registerId) {
-        transaction::BuilderLeaser b(context.getTrxPtr());
-        b->openObject(true);
-
-        if (context.getAllowCoveringIndexOptimization()) {
-          // a potential call by a covering index iterator...
-          bool const isArray = slice.isArray();
-          size_t i = 0;
-          VPackSlice found;
-          for (auto const& it : context.getProjections()) {
-            if (isArray) {
-              // we will get a Slice with an array of index values. now we need
-              // to look up the array values from the correct positions to
-              // populate the result with the projection values this case will
-              // be triggered for indexes that can be set up on any number of
-              // attributes (hash/skiplist)
-              found = slice.at(context.getCoveringIndexAttributePositions()[i]);
-              ++i;
-            } else {
-              // no array Slice... this case will be triggered for indexes that
-              // contain simple string values, such as the primary index or the
-              // edge index
-              found = slice;
-            }
-            if (found.isNone()) {
-              // attribute not found
-              b->add(it, VPackValue(VPackValueType::Null));
-            } else {
-              if (context.getUseRawDocumentPointers()) {
-                b->add(VPackValue(it));
-                b->addExternal(found.begin());
-              } else {
-                b->add(it, found);
-              }
-            }
-          }
-        } else {
-          // projections from a "real" document
-          handleProjections(context.getProjections(), context.getTrxPtr(), slice,
-                            *b.get(), context.getUseRawDocumentPointers());
-        }
-
-        b->close();
-
-        AqlValue v(b.get());
-        AqlValueGuard guard{v, true};
-        TRI_ASSERT(!output.isFull());
-        output.moveValueInto(registerId, input, guard);
-        TRI_ASSERT(output.produced());
-        output.advanceRow();
-      };
-      return documentProducer;
+      return getCallback<DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex>(context);
+    } else {
+      // projections from a "real" document
+      return getCallback<DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex>(context);
     }
-
-    // projections from a "real" document
-    documentProducer = [context](InputAqlItemRow& input, OutputAqlItemRow& output,
-                                 VPackSlice slice, RegisterId registerId) {
-      transaction::BuilderLeaser b(context.getTrxPtr());
-      b->openObject(true);
-      handleProjections(context.getProjections(), context.getTrxPtr(), slice,
-                        *b.get(), context.getUseRawDocumentPointers());
-      b->close();
-
-      AqlValue v(b.get());
-      AqlValueGuard guard{v, true};
-      TRI_ASSERT(!output.isFull());
-      output.moveValueInto(registerId, input, guard);
-      TRI_ASSERT(output.produced());
-      output.advanceRow();
-    };
-    return documentProducer;
   }
 
   // return the document as is
   if (context.getUseRawDocumentPointers()) {
-    documentProducer = [](InputAqlItemRow& input, OutputAqlItemRow& output,
-                          VPackSlice slice, RegisterId registerId) {
-      uint8_t const* vpack = slice.begin();
-      // With NoCopy we do not clone anyways
-      TRI_ASSERT(!output.isFull());
-      output.cloneValueInto(registerId, input, AqlValue(AqlValueHintDocumentNoCopy(vpack)));
-      TRI_ASSERT(output.produced());
-      output.advanceRow();
-    };
+    return getCallback<DocumentProducingCallbackVariant::DocumentWithRawPointer>(context);
   } else {
-    documentProducer = [](InputAqlItemRow& input, OutputAqlItemRow& output,
-                          VPackSlice slice, RegisterId registerId) {
-      uint8_t const* vpack = slice.begin();
-
-      // Here we do a clone, so clone once, then move into
-      AqlValue v{AqlValueHintCopy{vpack}};
-      AqlValueGuard guard{v, true};
-      TRI_ASSERT(!output.isFull());
-      output.moveValueInto(registerId, input, guard);
-      TRI_ASSERT(output.produced());
-      output.advanceRow();
-    };
+    return getCallback<DocumentProducingCallbackVariant::DocumentCopy>(context);
   }
-
-  return documentProducer;
 }
 
 }  // namespace aql
