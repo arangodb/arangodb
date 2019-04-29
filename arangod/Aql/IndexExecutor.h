@@ -200,7 +200,7 @@ class IndexExecutor {
 
   /// @brief continue fetching of documents
   bool readIndex(OutputAqlItemRow& output,
-                 IndexIterator::DocumentCallback const&, size_t& numWritten);
+                 IndexIterator::DocumentCallback const&, size_t numWritten);
 
   /// @brief reset the cursor at given position
   void resetCursor(size_t pos) { _cursors[pos]->reset(); };

@@ -241,7 +241,7 @@ void IndexExecutor::createCursor() {
 // this is called every time we need to fetch data from the indexes
 bool IndexExecutor::readIndex(OutputAqlItemRow& output,
                               IndexIterator::DocumentCallback const& callback,
-                              size_t& numWritten) {
+                              size_t numWritten) {
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
   // again (although there might be multiple calls to this function).
@@ -430,13 +430,6 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRo
   }
   IndexStats stats{};
 
-  // Allocate this on the stack, not the heap.
-  struct {
-    IndexExecutor& executor;
-    OutputAqlItemRow& output;
-    size_t numWritten;
-  } context{*this, output, 0};
-
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
   _documentProducingFunctionContext.setOutputRow(&output);
 
@@ -467,53 +460,46 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRo
 
     IndexIterator::DocumentCallback callback;
 
-    context.numWritten = 0;
-
     if (_infos.getIndexes().size() > 1 || _infos.hasMultipleExpansions()) {
       // Activate uniqueness checks
-      callback = [&context](LocalDocumentId const& token, VPackSlice slice) {
-        if (!context.executor.isLastIndex()) {
+      callback = [this](LocalDocumentId const& token, VPackSlice slice) {
+        if (!isLastIndex()) {
           // insert & check for duplicates in one go
-          if (!context.executor._alreadyReturned.insert(token.id()).second) {
+          if (!_alreadyReturned.insert(token.id()).second) {
             // Document already in list. Skip this
             return;
           }
         } else {
           // only check for duplicates
-          if (context.executor._alreadyReturned.find(token.id()) !=
-              context.executor._alreadyReturned.end()) {
+          if (_alreadyReturned.find(token.id()) != _alreadyReturned.end()) {
             // Document found, skip
             return;
           }
         }
-        context.executor._documentProducer(token, slice);
-        ++context.numWritten;
+        _documentProducer(token, slice);
       };
     } else {
       // No uniqueness checks
-      callback = [&context](LocalDocumentId const& token, VPackSlice slice) {
-        context.executor._documentProducer(token, slice);
-        ++context.numWritten;
-      };
+      callback =_documentProducer;
     }
-
-    TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == context.numWritten);
 
     // We only get here with non-exhausted indexes.
     // At least one of them is prepared and ready to read.
     TRI_ASSERT(!getIndexesExhausted());
 
+    size_t numWritten = _documentProducingFunctionContext.getAndResetNumScanned();
+
     // Read the next elements from the indexes
-    bool more = readIndex(output, callback, context.numWritten);
+    bool more = readIndex(output, callback, numWritten);
     TRI_ASSERT(getCursor() != nullptr || !more);
 
     if (!more) {
       _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
     }
-    TRI_ASSERT(!more || context.numWritten > 0);
+    TRI_ASSERT(!more || numWritten > 0);
 
-    if (context.numWritten > 0) {
-      stats.incrScanned(context.numWritten);
+    if (numWritten > 0) {
+      stats.incrScanned(numWritten);
 
       if (_state == ExecutionState::DONE && !_input) {
         return {ExecutionState::DONE, stats};

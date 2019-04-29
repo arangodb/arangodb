@@ -162,6 +162,20 @@ enum class DocumentProducingCallbackVariant {
   DocumentCopy
 };
 
+inline std::function<void(LocalDocumentId const&)> getNullCallback(DocumentProducingFunctionContext& context) {
+  return [&context](LocalDocumentId const&) {
+    InputAqlItemRow const& input = context.getInputRow();
+    OutputAqlItemRow& output = context.getOutputRow();
+    RegisterId registerId = context.getOutputRegister();
+    // TODO: optimize this within the register planning mechanism?
+    TRI_ASSERT(!output.isFull());
+    output.cloneValueInto(registerId, input, AqlValue(AqlValueHintNull()));
+    TRI_ASSERT(output.produced());
+    output.advanceRow();
+    context.incrScanned();
+  };
+}
+
 template<DocumentProducingCallbackVariant variant>
 inline DocumentProducingFunction getCallback(DocumentProducingFunctionContext& context);
 

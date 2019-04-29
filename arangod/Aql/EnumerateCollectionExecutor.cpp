@@ -148,9 +148,7 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
       // performance optimization: we do not need the documents at all,
       // so just call next()
       _cursorHasMore = _cursor->next(
-          [&producer = _documentProducer](LocalDocumentId const& id) {
-            producer(id, VPackSlice::nullSlice());
-          },
+          getNullCallback(_documentProducingFunctionContext),
           output.numRowsLeft() /*atMost*/);
     }
 
