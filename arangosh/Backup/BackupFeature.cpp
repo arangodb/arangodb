@@ -576,7 +576,7 @@ arangodb::Result executeInitiateTransfere(arangodb::httpclient::SimpleHttpClient
 
   LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "Backup initiated, use ";
   LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "    arangobackup " << TransfereType::asString(type) << " --status-id=" << transfereId;
-  LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "to query progress.";
+  LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << " to query progress.";
   return result;
 }
 
@@ -754,7 +754,7 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     if (_options.statusId.empty() == _options.identifier.empty()) {
       // Either both or none are set
       LOG_TOPIC(FATAL, Logger::BACKUP) << "either --status-id or --identifier"
-                                          "must be set";
+                                          " must be set";
       FATAL_ERROR_EXIT();
     }
 

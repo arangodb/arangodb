@@ -33,7 +33,8 @@ namespace arangodb {
 
 class RocksDBTransactionManager final : public TransactionManager {
  public:
-  RocksDBTransactionManager() : TransactionManager(), _nrRunning(0) {}
+  RocksDBTransactionManager() : TransactionManager(), _nrRunning(0),
+                                _writeLockHeld(false) {}
   ~RocksDBTransactionManager() {}
 
   // register a list of failed transactions
@@ -71,16 +72,47 @@ class RocksDBTransactionManager final : public TransactionManager {
   uint64_t getActiveTransactionCount() override { return _nrRunning; }
 
   // temporarily block all new transactions
-  bool holdTransactions(uint64_t timeout) override {return _rwLock.writeLock(timeout);}
-  bool holdTransactions(std::chrono::microseconds timeout) override {return _rwLock.writeLock(timeout);}
+  bool holdTransactions(uint64_t timeout) override {
+    std::unique_lock<std::mutex> guard(_mutex);
+    bool ret = true;
+    if (!_writeLockHeld) {
+      ret = _rwLock.writeLock(timeout);
+      if (ret) {
+        _writeLockHeld = true;
+      }
+    }
+    return ret;
+  }
+
+  bool holdTransactions(std::chrono::microseconds timeout) override {
+    std::unique_lock<std::mutex> guard(_mutex);
+    bool ret = true;
+    if (!_writeLockHeld) {
+      ret = _rwLock.writeLock(timeout);
+      if (ret) {
+        _writeLockHeld = true;
+      }
+    }
+    return ret;
+  }
 
   // remove the block
-  void releaseTransactions() override {_rwLock.unlockWrite();}
+  void releaseTransactions() override {
+    std::unique_lock<std::mutex> guard(_mutex);
+    if (_writeLockHeld) {
+      _rwLock.unlockWrite();
+      _writeLockHeld = false;
+    }
+  }
 
 
  private:
   std::atomic<uint64_t> _nrRunning;
+  std::mutex _mutex;   // Makes sure that we only ever get or release the
+                       // write lock and adjust _writeLockHeld at the same
+                       // time.
   basics::ReadWriteLock _rwLock;
+  bool _writeLockHeld;
 };
 }  // namespace arangodb
 
