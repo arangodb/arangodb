@@ -43,6 +43,29 @@
 using namespace arangodb::basics;
 using namespace icu;
 
+#ifdef _WIN32
+std::wstring toWString(std::string const& validUTF8String) {
+  icu::UnicodeString utf16(validUTF8String.c_str(), validUTF8String.size());
+  // // probably required for newer c++ versions
+  // using bufferType = std::remove_pointer_t<decltype(utf16.getTerminatedBuffer())>;
+  // static_assert(sizeof(std::wchar_t) == sizeof(bufferType), "sizes do not match");
+  // return std::wstring(reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()), utf16.length());
+  return std::wstring(utf16.getTerminatedBuffer(), utf16.length());
+}
+
+std::string fromWString(wchar_t const* validUTF16String, std::size_t size) {
+  std::string out;
+  icu::UnicodeString ICUString(validUTF16String, size);
+  ICUString.toUTF8String<std::string>(out);
+  return out;
+}
+
+std::string fromWString(std::wstring const& validUTF16String) {
+  return fromWString(validUTF16String.data(), validUTF16String.size());
+}
+#endif
+
+
 Utf8Helper Utf8Helper::DefaultUtf8Helper(nullptr);
 
 Utf8Helper::Utf8Helper(std::string const& lang, void* icuDataPtr)
@@ -554,7 +577,7 @@ char* TRI_tolower_utf8(char const* src, int32_t srcLength, int32_t* dstLength) {
 /// @brief convert a utf-8 string to a uchar (utf-16)
 ////////////////////////////////////////////////////////////////////////////////
 
-UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, 
+UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength,
                        UChar* buffer, size_t bufferSize, size_t* outLength) {
   UErrorCode status = U_ZERO_ERROR;
 
@@ -571,7 +594,7 @@ UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength,
     // use local buffer
     utf16 = buffer;
   } else {
-    // dynamic memory 
+    // dynamic memory
     utf16 = (UChar*)TRI_Allocate((utf16Length + 1) * sizeof(UChar));
     if (utf16 == nullptr) {
       return nullptr;

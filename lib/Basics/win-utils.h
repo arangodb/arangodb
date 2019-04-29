@@ -24,6 +24,7 @@
 #ifndef ARANGODB_BASICS_WIN__UTILS_H
 #define ARANGODB_BASICS_WIN__UTILS_H 1
 
+#include "Basics/Result.h"
 #include <WinSock2.h>
 #include <string>
 
@@ -68,6 +69,8 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_MapSystemError(DWORD);
+std::string windowsErrorToUTF8(DWORD);
+arangodb::Result translateWindowsError(DWORD);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief open/close the windows eventlog. Call on start / shutdown

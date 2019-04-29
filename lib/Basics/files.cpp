@@ -26,7 +26,6 @@
 #ifdef _WIN32
 #include <Shlwapi.h>
 #include <tchar.h>
-#include <unicode/locid.h>
 #include <chrono>
 #include <thread>
 #endif
@@ -45,6 +44,7 @@
 #include "Basics/directories.h"
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
+#include "Basics/Utf8Helper.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 
@@ -88,28 +88,6 @@ struct LockfileRemover {
 
 /// @brief this instance will remove all lockfiles in its dtor
 static LockfileRemover remover;
-
-#ifdef _WIN32
-std::wstring toWString(std::string const& validUTF8String) {
-  icu::UnicodeString utf16(validUTF8String.c_str(), validUTF8String.size());
-  // // probably required for newer c++ versions
-  // using bufferType = std::remove_pointer_t<decltype(utf16.getTerminatedBuffer())>;
-  // static_assert(sizeof(std::wchar_t) == sizeof(bufferType), "sizes do not match");
-  // return std::wstring(reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()), utf16.length());
-  return std::wstring(utf16.getTerminatedBuffer(), utf16.length());
-}
-
-std::string fromWString(wchar_t const* validUTF16String, std::size_t size) {
-  std::string out;
-  icu::UnicodeString ICUString(validUTF16String, size);
-  ICUString.toUTF8String<std::string>(out);
-  return out;
-}
-
-std::string fromWString(std::wstring const& validUTF16String) {
-  return fromWString(validUTF16String.data(), validUTF16String.size());
-}
-#endif
 
 }  // namespace
 
@@ -305,23 +283,8 @@ bool TRI_CreateSymbolicLink(std::string const& target,
   bool created =
       ::CreateSymbolicLinkW(toWString(linkpath).data(), toWString(target).data(), 0x0);
   if (!created) {
-    DWORD errorNum = ::GetLastError();
-
-    LPSTR buffer = nullptr;
-    TRI_DEFER(::LocalFree(buffer);)
-    size_t size =
-        FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-                           FORMAT_MESSAGE_IGNORE_INSERTS,
-                       nullptr, errorNum, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                       (LPSTR)&buffer, 0, nullptr);
-
-    std::string message = "";
-    if (size) {
-      message = " - ";
-      message += std::string(buffer, size);
-    }
-
-    error = "failed to create a symlink " + target + " -> " + linkpath + message;
+    auto rv = translateWindowsError(::GetLastError());
+    error = "failed to create a symlink " + target + " -> " + linkpath + " - " rv.errorMessage();
   }
   return created;
 #else
