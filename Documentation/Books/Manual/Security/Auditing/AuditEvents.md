@@ -11,27 +11,29 @@ Authentication
 
 ### Unknown authentication methods
 
-```
-2016-10-03 15:44:23 | server1 | - | database1 | 127.0.0.1:61525 | - | unknown authentication method | /_api/version
-```
+| time | hostname | user | database name | IP | authentication method | message | operation |
+|------|----------|------|---------------|----|-----------------------|---------|-----------|
+|2016-10-03 15:44:23 | server1 | - | database1 | 127.0.0.1:61525 | - | unknown authentication method | /_api/version |
 
 ### Missing credentials
 
-```
-2016-10-03 15:39:49 | server1 | - | database1 | 127.0.0.1:61498 | - | credentials missing | /_api/version
-```
+| time | hostname | user | database name | IP | authentication method | message | operation |
+|------|----------|------|---------------|----|-----------------------|---------|-----------|
+|2016-10-03 15:39:49 | server1 | - | database1 | 127.0.0.1:61498 | - | credentials missing | /_api/version |
 
 ### Wrong credentials
 
-```
-2016-10-03 15:47:26 | server1 | user1 | database1 | 127.0.0.1:61528 | http basic | credentials wrong | /_api/version
-```
+| time | hostname | user | database name | IP | authentication method | message | operation |
+|------|----------|------|---------------|----|-----------------------|---------|-----------|
+|2016-10-03 15:47:26 | server1 | user1 | database1 | 127.0.0.1:61528 | http basic | credentials wrong | /_api/version |
+
 
 ### Password change required
 
-```
-2016-10-03 16:18:53 | server1 | user1 | database1 | 127.0.0.1:62257 | - | password change required | /_api/version
-```
+| time | hostname | user | database name | IP | authentication method | message | operation |
+|------|----------|------|---------------|----|-----------------------|---------|-----------|
+|2016-10-03 16:18:53 | server1 | user1 | database1 | 127.0.0.1:62257 | - | password change required | /_api/version |
+
 
 ### JWT login succeeded
 
