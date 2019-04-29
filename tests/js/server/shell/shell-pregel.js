@@ -328,7 +328,7 @@ function randomTestSuite() {
         threshold: 0.0000001, resultField: "result",
         store: true, useMemoryMaps: true
       };
-      var pid = pregel.start("pagerank", graphName);
+      var pid = pregel.start("pagerank", graphName, opts);
       var i = 10000;
       do {
         internal.wait(0.2);

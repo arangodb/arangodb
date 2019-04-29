@@ -100,7 +100,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocate
 
   std::map<CollectionID, std::vector<VertexShardInfo>> result;
 
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Allocating memory"; 
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Allocating memory";
   uint64_t totalMemory = TRI_totalSystemMemory();
 
   // Contains the shards located on this db server in the right order
@@ -174,6 +174,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocate
                        eCount * _graphFormat->estimatedEdgeSize();
   if (!_config->lazyLoading() &&
       (_config->useMemoryMaps() || requiredMem > totalMemory / 2)) {
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Using memory mapped storage";
     if (_graphFormat->estimatedVertexSize() > 0) {
       _vertexData = new MappedFileBuffer<V>(vCount);
     }
