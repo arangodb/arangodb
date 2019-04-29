@@ -88,6 +88,7 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
   if (_lazyLoading) {
     LOG_TOPIC(DEBUG, Logger::PREGEL) << "Enabled lazy loading";
   }
+        LOG_DEVEL << _userParams.toJson();
   _useMemoryMaps = VelocyPackHelper::readBooleanValue(_userParams.slice(),
                                                       Utils::useMemoryMaps, _useMemoryMaps);
   VPackSlice storeSlice = config.get("store");
