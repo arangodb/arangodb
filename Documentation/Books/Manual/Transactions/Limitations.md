@@ -75,7 +75,7 @@ on the storage-engines.
 
 ### Atomicity
 
-A transactions on *one DBServer* is either committed completely or not at all. 
+A transaction on *one DBServer* is either committed completely or not at all. 
 
 ArangoDB transactions do currently not require any form of global consensus. This makes
 them relatively fast, but also vulnerable to unexpected server outages.
@@ -85,8 +85,6 @@ on *multiple DBServers*, the atomicity of the distributed transaction *during th
 not be guaranteed. Should one of the involve DBServers fails during the commit the transaction
 is not rolled-back globally, sub-transactions may have been committed on some DBServers, but not on others.
 Should this case occur the client application will see an error.
-
-There are ways to mitigate this issue: TBD
 
 An improved failure handling issue might be introduced in future versions.
 
