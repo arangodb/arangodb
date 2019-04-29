@@ -544,7 +544,7 @@ arangodb::Result executeInitiateTransfere(arangodb::httpclient::SimpleHttpClient
   {
     VPackObjectBuilder guard(&bodyBuilder);
     bodyBuilder.add("id", VPackValue(options.identifier));
-    bodyBuilder.add("remoteBackupDir", VPackValue(options.remoteDirectory));
+    bodyBuilder.add("remoteRepository", VPackValue(options.remoteDirectory));
     bodyBuilder.add("config", configFile->slice());
   }
   std::string const body = bodyBuilder.slice().toJson();

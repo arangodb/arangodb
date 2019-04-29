@@ -606,11 +606,6 @@ void RocksDBHotBackupRestore::parseParameters() {
 
   _valid = true; //(rest::RequestType::POST == type);
 
-  if (!_valid) {
-    _result.add(VPackValue(VPackValueType::Object));
-    _result.add("httpMethod", VPackValue("only POST allowed"));
-  } // if
-
   // timestamp used for snapshot created of existing database
   //  (in case of rollback or _saveCurrent flag)
   _timestampCurrent = timepointToString(std::chrono::system_clock::now());
