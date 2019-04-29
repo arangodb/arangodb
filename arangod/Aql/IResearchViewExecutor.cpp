@@ -159,7 +159,7 @@ IResearchViewExecutor<ordered>::IResearchViewExecutor(IResearchViewExecutor::Fet
 
 template <bool ordered>
 std::pair<ExecutionState, typename IResearchViewExecutor<ordered>::Stats>
-IResearchViewExecutor<ordered>::produceRow(OutputAqlItemRow& output) {
+IResearchViewExecutor<ordered>::produceRows(OutputAqlItemRow& output) {
   IResearchViewStats stats{};
   bool documentWritten = false;
 

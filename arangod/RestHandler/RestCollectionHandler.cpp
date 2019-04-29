@@ -297,7 +297,7 @@ void RestCollectionHandler::handleCommandPost() {
     type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
   }
 
-  // for some "security" a white-list of allowed parameters
+  // for some "security" a whitelist of allowed parameters
   VPackBuilder filtered = VPackCollection::keep(
       body, std::unordered_set<std::string>{
                 "doCompact", StaticStrings::DataSourceSystem,

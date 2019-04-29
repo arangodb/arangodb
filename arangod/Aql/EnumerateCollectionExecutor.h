@@ -32,6 +32,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
+#include "DocumentProducingHelper.h"
 #include "Utils/OperationCursor.h"
 
 #include <memory>
@@ -115,8 +116,8 @@ class EnumerateCollectionExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
   std::pair<ExecutionState, size_t> skipRows(size_t atMost);
 
   typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
@@ -132,17 +133,29 @@ class EnumerateCollectionExecutor {
         "Logic_error, prefetching number fo rows not supported");
   }
 
+  void initializeCursor();
+
  private:
   bool waitForSatellites(ExecutionEngine* engine, Collection const* collection) const;
+
+  void setAllowCoveringIndexOptimization(bool const allowCoveringIndexOptimization) {
+    _documentProducingFunctionContext.setAllowCoveringIndexOptimization(allowCoveringIndexOptimization);
+  }
+
+  /// @brief whether or not we are allowed to use the covering index
+  /// optimization in a callback
+  bool getAllowCoveringIndexOptimization() const noexcept {
+    return _documentProducingFunctionContext.getAllowCoveringIndexOptimization();
+  }
 
  private:
   Infos& _infos;
   Fetcher& _fetcher;
   DocumentProducingFunction _documentProducer;
+  DocumentProducingFunctionContext _documentProducingFunctionContext;
   ExecutionState _state;
   InputAqlItemRow _input;
   std::unique_ptr<OperationCursor> _cursor;
-  bool _allowCoveringIndexOptimization;
   bool _cursorHasMore;
 };
 

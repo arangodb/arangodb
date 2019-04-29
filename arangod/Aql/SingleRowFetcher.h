@@ -37,7 +37,7 @@ namespace aql {
 
 class AqlItemBlock;
 template <bool>
-class BlockFetcher;
+class DependencyProxy;
 
 /**
  * @brief Interface for all AqlExecutors that do only need one
@@ -50,11 +50,11 @@ class BlockFetcher;
 template <bool passBlocksThrough>
 class SingleRowFetcher {
  public:
-  explicit SingleRowFetcher(BlockFetcher<passBlocksThrough>& executionBlock);
+  explicit SingleRowFetcher(DependencyProxy<passBlocksThrough>& executionBlock);
   TEST_VIRTUAL ~SingleRowFetcher() = default;
 
  protected:
-  // only for testing! Does not initialize _blockFetcher!
+  // only for testing! Does not initialize _dependencyProxy!
   SingleRowFetcher();
 
  public:
@@ -127,7 +127,7 @@ class SingleRowFetcher {
   }
 
  private:
-  BlockFetcher<passBlocksThrough>* _blockFetcher;
+  DependencyProxy<passBlocksThrough>* _dependencyProxy;
 
   /**
    * @brief Holds state returned by the last fetchBlock() call.
@@ -169,7 +169,7 @@ class SingleRowFetcher {
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
   RegisterId getNrInputRegisters() const {
-    return _blockFetcher->getNrInputRegisters();
+    return _dependencyProxy->getNrInputRegisters();
   }
   bool indexIsValid() const;
 

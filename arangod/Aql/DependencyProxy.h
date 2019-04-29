@@ -41,15 +41,15 @@ namespace aql {
  * necessary for the row Fetchers. Makes it easier to test the Fetchers.
  */
 template <bool allowBlockPassthrough>
-class BlockFetcher {
+class DependencyProxy {
  public:
   /**
    * @brief Interface to fetch AqlItemBlocks from upstream with getSome.
    * @param dependencies Dependencies of the current ExecutionBlock. Must
-   *                     contain EXACTLY ONE element. Otherwise, BlockFetcher
+   *                     contain EXACTLY ONE element. Otherwise, DependencyProxy
    *                     may be instantiated, but never used. It is allowed to
    *                     pass a reference to an empty vector, but as soon as
-   *                     the BlockFetcher is used, the condition must be
+   *                     the DependencyProxy is used, the condition must be
    *                     satisfied.
    * @param itemBlockManager All blocks fetched via dependencies[0]->getSome()
    *                         will later be returned to this AqlItemBlockManager.
@@ -62,12 +62,12 @@ class BlockFetcher {
    * The constructor MAY NOT access the dependencies, nor the itemBlockManager.
    * This is because the dependencies will be added to the ExecutionBlock only
    * after construction, and to allow derived subclasses for testing (read
-   * BlockFetcherMock) to create them *after* the parent class was constructed.
+   * DependencyProxyMock) to create them *after* the parent class was constructed.
    */
-  BlockFetcher(std::vector<ExecutionBlock*> const& dependencies,
-               AqlItemBlockManager& itemBlockManager,
-               std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
-               RegisterId nrInputRegisters)
+  DependencyProxy(std::vector<ExecutionBlock*> const& dependencies,
+                  AqlItemBlockManager& itemBlockManager,
+                  std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
+                  RegisterId nrInputRegisters)
       : _dependencies(dependencies),
         _itemBlockManager(itemBlockManager),
         _inputRegisters(std::move(inputRegisters)),
@@ -76,7 +76,7 @@ class BlockFetcher {
         _blockPassThroughQueue(),
         _currentDependency(0) {}
 
-  TEST_VIRTUAL ~BlockFetcher() = default;
+  TEST_VIRTUAL ~DependencyProxy() = default;
 
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
@@ -113,6 +113,12 @@ class BlockFetcher {
     return _dependencies.size();
   }
 
+  inline void reset() {
+    _blockQueue.clear();
+    _blockPassThroughQueue.clear();
+    _currentDependency = 0;
+  }
+
  protected:
   inline AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
   inline AqlItemBlockManager const& itemBlockManager() const {
@@ -142,9 +148,11 @@ class BlockFetcher {
   AqlItemBlockManager& _itemBlockManager;
   std::shared_ptr<std::unordered_set<RegisterId> const> const _inputRegisters;
   RegisterId const _nrInputRegisters;
-  std::queue<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockQueue;
+
+  // A queue would suffice, but for the clear() call in reset().
+  std::deque<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockQueue;
   // only used in case of allowBlockPassthrough:
-  std::queue<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockPassThroughQueue;
+  std::deque<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockPassThroughQueue;
   // only modified in case of multiple dependencies + Passthrough otherwise always 0
   size_t _currentDependency;
 };

@@ -89,11 +89,10 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AllRowsFetcherTest.cpp
   Aql/AqlItemBlockHelper.cpp
   Aql/AqlItemRowTest.cpp
-  Aql/BlockFetcherHelper.cpp
-  Aql/BlockFetcherMock.cpp
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
+  Aql/DependencyProxyMock.cpp
   Aql/DistinctCollectExecutorTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
   Aql/EnumerateCollectionExecutorTest.cpp
@@ -108,6 +107,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/NoResultsExecutorTest.cpp
   Aql/RestAqlHandlerTest.cpp
   Aql/ReturnExecutorTest.cpp
+  Aql/RowFetcherHelper.cpp
   Aql/ShortestPathExecutorTest.cpp
   Aql/SingleRowFetcherTest.cpp
   Aql/SortExecutorTest.cpp
@@ -171,6 +171,7 @@ set(ARANGODB_TESTS_SOURCES
   Geo/GeoFunctionsTest.cpp
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
+  Graph/GraphTestTools.cpp
   Graph/ClusterTraverserCacheTest.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/KShortestPathsFinder.cpp

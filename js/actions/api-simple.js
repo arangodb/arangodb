@@ -73,6 +73,7 @@ function createCursorResponse (req, res, cursor) {
 
 actions.defineHttp({
   url: API + 'any',
+  isSystem: false,
 
   callback: function (req, res) {
     try {
@@ -108,6 +109,7 @@ actions.defineHttp({
 
 actions.defineHttp({
   url: API + 'near',
+  isSystem: false,
 
   callback: function (req, res) {
     try {
@@ -172,6 +174,7 @@ actions.defineHttp({
 
 actions.defineHttp({
   url: API + 'within',
+  isSystem: false,
 
   callback: function (req, res) {
     try {
@@ -236,6 +239,7 @@ actions.defineHttp({
 
 actions.defineHttp({
   url: API + 'within-rectangle',
+  isSystem: false,
 
   callback: function (req, res) {
     try {
@@ -300,6 +304,7 @@ actions.defineHttp({
 
 actions.defineHttp({
   url: API + 'fulltext',
+  isSystem: false,
 
   callback: function (req, res) {
     try {
@@ -352,6 +357,7 @@ actions.defineHttp({
 
 actions.defineHttp({
   url: API + 'first-example',
+  isSystem: false,
 
   callback: function (req, res) {
     try {
@@ -394,6 +400,7 @@ actions.defineHttp({
 
 actions.defineHttp({
   url: API + 'range',
+  isSystem: false,
 
   callback: function (req, res) {
     try {
@@ -449,6 +456,7 @@ actions.defineHttp({
 
 actions.defineHttp({
   url: API + 'remove-by-example',
+  isSystem: false,
 
   callback: function (req, res) {
     try {
@@ -497,6 +505,7 @@ actions.defineHttp({
 
 actions.defineHttp({
   url: API + 'replace-by-example',
+  isSystem: false,
 
   callback: function (req, res) {
     try {
@@ -548,6 +557,7 @@ actions.defineHttp({
 
 actions.defineHttp({
   url: API + 'update-by-example',
+  isSystem: false,
 
   callback: function (req, res) {
     try {

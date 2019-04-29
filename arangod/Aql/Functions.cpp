@@ -1086,15 +1086,11 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
   // JavaScript function (this includes user-defined functions)
   {
     ISOLATE;
-    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
+    v8::HandleScope scope(isolate);                                   \
 
     Query* query = expressionContext->query();
     TRI_ASSERT(query != nullptr);
     query->prepareV8Context();
-
-    auto old = v8g->_query;
-    v8g->_query = query;
-    TRI_DEFER(v8g->_query = old);
 
     std::string jsName;
     int const n = static_cast<int>(invokeParams.size());

@@ -292,10 +292,7 @@ void ImportFeature::start() {
   bool createdDatabase = false;
 
   auto successfulConnection = [&]() {
-    std::cout << "Connected to ArangoDB '"
-              << _httpClient->getEndpointSpecification() << "', version "
-              << versionString << ", database: '" << client->databaseName()
-              << "', username: '" << client->username() << "'" << std::endl;
+    std::cout << ClientFeature::buildConnectedMessage(_httpClient->getEndpointSpecification(), versionString, /*role*/ "", /*mode*/ "", client->databaseName(), client->username()) << std::endl;
 
     std::cout << "----------------------------------------" << std::endl;
     std::cout << "database:               " << client->databaseName() << std::endl;

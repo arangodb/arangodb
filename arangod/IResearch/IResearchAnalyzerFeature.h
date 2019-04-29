@@ -138,7 +138,10 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   /// @param name analyzer name (already normalized)
   /// @return analyzer with the specified name or nullptr
   //////////////////////////////////////////////////////////////////////////////
-  AnalyzerPool::ptr get(irs::string_ref const& name) const noexcept;
+  AnalyzerPool::ptr get( // find analyzer
+    irs::string_ref const& name, // analyzer name
+    bool onlyCached = false // check only locally cached analyzers
+  ) const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find analyzer

@@ -217,6 +217,8 @@ class OutputAqlItemRow {
   /*
    * @brief Returns the number of rows left. *Always* includes the current row,
    *        whether it was already written or not!
+   *        NOTE that we later want to replace this with some "atMost" value
+   *        passed from ExecutionBlockImpl.
    */
   size_t numRowsLeft() const { return block().size() - _baseIndex; }
 

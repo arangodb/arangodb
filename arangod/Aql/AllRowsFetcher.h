@@ -35,7 +35,7 @@ namespace aql {
 
 class AqlItemBlock;
 template <bool>
-class BlockFetcher;
+class DependencyProxy;
 
 /**
  * @brief Interface for all AqlExecutors that do need all
@@ -43,12 +43,12 @@ class BlockFetcher;
  */
 class AllRowsFetcher {
  public:
-  explicit AllRowsFetcher(BlockFetcher<false>& executionBlock);
+  explicit AllRowsFetcher(DependencyProxy<false>& executionBlock);
 
   TEST_VIRTUAL ~AllRowsFetcher() = default;
 
  protected:
-  // only for testing! Does not initialize _blockFetcher!
+  // only for testing! Does not initialize _dependencyProxy!
   AllRowsFetcher() = default;
 
  public:
@@ -105,7 +105,7 @@ class AllRowsFetcher {
   ExecutionState upstreamState();
 
  private:
-  BlockFetcher<false>* _blockFetcher;
+  DependencyProxy<false>* _dependencyProxy;
 
   std::unique_ptr<AqlItemMatrix> _aqlItemMatrix;
   ExecutionState _upstreamState;

@@ -21,6 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "RestEngineHandler.h"
 #include "Rest/HttpRequest.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -39,13 +40,13 @@ RestEngineHandler::RestEngineHandler(GeneralRequest* request, GeneralResponse* r
 RestStatus RestEngineHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
-
-  if (type == rest::RequestType::GET) {
-    handleGet();
+  
+  if (type != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
-
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  
+  handleGet();
   return RestStatus::DONE;
 }
 
@@ -58,11 +59,24 @@ void RestEngineHandler::handleGet() {
     return;
   }
 
-  if (suffixes.size() == 0) {
+  if (suffixes.empty()) {
     getCapabilities();
-  } else {
-    getStats();
+    return;
   }
+
+  ServerSecurityFeature* security =
+      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
+          "ServerSecurity");
+  TRI_ASSERT(security != nullptr);
+
+  if (!security->canAccessHardenedApi()) {
+    // dont leak information about server internals here
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    return; 
+  }
+
+  // access to engine stats is disallowed in hardened mode
+  getStats();
 }
 
 void RestEngineHandler::getCapabilities() {

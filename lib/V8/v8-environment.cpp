@@ -20,6 +20,8 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/Common.h"
 #include "v8-utils.h"
 
@@ -34,6 +36,24 @@ extern char** environ;
 #endif
 #endif
 
+static bool canExpose(v8::Isolate* isolate, v8::Local<v8::Name> property) {
+  if (property->IsSymbol()) {
+    return false;
+  }
+  v8::String::Utf8Value const key(isolate, property);
+  std::string utf8String(*key, key.length());
+
+  if (utf8String == "hasOwnProperty") {
+    return true;
+  }
+
+  arangodb::V8SecurityFeature* v8security =
+      arangodb::application_features::ApplicationServer::getFeature<arangodb::V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+  return v8security->shouldExposeEnvironmentVariable(isolate, utf8String);
+}
+
 static void EnvGetter(v8::Local<v8::Name> property,
                       const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
@@ -41,6 +61,10 @@ static void EnvGetter(v8::Local<v8::Name> property,
   if (property->IsSymbol()) {
     return args.GetReturnValue().SetUndefined();
   }
+  if (!canExpose(isolate, property)) {
+    return args.GetReturnValue().SetUndefined();
+  }
+
 #ifndef _WIN32
   v8::String::Utf8Value const key(isolate, property);
   char const* val = getenv(*key);
@@ -70,6 +94,10 @@ static void EnvSetter(v8::Local<v8::Name> property, v8::Local<v8::Value> value,
                       const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
+
+  if (!canExpose(isolate, property)) {
+    TRI_V8_RETURN(value);
+  }
 #ifndef _WIN32
   v8::String::Utf8Value key(isolate, property);
   v8::String::Utf8Value val(isolate, value);
@@ -91,7 +119,11 @@ static void EnvQuery(v8::Local<v8::Name> property,
                      const v8::PropertyCallbackInfo<v8::Integer>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
+
   int32_t rc = -1;  // Not found unless proven otherwise.
+  if (!canExpose(isolate, property)) {
+    return;
+  }
 #ifndef _WIN32
   v8::String::Utf8Value key(isolate, property);
   if (getenv(*key)) {
@@ -120,6 +152,9 @@ static void EnvDeleter(v8::Local<v8::Name> property,
                        const v8::PropertyCallbackInfo<v8::Boolean>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
+  if (!canExpose(isolate, property)) {
+    TRI_V8_RETURN_FALSE();
+  }
 #ifndef _WIN32
   v8::String::Utf8Value key(isolate, property);
   bool rc = getenv(*key) != nullptr;
@@ -151,14 +186,17 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
     size++;
   }
 
-  v8::Local<v8::Array> envarr = v8::Array::New(isolate, size);
+  v8::Local<v8::Array> envarr = v8::Array::New(isolate);
 
+  int j = 0;
   for (int i = 0; i < size; ++i) {
     char const* var = environ[i];
     char const* s = strchr(var, '=');
     size_t const length = s ? s - var : strlen(var);
     v8::Local<v8::String> name = TRI_V8_PAIR_STRING(isolate, var, length);
-    envarr->Set(i, name);
+    if (canExpose(isolate, name)) {
+      envarr->Set(j++, name);
+    }
   }
 #else  // _WIN32
   WCHAR* environment = GetEnvironmentStringsW();
@@ -182,7 +220,9 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
     size_t const two_byte_buffer_len = s - p;
     auto value = TRI_V8_STRING_UTF16(isolate, two_byte_buffer, (int)two_byte_buffer_len);
 
-    envarr->Set(i, value);
+    if (canExpose(isolate, value)) {
+      envarr->Set(i, value);
+    }
     p = s + wcslen(s) + 1;
     i++;
   }
