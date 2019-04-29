@@ -174,10 +174,10 @@ bool IResearchLinkMeta::init( // initialize meta
 
   {
     // optional sort
-    static VPackStringRef const fieldName("sort");
+    static VPackStringRef const fieldName("primarySort");
 
     auto const field = slice.get(fieldName);
-    mask->_sort = !field.isNone();
+    mask->_sort = field.isArray();
 
     if (readAnalyzerDefinition && mask->_sort) {
       if (!_sort.fromVelocyPack(field, errorField)) {
@@ -547,8 +547,10 @@ bool IResearchLinkMeta::json( // append meta jSON
   if (writeAnalyzerDefinition
       && (!ignoreEqual || _sort != ignoreEqual->_sort)
       && (!mask || mask->_sort)) {
-    arangodb::velocypack::ObjectBuilder scope(&builder, "sort");
-    _sort.toVelocyPack(builder);
+    velocypack::ArrayBuilder arrayScope(&builder, "primarySort");
+    if (!_sort.toVelocyPack(builder)) {
+      return false;
+    }
   }
 
   std::map<std::string, IResearchAnalyzerFeature::AnalyzerPool::ptr> analyzers;

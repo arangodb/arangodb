@@ -109,7 +109,7 @@ class IResearchViewSort {
 
   size_t memory() const noexcept;
 
-  void toVelocyPack(velocypack::Builder& builder) const;
+  bool toVelocyPack(velocypack::Builder& builder) const;
   bool fromVelocyPack(velocypack::Slice, std::string& error);
 
  private:

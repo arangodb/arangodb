@@ -1272,7 +1272,7 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
                           "testVocbase");
     // create view
     auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"sort\" : { \"primary\": [ { \"field\":\"_key\", \"direction\":\"desc\"} ] } }");
+        "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"primarySort\" : [ { \"field\":\"_key\", \"direction\":\"desc\"} ] }");
     auto logicalView = vocbase.createView(createJson->slice());
     REQUIRE((false == !logicalView));
     auto& viewImpl = arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView);

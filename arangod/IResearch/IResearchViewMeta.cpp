@@ -557,7 +557,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional object
-    static VPackStringRef const fieldName("sort");
+    static VPackStringRef const fieldName("primarySort");
     std::string errorSubField;
 
     auto const field = slice.get(fieldName);
@@ -580,8 +580,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
 bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
                              IResearchViewMeta const* ignoreEqual /*= nullptr*/,
-                             Mask const* mask /*= nullptr*/
-                             ) const {
+                             Mask const* mask /*= nullptr*/) const {
   if (!builder.isOpenObject()) {
     return false;
   }
@@ -636,8 +635,10 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
   }
 
   if ((!ignoreEqual || _primarySort != ignoreEqual->_primarySort) && (!mask || mask->_primarySort)) {
-    velocypack::ObjectBuilder scope(&builder, "sort");
-    _primarySort.toVelocyPack(builder);
+    velocypack::ArrayBuilder arrayScope(&builder, "primarySort");
+    if (!_primarySort.toVelocyPack(builder)) {
+      return false;
+    }
   }
 
   return true;

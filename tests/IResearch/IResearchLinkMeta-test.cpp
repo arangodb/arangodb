@@ -510,12 +510,10 @@ SECTION("test_writeDefaults") {
       && tmpSlice.at(0).get("properties").isNull()
       && tmpSlice.at(0).get("features").isArray() && 2 == tmpSlice.at(0).get("features").length() // frequency+norm
     ));
-    tmpSlice = slice.get("sort");
+    tmpSlice = slice.get("primarySort");
     CHECK((
-      true == tmpSlice.isObject()
-      && 1 == tmpSlice.length()
-      && tmpSlice.get("primary").isArray()
-      && 0 == tmpSlice.get("primary").length()
+      true == tmpSlice.isArray()
+      && 0 == tmpSlice.length()
     ));
   }
 
@@ -590,12 +588,10 @@ SECTION("test_writeDefaults") {
       && tmpSlice.at(0).get("properties").isNull()
       && tmpSlice.at(0).get("features").isArray() && 2 == tmpSlice.at(0).get("features").length() // frequency+norm
     ));
-    tmpSlice = slice.get("sort");
+    tmpSlice = slice.get("primarySort");
     CHECK((
-      true == tmpSlice.isObject()
-      && 1 == tmpSlice.length()
-      && tmpSlice.get("primary").isArray()
-      && 0 == tmpSlice.get("primary").length()
+      true == tmpSlice.isArray()
+      && 0 == tmpSlice.length()
     ));
   }
 }
@@ -873,8 +869,8 @@ SECTION("test_writeCustomizedValues") {
     CHECK((true == expectedAnalyzerDefinitions.empty()));
 
     std::string errorField;
-    tmpSlice = slice.get("sort");
-    CHECK(tmpSlice.isObject());
+    tmpSlice = slice.get("primarySort");
+    CHECK(tmpSlice.isArray());
     arangodb::iresearch::IResearchViewSort sort;
     CHECK(sort.fromVelocyPack(tmpSlice, errorField));
     CHECK(2 == sort.size());
@@ -1116,10 +1112,7 @@ SECTION("test_writeCustomizedValues") {
     CHECK((true == expectedAnalyzerDefinitions.empty()));
 
     std::string errorField;
-    tmpSlice = slice.get("sort");
-    CHECK(tmpSlice.isObject());
-    CHECK(1 == tmpSlice.length());
-    tmpSlice = tmpSlice.get("primary");
+    tmpSlice = slice.get("primarySort");
     CHECK(tmpSlice.isArray());
     CHECK(2 == tmpSlice.length());
 
@@ -1219,7 +1212,7 @@ SECTION("test_writeMaskAll") {
     CHECK(true == slice.hasKey("storeValues"));
     CHECK(true == slice.hasKey("analyzers"));
     CHECK(true == slice.hasKey("analyzerDefinitions"));
-    CHECK(true == slice.hasKey("sort"));
+    CHECK(true == slice.hasKey("primarySort"));
   }
 }
 

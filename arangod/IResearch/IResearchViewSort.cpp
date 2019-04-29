@@ -65,8 +65,10 @@ bool parseDirection(arangodb::velocypack::Slice slice, bool& direction) {
 namespace arangodb {
 namespace iresearch {
 
-void IResearchViewSort::toVelocyPack(velocypack::Builder& builder) const {
-  arangodb::velocypack::ArrayBuilder primarySortBulder(&builder, "primary");
+bool IResearchViewSort::toVelocyPack(velocypack::Builder& builder) const {
+  if (!builder.isOpenArray()) {
+    return false;
+  }
 
   std::string fieldName;
   auto visitor = [&builder, &fieldName](std::vector<basics::AttributeName> const& field, bool direction) {
@@ -80,24 +82,16 @@ void IResearchViewSort::toVelocyPack(velocypack::Builder& builder) const {
     return true;
   };
 
-  visit(visitor);
+  return visit(visitor);
 }
 
 bool IResearchViewSort::fromVelocyPack(
     velocypack::Slice slice,
     std::string& error) {
-  static std::string const primarySortFieldName = "primary";
   static std::string const directionFieldName = "direction";
   static std::string const fieldName = "field";
 
-  if (!slice.isObject()) {
-    return false;
-  }
-
-  slice = slice.get(primarySortFieldName);
-
   if (!slice.isArray()) {
-    error = primarySortFieldName;
     return false;
   }
 
@@ -106,21 +100,21 @@ bool IResearchViewSort::fromVelocyPack(
 
   for (auto sortSlice : velocypack::ArrayIterator(slice)) {
     if (!sortSlice.isObject()) {
-      error = primarySortFieldName + "[" + std::to_string(size()) + "]";
+      error = "[" + std::to_string(size()) + "]";
       return false;
     }
 
     bool direction;
 
     if (!parseDirection(sortSlice.get(directionFieldName), direction)) {
-      error = primarySortFieldName + "[" + std::to_string(size()) + "]=>" + directionFieldName;
+      error = "[" + std::to_string(size()) + "]=>" + directionFieldName;
       return false;
     }
 
     auto const fieldSlice = sortSlice.get(fieldName);
 
     if (!fieldSlice.isString()) {
-      error = primarySortFieldName + "[" + std::to_string(size()) + "]=>" + fieldName;
+      error = "[" + std::to_string(size()) + "]=>" + fieldName;
       return false;
     }
 
@@ -132,7 +126,7 @@ bool IResearchViewSort::fromVelocyPack(
       );
     } catch (...) {
       // FIXME why doesn't 'TRI_ParseAttributeString' return bool?
-      error = primarySortFieldName + "[" + std::to_string(size()) + "]=>" + fieldName;
+      error = "[" + std::to_string(size()) + "]=>" + fieldName;
       return false;
     }
 

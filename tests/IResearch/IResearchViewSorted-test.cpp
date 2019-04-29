@@ -220,7 +220,7 @@ TEST_CASE("IResearchViewSortedTest", "[iresearch][iresearch-query]") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
-    \"sort\": { \"primary\": [ { \"field\" : \"seq\", \"direction\": \"desc\" } ] } \
+    \"primarySort\": [ { \"field\" : \"seq\", \"direction\": \"desc\" } ] \
   }");
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
