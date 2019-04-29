@@ -714,7 +714,7 @@ arangodb::Result IResearchLink::init(
   std::string error;
   IResearchLinkMeta meta;
 
-  if (!meta.init(definition, error, &(collection().vocbase()))) { // definition should already be normalized and analyzers created if required
+  if (!meta.init(definition, true, error, &(collection().vocbase()))) { // definition should already be normalized and analyzers created if required
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error parsing view link parameters from json: ") + error
@@ -732,14 +732,14 @@ arangodb::Result IResearchLink::init(
   auto viewId = definition.get(StaticStrings::ViewIdField).copyString();
   auto& vocbase = _collection.vocbase();
 
-  if (arangodb::ServerState::instance()->isCoordinator()) {  // coordinator link
+  if (arangodb::ServerState::instance()->isCoordinator()) { // coordinator link
     auto* ci = arangodb::ClusterInfo::instance();
 
     if (!ci) {
-      return arangodb::Result(TRI_ERROR_INTERNAL,
-                              std::string("failure to get storage engine while "
-                                          "initializing arangosearch link '") +
-                                  std::to_string(_id) + "'");
+      return arangodb::Result( // result
+        TRI_ERROR_INTERNAL, // code
+        std::string("failure to get storage engine while initializing arangosearch link '") + std::to_string(_id) + "'"
+      );
     }
 
     auto logicalView = ci->getView(vocbase.name(), viewId);
@@ -747,37 +747,24 @@ arangodb::Result IResearchLink::init(
     // if there is no logicalView present yet then skip this step
     if (logicalView) {
       if (arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
-        return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                std::string("error finding view: '") + viewId +
-                                    "' for link '" + std::to_string(_id) +
-                                    "' : no such view");
-      }
-
-      auto* view =
-          arangodb::LogicalView::cast<IResearchViewCoordinator>(logicalView.get());
-
-      if (!view) {
-        return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                std::string("error finding view: '") + viewId +
-                                    "' for link '" + std::to_string(_id) + "'");
-      }
-
-      viewId = view->guid();  // ensue that this is a GUID (required by
-                              // operator==(IResearchView))
-
-      arangodb::velocypack::Builder builder;
-
-      builder.openObject();
-
-      // FIXME TODO move this logic into IResearchViewCoordinator
-      if (!meta.json(builder, false)) { // generate user-visible definition
         return arangodb::Result( // result
-          TRI_ERROR_INTERNAL, // code
-          std::string("failed to generate link definition while initializing link '") + std::to_string(_id) + "'"
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, // code
+          std::string("error finding view: '") + viewId + "' for link '" + std::to_string(_id) + "' : no such view"
         );
       }
 
-      builder.close();
+      auto* view = arangodb::LogicalView::cast<IResearchViewCoordinator>( // cast view
+        logicalView.get() // args
+      );
+
+      if (!view) {
+        return arangodb::Result( // result
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, // code
+          std::string("error finding view: '") + viewId + "' for link '" + std::to_string(_id) + "'"
+        );
+      }
+
+      viewId = view->guid(); // ensue that this is a GUID (required by operator==(IResearchView))
       std::swap(const_cast<IResearchLinkMeta&>(_meta), meta); // required for IResearchViewCoordinator which calls IResearchLink::properties(...)
 
       auto revert = irs::make_finally([this, &meta]()->void { // revert '_meta'
@@ -1008,7 +995,7 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback) 
     if (!ref) {
       return arangodb::Result( // result
         TRI_ERROR_ARANGO_ILLEGAL_STATE, // code
-        std::string("failed to find checkpoint file matching the latest data store state for arangosearch link '") + std::to_string(id()) + "', path: " + _dataStore._path.utf8()
+        std::string("failed to find checkpoint file matching the latest data store state for arangosearch link '") + std::to_string(id()) + "', expecting file '" + checkpointFile + "' in path: " + _dataStore._path.utf8()
       );
     }
 
@@ -1461,7 +1448,7 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
   IResearchLinkMeta other;
   std::string errorField;
 
-  return other.init(slice, errorField, &(collection().vocbase())) // for db-server analyzer validation should have already apssed on coordinator (missing analyzer == no match)
+  return other.init(slice, true, errorField, &(collection().vocbase())) // for db-server analyzer validation should have already apssed on coordinator (missing analyzer == no match)
     && _meta == other;
 }
 
@@ -1686,6 +1673,8 @@ arangodb::Result IResearchLink::walFlushMarker( // process marker
     );
   }
 
+  auto valueRef = getStringRef(value);
+
   SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock); // '_dataStore' can be asynchronously modified
 
   if (!*_asyncSelf) {
@@ -1699,16 +1688,17 @@ arangodb::Result IResearchLink::walFlushMarker( // process marker
 
   switch (_dataStore._recovery) {
    case RecoveryState::BEFORE_CHECKPOINT:
-    if (value.copyString() == _dataStore._recovery_range_start) {
+    if (valueRef == _dataStore._recovery_range_start) {
       _dataStore._recovery = RecoveryState::DURING_CHECKPOINT; // do insert with matching remove
     }
 
     break;
    case RecoveryState::DURING_CHECKPOINT:
-    _dataStore._recovery = // current recovery state
-      value.copyString() == _dataStore._recovery_reader.meta().filename
-      ? RecoveryState::AFTER_CHECKPOINT // do insert without matching remove
-      : RecoveryState::BEFORE_CHECKPOINT; // ignore inserts (scenario for initial state before any checkpoints were seen)
+    if (valueRef == _dataStore._recovery_reader.meta().filename) {
+      _dataStore._recovery = RecoveryState::AFTER_CHECKPOINT; // do insert without matching remove
+    } else if (valueRef != _dataStore._recovery_range_start) { // fake 'DURING_CHECKPOINT' set in initDataStore(...) as initial value to cover worst case and not in that case (seen another checkpoint)
+      _dataStore._recovery = RecoveryState::BEFORE_CHECKPOINT; // ignore inserts (scenario for initial state before any checkpoints were seen)
+    } // else fake 'DURING_CHECKPOINT' set in initDataStore(...) as initial value to cover worst case and actually in that case (leave as is)
     break;
    case RecoveryState::AFTER_CHECKPOINT:
     break; // NOOP

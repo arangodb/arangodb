@@ -30,8 +30,8 @@
 #include <queue>
 
 #include "Aql/AllRowsFetcher.h"
-#include "Aql/BlockFetcher.h"
 #include "Aql/ConstFetcher.h"
+#include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
@@ -40,7 +40,6 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "OutputAqlItemRow.h"
-
 
 namespace arangodb {
 namespace aql {
@@ -70,7 +69,7 @@ class ExecutionEngine;
  *             // Whether input blocks can be reused as output blocks. This
  *             // can be true if:
  *             // - There will be exactly one output row per input row.
- *             // - produceRow() for row i will be called after fetchRow() of
+ *             // - produceRows() for row i will be called after fetchRow() of
  *             //   row i.
  *             // - The order of rows is preserved. i.e. preservesOrder
  *             // - The register planning must reserve the output register(s),
@@ -84,20 +83,24 @@ class ExecutionEngine;
  *
  *           } properties;
  *           Executor(Fetcher&, Infos&);
- *           std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+ *           std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
  *         }
  *         The Executor is the implementation of one AQLNode.
- *         It is only allowed to produce one outputRow at a time, but can fetch
- *         as many rows from above as it likes. It can only follow the
- *         xxxFetcher interface to get AqlItemRows from Upstream.
+ *         It may produce zero, one, or multiple outputRows at a time. The
+ *         OutputAqlItemRow imposes a restriction (e.g. atMost) on how many.
+ *         Currently, this is just the size of the block (because this is always
+ *         restricted by atMost anyway). Later this may be replaced by a
+ *         separate limit. It can fetch as many rows from above as it likes.
+ *         It can only follow the xxxFetcher interface to get AqlItemRows from
+ *         Upstream.
  */
 template <class Executor>
 class ExecutionBlockImpl final : public ExecutionBlock {
   using Fetcher = typename Executor::Fetcher;
   using ExecutorStats = typename Executor::Stats;
   using Infos = typename Executor::Infos;
-  using BlockFetcher =
-      typename aql::BlockFetcher<Executor::Properties::allowsBlockPassthrough>;
+  using DependencyProxy =
+      typename aql::DependencyProxy<Executor::Properties::allowsBlockPassthrough>;
 
   static_assert(
       !Executor::Properties::allowsBlockPassthrough || Executor::Properties::preservesOrder,
@@ -212,7 +215,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * @brief Used to allow the row Fetcher to access selected methods of this
    *        ExecutionBlock object.
    */
-  BlockFetcher _blockFetcher;
+  DependencyProxy _dependencyProxy;
 
   /**
    * @brief Fetcher used by the Executor. Calls this->fetchBlock() and handles

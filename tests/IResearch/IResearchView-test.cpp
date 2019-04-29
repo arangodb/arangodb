@@ -3989,7 +3989,7 @@ SECTION("test_update_overwrite") {
           CHECK((
             true == value.isObject()
             && expectedItr != expectedLinkMeta.end()
-            && linkMeta.init(value, error)
+            && linkMeta.init(value, false, error)
             && expectedItr->second == linkMeta
           ));
           expectedLinkMeta.erase(expectedItr);
@@ -4144,7 +4144,7 @@ SECTION("test_update_overwrite") {
           CHECK((
             true == value.isObject()
             && expectedItr != expectedLinkMeta.end()
-            && linkMeta.init(value, error)
+            && linkMeta.init(value, false, error)
             && expectedItr->second == linkMeta
           ));
           expectedLinkMeta.erase(expectedItr);
@@ -4225,7 +4225,7 @@ SECTION("test_update_overwrite") {
           CHECK((
             true == value.isObject()
             && expectedItr != expectedLinkMeta.end()
-            && linkMeta.init(value, error)
+            && linkMeta.init(value, false, error)
             && expectedItr->second == linkMeta
           ));
           expectedLinkMeta.erase(expectedItr);
@@ -5199,7 +5199,7 @@ SECTION("test_update_partial") {
           CHECK((
             true == value.isObject()
             && expectedItr != expectedLinkMeta.end()
-            && linkMeta.init(value, error)
+            && linkMeta.init(value, false, error)
             && expectedItr->second == linkMeta
           ));
           expectedLinkMeta.erase(expectedItr);
@@ -5281,7 +5281,7 @@ SECTION("test_update_partial") {
           CHECK((
             true == value.isObject()
             && expectedItr != expectedLinkMeta.end()
-            && linkMeta.init(value, error)
+            && linkMeta.init(value, false, error)
             && expectedItr->second == linkMeta
           ));
           expectedLinkMeta.erase(expectedItr);
@@ -5438,7 +5438,7 @@ SECTION("test_update_partial") {
         CHECK((
           true == value.isObject()
           && expectedItr != expectedLinkMeta.end()
-          && linkMeta.init(value, error)
+          && linkMeta.init(value, false, error)
           && expectedItr->second == linkMeta
         ));
         expectedLinkMeta.erase(expectedItr);
@@ -5546,7 +5546,7 @@ SECTION("test_update_partial") {
         CHECK((
           true == value.isObject()
           && expectedItr != expectedLinkMeta.end()
-          && linkMeta.init(value, error)
+          && linkMeta.init(value, false, error)
           && expectedItr->second == linkMeta
         ));
         expectedLinkMeta.erase(expectedItr);

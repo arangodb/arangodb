@@ -178,9 +178,12 @@ class ProgramOptions {
   // prints the names for all section help options
   void printSectionsHelp() const;
 
-  // returns a VPack representation of the option values
+  // returns a VPack representation of the option values, with optional
+  // filters applied to filter out specific options. 
+  // the filter function is expected to return true
+  // for any options that should become part of the result
   arangodb::velocypack::Builder toVPack(bool onlyTouched, bool detailed,
-                                        std::unordered_set<std::string> const& exclude) const;
+                                        std::function<bool(std::string const&)> const& filter) const;
 
   // translate a shorthand option
   std::string translateShorthand(std::string const& name) const;

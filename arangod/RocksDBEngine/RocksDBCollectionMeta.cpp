@@ -172,10 +172,6 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
 
 /// @brief get the current count
 RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::loadCount() {
-  auto maxxSeq = std::numeric_limits<rocksdb::SequenceNumber>::max();
-  bool didWork = false;
-  const rocksdb::SequenceNumber commitSeq = committableSeq(maxxSeq);
-  applyAdjustments(commitSeq, didWork);
   return _count;
 }
 
@@ -200,7 +196,6 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   bool didWork = false;
-  // maxCommitSeq is == UINT64_MAX without any blockers
   const rocksdb::SequenceNumber maxCommitSeq = committableSeq(appliedSeq);
   const rocksdb::SequenceNumber commitSeq = applyAdjustments(maxCommitSeq, didWork);
   TRI_ASSERT(commitSeq <= appliedSeq);
@@ -260,6 +255,8 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
     RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
     if (est == nullptr) {  // does not have an estimator
+      LOG_TOPIC("ab329", TRACE, Logger::ENGINES)
+          << "index '" << idx->objectId() << "' does not have an estimator";
       continue;
     }
 
@@ -272,8 +269,8 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
       TRI_ASSERT(output.size() > sizeof(uint64_t));
 
       LOG_TOPIC("6b761", TRACE, Logger::ENGINES)
-          << "serialized estimate for index '" << idx->objectId()
-          << "' valid through seq " << appliedSeq;
+          << "serialized estimate for index '" << idx->objectId() << "' with estimate "
+          << est->computeEstimate() << " valid through seq " << appliedSeq;
 
       key.constructIndexEstimateValue(idx->objectId());
       rocksdb::Slice value(output);
@@ -282,6 +279,9 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
         LOG_TOPIC("ff233", WARN, Logger::ENGINES) << "writing index estimates failed";
         return res.reset(rocksutils::convertStatus(s));
       }
+    } else {
+      LOG_TOPIC("ab328", TRACE, Logger::ENGINES)
+          << "index '" << idx->objectId() << "' estimator does not need to be persisted";
     }
   }
 

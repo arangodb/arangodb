@@ -366,5 +366,43 @@
 
   // For compatibility with <= 3.3
   internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+
+  //arg1 can be a code or error object
+  internal.throwArangoError = function (arg1, message, httpCode) {
+    let errorNum;
+
+    if (typeof arg1 === "object" && typeof arg1.code === "number") {
+      errorNum = arg1.code;
+      if(message === undefined && arg1.message) {
+        message = arg1.message;
+      }
+    } else if ( typeof arg1 === "number" ) {
+      errorNum = arg1;
+    } else {
+      errorNum = internal.errors.ERROR_INTERNAL.code;
+    }
+
+    if (message === undefined) {
+      message = "could not resolve errorMessage";
+      for(var key in internal.errors) {
+        let attribute = internal.errors[key];
+        if(attribute.code === errorNum){
+          message = attribute.message;
+          break;
+        }
+      }
+    }
+
+    if (httpCode === undefined) {
+      httpCode = internal.errorNumberToHttpCode(errorNum);
+    }
+
+    throw new internal.ArangoError({
+      errorNum: errorNum,
+      errorMessage: message,
+      code: httpCode
+    });
+  };
+
 }());
 
