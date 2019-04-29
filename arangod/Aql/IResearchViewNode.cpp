@@ -751,8 +751,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
 
   if (!::fromVelocyPack(options, _options)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "failed to parse 'IResearchViewNode' options: " + options.toString());
+      TRI_ERROR_BAD_PARAMETER,
+      "failed to parse 'IResearchViewNode' options: " + options.toString());
   }
 
   // volatility mask
@@ -760,6 +760,22 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
 
   if (volatilityMaskSlice.isNumber()) {
     _volatilityMask = volatilityMaskSlice.getNumber<int>();
+  }
+
+  // primary sort
+  auto const primarySortSlice = base.get("primarySort");
+
+  if (primarySortSlice.isBool() && primarySortSlice.getBool()) {
+    TRI_ASSERT(_view);
+    auto& primarySort = LogicalView::cast<IResearchView>(*_view).primarySort();
+
+    if (primarySort.empty()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "primary sort for 'IResearchViewNode' is set, but view '" + _view->name() + "' is not sorted");
+    }
+
+    _sort = &primarySort; // set sort from corresponding view
   }
 }
 
@@ -841,6 +857,9 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) 
 
   // volatility mask
   nodes.add("volatility", VPackValue(_volatilityMask));
+
+  // primarySort
+  nodes.add("primarySort", VPackValue(nullptr != _sort));
 
   nodes.close();
 }
@@ -1078,6 +1097,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                                 getDepth()};
 
   if (_sort) {
+    TRI_ASSERT(!_sort->empty()); // guaranteed by optimizer rule
+
     if (!ordered) {
       return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false>>>(
           &engine, this, std::move(executorInfos));

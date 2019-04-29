@@ -644,6 +644,7 @@ IResearchViewMergeExecutor<ordered>::IResearchViewMergeExecutor(Fetcher& fetcher
     : Base{fetcher, infos},
       _heap_it{ MinHeapContext{ *infos.sort(), _segments } } {
   TRI_ASSERT(infos.sort());
+  TRI_ASSERT(!infos.sort()->empty());
   TRI_ASSERT(ordered == (infos.getNumScoreRegisters() != 0));
 }
 
