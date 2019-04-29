@@ -241,7 +241,7 @@ void IndexExecutor::createCursor() {
 // this is called every time we need to fetch data from the indexes
 bool IndexExecutor::readIndex(OutputAqlItemRow& output,
                               IndexIterator::DocumentCallback const& callback,
-                              size_t numWritten) {
+                              size_t& numWritten) {
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
   // again (although there might be multiple calls to this function).
@@ -284,6 +284,8 @@ bool IndexExecutor::readIndex(OutputAqlItemRow& output,
         res = getCursor()->nextDocument(callback, output.numRowsLeft());
       }
     }
+
+    numWritten += _documentProducingFunctionContext.getAndResetNumScanned();
 
     if (!res) {
       res = advanceCursor();
@@ -487,7 +489,7 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRo
     // At least one of them is prepared and ready to read.
     TRI_ASSERT(!getIndexesExhausted());
 
-    size_t numWritten = _documentProducingFunctionContext.getAndResetNumScanned();
+    size_t numWritten = 0;
 
     // Read the next elements from the indexes
     bool more = readIndex(output, callback, numWritten);
