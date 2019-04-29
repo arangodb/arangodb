@@ -123,12 +123,22 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief return list of shards related to the view (cluster only)
   std::vector<std::string>& shards() noexcept { return _shards; }
 
-  /// @brief return the condition to pass to the view
+  /// @brief return the scorers to pass to the view
   std::vector<Scorer> const& scorers() const noexcept { return _scorers; }
 
-  /// @brief set the sort condition to pass to the view
+  /// @brief set the scorers to pass to the view
   void scorers(std::vector<Scorer>&& scorers) noexcept {
     _scorers = std::move(scorers);
+  }
+
+  /// @return sort condition satisfied by a sorted index
+  IResearchViewSort const* sort() const noexcept {
+    return _sort;
+  }
+
+  /// @brief set sort condition satisfied by a sorted index
+  void sort(IResearchViewSort const* sort) noexcept {
+    _sort = sort;
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place

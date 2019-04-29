@@ -124,6 +124,14 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
 }
     
 bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
+  auto& view = arangodb::LogicalView::cast<IResearchView>(*viewNode.view());
+  auto& primarySort = view.primarySort();
+
+  if (primarySort.empty()) {
+    // use system sort
+    return false;
+  }
+
   std::unordered_map<VariableId, AstNode const*> variableDefinitions;
 
   ExecutionNode* current = static_cast<ExecutionNode*>(&viewNode);
@@ -181,9 +189,6 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       // unusable sort condition
       return false;
     }
-
-    auto& view = arangodb::LogicalView::cast<IResearchView>(*viewNode.view());
-    auto& primarySort = view.primarySort();
     
     // sort condition found, and sorting only by attributes!
 
@@ -227,7 +232,9 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         return false;
       }
     }
-  
+
+    assert(!primarySort.empty());
+    viewNode.sort(&primarySort);
     plan->unlinkNode(sortNode); 
     return true;
   }
