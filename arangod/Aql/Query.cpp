@@ -51,6 +51,7 @@
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
@@ -1176,7 +1177,8 @@ void Query::enterContext() {
                                        "V8 engine is disabled");
       }
       TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
-      _context = V8DealerFeature::DEALER->enterContext(&_vocbase, false);
+      JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createQueryContext();
+      _context = V8DealerFeature::DEALER->enterContext(&_vocbase, securityContext);
 
       if (_context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(

@@ -46,21 +46,20 @@ std::string toString(SingleBlockFetcher<false>&) {
 
 template <typename FetcherType>
 ModificationExecutorBase<FetcherType>::ModificationExecutorBase(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher), _prepared(false){};
+    : _infos(infos), _fetcher(fetcher), _prepared(false) {}
 
 template <typename Modifier, typename FetcherType>
 ModificationExecutor<Modifier, FetcherType>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
     : ModificationExecutorBase<FetcherType>(fetcher, infos), _modifier() {
   this->_infos._trx->pinData(this->_infos._aqlCollection->id());  // important for mmfiles
-  // LOG_DEVEL << toString(_modifier) << " "  << toString(this->_fetcher); // <-- enable this first when debugging modification problems
-};
+}
 
 template <typename Modifier, typename FetcherType>
 ModificationExecutor<Modifier, FetcherType>::~ModificationExecutor() = default;
 
 template <typename Modifier, typename FetcherType>
 std::pair<ExecutionState, typename ModificationExecutor<Modifier, FetcherType>::Stats>
-ModificationExecutor<Modifier, FetcherType>::produceRow(OutputAqlItemRow& output) {
+ModificationExecutor<Modifier, FetcherType>::produceRows(OutputAqlItemRow& output) {
   ExecutionState state = ExecutionState::HASMORE;
   ModificationExecutor::Stats stats;
 

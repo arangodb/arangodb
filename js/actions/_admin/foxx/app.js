@@ -118,6 +118,9 @@ function resolveAppInfo (appInfo, refresh) {
   return {source: appInfo};
 }
 
+// disable foxx manager routes / foxx-cli when foxx api is disabled
+if (!require("internal").isFoxxApiDisabled()) {
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief sets up a Foxx service
 // //////////////////////////////////////////////////////////////////////////////
@@ -125,6 +128,7 @@ function resolveAppInfo (appInfo, refresh) {
 actions.defineHttp({
   url: '_admin/foxx/setup',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -143,6 +147,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/teardown',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -161,6 +166,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/install',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -182,6 +188,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/uninstall',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -202,6 +209,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/replace',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -223,6 +231,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/upgrade',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -244,6 +253,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/configure',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -266,6 +276,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/configuration',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -283,6 +294,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/set-dependencies',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -305,6 +317,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/dependencies',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -334,6 +347,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/development',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -356,6 +370,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/tests',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -374,6 +389,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/script',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -385,3 +401,5 @@ actions.defineHttp({
     }
   })
 });
+
+} // end - if not foxx api disabled

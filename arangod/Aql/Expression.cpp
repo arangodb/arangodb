@@ -882,12 +882,8 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
   {
     ISOLATE;
     TRI_ASSERT(isolate != nullptr);
-    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
+    v8::HandleScope scope(isolate);                                   \
     _ast->query()->prepareV8Context();
-
-    auto old = v8g->_query;
-    v8g->_query = static_cast<void*>(_ast->query());
-    TRI_DEFER(v8g->_query = old);
 
     std::string jsName;
     size_t const n = static_cast<int>(member->numMembers());

@@ -40,8 +40,8 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
                                           arangodb::GeneralRequest* request,
                                           TRI_action_t const* action);
 
-void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context);
+void TRI_InitV8Actions(v8::Isolate* isolate);
 
-void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context);
+void TRI_InitV8ServerUtils(v8::Isolate* isolate);
 
 #endif

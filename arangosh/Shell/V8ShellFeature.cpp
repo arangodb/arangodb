@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -42,6 +43,7 @@
 #include "V8/V8LineEditor.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -78,6 +80,7 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
   startsAfter("BasicsPhase");
   startsAfter("Console");
   startsAfter("V8Platform");
+  startsAfter("V8Security");
   startsAfter("Random");
 }
 
@@ -95,7 +98,7 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--javascript.copy-directory",
-      "target directory to copy files from 'javascript.startup-directory' into"
+      "target directory to copy files from 'javascript.startup-directory' into "
       "(only used when `--javascript.copy-installation` is enabled)",
       new StringParameter(&_copyDirectory));
 
@@ -150,6 +153,11 @@ void V8ShellFeature::start() {
 
   v8::Isolate::Scope isolate_scope(_isolate);
   v8::HandleScope handle_scope(_isolate);
+
+  auto* isolate = _isolate;
+  TRI_GET_GLOBALS();
+  v8g = TRI_CreateV8Globals(isolate);
+  v8g->_securityContext = arangodb::JavaScriptSecurityContext::createAdminScriptContext();
 
   // create the global template
   v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(_isolate);
@@ -340,14 +348,11 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
     if (v8connection != nullptr) {
       if (v8connection->isConnected() &&
           v8connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
-        std::ostringstream is;
-
-        is << "Connected to ArangoDB '" << v8connection->endpointSpecification()
-           << "' version: " << v8connection->version() << " [" << v8connection->role() << ", "
-           << v8connection->mode() << "], database: '" << v8connection->databaseName()
-           << "', username: '" << v8connection->username() << "'";
-
-        _console->printLine(is.str());
+        std::string msg = ClientFeature::buildConnectedMessage(
+            v8connection->endpointSpecification(), v8connection->version(),
+            v8connection->role(), v8connection->mode(), v8connection->databaseName(),
+            v8connection->username());
+        _console->printLine(msg);
 
         if (v8connection->role() == "PRIMARY" || v8connection->role() == "DBSERVER") {
           std::string msg("WARNING: You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator");
@@ -998,6 +1003,10 @@ void V8ShellFeature::initGlobals() {
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
   ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
 
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+
   // try to append the current version name to the startup directory,
   // so instead of "/path/to/js" we will get "/path/to/js/3.4.0"
   std::string const versionAppendix =
@@ -1013,6 +1022,7 @@ void V8ShellFeature::initGlobals() {
     // version-specific js path exists!
     _startupDirectory = versionedPath;
   }
+  v8security->addToInternalWhitelist(_startupDirectory, FSAccessType::READ);
 
   for (auto& it : _moduleDirectories) {
     versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
@@ -1024,6 +1034,7 @@ void V8ShellFeature::initGlobals() {
       // version-specific js path exists!
       it = versionedPath;
     }
+    v8security->addToInternalWhitelist(it, FSAccessType::READ); //expand
   }
 
   LOG_TOPIC("930d9", DEBUG, Logger::V8)
@@ -1053,6 +1064,7 @@ void V8ShellFeature::initGlobals() {
 
   if (_currentModuleDirectory) {
     modules += sep + FileUtils::currentDirectory().result();
+    v8security->addToInternalWhitelist(FileUtils::currentDirectory().result(), FSAccessType::READ);
   }
 
   // we take the last entry in _startupDirectory as global path;

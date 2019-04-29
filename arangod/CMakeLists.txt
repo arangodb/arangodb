@@ -182,7 +182,6 @@ SET(ARANGOD_SOURCES
   Aql/BaseExpressionContext.cpp
   Aql/BindParameters.cpp
   Aql/BlockCollector.cpp
-  Aql/BlockFetcher.cpp
   Aql/CalculationExecutor.cpp
   Aql/BlocksWithClients.cpp
   Aql/ClusterNodes.cpp
@@ -196,6 +195,7 @@ SET(ARANGOD_SOURCES
   Aql/ConstFetcher.cpp
   Aql/ConstrainedSortExecutor.cpp
   Aql/CountCollectExecutor.cpp
+  Aql/DependencyProxy.cpp
   Aql/DistinctCollectExecutor.cpp
   Aql/DistributeExecutor.cpp
   Aql/DocumentProducingNode.cpp
@@ -365,6 +365,7 @@ SET(ARANGOD_SOURCES
   GeneralServer/ListenTask.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
+  GeneralServer/ServerSecurityFeature.cpp
   GeneralServer/SocketSslTcp.cpp
   GeneralServer/SocketTask.cpp
   GeneralServer/Task.cpp

@@ -28,6 +28,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StringUtils.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogBuffer.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
@@ -40,13 +41,23 @@ RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request, GeneralRespons
     : RestBaseHandler(request, response) {}
 
 RestStatus RestAdminLogHandler::execute() {
-  size_t const len = _request->suffixes().size();
+  ServerSecurityFeature* security =
+    application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
+        "ServerSecurity");
+  TRI_ASSERT(security != nullptr);
 
+  if (!security->canAccessHardenedApi()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  size_t const len = _request->suffixes().size();
   if (len == 0) {
     reportLogs();
   } else {
     setLogLevel();
   }
+
   return RestStatus::DONE;
 }
 

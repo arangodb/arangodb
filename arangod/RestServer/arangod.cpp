@@ -54,6 +54,7 @@
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8Phase.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -64,6 +65,7 @@
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LoggerBufferFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "Pregel/PregelFeature.h"
@@ -203,6 +205,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new ScriptFeature(server, &ret));
     server.addFeature(new ServerFeature(server, &ret));
     server.addFeature(new ServerIdFeature(server));
+    server.addFeature(new ServerSecurityFeature(server));
     server.addFeature(new ShardingFeature(server));
     server.addFeature(new ShellColorsFeature(server));
     server.addFeature(new ShutdownFeature(server, {"Script"}));
@@ -211,12 +214,13 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new StorageEngineFeature(server));
     server.addFeature(new SystemDatabaseFeature(server));
     server.addFeature(new TempFeature(server, name));
-    server.addFeature(new transaction::ManagerFeature(server));
     server.addFeature(new TraverserEngineRegistryFeature(server));
     server.addFeature(new TtlFeature(server));
     server.addFeature(new UpgradeFeature(server, &ret, nonServerFeatures));
     server.addFeature(new V8DealerFeature(server));
     server.addFeature(new V8PlatformFeature(server));
+    server.addFeature(new V8SecurityFeature(server));
+    server.addFeature(new transaction::ManagerFeature(server));
     server.addFeature(new VersionFeature(server));
     server.addFeature(new ViewTypesFeature(server));
     server.addFeature(new aql::AqlFunctionFeature(server));

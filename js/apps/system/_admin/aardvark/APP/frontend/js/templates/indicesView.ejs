@@ -61,7 +61,13 @@
                     <% } %> 
                   </select>
                 </th>
-                <th class="" style="width: 18px"/>
+                <th class="tooltipInfoTh">
+                  <div class="tooltipDiv">
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Type of index to create. <% if (supported.indexOf('persistent') <= -1) { %>Please note that for the RocksDB engine the index types hash, skiplist and persistent are identical, so that they are not offered seperately here.<% } %>">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
               </tr>
             </table>
             <div id="newIndexTypeGeo" class="newIndexClass" style="display: none">
