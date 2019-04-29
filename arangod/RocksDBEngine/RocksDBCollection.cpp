@@ -244,11 +244,6 @@ size_t RocksDBCollection::memory() const { return 0; }
 
 void RocksDBCollection::open(bool /*ignoreErrors*/) {
   TRI_ASSERT(_objectId != 0);
-  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  TRI_ASSERT(engine != nullptr);
-  if (!engine->inRecovery()) {
-    loadInitialNumberDocuments();
-  }
 }
 
 void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice) {
@@ -560,11 +555,11 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(transaction::Methods* trx) const {
-  return std::make_unique<RocksDBAllIndexIterator>(&_logicalCollection, trx, primaryIndex());
+  return std::make_unique<RocksDBAllIndexIterator>(&_logicalCollection, trx);
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(transaction::Methods* trx) const {
-  return std::make_unique<RocksDBAnyIndexIterator>(&_logicalCollection, trx, primaryIndex());
+  return std::make_unique<RocksDBAnyIndexIterator>(&_logicalCollection, trx);
 }
 
 void RocksDBCollection::invokeOnAllElements(transaction::Methods* trx,
