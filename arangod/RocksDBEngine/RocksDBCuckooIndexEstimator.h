@@ -28,7 +28,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/SmallVector.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/fasthash.h"
 #include "Logger/Logger.h"
