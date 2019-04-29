@@ -303,6 +303,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         cc._added++;
         cc._revisionId =
             transaction::helpers::extractRevFromDocument(RocksDBValue::data(value));
+        coll->loadInitialNumberDocuments();
       }
 
     } else {
@@ -351,6 +352,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         if (_lastRemovedDocRid != 0) {
           cc._revisionId = _lastRemovedDocRid;
         }
+        coll->loadInitialNumberDocuments();
       }
       _lastRemovedDocRid = 0;  // reset in any case
 
@@ -427,6 +429,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         cc._committedSeq = _currentSequence;
         cc._added = 0;
         cc._removed = 0;
+        coll->loadInitialNumberDocuments();
 
         for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
           RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());

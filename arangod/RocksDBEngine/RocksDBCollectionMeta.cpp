@@ -172,10 +172,6 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
 
 /// @brief get the current count
 RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::loadCount() {
-  auto maxxSeq = std::numeric_limits<rocksdb::SequenceNumber>::max();
-  bool didWork = false;
-  const rocksdb::SequenceNumber commitSeq = committableSeq(maxxSeq);
-  applyAdjustments(commitSeq, didWork);
   return _count;
 }
 
