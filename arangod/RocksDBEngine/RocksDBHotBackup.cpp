@@ -584,6 +584,7 @@ void RocksDBHotBackupCreate::executeDelete() {
   if (_success) {
     _respCode = rest::ResponseCode::OK;
     _respError = TRI_ERROR_NO_ERROR;
+    VPackObjectBuilder guard(&_result);
   } else {
     _respCode = rest::ResponseCode::NOT_FOUND;
     _respError = TRI_ERROR_FILE_NOT_FOUND;

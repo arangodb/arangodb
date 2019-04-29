@@ -41,8 +41,8 @@ var ArangoError = require('@arangodb').ArangoError;
 
 exports.get =  function () {
   let reply = internal.db._connection.POST('_admin/backup/list', null);
-  if (!reply.error && reply.code === 200 && reply.result.hasOwnProperty('backups')) {
-    return reply.result.backups;
+  if (!reply.error && reply.code === 200 && reply.result.hasOwnProperty('id')) {
+    return reply.result.id;
   }
   throw new ArangoError(reply);
 };
@@ -118,7 +118,7 @@ const waitForRestart = (maxWait, originalUptime) => {
 
 exports.restore = function(restoreBackupName, maxWait) {
   let originalUptime = this.getUptime();
-  let reply = internal.db._connection.POST('_admin/backup/restore', { identifier: restoreBackupName });
+  let reply = internal.db._connection.POST('_admin/backup/restore', { id: restoreBackupName });
   if (!reply.error && reply.code === 200) {
     waitForRestart(maxWait, originalUptime);
     return reply.result;
@@ -131,7 +131,7 @@ exports.restore = function(restoreBackupName, maxWait) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.delete = function(deleteBackupName) {
-  let reply = internal.db._connection.POST('_admin/backup/delete', { identifier: deleteBackupName });
+  let reply = internal.db._connection.POST('_admin/backup/delete', { id: deleteBackupName });
   if (!reply.error && reply.code === 200) {
     return reply.result;
   }
@@ -142,8 +142,11 @@ exports.delete = function(deleteBackupName) {
 // / @brief stores a hot backup on the server
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.store = function(storeBackupName) {
-  let reply = internal.db._connection.GET('_admin/backup/upload', { identifier: storeBackupName });
+exports.upload = function(uploadBackupName, remoteRepository, config) {
+  let reply = internal.db._connection.POST('_admin/backup/upload', 
+    { id: uploadbackupName,
+      remoteRepository,
+      config });
   if (!reply.error && reply.code === 200) {
     return reply.result;
   }
@@ -155,8 +158,11 @@ exports.store = function(storeBackupName) {
 // / @brief retrieves a hot backup from the server
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.retrieve = function(backupName) {
-  let reply = internal.db._connection.POST('_admin/backup/download', { identifier: backupName });
+exports.download = function(backupName, remoteRepository, config) {
+  let reply = internal.db._connection.POST('_admin/backup/download',
+    { id: backupName,
+      remoteRepository,
+      config });
   if (!reply.error && reply.code === 200) {
     return reply.result;
   }
