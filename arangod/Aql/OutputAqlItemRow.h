@@ -121,8 +121,8 @@ class OutputAqlItemRow {
     // This may only be set if the input block is the same as the output block,
     // because it is passed through.
     if (_doNotCopyInputRow) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(sourceRow.isInitialized());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(sourceRow.internalBlockIs(_block));
 #endif
       _inputRowCopied = true;
@@ -138,7 +138,9 @@ class OutputAqlItemRow {
                                  RegisterId input, RegisterId output) {
     // This method is only allowed if the block of the input row is the same as
     // the block of the output row!
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(sourceRow.internalBlockIs(_block));
+#endif
     TRI_ASSERT(isOutputRegister(output));
     // This is already implicitly asserted by isOutputRegister:
     TRI_ASSERT(output < getNrRegisters());
