@@ -156,8 +156,8 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
   if (response == nullptr || !response->isComplete()) {
     return {TRI_ERROR_INTERNAL,
             "got invalid response from server: '" + client.getErrorMessage() +
-                "' while executing " + requestAction + " with this payload: '" +
-                originalRequest + "'"};
+                "' while executing " + requestAction +
+                " with this payload: '" + originalRequest + "'"};
   }
   if (response->wasHttpError()) {
     int errorNum = TRI_ERROR_INTERNAL;
@@ -212,8 +212,7 @@ bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
   return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
 }
 
-void makeAttributesUnique(arangodb::velocypack::Builder& builder,
-                          arangodb::velocypack::Slice slice) {
+void makeAttributesUnique(arangodb::velocypack::Builder& builder, arangodb::velocypack::Slice slice) {
   if (slice.isObject()) {
     std::unordered_set<arangodb::velocypack::StringRef> keys;
 
@@ -633,6 +632,7 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
 
   arangodb::Result result;
   StringBuffer buffer(true);
+  bool isGzip(false);
 
   VPackSlice const parameters = jobData.collection.get("parameters");
   std::string const cname =
@@ -642,10 +642,22 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
   std::string const collectionType(type == 2 ? "document" : "edge");
 
   // import data. check if we have a datafile
+  //  ... there are 4 possible names
   auto datafile = jobData.directory.readableFile(
       cname + "_" + arangodb::rest::SslInterface::sslMD5(cname) + ".data.json");
   if (!datafile || datafile->status().fail()) {
+    datafile = jobData.directory.readableFile(
+      cname + "_" + arangodb::rest::SslInterface::sslMD5(cname) + ".data.json.gz");
+    isGzip = true;
+  } // if
+  if (!datafile || datafile->status().fail()) {
+    datafile = jobData.directory.readableFile(
+      cname + ".data.json.gz");
+    isGzip = true;
+  } // if
+  if (!datafile || datafile->status().fail()) {
     datafile = jobData.directory.readableFile(cname + ".data.json");
+    isGzip = false;
     if (!datafile || datafile->status().fail()) {
       result = {TRI_ERROR_CANNOT_READ_FILE, "could not open file"};
       return result;
@@ -726,11 +738,21 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
       if (jobData.options.progress && fileSize > 0 &&
           numReadSinceLastReport > 1024 * 1024 * 8) {
         // report every 8MB of transferred data
+        //   currently do not have unzipped size for .gz files
+        std::stringstream percentage, ofFilesize;
+        if (isGzip) {
+          ofFilesize << "";
+          percentage << "";
+        } else {
+          ofFilesize << " of " << fileSize;
+          percentage << " ("
+            << int(100. * double(numReadForThisCollection) / double(fileSize)) << " %)";
+        } // else
+
         LOG_TOPIC(INFO, Logger::RESTORE)
             << "# Still loading data into " << collectionType << " collection '"
-            << cname << "', " << numReadForThisCollection << " of " << fileSize
-            << " byte(s) restored ("
-            << int(100. * double(numReadForThisCollection) / double(fileSize)) << " %)";
+            << cname << "', " << numReadForThisCollection << ofFilesize.str()
+            << " byte(s) restored" << percentage.str();
         numReadSinceLastReport = 0;
       }
     }
@@ -1119,11 +1141,10 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      "maximum size for individual data batches (in bytes)",
                      new UInt64Parameter(&_options.chunkSize));
 
-  options
-      ->addOption("--threads",
-                  "maximum number of collections to process in parallel",
-                  new UInt32Parameter(&_options.threadCount))
-      .setIntroducedIn(30400);
+  options->addOption("--threads",
+                     "maximum number of collections to process in parallel",
+                     new UInt32Parameter(&_options.threadCount))
+                     .setIntroducedIn(30400);
 
   options->addOption("--include-system-collections",
                      "include system collections",
@@ -1141,15 +1162,10 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption("--input-directory", "input directory",
                      new StringParameter(&_options.inputPath));
 
-  options
-      ->addOption(
-          "--cleanup-duplicate-attributes",
-          "clean up duplicate attributes (use first specified value) in input "
-          "documents instead of making the restore operation fail",
-          new BooleanParameter(&_options.cleanupDuplicateAttributes),
-          arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30322)
-      .setIntroducedIn(30402);
+  options->addOption("--cleanup-duplicate-attributes", "clean up duplicate attributes (use first specified value) in input documents instead of making the restore operation fail",
+                     new BooleanParameter(&_options.cleanupDuplicateAttributes),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30322).setIntroducedIn(30402);
 
   options->addOption("--import-data", "import data into collection",
                      new BooleanParameter(&_options.importData));
@@ -1163,23 +1179,15 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption("--overwrite", "overwrite collections if they exist",
                      new BooleanParameter(&_options.overwrite));
 
-  options
-      ->addOption(
-          "--number-of-shards",
-          "override value for numberOfShards (can be specified multiple times, "
-          "e.g. --numberOfShards 2 --numberOfShards myCollection=3)",
-          new VectorParameter<StringParameter>(&_options.numberOfShards))
-      .setIntroducedIn(30322)
-      .setIntroducedIn(30402);
+  options->addOption("--number-of-shards",
+                     "override value for numberOfShards (can be specified multiple times, e.g. --numberOfShards 2 --numberOfShards myCollection=3)",
+                     new VectorParameter<StringParameter>(&_options.numberOfShards))
+                     .setIntroducedIn(30322).setIntroducedIn(30402);
 
-  options
-      ->addOption("--replication-factor",
-                  "override value for replicationFactor (can be specified "
-                  "multiple times, e.g. --replicationFactor 2 "
-                  "--replicationFactor myCollection=3)",
-                  new VectorParameter<StringParameter>(&_options.replicationFactor))
-      .setIntroducedIn(30322)
-      .setIntroducedIn(30402);
+  options->addOption("--replication-factor",
+                     "override value for replicationFactor (can be specified multiple times, e.g. --replicationFactor 2 --replicationFactor myCollection=3)",
+                     new VectorParameter<StringParameter>(&_options.replicationFactor))
+                     .setIntroducedIn(30322).setIntroducedIn(30402);
 
   options->addOption(
       "--ignore-distribute-shards-like-errors",
@@ -1191,22 +1199,17 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
       new BooleanParameter(&_options.force));
 
   // deprecated options
-  options
-      ->addOption("--default-number-of-shards",
-                  "default value for numberOfShards if not specified in dump",
-                  new UInt64Parameter(&_options.defaultNumberOfShards),
-                  arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
-      .setDeprecatedIn(30322)
-      .setDeprecatedIn(30402);
+  options->addOption("--default-number-of-shards",
+                     "default value for numberOfShards if not specified in dump",
+                     new UInt64Parameter(&_options.defaultNumberOfShards),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setDeprecatedIn(30322).setDeprecatedIn(30402);
 
-  options
-      ->addOption(
-          "--default-replication-factor",
-          "default value for replicationFactor if not specified in dump",
-          new UInt64Parameter(&_options.defaultReplicationFactor),
-          arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
-      .setDeprecatedIn(30322)
-      .setDeprecatedIn(30402);
+  options->addOption("--default-replication-factor",
+                     "default value for replicationFactor if not specified in dump",
+                     new UInt64Parameter(&_options.defaultReplicationFactor),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setDeprecatedIn(30322).setDeprecatedIn(30402);
 }
 
 void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -1238,15 +1241,13 @@ void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
   // validate shards and replication factor
   if (_options.defaultNumberOfShards == 0) {
     LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
-        << "invalid value for `--default-number-of-shards`, expecting at least "
-           "1";
+        << "invalid value for `--default-number-of-shards`, expecting at least 1";
     FATAL_ERROR_EXIT();
   }
 
   if (_options.defaultReplicationFactor == 0) {
     LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
-        << "invalid value for `--default-replication-factor, expecting at "
-           "least 1";
+        << "invalid value for `--default-replication-factor, expecting at least 1";
     FATAL_ERROR_EXIT();
   }
 
@@ -1327,8 +1328,8 @@ void RestoreFeature::start() {
   _exitCode = EXIT_SUCCESS;
 
   std::unique_ptr<SimpleHttpClient> httpClient;
-  Result result = _clientManager.getConnectedClient(httpClient, _options.force, true,
-                                                    !_options.createDatabase, false);
+  Result result = _clientManager.getConnectedClient(httpClient, _options.force,
+                                                    true, !_options.createDatabase);
   if (result.is(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
     LOG_TOPIC(FATAL, Logger::RESTORE)
         << "cannot create server connection, giving up!";
@@ -1351,7 +1352,7 @@ void RestoreFeature::start() {
     client->setDatabaseName(dbName);
 
     // re-check connection and version
-    result = _clientManager.getConnectedClient(httpClient, _options.force, true, true, false);
+    result = _clientManager.getConnectedClient(httpClient, _options.force, true, true);
   }
 
   if (result.fail() && !_options.force) {
