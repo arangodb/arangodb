@@ -46,11 +46,12 @@ class RocksDBMethods;
 
 class RocksDBIndex : public Index {
  protected:
+  
   // This is the number of distinct elements the index estimator can reliably
   // store
   // This correlates directly with the memory of the estimator:
   // memory == ESTIMATOR_SIZE * 6 bytes
-  static uint64_t const ESTIMATOR_SIZE;
+  static constexpr uint64_t ESTIMATOR_SIZE = 4096;
 
  public:
   ~RocksDBIndex();
@@ -125,8 +126,8 @@ class RocksDBIndex : public Index {
   virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) {}
   virtual void recalculateEstimates() {}
 
-  virtual bool isPersistent() const override { return true; }
-
+  bool isPersistent() const override final { return true; }
+  
  protected:
   RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection, std::string const& name,
                std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,

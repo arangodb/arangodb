@@ -287,6 +287,7 @@ bool IResearchViewExecutor<ordered>::writeRow(ReadContext& ctx, IndexReadBufferE
 
     return true;
   }
+  LOG_DEVEL << "did not find documentID " << documentId.id();
 
   return false;
 }

@@ -234,12 +234,13 @@ IResearchLink::IResearchLink( // constructor
       arangodb::transaction::Status status // transaction status
   )->void {
     auto* state = trx.state();
-
+    TRI_ASSERT(state != nullptr);
+    
     // check state of the top-most transaction only
-    if (!state) {
+    if (!state || state->isEmbeddedTransaction()) {
       return;  // NOOP
     }
-
+    
     auto prev = state->cookie(key, nullptr);  // get existing cookie
     auto rollback = arangodb::transaction::Status::COMMITTED != status;
 

@@ -426,7 +426,8 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
   } while (true);
 
   if (state) {
-    state->increaseNesting();
+    int level = state->increaseNesting();
+    TRI_ASSERT(!AccessMode::isWriteOrExclusive(mode) || level == 1);
     return std::make_shared<ManagedContext>(tid, state, mode);
   }
   TRI_ASSERT(false); // should be unreachable
@@ -447,7 +448,8 @@ void Manager::returnManagedTrx(TRI_voc_tid_t tid, AccessMode::Type mode) noexcep
 
   TRI_ASSERT(it->second.state != nullptr);
   TRI_ASSERT(it->second.state->isEmbeddedTransaction());
-  it->second.state->decreaseNesting();
+  int level = it->second.state->decreaseNesting();
+  TRI_ASSERT(!AccessMode::isWriteOrExclusive(mode) || level == 0);
 
   // garbageCollection might soft abort used transactions
   const bool isSoftAborted = it->second.expires == 0;

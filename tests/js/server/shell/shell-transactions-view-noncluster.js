@@ -32,12 +32,17 @@ const arangodb = require("@arangodb");
 const analyzers = require("@arangodb/analyzers");
 const internal = require("internal");
 const ERRORS = arangodb.errors;
-const ArangoError = require("@arangodb").ArangoError;
 const db = arangodb.db;
+
+const qqWithSync = `FOR doc IN UnitTestsView 
+                      SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') 
+                      OPTIONS { waitForSync : true } 
+                      SORT TFIDF(doc) 
+                      LIMIT 4 
+                      RETURN doc`;
 
 const qq = `FOR doc IN UnitTestsView 
               SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') 
-              OPTIONS { waitForSync : true } 
               SORT TFIDF(doc) 
               LIMIT 4 
               RETURN doc`;
@@ -109,12 +114,12 @@ function TransactionsIResearchSuite() {
             c.save({ _key: "other_half", text: "the brown jumps the dog" });
             c.save({ _key: "quarter", text: "quick over" });
   
-            let result = db._query(qq).toArray();
+            /*let result = db._query(qqWithSync).toArray();
             assertEqual(result.length, 4);
             assertEqual(result[0]._key, 'half');
             assertEqual(result[1]._key, 'quarter');
             assertEqual(result[2]._key, 'other_half');
-            assertEqual(result[3]._key, 'full');
+            assertEqual(result[3]._key, 'full');*/
             throw "myerror";
           }
         });
@@ -122,7 +127,7 @@ function TransactionsIResearchSuite() {
         assertEqual(err.errorMessage, "myerror");
       }
 
-      let result = db._query(qq).toArray();
+      let result = db._query(qqWithSync).toArray();
       assertEqual(result.length, 2);
       assertEqual(result[0]._key, 'half');
       //assertEqual(result[1]._key, 'quarter');
@@ -156,17 +161,10 @@ function TransactionsIResearchSuite() {
           } catch(err) {
             assertEqual(err.errorNum, ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
           }
-
-          let result = db._query(qq).toArray();
-          assertEqual(result.length, 3);
-          assertEqual(result[0]._key, 'half');
-          //assertEqual(result[1]._key, 'quarter');
-          assertEqual(result[1]._key, 'other_half');
-          assertEqual(result[2]._key, 'full');
         }
       });
 
-      let result = db._query(qq).toArray();
+      let result = db._query(qqWithSync).toArray();
       assertEqual(result.length, 3);
       assertEqual(result[0]._key, 'half');
       //assertEqual(result[1]._key, 'quarter');
@@ -200,17 +198,10 @@ function TransactionsIResearchSuite() {
           } catch(err) {
             assertEqual(err.errorNum, ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
           }
-
-          let result = db._query(qq).toArray();
-          assertEqual(result.length, 3);
-          assertEqual(result[0]._key, 'half');
-          //assertEqual(result[1]._key, 'quarter');
-          assertEqual(result[1]._key, 'other_half');
-          assertEqual(result[2]._key, 'full');
         }
       });
 
-      let result = db._query(qq).toArray();
+      let result = db._query(qqWithSync).toArray();
       assertEqual(result.length, 3);
       assertEqual(result[0]._key, 'half');
       //assertEqual(result[1]._key, 'quarter');
@@ -252,19 +243,19 @@ function TransactionsIResearchSuite() {
         assertEqual(err.errorMessage, "myerror");
       }
 
-      let result = db._query(qq).toArray();
+      let result = db._query(qqWithSync).toArray();
       print(result);
       assertEqual(result.length, 4);
       assertEqual(result[0]._key, 'half');
       assertEqual(result[1]._key, 'quarter');
       assertEqual(result[2]._key, 'other_half');
-      assertEqual(result[3].nam_keye, 'full');
+      assertEqual(result[3]._key, 'full');
     },
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief should honor rollbacks of inserts
     ////////////////////////////////////////////////////////////////////////////
-    /*testRollbackRemovalWithLinks2 : function () {
+    testWaitForSyncError : function () {
       c.ensureIndex({type: 'hash', fields:['val'], unique: true});
 
       let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "text_en" ] } } } } };
@@ -273,74 +264,38 @@ function TransactionsIResearchSuite() {
       let links = view.properties().links;
       assertNotEqual(links['UnitTestsCollection'], undefined);
 
-      c.save({ name: "full", text: "the quick brown fox jumps over the lazy dog", val: 1 });
-      c.save({ name: "half", text: "quick fox over lazy", val: 2 });
-      let d = c.save({ name: "other half", text: "the brown jumps the dog", val: 3 });
+      c.save({ _key: "full", text: "the quick brown fox jumps over the lazy dog", val: 1 });
+      c.save({ _key: "half", text: "quick fox over lazy", val: 2 });
+      c.save({ _key: "other_half", text: "the brown jumps the dog", val: 3 });
+      c.save({ _key: "quarter", text: "quick over", val: 4 });
 
-      db._executeTransaction({
-        collections: {write: 'UnitTestsCollection'},
-        action: function() {
-          const db = require('internal').db;
-
-          require('internal').debugSetFailAt("RocksDBVPackIndex::remove");
-          try {
-            db._collection('UnitTestsCollection').remove(d._key);
+      try {
+        db._executeTransaction({
+          collections: {write: 'UnitTestsCollection'},
+          action: function() {
+            const db = require('internal').db;
+            let c = db._collection('UnitTestsCollection');
+            c.remove("full");
+            c.remove("half");
+            
+            // it should not be possible to query with waitForSync
+            db._query(qqWithSync);
             fail();
-          } catch(err) {
-            assertEqual(err.errorNum, ERRORS.ERROR_DEBUG.code);
           }
-          c.save({ name: "quarter", text: "quick over", val: 4 });
-        }
-      });
+        });
+      } catch(err) {
+        //assertEqual(err.errorMessage, "myerror");
+        assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
+      }
 
-      let result = db._query(qq).toArray();
+      let result = db._query(qqWithSync).toArray();
       print(result);
       assertEqual(result.length, 4);
-      assertEqual(result[0].name, 'half');
-      assertEqual(result[1].name, 'quarter');
-      assertEqual(result[2].name, 'other half');
-      assertEqual(result[3].name, 'full');
-    },
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief should honor rollbacks of inserts
-    ////////////////////////////////////////////////////////////////////////////
-    testRollbackRemovalWithLinks3 : function () {
-
-      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "text_en" ] } } } } };
-      view = db._createView("UnitTestsView", "arangosearch", {});
-      view.properties(meta);
-      let links = view.properties().links;
-      assertNotEqual(links['UnitTestsCollection'], undefined);
-
-      c.ensureIndex({type: 'hash', fields:['val'], unique: true});
-
-      c.save({ name: "full", text: "the quick brown fox jumps over the lazy dog", val: 1 });
-      db._executeTransaction({
-        collections: {write: 'UnitTestsCollection'},
-        action: function() {
-          const db = require('internal').db;
-
-          let d = c.save({ name: "half", text: "quick fox over lazy", val: 2 });
-          require('internal').debugSetFailAt("RocksDBVPackIndex::remove");
-          try {
-            db._collection('UnitTestsCollection').remove(d._key);
-            fail();
-          } catch(err) {
-            assertEqual(err.errorNum, ERRORS.ERROR_DEBUG.code);
-          }
-          c.save({ name: "other half", text: "the brown jumps the dog", val: 3 });
-          c.save({ name: "quarter", text: "quick over", val: 4 });
-        }
-      });
-
-      let result = db._query(qq).toArray();
-      assertEqual(result.length, 4);
-      assertEqual(result[0].name, 'half');
-      assertEqual(result[1].name, 'quarter');
-      assertEqual(result[2].name, 'other half');
-      assertEqual(result[3].name, 'full');
-    },*/
+      assertEqual(result[0]._key, 'half');
+      assertEqual(result[1]._key, 'quarter');
+      assertEqual(result[2]._key, 'other_half');
+      assertEqual(result[3]._key, 'full');
+    }
   };
 }
 
