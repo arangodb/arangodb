@@ -68,7 +68,8 @@ namespace arangodb {
 Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
+    : ApplicationFeature(server, "Scheduler"), 
+      _scheduler(nullptr) {
   setOptional(false);
   startsAfter("GreetingsPhase");
   startsAfter("FileDescriptors");

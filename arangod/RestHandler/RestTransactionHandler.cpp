@@ -85,10 +85,12 @@ RestStatus RestTransactionHandler::execute() {
 
 void RestTransactionHandler::executeGetState() {
   if (_request->suffixes().size() != 1) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "expecting GET /_api/transaction/<transaction-ID>");
+    return;
   }
 
-  TRI_voc_tid_t tid = StringUtils::uint64(_request->suffixes()[1]);
+  TRI_voc_tid_t tid = StringUtils::uint64(_request->suffixes()[0]);
   if (tid == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "Illegal transaction ID");
@@ -99,7 +101,7 @@ void RestTransactionHandler::executeGetState() {
   transaction::Status status = mgr->getManagedTrxStatus(tid);
   
   if (status == transaction::Status::UNDEFINED) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_TRANSACTION_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_TRANSACTION_NOT_FOUND);
   } else {
     generateTransactionResult(rest::ResponseCode::OK, tid, status);
   }
@@ -219,7 +221,7 @@ void RestTransactionHandler::generateTransactionResult(rest::ResponseCode code,
   tmp.close();
   tmp.close();
   
-  generateResult(rest::ResponseCode::OK, std::move(buffer));
+  generateResult(code, std::move(buffer));
 }
 
 // ====================== V8 stuff ===================
