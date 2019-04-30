@@ -34,7 +34,13 @@
 ### @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ################################################################################
 
-import sys, re, json, string, os, os.path, operator
+import sys
+import re
+import json
+import operator
+import os
+import os.path
+#string,
 #from pygments import highlight
 #from pygments.lexers import YamlLexer
 #from pygments.formatters import TerminalFormatter
@@ -49,21 +55,21 @@ MS = re.M | re.S
 ################################################################################
 
 swagger = {
-  "swagger": "2.0",
-  "info": {
-    "description": "ArangoDB REST API Interface",
-    "version": "1.0",
-    "title": "ArangoDB",
-    "license": {
-      "name": "Apache License, Version 2.0"
-    }
-  },
-  "basePath": "/",
-  "schemes": [
-    "http"
-  ],
-  "definitions": {},
-  "paths" : {}
+    "swagger": "2.0",
+    "info": {
+        "description": "ArangoDB REST API Interface",
+        "version": "1.0",
+        "title": "ArangoDB",
+        "license": {
+            "name": "Apache License, Version 2.0"
+        }
+    },
+    "basePath": "/",
+    "schemes": [
+        "http"
+    ],
+    "definitions": {},
+    "paths" : {}
 }
 
 ################################################################################
@@ -149,6 +155,9 @@ restBodyParam = None
 restReplyBodyParam = None
 restSubBodyParam = None
 
+
+operationIDs = []
+
 ################################################################################
 ### @brief DEBUG
 ################################################################################
@@ -194,9 +203,9 @@ def trim_text(txt):
 ################################################################################
 
 def parameters(line):
-    (l, c, line) = line.partition('{')
-    (line, c , r) = line.rpartition('}')
-    line = BackTicks(line, wordboundary = ['{','}'])
+    (_l, _c, line) = line.partition('{')
+    (line, _c, _r) = line.rpartition('}')
+    line = BackTicks(line, wordboundary=['{', '}'])
 
     return line
 
@@ -206,7 +215,7 @@ def parameters(line):
 ### `word` -> <b>word</b>
 ################################################################################
 
-def BackTicks(txt, wordboundary = ['<em>','</em>']):
+def BackTicks(txt, wordboundary=['<em>', '</em>']):
     r = rc(r"""([\(\s'/">]|^|.)\`(.*?)\`([<\s\.\),:;'"?!/-]|$)""", MS)
     subpattern = '\\1' + wordboundary[0] + '\\2' + wordboundary[1] + '\\3'
 
@@ -218,7 +227,7 @@ def BackTicks(txt, wordboundary = ['<em>','</em>']):
 ### *word* -> <b>word</b>
 ################################################################################
 
-def AsteriskItalic(txt, wordboundary = ['<strong>','</strong>']):
+def AsteriskItalic(txt, wordboundary=['<strong>', '</strong>']):
     r = rc(r"""([\(\s'/">]|^|.)\*(.*?)\*([<\s\.\),:;'"?!/-]|$)""", MS)
     subpattern = '\\1' + wordboundary[0] + '\\2' + wordboundary[1] + '\\3'
 
@@ -230,7 +239,7 @@ def AsteriskItalic(txt, wordboundary = ['<strong>','</strong>']):
 ### **word** -> <b>word</b>
 ################################################################################
 
-def AsteriskBold(txt, wordboundary = ['<strong>','</strong>']):
+def AsteriskBold(txt, wordboundary=['<strong>', '</strong>']):
     r = rc(r"""([\(\s'/">]|^|.)\*\*(.*?)\*\*([<\s\.\),:;'"?!/-]|$)""", MS)
     subpattern = '\\1' + wordboundary[0] + '\\2' + wordboundary[1] + '\\3'
 
@@ -242,7 +251,7 @@ def AsteriskBold(txt, wordboundary = ['<strong>','</strong>']):
 ### @FA{word} -> <b>word</b>
 ################################################################################
 
-def FA(txt, wordboundary = ['<b>','</b>']):
+def FA(txt, wordboundary=['<b>', '</b>']):
     r = rc(r"""([\(\s'/">]|^|.)@FA\{(.*?)\}([<\s\.\),:;'"?!/-]|$)""", MS)
     subpattern = '\\1' + wordboundary[0] + '\\2' + wordboundary[1] + '\\3'
 
@@ -254,7 +263,7 @@ def FA(txt, wordboundary = ['<b>','</b>']):
 ### @FN{word} -> <b>word</b>
 ################################################################################
 
-def FN(txt, wordboundary = ['<b>','</b>']):
+def FN(txt, wordboundary=['<b>', '</b>']):
     r = rc(r"""([\(\s'/">]|^|.)@FN\{(.*?)\}([<\s\.\),:;'"?!/-])""", MS)
     subpattern = '\\1' + wordboundary[0] + '\\2' + wordboundary[1] + '\\3'
 
@@ -266,7 +275,7 @@ def FN(txt, wordboundary = ['<b>','</b>']):
 ### @LIT{word} -> <b>word</b>
 ################################################################################
 
-def LIT(txt, wordboundary = ['<b>','</b>']):
+def LIT(txt, wordboundary=['<b>', '</b>']):
     r = rc(r"""([\(\s'/">]|^)@LIT\{(.*?)\}([<\s\.\),:;'"?!/-])""", MS)
     subpattern = '\\1' + wordboundary[0] + '\\2' + wordboundary[1] + '\\3'
 
@@ -295,8 +304,8 @@ def Typography(txt):
 #    txt = LIT(txt)
 #    txt = FA(txt)
 #
-    # no way to find out the correct link for Swagger, 
-    # so replace all @ref elements with just "the manual"
+# no way to find out the correct link for Swagger,
+# so replace all @ref elements with just "the manual"
 
     r = rc(r"""@ref [a-zA-Z0-9]+""", MS)
     txt = r.sub("the manual", txt)
@@ -308,7 +317,8 @@ def Typography(txt):
 ### @brief InitializationError
 ################################################################################
 
-class InitializationError(Exception): pass
+class InitializationError(Exception):
+    pass
 
 ################################################################################
 ### @brief StateMachine
@@ -338,12 +348,10 @@ class StateMachine:
 
     def run(self, cargo=None):
         if not self.startState:
-            raise InitializationError,\
-                "must call .set_start() before .run()"
+            raise InitializationError("must call .set_start() before .run()")
 
         if not self.endStates:
-            raise InitializationError, \
-                "at least one state must be an end_state"
+            raise InitializationError("at least one state must be an end_state")
 
         handler = self.startState
         try:
@@ -354,7 +362,7 @@ class StateMachine:
                     newState(cargo)
                     break
                 elif newState not in self.handlers:
-                    raise RuntimeError, "Invalid target %s" % newState
+                    raise RuntimeError("Invalid target %s" % newState)
                 else:
                     handler = newState
         except:
@@ -368,10 +376,10 @@ class StateMachine:
 
 class Regexen:
     def __init__(self):
-        self.DESCRIPTION_LI = re.compile('^-\s.*$')
-        self.DESCRIPTION_SP = re.compile('^\s\s.*$')
-        self.DESCRIPTION_BL = re.compile('^\s*$')
-        self.EMPTY_LINE = re.compile('^\s*$')
+        self.DESCRIPTION_LI = re.compile(r'^-\s.*$')
+        self.DESCRIPTION_SP = re.compile(r'^\s\s.*$')
+        self.DESCRIPTION_BL = re.compile(r'^\s*$')
+        self.EMPTY_LINE = re.compile(r'^\s*$')
         self.START_DOCUBLOCK = re.compile('.*@startDocuBlock ')
         self.HINTS = re.compile('.*@HINTS')
         self.END_EXAMPLE_ARANGOSH_RUN = re.compile('.*@END_EXAMPLE_ARANGOSH_RUN')
@@ -394,7 +402,7 @@ class Regexen:
         self.RESTURLPARAMETERS = re.compile('.*@RESTURLPARAMETERS')
         self.RESTPARAM = re.compile('.*@RESTPARAM')
         self.RESTQUERYPARAMS = re.compile('.*@RESTQUERYPARAMS')
-        self.TRIPLENEWLINEATSTART = re.compile('^\n\n\n')
+        self.TRIPLENEWLINEATSTART = re.compile(r'^\n\n\n')
 
 ################################################################################
 ### @brief checks for end of comment
@@ -410,28 +418,50 @@ def check_end_of_comment(line, r):
 def next_step(fp, line, r):
     global operation
 
-    if not line:                              return eof, (fp, line)
-    elif check_end_of_comment(line, r):       return skip_code, (fp, line)
-    elif r.START_DOCUBLOCK.match(line):       return start_docublock, (fp, line)
-    elif r.HINTS.match(line):                 return hints, (fp, line)
-    elif r.EXAMPLE_ARANGOSH_RUN.match(line):  return example_arangosh_run, (fp, line)
-    elif r.RESTBODYPARAM.match(line):         return restbodyparam, (fp, line)
-    elif r.RESTSTRUCT.match(line):            return reststruct, (fp, line)
-    elif r.RESTALLBODYPARAM.match(line):      return restallbodyparam, (fp, line)
-    elif r.RESTDESCRIPTION.match(line):       return restdescription, (fp, line)
-    elif r.RESTHEADER.match(line):            return restheader, (fp, line)
-    elif r.RESTHEADERPARAM.match(line):       return restheaderparam, (fp, line)
-    elif r.RESTHEADERPARAMETERS.match(line):  return restheaderparameters, (fp, line)
-    elif r.RESTQUERYPARAM.match(line):        return restqueryparam, (fp, line)
-    elif r.RESTQUERYPARAMETERS.match(line):   return restqueryparameters, (fp, line)
-    elif r.RESTREPLYBODY.match(line):         return restreplybody, (fp, line)
-    elif r.RESTRETURNCODE.match(line):        return restreturncode, (fp, line)
-    elif r.RESTRETURNCODES.match(line):       return restreturncodes, (fp, line)
-    elif r.RESTURLPARAM.match(line):          return resturlparam, (fp, line)
-    elif r.RESTURLPARAMETERS.match(line):     return resturlparameters, (fp, line)
-    elif r.RESTPARAM.match(line):             return restparam, (fp, line)
-    elif r.RESTQUERYPARAMS.match(line):       return restqueryparams, (fp, line)
-    elif r.EXAMPLES.match(line):              return examples, (fp, line)
+    if not line:
+        return eof, (fp, line)
+    elif check_end_of_comment(line, r):
+        return skip_code, (fp, line)
+    elif r.START_DOCUBLOCK.match(line):
+        return start_docublock, (fp, line)
+    elif r.HINTS.match(line):
+        return hints, (fp, line)
+    elif r.EXAMPLE_ARANGOSH_RUN.match(line):
+        return example_arangosh_run, (fp, line)
+    elif r.RESTBODYPARAM.match(line):
+        return restbodyparam, (fp, line)
+    elif r.RESTSTRUCT.match(line):
+        return reststruct, (fp, line)
+    elif r.RESTALLBODYPARAM.match(line):
+        return restallbodyparam, (fp, line)
+    elif r.RESTDESCRIPTION.match(line):
+        return restdescription, (fp, line)
+    elif r.RESTHEADER.match(line):
+        return restheader, (fp, line)
+    elif r.RESTHEADERPARAM.match(line):
+        return restheaderparam, (fp, line)
+    elif r.RESTHEADERPARAMETERS.match(line):
+        return restheaderparameters, (fp, line)
+    elif r.RESTQUERYPARAM.match(line):
+        return restqueryparam, (fp, line)
+    elif r.RESTQUERYPARAMETERS.match(line):
+        return restqueryparameters, (fp, line)
+    elif r.RESTREPLYBODY.match(line):
+        return restreplybody, (fp, line)
+    elif r.RESTRETURNCODE.match(line):
+        return restreturncode, (fp, line)
+    elif r.RESTRETURNCODES.match(line):
+        return restreturncodes, (fp, line)
+    elif r.RESTURLPARAM.match(line):
+        return resturlparam, (fp, line)
+    elif r.RESTURLPARAMETERS.match(line):
+        return resturlparameters, (fp, line)
+    elif r.RESTPARAM.match(line):
+        return restparam, (fp, line)
+    elif r.RESTQUERYPARAMS.match(line):
+        return restqueryparams, (fp, line)
+    elif r.EXAMPLES.match(line):
+        return examples, (fp, line)
 
     return None, None
 
@@ -442,9 +472,10 @@ def next_step(fp, line, r):
 def generic_handler(cargo, r, message):
     global DEBUG
 
-    if DEBUG: print >> sys.stderr, message
+    if DEBUG:
+        print >> sys.stderr, message
     (fp, last) = cargo
-
+    last
     while 1:
         (next, c) = next_step(fp, fp.readline(), r)
 
@@ -464,11 +495,9 @@ def generic_handler(cargo, r, message):
 def generic_handler_desc(cargo, r, message, op, para, name):
     global DEBUG, operation
 
-    if DEBUG: print >> sys.stderr, message
-    (fp, last) = cargo
-
-    inLI = False
-    inUL = False
+    if DEBUG:
+        print >> sys.stderr, message
+    (fp, dummy) = cargo
 
     while 1:
         line = fp.readline()
@@ -480,7 +509,7 @@ def generic_handler_desc(cargo, r, message, op, para, name):
             if op:
                 try:
                     operation[op].append(para)
-                except AttributeError as x:
+                except AttributeError:
                     print >> sys.stderr, "trying to set '%s' on operations - failed. '%s'" % (op, para)
                     raise
             return next, c
@@ -490,13 +519,13 @@ def generic_handler_desc(cargo, r, message, op, para, name):
 
 def start_docublock(cargo, r=Regexen()):
     global currentDocuBlock
-    (fp, last) = cargo
+    (dummy, last) = cargo
     try:
         # TODO remove when all /// are removed from the docublocks
         if last.startswith('/// '):
-          currentDocuBlock = last.split(' ')[2].rstrip()
+            currentDocuBlock = last.split(' ')[2].rstrip()
         else:
-          currentDocuBlock = last.split(' ')[1].rstrip()
+            currentDocuBlock = last.split(' ')[1].rstrip()
     except Exception as x:
         print >> sys.stderr, "failed to fetch docublock in '" + last + "': " + str(x)
         raise
@@ -507,7 +536,7 @@ def start_docublock(cargo, r=Regexen()):
 def setRequired(where, which):
     if not 'required' in where:
         where['required'] = []
-    where['required'].append(which)
+        where['required'].append(which)
 
 ################################################################################
 ### @brief restparam - deprecated - abort.
@@ -515,7 +544,11 @@ def setRequired(where, which):
 def restparam(cargo, r=Regexen()):
     global swagger, operation, httpPath, method, restBodyParam, fn, currentExample, currentReturnCode, currentDocuBlock, lastDocuBlock, restReplyBodyParam
     print >> sys.stderr, "deprecated RESTPARAM declaration detected:"
-    print >> sys.stderr, json.dumps(swagger['paths'][httpPath], indent=4, separators=(', ',': '), sort_keys=True)
+    print >> sys.stderr, json.dumps(
+        swagger['paths'][httpPath],
+        indent=4,
+        separators=(', ', ': '),
+        sort_keys=True)
     raise Exception("RESTPARAM not supported anymore.")
 
 ################################################################################
@@ -524,7 +557,11 @@ def restparam(cargo, r=Regexen()):
 def restqueryparams(cargo, r=Regexen()):
     global swagger, operation, httpPath, method, restBodyParam, fn, currentExample, currentReturnCode, currentDocuBlock, lastDocuBlock, restReplyBodyParam
     print >> sys.stderr, "deprecated RESTQUERYPARAMS declaration detected:"
-    print >> sys.stderr, json.dumps(swagger['paths'][httpPath], indent=4, separators=(', ',': '), sort_keys=True)
+    print >> sys.stderr, json.dumps(
+        swagger['paths'][httpPath],
+        indent=4,
+        separators=(', ', ': '),
+        sort_keys=True)
     raise Exception("RESTQUERYPARAMS not supported anymore. Use RESTQUERYPARAMETERS instead.")
 
 ################################################################################
@@ -539,7 +576,7 @@ def restheader(cargo, r=Regexen()):
     restReplyBodyParam = None
     restBodyParam = None
 
-    (fp, last) = cargo
+    (dummy, last) = cargo
 
     temp = parameters(last).split(',')
     if temp == "":
@@ -553,13 +590,17 @@ def restheader(cargo, r=Regexen()):
     method = ucmethod.lower()
     nickname = summaryList[0] + ''.join([word.capitalize() for word in summaryList[1:]])
 
-    httpPath = FA(path, wordboundary = ['{', '}'])
+    httpPath = FA(path, wordboundary=['{', '}'])
     if not httpPath in swagger['paths']:
         swagger['paths'][httpPath] = {}
     if method in swagger['paths'][httpPath]:
         print >> sys.stderr, "duplicate route detected:"
         print >> sys.stderr, "There already is a route [" + ucmethod + " " + httpPath + "]: "
-        print >> sys.stderr, json.dumps(swagger['paths'][httpPath], indent=4, separators=(', ',': '), sort_keys=True)
+        print >> sys.stderr, json.dumps(
+            swagger['paths'][httpPath],
+            indent=4,
+            separators=(', ', ': '),
+            sort_keys=True)
         raise Exception("Duplicate route")
 
     if currentDocuBlock == None:
@@ -568,10 +609,17 @@ def restheader(cargo, r=Regexen()):
     if lastDocuBlock != None and currentDocuBlock == lastDocuBlock:
         raise Exception("No new docublock started for this restheader: " + ucmethod + " " + path  + ' : ' + currentDocuBlock)
 
+    operationId = nickname
+    if len(temp) > 2:
+        operationId = temp[2]
+    if operationId in operationIDs:
+        print operationIDs
+        raise Exception("duplicate operation ID! " + operationId)
     lastDocuBlock = currentDocuBlock
 
 
     swagger['paths'][httpPath][method] = {
+        'operationId': operationId,
         'x-filename': fn,
         'x-hints': '',
         'x-examples': [],
@@ -596,14 +644,14 @@ def resturlparameters(cargo, r=Regexen()):
 
 def resturlparam(cargo, r=Regexen()):
     global swagger, operation, httpPath, method
-    (fp, last) = cargo
+    (dummy, last) = cargo
     name = ""
     pformat = ""
     required = ""
 
     try:
-        (name, pformat, required)  = parameters(last).split(',')
-    except Exception as x:
+        (name, pformat, required) = parameters(last).split(',')
+    except Exception:
         print >> sys.stderr, "RESTURLPARAM: 3 arguments required. You gave me: " + parameters(last)
         raise x
 
@@ -619,8 +667,8 @@ def resturlparam(cargo, r=Regexen()):
         'type': pformat.strip().lower(),
         'required': True
         }
-    swagger['paths'][httpPath][method]['parameters'].append(para) 
-    
+    swagger['paths'][httpPath][method]['parameters'].append(para)
+
     return generic_handler_desc(cargo, r, "resturlparam", None, para, 'description')
 
 ################################################################################
@@ -643,7 +691,7 @@ def restheaderparameters(cargo, r=Regexen()):
 
 def restheaderparam(cargo, r=Regexen()):
     global swagger, operation, httpPath, method
-    (fp, last) = cargo
+    (dummy, last) = cargo
 
     parametersList = parameters(last).split(',')
 
@@ -653,7 +701,7 @@ def restheaderparam(cargo, r=Regexen()):
         'name': parametersList[0],
         'description': ''
         }
-    swagger['paths'][httpPath][method]['parameters'].append(para) 
+    swagger['paths'][httpPath][method]['parameters'].append(para)
 
     return generic_handler_desc(cargo, r, "restheaderparam", None, para, 'description')
 
@@ -663,11 +711,11 @@ def restheaderparam(cargo, r=Regexen()):
 
 def restbodyparam(cargo, r=Regexen()):
     global swagger, operation, httpPath, method, restBodyParam, fn, currentDocuBlock
-    (fp, last) = cargo
+    (dummy, last) = cargo
 
     try:
         (name, ptype, required, ptype2) = parameters(last).split(',')
-    except Exception as x:
+    except Exception:
         print >> sys.stderr, "RESTBODYPARAM: 4 arguments required. You gave me: " + parameters(last)
         print >> sys.stderr, "In this docublock: " + currentDocuBlock
         raise
@@ -691,7 +739,7 @@ def restbodyparam(cargo, r=Regexen()):
                 '$ref': '#/definitions/' + currentDocuBlock
                 }
             }
-        swagger['paths'][httpPath][method]['parameters'].append(restBodyParam) 
+        swagger['paths'][httpPath][method]['parameters'].append(restBodyParam)
 
     if not currentDocuBlock in swagger['definitions']:
         swagger['definitions'][currentDocuBlock] = {
@@ -720,7 +768,7 @@ def restbodyparam(cargo, r=Regexen()):
 
         if required:
             setRequired(swagger['definitions'][ptype2], name)
-        
+
         return generic_handler_desc(cargo, r, "restbodyparam", None,
                                     swagger['definitions'][ptype2],
                                     'description')
@@ -737,7 +785,7 @@ def restbodyparam(cargo, r=Regexen()):
             if ptype2 == 'object':
                 swagger['definitions'][currentDocuBlock]['properties'][name]['items']['additionalProperties'] = {}
     elif ptype == 'object':
-            swagger['definitions'][currentDocuBlock]['properties'][name]['additionalProperties'] = {}
+        swagger['definitions'][currentDocuBlock]['properties'][name]['additionalProperties'] = {}
     elif ptype != 'string':
         swagger['definitions'][currentDocuBlock]['properties'][name]['format'] = ptype2
 
@@ -755,11 +803,11 @@ def restbodyparam(cargo, r=Regexen()):
 
 def restallbodyparam(cargo, r=Regexen()):
     global swagger, operation, httpPath, method, restBodyParam
-    (fp, last) = cargo
+    (dummy, last) = cargo
 
     try:
-        (name, ptype, required) = parameters(last).split(',')
-    except Exception as x:
+        (_name, _ptype, required) = parameters(last).split(',')
+    except Exception:
         print >> sys.stderr, "RESTALLBODYPARAM: 3 arguments required. You gave me: " + parameters(last)
 
     CheckReqOpt(required)
@@ -771,17 +819,17 @@ def restallbodyparam(cargo, r=Regexen()):
         raise Exception("May only have one 'ALLBODY'")
 
     restBodyParam = {
-            'name': 'Json Request Body',
-            'description': '',
-            'in': 'body',
-            'x-description-offset': len(swagger['paths'][httpPath][method]['description']),
-            'required': required,
-            'schema': {
-                'type': 'object',
-                'additionalProperties': {}
-                }
-            }
-    swagger['paths'][httpPath][method]['parameters'].append(restBodyParam) 
+        'name': 'Json Request Body',
+        'description': '',
+        'in': 'body',
+        'x-description-offset': len(swagger['paths'][httpPath][method]['description']),
+        'required': required,
+        'schema': {
+            'type': 'object',
+            'additionalProperties': {}
+        }
+    }
+    swagger['paths'][httpPath][method]['parameters'].append(restBodyParam)
 
     return generic_handler_desc(cargo, r, "restbodyparam", None,
                                 restBodyParam,
@@ -793,11 +841,11 @@ def restallbodyparam(cargo, r=Regexen()):
 
 def reststruct(cargo, r=Regexen()):
     global swagger, operation, httpPath, method, restBodyParam, restSubBodyParam, fn
-    (fp, last) = cargo
+    (dummy, last) = cargo
 
     try:
         (name, className, ptype, required, ptype2) = parameters(last).split(',')
-    except Exception as x:
+    except Exception:
         print >> sys.stderr, "RESTSTRUCT: 5 arguments required (name, className, ptype, required, ptype2). You gave me: " + parameters(last)
         raise
 
@@ -843,7 +891,7 @@ def reststruct(cargo, r=Regexen()):
 
         if required:
             setRequired(swagger['definitions'][className], name)
-       
+
         return generic_handler_desc(cargo, r, "reststruct", None,
                                     swagger['definitions'][ptype2],
                                     'description')
@@ -861,7 +909,7 @@ def reststruct(cargo, r=Regexen()):
 
 def restqueryparam(cargo, r=Regexen()):
     global swagger, operation, httpPath, method
-    (fp, last) = cargo
+    (dummy, last) = cargo
 
     parametersList = parameters(last).split(',')
 
@@ -879,7 +927,7 @@ def restqueryparam(cargo, r=Regexen()):
         'required': required
         }
 
-    swagger['paths'][httpPath][method]['parameters'].append(para) 
+    swagger['paths'][httpPath][method]['parameters'].append(para)
     return generic_handler_desc(cargo, r, "restqueryparam", None, para, 'description')
 
 ################################################################################
@@ -893,7 +941,7 @@ def hints(cargo, r=Regexen()):
                                swagger['paths'][httpPath][method], 'x-hints')
 
     if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['x-hints']):
-        (fp, last) = cargo
+        (fp, dummy) = cargo
         print >> sys.stderr, 'remove newline after @HINTS in file %s' % (fp.name)
         exit(1)
 
@@ -912,7 +960,7 @@ def restdescription(cargo, r=Regexen()):
                                'description')
 
     if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['description']):
-        (fp, last) = cargo
+        (fp, dummy) = cargo
         print >> sys.stderr, 'remove newline after @RESTDESCRIPTION in file %s' % (fp.name)
         exit(1)
 
@@ -924,11 +972,11 @@ def restdescription(cargo, r=Regexen()):
 
 def restreplybody(cargo, r=Regexen()):
     global swagger, operation, httpPath, method, restReplyBodyParam, fn
-    (fp, last) = cargo
+    (dummy, last) = cargo
 
     try:
         (name, ptype, required, ptype2) = parameters(last).split(',')
-    except Exception as x:
+    except Exception:
         print >> sys.stderr, "RESTREPLYBODY: 4 arguments required. You gave me: " + parameters(last)
         raise x
 
@@ -958,11 +1006,11 @@ def restreplybody(cargo, r=Regexen()):
         operation['responses'][currentReturnCode]['x-description-offset'] = len(operation['description'])
 
         operation['responses'][currentReturnCode]['schema'] = {
-                '$ref': '#/definitions/' + rcBlock
-                }
-        swagger['paths'][httpPath][method] ['produces'] = [
+            '$ref': '#/definitions/' + rcBlock
+        }
+        swagger['paths'][httpPath][method]['produces'] = [
             "application/json"
-            ]
+        ]
         restReplyBodyParam = ''
 
     if not rcBlock in swagger['definitions']:
@@ -970,7 +1018,7 @@ def restreplybody(cargo, r=Regexen()):
             'x-filename': fn,
             'type' : 'object',
             'properties': {},
-            }
+        }
 
     if len(name) > 0:
         swagger['definitions'][rcBlock]['properties'][name] = {
@@ -994,7 +1042,7 @@ def restreplybody(cargo, r=Regexen()):
 
                 if required:
                     setRequired(swagger['definitions'][ptype2], name)
-                    
+
                 return generic_handler_desc(cargo, r, "restbodyparam", None,
                                             swagger['definitions'][ptype2],
                                             'description')
@@ -1025,7 +1073,7 @@ def restreplybody(cargo, r=Regexen()):
                 }
                 if ptype2 == 'object':
                     swagger['definitions'][rcBlock]['properties']\
-                        [name]['items']['additionalProperties']      = {}
+                        [name]['items']['additionalProperties'] = {}
     elif ptype == 'object':
         if len(name) > 0:
             swagger['definitions'][rcBlock]['properties'][name]['additionalProperties'] = {}
@@ -1039,10 +1087,11 @@ def restreplybody(cargo, r=Regexen()):
     if len(name) > 0:
         if 'description' not in swagger['definitions'][rcBlock]['properties']:
             swagger['definitions'][rcBlock]['properties'][name]['description'] = ''
-	
-        return generic_handler_desc(cargo, r, "restreplybody", None,
-                                    swagger['definitions'][rcBlock]['properties'][name],
-                                    'description')
+
+        return generic_handler_desc(
+            cargo, r, "restreplybody", None,
+            swagger['definitions'][rcBlock]['properties'][name],
+            'description')
     else:
         swagger['definitions'][rcBlock]['description'] = ''
         return generic_handler_desc(cargo, r, "restreplybody", None,
@@ -1062,19 +1111,20 @@ def restreturncodes(cargo, r=Regexen()):
 
 def restreturncode(cargo, r=Regexen()):
     global currentReturnCode, restReplyBodyParam
-    (fp, last) = cargo
+    (dummy, last) = cargo
     restReplyBodyParam = None
     currentReturnCode = parameters(last)
 
     if not 'responses' in swagger['paths'][httpPath][method]:
         swagger['paths'][httpPath][method]['responses'] = {}
-    swagger['paths'][httpPath][method]['responses'][currentReturnCode] =  {
+    swagger['paths'][httpPath][method]['responses'][currentReturnCode] = {
         #'code': parameters(last),
         'description': ''
-        }
-    return generic_handler_desc(cargo, r, "restreturncode", None,
-                                swagger['paths'][httpPath][method]['responses'][parameters(last)],
-                                'description')
+    }
+    return generic_handler_desc(
+        cargo, r, "restreturncode", None,
+        swagger['paths'][httpPath][method]['responses'][parameters(last)],
+        'description')
 
 ################################################################################
 ### @brief examples
@@ -1093,8 +1143,9 @@ def examples(cargo, r=Regexen()):
 def example_arangosh_run(cargo, r=Regexen()):
     global currentExample, DEBUG
 
-    if DEBUG: print >> sys.stderr, "example_arangosh_run"
-    fp, last = cargo
+    if DEBUG:
+        print >> sys.stderr, "example_arangosh_run"
+    (fp, last) = cargo
 
     exampleHeader = brTrim(operation['x-examples'][currentExample]).strip()
 
@@ -1105,11 +1156,11 @@ def example_arangosh_run(cargo, r=Regexen()):
     except:
         print >> sys.stderr, "Failed to open example file:\n  '%s'" % fn
         raise
-    operation['x-examples'][currentExample]= '\n\n**Example:**\n ' + exampleHeader.strip('\n ') + '\n\n<pre>'
-    
+    operation['x-examples'][currentExample] = '\n\n**Example:**\n ' + exampleHeader.strip('\n ') + '\n\n<pre>'
+
     for line in examplefile.readlines():
         operation['x-examples'][currentExample] += '<code>' + line + '</code>'
-    
+
     operation['x-examples'][currentExample] += '</pre>\n\n\n'
 
     line = ""
@@ -1130,7 +1181,8 @@ def example_arangosh_run(cargo, r=Regexen()):
 
 def eof(cargo):
     global DEBUG
-    if DEBUG: print >> sys.stderr, "eof"
+    if DEBUG:
+        print >> sys.stderr, "eof"
 
 ################################################################################
 ### @brief error
@@ -1138,7 +1190,8 @@ def eof(cargo):
 
 def error(cargo):
     global DEBUG
-    if DEBUG: print >> sys.stderr, "error"
+    if DEBUG:
+        print >> sys.stderr, "error"
 
     sys.stderr.write('Unidentifiable line:\n' + cargo)
 
@@ -1149,12 +1202,14 @@ def error(cargo):
 def comment(cargo, r=Regexen()):
     global DEBUG
 
-    if DEBUG: print >> sys.stderr, "comment"
-    (fp, last) = cargo
+    if DEBUG:
+        print >> sys.stderr, "comment"
+    (fp, dummy) = cargo
 
     while 1:
         line = fp.readline()
-        if not line: return eof, (fp, line)
+        if not line:
+            return eof, (fp, line)
 
         next, c = next_step(fp, line, r)
 
@@ -1170,9 +1225,10 @@ def comment(cargo, r=Regexen()):
 def skip_code(cargo, r=Regexen()):
     global DEBUG
 
-    if DEBUG: print >> sys.stderr, "skip_code"
+    if DEBUG:
+        print >> sys.stderr, "skip_code"
     (fp, last) = cargo
-    
+
     return comment((fp, last), r)
 
 ################################################################################
@@ -1219,7 +1275,7 @@ def getOneApi(infile, filename, thisFn):
 def getReference(name, source, verb):
     try:
         ref = name['$ref'][defLen:]
-    except Exception as x:
+    except Exception:
         print >>sys.stderr, "No reference in: "
         print >>sys.stderr, name
         raise
@@ -1229,7 +1285,11 @@ def getReference(name, source, verb):
             fn = swagger['paths'][route][verb]['x-filename']
         else:
             fn = swagger['definitions'][source]['x-filename']
-        print >> sys.stderr, json.dumps(swagger['definitions'], indent=4, separators=(', ',': '), sort_keys=True)
+        print >> sys.stderr, json.dumps(
+            swagger['definitions'],
+            indent=4,
+            separators=(', ', ': '),
+            sort_keys=True)
         raise Exception("invalid reference: " + ref + " in " + fn)
     return ref
 
@@ -1239,7 +1299,7 @@ removeLF = re.compile("\n")
 def TrimThisParam(text, indent):
     text = text.rstrip('\n').lstrip('\n')
     text = removeDoubleLF.sub("\n", text)
-    if (indent > 0):
+    if indent > 0:
         indent = (indent + 2) # align the text right of the list...
     return removeLF.sub("\n" + ' ' * indent, text)
 
@@ -1260,33 +1320,33 @@ def unwrapPostJson(reference, layer):
     else:
         for param in swagger['definitions'][reference]['properties'].keys():
             thisParam = swagger['definitions'][reference]['properties'][param]
-            required = ('required' in swagger['definitions'][reference] and
-                        param in swagger['definitions'][reference]['required'])
-    
+            #required = ('required' in swagger['definitions'][reference] and
+            #          param in swagger['definitions'][reference]['required'])
+
             # print >> sys.stderr, thisParam
             if '$ref' in thisParam:
                 subStructRef = getReference(thisParam, reference, None)
-    
+
                 rc += '  ' * layer + "- **" + param + "**:\n"
                 ####
                 # print >>sys.stderr, "yy" * layer + param
                 rc += unwrapPostJson(subStructRef, layer + 1)
-        
+
             elif thisParam['type'] == 'object':
                 rc += '  ' * layer + "- **" + param + "**: " + TrimThisParam(brTrim(thisParam['description']), layer) + "\n"
             elif thisParam['type'] == 'array':
                 rc += '  ' * layer + "- **" + param + "**"
                 trySubStruct = False
-                lf=""
+                lf = ""
                 ####
                 # print >>sys.stderr, "zz" * layer + param
                 if 'type' in thisParam['items']:
                     rc += " (" + thisParam['items']['type']  + ")"
-                    lf="\n"
+                    lf = "\n"
                 else:
                     if len(thisParam['items']) == 0:
                         rc += " (anonymous json object)"
-                        lf="\n"
+                        lf = "\n"
                     else:
                         trySubStruct = True
                 rc += ": " + TrimThisParam(brTrim(thisParam['description']), layer) + lf
@@ -1309,20 +1369,20 @@ def unwrapPostJson(reference, layer):
 
 
 if len(sys.argv) < 4:
-  print >> sys.stderr, "usage: " + sys.argv[0] + " <scriptDir> <outDir> <relDir> <docublockdir> <optional: filter>"
-  sys.exit(1)
+    print >> sys.stderr, "usage: " + sys.argv[0] + " <scriptDir> <outDir> <relDir> <docublockdir> <optional: filter>"
+    sys.exit(1)
 
 scriptDir = sys.argv[1]
 if not scriptDir.endswith("/"):
-  scriptDir += "/"
+    scriptDir += "/"
 
 outDir = sys.argv[2]
 if not outDir.endswith("/"):
-  outDir += "/"
+    outDir += "/"
 
 relDir = sys.argv[3]
 if not relDir.endswith("/"):
-  relDir += "/"
+    relDir += "/"
 
 fileFilter = ""
 if len(sys.argv) > 5:
@@ -1331,7 +1391,7 @@ if len(sys.argv) > 5:
 # read ArangoDB version
 f = open(scriptDir + "VERSION", "r")
 for version in f:
-  version = version.strip('\n')
+    version = version.strip('\n')
 f.close()
 
 
@@ -1375,7 +1435,7 @@ for route in swagger['paths'].keys():
     for verb in swagger['paths'][route].keys():
         offsetPlus = 0
         thisVerb = swagger['paths'][route][verb]
-        if len(thisVerb['description']) == 0:
+        if not thisVerb['description']:
             print >> sys.stderr, "Description of Route empty; @RESTDESCRIPTION missing?"
             print >> sys.stderr, "in :" + verb + " " + route
             #raise TODO
@@ -1396,17 +1456,20 @@ for route in swagger['paths'].keys():
             addText = ''
             postText = ''
             paramDesc = thisVerb['description'][:(descOffset+offsetPlus)]
-            if len(paramDesc) > 0: 
+            if paramDesc:
                 postText += paramDesc
             if 'additionalProperties' not in thisVerb['parameters'][nParam]['schema']:
-                addText = "\n" + unwrapPostJson(getReference(thisVerb['parameters'][nParam]['schema'], route, verb),1) + "\n\n"
-            
+                addText = "\n" + unwrapPostJson(
+                    getReference(thisVerb['parameters'][nParam]['schema'],
+                                 route,
+                                 verb),
+                    1) + "\n\n"
+
             postText += addText
             postText += thisVerb['description'][(offsetPlus+descOffset):]
             offsetPlus += len(addText)
             thisVerb['description'] = postText
 
-        
         # insert the reply json description into the place we extracted it:
         if 'responses' in thisVerb:
 
@@ -1419,11 +1482,11 @@ for route in swagger['paths'].keys():
                         "descOffset": thisVerb['responses'][nRC]['x-description-offset']
                     })
 
-	    sortVec.sort(key=descOffsetGet)
+            sortVec.sort(key=descOffsetGet)
             for oneItem in sortVec:
                 nRC = oneItem["nParam"]
                 descOffset = thisVerb['responses'][nRC]['x-description-offset']
-                #print descOffset 
+                #print descOffset
                 #print offsetPlus
                 descOffset += offsetPlus
                 addText = ''
@@ -1431,11 +1494,14 @@ for route in swagger['paths'].keys():
                 postText = thisVerb['description'][:descOffset]
                 #print postText
                 replyDescription = TrimThisParam(thisVerb['responses'][nRC]['description'], 0)
-                if (len(replyDescription) > 0): 
+                if replyDescription:
                     addText += '\n' + replyDescription + '\n'
                 if 'additionalProperties' not in thisVerb['responses'][nRC]['schema']:
                     addText += "\n" + unwrapPostJson(
-                        getReference(thisVerb['responses'][nRC]['schema'], route, verb),0) + '\n'
+                        getReference(thisVerb['responses'][nRC]['schema'],
+                                     route,
+                                     verb),
+                        0) + '\n'
                 # print addText
                 postText += addText
                 postText += thisVerb['description'][descOffset:]
@@ -1448,7 +1514,7 @@ for route in swagger['paths'].keys():
         # Simplify hint box code to something that works in Swagger UI
         # Append the result to the description field
         # Place invisible markers, so that hints can be removed again
-        if 'x-hints' in thisVerb and len(thisVerb['x-hints']) > 0:
+        if 'x-hints' in thisVerb and thisVerb['x-hints']:
             thisVerb['description'] += '\n<!-- Hints Start -->'
             tmp = re.sub("{% hint '([^']+?)' %}",
                          lambda match: "\n\n**{}:**  ".format(match.group(1).title()),
@@ -1458,15 +1524,15 @@ for route in swagger['paths'].keys():
             thisVerb['description'] += '\n<!-- Hints End -->'
 
         # Append the examples to the description:
-        if 'x-examples' in thisVerb and len(thisVerb['x-examples']) > 0:
+        if 'x-examples' in thisVerb and thisVerb['x-examples']:
             thisVerb['description'] += '\n'
             for nExample in range(0, len(thisVerb['x-examples'])):
-                thisVerb['description'] +=  thisVerb['x-examples'][nExample]
+                thisVerb['description'] += thisVerb['x-examples'][nExample]
             thisVerb['x-examples'] = []# todo unset!
 
 #print highlight(yaml.dump(swagger, Dumper=yaml.RoundTripDumper), YamlLexer(), TerminalFormatter())
 #print yaml.dump(swagger, Dumper=yaml.RoundTripDumper)
-print json.dumps(swagger, indent=4, separators=(', ',': '), sort_keys=True)
+print json.dumps(swagger, indent=4, separators=(', ', ': '), sort_keys=True)
 #print json.dumps(swagger['paths'], indent=4, separators=(', ',': '), sort_keys=True)
 #print highlight(yaml.dump(swagger, Dumper=yaml.RoundTripDumper), YamlLexer(), TerminalFormatter())
 
@@ -1480,4 +1546,3 @@ print json.dumps(swagger, indent=4, separators=(', ',': '), sort_keys=True)
 ## End:
 
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-
