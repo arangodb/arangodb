@@ -125,13 +125,21 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
 
-  auto res = vocbase().replicationApplier()->preventStart();
+  Result res;
 
-  if (res.fail()) {
-    return res;
+  if (!_config.applier._allowParallelInvocations) {
+    res = vocbase().replicationApplier()->preventStart();
+
+    if (res.fail()) {
+      return res;
+    }
   }
-
-  TRI_DEFER(vocbase().replicationApplier()->allowStart());
+  
+  auto guard = scopeGuard([&]() {
+    if (!_config.applier._allowParallelInvocations) {
+      vocbase().replicationApplier()->allowStart();
+    }
+  });
 
   setAborted(false);
 
@@ -205,7 +213,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     VPackBuilder inventoryResponse;  // hold response data
     if (!collections.isArray()) {
       // caller did not supply an inventory, we need to fetch it
-      Result res = fetchInventory(inventoryResponse);
+      res = fetchInventory(inventoryResponse);
       if (!res.ok()) {
         return res;
       }
