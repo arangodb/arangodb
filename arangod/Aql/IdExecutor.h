@@ -85,8 +85,9 @@ class ExecutionBlockImpl<IdExecutor<JustPassThrough>> : public ExecutionBlock {
   ~ExecutionBlockImpl() override = default;
 
   std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override {
+    traceGetSomeBegin(atMost);
     if (isDone()) {
-      return {ExecutionState::DONE, nullptr};
+      return traceGetSomeEnd(ExecutionState::DONE, nullptr);
     }
 
     ExecutionState state;
@@ -97,12 +98,13 @@ class ExecutionBlockImpl<IdExecutor<JustPassThrough>> : public ExecutionBlock {
       nextDependency();
     }
 
-    return {state, block};
+    return traceGetSomeEnd(state, block);
   }
 
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override {
+    traceSkipSomeBegin(atMost);
     if (isDone()) {
-      return {ExecutionState::DONE, 0};
+      return traceSkipSomeEnd(ExecutionState::DONE, 0);
     }
 
     ExecutionState state;
@@ -113,7 +115,7 @@ class ExecutionBlockImpl<IdExecutor<JustPassThrough>> : public ExecutionBlock {
       nextDependency();
     }
 
-    return {state, skipped};
+    return traceSkipSomeEnd(state, skipped);
   }
 
   RegisterId getOutputRegisterId() const noexcept {
