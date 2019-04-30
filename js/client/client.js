@@ -197,16 +197,16 @@ if (typeof window === 'undefined') {
     )) {
     try {
       // this will not work from within a browser
-      var __fs__ = require('fs');
-      var __rcf__ = __fs__.join(__fs__.home(), '.arangosh.rc');
+      let __fs__ = require('fs');
+      let __rcf__ = __fs__.join(__fs__.home(), '.arangosh.rc');
 
       if (__fs__.exists(__rcf__)) {
         /* jshint evil: true */
-        var __content__ = __fs__.read(__rcf__);
+        let __content__ = __fs__.read(__rcf__);
         eval(__content__);
       }
     } catch (e) {
-      require('console').warn('arangosh.rc: %s', String(e));
+      require('console').debug('arangosh.rc: %s', String(e));
     }
   }
 

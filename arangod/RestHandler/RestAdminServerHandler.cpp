@@ -141,7 +141,7 @@ void RestAdminServerHandler::handleMode() {
   } else if (requestType == rest::RequestType::PUT) {
     AuthenticationFeature* af = AuthenticationFeature::instance();
     if (af->isActive() && !_request->user().empty()) {
-      auth::Level lvl = auth::Level::NONE;
+      auth::Level lvl;
       if (af->userManager() != nullptr) {
         lvl = af->userManager()->databaseAuthLevel(_request->user(), TRI_VOC_SYSTEM_DATABASE,
                                                    /*configured*/ true);
