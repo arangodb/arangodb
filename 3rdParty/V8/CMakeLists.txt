@@ -54,7 +54,7 @@ endif()
 file(RELATIVE_PATH V8_REL_TARGET_PATH ${V8_DIR} ${V8_TARGET_DIR})
 
 list(APPEND V8_GYP_ARGS
-  --generator-output=${V8_TARGET_DIR}
+  --generator-output="${V8_TARGET_DIR}"
   #$ ${V8_REL_TARGET_PATH}
   -Dv8_target_arch=${V8_PROC_ARCH}
   -Dv8_host_arch=${V8_PROC_ARCH}
@@ -160,8 +160,8 @@ if (WIN32)
   list(APPEND V8_GYP_ARGS
     -Dcomponent=static_library
     -Dlibrary=static_library
-    -Dgenerator_output=${V8_TARGET_DIR}
-    -Ggenerator_output=${V8_TARGET_DIR}
+    -Dgenerator_output="${V8_TARGET_DIR}"
+    -Ggenerator_output="${V8_TARGET_DIR}"
     #--depth=2
     #-Dv8_use_external_startup_data=1
     #-Dicu_gyp_path=../third_party/icu/icu.gyp
@@ -179,7 +179,7 @@ if (WIN32)
     -Dembedded_builtins_snapshot_src=
     -Dv8_enable_handle_zapping=0
     -Dv8_use_snapshot=0
-    -DPYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
+    -DPYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}"
     -Dnode_use_pch=false
     )
 
