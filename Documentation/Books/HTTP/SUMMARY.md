@@ -51,6 +51,8 @@
   * [ArangoSearch Views](Views/ArangoSearch.md)
 * [Analyzers](Analyzers/README.md)
 * [Transactions](Transaction/README.md)
+  * [Stream Transactions](Transaction/StreamTransaction.md)
+  * [JavaScript Transactions](Transaction/JsTransaction.md)
 * [Replication](Replications/README.md)
   * [Replication Dump](Replications/ReplicationDump.md)
   * [Replication Logger](Replications/ReplicationLogger.md)

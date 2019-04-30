@@ -156,8 +156,8 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
   if (response == nullptr || !response->isComplete()) {
     return {TRI_ERROR_INTERNAL,
             "got invalid response from server: '" + client.getErrorMessage() +
-                "' while executing " + requestAction + " with this payload: '" +
-                originalRequest + "'"};
+                "' while executing " + requestAction + (originalRequest.empty() ? "" : " with this payload: '" +
+                originalRequest + "'")};
   }
   if (response->wasHttpError()) {
     int errorNum = TRI_ERROR_INTERNAL;
@@ -171,7 +171,7 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
     return {errorNum, "got invalid response from server: HTTP " +
                           itoa(response->getHttpReturnCode()) + ": '" +
                           errorMsg + "' while executing '" + requestAction +
-                          "' with this payload: '" + originalRequest + "'"};
+                          (originalRequest.empty() ? "" : "' with this payload: '" + originalRequest + "'")};
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -609,7 +609,6 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
 
   arangodb::Result result;
   StringBuffer buffer(true);
-  bool isGzip(false);
 
   VPackSlice const parameters = jobData.collection.get("parameters");
   std::string const cname =
@@ -625,22 +624,18 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
   if (!datafile || datafile->status().fail()) {
     datafile = jobData.directory.readableFile(
       cname + "_" + arangodb::rest::SslInterface::sslMD5(cname) + ".data.json.gz");
-    isGzip = true;
-  } // if
+  }
   if (!datafile || datafile->status().fail()) {
-    datafile = jobData.directory.readableFile(
-      cname + ".data.json.gz");
-    isGzip = true;
-  } // if
+    datafile = jobData.directory.readableFile(cname + ".data.json.gz");
+  } 
   if (!datafile || datafile->status().fail()) {
     datafile = jobData.directory.readableFile(cname + ".data.json");
-    isGzip = false;
-    if (!datafile || datafile->status().fail()) {
-      result = {TRI_ERROR_CANNOT_READ_FILE, "could not open file"};
-      return result;
-    }
   }
-
+  if (!datafile || datafile->status().fail()) {
+    result = {TRI_ERROR_CANNOT_READ_FILE, "could not open data file for collection '" + cname + "'"};
+    return result;
+  }
+  
   int64_t const fileSize = TRI_SizeFile(datafile->path().c_str());
 
   if (jobData.options.progress) {
@@ -651,6 +646,8 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
 
   int64_t numReadForThisCollection = 0;
   int64_t numReadSinceLastReport = 0;
+  
+  bool const isGzip = (0 == datafile->path().substr(datafile->path().size() - 3).compare(".gz"));
 
   buffer.clear();
   while (true) {

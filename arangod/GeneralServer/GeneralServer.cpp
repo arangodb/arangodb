@@ -97,10 +97,10 @@ bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
   return true;
 }
 
-GeneralServer::IoThread::~IoThread() { shutdown(); }
-
 GeneralServer::IoThread::IoThread(IoContext& iocontext)
     : Thread("Io"), _iocontext(iocontext) {}
+
+GeneralServer::IoThread::~IoThread() { shutdown(); }
 
 void GeneralServer::IoThread::run() {
   // run the asio io context
@@ -111,8 +111,7 @@ GeneralServer::IoContext::IoContext()
     : _clients(0),
       _thread(*this),
       _asioIoContext(1),  // only a single thread per context
-      _asioWork(_asioIoContext),
-      _stopped(false) {
+      _asioWork(_asioIoContext) {
   _thread.start();
 }
 

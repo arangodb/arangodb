@@ -357,23 +357,26 @@ class AgencyTransaction {
 
 struct AgencyWriteTransaction : public AgencyTransaction {
  public:
+
+  static std::string randomClientId();
+
   explicit AgencyWriteTransaction(AgencyOperation const& operation)
-      : clientId(to_string(boost::uuids::random_generator()())) {
+      : clientId(randomClientId()) {
     operations.push_back(operation);
   }
 
   explicit AgencyWriteTransaction(std::vector<AgencyOperation> const& _opers)
-      : operations(_opers), clientId(to_string(boost::uuids::random_generator()())) {}
+      : operations(_opers), clientId(randomClientId()) {}
 
   AgencyWriteTransaction(AgencyOperation const& operation, AgencyPrecondition const& precondition)
-      : clientId(to_string(boost::uuids::random_generator()())) {
+      : clientId(randomClientId()) {
     operations.push_back(operation);
     preconditions.push_back(precondition);
   }
 
   AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,
                          AgencyPrecondition const& precondition)
-      : clientId(to_string(boost::uuids::random_generator()())) {
+      : clientId(randomClientId()) {
     std::copy(opers.begin(), opers.end(),
               std::back_inserter(operations));
     preconditions.push_back(precondition);
@@ -381,7 +384,7 @@ struct AgencyWriteTransaction : public AgencyTransaction {
 
   AgencyWriteTransaction(AgencyOperation const& operation,
                          std::vector<AgencyPrecondition> const& precs)
-      : clientId(to_string(boost::uuids::random_generator()())) {
+      : clientId(randomClientId()) {
     operations.push_back(operation);
     std::copy(precs.begin(), precs.end(),
               std::back_inserter(preconditions));
@@ -389,14 +392,14 @@ struct AgencyWriteTransaction : public AgencyTransaction {
 
   AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,
                          std::vector<AgencyPrecondition> const& precs)
-      : clientId(to_string(boost::uuids::random_generator()())) {
+      : clientId(randomClientId()) {
     std::copy(opers.begin(), opers.end(),
               std::back_inserter(operations));
     std::copy(precs.begin(), precs.end(),
               std::back_inserter(preconditions));
   }
 
-  AgencyWriteTransaction() = default;
+  AgencyWriteTransaction() : clientId(randomClientId()) {};
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
 

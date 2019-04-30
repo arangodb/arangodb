@@ -56,7 +56,7 @@ class HttpConnection final : public fuerte::Connection {
   MessageID sendRequest(std::unique_ptr<Request>, RequestCallback) override;
   
   // Return the number of unfinished requests.
-  size_t requestsLeft() const override {
+  std::size_t requestsLeft() const override {
     return _numQueued.load(std::memory_order_acquire);
   }
   

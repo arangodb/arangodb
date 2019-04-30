@@ -407,7 +407,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
         // throws if the data is invalid
         validator.validate(p, remaining, /*isSubPart*/ true);
 
-        VPackSlice marker(p);
+        VPackSlice marker(reinterpret_cast<uint8_t const*>(p));
         Result r = parseCollectionDumpMarker(trx, coll, marker);
         if (r.fail()) {
           r.reset(r.errorNumber(),
