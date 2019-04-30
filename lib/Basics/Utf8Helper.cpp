@@ -60,7 +60,7 @@ std::string arangodb::basics::fromWString(wchar_t const* validUTF16String, std::
   return out;
 }
 
-std::string fromWString(std::wstring const& validUTF16String) {
+std::string arangodb::basics::fromWString(std::wstring const& validUTF16String) {
   return arangodb::basics::fromWString(validUTF16String.data(), validUTF16String.size());
 }
 #endif
