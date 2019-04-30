@@ -191,7 +191,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     if (reverse) {
       _rangeBound = _bounds.start();
       options.iterate_lower_bound = &_rangeBound;
-      VPackSlice s = VPackSlice(_rangeBound.data() + sizeof(uint64_t));
+      VPackSlice s = VPackSlice(reinterpret_cast<uint8_t const*>(_rangeBound.data() + sizeof(uint64_t)));
       if (s.isArray() && s.length() == 1 && s.at(0).isMinKey()) {
         // lower bound is the min key. that means we can get away with a
         // cheap outOfBounds comparator
@@ -200,7 +200,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     } else {
       _rangeBound = _bounds.end();
       options.iterate_upper_bound = &_rangeBound;
-      VPackSlice s = VPackSlice(_rangeBound.data() + sizeof(uint64_t));
+      VPackSlice s = VPackSlice(reinterpret_cast<uint8_t const*>(_rangeBound.data() + sizeof(uint64_t)));
       if (s.isArray() && s.length() == 1 && s.at(0).isMaxKey()) {
         // upper bound is the max key. that means we can get away with a
         // cheap outOfBounds comparator

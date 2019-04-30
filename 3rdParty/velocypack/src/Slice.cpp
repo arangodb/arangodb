@@ -38,20 +38,26 @@
 
 using namespace arangodb::velocypack;
 
+namespace {
+
 // maximum values for integers of different byte sizes
-static int64_t const maxValues[] = {
+int64_t const maxValues[] = {
   128, 32768, 8388608, 2147483648, 549755813888, 140737488355328, 36028797018963968
 };
 
-// creates a Slice from Json and adds it to a scope
-Slice Slice::fromJson(SliceScope& scope, std::string const& json,
-                      Options const* options) {
-  Parser parser(options);
-  parser.parse(json);
-
-  Builder const& b = parser.builder();  // don't copy Builder contents here
-  return scope.add(b.start(), b.size());
-}
+} // namespace
+  
+uint8_t const Slice::noneSliceData[] = { 0x00 };
+uint8_t const Slice::illegalSliceData[] = { 0x17 };
+uint8_t const Slice::nullSliceData[] = { 0x18 };
+uint8_t const Slice::falseSliceData[] = { 0x19 };
+uint8_t const Slice::trueSliceData[] = { 0x1a };
+uint8_t const Slice::zeroSliceData[] = { 0x30 };
+uint8_t const Slice::emptyStringSliceData[] = { 0x40 };
+uint8_t const Slice::emptyArraySliceData[] = { 0x01 };
+uint8_t const Slice::emptyObjectSliceData[] = { 0x0a };
+uint8_t const Slice::minKeySliceData[] = { 0x1e };
+uint8_t const Slice::maxKeySliceData[] = { 0x1f };
 
 // translates an integer key into a string
 Slice Slice::translate() const {
@@ -267,7 +273,7 @@ int64_t Slice::getIntUnchecked() const noexcept {
       return toInt64(v);
     } else {
       int64_t vv = static_cast<int64_t>(v);
-      int64_t shift = maxValues[h - 0x20];
+      int64_t shift = ::maxValues[h - 0x20];
       return vv < shift ? vv : vv - (shift << 1);
     }
   }
@@ -288,7 +294,7 @@ int64_t Slice::getInt() const {
       return toInt64(v);
     } else {
       int64_t vv = static_cast<int64_t>(v);
-      int64_t shift = maxValues[h - 0x20];
+      int64_t shift = ::maxValues[h - 0x20];
       return vv < shift ? vv : vv - (shift << 1);
     }
   }
@@ -646,22 +652,6 @@ template Slice Slice::searchObjectKeyBinary<1>(StringRef const& attribute, Value
 template Slice Slice::searchObjectKeyBinary<2>(StringRef const& attribute, ValueLength ieBase, ValueLength n) const;
 template Slice Slice::searchObjectKeyBinary<4>(StringRef const& attribute, ValueLength ieBase, ValueLength n) const;
 template Slice Slice::searchObjectKeyBinary<8>(StringRef const& attribute, ValueLength ieBase, ValueLength n) const;
-
-SliceScope::SliceScope() : _allocations() {}
-
-SliceScope::~SliceScope() {
-  for (auto& it : _allocations) {
-    delete[] it;
-  }
-}
-
-Slice SliceScope::add(uint8_t const* data, ValueLength size) {
-  size_t const s = checkOverflow(size);
-  std::unique_ptr<uint8_t[]> copy(new uint8_t[s]);
-  memcpy(copy.get(), data, s);
-  _allocations.push_back(copy.get());
-  return Slice(copy.release());
-}
 
 std::ostream& operator<<(std::ostream& stream, Slice const* slice) {
   stream << "[Slice " << valueTypeName(slice->type()) << " ("

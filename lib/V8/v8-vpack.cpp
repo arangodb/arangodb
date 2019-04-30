@@ -232,7 +232,7 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate, VPackSlice const& slic
     }
     case VPackValueType::External: {
       // resolve external
-      return TRI_VPackToV8(isolate, VPackSlice(slice.getExternal()), options, base);
+      return TRI_VPackToV8(isolate, VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal())), options, base);
     }
     case VPackValueType::Custom: {
       if (options == nullptr || options->customTypeHandler == nullptr || base == nullptr) {
