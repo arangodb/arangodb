@@ -765,27 +765,31 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
   // primary sort
   auto const primarySortSlice = base.get("primarySort");
 
-  std::string error;
-  IResearchViewSort sort;
-  if (!sort.fromVelocyPack(primarySortSlice, error)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_BAD_PARAMETER,
-      "failed to parse 'IResearchViewNode' primary sort: "
-        + primarySortSlice.toString() + ", error: '" + error + "'");
+  if (!primarySortSlice.isNone()) {
+    std::string error;
+    IResearchViewSort sort;
+    if (!sort.fromVelocyPack(primarySortSlice, error)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "failed to parse 'IResearchViewNode' primary sort: "
+          + primarySortSlice.toString() + ", error: '" + error + "'");
+    }
+
+    TRI_ASSERT(_view);
+    auto& primarySort = LogicalView::cast<IResearchView>(*_view).primarySort();
+
+    if (sort != primarySort) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "primary sort " + primarySortSlice.toString()
+          + " for 'IResearchViewNode' doesn't match the one specified in view '"
+          + _view->name() + "'");
+    }
+
+    if (!primarySort.empty()) {
+      _sort = &primarySort; // set sort from corresponding view
+    }
   }
-
-  TRI_ASSERT(_view);
-  auto& primarySort = LogicalView::cast<IResearchView>(*_view).primarySort();
-
-  if (sort != primarySort) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_BAD_PARAMETER,
-      "primary sort " + primarySortSlice.toString()
-        + " for 'IResearchViewNode' doesn't match the one specified in view '"
-        + _view->name() + "'");
-  }
-
-  _sort = &primarySort; // set sort from corresponding view
 }
 
 void IResearchViewNode::planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHere,

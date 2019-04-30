@@ -413,6 +413,24 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
       }
     }
 
+    // invalid 'primarySort' specified
+    {
+      auto json = arangodb::velocypack::Parser::fromJson(
+          "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+          "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+          "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+          "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
+          std::to_string(logicalView->id()) + "\", \"primarySort\": false }");
+
+      try {
+        arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
+                                                    json->slice());
+        CHECK(false);
+      } catch (arangodb::basics::Exception const& ex) {
+        CHECK(TRI_ERROR_BAD_PARAMETER == ex.code());
+      }
+    }
+
     // no options
     {
       auto json = arangodb::velocypack::Parser::fromJson(
@@ -420,7 +438,7 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
           "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
           "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
           "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-          std::to_string(logicalView->id()) + "\" }");
+          std::to_string(logicalView->id()) + "\", \"primarySort\": [] }");
 
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                   json->slice());
@@ -460,7 +478,7 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
           "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
           "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
           "true, \"collections\":[42] }, \"viewId\": \"" +
-          std::to_string(logicalView->id()) + "\", \"primarySort\": false }");
+          std::to_string(logicalView->id()) + "\", \"primarySort\": [] }");
 
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                   json->slice());
