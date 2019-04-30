@@ -170,7 +170,7 @@ Result persistLocalDocumentIdIterator(MMFilesMarker const* marker, void* data,
     case TRI_DF_MARKER_VPACK_DOCUMENT: {
       auto transactionId = MMFilesDatafileHelper::TransactionId(marker);
 
-      VPackSlice const slice(reinterpret_cast<char const*>(marker) +
+      VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) + 
                              MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
       uint8_t const* vpack = slice.begin();
 
@@ -333,7 +333,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(MMFilesMarker const* mar
   transaction::Methods* trx = state->_trx;
   TRI_ASSERT(trx != nullptr);
 
-  VPackSlice const slice(reinterpret_cast<char const*>(marker) +
+  VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) + 
                          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
   uint8_t const* vpack = slice.begin();
 
@@ -452,7 +452,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(MMFilesMarker const* mar
   TRI_ASSERT(physical != nullptr);
   transaction::Methods* trx = state->_trx;
 
-  VPackSlice const slice(reinterpret_cast<char const*>(marker) +
+  VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) + 
                          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
 
   VPackSlice keySlice;

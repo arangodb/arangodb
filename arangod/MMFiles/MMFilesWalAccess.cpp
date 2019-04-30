@@ -304,7 +304,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
     }
 
     if (type == TRI_DF_MARKER_VPACK_DROP_DATABASE) {
-      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+      VPackSlice slice(reinterpret_cast<uint8_t const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
 
       _builder.add("db", slice.get("name"));
@@ -316,7 +316,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
         // ignore markers from dropped dbs
         return TRI_ERROR_NO_ERROR;
       }
-      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+      VPackSlice slice(reinterpret_cast<uint8_t const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
       _builder.add("db", VPackValue(vocbase->name()));
       _builder.add("cuid", slice.get("cuid"));
@@ -364,7 +364,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
       case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
       case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
       case TRI_DF_MARKER_VPACK_DROP_INDEX: {
-        VPackSlice slice(reinterpret_cast<char const*>(marker) +
+        VPackSlice slice(reinterpret_cast<uint8_t const*>(marker) +
                          MMFilesDatafileHelper::VPackOffset(type));
         _builder.add("data", slice);
         break;

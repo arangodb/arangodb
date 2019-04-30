@@ -30,6 +30,9 @@ attribute if the transaction committed successfully.
 an optional boolean flag that, if set, will force the
 transaction to write all data to disk before returning.
 
+@RESTBODYPARAM{allowImplicit,boolean,optional,boolean}
+Allow reading from undeclared collections.
+
 @RESTBODYPARAM{lockTimeout,integer,optional,int64}
 an optional numeric value that can be used to set a
 timeout for waiting on collection locks. If not specified, a default
