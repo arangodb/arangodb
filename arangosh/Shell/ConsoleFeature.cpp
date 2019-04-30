@@ -327,7 +327,7 @@ void ConsoleFeature::printWelcomeInfo() {
   }
 
   if (_useHistory) {
-    s << "Command-line history will be persisted when the shell is exited.";
+    s << "Command-line history will be persisted when the shell is exited. You can use `--console.history false` to turn this off";
   } else {
     s << "Command-line history is enabled for this session only and will *not* be persisted.";
   }

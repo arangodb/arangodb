@@ -165,7 +165,7 @@ is used by these writers (in terms of "writers pool") one can use
     upon several possible configurable formulas as defined by their types.
     The currently supported types are:
 
-    - **bytes_accum**: Consolidation is performed based on current memory cunsumption
+    - **bytes_accum**: Consolidation is performed based on current memory consumption
       of segments and `threshold` property value.
     - **tier**: Consolidate based on segment byte size and live document count
       as dictated by the customization attributes.
