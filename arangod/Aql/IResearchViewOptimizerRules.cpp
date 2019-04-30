@@ -37,6 +37,7 @@
 #include "Cluster/ServerState.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "Utils/CollectionNameResolver.h"
@@ -49,6 +50,16 @@ using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
 namespace {
+
+inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    auto& viewImpl = arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
+    return viewImpl.primarySort();
+  }
+
+  auto& viewImpl = arangodb::LogicalView::cast<IResearchView>(view);
+  return viewImpl.primarySort();
+}
 
 bool addView(arangodb::LogicalView const& view, arangodb::aql::Query& query) {
   auto* collections = query.collections();
@@ -124,8 +135,8 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
 }
     
 bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
-  auto& view = arangodb::LogicalView::cast<IResearchView>(*viewNode.view());
-  auto& primarySort = view.primarySort();
+  TRI_ASSERT(viewNode.view());
+  auto& primarySort = ::primarySort(*viewNode.view());
 
   if (primarySort.empty()) {
     // use system sort
@@ -235,7 +246,13 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 
     assert(!primarySort.empty());
     viewNode.sort(&primarySort);
-    plan->unlinkNode(sortNode); 
+
+    sortNode->_reinsertInCluster = false;
+    if (!arangodb::ServerState::instance()->isCoordinator()) {
+      // in cluster node will be unlinked later by 'distributeSortToClusterRule'
+      plan->unlinkNode(sortNode);
+    }
+
     return true;
   }
 }
@@ -289,7 +306,7 @@ void handleViewsRule(arangodb::aql::Optimizer* opt,
     TRI_ASSERT(node && EN::ENUMERATE_IRESEARCH_VIEW == node->getType());
     auto& viewNode = *EN::castTo<IResearchViewNode*>(node);
 
-    if (!viewNode.isInInnerLoop() && !ServerState::instance()->isCoordinator()) {
+    if (!viewNode.isInInnerLoop()) {
       // check if we can optimize away a sort that follows the EnumerateView node
       // this is only possible if the view node itself is not contained in another loop
       modified = optimizeSort(viewNode, plan.get());
