@@ -278,6 +278,83 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
     REQUIRE(est.appliedSeq() == expected);
     REQUIRE(0.1 == est.computeEstimate());
   }
+  
+  SECTION("test_truncate_logic") {
+    rocksdb::SequenceNumber currentSeq(0);
+    rocksdb::SequenceNumber expected;
+    RocksDBCuckooIndexEstimator<uint64_t> est(2048);
+    RocksDBCollectionMeta meta;
+    
+    // test buffering where we keep around one old blocker
+    for (size_t iteration = 0; iteration < 10; iteration++) {
+      uint64_t index = 0;
+      std::vector<uint64_t> toInsert(10);
+      std::vector<uint64_t> toRemove(0);
+      std::generate(toInsert.begin(), toInsert.end(),
+                    [&index] { return ++index; });
+
+      est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
+    }
+    
+    // now make sure we haven't applied anything
+    std::string serialization;
+    expected = currentSeq;
+    est.serialize(serialization, ++currentSeq);
+    serialization.clear();
+    REQUIRE(est.appliedSeq() == expected);
+    REQUIRE(0.1 == est.computeEstimate());
+    
+    // multiple turncate
+    est.bufferTruncate(currentSeq++);
+    est.bufferTruncate(currentSeq++);
+    est.bufferTruncate(currentSeq++);
+
+    uint64_t index = 0;
+    std::vector<uint64_t> toInsert(10);
+    std::vector<uint64_t> toRemove(0);
+    std::generate(toInsert.begin(), toInsert.end(),
+                  [&index] { return ++index; });
+    est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
+    
+    
+    expected = currentSeq;
+    // now make sure we haven't applied anything
+    est.serialize(serialization, currentSeq);
+    serialization.clear();
+    REQUIRE(est.appliedSeq() == expected);
+    REQUIRE(1.0 == est.computeEstimate());
+  }
+  
+  SECTION("test_truncate_logic_2") {
+    rocksdb::SequenceNumber currentSeq(0);
+    RocksDBCuckooIndexEstimator<uint64_t> est(2048);
+    RocksDBCollectionMeta meta;
+    
+    // test buffering where we keep around one old blocker
+    for (size_t iteration = 0; iteration < 10; iteration++) {
+      uint64_t index = 0;
+      std::vector<uint64_t> toInsert(10);
+      std::vector<uint64_t> toRemove(0);
+      std::generate(toInsert.begin(), toInsert.end(),
+                    [&index] { return ++index; });
+      
+      est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
+    }
+    
+    // truncate in the middle
+    est.bufferTruncate(++currentSeq);
+    
+    auto expected = currentSeq;
+    std::string serialization;
+    est.serialize(serialization, ++currentSeq);
+    serialization.clear();
+    REQUIRE(est.appliedSeq() == expected);
+    REQUIRE(1.0 == est.computeEstimate());
+    
+    est.serialize(serialization, ++currentSeq);
+    REQUIRE(est.appliedSeq() == expected);
+    REQUIRE(1.0 == est.computeEstimate());
+  }
 
   // @brief generate tests
 }

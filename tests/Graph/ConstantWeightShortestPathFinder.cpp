@@ -54,242 +54,12 @@
 #include "../Mocks/StorageEngineMock.h"
 #include "IResearch/common.h"
 
+#include "GraphTestTools.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 using namespace arangodb::velocypack;
-
-// std::unordered_set<std::string> unused;
-// auto builder = edges->toVelocyPackIgnore(unused, false, false);
-// LOG_DEVEL << builder.toJson();
-
-namespace {
-struct Setup {
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
-
-  Setup() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-    arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
-    arangodb::ClusterEngine::Mocking = true;
-    arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
-
-    // setup required application features
-    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
-    features.emplace_back(new arangodb::DatabaseFeature(server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                             0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()),
-                          false);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(server), true);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true);  // required for IResearchAnalyzerFeature
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
-
-    auto* dbPathFeature =
-        arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
-            "DatabasePath");
-    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
-  }
-
-  ~Setup() {
-    system.reset();  // destroy before reseting the 'ENGINE'
-    arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first->unprepare();
-    }
-  }
-};  // Setup
-
-struct MockGraphDatabase {
-  TRI_vocbase_t vocbase;
-  std::vector<arangodb::aql::Query*> queries;
-  std::vector<arangodb::graph::ShortestPathOptions*> spos;
-
-  MockGraphDatabase(std::string name)
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, name) {}
-
-  ~MockGraphDatabase() {
-    for (auto& q : queries) {
-      if (q->trx() != nullptr) {
-        q->trx()->abort();
-      }
-      delete q;
-    }
-    for (auto& o : spos) {
-      delete o;
-    }
-  }
-
-  // Create a collection with name <name> and <n> vertices
-  // with ids 0..n-1
-  void addVertexCollection(std::string name, size_t n) {
-    std::shared_ptr<arangodb::LogicalCollection> vertices;
-
-    auto createJson = velocypack::Parser::fromJson("{ \"name\": \"" + name +
-                                                   "\", \"type\": 2 }");
-    vertices = vocbase.createCollection(createJson->slice());
-    REQUIRE((nullptr != vertices));
-
-    std::vector<velocypack::Builder> insertedDocs;
-    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs;
-    for (size_t i = 0; i < n; i++) {
-      docs.emplace_back(arangodb::velocypack::Parser::fromJson(
-          "{ \"_key\": \"" + std::to_string(i) + "\"}"));
-    };
-
-    arangodb::OperationOptions options;
-    options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *vertices, arangodb::AccessMode::Type::WRITE);
-    CHECK((trx.begin().ok()));
-
-    for (auto& entry : docs) {
-      auto res = trx.insert(vertices->name(), entry->slice(), options);
-      CHECK((res.ok()));
-      insertedDocs.emplace_back(res.slice().get("new"));
-    }
-
-    CHECK((trx.commit().ok()));
-    CHECK(insertedDocs.size() == n);
-    CHECK(vertices->type());
-  }
-
-  // Create a collection with name <name> of edges given by <edges>
-  void addEdgeCollection(std::string name, std::string vertexCollection,
-                         std::vector<std::pair<size_t, size_t>> edgedef) {
-    std::shared_ptr<arangodb::LogicalCollection> edges;
-    auto createJson = velocypack::Parser::fromJson("{ \"name\": \"" + name +
-                                                   "\", \"type\": 3 }");
-    edges = vocbase.createCollection(createJson->slice());
-    REQUIRE((nullptr != edges));
-
-    auto indexJson = velocypack::Parser::fromJson("{ \"type\": \"edge\" }");
-    bool created = false;
-    auto index = edges->createIndex(indexJson->slice(), created);
-    CHECK(index);
-    CHECK(created);
-
-    std::vector<velocypack::Builder> insertedDocs;
-    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs;
-
-    for (auto& p : edgedef) {
-      //      std::cout << "edge: " << vertexCollection << " " << p.first << " -> "
-      //          << p.second << std::endl;
-      auto docJson = velocypack::Parser::fromJson(
-          "{ \"_from\": \"" + vertexCollection + "/" + std::to_string(p.first) +
-          "\"" + ", \"_to\": \"" + vertexCollection + "/" +
-          std::to_string(p.second) + "\" }");
-      docs.emplace_back(docJson);
-    }
-
-    arangodb::OperationOptions options;
-    options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *edges, arangodb::AccessMode::Type::WRITE);
-    CHECK((trx.begin().ok()));
-
-    for (auto& entry : docs) {
-      auto res = trx.insert(edges->name(), entry->slice(), options);
-      CHECK((res.ok()));
-      insertedDocs.emplace_back(res.slice().get("new"));
-    }
-
-    CHECK((trx.commit().ok()));
-    CHECK(insertedDocs.size() == edgedef.size());
-  }
-
-  arangodb::aql::Query* getQuery(std::string qry) {
-    auto queryString = arangodb::aql::QueryString(qry);
-
-    arangodb::aql::Query* query =
-        new arangodb::aql::Query(false, vocbase, queryString, nullptr,
-                                 arangodb::velocypack::Parser::fromJson("{}"),
-                                 arangodb::aql::PART_MAIN);
-    query->parse();
-    query->prepare(arangodb::QueryRegistryFeature::registry());
-
-    queries.emplace_back(query);
-
-    return query;
-  }
-
-  arangodb::graph::ShortestPathOptions* getShortestPathOptions(arangodb::aql::Query* query) {
-    arangodb::graph::ShortestPathOptions* spo;
-
-    auto plan = query->plan();
-    auto ast = plan->getAst();
-
-    auto _toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-    auto _fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-
-    auto tmpVar = plan->getAst()->variables()->createTemporaryVariable();
-
-    AstNode* tmpId1 = plan->getAst()->createNodeReference(tmpVar);
-    AstNode* tmpId2 = plan->getAst()->createNodeValueString("", 0);
-
-    {
-      auto const* access =
-          ast->createNodeAttributeAccess(tmpId1, StaticStrings::ToString.c_str(),
-                                         StaticStrings::ToString.length());
-      auto const* cond =
-          ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
-      _toCondition->addMember(cond);
-    }
-
-    {
-      auto const* access =
-          ast->createNodeAttributeAccess(tmpId1, StaticStrings::FromString.c_str(),
-                                         StaticStrings::FromString.length());
-      auto const* cond =
-          ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
-      _fromCondition->addMember(cond);
-    }
-    spo = new ShortestPathOptions(query);
-    spo->setVariable(tmpVar);
-    spo->addLookupInfo(plan, "e", StaticStrings::FromString, _fromCondition->clone(ast));
-    spo->addReverseLookupInfo(plan, "e", StaticStrings::ToString, _toCondition->clone(ast));
-
-    spos.emplace_back(spo);
-    return spo;
-  }
-};
-
-}  // namespace
 
 namespace arangodb {
 namespace tests {
@@ -309,39 +79,6 @@ TEST_CASE("ConstantWeightShortestPathFinder", "[graph]") {
 
   auto query = gdb.getQuery("RETURN 1");
   auto spo = gdb.getShortestPathOptions(query);
-
-  auto checkPath = [spo](ShortestPathResult result, std::vector<std::string> vertices,
-                         std::vector<std::pair<std::string, std::string>> edges) -> bool {
-    bool res = true;
-
-    if (result.length() != vertices.size()) return false;
-
-    for (size_t i = 0; i < result.length(); i++) {
-      AqlValue vert = result.vertexToAqlValue(spo->cache(), i);
-      AqlValueGuard guard{vert, true};
-      if (!vert.slice().get(StaticStrings::KeyString).isEqualString(vertices.at(i))) {
-        LOG_DEVEL << "expected vertex " << vertices.at(i) << " but found "
-                  << vert.slice().get(StaticStrings::KeyString).toString();
-        res = false;
-      }
-    }
-
-    // First edge is by convention null
-    CHECK((result.edgeToAqlValue(spo->cache(), 0).isNull(true)));
-    for (size_t i = 1; i < result.length(); i++) {
-      AqlValue edge = result.edgeToAqlValue(spo->cache(), i);
-      AqlValueGuard guard{edge, true};
-      if (!edge.slice().get(StaticStrings::FromString).isEqualString(edges.at(i).first) ||
-          !edge.slice().get(StaticStrings::ToString).isEqualString(edges.at(i).second)) {
-        LOG_DEVEL << "expected edge " << edges.at(i).first << " -> "
-                  << edges.at(i).second << " but found "
-                  << edge.slice().get(StaticStrings::FromString).toString() << " -> "
-                  << edge.slice().get(StaticStrings::ToString).toString();
-        res = false;
-      }
-    }
-    return res;
-  };
 
   auto finder = new ConstantWeightShortestPathFinder(*spo);
 
@@ -366,28 +103,32 @@ TEST_CASE("ConstantWeightShortestPathFinder", "[graph]") {
     auto start = velocypack::Parser::fromJson("\"v/1\"");
     auto end = velocypack::Parser::fromJson("\"v/2\"");
     ShortestPathResult result;
+    std::string msgs;
 
     auto rr = finder->shortestPath(start->slice(), end->slice(), result);
     REQUIRE(rr);
-    REQUIRE(checkPath(result, {"1", "2"}, {{}, {"v/1", "v/2"}}));
+    auto cpr = checkPath(spo, result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
+    REQUIRE_MESSAGE(cpr, msgs);
   }
 
   SECTION("path of length 4") {
     auto start = velocypack::Parser::fromJson("\"v/1\"");
     auto end = velocypack::Parser::fromJson("\"v/4\"");
     ShortestPathResult result;
+    std::string msgs;
 
     auto rr = finder->shortestPath(start->slice(), end->slice(), result);
     REQUIRE(rr);
-    REQUIRE(checkPath(result, {"1", "2", "3", "4"},
-                      {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}));
+    auto cpr = checkPath(spo, result, {"1", "2", "3", "4"},
+                         {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
+    REQUIRE_MESSAGE(cpr, msgs);
   }
 
   SECTION("two paths of length 5") {
     auto start = velocypack::Parser::fromJson("\"v/21\"");
     auto end = velocypack::Parser::fromJson("\"v/25\"");
-
     ShortestPathResult result;
+    std::string msgs;
 
     {
       auto rr = finder->shortestPath(start->slice(), end->slice(), result);
@@ -395,23 +136,25 @@ TEST_CASE("ConstantWeightShortestPathFinder", "[graph]") {
       REQUIRE(rr);
       // One of the two has to be returned
       // This of course leads to output from the LOG_DEVEL in checkPath
-      CHECK((checkPath(result, {"21", "22", "23", "24", "25"},
-                       {{},
-                        {"v/21", "v/22"},
-                        {"v/22", "v/23"},
-                        {"v/23", "v/24"},
-                        {"v/24", "v/25"}}) ||
-             checkPath(result, {"21", "26", "27", "28", "25"},
-                       {{},
-                        {"v/21", "v/26"},
-                        {"v/26", "v/27"},
-                        {"v/27", "v/28"},
-                        {"v/28", "v/25"}})));
+      auto cpr = checkPath(spo, result, {"21", "22", "23", "24", "25"},
+                           {{},
+                            {"v/21", "v/22"},
+                            {"v/22", "v/23"},
+                            {"v/23", "v/24"},
+                            {"v/24", "v/25"}},
+                           msgs) ||
+                 checkPath(spo, result, {"21", "26", "27", "28", "25"},
+                           {{},
+                            {"v/21", "v/26"},
+                            {"v/26", "v/27"},
+                            {"v/27", "v/28"},
+                            {"v/28", "v/25"}},
+                           msgs);
+      REQUIRE_MESSAGE(cpr, msgs);
     }
 
     {
       auto rr = finder->shortestPath(end->slice(), start->slice(), result);
-
       REQUIRE(!rr);
     }
   }

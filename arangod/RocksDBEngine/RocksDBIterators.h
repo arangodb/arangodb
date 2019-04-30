@@ -48,8 +48,7 @@ typedef std::function<bool(rocksdb::Slice const& key, rocksdb::Slice const& valu
 /// basically sorted after LocalDocumentId
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
-  RocksDBAllIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                          RocksDBPrimaryIndex const* index);
+  RocksDBAllIndexIterator(LogicalCollection* collection, transaction::Methods* trx);
   ~RocksDBAllIndexIterator() {}
 
   char const* typeName() const override { return "all-index-iterator"; }
@@ -72,9 +71,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
 class RocksDBAnyIndexIterator final : public IndexIterator {
  public:
-  RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                          RocksDBPrimaryIndex const* index);
-
+  RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx);
   ~RocksDBAnyIndexIterator() {}
 
   char const* typeName() const override { return "any-index-iterator"; }

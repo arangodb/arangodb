@@ -555,11 +555,11 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(transaction::Methods* trx) const {
-  return std::make_unique<RocksDBAllIndexIterator>(&_logicalCollection, trx, primaryIndex());
+  return std::make_unique<RocksDBAllIndexIterator>(&_logicalCollection, trx);
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(transaction::Methods* trx) const {
-  return std::make_unique<RocksDBAnyIndexIterator>(&_logicalCollection, trx, primaryIndex());
+  return std::make_unique<RocksDBAnyIndexIterator>(&_logicalCollection, trx);
 }
 
 void RocksDBCollection::invokeOnAllElements(transaction::Methods* trx,

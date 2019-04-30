@@ -178,7 +178,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                             bool reverse, RocksDBKeyBounds&& bounds)
       : IndexIterator(collection, trx),
         _index(index),
-        _cmp(index->comparator()),
+        _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
         _fullEnumerationObjectId(0),
         _reverse(reverse),
         _bounds(std::move(bounds)) {
@@ -339,7 +339,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   }
 
   arangodb::RocksDBVPackIndex const* _index;
-  rocksdb::Comparator const* _cmp;
+  RocksDBVPackComparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   uint64_t _fullEnumerationObjectId;
   bool const _reverse;
