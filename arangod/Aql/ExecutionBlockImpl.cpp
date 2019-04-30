@@ -281,7 +281,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::passSkipSome(siz
     return dynamic_cast<SingleRowFetcher<true>&>(_rowFetcher).skipRows(atMost); // todo without cast?
   } else if (std::is_same<Fetcher, ConstFetcher>::value) {
     ExecutionState state;
-    InputAqlItemRow input = {};
+    InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};;
     std::tie(state, input) = dynamic_cast<ConstFetcher&>(_rowFetcher).skipRow(); // todo implement me properly
     if (state == ExecutionState::WAITING) {
       return {state, 0};
