@@ -462,7 +462,7 @@ JOB_STATUS MoveShard::pendingLeader() {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "MoveShard (leader): found FAILED server in Plan, aborting job, db: "
       << _database << " coll: " << _collection << " shard: " << _shard;
-    abort();
+    abort("failed server in Plan");
     return FAILED;
   }
 
@@ -690,7 +690,7 @@ JOB_STATUS MoveShard::pendingFollower() {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "MoveShard (follower): found FAILED server in Plan, aborting job, db: "
       << _database << " coll: " << _collection << " shard: " << _shard;
-    abort();
+    abort("failed server in Plan");
     return FAILED;
   }
 
