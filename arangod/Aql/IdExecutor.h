@@ -55,37 +55,24 @@ class IdExecutorInfos : public ExecutorInfos {
   ~IdExecutorInfos() = default;
 };
 
+// forward declaration
 template <class T>
 class IdExecutor;
 
-class JustPassThrough;
-
+// (empty) implementation of IdExecutor<void>
 template <>
-class IdExecutor<JustPassThrough> {};
+class IdExecutor<void> {};
 
+// implementation of ExecutionBlockImpl<IdExecutor<void>>
 template <>
-class ExecutionBlockImpl<IdExecutor<JustPassThrough>> : public ExecutionBlock {
+class ExecutionBlockImpl<IdExecutor<void>> : public ExecutionBlock {
  public:
   ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
-                     ExecutorInfos&& infos, RegisterId outputRegister, bool doCount)
+                     RegisterId outputRegister, bool doCount)
       : ExecutionBlock(engine, node),
         _currentDependency(0),
         _outputRegister(outputRegister),
         _doCount(doCount) {
-    {  // just assertions in this block:
-      TRI_ASSERT(infos.numberOfInputRegisters() == infos.numberOfOutputRegisters());
-      TRI_ASSERT(infos.numberOfInputRegisters() ==
-                 infos.registersToKeep()->size() + infos.registersToClear()->size());
-      for (auto const& it : *infos.registersToKeep()) {
-        TRI_ASSERT(it < infos.numberOfInputRegisters());
-        TRI_ASSERT(infos.registersToClear()->find(it) ==
-                   infos.registersToClear()->end());
-      }
-      for (auto const& it : *infos.registersToClear()) {
-        TRI_ASSERT(it < infos.numberOfInputRegisters());
-        TRI_ASSERT(infos.registersToKeep()->find(it) == infos.registersToKeep()->end());
-      }
-    }
 
     // already insert ourselves into the statistics results
     if (_profile >= PROFILE_LEVEL_BLOCKS) {

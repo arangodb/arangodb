@@ -2045,18 +2045,8 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
     returnInheritedResults ? getRegisterPlan()->nrRegs[getDepth()] : 1;
 
   if (returnInheritedResults) {
-    TRI_ASSERT(numberInputRegisters == numberOutputRegisters);
-    RegisterId const numberRegisters = numberInputRegisters;
-    std::unordered_set<RegisterId> registersToClear{};
-    std::unordered_set<RegisterId> registersToKeep{};
-    registersToKeep.reserve(numberRegisters);
-    for (RegisterId reg = 0; reg < numberRegisters; ++reg) {
-      registersToKeep.emplace(reg);
-    }
-    IdExecutorInfos infos(numberRegisters, std::move(registersToClear), std::move(registersToKeep));
-
-    return std::make_unique<ExecutionBlockImpl<IdExecutor<JustPassThrough>>>(
-        &engine, this, std::move(infos), inputRegister, _count);
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<void>>>(&engine, this,
+                                                                  inputRegister, _count);
   } else {
     TRI_ASSERT(!returnInheritedResults);
     ReturnExecutorInfos infos(inputRegister, numberInputRegisters,

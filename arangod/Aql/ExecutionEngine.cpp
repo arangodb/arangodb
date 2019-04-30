@@ -588,7 +588,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
 
       bool const returnInheritedResults = !isDBServer;
       if (returnInheritedResults) {
-        auto returnNode = dynamic_cast<ExecutionBlockImpl<IdExecutor<JustPassThrough>>*>(root);
+        auto returnNode = dynamic_cast<ExecutionBlockImpl<IdExecutor<void>>*>(root);
         TRI_ASSERT(returnNode != nullptr);
         engine->resultRegister(returnNode->getOutputRegisterId());
       } else {
