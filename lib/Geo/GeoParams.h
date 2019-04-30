@@ -23,6 +23,8 @@
 #ifndef ARANGOD_GEO_GEO_PARAMS_H
 #define ARANGOD_GEO_GEO_PARAMS_H 1
 
+#include <Basics/common.h>
+
 #include <cmath>
 
 #include <s2/s2latlng.h>
