@@ -24,12 +24,12 @@
 #define ARANGOD_GEO_SHAPE_CONTAINER_H 1
 
 #include <string>
+#include <memory>
 
 #include <s2/s2cell_id.h>
 
 #include <velocypack/Slice.h>
 
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Geo/Shapes.h"
 

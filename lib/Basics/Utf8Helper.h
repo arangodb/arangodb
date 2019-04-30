@@ -25,9 +25,9 @@
 #ifndef ARANGODB_BASICS_UTF8HELPER_H
 #define ARANGODB_BASICS_UTF8HELPER_H 1
 
-#include <velocypack/StringRef.h>
-
 #include "Basics/Common.h"
+
+#include <velocypack/StringRef.h>
 
 #include <unicode/coll.h>
 #include <unicode/regex.h>

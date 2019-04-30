@@ -24,9 +24,10 @@
 #ifndef ARANGODB_BASICS_WIN__UTILS_H
 #define ARANGODB_BASICS_WIN__UTILS_H 1
 
-#include "Basics/Result.h"
 #include <WinSock2.h>
 #include <string>
+
+#include "Basics/Result.h"
 
 // .............................................................................
 // Called before anything else starts - initializes whatever is required to be
