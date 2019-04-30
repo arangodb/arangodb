@@ -58,6 +58,20 @@ class OutputAqlItemRow {
   OutputAqlItemRow(OutputAqlItemRow&&) = delete;
   OutputAqlItemRow& operator=(OutputAqlItemRow&&) = delete;
 
+  inline size_t HACK_skipToEnd() noexcept {
+    TRI_ASSERT(!produced());
+    size_t const numSkipped = block().size() - _baseIndex;
+    TRI_ASSERT(outputRegisters().empty());
+    TRI_ASSERT(registersToKeep().empty());
+    TRI_ASSERT(registersToClear().empty());
+    TRI_ASSERT(_numValuesWritten == 0);
+    TRI_ASSERT(!_inputRowCopied);
+
+    _baseIndex = block().size();
+
+    return numSkipped;
+  }
+
   // Clones the given AqlValue
   void cloneValueInto(RegisterId registerId, InputAqlItemRow const& sourceRow,
                       AqlValue const& value) {

@@ -97,6 +97,8 @@ class ReturnExecutor {
    *         if something was written output.hasValue() == true
    */
   inline std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output) {
+    TRI_ASSERT(passBlocksThrough == _infos.returnInheritedResults());
+
     ExecutionState state;
     ReturnExecutor::Stats stats;
     InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -112,7 +114,20 @@ class ReturnExecutor {
       return {state, stats};
     }
 
-    TRI_ASSERT(passBlocksThrough == _infos.returnInheritedResults());
+    if (passBlocksThrough) {
+      // TODO This is a very dirty hack and only for testing; it must be implemented
+      //  cleanly before merging!
+      auto res = _fetcher.HACK_skipToEnd();
+      state = res.first;
+      size_t const inputRowsSkipped = res.second;
+      size_t const outputRowsSkipped = output.HACK_skipToEnd();
+      TRI_ASSERT(outputRowsSkipped == inputRowsSkipped + 1);
+      if (_infos.doCount()) {
+        stats.addCounted(outputRowsSkipped);
+      }
+      return {state, stats};
+    }
+
     if (_infos.returnInheritedResults()) {
       output.copyRow(inputRow);
     } else {
