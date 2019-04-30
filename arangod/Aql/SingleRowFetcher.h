@@ -85,14 +85,6 @@ class SingleRowFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(
       size_t atMost = ExecutionBlock::DefaultBatchSize());
 
-  inline std::pair<ExecutionState, size_t> HACK_skipToEnd() noexcept {
-    TRI_ASSERT(_currentBlock != nullptr);
-    size_t const numSkipped = _currentBlock->size() - _rowIndex;
-    _rowIndex = _currentBlock->size();
-
-    return {_upstreamState, numSkipped};
-  }
-
   // TODO enable_if<passBlocksThrough>
   std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
