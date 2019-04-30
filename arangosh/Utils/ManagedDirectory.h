@@ -221,7 +221,7 @@ class ManagedDirectory {
    * @return           Unique pointer to file, if opened
    */
   std::unique_ptr<File> writableFile(std::string const& filename,
-                                     bool overwrite, int flags = 0, bool gzipOk = true );
+                                     bool overwrite, int flags = 0, bool gzipOk = true);
 
   /**
    * @brief Write a string to file
