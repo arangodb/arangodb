@@ -431,7 +431,7 @@ JOB_STATUS MoveShard::pendingLeader() {
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
     if (now - timeCreated > std::chrono::duration<double>(43200.0)) { // 12h
-      abort();
+      abort("MoveShard timed out in pending leader");
       return true;
     }
     return false;
@@ -683,7 +683,7 @@ JOB_STATUS MoveShard::pendingFollower() {
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
     if (now - timeCreated > std::chrono::duration<double>(10000.0)) {
-      abort();
+      abort("MoveShard timed out in pending follower");
       return FAILED;
     }
     return PENDING;
@@ -745,7 +745,7 @@ JOB_STATUS MoveShard::pendingFollower() {
   return PENDING;
 }
 
-arangodb::Result MoveShard::abort() {
+arangodb::Result MoveShard::abort(std::string const& reason) {
   arangodb::Result result;
 
   // We can assume that the job is either in ToDo or in Pending.
@@ -773,7 +773,7 @@ arangodb::Result MoveShard::abort() {
       }
     }
 
-    if (finish("", "", true, "job aborted", todoPrec)) {
+    if (finish("", "", true, "job aborted (1): " + reason, todoPrec)) {
       return result;
     }
     _status = PENDING;
@@ -794,7 +794,7 @@ arangodb::Result MoveShard::abort() {
       if (cur.second && cur.first[0].copyString() == _to) {
         LOG_TOPIC("72a82", INFO, Logger::SUPERVISION) <<
           "MoveShard can no longer abort through reversion to where it started. Flight forward";
-        finish(_to, _shard, true, "job aborted - new leader already in place");
+        finish(_to, _shard, true, "job aborted (2) - new leader already in place: " + reason);
         return result;
       }
     }
@@ -843,7 +843,7 @@ arangodb::Result MoveShard::abort() {
       addRemoveJobFromSomewhere(trx, "Pending", _jobId);
       Builder job;
       _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
-      addPutJobIntoSomewhere(trx, "Failed", job.slice(), "job aborted");
+      addPutJobIntoSomewhere(trx, "Failed", job.slice(), "job aborted (3): " + reason);
       addReleaseShard(trx, _shard);
       addReleaseServer(trx, _to);
       addIncreasePlanVersion(trx);
@@ -871,7 +871,7 @@ arangodb::Result MoveShard::abort() {
       // Tough luck. Things have changed. We'll move on
       LOG_TOPIC("513e6", INFO, Logger::SUPERVISION) <<
         "MoveShard can no longer abort through reversion to where it started. Flight forward";
-      finish(_to, _shard, true, "job aborted - new leader already in place");
+      finish(_to, _shard, true, "job aborted (4) - new leader already in place: " + reason);
       return result;
     }
     result = Result(
