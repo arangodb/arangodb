@@ -73,7 +73,7 @@ function optimizerRuleTestSuite () {
 
     /// @brief test that rule has no effect
     testRuleSingleAttributeNoEffect : function () {
-      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, sort : { "primary" : [ { field : "value", direction: "asc" } ] } }); 
+      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, primarySort : [ { field : "value", direction: "asc" } ] }); 
 
       let queries = [ 
         "FOR doc IN " + vn + " SORT doc.value1 RETURN doc",
@@ -94,7 +94,7 @@ function optimizerRuleTestSuite () {
     
     /// @brief test that rule has no effect
     testRuleMultipleAttributesNoEffect : function () {
-      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, sort : { "primary" : [ { field : "value1", direction: "asc" }, { field: "value2", direction: "asc" } ] } }); 
+      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, primarySort : [ { field : "value1", direction: "asc" }, { field: "value2", direction: "asc" } ] }); 
 
       let queries = [ 
         "FOR doc IN " + vn + " SORT doc.value1, doc.value2 DESC RETURN doc",
@@ -117,7 +117,7 @@ function optimizerRuleTestSuite () {
     
     /// @brief test that rule has no effect
     testRuleSingleAttributeDifferentOrderNoEffect : function () {
-      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, sort : { "primary" : [ { field : "value", direction: "asc" } ] } }); 
+      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, primarySort : [ { field : "value", direction: "asc" } ] }); 
 
       let queries = [ 
         "FOR doc IN " + vn + " SORT doc.value DESC RETURN doc",
@@ -132,7 +132,7 @@ function optimizerRuleTestSuite () {
     
     /// @brief test that rule has no effect
     testRuleMultipleAttributesDifferentOrderNoEffect : function () {
-      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, sort : { "primary" : [ { field : "value1", direction: "asc" }, { field: "value2", direction: "asc" } ] } }); 
+      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, primarySort : [ { field : "value1", direction: "asc" }, { field: "value2", direction: "asc" } ] }); 
 
       let queries = [ 
         "FOR doc IN " + vn + " SORT doc.value1 DESC RETURN doc",
@@ -150,7 +150,7 @@ function optimizerRuleTestSuite () {
     
     /// @brief test that rule has an effect
     testRuleSingleAttributeHasEffect : function () {
-      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, sort : { "primary" : [ { field : "value", direction: "asc" } ] } }); 
+      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, primarySort : [ { field : "value", direction: "asc" } ] }); 
 
       let queries = [ 
         "FOR doc IN " + vn + " SORT doc.value RETURN doc",
@@ -165,7 +165,7 @@ function optimizerRuleTestSuite () {
     
     /// @brief test that rule has an effect
     testRuleMultipleAttributesHasEffect : function () {
-      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, sort : { "primary" : [ { field : "value1", direction: "asc" }, { field: "value2", direction: "asc" } ] } }); 
+      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, primarySort : [ { field : "value1", direction: "asc" }, { field: "value2", direction: "asc" } ] }); 
 
       let queries = [ 
         "FOR doc IN " + vn + " SORT doc.value1 RETURN doc",
@@ -182,7 +182,7 @@ function optimizerRuleTestSuite () {
     
     /// @brief test that rule has an effect
     testRuleSingleAttributeResults : function () {
-      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, sort : { "primary" : [ { field : "value", direction: "asc" } ] } }); 
+      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, primarySort : [ { field : "value", direction: "asc" } ] }); 
       let values = [];
       // insert in reverse order
       for (let i = 0; i < 2000; ++i) {
@@ -205,7 +205,7 @@ function optimizerRuleTestSuite () {
     
     /// @brief test that rule has an effect
     testRuleSingleAttributeResultsDesc : function () {
-      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, sort : { "primary" : [ { field : "value", direction: "desc" } ] } }); 
+      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, primarySort : [ { field : "value", direction: "desc" } ] }); 
       let values = [];
       // insert in forward order
       for (let i = 0; i < 2000; ++i) {
@@ -228,7 +228,7 @@ function optimizerRuleTestSuite () {
     
     /// @brief test that rule has an effect
     testRuleMultipleAttributesResults : function () {
-      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, sort : { "primary" : [ { field : "value1", direction: "asc" }, { field: "value2", direction: "asc" } ] } }); 
+      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, primarySort : [ { field : "value1", direction: "asc" }, { field: "value2", direction: "asc" } ] }); 
       let values = [];
       // insert in reverse order
       for (let i = 0; i < 2000; ++i) {
@@ -254,7 +254,7 @@ function optimizerRuleTestSuite () {
     
     /// @brief test that rule has an effect
     testRuleMultipleAttributesResultsDesc : function () {
-      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, sort : { "primary" : [ { field : "value1", direction: "desc" }, { field: "value2", direction: "asc" } ] } }); 
+      db._createView(vn, "arangosearch", { links: { [cn] : { includeAllFields: true } }, primarySort : [ { field : "value1", direction: "desc" }, { field: "value2", direction: "asc" } ] }); 
       let values = [];
       // insert in forward order
       for (let i = 0; i < 2000; ++i) {
