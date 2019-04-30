@@ -222,6 +222,9 @@ One of the possible log levels.
 @RESTBODYPARAM{audit-authentication,string,optional,string}
 One of the possible log levels.
 
+@RESTBODYPARAM{audit-authorization,string,optional,string}
+One of the possible log levels.
+
 @RESTBODYPARAM{audit-database,string,optional,string}
 One of the possible log levels.
 
@@ -231,7 +234,7 @@ One of the possible log levels.
 @RESTBODYPARAM{audit-view,string,optional,string}
 One of the possible log levels.
 
-@RESTBODYPARAM{audit-documentation,string,optional,string}
+@RESTBODYPARAM{audit-document,string,optional,string}
 One of the possible log levels.
 
 @RESTBODYPARAM{audit-service,string,optional,string}
@@ -252,4 +255,3 @@ is returned when an invalid HTTP method is used.
 is returned if the server cannot generate the result due to an out-of-memory
 error.
 @endDocuBlock
-

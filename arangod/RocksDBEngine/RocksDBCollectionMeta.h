@@ -52,14 +52,10 @@ struct RocksDBCollectionMeta final {
 
   /// @brief collection count
   struct DocCount {
-    /// @brief safe sequence number for recovery
-    rocksdb::SequenceNumber _committedSeq;
-    /// @brief number of added documents
-    uint64_t _added;
-    /// @brief number of removed documents
-    uint64_t _removed;
-    /// @brief last used revision id
-    TRI_voc_rid_t _revisionId;
+    rocksdb::SequenceNumber _committedSeq; /// safe sequence number for recovery
+    uint64_t _added; /// number of added documents
+    uint64_t _removed; /// number of removed documents
+    TRI_voc_rid_t _revisionId; /// @brief last used revision id
 
     DocCount(rocksdb::SequenceNumber sq, uint64_t added, uint64_t removed, TRI_voc_rid_t rid)
         : _committedSeq(sq), _added(added), _removed(removed), _revisionId(rid) {}
@@ -83,7 +79,7 @@ struct RocksDBCollectionMeta final {
    * @param  seq   The sequence number immediately prior to call
    * @return       May return error if we fail to allocate and place blocker
    */
-  Result placeBlocker(uint64_t trxId, rocksdb::SequenceNumber seq);
+  Result placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq);
 
   /**
    * @brief Removes an existing transaction blocker
@@ -95,15 +91,15 @@ struct RocksDBCollectionMeta final {
    * @param trxId Identifier for active transaction (should match input to
    *              earlier `placeBlocker` call)
    */
-  void removeBlocker(uint64_t trxId);
+  void removeBlocker(TRI_voc_tid_t trxId);
 
-  /// @brief updates and returns the largest safe seq to squash updated against
-  rocksdb::SequenceNumber committableSeq() const;
+  /// @brief returns the largest safe seq to squash updates against
+  rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber maxCommitSeq) const;
 
   /// @brief get the current count
-  DocCount currentCount();
+  DocCount loadCount();
   /// @brief get the current count, ONLY use in recovery
-  DocCount& countRefUnsafe() { return _count; }
+  DocCount& countUnsafe() { return _count; }
 
   /// @brief buffer a counter adjustment
   void adjustNumberDocuments(rocksdb::SequenceNumber seq, TRI_voc_rid_t revId, int64_t adj);
@@ -116,7 +112,11 @@ struct RocksDBCollectionMeta final {
   /// @brief deserialize collection metadata, only called on startup
   arangodb::Result deserializeMeta(rocksdb::DB*, LogicalCollection&);
 
-  /// @brief load collection
+  
+public:
+  // static helper methods to modify collection meta entries in rocksdb
+  
+  /// @brief load collection document count
   static DocCount loadCollectionCount(rocksdb::DB*, uint64_t objectId);
 
   /// @brief remove collection metadata
@@ -134,10 +134,9 @@ struct RocksDBCollectionMeta final {
 
   mutable arangodb::basics::ReadWriteLock _blockerLock;
   /// @brief blocker identifies a transaction being committed
-  std::map<uint64_t, rocksdb::SequenceNumber> _blockers;
-  std::set<std::pair<rocksdb::SequenceNumber, uint64_t>> _blockersBySeq;
+  std::map<TRI_voc_tid_t, rocksdb::SequenceNumber> _blockers;
+  std::set<std::pair<rocksdb::SequenceNumber, TRI_voc_tid_t>> _blockersBySeq;
 
-  mutable std::mutex _countLock;
   DocCount _count;  /// @brief document count struct
 
   /// document counter adjustment
@@ -148,6 +147,7 @@ struct RocksDBCollectionMeta final {
     int64_t adjustment;
   };
 
+  mutable std::mutex _bufferLock;
   /// @brief buffered counter adjustments
   std::map<rocksdb::SequenceNumber, Adjustment> _bufferedAdjs;
   /// @brief internal buffer for adjustments

@@ -31,6 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Ast.h"
+#include "Aql/IResearchViewNode.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Random/RandomGenerator.h"
 #include "Basics/files.h"
@@ -42,7 +43,6 @@
 #include "IResearch/AqlHelper.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchFilterFactory.h"
-#include "IResearch/IResearchViewNode.h"
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "tests/Basics/icu-helper.h"
@@ -306,12 +306,12 @@ bool assertRules(
 
   auto const res = query.explain();
 
-  if (res.result) {
-    auto const explanation = res.result->slice();
+  if (res.data) {
+    auto const explanation = res.data->slice();
 
     arangodb::velocypack::ArrayIterator rules(explanation.get("rules"));
 
-    for (auto const rule : rules) {
+    for (auto const& rule : rules) {
       auto const strRule = arangodb::iresearch::getStringRef(rule);
       expectedRules.erase(strRule);
     }
@@ -376,7 +376,7 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
 
   auto result = query.parse();
 
-  if (result.code != TRI_ERROR_NO_ERROR || !query.ast()) {
+  if (result.result.fail() || !query.ast()) {
     return nullptr;
   }
 
@@ -435,9 +435,9 @@ std::string mangleString(std::string name, std::string suffix) {
 
 std::string mangleStringIdentity(std::string name) {
   arangodb::iresearch::kludge::mangleStringField(
-    name,
-    *arangodb::iresearch::IResearchAnalyzerFeature::identity()
+    name, arangodb::iresearch::IResearchLinkMeta::Analyzer() // args
   );
+
   return name;
 }
 
@@ -512,7 +512,7 @@ void assertExpressionFilter(
   );
 
   auto const parseResult = query.parse();
-  REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+  REQUIRE(parseResult.result.ok());
 
   auto* ast = query.ast();
   REQUIRE(ast);
@@ -645,7 +645,7 @@ void assertFilter(
   );
 
   auto const parseResult = query.parse();
-  REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+  REQUIRE(parseResult.result.ok());
 
   auto* ast = query.ast();
   REQUIRE(ast);
@@ -761,7 +761,7 @@ void assertFilterParseFail(
   );
 
   auto const parseResult = query.parse();
-  CHECK(TRI_ERROR_NO_ERROR != parseResult.code);
+  REQUIRE(parseResult.result.fail());
 }
 
 // -----------------------------------------------------------------------------

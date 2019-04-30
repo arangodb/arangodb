@@ -21,16 +21,16 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "EngineInfoContainerCoordinator.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlResult.h"
-#include "Aql/ClusterBlocks.h"
+#include "Aql/BlocksWithClients.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
-#include "EngineInfoContainerCoordinator.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;

@@ -13,6 +13,7 @@
     "immed": true,
     "browser": true,
     "es3": true,
+    "loopfunc": true,
     "camelcase": true,
     "nonbsp": true,
     "freeze": true,

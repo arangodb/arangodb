@@ -37,8 +37,6 @@ namespace arangodb {
 namespace iresearch {
 namespace kludge {
 
-typedef arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool AnalyzerPool;
-
 void mangleType(std::string& name);
 void mangleAnalyzer(std::string& name);
 
@@ -46,8 +44,14 @@ void mangleNull(std::string& name);
 void mangleBool(std::string& name);
 void mangleNumeric(std::string& name);
 
-void mangleStringField(std::string& name, AnalyzerPool const& pool);
-void demangleStringField(std::string& name, AnalyzerPool const& pool);
+void mangleStringField( // mangle string field
+  std::string& name, // field name
+  arangodb::iresearch::IResearchLinkMeta::Analyzer const& analyzer // analyzer to apply
+);
+void demangleStringField( // demangle string field
+  std::string& name, // field name
+  arangodb::iresearch::IResearchLinkMeta::Analyzer const& analyzer // analyzer to apply
+);
 
 }  // namespace kludge
 }  // namespace iresearch

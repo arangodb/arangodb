@@ -57,7 +57,7 @@ int compareIndexedValues(arangodb::velocypack::Slice const& lhs,
     ++rhsIter;
   }
 
-  return lLength - rLength;
+  return static_cast<int>(lLength - rLength);
 }
 
 } // namespace
@@ -112,5 +112,5 @@ int RocksDBVPackComparator::compareIndexValues(rocksdb::Slice const& lhs,
     }
   }
 
-  return lSize - rSize;
+  return static_cast<int>(lSize - rSize);
 }

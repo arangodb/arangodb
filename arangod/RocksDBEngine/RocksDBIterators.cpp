@@ -40,8 +40,7 @@ constexpr bool AnyIteratorFillBlockCache = false;
 // ================ All Iterator ==================
 
 RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
-                                                 transaction::Methods* trx,
-                                                 RocksDBPrimaryIndex const* index)
+                                                 transaction::Methods* trx) 
     : IndexIterator(col, trx),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(col->getPhysical())->objectId())),
@@ -143,8 +142,7 @@ void RocksDBAllIndexIterator::reset() {
 
 // ================ Any Iterator ================
 RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
-                                                 transaction::Methods* trx,
-                                                 RocksDBPrimaryIndex const* index)
+                                                 transaction::Methods* trx) 
     : IndexIterator(col, trx),
       _cmp(RocksDBColumnFamily::documents()->GetComparator()),
       _objectId(static_cast<RocksDBCollection*>(col->getPhysical())->objectId()),

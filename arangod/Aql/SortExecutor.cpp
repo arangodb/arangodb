@@ -113,7 +113,7 @@ SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher), _input(nullptr), _returnNext(0){};
 SortExecutor::~SortExecutor() = default;
 
-std::pair<ExecutionState, NoStats> SortExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> SortExecutor::produceRows(OutputAqlItemRow& output) {
   ExecutionState state;
   if (_input == nullptr) {
     // We need to get data
@@ -167,4 +167,19 @@ void SortExecutor::doSorting() {
   } else {
     std::sort(_sortedIndexes.begin(), _sortedIndexes.end(), ourLessThan);
   }
+}
+
+std::pair<ExecutionState, size_t> SortExecutor::expectedNumberOfRows(size_t atMost) const {
+  if (_input == nullptr) {
+    // This executor does not know anything yet.
+    // Just take whatever is presented from upstream.
+    // This will return WAITING a couple of times
+    return _fetcher.preFetchNumberOfRows(atMost);
+  }
+  TRI_ASSERT(_returnNext <= _sortedIndexes.size());
+  size_t rowsLeft = _sortedIndexes.size() - _returnNext;
+  if (rowsLeft > 0) {
+    return {ExecutionState::HASMORE, rowsLeft};
+  }
+  return {ExecutionState::DONE, rowsLeft};
 }

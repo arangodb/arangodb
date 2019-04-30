@@ -223,22 +223,17 @@ exports.manage = function () {
 };
 
 exports.run = function () {
-  var options = require('internal').options();
+  let period = global.FOXX_QUEUES_POLL_INTERVAL;
 
   // disable foxx queues
-  if (options['foxx.queues'] === false) {
+  if (period < 0) {
     return;
   }
 
-  var queues = require('@arangodb/foxx/queues');
+  let queues = require('@arangodb/foxx/queues');
   queues.create('default');
 
   // wakeup/poll interval for Foxx queues
-  var period = 1;
-  if (options.hasOwnProperty('foxx.queues-poll-interval')) {
-    period = options['foxx.queues-poll-interval'];
-  }
-
   global.KEYSPACE_CREATE('queue-control', 1, true);
   if (!isCluster) {
     resetDeadJobs();

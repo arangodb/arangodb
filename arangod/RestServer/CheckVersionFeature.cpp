@@ -138,7 +138,9 @@ void CheckVersionFeature::checkVersion() {
 
   bool ignoreDatafileErrors = false;
   {
-    VPackBuilder options = server()->options(std::unordered_set<std::string>());
+    VPackBuilder options = server()->options([](std::string const& name) {
+      return (name.find("database.ignore-datafile-errors") != std::string::npos);
+    });
     VPackSlice s = options.slice();
     if (s.get("database.ignore-datafile-errors").isBoolean()) {
       ignoreDatafileErrors = s.get("database.ignore-datafile-errors").getBool();
@@ -164,7 +166,7 @@ void CheckVersionFeature::checkVersion() {
         LOG_TOPIC("ecd13", WARN, Logger::STARTUP)
             << "in order to automatically fix the VERSION file on startup, "
             << "please start the server with option "
-               "`--database.ignore-logfile-errors true`";
+               "`--database.ignore-datafile-errors true`";
       }
     }
 

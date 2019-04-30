@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,6 @@
 #ifndef ARANGOD_TRANSACTION_MANAGER_H
 #define ARANGOD_TRANSACTION_MANAGER_H 1
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
@@ -33,6 +32,9 @@
 #include "VocBase/voc-types.h"
 
 #include <atomic>
+#include <functional>
+#include <map>
+#include <set>
 #include <vector>
 
 namespace arangodb {
@@ -44,7 +46,9 @@ struct TransactionData {
 
 namespace transaction {
 class Context;
+struct Options;
 
+/// @bried Tracks TransasctionState instances 
 class Manager final {
   static constexpr size_t numBuckets = 16;
   static constexpr double defaultTTL = 10.0 * 60.0;   // 10 minutes
@@ -78,17 +82,21 @@ class Manager final {
   uint64_t getActiveTransactionCount();
   
  public:
-
-  /// @brief collect forgotten transactions
-  bool garbageCollect(bool abortAll);
   
   /// @brief register a AQL transaction
   void registerAQLTrx(TransactionState*);
   void unregisterAQLTrx(TRI_voc_tid_t tid) noexcept;
-    
+  
   /// @brief create managed transaction
   Result createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                           velocypack::Slice const trxOpts);
+  
+  /// @brief create managed transaction
+  Result createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+                          std::vector<std::string> const& readCollections,
+                          std::vector<std::string> const& writeCollections,
+                          std::vector<std::string> const& exclusiveCollections,
+                          transaction::Options const& options);
   
   /// @brief lease the transaction, increases nesting
   std::shared_ptr<transaction::Context> leaseManagedTrx(TRI_voc_tid_t tid,
@@ -101,20 +109,11 @@ class Manager final {
   Result commitManagedTrx(TRI_voc_tid_t);
   Result abortManagedTrx(TRI_voc_tid_t);
   
-  /// @brief abort all transactions on a given shard
-  void abortAllManagedTrx(TRI_voc_cid_t, bool leader);
+  /// @brief collect forgotten transactions
+  bool garbageCollect(bool abortAll);
   
-#ifdef ARANGODB_USE_CATCH_TESTS
-  /// statistics struct
-  struct TrxCounts {
-    uint32_t numManaged;
-    uint32_t numStandaloneAQL;
-    uint32_t numTombstones;
-
-  };
-  /// @brief fetch managed trx counts
-  TrxCounts getManagedTrxCount() const;
-#endif
+  /// @brief abort all transactions matching
+  bool abortManagedTrx(std::function<bool(TransactionState const&)>);
   
  private:
   // hashes the transaction id into a bucket

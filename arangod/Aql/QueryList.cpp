@@ -293,6 +293,11 @@ void QueryList::clearSlow() {
   _slow.clear();
   _slowCount = 0;
 }
+  
+size_t QueryList::count() {
+  READ_LOCKER(writeLocker, _lock);
+  return _current.size();
+}
 
 std::string QueryList::extractQueryString(Query const* query, size_t maxLength) const {
   return query->queryString().extract(maxLength);

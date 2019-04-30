@@ -26,7 +26,6 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
 
 #include "Basics/MutexLocker.h"
@@ -81,12 +80,14 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
   if (_asyncMode) {
     LOG_TOPIC("1b1c2", DEBUG, Logger::PREGEL) << "Running in async mode";
   }
-  VPackSlice lazy = _userParams.slice().get("lazyLoading");
+  VPackSlice lazy = _userParams.slice().get( Utils::lazyLoadingKey);
   _lazyLoading = _algorithm->supportsLazyLoading();
   _lazyLoading = _lazyLoading && (lazy.isNone() || lazy.getBoolean());
   if (_lazyLoading) {
     LOG_TOPIC("464dd", DEBUG, Logger::PREGEL) << "Enabled lazy loading";
   }
+  _useMemoryMaps = VelocyPackHelper::readBooleanValue(_userParams.slice(),
+                                                      Utils::useMemoryMaps, _useMemoryMaps);
   VPackSlice storeSlice = config.get("store");
   _storeResults = !storeSlice.isBool() || storeSlice.getBool();
   if (!_storeResults) {
@@ -236,15 +237,7 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   }
 
   _computationStartTimeSecs = TRI_microtime();
-
-  if (_startGlobalStep()) {
-    // listens for changing primary DBServers on each collection shard
-    RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
-
-    if (mngr) {
-      mngr->monitorCollections(_vocbaseGuard.database().name(), _vertexCollections, this);
-    }
-  }
+  _startGlobalStep();
 }
 
 /// Will optionally send a response, to notify the worker of converging
@@ -315,7 +308,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   return VPackBuilder();
 }
 
-void Conductor::finishedRecoveryStep(VPackSlice const& data) {
+/*void Conductor::finishedRecoveryStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
   if (_state != ExecutionState::RECOVERING) {
@@ -371,7 +364,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
     cancelNoLock();
     LOG_TOPIC("7f97e", INFO, Logger::PREGEL) << "Recovery failed";
   }
-}
+}*/
 
 void Conductor::cancel() {
   MUTEX_LOCKER(guard, _callbackMutex);
@@ -386,8 +379,10 @@ void Conductor::cancelNoLock() {
     _state = ExecutionState::CANCELED;
     _finalizeWorkers();
   }
-}
 
+  _workHandle.reset();
+}
+/*
 void Conductor::startRecovery() {
   MUTEX_LOCKER(guard, _callbackMutex);
   if (_state != ExecutionState::RUNNING && _state != ExecutionState::IN_ERROR) {
@@ -453,7 +448,7 @@ void Conductor::startRecovery() {
           LOG_TOPIC("fefc6", ERR, Logger::PREGEL) << "Compensation failed";
         }
       });
-}
+}*/
 
 // resolves into an ordered list of shards for each collection on each server
 static void resolveInfo(TRI_vocbase_t* vocbase, CollectionID const& collectionID,
@@ -545,6 +540,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
     b.add(Utils::asyncModeKey, VPackValue(_asyncMode));
     b.add(Utils::lazyLoadingKey, VPackValue(_lazyLoading));
+    b.add(Utils::useMemoryMaps, VPackValue(_useMemoryMaps));
     if (additional.isObject()) {
       for (auto const& pair : VPackObjectIterator(additional)) {
         b.add(pair.key.copyString(), pair.value);
@@ -635,10 +631,10 @@ int Conductor::_finalizeWorkers() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   // stop monitoring shards
-  RecoveryManager* mngr = feature->recoveryManager();
+  /*RecoveryManager* mngr = feature->recoveryManager();
   if (mngr) {
     mngr->stopMonitoring(this);
-  }
+  }*/
 
   LOG_TOPIC("fc187", DEBUG, Logger::PREGEL) << "Finalizing workers";
   VPackBuilder b;

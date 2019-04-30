@@ -55,7 +55,7 @@ class RocksDBReplicationManager {
   /// there are active contexts
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* createContext(double ttl, TRI_server_id_t serverId);
+  RocksDBReplicationContext* createContext(double ttl, std::string const& clientId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a context by id
@@ -76,9 +76,12 @@ class RocksDBReplicationManager {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find an existing context by id and extend lifetime
-  /// may be used concurrently on used contextes
+  /// may be used concurrently on used contexts
+  /// populates clientId
   //////////////////////////////////////////////////////////////////////////////
-  int extendLifetime(RocksDBReplicationId, double ttl = replutils::BatchInfo::DefaultTimeout);
+  int extendLifetime(RocksDBReplicationId, 
+                     std::string& clientId,
+                     double ttl = replutils::BatchInfo::DefaultTimeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a context for later use

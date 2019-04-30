@@ -48,11 +48,6 @@ class TraversalNode;
 struct Variable;
 }  // namespace aql
 
-namespace graph {
-class EdgeUniquenessChecker;
-class TraverserCache;
-}  // namespace graph
-
 namespace traverser {
 
 class ClusterTraverser;
@@ -97,6 +92,7 @@ struct TraverserOptions : public graph::BaseOptions {
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
   TraverserOptions(TraverserOptions const&);
+  TraverserOptions& operator=(TraverserOptions const&) = delete;
 
   virtual ~TraverserOptions();
 

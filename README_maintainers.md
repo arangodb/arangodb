@@ -228,8 +228,9 @@ These tests produce a certain thread on infrastructure or the test system, and t
 -----
 These tests are currently listed as "grey", which means that they are
 known to be unstable or broken. These tests will not be executed by the
-testing framework if the option `--skipGrey` is given. See
-`tests/Greylist.txt` for up-to-date information about greylisted tests.
+testing framework if the option `--skipGrey` is given. If `--onlyGrey`
+option is given then non-"grey" tests are skipped. See `tests/Greylist.txt`
+for up-to-date information about greylisted tests.
 Please help to keep this file up to date.
 
 Test frameworks used
@@ -797,3 +798,24 @@ for `mocha`) match the versions required by the updated module and delete any
 duplicated nested dependencies if necessary (e.g. `mocha/node_modules/glob`)
 to make sure the global (mocked) version is used instead.
 
+Changing the FrontEnd
+=====================
+
+Change to `js/apps/system/_admin/aardvark/APP/` and open
+`manifest.json`. Then apply the following change:
+
+```
+     "/app.js": {
+     -      "path": "frontend/build/app.min.js",
+     -      "gzip": true
+     +      "path": "frontend/build/app.js",
+     +      "gzip": false
+          },
+```
+
+Then run `grunt`, `grunt deploy` and `grunt watch`. This
+should make every change in the code available after a
+reload for the browser.
+
+Note: You might need to do the same for other files. Usually
+the change for `app` should suffice.

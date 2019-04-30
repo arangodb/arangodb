@@ -30,7 +30,9 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/IndexHint.h"
+#include "Aql/KShortestPathsNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -47,7 +49,6 @@
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "VocBase/AccessMode.h"
-#include "IResearch/IResearchViewNode.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
@@ -1121,6 +1122,40 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
+/// @brief create an execution plan element from an AST for SHORTEST_PATH node
+ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
+                                                     AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_K_SHORTEST_PATHS);
+  TRI_ASSERT(node->numMembers() >= 6);
+  TRI_ASSERT(node->numMembers() <= 7);
+
+  // the first 4 members are used by shortest_path internally.
+  // The members 5-6, where 6 is optional, are used
+  // as out variables.
+  AstNode const* direction = node->getMember(0);
+  TRI_ASSERT(direction->isIntValue());
+  AstNode const* start = parseTraversalVertexNode(previous, node->getMember(1));
+  AstNode const* target = parseTraversalVertexNode(previous, node->getMember(2));
+  AstNode const* graph = node->getMember(3);
+
+  // FIXME: here goes the parameters with k etc
+  auto options = createShortestPathOptions(getAst()->query(), node->getMember(4));
+
+  // First create the node
+  auto spNode = new KShortestPathsNode(this, nextId(), &(_ast->query()->vocbase()), direction,
+                                       start, target, graph, std::move(options));
+
+  auto variable = node->getMember(5);
+  TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
+  auto v = static_cast<Variable*>(variable->getData());
+  TRI_ASSERT(v != nullptr);
+  spNode->setPathOutput(v);
+
+  ExecutionNode* en = registerNode(spNode);
+  TRI_ASSERT(en != nullptr);
+  return addDependency(previous, en);
+}
+
 /// @brief create an execution plan element from an AST FILTER node
 ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr);
@@ -1881,6 +1916,10 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         break;
       }
 
+      case NODE_TYPE_K_SHORTEST_PATHS: {
+        en = fromNodeKShortestPaths(en, member);
+        break;
+      }
       case NODE_TYPE_FILTER: {
         en = fromNodeFilter(en, member);
         break;

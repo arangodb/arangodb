@@ -58,7 +58,7 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the expression
-Expression::Expression(ExecutionPlan* plan, Ast* ast, AstNode* node)
+Expression::Expression(ExecutionPlan const* plan, Ast* ast, AstNode* node)
     : _plan(plan), _ast(ast), _node(node), _type(UNPROCESSED), _expressionContext(nullptr) {
   _ast->query()->unPrepareV8Context();
   TRI_ASSERT(_ast != nullptr);
@@ -66,7 +66,7 @@ Expression::Expression(ExecutionPlan* plan, Ast* ast, AstNode* node)
 }
 
 /// @brief create an expression from VPack
-Expression::Expression(ExecutionPlan* plan, Ast* ast, arangodb::velocypack::Slice const& slice)
+Expression::Expression(ExecutionPlan const* plan, Ast* ast, arangodb::velocypack::Slice const& slice)
     : Expression(plan, ast, new AstNode(ast, slice.get("expression"))) {}
 
 /// @brief destroy the expression
@@ -882,12 +882,8 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
   {
     ISOLATE;
     TRI_ASSERT(isolate != nullptr);
-    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
+    v8::HandleScope scope(isolate);                                   \
     _ast->query()->prepareV8Context();
-
-    auto old = v8g->_query;
-    v8g->_query = static_cast<void*>(_ast->query());
-    TRI_DEFER(v8g->_query = old);
 
     std::string jsName;
     size_t const n = static_cast<int>(member->numMembers());

@@ -25,16 +25,22 @@ var jsUnity = exports.jsUnity = (function () {
     
   }
 
-  function hash(v) {
+  function hash(v, seen = []) {
     if (v instanceof Object && v !== null) {
       var arr = [];
       var sorted = Object.keys(v).sort(), n = sorted.length;
+      seen.push(v);
       
       for (var i = 0; i < n; i++) {
         var p = sorted[i];
         if (v.hasOwnProperty(p)) {
+          var j = seen.indexOf(v[p]);
           arr.push(p);
-          arr.push(hash(v[p]));    
+          if (j === -1) {
+            arr.push(hash(v[p], seen));
+          } else {
+            arr.push(`&${j}`);
+          }
         }
       }
       
@@ -372,6 +378,10 @@ var jsUnity = exports.jsUnity = (function () {
       jsUnity.log.info(plural(total, "test") + " found");
     },
 
+    beginSetUp: function(index, testName) {},
+
+    endSetUp: function(index, testName) {},
+        
     pass: function (index, testName) {
       jsUnity.tap.write(fmt("ok ? - ?", index, testName));
       jsUnity.log.info("[PASSED] " + testName);
@@ -384,7 +394,11 @@ var jsUnity = exports.jsUnity = (function () {
       jsUnity.tap.write("  ...");
       jsUnity.log.info(fmt("[FAILED] ?: ?", testName, message));
     },
+    
+    beginTeardown: function(index, testName) {},
 
+    endTeardown: function(index, testName) {},
+    
     end: function (passed, failed, duration) {
       jsUnity.log.info(plural(passed, "test") + " passed");
       jsUnity.log.info(plural(failed, "test") + " failed");
@@ -511,9 +525,16 @@ var jsUnity = exports.jsUnity = (function () {
             counter = 0;
             
             try {
+              this.results.beginSetUp(suite.scope, test.name);
               setUp(test.name);
+              this.results.endSetUp(suite.scope, test.name);
+              
               test.fn.call(suite.scope, test.name);
+
+
+              this.results.beginTeardown(suite.scope, test.name);
               tearDown(test.name);
+              this.results.endTeardown(suite.scope, test.name);
 
               this.results.pass(j + 1, test.name);
 

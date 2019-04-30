@@ -329,6 +329,20 @@ void ClientFeature::stop() {
 #endif
 }
 
+std::string ClientFeature::buildConnectedMessage(
+    std::string const& endpointSpecification,
+    std::string const& version,
+    std::string const& role,
+    std::string const& mode,
+    std::string const& databaseName,
+    std::string const& user
+) {
+  return std::string("Connected to ArangoDB '") + endpointSpecification + 
+         ((version.empty() || version == "arango") ? "" : ", version: " + version) +
+         (role.empty() ? "" : " [" + role + ", " + mode + "]") +
+         ", database: '" + databaseName + "', username: '" + user + "'";
+}
+
 int ClientFeature::runMain(int argc, char* argv[],
                            std::function<int(int argc, char* argv[])> const& mainFunc) {
   try {

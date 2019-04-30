@@ -102,7 +102,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace arangodb {
-
+  
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
@@ -2052,6 +2052,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       auto phy = static_cast<RocksDBCollection*>(collection->getPhysical());
       TRI_ASSERT(phy != nullptr);
       phy->meta().deserializeMeta(_db, *collection);
+      phy->loadInitialNumberDocuments();
 
       StorageEngine::registerCollection(*vocbase, uniqCol);
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
@@ -2115,8 +2116,8 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
 
   builder.openObject();
   for (int i = 0; i < _options.num_levels; ++i) {
-    addInt(rocksdb::DB::Properties::kNumFilesAtLevelPrefix + std::to_string(i));
-    addInt(rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix + std::to_string(i));
+    addStr(rocksdb::DB::Properties::kNumFilesAtLevelPrefix + std::to_string(i));
+    addStr(rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix + std::to_string(i));
   }
   addInt(rocksdb::DB::Properties::kNumImmutableMemTable);
   addInt(rocksdb::DB::Properties::kNumImmutableMemTableFlushed);
@@ -2220,24 +2221,8 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& bu
 
   // "clients" part
   builder.add("clients", VPackValue(VPackValueType::Array));  // open
-  if (vocbase != nullptr) {                                   // add clients
-    auto allClients = vocbase->getReplicationClients();
-    for (auto& it : allClients) {
-      // One client
-      builder.add(VPackValue(VPackValueType::Object));
-      builder.add("serverId", VPackValue(std::to_string(std::get<0>(it))));
-
-      char buffer[21];
-      TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
-      builder.add("time", VPackValue(buffer));
-
-      TRI_GetTimeStampReplication(std::get<2>(it), &buffer[0], sizeof(buffer));
-      builder.add("expires", VPackValue(buffer));
-
-      builder.add("lastServedTick", VPackValue(std::to_string(std::get<3>(it))));
-
-      builder.close();
-    }
+  if (vocbase != nullptr) {    
+    vocbase->replicationClients().toVelocyPack(builder);
   }
   builder.close();  // clients
 

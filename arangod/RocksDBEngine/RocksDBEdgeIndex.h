@@ -92,8 +92,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
 
-  bool hasBatchInsert() const override { return false; }
-
   bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
                                arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,

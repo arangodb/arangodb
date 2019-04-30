@@ -16,8 +16,6 @@ set(IRESEARCH_TESTS_SOURCES
   IResearch/ClusterCommMock.cpp IResearch/ClusterCommMock.h
   IResearch/Containers-test.cpp
   IResearch/ExpressionFilter-test.cpp
-  IResearch/ExecutionBlockMock.cpp
-  IResearch/ExecutionBlockMock-test.cpp
   IResearch/ExpressionContextMock.cpp
   IResearch/IResearchAnalyzerFeature-test.cpp
   IResearch/IResearchFeature-test.cpp
@@ -62,10 +60,13 @@ set(IRESEARCH_TESTS_SOURCES
   IResearch/RestHandlerMock.cpp
   IResearch/IResearchViewNode-test.cpp
   IResearch/VelocyPackHelper-test.cpp
+  Aql/WaitingExecutionBlockMock.cpp
+  RestHandler/RestAnalyzerHandler-test.cpp
   RestHandler/RestUsersHandler-test.cpp
   RestHandler/RestViewHandler-test.cpp
   RestServer/FlushFeature-test.cpp
   Utils/CollectionNameResolver-test.cpp
+  V8Server/v8-analyzers-test.cpp
   V8Server/v8-users-test.cpp
   V8Server/v8-views-test.cpp
   VocBase/LogicalDataSource-test.cpp
@@ -88,11 +89,10 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AllRowsFetcherTest.cpp
   Aql/AqlItemBlockHelper.cpp
   Aql/AqlItemRowTest.cpp
-  Aql/BlockFetcherHelper.cpp
-  Aql/BlockFetcherMock.cpp
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
+  Aql/DependencyProxyMock.cpp
   Aql/DistinctCollectExecutorTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
   Aql/EnumerateCollectionExecutorTest.cpp
@@ -107,6 +107,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/NoResultsExecutorTest.cpp
   Aql/RestAqlHandlerTest.cpp
   Aql/ReturnExecutorTest.cpp
+  Aql/RowFetcherHelper.cpp
   Aql/ShortestPathExecutorTest.cpp
   Aql/SingleRowFetcherTest.cpp
   Aql/SortExecutorTest.cpp
@@ -116,7 +117,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/TestExecutorHelper.cpp
   Aql/TraversalExecutorTest.cpp
   Aql/VelocyPackHelper.cpp
-  Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
   Basics/ApplicationServerTest.cpp
   Basics/icu-helper.cpp
@@ -171,8 +171,10 @@ set(ARANGODB_TESTS_SOURCES
   Geo/GeoFunctionsTest.cpp
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
+  Graph/GraphTestTools.cpp
   Graph/ClusterTraverserCacheTest.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
+  Graph/KShortestPathsFinder.cpp
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
@@ -184,6 +186,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/IndexEstimatorTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
+  Transaction/Manager.cpp
   VocBase/VersionTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
 )

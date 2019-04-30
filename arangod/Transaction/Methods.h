@@ -409,6 +409,13 @@ class Methods {
   virtual bool isInaccessibleCollection(std::string const& /*cid*/) {
     return false;
   }
+#else
+  bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) {
+    return false;
+  }
+  bool isInaccessibleCollection(std::string const& /*cid*/) {
+    return false;
+  }
 #endif
 
   static int validateSmartJoinAttribute(LogicalCollection const& collinfo,
@@ -501,13 +508,6 @@ class Methods {
   ENTERPRISE_VIRT Result unlockRecursive(TRI_voc_cid_t, AccessMode::Type);
 
  private:
-  /// @brief replicates operations from leader to follower(s)
-  Result replicateOperations(LogicalCollection* collection,
-                             arangodb::velocypack::Slice const& inputValue,
-                             arangodb::velocypack::Builder const& resultBuilder,
-                             std::shared_ptr<std::vector<std::string> const>& followers,
-                             arangodb::rest::RequestType requestType,
-                             std::string const& pathAppendix);
 
   /// @brief Helper create a Cluster Communication document
   OperationResult clusterResultDocument(rest::ResponseCode const& responseCode,
@@ -583,7 +583,7 @@ class Methods {
                              std::shared_ptr<const std::vector<std::string>> const& followers,
                              OperationOptions const& options, VPackSlice value,
                              TRI_voc_document_operation_e operation,
-                             VPackBuilder& resultBuilder);
+                             VPackBuilder const& resultBuilder);
 };
 
 }  // namespace transaction

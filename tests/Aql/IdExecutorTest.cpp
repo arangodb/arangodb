@@ -20,11 +20,10 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BlockFetcherHelper.h"
+#include "RowFetcherHelper.h"
 #include "catch.hpp"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
@@ -32,7 +31,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
 
-#include "tests/Aql/BlockFetcherHelper.h"
+#include "tests/Aql/RowFetcherHelper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -49,14 +48,12 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
 
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager(&monitor);
-  auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 1)};
   auto outputRegisters = make_shared_unordered_set();
   auto registersToKeep = make_shared_unordered_set({0});  // this must be set correctly
-  auto blockShell =
-      std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
 
   IdExecutorInfos infos(1 /*nrRegs*/, *registersToKeep /*toKeep*/, {} /*toClear*/);
-  OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep,
+  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
                        infos.registersToClear()};
   GIVEN("there are no rows upstream") {
     WHEN("the producer does not wait") {
@@ -65,7 +62,7 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
       NoStats stats{};
 
       THEN("the executor should return DONE with no block produced") {
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!row.produced());
       }
@@ -81,23 +78,23 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
       NoStats stats{};
 
       THEN("the executor should return the rows") {
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
         row.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
         row.advanceRow();
 
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRows(row);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(row.produced());
         row.advanceRow();
 
         AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRow(row);
+          std::tie(state, stats) = testee.produceRows(row);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!row.produced());
         }

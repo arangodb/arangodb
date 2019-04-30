@@ -142,6 +142,7 @@ class SortedCollectExecutor {
     bool _shouldDeleteBuilderBuffer;
 
     CollectGroup() = delete;
+    CollectGroup(CollectGroup&&) = default;
     CollectGroup(CollectGroup const&) = delete;
     CollectGroup& operator=(CollectGroup const&) = delete;
 
@@ -163,10 +164,7 @@ class SortedCollectExecutor {
   struct Properties {
     static const bool preservesOrder = false;
     static const bool allowsBlockPassthrough = false;
-    // TODO This should be true, but the current implementation in
-    // ExecutionBlockImpl and the fetchers does not work with this.
-    // It will however always overfetch if activated
-    static const bool inputSizeRestrictsOutputSize = false;
+    static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = SortedCollectExecutorInfos;
@@ -182,19 +180,14 @@ class SortedCollectExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   /**
    * This executor has no chance to estimate how many rows
    * it will produce exactly. It can however only
    * overestimate never underestimate.
    */
-  inline size_t numberOfRowsInFlight() const {
-    // We always need to be prepared for 1 more row.
-    // On empty input we can produce 1 row.
-    // Otherwise we will have an open group!
-    return 1;
-  }
+  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
   Infos const& infos() const noexcept { return _infos; };

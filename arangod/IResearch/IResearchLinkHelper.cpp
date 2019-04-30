@@ -30,6 +30,7 @@
 #include "IResearchViewCoordinator.h"
 #include "VelocyPackHelper.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -60,7 +61,7 @@ arangodb::Result canUseAnalyzers( // validate
   auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
   for (auto& entry: meta._analyzers) {
-    if (!entry) {
+    if (!entry._pool) {
       continue; // skip invalid entries
     }
 
@@ -69,20 +70,20 @@ arangodb::Result canUseAnalyzers( // validate
     if (sysVocbase) {
       result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
         arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-          entry->name(), defaultVocbase, *sysVocbase // args
+          entry._pool->name(), defaultVocbase, *sysVocbase // args
         ), // analyzer
         arangodb::auth::Level::RO // auth level
       );
     } else {
       result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
-        entry->name(), arangodb::auth::Level::RO // args
+        entry._pool->name(), arangodb::auth::Level::RO // args
       );
     }
 
     if (!result) {
       return arangodb::Result( // result
         TRI_ERROR_FORBIDDEN, // code
-        std::string("read access is forbidden to arangosearch analyzer '") + entry->name() + "'"
+        std::string("read access is forbidden to arangosearch analyzer '") + entry._pool->name() + "'"
       );
     }
   }
@@ -234,6 +235,11 @@ arangodb::Result modifyLinks( // modify links
 
     normalized.openObject();
 
+    // @note: DBServerAgencySync::getLocalCollections(...) generates
+    //        'forPersistence' definitions that are then compared in
+    //        Maintenance.cpp:compareIndexes(...) via
+    //        arangodb::Index::Compare(...)
+    //        hence must use 'isCreation=true' for normalize(...) to match
     auto res = arangodb::iresearch::IResearchLinkHelper::normalize( // normalize to validate analyzer definitions
       normalized, link, true, view.vocbase() // args
     );
@@ -276,7 +282,7 @@ arangodb::Result modifyLinks( // modify links
     std::string error;
     arangodb::iresearch::IResearchLinkMeta linkMeta;
 
-    if (!linkMeta.init(namedJson.slice(), error)) { // normalized and validated above via normalize(...)
+    if (!linkMeta.init(namedJson.slice(), true, error)) { // validated and normalized with 'isCreation=true' above via normalize(...)
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string("error parsing link parameters from json for arangosearch view '") + view.name() + "' collection '" + collectionName + "' error '" + error + "'"
@@ -557,8 +563,8 @@ namespace iresearch {
   IResearchLinkMeta lhsMeta;
   IResearchLinkMeta rhsMeta;
 
-  return lhsMeta.init(lhs, errorField) // left side meta valid (for db-server analyzer validation should have already apssed on coordinator)
-         && rhsMeta.init(rhs, errorField) // right side meta valid (for db-server analyzer validation should have already apssed on coordinator)
+  return lhsMeta.init(lhs, true, errorField) // left side meta valid (for db-server analyzer validation should have already apssed on coordinator)
+         && rhsMeta.init(rhs, true, errorField) // right side meta valid (for db-server analyzer validation should have already apssed on coordinator)
          && lhsMeta == rhsMeta; // left meta equal right meta
 }
 
@@ -624,7 +630,7 @@ namespace iresearch {
   //        IResearchLinkHelper::normalize(...) if creating via collection API
   //        ::modifyLinks(...) (via call to normalize(...) prior to getting
   //        superuser) if creating via IResearchLinkHelper API
-  if (!meta.init(definition, error, &vocbase)) {
+  if (!meta.init(definition, true, error, &vocbase)) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error parsing arangosearch link parameters from json: ") + error
@@ -663,13 +669,14 @@ namespace iresearch {
     );
   }
 
-  return meta.json(normalized, isCreation) // 'isCreation' is set when forPersistence
-    ? arangodb::Result()
-    : arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("error generating arangosearch link normalized definition")
-      )
-    ;
+  if (!meta.json(normalized, isCreation, nullptr, &vocbase)) { // 'isCreation' is set when forPersistence
+    return arangodb::Result( // result
+      TRI_ERROR_BAD_PARAMETER, // code
+      "error generating arangosearch link normalized definition" // message
+    );
+  }
+
+  return arangodb::Result();
 }
 
 /*static*/ std::string const& IResearchLinkHelper::type() noexcept {
@@ -725,7 +732,8 @@ namespace iresearch {
     IResearchLinkMeta meta;
     std::string errorField;
 
-    if (!linkDefinition.isNull() && !meta.init(linkDefinition, errorField, &vocbase)) { // for db-server analyzer validation should have already apssed on coordinator
+    if (!linkDefinition.isNull() // have link definition
+        && !meta.init(linkDefinition, false, errorField, &vocbase)) { // for db-server analyzer validation should have already applied on coordinator
       return arangodb::Result( // result
         TRI_ERROR_BAD_PARAMETER, // code
         errorField.empty()
@@ -738,20 +746,22 @@ namespace iresearch {
   return arangodb::Result();
 }
 
-/*static*/ bool IResearchLinkHelper::visit(arangodb::LogicalCollection const& collection,
-                                           std::function<bool(IResearchLink& link)> const& visitor) {
-  for (auto& index : collection.getIndexes()) {
-    if (!index || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
-      continue;  // not an IResearchLink
+/*static*/ bool IResearchLinkHelper::visit( // visit
+    arangodb::LogicalCollection const& collection, // collection to visit
+    std::function<bool(IResearchLink& link)> const& visitor // visitor to apply
+) {
+  for (auto& index: collection.getIndexes()) {
+    if (!index // not a valid index
+        || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
+      continue; // not an IResearchLink
     }
 
     // TODO FIXME find a better way to retrieve an iResearch Link
-    // cannot use static_cast/reinterpret_cast since Index is not related to
-    // IResearchLink
+    // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
     auto link = std::dynamic_pointer_cast<IResearchLink>(index);
 
     if (link && !visitor(*link)) {
-      return false;  // abort requested
+      return false; // abort requested
     }
   }
 

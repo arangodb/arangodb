@@ -4,7 +4,7 @@ project(jemalloc C)
 include(ExternalProject)
 
 # set version and paths
-set(JEMALLOC_VERSION "5.1.0")
+set(JEMALLOC_VERSION "5.2.0")
 set(JEMALLOC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/v${JEMALLOC_VERSION}")
 set(JEMALLOC_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/v${JEMALLOC_VERSION}")
 

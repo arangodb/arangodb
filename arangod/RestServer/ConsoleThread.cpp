@@ -31,6 +31,7 @@
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Rest/Version.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -48,7 +49,6 @@ Mutex ConsoleThread::serverConsoleMutex;
 ConsoleThread::ConsoleThread(ApplicationServer* applicationServer, TRI_vocbase_t* vocbase)
     : Thread("Console"),
       _applicationServer(applicationServer),
-      _context(nullptr),
       _vocbase(vocbase),
       _userAborted(false) {}
 
@@ -66,18 +66,12 @@ void ConsoleThread::run() {
   }
 
   // enter V8 context
-  _context = V8DealerFeature::DEALER->enterContext(_vocbase, true);
-
-  if (_context == nullptr) {
-    LOG_TOPIC("921b8", FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";
-    FATAL_ERROR_EXIT();
-  }
-
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(_context));
+  JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createAdminScriptContext();
+  V8ContextGuard guard(_vocbase, securityContext);
 
   // work
   try {
-    inner();
+    inner(guard);
   } catch (char const* error) {
     if (strcmp(error, USER_ABORTED) != 0) {
       LOG_TOPIC("6e7fd", ERR, arangodb::Logger::FIXME) << error;
@@ -91,11 +85,11 @@ void ConsoleThread::run() {
   _applicationServer->beginShutdown();
 }
 
-void ConsoleThread::inner() {
+void ConsoleThread::inner(V8ContextGuard const& guard) {
   // flush all log output before we print the console prompt
   Logger::flush();
 
-  v8::Isolate* isolate = _context->_isolate;
+  v8::Isolate* isolate = guard.isolate();
   v8::HandleScope globalScope(isolate);
 
   // run the shell
@@ -105,7 +99,7 @@ void ConsoleThread::inner() {
 
   v8::Local<v8::String> name(TRI_V8_ASCII_STRING(isolate, TRI_V8_SHELL_COMMAND_NAME));
 
-  auto localContext = v8::Local<v8::Context>::New(isolate, _context->_context);
+  auto localContext = v8::Local<v8::Context>::New(isolate, guard.context()->_context);
   localContext->Enter();
   {
     v8::Context::Scope contextScope(localContext);

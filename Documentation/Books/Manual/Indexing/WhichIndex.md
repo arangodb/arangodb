@@ -65,11 +65,11 @@ different usage scenarios:
   expired documents from a collection. 
 
   The TTL index is set up by setting an `expireAfter` value and by picking a single 
-  document attribute which contains the documents' creation date and time. Documents 
-  are expired after `expireAfter` seconds after their creation time. The creation time
-  is specified as either a numeric timestamp (Unix timestamp) or a date string in format
-  `YYYY-MM-DDTHH:MM:SS` with optional milliseconds. All date strings will be interpreted
-  as UTC dates.
+  document attribute which contains the documents' reference timepoint. Documents 
+  are expired `expireAfter` seconds after their reference timepoint has been reached.
+  The documents' reference timepoint is specified as either a numeric timestamp 
+  (Unix timestamp) or a date string in format `YYYY-MM-DDTHH:MM:SS` with optional 
+  milliseconds. All date strings will be interpreted as UTC dates.
 
   For example, if `expireAfter` is set to 600 seconds (10 minutes) and the index
   attribute is "creationDate" and there is the following document:
@@ -94,7 +94,7 @@ different usage scenarios:
   past their expiration time will actually be removed.
 
   Please note that the numeric date time values for the index attribute should be 
-  specified in milliseconds since January 1st 1970 (Unix timestamp). To calculate the current 
+  specified in seconds since January 1st 1970 (Unix timestamp). To calculate the current 
   timestamp from JavaScript in this format, there is `Date.now() / 1000`, to calculate it 
   from an arbitrary Date instance, there is `Date.getTime() / 1000`.
 
@@ -102,7 +102,7 @@ different usage scenarios:
   `YYYY-MM-DDTHH:MM:SS` with optional milliseconds. All date strings will be interpreted 
   as UTC dates.
     
-  The above example document using a datestring attribute value would be
+  The above example document using a date string attribute value would be
  
       { "creationDate" : "2019-02-14T17:39:33.000Z" }
 
@@ -111,8 +111,12 @@ different usage scenarios:
   for expiration and removal. Providing either a non-numeric value or even no value for 
   the index attribute is a supported way of keeping documents from being expired and removed.
 
-  It is not recommended to use TTL indexes for user-land AQL queries, as TTL indexes may 
-  store a transformed, always numerical version of the index attribute value.
+  TTL indexes are designed exactly for the purpose of removing expired documents from
+  a collection. It is *not recommended* to rely on TTL indexes for user-land AQL queries. 
+  This is because TTL indexes internally may store a transformed, always numerical version 
+  of the index attribute value even if it was originally passed in as a datestring. As a
+  result TTL indexes will likely not be used for filtering and sort operations in user-land
+  AQL queries.
 
 - geo index: the geo index provided by ArangoDB allows searching for documents
   within a radius around a two-dimensional earth coordinate (point), or to

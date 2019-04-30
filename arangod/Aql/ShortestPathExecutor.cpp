@@ -156,7 +156,7 @@ std::pair<ExecutionState, Result> ShortestPathExecutor::shutdown(int errorCode) 
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRows(OutputAqlItemRow& output) {
   NoStats s;
 
   // Can be length 0 but never nullptr.
@@ -205,11 +205,7 @@ bool ShortestPathExecutor::fetchPath() {
     TRI_ASSERT(start.isString());
     TRI_ASSERT(end.isString());
     _path->clear();
-  } while (!_finder.shortestPath(start, end, *_path, [this]() {
-    if (_finder.options().query()->killed()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-    }
-  }));
+  } while (!_finder.shortestPath(start, end, *_path));
   _posInPath = 0;
   return true;
 }

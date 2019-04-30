@@ -2165,6 +2165,24 @@ bool gzipDeflate(std::string const& compressed, std::string& uncompressed) {
   return gzipDeflate(compressed.c_str(), compressed.size(), uncompressed);
 }
 
+void escapeRegexParams(std::string& out, const char* ptr, size_t length) {
+  for (size_t i = 0; i < length; ++i) {
+    char const c = ptr[i];
+    if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' || c == '{' || c == '}' ||
+        c == '^' || c == '$' || c == '|' || c == '.' || c == '*' || c == '\\') {
+      // character with special meaning in a regex
+      out.push_back('\\');
+    }
+    out.push_back(c);
+  }
+}
+
+std::string escapeRegexParams(std::string const& in) {
+  std::string out;
+  escapeRegexParams(out, in.data(), in.size());
+  return out;
+}
+
 }  // namespace StringUtils
 }  // namespace basics
 }  // namespace arangodb

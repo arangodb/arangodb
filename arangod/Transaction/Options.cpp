@@ -73,7 +73,8 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   if (value.isNumber()) {
     intermediateCommitCount = value.getNumber<uint64_t>();
   }
-  value = slice.get("allowImplicitCollections");
+  // simon: 'allowImplicit' is due to naming in 'db._executeTransaction(...)'
+  value = slice.get("allowImplicit");
   if (value.isBool()) {
     allowImplicitCollections = value.getBool();
   }
@@ -97,7 +98,7 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("maxTransactionSize", VPackValue(maxTransactionSize));
   builder.add("intermediateCommitSize", VPackValue(intermediateCommitSize));
   builder.add("intermediateCommitCount", VPackValue(intermediateCommitCount));
-  builder.add("allowImplicitCollections", VPackValue(allowImplicitCollections));
+  builder.add("allowImplicit", VPackValue(allowImplicitCollections));
   builder.add("waitForSync", VPackValue(waitForSync));
 #ifdef USE_ENTERPRISE
   builder.add("skipInaccessibleCollections", VPackValue(skipInaccessibleCollections));

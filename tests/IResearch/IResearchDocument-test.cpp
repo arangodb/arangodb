@@ -27,6 +27,7 @@
 #include "../Mocks/StorageEngineMock.h"
 
 #include "Aql/AqlFunctionFeature.h"
+#include "Cluster/ClusterFeature.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
@@ -49,6 +50,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
+#include "V8Server/V8DealerFeature.h"
 
 #include "velocypack/Iterator.h"
 #include "velocypack/Builder.h"
@@ -129,7 +131,6 @@ REGISTER_ANALYZER_JSON(InvalidAnalyzer, InvalidAnalyzer::make);
 struct IResearchDocumentSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
   IResearchDocumentSetup(): engine(server), server(nullptr, nullptr) {
@@ -145,9 +146,8 @@ struct IResearchDocumentSetup {
     features.emplace_back(new arangodb::AuthenticationFeature(server), true);
     features.emplace_back(new arangodb::DatabaseFeature(server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required for constructing TRI_vocbase_t
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::ShardingFeature(server), true);
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
@@ -156,6 +156,11 @@ struct IResearchDocumentSetup {
       features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
+    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
+    arangodb::application_features::ApplicationServer::server->addFeature(
+      new arangodb::ClusterFeature(server)
+    );
+
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
     }
@@ -163,6 +168,12 @@ struct IResearchDocumentSetup {
     for (auto& f : features) {
       f.first->prepare();
     }
+
+    auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature
+    >("Database");
+    dbFeature->loadDatabases(databases->slice());
 
     for (auto& f : features) {
       if (f.second) {
@@ -178,8 +189,8 @@ struct IResearchDocumentSetup {
     // ensure that there will be no exception on 'emplace'
     InvalidAnalyzer::returnNullFromMake = false;
 
-    analyzers->emplace(result, "iresearch-document-empty", "iresearch-document-empty", "en", irs::flags{ irs::frequency::type() }); // cache analyzer
-    analyzers->emplace(result, "iresearch-document-invalid", "iresearch-document-invalid", "en", irs::flags{ irs::frequency::type() }); // cache analyzer
+    analyzers->emplace(result, arangodb::StaticStrings::SystemDatabase + "::iresearch-document-empty", "iresearch-document-empty", "en", irs::flags{ irs::frequency::type() }); // cache analyzer
+    analyzers->emplace(result, arangodb::StaticStrings::SystemDatabase + "::iresearch-document-invalid", "iresearch-document-invalid", "en", irs::flags{ irs::frequency::type() }); // cache analyzer
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
@@ -187,10 +198,8 @@ struct IResearchDocumentSetup {
   }
 
   ~IResearchDocumentSetup() {
-    system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f : features) {
@@ -204,6 +213,7 @@ struct IResearchDocumentSetup {
     }
 
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 };
 
@@ -262,9 +272,14 @@ SECTION("FieldIterator_static_checks") {
 }
 
 SECTION("FieldIterator_construct") {
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto sysVocbase = sysDatabase->use();
+
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
-    arangodb::transaction::StandaloneContext::Create(*s.system),
+    arangodb::transaction::StandaloneContext::Create(*sysVocbase),
     EMPTY, EMPTY, EMPTY,
     arangodb::transaction::Options()
   );
@@ -275,6 +290,11 @@ SECTION("FieldIterator_construct") {
 }
 
 SECTION("FieldIterator_traverse_complex_object_custom_nested_delimiter") {
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto sysVocbase = sysDatabase->use();
+
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
@@ -314,7 +334,7 @@ SECTION("FieldIterator_traverse_complex_object_custom_nested_delimiter") {
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
-    arangodb::transaction::StandaloneContext::Create(*s.system),
+    arangodb::transaction::StandaloneContext::Create(*sysVocbase),
     EMPTY, EMPTY, EMPTY,
     arangodb::transaction::Options()
   );
@@ -354,6 +374,11 @@ SECTION("FieldIterator_traverse_complex_object_custom_nested_delimiter") {
 }
 
 SECTION("FieldIterator_traverse_complex_object_all_fields") {
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto sysVocbase = sysDatabase->use();
+
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
@@ -393,7 +418,7 @@ SECTION("FieldIterator_traverse_complex_object_all_fields") {
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
-    arangodb::transaction::StandaloneContext::Create(*s.system),
+    arangodb::transaction::StandaloneContext::Create(*sysVocbase),
     EMPTY, EMPTY, EMPTY,
     arangodb::transaction::Options()
   );
@@ -433,6 +458,11 @@ SECTION("FieldIterator_traverse_complex_object_all_fields") {
 }
 
 SECTION("FieldIterator_traverse_complex_object_ordered_all_fields") {
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto sysVocbase = sysDatabase->use();
+
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
@@ -497,7 +527,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields") {
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
-    arangodb::transaction::StandaloneContext::Create(*s.system),
+    arangodb::transaction::StandaloneContext::Create(*sysVocbase),
     EMPTY, EMPTY, EMPTY,
     arangodb::transaction::Options()
   );
@@ -518,6 +548,11 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields") {
 }
 
 SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto sysVocbase = sysDatabase->use();
+
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
@@ -546,11 +581,11 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
   arangodb::iresearch::IResearchLinkMeta linkMeta;
 
   std::string error;
-  REQUIRE(linkMeta.init(linkMetaJson->slice(), error));
+  REQUIRE(linkMeta.init(linkMetaJson->slice(), false, error));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
-    arangodb::transaction::StandaloneContext::Create(*s.system),
+    arangodb::transaction::StandaloneContext::Create(*sysVocbase),
     EMPTY, EMPTY, EMPTY,
     arangodb::transaction::Options()
   );
@@ -578,6 +613,11 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
 }
 
 SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto sysVocbase = sysDatabase->use();
+
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
@@ -602,7 +642,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
-    arangodb::transaction::StandaloneContext::Create(*s.system),
+    arangodb::transaction::StandaloneContext::Create(*sysVocbase),
     EMPTY, EMPTY, EMPTY,
     arangodb::transaction::Options()
   );
@@ -614,6 +654,11 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
 }
 
 SECTION("FieldIterator_traverse_complex_object_ordered_empty_analyzers") {
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto sysVocbase = sysDatabase->use();
+
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
@@ -638,7 +683,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_empty_analyzers") {
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
-    arangodb::transaction::StandaloneContext::Create(*s.system),
+    arangodb::transaction::StandaloneContext::Create(*sysVocbase),
     EMPTY, EMPTY, EMPTY,
     arangodb::transaction::Options()
   );
@@ -653,6 +698,11 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
     arangodb::iresearch::IResearchAnalyzerFeature
   >();
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto sysVocbase = sysDatabase->use();
+
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"mustBeSkipped\" : {}, \
     \"stringValue\": \"string\", \
@@ -671,12 +721,12 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   auto const slice = json->slice();
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
-  linkMeta._analyzers.emplace_back(analyzers->get("iresearch-document-empty")); // add analyzer
+  linkMeta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(analyzers->get(arangodb::StaticStrings::SystemDatabase + "::iresearch-document-empty"), "iresearch-document-empty")); // add analyzer
   linkMeta._includeAllFields = true; // include all fields
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
-    arangodb::transaction::StandaloneContext::Create(*s.system),
+    arangodb::transaction::StandaloneContext::Create(*sysVocbase),
     EMPTY, EMPTY, EMPTY,
     arangodb::transaction::Options()
   );
@@ -840,6 +890,11 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
 }
 
 SECTION("FieldIterator_reset") {
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto sysVocbase = sysDatabase->use();
+
   auto json0 = arangodb::velocypack::Parser::fromJson("{ \
     \"boost\": \"10\", \
     \"depth\": \"20\" \
@@ -854,7 +909,7 @@ SECTION("FieldIterator_reset") {
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
-    arangodb::transaction::StandaloneContext::Create(*s.system),
+    arangodb::transaction::StandaloneContext::Create(*sysVocbase),
     EMPTY, EMPTY, EMPTY,
     arangodb::transaction::Options()
   );
@@ -920,6 +975,11 @@ SECTION("FieldIterator_reset") {
 }
 
 SECTION("FieldIterator_traverse_complex_object_ordered_all_fields_custom_list_offset_prefix_suffix") {
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto sysVocbase = sysDatabase->use();
+
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
@@ -976,7 +1036,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields_custom_list_of
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
-    arangodb::transaction::StandaloneContext::Create(*s.system),
+    arangodb::transaction::StandaloneContext::Create(*sysVocbase),
     EMPTY, EMPTY, EMPTY,
     arangodb::transaction::Options()
   );
@@ -1008,6 +1068,11 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields_custom_list_of
 }
 
 SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto sysVocbase = sysDatabase->use();
+
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
@@ -1045,11 +1110,11 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   arangodb::iresearch::IResearchLinkMeta linkMeta;
 
   std::string error;
-  REQUIRE(linkMeta.init(linkMetaJson->slice(), error));
+  REQUIRE((linkMeta.init(linkMetaJson->slice(), false, error, sysVocbase.get())));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
-    arangodb::transaction::StandaloneContext::Create(*s.system),
+    arangodb::transaction::StandaloneContext::Create(*sysVocbase),
     EMPTY, EMPTY, EMPTY,
     arangodb::transaction::Options()
   );
@@ -1374,6 +1439,11 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
 }
 
 SECTION("FieldIterator_nullptr_analyzer") {
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto sysVocbase = sysDatabase->use();
+
   arangodb::iresearch::IResearchAnalyzerFeature analyzers(s.server);
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"stringValue\": \"string\" \
@@ -1393,23 +1463,23 @@ SECTION("FieldIterator_nullptr_analyzer") {
     InvalidAnalyzer::returnNullFromMake = false;
 
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    analyzers.emplace(result, "empty", "iresearch-document-empty", "en", irs::flags{irs::frequency::type()});
-    analyzers.emplace(result, "invalid", "iresearch-document-invalid", "en", irs::flags{irs::frequency::type()});
+    analyzers.emplace(result, arangodb::StaticStrings::SystemDatabase + "::empty", "iresearch-document-empty", "en", irs::flags{irs::frequency::type()});
+    analyzers.emplace(result, arangodb::StaticStrings::SystemDatabase + "::invalid", "iresearch-document-invalid", "en", irs::flags{irs::frequency::type()});
   }
 
   // last analyzer invalid
   {
     arangodb::iresearch::IResearchLinkMeta linkMeta;
-    linkMeta._analyzers.emplace_back(analyzers.get("empty")); // add analyzer
-    linkMeta._analyzers.emplace_back(analyzers.get("invalid")); // add analyzer
+    linkMeta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty"), "empty")); // add analyzer
+    linkMeta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(analyzers.get(arangodb::StaticStrings::SystemDatabase + "::invalid"), "invalid")); // add analyzer
     linkMeta._includeAllFields = true; // include all fields
 
     // acquire analyzer, another one should be created
-    auto analyzer = linkMeta._analyzers.back()->get(); // cached instance should have been acquired
+    auto analyzer = linkMeta._analyzers.back()._pool->get(); // cached instance should have been acquired
 
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-      arangodb::transaction::StandaloneContext::Create(*s.system),
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase),
       EMPTY, EMPTY, EMPTY,
       arangodb::transaction::Options()
     );
@@ -1459,16 +1529,16 @@ SECTION("FieldIterator_nullptr_analyzer") {
   {
     arangodb::iresearch::IResearchLinkMeta linkMeta;
     linkMeta._analyzers.clear();
-    linkMeta._analyzers.emplace_back(analyzers.get("invalid")); // add analyzer
-    linkMeta._analyzers.emplace_back(analyzers.get("empty")); // add analyzer
+    linkMeta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(analyzers.get(arangodb::StaticStrings::SystemDatabase + "::invalid"),"invalid")); // add analyzer
+    linkMeta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty"), "empty")); // add analyzer
     linkMeta._includeAllFields = true; // include all fields
 
     // acquire analyzer, another one should be created
-    auto analyzer = linkMeta._analyzers.front()->get(); // cached instance should have been acquired
+    auto analyzer = linkMeta._analyzers.front()._pool->get(); // cached instance should have been acquired
 
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-      arangodb::transaction::StandaloneContext::Create(*s.system),
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase),
       EMPTY, EMPTY, EMPTY,
       arangodb::transaction::Options()
     );

@@ -80,8 +80,6 @@ class EnumerateListExecutor {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
-    /* With some more modifications this could be turned to true. Actually the
-       output of this block is input * itemsInList */
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -96,9 +94,14 @@ class EnumerateListExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-  inline size_t numberOfRowsInFlight() const { return 0; }
+  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Logic_error, prefetching number fo rows not supported");
+  }
 
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);

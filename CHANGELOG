@@ -1,8 +1,60 @@
 devel
 -----
 
+* add --compress-output flag to arangodump. Activates gzip compression for
+  collection data. Metadata files, such as .structure.json and .view.json,
+  do not get compressed. No option is needed for arangorestore to restore
+  .data.json.gz files.
+
+* added options to make server more secure:
+
+  - `--server.harden`: denies access to certain REST APIs that return server internals
+  - `--foxx.api`: set to false disables Foxx management API
+  - `--foxx.store`: set to false disables Foxx UI
+  - `--javascript.allow-port-testing`: enables internal.testPort()
+  - `--javascript.allow-external-process-control`: enables external process control
+  - `--javascript.harden`: disables getPid(), processStatistics() and logLevel()
+  - `--javascript.startup-options-whitelist`: control startup options visible in JavaScript
+  - `--javascript.environment-variables-whitelist`: control environment variables visible in JavaScript
+  - `--javascript.endpoints-whitelist`: control accessible endpoints in JavaScript
+  - `--javascript.files-whitelist`: control file access in JavaScript
+
+  Note: There is a [detailed description of all options](https://github.com/arangodb-helper/arangodb/blob/master/Documentation/Books/Manual/Security/SecurityOptions.md).
+
+* prevent arangod from making a call to www.arangodb.com at startup
+
+  This call was done to check for available updates, but it could have contributed
+  to small startup delays in case outgoing connections were blocked.
+
+* removed support for undocumented HTTP header `x-arango-v8-context`, which
+  allowed controlling in which particular V8 context number a JavaScript-based
+  action was executed. This header was only used internally for testing.
+
+* db._query now handles additional arguments correctly when passing an AQL
+  query object instead of a query string and separate bindVars
+
+* added req.auth property to Foxx
+
+* added collection.documentId method to derive document id from key
+
+* Indexes created with the 'inBackground', will not hold an
+  exclusive collection lock for the entire index creation period (rocksdb only)
+
+* fixed internal issue #536: ArangoSearch may crash server during term lookup
+
+* fixed internal issue #2946: Create graph autocomplete was not working under
+  certain circumstances.
+
+* added `filter` option to Foxx HTTP API for running tests.
+
+* added function `db.<collection>.getResponsibleShard()` to find out which is the
+  responsible shard for a given document. Note that this function is only available
+  in a cluster coordinator.
+
+* updated bundled version of jemalloc memory allocator to 5.2.0.
+
 * don't create per-database system collection `_frontend` automatically.
-  This collection is only needed by the web UI, and it can be created lazily 
+  This collection is only needed by the web UI, and it can be created lazily
   when needed.
 
 * added logging option `--log.time-format` to configure the time format used
@@ -14,24 +66,27 @@ devel
   - uptime: seconds since server start
   - uptime-millis: seconds since server start, with millisecond precision
   - uptime-micros: seconds since server start, with microsecond precision
-  - utc-datestring: UTC-based date and time in format YYYY-MM-DDTHH:MM:SSZ 
-  - utc-datestring-millis: UTC-based date and time in format YYYY-MM-DDTHH:MM:SS.FFFZ 
+  - utc-datestring: UTC-based date and time in format YYYY-MM-DDTHH:MM:SSZ
+  - utc-datestring-millis: UTC-based date and time in format YYYY-MM-DDTHH:MM:SS.FFFZ
   - local-datestring: local date and time in format YYYY-MM-DDTHH:MM:SS
 
-  This change deprecates the existing options `--log.use-microtime` and 
+  This change deprecates the existing options `--log.use-microtime` and
   `--log.use-localtime`, because the functionality provided by these options
   is covered by `--log.time-format` too.
 
 * added "smart joins" to the ArangoDB Enterprise Edition that allows running cluster
-  joins between two certain sharded collections with performance close to that of a 
-  local join operation. 
+  joins between two certain sharded collections with performance close to that of a
+  local join operation.
 
 * fixed internal issue #3815: fixed the removal of connected edges when
   removing a vertex graph node in a smart graph environment.
 
-* show startup warning in case kernel setting `vm.overcommit_memory` is set  
+* show startup warning in case kernel setting `vm.overcommit_memory` is set
   to a value of 2 and the jemalloc memory allocator is in use. This combination
   does not play well together.
+
+* added AQL function DECODE_REV for decomposing `_rev` values into their
+  individual parts
 
 * added AQL functions CRC32 and FNV64 for hashing data
 
@@ -42,7 +97,7 @@ devel
   executables with the `--version` command. It also changes the attribute
   name in the detailed response of the `/_api/version` REST API.
 
-* internal issue #2276: fixed the sorting of the databases in the database 
+* internal issue #2276: fixed the sorting of the databases in the database
   selection dropdown in the web ui. The sort order differed based on whether
   authentication was enabled or disabled.
 
@@ -51,7 +106,7 @@ devel
 
 * fixed internal issue #3789: restricted the allowed query names for user
   defined custom queries within the web ui.
-  
+
 * upgraded bundled RocksDB version to 6.0
 
 * added "--log.ids" option to arangod
@@ -68,7 +123,7 @@ devel
 * fixed internal issue #528: ArangoSearch range query sometimes doesn't work
   correctly with numeric values
 
-* changed type of the startup option `--rocksdb.recycle-log-file-num` from 
+* changed type of the startup option `--rocksdb.recycle-log-file-num` from
   numeric to boolean, as this is also the type the options has in the RocksDB
   library.
 
@@ -76,22 +131,22 @@ devel
   consistent `--rocksdb.delayed-write-rate`. When the old option name is
   used, the arangod startup will be aborted with a descriptive error message.
 
-* if not explicitly configured, make agency nodes start removing their unused 
+* if not explicitly configured, make agency nodes start removing their unused
   WAL files a few seconds after the completed server startup already. This is
   because on agency nodes, unused WAL files do not need to be retained for
-  potential replication clients to read them. 
+  potential replication clients to read them.
 
 * added option `--all-databases` to arangodump and arangorestore
 
   When set to true, this makes arangodump dump all available databases
   the current user has access to. The option `--all-databases` cannot be
-  used in combination with the option `--server.database`. 
+  used in combination with the option `--server.database`.
 
   When `--all-databases` is used, arangodump will create a subdirectory
-  with the data of each dumped database. Databases will be dumped one 
+  with the data of each dumped database. Databases will be dumped one
   after the other. However, inside each database, the collections of the
   database can be dumped in parallel using multiple threads.
-  
+
   For arangorestore, this makes it restore all databases from inside the
   subdirectories of the specified dump directory. Using the option for
   arangorestore only makes sense for dumps created with arangodump and
@@ -99,12 +154,12 @@ devel
   be invoked with the options `--all-databases` and `--server.database`
   at the same time. Additionally, the option `--force-same-database` cannot
   be used together with `--all-databases`.
-  
+
   If the to-be-restored databases do not exist on the target server, then
   restoring data into them will fail unless the option `--create-database`
   is also specified. Please note that in this case a database user must
   be used that has access to the `_system` database, in order to create
-  the databases on restore. 
+  the databases on restore.
 
 * added index hints feature to AQL
 
@@ -112,12 +167,12 @@ devel
 
   If a name is not specified on index creation, one will be auto-generated.
 
-* Under normal circumstances there should be no need to connect to a 
-  database server in a cluster with one of the client tools, and it is 
+* Under normal circumstances there should be no need to connect to a
+  database server in a cluster with one of the client tools, and it is
   likely that any user operations carried out there with one of the client
-  tools may cause trouble. 
+  tools may cause trouble.
 
-  The client tools arangosh, arangodump and arangorestore will now emit 
+  The client tools arangosh, arangodump and arangorestore will now emit
   a warning when connecting with them to a database server node in a cluster.
 
 * fix compation behavior of followers
@@ -418,6 +473,14 @@ devel
 * fix log spam in agency supervision when leader resigned
 
 * make AddFollower less aggressive
+
+* lots of agency performance improvements, mostly avoiding copying
+
+* priority queue for maintenance jobs
+
+* do not wait for replication after each job execution in Supervision
+
+* add support for configuring custom Analyzers via JavaScript and REST
 
 v3.4.1 (XXXX-XX-XX)
 -------------------

@@ -628,9 +628,6 @@ Result Index::sizeHint(transaction::Methods& trx, size_t size) {
   return Result();  // do nothing
 }
 
-/// @brief default implementation for hasBatchInsert
-bool Index::hasBatchInsert() const { return false; }
-
 /// @brief default implementation for supportsFilterCondition
 bool Index::supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const&,
                                     arangodb::aql::AstNode const*,
@@ -923,21 +920,12 @@ bool Index::covers(std::unordered_set<std::string> const& attributes) const {
   }
 
   std::string result;
-  size_t i = 0;
-  for (size_t j = 0; j < _fields.size(); ++j) {
-    bool found = false;
+  for (size_t i = 0; i < _fields.size(); ++i) {
     result.clear();
-    TRI_AttributeNamesToString(_fields[j], result, false);
-    for (auto const& it : attributes) {
-      if (result == it) {
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
+    TRI_AttributeNamesToString(_fields[i], result, false);
+    if (std::find(attributes.begin(), attributes.end(), result) == attributes.end()) {
       return false;
     }
-    ++i;
   }
   return true;
 }

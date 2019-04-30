@@ -48,18 +48,20 @@ DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
     transaction::Methods* trxPtr)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
                     std::make_shared<std::unordered_set<RegisterId>>(writeableInputRegisters),
-                    nrInputRegisters, nrOutputRegisters, std::move(registersToClear),  std::move(registersToKeep)),
+                    nrInputRegisters, nrOutputRegisters,
+                    std::move(registersToClear), std::move(registersToKeep)),
       _groupRegisters(groupRegisters),
       _trxPtr(trxPtr) {
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
 DistinctCollectExecutor::DistinctCollectExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher),
-       _seen(1024,
-             AqlValueGroupHash(_infos.getTransaction(), _infos.getGroupRegisters().size()),
-             AqlValueGroupEqual(_infos.getTransaction())) {
-}
+    : _infos(infos),
+      _fetcher(fetcher),
+      _seen(1024,
+            AqlValueGroupHash(_infos.getTransaction(),
+                              _infos.getGroupRegisters().size()),
+            AqlValueGroupEqual(_infos.getTransaction())) {}
 
 DistinctCollectExecutor::~DistinctCollectExecutor() {
   // destroy all AqlValues captured
@@ -70,8 +72,8 @@ DistinctCollectExecutor::~DistinctCollectExecutor() {
   }
 }
 
-std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("DistinctCollectExecutor::produceRow") {
+std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("DistinctCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   NoStats stats{};
@@ -129,4 +131,10 @@ std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRow(OutputAql
 
     return {ExecutionState::HASMORE, stats};
   }
+}
+
+std::pair<ExecutionState, size_t> DistinctCollectExecutor::expectedNumberOfRows(size_t atMost) const {
+  // This block cannot know how many elements will be returned exactly.
+  // but it is upper bounded by the input.
+  return _fetcher.preFetchNumberOfRows(atMost);
 }

@@ -41,7 +41,6 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Recovery.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -50,6 +49,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/ClusterUtils.h"
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
@@ -200,7 +200,8 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
       _wasNotified(false),
       _backgroundJobsPosted(0),
       _lastSyncTime(0),
-      _maintenanceThread(nullptr) {}
+      _maintenanceThread(nullptr),
+      _failedVersionUpdates(0) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread
@@ -243,7 +244,8 @@ void HeartbeatThread::run() {
     }
   }
 
-  LOG_TOPIC("9788a", TRACE, Logger::HEARTBEAT) << "starting heartbeat thread (" << role << ")";
+  LOG_TOPIC("9788a", TRACE, Logger::HEARTBEAT)
+      << "starting heartbeat thread (" << role << ")";
 
   if (ServerState::instance()->isCoordinator(role)) {
     runCoordinator();
@@ -261,7 +263,8 @@ void HeartbeatThread::run() {
     TRI_ASSERT(false);
   }
 
-  LOG_TOPIC("eab40", TRACE, Logger::HEARTBEAT) << "stopped heartbeat thread (" << role << ")";
+  LOG_TOPIC("eab40", TRACE, Logger::HEARTBEAT)
+      << "stopped heartbeat thread (" << role << ")";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -391,8 +394,8 @@ void HeartbeatThread::runDBServer() {
         // authentication and JWT) we are not able to identify valid requests
         // from other cluster servers
         AgencyReadTransaction trx(std::vector<std::string>(
-            {AgencyCommManager::path("Shutdown"),
-             AgencyCommManager::path("Current/Version"), "/.agency"}));
+            {AgencyCommManager::path("Shutdown"), AgencyCommManager::path("Current/Version"),
+             AgencyCommManager::path("Target/FailedServers"), "/.agency"}));
 
         AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
         if (!result.successful()) {
@@ -410,6 +413,20 @@ void HeartbeatThread::runDBServer() {
           if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
             ApplicationServer::server->beginShutdown();
             break;
+          }
+
+          VPackSlice failedServersSlice = result.slice()[0].get(std::vector<std::string>(
+              {AgencyCommManager::path(), "Target", "FailedServers"}));
+          if (failedServersSlice.isObject()) {
+            std::vector<ServerID> failedServers = {};
+            for (auto const& server : VPackObjectIterator(failedServersSlice)) {
+              failedServers.push_back(server.key.copyString());
+            }
+            ClusterInfo::instance()->setFailedServers(failedServers);
+            transaction::cluster::abortTransactionsWithFailedServers();
+          } else {
+            LOG_TOPIC("80491", WARN, Logger::HEARTBEAT)
+                << "FailedServers is not an object. ignoring for now";
           }
 
           VPackSlice s = result.slice()[0].get(std::vector<std::string>(
@@ -511,7 +528,7 @@ void HeartbeatThread::runSingleServer() {
   GlobalReplicationApplier* applier = replication->globalReplicationApplier();
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(applier != nullptr && ci != nullptr);
-      
+
   TtlFeature* ttlFeature =
       application_features::ApplicationServer::getFeature<TtlFeature>("Ttl");
   TRI_ASSERT(ttlFeature != nullptr);
@@ -558,11 +575,14 @@ void HeartbeatThread::runSingleServer() {
         if (res.successful()) {
           LOG_TOPIC("927b1", TRACE, Logger::HEARTBEAT)
               << "successfully increased plan version in agency";
+          lastSentVersion = currentVersion;
+          _failedVersionUpdates = 0;
         } else {
-          LOG_TOPIC("700c7", WARN, Logger::HEARTBEAT)
-              << "could not increase version number in agency";
+          if (++_failedVersionUpdates % _maxFailsBeforeWarning == 0) {
+            LOG_TOPIC("700c7", WARN, Logger::HEARTBEAT)
+                << "could not increase version number in agency: " << res.errorMessage();
+          }
         }
-        lastSentVersion = currentVersion;
       }
 
       AgencyReadTransaction trx(std::vector<std::string>(
@@ -609,8 +629,9 @@ void HeartbeatThread::runSingleServer() {
       if (!leader.isString() || leader.getStringLength() == 0) {
         // Case 1: No leader in agency. Race for leadership
         // ONLY happens on the first startup. Supervision performs failovers
-        LOG_TOPIC("759aa", WARN, Logger::HEARTBEAT) << "Leadership vacuum detected, "
-                                           << "attempting a takeover";
+        LOG_TOPIC("759aa", WARN, Logger::HEARTBEAT)
+            << "Leadership vacuum detected, "
+            << "attempting a takeover";
 
         // if we stay a slave, the redirect will be turned on again
         ServerState::instance()->setServerMode(ServerState::Mode::TRYAGAIN);
@@ -630,7 +651,8 @@ void HeartbeatThread::runSingleServer() {
         } else if (result.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
           // we did not become leader, someone else is, response contains
           // current value in agency
-          LOG_TOPIC("7cf85", INFO, Logger::HEARTBEAT) << "Did not become leader";
+          LOG_TOPIC("7cf85", INFO, Logger::HEARTBEAT)
+              << "Did not become leader";
           continue;
         } else {
           LOG_TOPIC("8514b", WARN, Logger::HEARTBEAT)
@@ -661,7 +683,7 @@ void HeartbeatThread::runSingleServer() {
         // we are leader now. make sure the applier drops its previous state
         applier->forget();
         lastTick = EngineSelectorFeature::ENGINE->currentTick();
-        
+
         // put the leader in optional read-only mode
         auto readOnlySlice = response.get(
             std::vector<std::string>({AgencyCommManager::path(), "Readonly"}));
@@ -675,7 +697,7 @@ void HeartbeatThread::runSingleServer() {
               << "Successful leadership takeover: "
               << "All your base are belong to us";
         }
-        
+
         // server is now responsible for expiring outdated documents
         ttlFeature->allowRunning(true);
         continue;  // nothing more to do
@@ -685,7 +707,7 @@ void HeartbeatThread::runSingleServer() {
       std::string const leaderStr = leader.copyString();
       TRI_ASSERT(!leaderStr.empty());
       LOG_TOPIC("aeb38", TRACE, Logger::HEARTBEAT) << "Following: " << leaderStr;
-        
+
       // server is not responsible anymore for expiring outdated documents
       ttlFeature->allowRunning(false);
 
@@ -731,7 +753,8 @@ void HeartbeatThread::runSingleServer() {
           std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
 
-        LOG_TOPIC("04e4e", INFO, Logger::HEARTBEAT) << "Starting replication from " << endpoint;
+        LOG_TOPIC("04e4e", INFO, Logger::HEARTBEAT)
+            << "Starting replication from " << endpoint;
         ReplicationApplierConfiguration config = applier->configuration();
         if (config._jwt.empty()) {
           config._jwt = af->tokenCache().jwtToken();
@@ -739,11 +762,12 @@ void HeartbeatThread::runSingleServer() {
         config._endpoint = endpoint;
         config._autoResync = true;
         config._autoResyncRetries = 2;
-        LOG_TOPIC("ab4a2", INFO, Logger::HEARTBEAT) << "start initial sync from leader";
+        LOG_TOPIC("ab4a2", INFO, Logger::HEARTBEAT)
+            << "start initial sync from leader";
         config._requireFromPresent = true;
         config._incremental = true;
         TRI_ASSERT(!config._skipCreateDrop);
-        config._includeFoxxQueues = true; // sync _queues and _jobs
+        config._includeFoxxQueues = true;  // sync _queues and _jobs
 
         applier->forget();  // forget about any existing configuration
         applier->reconfigure(config);
@@ -966,19 +990,7 @@ void HeartbeatThread::runCoordinator() {
             failedServers.push_back(server.key.copyString());
           }
           ClusterInfo::instance()->setFailedServers(failedServers);
-
-          std::shared_ptr<pregel::PregelFeature> prgl = pregel::PregelFeature::instance();
-          if (prgl != nullptr && failedServers.size() > 0) {
-            pregel::RecoveryManager* mngr = prgl->recoveryManager();
-            if (mngr != nullptr) {
-              try {
-                mngr->updatedFailedServers(failedServers);
-              } catch (std::exception const& e) {
-                LOG_TOPIC("f5603", ERR, Logger::HEARTBEAT)
-                    << "Got an exception in coordinator heartbeat: " << e.what();
-              }
-            }
-          }
+          transaction::cluster::abortTransactionsWithFailedServers();
         } else {
           LOG_TOPIC("cd95f", WARN, Logger::HEARTBEAT)
               << "FailedServers is not an object. ignoring for now";
@@ -1076,7 +1088,8 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
         << ", Current " << result.currentVersion;
     _currentVersions = AgencyVersions(result);
   } else {
-    LOG_TOPIC("b72a6", ERR, Logger::HEARTBEAT) << "Sync request failed: " << result.errorMessage;
+    LOG_TOPIC("b72a6", ERR, Logger::HEARTBEAT)
+        << "Sync request failed: " << result.errorMessage;
   }
 }
 
@@ -1283,9 +1296,11 @@ void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
       }
       AgencyCommManager::MANAGER->updateEndpoints(values);
     } catch (basics::Exception const& e) {
-      LOG_TOPIC("1cec6", WARN, Logger::HEARTBEAT) << "Error updating agency pool: " << e.message();
+      LOG_TOPIC("1cec6", WARN, Logger::HEARTBEAT)
+          << "Error updating agency pool: " << e.message();
     } catch (std::exception const& e) {
-      LOG_TOPIC("889d4", WARN, Logger::HEARTBEAT) << "Error updating agency pool: " << e.what();
+      LOG_TOPIC("889d4", WARN, Logger::HEARTBEAT)
+          << "Error updating agency pool: " << e.what();
     } catch (...) {
     }
   } else {

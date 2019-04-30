@@ -34,6 +34,15 @@ class FoxxQueuesFeature final : public application_features::ApplicationFeature 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
+  /// @brief return poll interval for foxx queues. returns a negative number if
+  /// foxx queues are turned off
+  double pollInterval() const {
+    if (!_enabled) {
+      return -1.0;
+    }
+    return _pollInterval;
+  }
+
  private:
   double _pollInterval;
   bool _enabled;

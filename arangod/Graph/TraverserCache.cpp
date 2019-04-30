@@ -52,6 +52,12 @@ TraverserCache::TraverserCache(aql::Query* query)
 }
 
 TraverserCache::~TraverserCache() {}
+  
+void TraverserCache::clear() {
+  _stringHeap->clear();
+  _persistedStrings.clear();
+  _mmdr->clear();
+}
 
 VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());

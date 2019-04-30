@@ -127,7 +127,7 @@ class IResearchView final: public arangodb::LogicalView {
   ///        also track 'cid' via the persisted list of tracked collection IDs
   /// @return the 'link' was newly added to the IResearch View
   //////////////////////////////////////////////////////////////////////////////
-  bool link(AsyncLinkPtr const& link);
+  arangodb::Result link(AsyncLinkPtr const& link);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link
@@ -177,10 +177,12 @@ class IResearchView final: public arangodb::LogicalView {
   ///////////////////////////////////////////////////////////////////////////////
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief persist data store states for all known links to permanent storage
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result commit();
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @return primary sorting order of a view, empty -> use system order
+  ///////////////////////////////////////////////////////////////////////////////
+  IResearchViewMeta::Sort const& primarySort() const noexcept {
+    return _meta._primarySort;
+  }
 
  protected:
 
@@ -223,6 +225,11 @@ class IResearchView final: public arangodb::LogicalView {
     uint64_t planVersion, // view plan version
     IResearchViewMeta&& meta // view meta
   );
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief persist data store states for all known links to permanent storage
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result commit();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are updated (i.e. delta-modified)

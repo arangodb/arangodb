@@ -78,7 +78,8 @@ GeneralCommTask::GeneralCommTask(GeneralServer& server, GeneralServer::IoContext
     : IoTask(server, context, "GeneralCommTask"),
       SocketTask(server, context, std::move(socket), std::move(info),
                  keepAliveTimeout, skipSocketInit),
-      _auth(AuthenticationFeature::instance()) {
+      _auth(AuthenticationFeature::instance()),
+      _authToken("", false, 0.) {
   TRI_ASSERT(_auth != nullptr);
 }
 
@@ -512,13 +513,20 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
   std::string const& username = req.user();
   bool userAuthenticated = req.authenticated();
 
+  auto const& ap = _authToken._allowedPaths;
+  if (!ap.empty()) {
+    if (std::find(ap.begin(), ap.end(), path) == ap.end()) {
+      return rest::ResponseCode::UNAUTHORIZED;
+    }
+  }
+
   rest::ResponseCode result = userAuthenticated ? rest::ResponseCode::OK
                                                 : rest::ResponseCode::UNAUTHORIZED;
 
   VocbaseContext* vc = static_cast<VocbaseContext*>(req.requestContext());
   TRI_ASSERT(vc != nullptr);
   if (vc->databaseAuthLevel() == auth::Level::NONE && !StringUtils::isPrefix(path, ApiUser)) {
-    events::NotAuthorized(&req);
+    events::NotAuthorized(req);
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
 

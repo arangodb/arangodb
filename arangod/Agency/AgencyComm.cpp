@@ -1356,6 +1356,17 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
     } else if (waitInterval.count() < 5.0) {
       waitInterval *= 1.0749292929292;
     }
+
+    // Check again for shutdown, since some time has passed:
+    if (!application_features::ApplicationServer::isRetryOK()) {
+      LOG_TOPIC("afe45", INFO, Logger::AGENCYCOMM)
+          << "Unsuccessful AgencyComm: Timeout because of shutdown "
+          << "errorCode: " << result.errorCode()
+          << " errorMessage: " << result.errorMessage()
+          << " errorDetails: " << result.errorDetails();
+      return true;
+    }
+
     return false;
   };
 
@@ -1472,6 +1483,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
       if (isWriteTrans && !clientIds.empty() && result._sent &&
           (result._statusCode == 0 || result._statusCode == 503)) {
         isInquiry = true;
+        conTimeout = 16.0;
       }
 
       // This leaves the redirect, timeout and 503 cases, which are handled
@@ -1546,7 +1558,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
     // In case of a timeout, we increase the patience:
     if (result._statusCode == 0) {
-      if (conTimeout < 15.0) {  // double until we have 16s
+      if (conTimeout < 33.0) {  // double until we have 64s
         conTimeout *= 2;
       }
     }
@@ -1755,6 +1767,8 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add("NumberOfCoordinators", VPackSlice::nullSlice());
       builder.add("NumberOfDBServers", VPackSlice::nullSlice());
       builder.add(VPackValue("CleanedServers"));
+      { VPackArrayBuilder dd(&builder); }
+      builder.add(VPackValue("ToBeCleanedServers"));
       { VPackArrayBuilder dd(&builder); }
       builder.add(VPackValue("FailedServers"));
       { VPackObjectBuilder dd(&builder); }

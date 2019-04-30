@@ -31,6 +31,7 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -111,6 +112,12 @@ bool LogicalView::canUse(arangodb::auth::Level const& level) {
       application_features::ApplicationServer::lookupFeature<ViewTypesFeature>();
 
   if (!viewTypes) {
+    std::string name;
+    if (definition.isObject()) {
+      name = basics::VelocyPackHelper::getStringValue(definition, StaticStrings::DataSourceName,
+                                                      "");
+    }
+    events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
     return Result(
         TRI_ERROR_INTERNAL,
         "Failure to get 'ViewTypes' feature while creating LogicalView");

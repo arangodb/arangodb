@@ -56,8 +56,8 @@ LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos), _fetcher(fetcher){};
 LimitExecutor::~LimitExecutor() = default;
 
-std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("LimitExecutor::produceRow") {
+std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("LimitExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   LimitStats stats{};
@@ -107,4 +107,39 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
   TRI_ASSERT(!infos().isFullCountEnabled());
 
   return {ExecutionState::DONE, stats};
+}
+
+std::pair<ExecutionState, size_t> LimitExecutor::expectedNumberOfRows(size_t atMost) const {
+  switch (currentState()) {
+    case LimitState::LIMIT_REACHED:
+      // We are done with our rows!
+      return {ExecutionState::DONE, 0};
+    case LimitState::COUNTING:
+      // We are actually done with our rows,
+      // BUt we need to make sure that we get asked more
+      return {ExecutionState::DONE, 1};
+    case LimitState::RETURNING_LAST_ROW:
+    case LimitState::SKIPPING:
+    case LimitState::RETURNING: {
+      auto res = _fetcher.preFetchNumberOfRows(maxRowsLeftToFetch());
+      if (res.first == ExecutionState::WAITING) {
+        return res;
+      }
+      // Note on fullCount we might get more lines from upstream then required.
+      size_t leftOver = (std::min)(infos().getLimitPlusOffset() - _counter, res.second);
+      if (_infos.isFullCountEnabled() && leftOver < atMost) {
+        // Add one for the fullcount.
+        leftOver++;
+      }
+      if (leftOver > 0) {
+        return {ExecutionState::HASMORE, leftOver};
+      }
+      return {ExecutionState::DONE, 0};
+    }
+  }
+  TRI_ASSERT(false);
+  // This should not be reached, (the switch case is covering all enum values)
+  // Nevertheless if it is reached this will fall back to the non.optimal, but
+  // working variant
+  return {ExecutionState::DONE, atMost};
 }

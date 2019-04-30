@@ -180,7 +180,6 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   // TODO worker-safety
   virtual bool isAborted() const;
 
- public:
  protected:
   /// @brief reload all users
   // TODO worker safety
@@ -203,6 +202,9 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
   /// @brief creates an index, based on the VelocyPack provided
   Result createIndex(arangodb::velocypack::Slice const&);
+
+  /// @brief creates an index, or returns the existing matching index if there is one
+  void createIndexInternal(arangodb::velocypack::Slice const&, LogicalCollection&);
 
   /// @brief drops an index, based on the VelocyPack provided
   Result dropIndex(arangodb::velocypack::Slice const&);

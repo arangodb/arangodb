@@ -46,8 +46,8 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
     std::unordered_set<RegisterId> registersToKeep,
     std::unordered_set<RegisterId>&& readableInputRegisters,
     std::unordered_set<RegisterId>&& writeableOutputRegisters,
-    std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters, RegisterId collectRegister,
-    std::vector<std::string>&& aggregateTypes,
+    std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
+    RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
     transaction::Methods* trxPtr, bool count)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
@@ -79,8 +79,7 @@ HashedCollectExecutor::createAggregatorFactories(HashedCollectExecutor::Infos co
 
     // initialize aggregators
     for (auto const& r : infos.getAggregateTypes()) {
-      aggregatorFactories.emplace_back(
-          Aggregator::factoryFromTypeString(r));
+      aggregatorFactories.emplace_back(Aggregator::factoryFromTypeString(r));
     }
   }
 
@@ -97,8 +96,10 @@ HashedCollectExecutor::HashedCollectExecutor(Fetcher& fetcher, Infos& infos)
                                    _infos.getGroupRegisters().size()),
                  AqlValueGroupEqual(_infos.getTransaction())),
       _isInitialized(false),
-      _aggregatorFactories() {
+      _aggregatorFactories(),
+      _returnedGroups(0) {
   _aggregatorFactories = createAggregatorFactories(_infos);
+  _nextGroupValues.reserve(_infos.getGroupRegisters().size());
 };
 
 HashedCollectExecutor::~HashedCollectExecutor() {
@@ -119,8 +120,7 @@ void HashedCollectExecutor::destroyAllGroupsAqlValues() {
 void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
   TRI_ASSERT(input.isInitialized());
 
-  decltype(_allGroups)::iterator currentGroupIt;
-  currentGroupIt = findOrEmplaceGroup(input);
+  decltype(_allGroups)::iterator currentGroupIt = findOrEmplaceGroup(input);
 
   // reduce the aggregates
   AggregateValuesType* aggregateValues = currentGroupIt->second.get();
@@ -209,12 +209,13 @@ ExecutionState HashedCollectExecutor::init() {
 
   // initialize group iterator for output
   _currentGroup = _allGroups.begin();
-
+  // The values within are not supposed to be used anymore.
+  _nextGroupValues.clear();
   return ExecutionState::DONE;
 }
 
-std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("HashedCollectExecutor::produceRow") {
+std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("HashedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -231,7 +232,9 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
   // produce output
   if (_currentGroup != _allGroups.end()) {
     writeCurrentGroupToOutput(output);
-    _currentGroup++;
+    ++_currentGroup;
+    ++_returnedGroups;
+    TRI_ASSERT(_returnedGroups <= _allGroups.size());
   }
 
   ExecutionState state = _currentGroup != _allGroups.end() ? ExecutionState::HASMORE
@@ -240,57 +243,70 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
   return {state, NoStats{}};
 }
 
-// if no group exists for the current row yet, this builds a new group.
-std::pair<std::unique_ptr<HashedCollectExecutor::AggregateValuesType>, std::vector<AqlValue>>
-HashedCollectExecutor::buildNewGroup(InputAqlItemRow& input, size_t n) {
-  GroupKeyType group;
-  group.reserve(n);
-
-  // copy the group values before they get invalidated
-  for (size_t i = 0; i < n; ++i) {
-    group.emplace_back(input.stealValue(_infos.getGroupRegisters()[i].second));
-  }
-
-  auto aggregateValues = std::make_unique<AggregateValuesType>();
-  aggregateValues->reserve(_aggregatorFactories.size());
-
-  for (auto const& it : _aggregatorFactories) {
-    aggregateValues->emplace_back((*it)(_infos.getTransaction()));
-  }
-  return std::make_pair(std::move(aggregateValues), group);
-}
-
 // finds the group matching the current row, or emplaces it. in either case,
 // it returns an iterator to the group matching the current row in
 // _allGroups. additionally, .second is true iff a new group was emplaced.
 decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::findOrEmplaceGroup(
     InputAqlItemRow& input) {
-  GroupKeyType groupValues; // TODO store groupValues locally
-  size_t const n = _infos.getGroupRegisters().size();
-  groupValues.reserve(n);
+  _nextGroupValues.clear();
 
   // for hashing simply re-use the aggregate registers, without cloning
   // their contents
-  for (size_t i = 0; i < n; ++i) {
-    groupValues.emplace_back(input.getValue(_infos.getGroupRegisters()[i].second));
+  for (auto const& reg : _infos.getGroupRegisters()) {
+    _nextGroupValues.emplace_back(input.getValue(reg.second));
   }
 
-  auto it = _allGroups.find(groupValues);
+  auto it = _allGroups.find(_nextGroupValues);
 
   if (it != _allGroups.end()) {
     // group already exists
     return it;
   }
 
-  // must create new group
-  GroupValueType aggregateValues;
-  GroupKeyType group;
-  std::tie(aggregateValues, group) = buildNewGroup(input, n);
+  _nextGroupValues.clear();
+  // for inserting into group we need to clone the values
+  // and take over ownership
+  for (auto const& reg : _infos.getGroupRegisters()) {
+    _nextGroupValues.emplace_back(input.stealValue(reg.second));
+  }
+  // this builds a new group with aggregate functions being prepared.
+  auto aggregateValues = std::make_unique<AggregateValuesType>();
+  aggregateValues->reserve(_aggregatorFactories.size());
+  auto trx = _infos.getTransaction();
+  for (auto const& it : _aggregatorFactories) {
+    aggregateValues->emplace_back((*it)(trx));
+  }
 
   // note: aggregateValues may be a nullptr!
-  auto emplaceResult = _allGroups.emplace(group, std::move(aggregateValues));
+  auto emplaceResult =
+      _allGroups.emplace(std::move(_nextGroupValues), std::move(aggregateValues));
   // emplace must not fail
   TRI_ASSERT(emplaceResult.second);
 
+  // Moving _nextGroupValues left us with an empty vector of minimum capacity.
+  // So in order to have correct capacity reserve again.
+  _nextGroupValues.reserve(_infos.getGroupRegisters().size());
+
   return emplaceResult.first;
 };
+
+std::pair<ExecutionState, size_t> HashedCollectExecutor::expectedNumberOfRows(size_t atMost) const {
+  size_t rowsLeft = 0;
+  if (!_isInitialized) {
+    ExecutionState state;
+    std::tie(state, rowsLeft) = _fetcher.preFetchNumberOfRows(atMost);
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(rowsLeft == 0);
+      return {state, 0};
+    }
+    // Overestimate, we have not grouped!
+  } else {
+    // This fetcher nows how exactly many rows are left
+    // as it knows how many  groups is has created and not returned.
+    rowsLeft = _allGroups.size() - _returnedGroups;
+  }
+  if (rowsLeft > 0) {
+    return {ExecutionState::HASMORE, rowsLeft};
+  }
+  return {ExecutionState::DONE, rowsLeft};
+}

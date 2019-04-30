@@ -50,6 +50,7 @@
 #include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
 #include "RestHandler/RestAdminStatisticsHandler.h"
+#include "RestHandler/RestAnalyzerHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
 #include "RestHandler/RestAqlReloadHandler.h"
 #include "RestHandler/RestAqlUserFunctionsHandler.h"
@@ -119,7 +120,6 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
       _numIoThreads(0) {
   setOptional(true);
   startsAfter("AQLPhase");
-
   startsAfter("Endpoint");
   startsAfter("Upgrade");
   startsAfter("SslServer");
@@ -248,10 +248,7 @@ void GeneralServerFeature::stop() {
 }
 
 void GeneralServerFeature::unprepare() {
-  for (auto& server : _servers) {
-    delete server;
-  }
-
+  _servers.clear();
   _jobManager.reset();
 
   GENERAL_SERVER = nullptr;
@@ -283,10 +280,9 @@ void GeneralServerFeature::buildServers() {
     ssl->SSL->verifySslOptions();
   }
 
-  GeneralServer* server = new GeneralServer(_numIoThreads);
-
+  auto server = std::make_unique<GeneralServer>(_numIoThreads);
   server->setEndpointList(&endpointList);
-  _servers.push_back(server);
+  _servers.push_back(std::move(server));
 }
 
 void GeneralServerFeature::defineHandlers() {
@@ -326,6 +322,11 @@ void GeneralServerFeature::defineHandlers() {
   // ...........................................................................
   // /_api
   // ...........................................................................
+
+  _handlerFactory->addPrefixHandler( // add handler
+    RestVocbaseBaseHandler::ANALYZER_PATH, // base URL
+    RestHandlerCreator<iresearch::RestAnalyzerHandler>::createNoData // handler
+  );
 
   _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
                                     RestHandlerCreator<RestBatchHandler>::createNoData);

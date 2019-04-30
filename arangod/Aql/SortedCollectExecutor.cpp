@@ -44,7 +44,8 @@ SortedCollectExecutor::CollectGroup::CollectGroup(bool count, Infos& infos)
     : groupLength(0),
       count(count),
       infos(infos),
-      _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
+      _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _shouldDeleteBuilderBuffer(true) {
   for (auto const& aggName : infos.getAggregateTypes()) {
     aggregators.emplace_back(Aggregator::fromTypeString(infos.getTransaction(), aggName));
   }
@@ -236,7 +237,7 @@ void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& build
 }
 
 void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output) {
-  // Thanks to the edge case that we have to emmit a row even if we have no
+  // Thanks to the edge case that we have to emit a row even if we have no
   // input We cannot assert here that the input row is valid ;(
   size_t i = 0;
   for (auto& it : infos.getGroupRegisters()) {
@@ -262,7 +263,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
   if (infos.getCollectRegister() != ExecutionNode::MaxRegisterId) {
     if (infos.getCount()) {
       // only set group count in result register
-      output.cloneValueInto(infos.getCollectRegister(), _lastInputRow,  // TODO check move
+      output.cloneValueInto(infos.getCollectRegister(), _lastInputRow,
                             AqlValue(AqlValueHintUInt(static_cast<uint64_t>(this->groupLength))));
     } else {
       TRI_ASSERT(_builder.isOpenArray());
@@ -277,8 +278,8 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
   }
 }
 
-std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("SortedCollectExecutor::produceRow") {
+std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("SortedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -354,4 +355,23 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
       }
     }
   }
+}
+
+std::pair<ExecutionState, size_t> SortedCollectExecutor::expectedNumberOfRows(size_t atMost) const {
+  if (!_fetcherDone) {
+    ExecutionState state;
+    size_t expectedRows;
+    std::tie(state, expectedRows) = _fetcher.preFetchNumberOfRows(atMost);
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(expectedRows == 0);
+      return {state, 0};
+    }
+    return {ExecutionState::HASMORE, expectedRows + 1};
+  }
+  // The fetcher will NOT send anything any more
+  // We will at most return the current oepn group
+  if (_currentGroup.isValid()) {
+    return {ExecutionState::HASMORE, 1};
+  }
+  return {ExecutionState::DONE, 0};
 }

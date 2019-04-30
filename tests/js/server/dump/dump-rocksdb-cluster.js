@@ -31,6 +31,7 @@
 const fs = require('fs');
 const internal = require("internal");
 const jsunity = require("jsunity");
+var analyzers = require("@arangodb/analyzers");
 const isEnterprise = internal.isEnterprise();
 const db = internal.db;
 
@@ -48,6 +49,7 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

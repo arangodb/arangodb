@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,7 +45,6 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ticks.h"
@@ -113,31 +112,13 @@ void RocksDBRecoveryManager::runRecovery() {
 }
 
 class WBReader final : public rocksdb::WriteBatch::Handler {
- public:
-  struct Operations {
-    Operations(rocksdb::SequenceNumber seq) : startSequenceNumber(seq) {}
-    Operations(Operations const&) = delete;
-    Operations& operator=(Operations const&) = delete;
-    Operations(Operations&&) = default;
-    Operations& operator=(Operations&&) = default;
-
-    rocksdb::SequenceNumber startSequenceNumber;
-    rocksdb::SequenceNumber lastSequenceNumber = 0;
-    uint64_t added = 0;
-    uint64_t removed = 0;
-    TRI_voc_rid_t lastRevisionId = 0;
-    bool mustTruncate = false;
-  };
-
  private:
-  // contains the operations we counted
-  std::map<uint64_t, WBReader::Operations> _deltas;
   // used to track used IDs for key-generators
   std::map<uint64_t, uint64_t> _generators;
 
   // max tick found
-  uint64_t _maxTick = 0;
-  uint64_t _maxHLC = 0;
+  uint64_t _maxTick;
+  uint64_t _maxHLC;
   /// @brief last document removed
   TRI_voc_rid_t _lastRemovedDocRid = 0;
 
@@ -147,115 +128,34 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
  public:
   /// @param seqs sequence number from which to count operations
-  explicit WBReader(std::map<uint64_t, rocksdb::SequenceNumber> const& seqs)
-      : _startSequence(0), _currentSequence(0) {
-    for (auto const& pair : seqs) {
-      try {
-        _deltas.emplace(pair.first, Operations(pair.second));
-      } catch (...) {
-      }
-    }
-  }
+  explicit WBReader()
+      : _maxTick(TRI_NewTickServer()),
+        _maxHLC(0),
+        _lastRemovedDocRid(0),
+        _startSequence(0),
+        _currentSequence(0) {}
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     // starting new write batch
     _startSequence = startSequence;
     _currentSequence = startSequence;
     _startOfBatch = true;
+    TRI_ASSERT(_maxTick > 0);
   }
 
   Result shutdownWBReader() {
     Result rv = basics::catchVoidToResult([&]() -> void {
       // update ticks after parsing wal
-      LOG_TOPIC("a4ec8", TRACE, Logger::ENGINES) << "max tick found in WAL: " << _maxTick
-                                        << ", last HLC value: " << _maxHLC;
+      LOG_TOPIC("a4ec8", TRACE, Logger::ENGINES)
+          << "max tick found in WAL: " << _maxTick << ", last HLC value: " << _maxHLC;
 
       TRI_UpdateTickServer(_maxTick);
       TRI_HybridLogicalClock(_maxHLC);
-
-      auto dbfeature =
-          ApplicationServer::getFeature<DatabaseFeature>("Database");
-
-      LOG_TOPIC("922bc", TRACE, Logger::ENGINES)
-          << "finished WAL scan with " << _deltas.size() << " entries";
-
-      for (auto& pair : _deltas) {
-        WBReader::Operations const& ops = pair.second;
-        // now adjust the counter in collections which are already loaded
-        auto dbColPair = rocksutils::mapObjectToCollection(pair.first);
-        if (dbColPair.second == 0 && dbColPair.first == 0) {
-          // collection with this objectID not known.Skip.
-          continue;
-        }
-        auto vocbase = dbfeature->useDatabase(dbColPair.first);
-        if (vocbase == nullptr) {
-          continue;
-        }
-        TRI_DEFER(vocbase->release());
-        auto collection = vocbase->lookupCollection(dbColPair.second);
-        if (collection == nullptr) {
-          continue;
-        }
-
-        auto* rcoll = static_cast<RocksDBCollection*>(collection->getPhysical());
-        if (ops.mustTruncate) {  // first we must reset the counter
-          rcoll->meta().countRefUnsafe()._added = 0;
-          rcoll->meta().countRefUnsafe()._removed = 0;
-        }
-        rcoll->meta().countRefUnsafe()._added += ops.added;
-        rcoll->meta().countRefUnsafe()._removed += ops.removed;
-        if (ops.lastRevisionId) {
-          rcoll->meta().countRefUnsafe()._revisionId = ops.lastRevisionId;
-        }
-        TRI_ASSERT(rcoll->meta().countRefUnsafe()._added >=
-                   rcoll->meta().countRefUnsafe()._removed);
-        rcoll->loadInitialNumberDocuments();
-
-        auto const& it = _generators.find(rcoll->objectId());
-        if (it != _generators.end()) {
-          std::string k(basics::StringUtils::itoa(it->second));
-          collection->keyGenerator()->track(k.data(), k.size());
-          _generators.erase(it);
-        }
-      }
-      // make sure we collect all the other generators
-      for (auto gen : _generators) {
-        if (gen.second > 0) {
-          auto dbColPair = rocksutils::mapObjectToCollection(gen.first);
-          if (dbColPair.second == 0 && dbColPair.first == 0) {
-            // collection with this objectID not known.Skip.
-            continue;
-          }
-          auto vocbase = dbfeature->useDatabase(dbColPair.first);
-          if (vocbase == nullptr) {
-            continue;
-          }
-          TRI_DEFER(vocbase->release());
-
-          auto collection = vocbase->lookupCollection(dbColPair.second);
-          if (collection == nullptr) {
-            continue;
-          }
-          std::string k(basics::StringUtils::itoa(gen.second));
-          collection->keyGenerator()->track(k.data(), k.size());
-        }
-      }
     });
     return rv;
   }
 
  private:
-  bool shouldHandleCollection(uint64_t objectId, Operations** ops) {
-    auto it = _deltas.find(objectId);
-    if (it != _deltas.end()) {
-      *ops = &(it->second);
-      return it->second.startSequenceNumber < _currentSequence;
-    }
-    auto res = _deltas.emplace(objectId, _currentSequence);  // do not ignore unknown counters
-    *ops = &(res.first->second);
-    return true;
-  }
-
   void storeMaxHLC(uint64_t hlc) {
     if (hlc > _maxHLC) {
       _maxHLC = hlc;
@@ -268,59 +168,27 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
   }
 
-  void storeLastKeyValue(uint64_t objectId, uint64_t keyValue) {
-    if (keyValue == 0) {
-      return;
-    }
-
-    auto it = _generators.find(objectId);
-    if (it == _generators.end()) {
-      try {
-        _generators.emplace(objectId, keyValue);
-      } catch (...) {
-      }
-      return;
-    }
-
-    if (keyValue > (*it).second) {
-      (*it).second = keyValue;
-    }
-  }
-
-  /// Truncate indexes of collection with objectId
-  bool truncateIndexes(uint64_t objectId) {
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-    RocksDBEngine::CollectionPair pair = engine->mapObjectToCollection(objectId);
-    if (pair.first == 0 || pair.second == 0) {
-      return false;
-    }
-
-    DatabaseFeature* df = DatabaseFeature::DATABASE;
-    TRI_vocbase_t* vb = df->useDatabase(pair.first);
-    if (vb == nullptr) {
-      return false;
-    }
-    TRI_DEFER(vb->release());
-
-    auto coll = vb->lookupCollection(pair.second);
-    if (coll == nullptr) {
-      return false;
-    }
-
-    for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
-      RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-      RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
-      if (est && est->committedSeq() < _currentSequence) {
-        est->clear();
-      }
-    }
-
-    return true;
-  }
-
   // find estimator for index
-  RocksDBCuckooIndexEstimator<uint64_t>* findEstimator(uint64_t objectId) {
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  RocksDBCollection* findCollection(uint64_t objectId) {
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
+    // now adjust the counter in collections which are already loaded
+    RocksDBEngine::CollectionPair dbColPair = engine->mapObjectToCollection(objectId);
+    if (dbColPair.second == 0 || dbColPair.first == 0) {
+      // collection with this objectID not known.Skip.
+      return nullptr;
+    }
+    DatabaseFeature* df = DatabaseFeature::DATABASE;
+    TRI_vocbase_t* vocbase = df->useDatabase(dbColPair.first);
+    if (vocbase == nullptr) {
+      return nullptr;
+    }
+    TRI_DEFER(vocbase->release());
+    return static_cast<RocksDBCollection*>(
+        vocbase->lookupCollection(dbColPair.second)->getPhysical());
+  }
+
+  RocksDBIndex* findIndex(uint64_t objectId) {
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
     RocksDBEngine::IndexTriple triple = engine->mapObjectToIndex(objectId);
     if (std::get<0>(triple) == 0 && std::get<1>(triple) == 0) {
       return nullptr;
@@ -343,7 +211,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     if (index == nullptr) {
       return nullptr;
     }
-    return static_cast<RocksDBIndex*>(index.get())->estimator();
+    return static_cast<RocksDBIndex*>(index.get());
   }
 
   void updateMaxTick(uint32_t column_family_id, const rocksdb::Slice& key,
@@ -360,7 +228,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
     if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
       storeMaxHLC(RocksDBKey::documentId(key).id());
-      storeLastKeyValue(RocksDBKey::objectId(key), RocksDBValue::keyValue(value));
     } else if (column_family_id == RocksDBColumnFamily::primary()->GetID()) {
       // document key
       arangodb::velocypack::StringRef ref = RocksDBKey::primaryKey(key);
@@ -374,12 +241,21 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         if (valid) {
           // if no previous _maxTick set or the numeric value found is
           // "near" our previous _maxTick, then we update it
-          if (tick > _maxTick && (_maxTick == 0 || tick - _maxTick < 2048)) {
+          if (tick > _maxTick && (tick - _maxTick) < 2048) {
             storeMaxTick(tick);
           }
         }
         // else we got a non-numeric key. simply ignore it
       }
+
+      RocksDBIndex* idx = findIndex(RocksDBKey::objectId(key));
+      if (idx) {
+        KeyGenerator* keyGen = idx->collection().keyGenerator();
+        if (keyGen) {
+          keyGen->track(ref.begin(), ref.size());
+        }
+      }
+
     } else if (column_family_id == RocksDBColumnFamily::definitions()->GetID()) {
       auto const type = RocksDBKey::type(key);
 
@@ -420,15 +296,16 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
     updateMaxTick(column_family_id, key, value);
     if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
-      uint64_t objectId = RocksDBKey::objectId(key);
-      Operations* ops = nullptr;
-      if (shouldHandleCollection(objectId, &ops)) {
-        TRI_ASSERT(ops != nullptr);
-        ops->lastSequenceNumber = _currentSequence;
-        ops->added++;
-        ops->lastRevisionId =
+      auto coll = findCollection(RocksDBKey::objectId(key));
+      if (coll && coll->meta().countUnsafe()._committedSeq < _currentSequence) {
+        auto& cc = coll->meta().countUnsafe();
+        cc._committedSeq = _currentSequence;
+        cc._added++;
+        cc._revisionId =
             transaction::helpers::extractRevFromDocument(RocksDBValue::data(value));
+        coll->loadInitialNumberDocuments();
       }
+
     } else {
       // We have to adjust the estimate with an insert
       uint64_t hash = 0;
@@ -439,16 +316,18 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       }
 
       if (hash != 0) {
-        uint64_t objectId = RocksDBKey::objectId(key);
-        auto est = findEstimator(objectId);
-        if (est != nullptr && est->committedSeq() < _currentSequence) {
-          // We track estimates for this index
-          est->insert(hash);
+        auto* idx = findIndex(RocksDBKey::objectId(key));
+        if (idx) {
+          RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
+          if (est && est->appliedSeq() < _currentSequence) {
+            // We track estimates for this index
+            est->insert(hash);
+          }
         }
       }
     }
 
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
       helper->PutCF(column_family_id, key, value);
     }
@@ -465,16 +344,18 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       storeMaxHLC(RocksDBKey::documentId(key).id());
       storeMaxTick(objectId);
 
-      Operations* ops = nullptr;
-      if (shouldHandleCollection(objectId, &ops)) {
-        TRI_ASSERT(ops != nullptr);
-        ops->lastSequenceNumber = _currentSequence;
-        ops->removed++;
+      auto coll = findCollection(RocksDBKey::objectId(key));
+      if (coll && coll->meta().countUnsafe()._committedSeq < _currentSequence) {
+        auto& cc = coll->meta().countUnsafe();
+        cc._committedSeq = _currentSequence;
+        cc._removed++;
         if (_lastRemovedDocRid != 0) {
-          ops->lastRevisionId = _lastRemovedDocRid;
+          cc._revisionId = _lastRemovedDocRid;
         }
+        coll->loadInitialNumberDocuments();
       }
       _lastRemovedDocRid = 0;  // reset in any case
+
     } else {
       // We have to adjust the estimate with an insert
       uint64_t hash = 0;
@@ -485,11 +366,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       }
 
       if (hash != 0) {
-        uint64_t objectId = RocksDBKey::objectId(key);
-        auto est = findEstimator(objectId);
-        if (est != nullptr && est->committedSeq() < _currentSequence) {
-          // We track estimates for this index
-          est->remove(hash);
+        auto* idx = findIndex(RocksDBKey::objectId(key));
+        if (idx) {
+          RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
+          if (est && est->appliedSeq() < _currentSequence) {
+            // We track estimates for this index
+            est->remove(hash);
+          }
         }
       }
     }
@@ -498,7 +381,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
     LOG_TOPIC("5f341", TRACE, Logger::ENGINES) << "recovering DELETE " << RocksDBKey(key);
     handleDeleteCF(column_family_id, key);
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
       helper->DeleteCF(column_family_id, key);
     }
@@ -507,10 +390,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
   rocksdb::Status SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
-    LOG_TOPIC("aa997", TRACE, Logger::ENGINES) << "recovering SINGLE DELETE " << RocksDBKey(key);
+    LOG_TOPIC("aa997", TRACE, Logger::ENGINES)
+        << "recovering SINGLE DELETE " << RocksDBKey(key);
     handleDeleteCF(column_family_id, key);
 
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
       helper->SingleDeleteCF(column_family_id, key);
     }
@@ -525,9 +409,38 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         << RocksDBKey(end_key);
     incTick();
     // drop and truncate can use this, truncate is handled via a Log marker
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
       helper->DeleteRangeCF(column_family_id, begin_key, end_key);
+    }
+
+    // check for a range-delete of the primary index
+    if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+      uint64_t objectId = RocksDBKey::objectId(begin_key);
+      TRI_ASSERT(objectId == RocksDBKey::objectId(end_key));
+
+      auto coll = findCollection(objectId);
+      if (!coll) {
+        return rocksdb::Status();
+      }
+
+      if (coll->meta().countUnsafe()._committedSeq <= _currentSequence) {
+        auto& cc = coll->meta().countUnsafe();
+        cc._committedSeq = _currentSequence;
+        cc._added = 0;
+        cc._removed = 0;
+        coll->loadInitialNumberDocuments();
+
+        for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
+          RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
+          RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
+          TRI_ASSERT(ridx->type() != Index::TRI_IDX_TYPE_EDGE_INDEX || est);
+          if (est) {
+            est->clear();
+            est->setAppliedSeq(_currentSequence);
+          }
+        }
+      }
     }
 
     return rocksdb::Status();  // make WAL iterator happy
@@ -538,39 +451,15 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     RocksDBLogType type = RocksDBLogValue::type(blob);
     switch (type) {
       case RocksDBLogType::DocumentRemoveV2:  // remove within a trx
+      case RocksDBLogType::SingleRemoveV2:    // single remove
         TRI_ASSERT(_lastRemovedDocRid == 0);
         _lastRemovedDocRid = RocksDBLogValue::revisionId(blob);
         break;
-      case RocksDBLogType::SingleRemoveV2:  // single remove
-        TRI_ASSERT(_lastRemovedDocRid == 0);
-        _lastRemovedDocRid = RocksDBLogValue::revisionId(blob);
-        break;
-      case RocksDBLogType::CollectionTruncate: {
-        uint64_t objectId = RocksDBLogValue::objectId(blob);
-        Operations* ops = nullptr;
-        if (shouldHandleCollection(objectId, &ops)) {
-          TRI_ASSERT(ops != nullptr);
-          ops->lastSequenceNumber = _currentSequence;
-          ops->removed = 0;
-          ops->added = 0;
-          ops->mustTruncate = true;
-        }
-        // index estimates have their own commitSeq
-        if (!truncateIndexes(objectId)) {
-          // unable to truncate indexes of the collection.
-          // may be due to collection having been deleted etc.
-          LOG_TOPIC("04032", WARN, Logger::ENGINES)
-              << "unable to truncate indexes for objectId " << objectId;
-        }
-
-        _lastRemovedDocRid = 0;  // reset in any other case
-        break;
-      }
       default:
         _lastRemovedDocRid = 0;  // reset in any other case
         break;
     }
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
       helper->LogData(blob);
     }
@@ -585,31 +474,19 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
 
   Result res = basics::catchToResult([&]() -> Result {
     Result rv;
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto& helper : engine->recoveryHelpers()) {
       helper->prepare();
     }
 
-    std::map<uint64_t, rocksdb::SequenceNumber> startSeqs;
-    auto dbfeature = arangodb::DatabaseFeature::DATABASE;
-    dbfeature->enumerateDatabases([&](TRI_vocbase_t& vocbase) {
-      vocbase.processCollections(
-          [&](LogicalCollection* coll) {
-            RocksDBCollection* rcoll =
-                static_cast<RocksDBCollection*>(coll->getPhysical());
-            rocksdb::SequenceNumber seq = rcoll->meta().currentCount()._committedSeq;
-            startSeqs.emplace(rcoll->objectId(), seq);
-          },
-          /*includeDeleted*/ false);
-    });
-
     // Tell the WriteBatch reader the transaction markers to look for
-    WBReader handler(startSeqs);
+    WBReader handler;
     rocksdb::SequenceNumber earliest = engine->settingsManager()->earliestSeqNeeded();
     auto minTick = std::min(earliest, engine->releasedTick());
-  
+
     // prevent purging of WAL files while we are in here
-    RocksDBFilePurgePreventer purgePreventer(rocksutils::globalRocksEngine()->disallowPurging());
+    RocksDBFilePurgePreventer purgePreventer(
+        rocksutils::globalRocksEngine()->disallowPurging());
 
     std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
     rocksdb::Status s =
