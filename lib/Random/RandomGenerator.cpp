@@ -404,7 +404,7 @@ class RandomDeviceWin32 : public RandomDevice {
     }
   }
 
-  uint32_t random() {
+  uint32_t random() override {
     if (pos >= N) {
       fillBuffer();
     }
