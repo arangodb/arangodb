@@ -626,12 +626,12 @@ struct AggregatorUnique : public Aggregator {
     }
 
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
-    seen.emplace(pos);
+    seen.emplace(reinterpret_cast<uint8_t const*>(pos));
 
     if (builder.isClosed()) {
       builder.openArray();
     }
-    builder.add(VPackSlice(pos));
+    builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(pos)));
   }
 
   AqlValue stealValue() override final {
@@ -673,12 +673,12 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
       }
 
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
-      seen.emplace(pos);
+      seen.emplace(reinterpret_cast<uint8_t const*>(pos));
 
       if (builder.isClosed()) {
         builder.openArray();
       }
-      builder.add(VPackSlice(pos));
+      builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(pos)));
     }
   }
 };
@@ -709,7 +709,7 @@ struct AggregatorSortedUnique : public Aggregator {
     }
 
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
-    seen.emplace(pos);
+    seen.emplace(reinterpret_cast<uint8_t const*>(pos));
   }
 
   AqlValue stealValue() override final {
@@ -751,7 +751,7 @@ struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
       }
 
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
-      seen.emplace(pos);
+      seen.emplace(reinterpret_cast<uint8_t const*>(pos));
     }
   }
 };
@@ -783,7 +783,7 @@ struct AggregatorCountDistinct : public Aggregator {
     }
 
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
-    seen.emplace(pos);
+    seen.emplace(reinterpret_cast<uint8_t const*>(pos));
   }
 
   AqlValue stealValue() override final {
@@ -818,7 +818,7 @@ struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
       }
 
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
-      seen.emplace(pos);
+      seen.emplace(reinterpret_cast<uint8_t const*>(pos));
     }
   }
 };
