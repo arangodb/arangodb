@@ -2,7 +2,8 @@
 # Kafka & Zookeeper
 
 {% hint 'tip' %}
-We recommend to use DirectMQ instead of Kafka as message queue.
+We recommend to use DirectMQ instead of Kafka as message queue,
+because it is simpler to use and tailored to the needs of ArangoDB.
 {% endhint %}
 
 ## Recommended deployment environment
