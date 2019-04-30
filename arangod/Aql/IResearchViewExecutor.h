@@ -392,7 +392,6 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
   irs::bytes_ref _scrVal;
 };
 
-template<>
 template<bool ordered>
 struct IResearchViewExecutorTraits<IResearchViewExecutor<ordered>> {
   using IndexBufferValueType = LocalDocumentId;
@@ -503,7 +502,6 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
   irs::external_heap_iterator<MinHeapContext> _heap_it;
 };
 
-template<>
 template<bool ordered>
 struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered>> {
   using IndexBufferValueType = std::pair<LocalDocumentId, LogicalCollection const*>;
