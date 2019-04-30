@@ -53,6 +53,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   _coordinatorId = coordID.copyString();
   _asynchronousMode = async.getBool();
   _lazyLoading = params.get(Utils::lazyLoadingKey).getBool();
+  _useMemoryMaps = params.get(Utils::useMemoryMaps).getBool();
 
   VPackSlice userParams = params.get(Utils::userParametersKey);
   VPackSlice parallel = userParams.get(Utils::parallelismKey);
@@ -119,5 +120,5 @@ PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
                       keyPart, responsibleShard);
   
   PregelShard source = this->shardId(responsibleShard);
-  return PregelID(source, keyPart);
+  return PregelID(source, keyPart.toString());
 }

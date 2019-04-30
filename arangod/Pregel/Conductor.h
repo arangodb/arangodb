@@ -91,6 +91,7 @@ class Conductor {
   /// some tracking info
   double _startTimeSecs = 0;
   double _computationStartTimeSecs = 0;
+  double _finalizationStartTimeSecs = 0;
   double _endTimeSecs = 0;
   std::unique_ptr<asio::steady_timer> _steady_timer;
 
@@ -105,6 +106,7 @@ class Conductor {
   // === REST callbacks ===
   void finishedWorkerStartup(VPackSlice const& data);
   VPackBuilder finishedWorkerStep(VPackSlice const& data);
+  void finishedWorkerFinalize(VPackSlice data);
   void finishedRecoveryStep(VPackSlice const& data);
 
  public:

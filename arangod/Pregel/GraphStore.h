@@ -93,7 +93,7 @@ class GraphStore {
   void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
 
   /// Write results to database
-  void storeResults(WorkerConfig* config, std::function<void(bool)> const&);
+  void storeResults(WorkerConfig* config, std::function<void()>);
 
  private:
   std::map<CollectionID, std::vector<VertexShardInfo>> _allocateSpace();
@@ -119,9 +119,6 @@ class GraphStore {
 
   /// Edges (and data)
   TypedBuffer<Edge<E>>* _edges = nullptr;
-
-  std::mutex _keyHeapMutex;
-  StringHeap _keyHeap;
   
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;
