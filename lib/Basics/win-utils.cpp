@@ -319,13 +319,11 @@ int TRI_UNLINK(char const* filename) {
 /// @brief converts a Windows error to a *nix system error
 ////////////////////////////////////////////////////////////////////////////////
 
-Result translateWindowsError(DWORD error) {
+arangodb::Result translateWindowsError(DWORD error) {
   return {TRI_MapSystemError(error), windowsErrorToUTF8(error)};
 }
 
 std::string windowsErrorToUTF8(DWORD errorNum) {
-    DWORD errorNum = ::GetLastError();
-
     LPWSTR buffer = nullptr;
     TRI_DEFER(::LocalFree(buffer);)
     size_t size =

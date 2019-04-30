@@ -284,7 +284,7 @@ bool TRI_CreateSymbolicLink(std::string const& target,
       ::CreateSymbolicLinkW(toWString(linkpath).data(), toWString(target).data(), 0x0);
   if (!created) {
     auto rv = translateWindowsError(::GetLastError());
-    error = "failed to create a symlink " + target + " -> " + linkpath + " - " rv.errorMessage();
+    error = "failed to create a symlink " + target + " -> " + linkpath + " - " + rv.errorMessage();
   }
   return created;
 #else

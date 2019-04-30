@@ -44,7 +44,7 @@ using namespace arangodb::basics;
 using namespace icu;
 
 #ifdef _WIN32
-std::wstring toWString(std::string const& validUTF8String) {
+std::wstring arangodb::basics::toWString(std::string const& validUTF8String) {
   icu::UnicodeString utf16(validUTF8String.c_str(), validUTF8String.size());
   // // probably required for newer c++ versions
   // using bufferType = std::remove_pointer_t<decltype(utf16.getTerminatedBuffer())>;
@@ -53,7 +53,7 @@ std::wstring toWString(std::string const& validUTF8String) {
   return std::wstring(utf16.getTerminatedBuffer(), utf16.length());
 }
 
-std::string fromWString(wchar_t const* validUTF16String, std::size_t size) {
+std::string arangodb::basics::fromWString(wchar_t const* validUTF16String, std::size_t size) {
   std::string out;
   icu::UnicodeString ICUString(validUTF16String, size);
   ICUString.toUTF8String<std::string>(out);
@@ -61,7 +61,7 @@ std::string fromWString(wchar_t const* validUTF16String, std::size_t size) {
 }
 
 std::string fromWString(std::wstring const& validUTF16String) {
-  return fromWString(validUTF16String.data(), validUTF16String.size());
+  return arangodb::basics::fromWString(validUTF16String.data(), validUTF16String.size());
 }
 #endif
 

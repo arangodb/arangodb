@@ -862,12 +862,12 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv);
 #define TRI_SYSTEM_ERROR()                                                       \
   do {                                                                           \
     auto result = translateWindowsError(::GetLastError());                       \
-    errno = result.errorNumber;                                                  \
+    errno = result.errorNumber();                                                  \
     auto const& mesg = result.errorMessage();                                    \
     if(mesg.empty()) {                                                           \
       memcpy(&windowsErrorBuf[0], "unknown error\0", strlen("unknown error\0")); \
     } else {                                                                     \
-      memcpy(&windowsErrorBuf[0], mesg.data(), (std::min)(256, mesg.size()));    \
+      memcpy(&windowsErrorBuf[0], mesg.data(), (std::min)(static_cast<size_t>(256U), mesg.size()));    \
     }                                                                            \
   } while (false)                                                                \
 
