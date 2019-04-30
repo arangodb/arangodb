@@ -113,7 +113,7 @@ bool RocksDBAllIndexIterator::nextDocument(IndexIterator::DocumentCallback const
   }
 
   while (limit > 0) {
-    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(_iterator->value().data()));
+    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())));
     --limit;
     _iterator->Next();
 
@@ -222,7 +222,7 @@ bool RocksDBAnyIndexIterator::nextDocument(IndexIterator::DocumentCallback const
   }
 
   while (limit > 0) {
-    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(_iterator->value().data()));
+    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())));
     --limit;
     _returned++;
     _iterator->Next();

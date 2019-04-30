@@ -309,8 +309,10 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       // 7 + 8-byte object ID of index + VPack array with index value(s) ....
       // prefix is the same for non-unique indexes
       // static slices with an array with one entry
-      VPackSlice min("\x02\x03\x1e");  // [minSlice]
-      VPackSlice max("\x02\x03\x1f");  // [maxSlice]
+      uint8_t const minSlice[] = { 0x02, 0x03, 0x1e }; // [minSlice]
+      uint8_t const maxSlice[] = { 0x02, 0x03, 0x1f }; // [maxSlice]
+      VPackSlice min(minSlice);
+      VPackSlice max(maxSlice);
       _internals.reserve(2 * sizeof(uint64_t) + min.byteSize() + max.byteSize());
 
       uint64ToPersistent(_internals.buffer(), first);
