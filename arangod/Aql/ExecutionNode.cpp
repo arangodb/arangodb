@@ -2039,16 +2039,28 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   // and do not modify it in any way.
   // In the other case it is important to shrink the matrix to exactly
   // one register that is stored within the DOCVEC.
+  RegisterId const numberInputRegisters =
+      getRegisterPlan()->nrRegs[previousNode->getDepth()];
   RegisterId const numberOutputRegisters =
-      returnInheritedResults ? getRegisterPlan()->nrRegs[getDepth()] : 1;
+    returnInheritedResults ? getRegisterPlan()->nrRegs[getDepth()] : 1;
 
-  ReturnExecutorInfos infos(inputRegister,
-                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                            numberOutputRegisters, _count, returnInheritedResults);
   if (returnInheritedResults) {
-    return std::make_unique<ExecutionBlockImpl<ReturnExecutor<true>>>(&engine, this,
-                                                                      std::move(infos));
+    TRI_ASSERT(numberInputRegisters == numberOutputRegisters);
+    RegisterId const numberRegisters = numberInputRegisters;
+    std::unordered_set<RegisterId> registersToClear{};
+    std::unordered_set<RegisterId> registersToKeep{};
+    registersToKeep.reserve(numberRegisters);
+    for (RegisterId reg = 0; reg < numberRegisters; ++reg) {
+      registersToKeep.emplace(reg);
+    }
+    IdExecutorInfos infos(numberRegisters, std::move(registersToClear), std::move(registersToKeep));
+
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<JustPassThrough>>>(&engine, this, std::move(infos), inputRegister);
   } else {
+    TRI_ASSERT(!returnInheritedResults);
+    ReturnExecutorInfos infos(inputRegister, numberInputRegisters,
+      numberOutputRegisters, _count, returnInheritedResults);
+
     return std::make_unique<ExecutionBlockImpl<ReturnExecutor<false>>>(&engine, this,
                                                                        std::move(infos));
   }

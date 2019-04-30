@@ -32,6 +32,7 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/GraphNode.h"
+#include "Aql/IdExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/RemoteExecutor.h"
@@ -587,10 +588,9 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
 
       bool const returnInheritedResults = !isDBServer;
       if (returnInheritedResults) {
-        auto returnNode = dynamic_cast<ExecutionBlockImpl<ReturnExecutor<true>>*>(root);
+        auto returnNode = dynamic_cast<ExecutionBlockImpl<IdExecutor<JustPassThrough>>*>(root);
         TRI_ASSERT(returnNode != nullptr);
-        engine->resultRegister(returnNode->infos().getInputRegisterId());
-        TRI_ASSERT(returnNode->infos().returnInheritedResults() == returnInheritedResults);
+        engine->resultRegister(returnNode->getOutputRegisterId());
       } else {
         auto returnNode = dynamic_cast<ExecutionBlockImpl<ReturnExecutor<false>>*>(root);
         TRI_ASSERT(returnNode != nullptr);

@@ -46,15 +46,101 @@ struct SortRegister;
 
 class IdExecutorInfos : public ExecutorInfos {
  public:
-  // whiteList will be used for slicing in the ExecutionBlockImpl
-  // whiteListClean is the same as our registersToKeep
-  IdExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> toKeep,
+  IdExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
                   std::unordered_set<RegisterId> registersToClear);
 
   IdExecutorInfos() = delete;
   IdExecutorInfos(IdExecutorInfos&&) = default;
   IdExecutorInfos(IdExecutorInfos const&) = delete;
   ~IdExecutorInfos() = default;
+};
+
+template <class T>
+class IdExecutor;
+
+class JustPassThrough;
+
+template <>
+class IdExecutor<JustPassThrough> {};
+
+template <>
+class ExecutionBlockImpl<IdExecutor<JustPassThrough>> : public ExecutionBlock {
+ public:
+  ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node, ExecutorInfos&& infos, RegisterId outputRegister)
+      : ExecutionBlock(engine, node),
+        _currentDependency(0),
+        _outputRegister(outputRegister) {
+    TRI_ASSERT(infos.numberOfInputRegisters() == infos.numberOfOutputRegisters());
+    TRI_ASSERT(infos.numberOfInputRegisters() == infos.registersToKeep()->size() + infos.registersToClear()->size());
+    for(auto const& it : *infos.registersToKeep()) {
+      TRI_ASSERT(it < infos.numberOfInputRegisters());
+      TRI_ASSERT(infos.registersToClear()->find(it) == infos.registersToClear()->end());
+    }
+    for(auto const& it : *infos.registersToClear()) {
+      TRI_ASSERT(it < infos.numberOfInputRegisters());
+      TRI_ASSERT(infos.registersToKeep()->find(it) == infos.registersToKeep()->end());
+    }
+  }
+
+  ~ExecutionBlockImpl() override = default;
+
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override {
+    if (isDone()) {
+      return {ExecutionState::DONE, nullptr};
+    }
+
+    ExecutionState state;
+    SharedAqlItemBlockPtr block;
+    std::tie(state, block) = currentDependency().getSome(atMost);
+
+    if (state == ExecutionState::DONE) {
+      nextDependency();
+    }
+
+    return {state, block};
+  }
+
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override {
+    if (isDone()) {
+      return {ExecutionState::DONE, 0};
+    }
+
+    ExecutionState state;
+    size_t skipped;
+    std::tie(state, skipped) = currentDependency().skipSome(atMost);
+
+    if (state == ExecutionState::DONE) {
+      nextDependency();
+    }
+
+    return {state, skipped};
+  }
+
+  RegisterId getOutputRegisterId() const noexcept {
+    return _outputRegister;
+  }
+
+ private:
+  bool isDone() const noexcept {
+    // I'd like to assert this in the constructor, but the dependencies are added
+    // after construction.
+    TRI_ASSERT(!_dependencies.empty());
+    return _currentDependency >= _dependencies.size();
+  }
+
+  ExecutionBlock& currentDependency() {
+    TRI_ASSERT(_currentDependency < _dependencies.size());
+    TRI_ASSERT(_dependencies[_currentDependency] != nullptr);
+    return *_dependencies[_currentDependency];
+  }
+
+  void nextDependency() noexcept {
+    ++_currentDependency;
+  }
+
+ private:
+  size_t _currentDependency;
+  RegisterId const _outputRegister;
 };
 
 template <class UsedFetcher>
