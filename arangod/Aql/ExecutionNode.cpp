@@ -2055,7 +2055,8 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
     }
     IdExecutorInfos infos(numberRegisters, std::move(registersToClear), std::move(registersToKeep));
 
-    return std::make_unique<ExecutionBlockImpl<IdExecutor<JustPassThrough>>>(&engine, this, std::move(infos), inputRegister);
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<JustPassThrough>>>(
+        &engine, this, std::move(infos), inputRegister, _count);
   } else {
     TRI_ASSERT(!returnInheritedResults);
     ReturnExecutorInfos infos(inputRegister, numberInputRegisters,

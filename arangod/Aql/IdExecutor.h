@@ -66,19 +66,30 @@ class IdExecutor<JustPassThrough> {};
 template <>
 class ExecutionBlockImpl<IdExecutor<JustPassThrough>> : public ExecutionBlock {
  public:
-  ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node, ExecutorInfos&& infos, RegisterId outputRegister)
+  ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
+                     ExecutorInfos&& infos, RegisterId outputRegister, bool doCount)
       : ExecutionBlock(engine, node),
         _currentDependency(0),
-        _outputRegister(outputRegister) {
-    TRI_ASSERT(infos.numberOfInputRegisters() == infos.numberOfOutputRegisters());
-    TRI_ASSERT(infos.numberOfInputRegisters() == infos.registersToKeep()->size() + infos.registersToClear()->size());
-    for(auto const& it : *infos.registersToKeep()) {
-      TRI_ASSERT(it < infos.numberOfInputRegisters());
-      TRI_ASSERT(infos.registersToClear()->find(it) == infos.registersToClear()->end());
+        _outputRegister(outputRegister),
+        _doCount(doCount) {
+    {  // just assertions in this block:
+      TRI_ASSERT(infos.numberOfInputRegisters() == infos.numberOfOutputRegisters());
+      TRI_ASSERT(infos.numberOfInputRegisters() ==
+                 infos.registersToKeep()->size() + infos.registersToClear()->size());
+      for (auto const& it : *infos.registersToKeep()) {
+        TRI_ASSERT(it < infos.numberOfInputRegisters());
+        TRI_ASSERT(infos.registersToClear()->find(it) ==
+                   infos.registersToClear()->end());
+      }
+      for (auto const& it : *infos.registersToClear()) {
+        TRI_ASSERT(it < infos.numberOfInputRegisters());
+        TRI_ASSERT(infos.registersToKeep()->find(it) == infos.registersToKeep()->end());
+      }
     }
-    for(auto const& it : *infos.registersToClear()) {
-      TRI_ASSERT(it < infos.numberOfInputRegisters());
-      TRI_ASSERT(infos.registersToKeep()->find(it) == infos.registersToKeep()->end());
+
+    // already insert ourselves into the statistics results
+    if (_profile >= PROFILE_LEVEL_BLOCKS) {
+      _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
     }
   }
 
@@ -93,6 +104,8 @@ class ExecutionBlockImpl<IdExecutor<JustPassThrough>> : public ExecutionBlock {
     ExecutionState state;
     SharedAqlItemBlockPtr block;
     std::tie(state, block) = currentDependency().getSome(atMost);
+
+    countStats(block);
 
     if (state == ExecutionState::DONE) {
       nextDependency();
@@ -118,14 +131,12 @@ class ExecutionBlockImpl<IdExecutor<JustPassThrough>> : public ExecutionBlock {
     return traceSkipSomeEnd(state, skipped);
   }
 
-  RegisterId getOutputRegisterId() const noexcept {
-    return _outputRegister;
-  }
+  RegisterId getOutputRegisterId() const noexcept { return _outputRegister; }
 
  private:
   bool isDone() const noexcept {
-    // I'd like to assert this in the constructor, but the dependencies are added
-    // after construction.
+    // I'd like to assert this in the constructor, but the dependencies are
+    // added after construction.
     TRI_ASSERT(!_dependencies.empty());
     return _currentDependency >= _dependencies.size();
   }
@@ -136,13 +147,22 @@ class ExecutionBlockImpl<IdExecutor<JustPassThrough>> : public ExecutionBlock {
     return *_dependencies[_currentDependency];
   }
 
-  void nextDependency() noexcept {
-    ++_currentDependency;
+  void nextDependency() noexcept { ++_currentDependency; }
+
+  bool doCount() const noexcept { return _doCount; }
+
+  void countStats(SharedAqlItemBlockPtr& block) {
+    if (doCount() && block != nullptr) {
+      CountStats stats;
+      stats.setCounted(block->size());
+      _engine->_stats += stats;
+    }
   }
 
  private:
   size_t _currentDependency;
   RegisterId const _outputRegister;
+  bool const _doCount;
 };
 
 template <class UsedFetcher>
