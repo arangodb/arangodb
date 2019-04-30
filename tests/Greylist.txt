@@ -5,6 +5,13 @@ greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 
 
+- `tests/js/server/recovery/view-arangosearch-link-populate-transaction-no-flushthread.js` started to fail again
+
+    [FAILED]  tests/js/server/recovery/view-arangosearch-link-populate-transaction-no-flushthread.js
+
+      "test" failed: unable to run recovery test tests/js/server/recovery/view-arangosearch-link-populate-transaction-no-flushthread.js
+
+
 - `tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js`
 
     [FAILED]  tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js
