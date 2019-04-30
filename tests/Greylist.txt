@@ -5,6 +5,23 @@ greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 
 
+- `tests/js/client/resilience/foxxmaster.js` started to fail again
+
+    [FAILED]  tests/js/client/resilience/foxxmaster.js
+
+      "testQueueFailover" failed: Error: Supervision should have moved the Foxx queues and Foxx queues should have been started to run on a new coordinator - Error: Supervision should have moved the Foxx queues and Foxx queues should have been started to run on a new coordinator
+    at Object.testQueueFailover (/work/ArangoDB/tests/js/client/resilience/foxxmaster.js:196:15)
+    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:532:23)
+    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:195:24)
+    at /work/ArangoDB/tests/js/client/resilience/foxxmaster.js:263:9
+    at /work/ArangoDB/tests/js/client/resilience/foxxmaster.js:266:3
+    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:275:12)
+    at /work/ArangoDB/js/common/modules/@arangodb/testrunner.js:47:13
+    at arrayEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:516:11)
+    at Function.forEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:9344:14)
+    at runJSUnityTests (/work/ArangoDB/js/common/modules/@arangodb/testrunner.js:38:5)
+
+
 - `tests/js/server/recovery/view-arangosearch-link-populate-transaction-no-flushthread.js` started to fail again
 
     [FAILED]  tests/js/server/recovery/view-arangosearch-link-populate-transaction-no-flushthread.js
