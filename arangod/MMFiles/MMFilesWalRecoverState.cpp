@@ -360,7 +360,7 @@ bool MMFilesWalRecoverState::InitialScanMarker(MMFilesMarker const* marker, void
 
   switch (type) {
     case TRI_DF_MARKER_VPACK_DOCUMENT: {
-      VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) +
+      VPackSlice const payloadSlice(reinterpret_cast<uint8_t const*>(marker) +
                                     MMFilesDatafileHelper::VPackOffset(type));
       if (payloadSlice.isObject()) {
         TRI_voc_rid_t revisionId =
@@ -648,7 +648,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
       case TRI_DF_MARKER_VPACK_RENAME_COLLECTION: {
         TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
         TRI_voc_cid_t const collectionId = MMFilesDatafileHelper::CollectionId(marker);
-        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) +
+        VPackSlice const payloadSlice(reinterpret_cast<uint8_t const*>(marker) +
                                       MMFilesDatafileHelper::VPackOffset(type));
 
         if (!payloadSlice.isObject()) {
@@ -730,7 +730,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
       case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION: {
         TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
         TRI_voc_cid_t const collectionId = MMFilesDatafileHelper::CollectionId(marker);
-        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) +
+        VPackSlice const payloadSlice(reinterpret_cast<uint8_t const*>(marker) +
                                       MMFilesDatafileHelper::VPackOffset(type));
 
         if (!payloadSlice.isObject()) {
@@ -784,7 +784,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
       case TRI_DF_MARKER_VPACK_CHANGE_VIEW: {
         TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
         TRI_voc_cid_t const viewId = MMFilesDatafileHelper::ViewId(marker);
-        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) +
+        VPackSlice const payloadSlice(reinterpret_cast<uint8_t const*>(marker) +
                                       MMFilesDatafileHelper::VPackOffset(type));
 
         if (!payloadSlice.isObject()) {
@@ -866,7 +866,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
       case TRI_DF_MARKER_VPACK_CREATE_INDEX: {
         TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
         TRI_voc_cid_t const collectionId = MMFilesDatafileHelper::CollectionId(marker);
-        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) +
+        VPackSlice const payloadSlice(reinterpret_cast<uint8_t const*>(marker) +
                                       MMFilesDatafileHelper::VPackOffset(type));
 
         if (!payloadSlice.isObject()) {
@@ -948,7 +948,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
       case TRI_DF_MARKER_VPACK_CREATE_COLLECTION: {
         TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
         TRI_voc_cid_t const collectionId = MMFilesDatafileHelper::CollectionId(marker);
-        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) +
+        VPackSlice const payloadSlice(reinterpret_cast<uint8_t const*>(marker) +
                                       MMFilesDatafileHelper::VPackOffset(type));
 
         if (!payloadSlice.isObject()) {
@@ -1063,7 +1063,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
       case TRI_DF_MARKER_VPACK_CREATE_VIEW: {
         TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
         TRI_voc_cid_t const viewId = MMFilesDatafileHelper::ViewId(marker);
-        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) +
+        VPackSlice const payloadSlice(reinterpret_cast<uint8_t const*>(marker) +
                                       MMFilesDatafileHelper::VPackOffset(type));
 
         if (!payloadSlice.isObject()) {
@@ -1154,7 +1154,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
       case TRI_DF_MARKER_VPACK_CREATE_DATABASE: {
         TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
-        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) +
+        VPackSlice const payloadSlice(reinterpret_cast<uint8_t const*>(marker) +
                                       MMFilesDatafileHelper::VPackOffset(type));
 
         if (!payloadSlice.isObject()) {
@@ -1235,7 +1235,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
       case TRI_DF_MARKER_VPACK_DROP_INDEX: {
         TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
         TRI_voc_cid_t const collectionId = MMFilesDatafileHelper::CollectionId(marker);
-        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) +
+        VPackSlice const payloadSlice(reinterpret_cast<uint8_t const*>(marker) +
                                       MMFilesDatafileHelper::VPackOffset(type));
 
         if (!payloadSlice.isObject()) {

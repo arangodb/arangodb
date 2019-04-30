@@ -269,7 +269,7 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
     buff.appendInteger(REPLICATION_MARKER_DOCUMENT);  // set type
     buff.appendText(",\"data\":");
     // printing the data, note: we need the CustomTypeHandler here
-    dumper.dump(velocypack::Slice(cIter->iter->value().data()));
+    dumper.dump(velocypack::Slice(reinterpret_cast<uint8_t const*>(cIter->iter->value().data())));
     buff.appendText("}\n");
     cIter->iter->Next();
   }
@@ -312,7 +312,7 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     builder.openObject();
     builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
     builder.add(VPackValue("data"));
-    builder.add(velocypack::Slice(cIter->iter->value().data()));
+    builder.add(velocypack::Slice(reinterpret_cast<uint8_t const*>(cIter->iter->value().data())));
     builder.close();
     cIter->iter->Next();
   }
@@ -390,7 +390,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
                          docKey.string(), &ps);
         if (s.ok()) {
           TRI_ASSERT(ps.size() > 0);
-          docRev = TRI_ExtractRevisionId(VPackSlice(ps.data()));
+          docRev = TRI_ExtractRevisionId(VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
         } else {
           LOG_TOPIC("32e3b", WARN, Logger::REPLICATION)
               << "inconsistent primary index, "
@@ -536,7 +536,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
                        tmpKey.string(), &ps);
       if (s.ok()) {
         TRI_ASSERT(ps.size() > 0);
-        docRev = TRI_ExtractRevisionId(VPackSlice(ps.data()));
+        docRev = TRI_ExtractRevisionId(VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
       } else {
         arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
         LOG_TOPIC("41803", WARN, Logger::REPLICATION)
@@ -674,8 +674,8 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
                          tmpKey.string(), &ps);
         if (s.ok()) {
           TRI_ASSERT(ps.size() > 0);
-          TRI_ASSERT(VPackSlice(ps.data()).isObject());
-          b.add(VPackSlice(ps.data()));
+          TRI_ASSERT(VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())).isObject());
+          b.add(VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
         } else {
           arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
           LOG_TOPIC("d79df", WARN, Logger::REPLICATION)

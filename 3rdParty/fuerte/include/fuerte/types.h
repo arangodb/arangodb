@@ -36,8 +36,8 @@ class Request;
 class Response;
 
 using Error = std::uint32_t;
-using MessageID = uint64_t;  // id that identifies a Request.
-using StatusCode = uint32_t;
+using MessageID = std::uint64_t;  // id that identifies a Request.
+using StatusCode = std::uint32_t;
 
 StatusCode constexpr StatusUndefined = 0;
 StatusCode constexpr StatusOK = 200;
