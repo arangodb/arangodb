@@ -228,7 +228,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
     }
 
     res = ridx.insert(trx, &batched, RocksDBKey::documentId(it->key()),
-                      VPackSlice(it->value().data()), Index::OperationMode::normal);
+                      VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data())), Index::OperationMode::normal);
     if (res.fail()) {
       break;
     }

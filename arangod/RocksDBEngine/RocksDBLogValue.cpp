@@ -302,14 +302,14 @@ VPackSlice RocksDBLogValue::indexSlice(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t) * 2);
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(type == RocksDBLogType::IndexCreate);
-  return VPackSlice(slice.data() + sizeof(RocksDBLogType) + sizeof(uint64_t) * 2);
+  return VPackSlice(reinterpret_cast<uint8_t const*>(slice.data() + sizeof(RocksDBLogType) + sizeof(uint64_t) * 2));
 }
 
 VPackSlice RocksDBLogValue::viewSlice(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t) * 2);
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(type == RocksDBLogType::ViewDrop);
-  return VPackSlice(slice.data() + sizeof(RocksDBLogType) + sizeof(uint64_t) * 2);
+  return VPackSlice(reinterpret_cast<uint8_t const*>(slice.data() + sizeof(RocksDBLogType) + sizeof(uint64_t) * 2));
 }
 
 namespace {
@@ -351,7 +351,7 @@ std::pair<LocalDocumentId, VPackSlice> RocksDBLogValue::trackedDocument(rocksdb:
              type == RocksDBLogType::TrackedDocumentRemove);
   
   LocalDocumentId id(uintFromPersistentLittleEndian<LocalDocumentId::BaseType>(slice.data() + sizeof(RocksDBLogType)));
-  VPackSlice data(slice.data() + sizeof(RocksDBLogType) + sizeof(LocalDocumentId::BaseType));
+  VPackSlice data(reinterpret_cast<uint8_t const*>(slice.data() + sizeof(RocksDBLogType) + sizeof(LocalDocumentId::BaseType)));
   return std::make_pair(id, data);
 }
 

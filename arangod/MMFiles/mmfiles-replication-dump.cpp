@@ -172,7 +172,7 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump, TRI_voc_tick_t d
     case TRI_DF_MARKER_VPACK_DROP_VIEW: {
       Append(dump, ",\"data\":");
 
-      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+      VPackSlice slice(reinterpret_cast<uint8_t const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
       arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer);
       VPackDumper dumper(&adapter,
@@ -259,7 +259,7 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump, TRI_voc_tick_t da
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
     case TRI_DF_MARKER_VPACK_DROP_INDEX:
     case TRI_DF_MARKER_VPACK_DROP_VIEW: {
-      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+      VPackSlice slice(reinterpret_cast<uint8_t const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
       builder.add("data", slice);
       break;
@@ -557,7 +557,7 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
           TRI_ASSERT(collectionId != 0);
 
           if (dump->_vocbase->id() == databaseId) {
-            VPackSlice slice(reinterpret_cast<char const*>(marker) +
+            VPackSlice slice(reinterpret_cast<uint8_t const*>(marker) +
                              MMFilesDatafileHelper::VPackOffset(type));
             VPackSlice name = slice.get("name");
             if (name.isString()) {

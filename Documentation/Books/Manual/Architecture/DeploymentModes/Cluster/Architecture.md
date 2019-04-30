@@ -70,9 +70,11 @@ and restarted as needed.
 
 _DBservers_ are the ones where the data is actually hosted. They
 host shards of data and using synchronous replication a _DBServer_ may
-either be _leader_ or _follower_ for a shard.
+either be _leader_ or _follower_ for a shard. Document operations are first
+applied on the _leader_ and then synchronously replicated to 
+all followers.
 
-They should not be accessed from the outside but indirectly through the
+Shards must not be accessed from the outside but indirectly through the
 _Coordinators_. They may also execute queries in part or as a whole when
 asked by a _Coordinator_.
 
