@@ -225,6 +225,7 @@ template <>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<EnumerateCollectionExecutor>::skipSome(size_t atMost) {
   LOG_DEVEL << " SKIP ENUM COLL Special case";
   return this->executor().skipRows(atMost);
+  LOG_DEVEL << "after enumerate";
 }
 
 template <>
@@ -276,10 +277,21 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::passSkipSome(siz
   //return _blockFetcher.skipSome(atMost);
   // return _rowFetcher.skipSome(atMost);
   if (std::is_same<Fetcher, SingleRowFetcher<true>>::value) {
-    dynamic_cast<SingleRowFetcher<true>&>(_rowFetcher).skipRows(atMost); // todo without cast?
+    // TODO: maybe remove dynamic cast and implement skipRows for all fetchers
+    return dynamic_cast<SingleRowFetcher<true>&>(_rowFetcher).skipRows(atMost); // todo without cast?
   } else if (std::is_same<Fetcher, ConstFetcher>::value) {
-    dynamic_cast<ConstFetcher&>(_rowFetcher).skipRow(); // todo implement me properly
+    ExecutionState state;
+    InputAqlItemRow input = {};
+    std::tie(state, input) = dynamic_cast<ConstFetcher&>(_rowFetcher).skipRow(); // todo implement me properly
+    if (state == ExecutionState::WAITING) {
+      return {state, 0};
+    } else {
+      return {state, 1};
+    }
   }
+
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
 template<bool customInit>
