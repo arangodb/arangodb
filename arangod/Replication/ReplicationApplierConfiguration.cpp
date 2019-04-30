@@ -54,6 +54,7 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration()
       _autoResyncRetries(2),
       _maxPacketSize(512 * 1024 * 1024),
       _sslProtocol(0),
+      _allowParallelInvocations(false),
       _skipCreateDrop(false),
       _autoStart(false),
       _adaptivePolling(true),
@@ -86,6 +87,7 @@ void ReplicationApplierConfiguration::reset() {
   _autoResyncRetries = 2;
   _maxPacketSize = 512 * 1024 * 1024;
   _sslProtocol = 0;
+  _allowParallelInvocations = false;
   _skipCreateDrop = false;
   _autoStart = false;
   _adaptivePolling = true;
@@ -133,6 +135,7 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
   builder.add("lockTimeoutRetries", VPackValue(_lockTimeoutRetries));
   builder.add("sslProtocol", VPackValue(_sslProtocol));
   builder.add("chunkSize", VPackValue(_chunkSize));
+  // allowParallelInvocations is intentionally hidden here and not exposed!
   builder.add("skipCreateDrop", VPackValue(_skipCreateDrop));
   builder.add("autoStart", VPackValue(_autoStart));
   builder.add("adaptivePolling", VPackValue(_adaptivePolling));
@@ -249,6 +252,11 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   value = slice.get("skipCreateDrop");
   if (value.isBoolean()) {
     configuration._skipCreateDrop = value.getBoolean();
+  }
+  
+  value = slice.get("allowParallelInvocations");
+  if (value.isBoolean()) {
+    configuration._allowParallelInvocations = value.getBoolean();
   }
 
   value = slice.get("autoStart");

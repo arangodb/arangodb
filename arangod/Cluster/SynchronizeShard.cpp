@@ -548,11 +548,9 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
   return result;
 }
 
-enum ApplierType { APPLIER_DATABASE, APPLIER_GLOBAL };
-
 static arangodb::Result replicationSynchronize(
     std::shared_ptr<arangodb::LogicalCollection> const& col, VPackSlice const& config,
-    ApplierType applierType, std::shared_ptr<VPackBuilder> sy) {
+    std::shared_ptr<VPackBuilder> sy) {
   auto& vocbase = col->vocbase();
 
   auto database = vocbase.name();
@@ -568,21 +566,13 @@ static arangodb::Result replicationSynchronize(
   ReplicationApplierConfiguration configuration =
       ReplicationApplierConfiguration::fromVelocyPack(config, database);
   configuration.validate();
+  configuration._allowParallelInvocations = true;
 
-  std::shared_ptr<InitialSyncer> syncer;
-
-  if (applierType == APPLIER_DATABASE) {
     // database-specific synchronization
-    syncer.reset(new DatabaseInitialSyncer(vocbase, configuration));
+  auto syncer = std::make_shared<DatabaseInitialSyncer>(vocbase, configuration);
 
-    if (!leaderId.empty()) {
-      syncer->setLeaderId(leaderId);
-    }
-  } else if (applierType == APPLIER_GLOBAL) {
-    configuration._skipCreateDrop = false;
-    syncer.reset(new GlobalInitialSyncer(configuration));
-  } else {
-    TRI_ASSERT(false);
+  if (!leaderId.empty()) {
+    syncer->setLeaderId(leaderId);
   }
 
   try {
@@ -891,7 +881,7 @@ bool SynchronizeShard::first() {
 
       auto details = std::make_shared<VPackBuilder>();
 
-      res = replicationSynchronize(collection, config.slice(), APPLIER_DATABASE, details);
+      res = replicationSynchronize(collection, config.slice(), details);
 
       auto sy = details->slice();
       auto const endTime = system_clock::now();

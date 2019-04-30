@@ -55,6 +55,7 @@ class ReplicationApplierConfiguration {
   uint64_t _autoResyncRetries;
   uint64_t _maxPacketSize;
   uint32_t _sslProtocol;
+  bool _allowParallelInvocations;  /// multiple instances can run in parallel (schmutz++)
   bool _skipCreateDrop;  /// shards/indexes/views are created by schmutz++
   bool _autoStart;       /// start applier after server start
   bool _adaptivePolling;
