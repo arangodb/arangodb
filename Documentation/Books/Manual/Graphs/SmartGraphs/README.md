@@ -11,8 +11,6 @@ graphs at scale. It will give a vast performance benefit for all graphs sharded
 in an ArangoDB Cluster. On a single server this feature is pointless, hence it
 is only available in cluster mode.
 
-<!-- https://www.arangodb.com/why-arangodb/arangodb-enterprise/arangodb-enterprise-smart-graphs/ -->
-
 In terms of querying there is no difference between SmartGraphs and
 General Graphs. The former is a transparent replacement for the latter.
 For graph querying please refer to [AQL Graph Operations](../../../AQL/Graphs/index.html)
