@@ -2052,6 +2052,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       auto phy = static_cast<RocksDBCollection*>(collection->getPhysical());
       TRI_ASSERT(phy != nullptr);
       phy->meta().deserializeMeta(_db, *collection);
+      phy->loadInitialNumberDocuments();
 
       StorageEngine::registerCollection(*vocbase, uniqCol);
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
@@ -2115,8 +2116,8 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
 
   builder.openObject();
   for (int i = 0; i < _options.num_levels; ++i) {
-    addInt(rocksdb::DB::Properties::kNumFilesAtLevelPrefix + std::to_string(i));
-    addInt(rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix + std::to_string(i));
+    addStr(rocksdb::DB::Properties::kNumFilesAtLevelPrefix + std::to_string(i));
+    addStr(rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix + std::to_string(i));
   }
   addInt(rocksdb::DB::Properties::kNumImmutableMemTable);
   addInt(rocksdb::DB::Properties::kNumImmutableMemTableFlushed);
