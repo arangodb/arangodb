@@ -58,7 +58,7 @@ static arangodb::velocypack::StringRef const cidRef("cid");
 
 static std::unique_ptr<VPackAttributeTranslator> translator;
 static std::unique_ptr<VPackCustomTypeHandler>customTypeHandler;
-static std::unique_ptr<VPackOptions> optionsWithUniquenessCheck;
+static VPackOptions optionsWithUniquenessCheck;
 
 template<bool useUtf8, typename Comparator>
 int compareObjects(VPackSlice const& lhs, 
@@ -199,11 +199,8 @@ void VelocyPackHelper::initialize() {
   // order)
   VPackOptions::Defaults.dumpAttributesInIndexOrder = false;
   
-  ::optionsWithUniquenessCheck = std::make_unique<VPackOptions>();
-  ::optionsWithUniquenessCheck->customTypeHandler = ::customTypeHandler.get();
-  ::optionsWithUniquenessCheck->escapeUnicode = false;
-  ::optionsWithUniquenessCheck->dumpAttributesInIndexOrder = false;
-  ::optionsWithUniquenessCheck->checkAttributeUniqueness = true;
+  ::optionsWithUniquenessCheck = VPackOptions::Defaults;
+  ::optionsWithUniquenessCheck.checkAttributeUniqueness = true;
 
   // run quick selfs test with the attribute translator
   TRI_ASSERT(VPackSlice(::translator->translate(StaticStrings::KeyString)).getUInt() ==
@@ -241,7 +238,7 @@ arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
 
 /// @brief return the (global) attribute translator instance
 arangodb::velocypack::Options* VelocyPackHelper::optionsWithUniquenessCheck() {
-  return ::optionsWithUniquenessCheck.get();
+  return &::optionsWithUniquenessCheck;
 }
 
 bool VelocyPackHelper::AttributeSorterUTF8::operator()(std::string const& l,
