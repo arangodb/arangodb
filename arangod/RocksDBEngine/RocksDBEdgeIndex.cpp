@@ -581,7 +581,7 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx, RocksDBMethod
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
   TRI_ASSERT(!_unique);
-  auto fromToRef = StringRef(fromTo);
+  StringRef fromToRef(fromTo);
   RocksDBKeyLeaser key(trx);
   key->constructEdgeIndexValue(_objectId, fromToRef, documentId);
   VPackSlice toFrom = _isFromIndex
@@ -590,7 +590,7 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx, RocksDBMethod
   TRI_ASSERT(toFrom.isString());
   RocksDBValue value = RocksDBValue::EdgeIndexValue(StringRef(toFrom));
 
-  // blacklist key in cache
+  // blacklist key in cache (required in any case)
   blackListKey(fromToRef);
 
   // acquire rocksdb transaction

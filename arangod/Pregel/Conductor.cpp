@@ -88,6 +88,7 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
   if (_lazyLoading) {
     LOG_TOPIC(DEBUG, Logger::PREGEL) << "Enabled lazy loading";
   }
+        LOG_DEVEL << _userParams.toJson();
   _useMemoryMaps = VelocyPackHelper::readBooleanValue(_userParams.slice(),
                                                       Utils::useMemoryMaps, _useMemoryMaps);
   VPackSlice storeSlice = config.get("store");
@@ -629,8 +630,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
 
 int Conductor::_finalizeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
-
-  double compEnd = TRI_microtime();
+  _finalizationStartTimeSecs = TRI_microtime();
 
   bool store = _state == ExecutionState::DONE;
   store = store && _storeResults;
@@ -655,9 +655,19 @@ int Conductor::_finalizeWorkers() {
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
   b.add(Utils::storeResultsKey, VPackValue(store));
   b.close();
-  int res = _sendToAllDBServers(Utils::finalizeExecutionPath, b);
-  _endTimeSecs = TRI_microtime();  // offically done
+  return _sendToAllDBServers(Utils::finalizeExecutionPath, b);
+}
 
+void Conductor::finishedWorkerFinalize(VPackSlice data) {
+  
+  MUTEX_LOCKER(guard, _callbackMutex);
+  _ensureUniqueResponse(data);
+  if (_respondedServers.size() != _dbServers.size()) {
+    return;
+  }
+  
+  _endTimeSecs = TRI_microtime();  // offically done
+  
   VPackBuilder debugOut;
   debugOut.openObject();
   debugOut.add("stats", VPackValue(VPackValueType::Object));
@@ -665,16 +675,19 @@ int Conductor::_finalizeWorkers() {
   debugOut.close();
   _aggregators->serializeValues(debugOut);
   debugOut.close();
-
+  
+  double compTime = _finalizationStartTimeSecs - _computationStartTimeSecs;
+  TRI_ASSERT(compTime >= 0);
+  double storeTime = TRI_microtime() - _finalizationStartTimeSecs;
+  
   LOG_TOPIC(INFO, Logger::PREGEL) << "Done. We did " << _globalSuperstep << " rounds";
-  LOG_TOPIC(DEBUG, Logger::PREGEL)
-      << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
-  LOG_TOPIC(DEBUG, Logger::PREGEL)
-      << "Computation Time: " << compEnd - _computationStartTimeSecs << "s";
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Storage Time: " << TRI_microtime() - compEnd << "s";
+  LOG_TOPIC(INFO, Logger::PREGEL)
+  << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
+  LOG_TOPIC(INFO, Logger::PREGEL)
+  << "Computation Time: " << compTime << "s";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Storage Time: " << storeTime << "s";
   LOG_TOPIC(INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
   LOG_TOPIC(DEBUG, Logger::PREGEL) << "Stats: " << debugOut.toString();
-  return res;
 }
 
 void Conductor::collectAQLResults(VPackBuilder& outBuilder) {

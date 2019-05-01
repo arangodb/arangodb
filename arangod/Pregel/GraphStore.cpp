@@ -100,7 +100,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocate
 
   std::map<CollectionID, std::vector<VertexShardInfo>> result;
 
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Allocating memory";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Allocating memory";
   uint64_t totalMemory = TRI_totalSystemMemory();
 
   // Contains the shards located on this db server in the right order
@@ -174,6 +174,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocate
                        eCount * _graphFormat->estimatedEdgeSize();
   if (!_config->lazyLoading() &&
       (_config->useMemoryMaps() || requiredMem > totalMemory / 2)) {
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Using memory mapped storage";
     if (_graphFormat->estimatedVertexSize() > 0) {
       _vertexData = new MappedFileBuffer<V>(vCount);
     }
@@ -383,6 +384,10 @@ template <typename V, typename E>
 void GraphStore<V, E>::_loadVertices(transaction::Methods& trx, ShardID const& vertexShard,
                                      std::vector<ShardID> const& edgeShards,
                                      size_t vertexOffset, size_t& edgeOffset) {
+  
+  LOG_TOPIC(DEBUG, Logger::PREGEL)
+    << "Pregel worker: loading from vertex shard " << vertexShard;
+  
   TRI_ASSERT(vertexOffset < _index.size());
   uint64_t originalVertexOffset = vertexOffset;
 
@@ -446,13 +451,18 @@ void GraphStore<V, E>::_loadVertices(transaction::Methods& trx, ShardID const& v
     LOG_TOPIC(WARN, Logger::PREGEL)
         << "Pregel worker: Failed to commit on a read transaction";
   }
-  std::lock_guard<std::mutex> guard(_keyHeapMutex);
-  _keyHeap.merge(std::move(strHeap));
+  {
+    std::lock_guard<std::mutex> guard(_keyHeapMutex);
+    _keyHeap.merge(std::move(strHeap));
+  }
+  LOG_TOPIC(DEBUG, Logger::PREGEL)
+  << "Pregel worker: done loading from vertex shard " << vertexShard;
 }
 
 template <typename V, typename E>
 void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, ShardID const& edgeShard,
                                   VertexEntry& vertexEntry, std::string const& documentID) {
+    
   size_t added = 0;
   size_t offset = vertexEntry._edgeDataOffset + vertexEntry._edgeCount;
   // moving pointer to edge
@@ -524,8 +534,11 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, ShardID const& edge
   // Add up all added elements
   vertexEntry._edgeCount += added;
   _localEdgeCount += added;
-  std::lock_guard<std::mutex> guard(_keyHeapMutex);
-  _keyHeap.merge(std::move(strHeap));
+  {
+    std::lock_guard<std::mutex> guard(_keyHeapMutex);
+    _keyHeap.merge(std::move(strHeap));
+  }
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Pregel worker: done loading from edge shard " << edgeShard;
 }
 
 /// Loops over the array starting a new transaction for different shards
@@ -608,9 +621,10 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
 
 template <typename V, typename E>
 void GraphStore<V, E>::storeResults(WorkerConfig* config,
-                                    std::function<void(bool)> const& cb) {
-  _config = config;
+                                    std::function<void()> cb) {
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Storing vertex data";
 
+  _config = config;
   double now = TRI_microtime();
   size_t total = _index.size();
   size_t delta = _index.size() / _config->localVertexShardIDs().size();
@@ -623,7 +637,12 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
   do {
     _runningThreads++;
     SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, [this, start, end, now,
-                                                              cb](bool isDirect) {
+                                                              cb](bool cancelled) {
+      if (cancelled) {
+        cb();
+        return;
+      }
+      
       try {
         RangeIterator<VertexEntry> it = vertexIterator(start, end);
         _storeVertices(_config->globalShardIDs(), it);
@@ -637,7 +656,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
       if (_runningThreads == 0) {
         LOG_TOPIC(DEBUG, Logger::PREGEL)
             << "Storing data took " << (TRI_microtime() - now) << "s";
-        cb(isDirect);
+        cb();
       }
     });
     start = end;
