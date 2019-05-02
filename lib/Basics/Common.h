@@ -46,6 +46,7 @@
 
 #define TRI_WITHIN_COMMON 1
 // clang-format off
+#include "Basics/Result.h"
 #include "Basics/operating-system.h"
 #include "Basics/application-exit.h"
 // clang-format on
@@ -192,8 +193,8 @@ typedef long suseconds_t;
 // Windows debug mode also seems to define DEBUG preproc symbol
 #undef DEBUG
 #endif
-  
-  
+
+
 #ifdef ARANGODB_USE_CATCH_TESTS
 #define TEST_VIRTUAL virtual
 #else
