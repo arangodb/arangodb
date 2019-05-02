@@ -58,6 +58,7 @@ static arangodb::velocypack::StringRef const cidRef("cid");
 
 static std::unique_ptr<VPackAttributeTranslator> translator;
 static std::unique_ptr<VPackCustomTypeHandler>customTypeHandler;
+static VPackOptions optionsWithUniquenessCheck;
 
 template<bool useUtf8, typename Comparator>
 int compareObjects(VPackSlice const& lhs, 
@@ -197,6 +198,9 @@ void VelocyPackHelper::initialize() {
   // allow dumping of Object attributes in "arbitrary" order (i.e. non-sorted
   // order)
   VPackOptions::Defaults.dumpAttributesInIndexOrder = false;
+  
+  ::optionsWithUniquenessCheck = VPackOptions::Defaults;
+  ::optionsWithUniquenessCheck.checkAttributeUniqueness = true;
 
   // run quick selfs test with the attribute translator
   TRI_ASSERT(VPackSlice(::translator->translate(StaticStrings::KeyString)).getUInt() ==
@@ -230,6 +234,11 @@ void VelocyPackHelper::disableAssemblerFunctions() {
 /// @brief return the (global) attribute translator instance
 arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
   return ::translator.get();
+}
+
+/// @brief return the (global) attribute translator instance
+arangodb::velocypack::Options* VelocyPackHelper::optionsWithUniquenessCheck() {
+  return &::optionsWithUniquenessCheck;
 }
 
 bool VelocyPackHelper::AttributeSorterUTF8::operator()(std::string const& l,
