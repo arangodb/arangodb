@@ -383,7 +383,6 @@ function optimizerCountTestSuite () {
 
     testCollectAggregateUndefined: function () {
       var randomDocumentID = db["UnitTestsCollection"].any()._id;
-      print(randomDocumentID);
       var query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key for i in [] collect aggregate count = count(i) return {count, start}';
       var bindParams = {};
       var options = {optimizer: {rules: ['-remove-unnecessary-calculations','-remove-unnecessary-calculations-2']}};
