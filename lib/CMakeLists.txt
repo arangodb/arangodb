@@ -319,6 +319,8 @@ endif()
 ################################################################################
 
 add_library(${LIB_ARANGO_V8} STATIC
+  ApplicationFeatures/V8SecurityFeature.cpp
+  V8/JavaScriptSecurityContext.cpp
   V8/JSLoader.cpp
   V8/V8LineEditor.cpp
   V8/v8-buffer.cpp

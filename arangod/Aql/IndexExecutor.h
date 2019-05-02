@@ -34,6 +34,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
+#include "DocumentProducingHelper.h"
 #include "Indexes/IndexIterator.h"
 #include "Utils/OperationCursor.h"
 
@@ -173,11 +174,9 @@ class IndexExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
  public:
-  typedef std::function<void(InputAqlItemRow const&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
-
   void setProducingFunction(DocumentProducingFunction documentProducer) {
     _documentProducer = std::move(documentProducer);
   }
@@ -189,6 +188,8 @@ class IndexExecutor {
         "Logic_error, prefetching number fo rows not supported");
   }
 
+  void initializeCursor();
+
  private:
   bool advanceCursor();
   void executeExpressions(InputAqlItemRow const& input);
@@ -198,7 +199,8 @@ class IndexExecutor {
   void createCursor();
 
   /// @brief continue fetching of documents
-  bool readIndex(IndexIterator::DocumentCallback const&, bool& hasWritten);
+  bool readIndex(OutputAqlItemRow& output,
+                 IndexIterator::DocumentCallback const&, size_t& numWritten);
 
   /// @brief reset the cursor at given position
   void resetCursor(size_t pos) { _cursors[pos]->reset(); };
@@ -227,24 +229,28 @@ class IndexExecutor {
   void setIsLastIndex(bool flag) { _isLastIndex = flag; }
 
   void setCurrentIndex(size_t pos) { _currentIndex = pos; }
-  void decrCurrentIndex() {
-    _currentIndex--;
-  }
-  void incrCurrentIndex() {
-    _currentIndex++;
-  }
+  void decrCurrentIndex() { _currentIndex--; }
+  void incrCurrentIndex() { _currentIndex++; }
   size_t getCurrentIndex() const noexcept { return _currentIndex; }
+
+  void setAllowCoveringIndexOptimization(bool const allowCoveringIndexOptimization) {
+    _documentProducingFunctionContext.setAllowCoveringIndexOptimization(allowCoveringIndexOptimization);
+  }
+
+  /// @brief whether or not we are allowed to use the covering index
+  /// optimization in a callback
+  bool getAllowCoveringIndexOptimization() const noexcept {
+    return _documentProducingFunctionContext.getAllowCoveringIndexOptimization();
+  }
 
  private:
   Infos& _infos;
   Fetcher& _fetcher;
+  DocumentProducingFunctionContext _documentProducingFunctionContext;
   DocumentProducingFunction _documentProducer;
   ExecutionState _state;
   ConstInputRowRef _input;
 
-  /// @brief whether or not we are allowed to use the covering index
-  /// optimization in a callback
-  bool _allowCoveringIndexOptimization;
 
   /// @brief _cursor: holds the current index cursor found using
   /// createCursor (if any) so that it can be read in chunks and not

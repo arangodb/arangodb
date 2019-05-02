@@ -179,6 +179,8 @@ Result RocksDBSettingsManager::sync(bool force) {
       continue;
     }
     TRI_DEFER(vocbase->releaseCollection(coll.get()));
+    
+    LOG_TOPIC("afb17", TRACE, Logger::ENGINES) << "syncing metadata for collection '" << coll->name() << "'";    
 
     auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
     rocksdb::SequenceNumber appliedSeq = maxSeqNr;
@@ -202,14 +204,14 @@ Result RocksDBSettingsManager::sync(bool force) {
     batch.Clear();
   }
 
-  TRI_ASSERT(_lastSync <= minSeqNr);
+  TRI_ASSERT(_lastSync.load() <= minSeqNr);
   if (!didWork) {
-    _lastSync = minSeqNr;
+    _lastSync.store(minSeqNr);
     return Result();  // nothing was written
   }
 
   _tmpBuilder.clear();
-  Result res = writeSettings(batch, _tmpBuilder, std::max(_lastSync.load(), minSeqNr));
+  Result res = ::writeSettings(batch, _tmpBuilder, std::max(_lastSync.load(), minSeqNr));
   if (res.fail()) {
     LOG_TOPIC("8a5e6", WARN, Logger::ENGINES)
         << "could not store metadata settings " << res.errorMessage();
@@ -219,7 +221,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   // we have to commit all counters in one batch
   auto s = _db->Write(wo, &batch);
   if (s.ok()) {
-    _lastSync = std::max(_lastSync.load(), minSeqNr);
+    _lastSync.store(std::max(_lastSync.load(), minSeqNr));
   }
 
   return rocksutils::convertStatus(s);
@@ -235,7 +237,7 @@ void RocksDBSettingsManager::loadSettings() {
                key.string(), &result);
   if (status.ok()) {
     // key may not be there, so don't fail when not found
-    VPackSlice slice = VPackSlice(result.data());
+    VPackSlice slice = VPackSlice(reinterpret_cast<uint8_t const*>(result.data()));
     TRI_ASSERT(slice.isObject());
     LOG_TOPIC("7458b", TRACE, Logger::ENGINES) << "read initial settings: " << slice.toJson();
 
@@ -277,7 +279,7 @@ void RocksDBSettingsManager::loadSettings() {
 
 /// earliest safe sequence number to throw away from wal
 rocksdb::SequenceNumber RocksDBSettingsManager::earliestSeqNeeded() const {
-  return _lastSync;
+  return _lastSync.load();
 }
 
 }  // namespace arangodb

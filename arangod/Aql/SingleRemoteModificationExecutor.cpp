@@ -71,7 +71,7 @@ SingleRemoteModificationExecutor<Modifier>::SingleRemoteModificationExecutor(Fet
 
 template <typename Modifier>
 std::pair<ExecutionState, typename SingleRemoteModificationExecutor<Modifier>::Stats>
-SingleRemoteModificationExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
+SingleRemoteModificationExecutor<Modifier>::produceRows(OutputAqlItemRow& output) {
   Stats stats;
 
   if (_upstreamState == ExecutionState::DONE) {

@@ -92,8 +92,8 @@ class CountCollectExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
 
-  inline std::pair<ExecutionState, NoStats> produceRow(OutputAqlItemRow& output) {
-    TRI_IF_FAILURE("CountCollectExecutor::produceRow") {
+  inline std::pair<ExecutionState, NoStats> produceRows(OutputAqlItemRow& output) {
+    TRI_IF_FAILURE("CountCollectExecutor::produceRows") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     NoStats stats{};

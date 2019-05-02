@@ -671,10 +671,10 @@ SECTION("test_async") {
     );
     arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
-    bool deallocated = false;
     std::condition_variable cond;
     std::mutex mutex;
     SCOPED_LOCK_NAMED(mutex, lock);
@@ -700,11 +700,11 @@ SECTION("test_async") {
     );
     arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(nullptr);
-    bool deallocated = false;
     std::condition_variable cond;
     std::mutex mutex;
     SCOPED_LOCK_NAMED(mutex, lock);
@@ -755,10 +755,10 @@ SECTION("test_async") {
     );
     arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
-    bool deallocated = false;
     std::condition_variable cond;
     std::mutex mutex;
     size_t count = 0;
@@ -787,11 +787,11 @@ SECTION("test_async") {
     );
     arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
-    bool deallocated = false;
     std::condition_variable cond;
     std::mutex mutex;
     SCOPED_LOCK_NAMED(mutex, lock);
@@ -817,11 +817,11 @@ SECTION("test_async") {
     );
     arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
-    bool deallocated = false;
     std::condition_variable cond;
     std::mutex mutex;
     size_t count = 0;
@@ -860,11 +860,11 @@ SECTION("test_async") {
     );
     arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
-    bool deallocated = false;
     bool execVal = true;
     std::condition_variable cond;
     std::mutex mutex;
@@ -901,11 +901,11 @@ SECTION("test_async") {
     );
     arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
-    bool deallocated = false;
     bool execVal = false;
     std::condition_variable cond;
     std::mutex mutex;
@@ -996,12 +996,12 @@ SECTION("test_async") {
     );
     arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+    bool deallocated0 = false; // declare above 'feature' to ensure proper destruction order
+    bool deallocated1 = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
-    bool deallocated0 = false;
-    bool deallocated1 = false;
     std::condition_variable cond;
     std::mutex mutex;
     size_t count = 0;
@@ -1052,6 +1052,7 @@ SECTION("test_async") {
     );
     arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     arangodb::options::ProgramOptions options("", "", "", nullptr);
@@ -1059,7 +1060,6 @@ SECTION("test_async") {
     feature.collectOptions(optionsPtr);
     options.get<arangodb::options::UInt64Parameter>("arangosearch.threads")->set("8");
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
-    bool deallocated = false;
     std::condition_variable cond;
     std::mutex mutex;
     size_t count = 0;

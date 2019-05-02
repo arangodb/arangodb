@@ -142,6 +142,7 @@ class SortedCollectExecutor {
     bool _shouldDeleteBuilderBuffer;
 
     CollectGroup() = delete;
+    CollectGroup(CollectGroup&&) = default;
     CollectGroup(CollectGroup const&) = delete;
     CollectGroup& operator=(CollectGroup const&) = delete;
 
@@ -179,7 +180,7 @@ class SortedCollectExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   /**
    * This executor has no chance to estimate how many rows

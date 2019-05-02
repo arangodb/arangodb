@@ -4,74 +4,75 @@ In this file we collect information about which tests are currently
 greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 
-- `tests/js/server/recovery/view-arangosearch-link-populate-transaction-no-flushthread.js`
 
-  * Test "recovery_1"
+- `tests/js/client/resilience/foxxmaster.js` started to fail again
+
+    [FAILED]  tests/js/client/resilience/foxxmaster.js
+
+      "testQueueFailover" failed: Error: Supervision should have moved the Foxx queues and Foxx queues should have been started to run on a new coordinator - Error: Supervision should have moved the Foxx queues and Foxx queues should have been started to run on a new coordinator
+    at Object.testQueueFailover (/work/ArangoDB/tests/js/client/resilience/foxxmaster.js:196:15)
+    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:532:23)
+    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:195:24)
+    at /work/ArangoDB/tests/js/client/resilience/foxxmaster.js:263:9
+    at /work/ArangoDB/tests/js/client/resilience/foxxmaster.js:266:3
+    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:275:12)
+    at /work/ArangoDB/js/common/modules/@arangodb/testrunner.js:47:13
+    at arrayEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:516:11)
+    at Function.forEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:9344:14)
+    at runJSUnityTests (/work/ArangoDB/js/common/modules/@arangodb/testrunner.js:38:5)
+
+
+- `tests/js/server/recovery/view-arangosearch-link-populate-transaction-no-flushthread.js` started to fail again
+
     [FAILED]  tests/js/server/recovery/view-arangosearch-link-populate-transaction-no-flushthread.js
 
       "test" failed: unable to run recovery test tests/js/server/recovery/view-arangosearch-link-populate-transaction-no-flushthread.js
 
-   Suites failed: 1 Tests Failed: 1
+- `tests/js/server/recovery/view-arangosearch-link-populate-no-callbacks.js` - fails
 
-- `tests/js/client/active-failover/basic.js`
+    2019-05-02T10:23:35Z [25095] S INFO [b1bb8] {engines} replaying WAL logfile '/work/tmp/arangosh_EgJGCj/crashtmp/28/datadb/journals/logfile-62.db' (1 of 1)
+    2019-05-02T10:23:35Z [25095] S ERROR [77be6] {engines} failed to instantiate index, error: 1000 failed to find checkpoint file matching the latest data store state for arangosearch link '54', expecting file 'seg
+    ments_2.checkpoint' in path: /work/tmp/arangosh_EgJGCj/crashtmp/28/datadb/databases/database-1/arangosearch-47_54
+    2019-05-02T10:23:35Z [25095] S ERROR [baec2] {engines} index creation failed while restoring
+    2019-05-02T10:23:35Z [25095] S ERROR [b092e] caught exception while opening collection 'UnitTestsRecoveryDummy': cannot initialize collection indexes: index creation failed
+    2019-05-02T10:23:35Z [25095] S WARNING [d765d] {engines} unable to open collection 47. Please check the logs above for errors.
+    2019-05-02T10:23:35Z [25095] S WARNING [42c11] {engines} unable to insert document in collection 47 of database 1: corrupted collection
+    2019-05-02T10:23:35Z [25095] S WARNING [b3dd6] {engines} WAL inspection failed when scanning logfile '/work/tmp/arangosh_EgJGCj/crashtmp/28/datadb/journals/logfile-62.db'
+    2019-05-02T10:23:35Z [25095] S FATAL [c6422] {engines} unable to finish WAL recovery: logfile recovery error
 
-   [FAILED]  tests/js/client/active-failover/basic.js
+- `tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js`
 
-      "testFailover" failed: at assertion #86: assertEqual: (10000) is not equal to (9289)
-    (Error
-    at assertEqual (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:103:19)
-    at Object.testFailover (/work/ArangoDB/tests/js/client/active-failover/basic.js:332:7)
-    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:515:23)
+    [FAILED]  tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js
+
+      "Collections with distributeShardsLike with data if broken, should be repaired" failed: AssertionError: expected false to be true
+    at createBrokenClusterState (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:220:57)
+    at Context.<anonymous> (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:560:11)
+
+      "Collections with distributeShardsLike with data if interrupted, should complete repairs" failed: AssertionError: expected false to be true
+    at createBrokenClusterState (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:221:52)
+    at Context.<anonymous> (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:624:13)
+
+      "Collections with distributeShardsLike with data if called via GET, only return planned operations" failed: AssertionError: expected false to be true
+    at createBrokenClusterState (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:221:52)
+    at Context.<anonymous> (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:761:11)
+
+
+- `tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js`
+
+    [FAILED]  tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js
+
+      "testBasicOperationsLeaderFail4" failed: ArangoError 1457: timeout in cluster operation - ArangoError: timeout in cluster operation
+    at ArangoDatabase._drop (/work/ArangoDB/js/server/modules/@arangodb/arango-database.js:190:23)
+    at Object.tearDown (tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js:352:10)
+    at /work/ArangoDB/js/common/modules/jsunity/jsunity.js:468:16
+    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:522:15)
     at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:173:24)
-    at /work/ArangoDB/tests/js/client/active-failover/basic.js:502:9
-    at /work/ArangoDB/tests/js/client/active-failover/basic.js:505:3
+    at tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js:874:9
+    at tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js:878:3
     at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:250:12)
-    at /work/ArangoDB/js/common/modules/@arangodb/testrunner.js:47:13
-    at arrayEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:508:11)
-    at Function.forEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:9334:14))
-
-- `shell-foxx-api-spec.js`
-
-  * Test "shell_client"
-    [FAILED]  tests/js/client/shell/shell-foxx-api-spec.js
-
-      "Foxx service "before each" hook for "uninstalled should not be available"" failed: ArangoError: ArangoError 3002: service files missing
-  Mount: /foxx-crud-test-download
-    at Object.exports.checkRequestResult (js/client/modules/@arangodb/arangosh.js:97:21)
-    at Object.install (js/client/modules/@arangodb/foxx/manager.js:282:12)
-    at Context.beforeEach (tests/js/client/shell/shell-foxx-api-spec.js:156:17)
-    at Function.global.DEFINE_MODULE.exports.nextTick [as immediately] (common/bootstrap/modules/process.js:30:5)
-
-   Suites failed: 1 Tests Failed: 1
-
-- `tests/js/server/resilience/moving-shards-cluster.js`
-
-  * Test "resilience"
-    [FAILED]  tests/js/server/resilience/moving-shards-cluster.js
-
-      "testCleanOutMultipleShards_data" failed: at assertion #3: assertTrue: (false) does not evaluate to true
-(Error
-    at assertTrue (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:66:19)
-    at Object.testCleanOutMultipleShards (tests/js/server/resilience/moving-shards-cluster.js:742:7)
-    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:515:23)
-    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:171:24)
-    at tests/js/server/resilience/moving-shards-cluster.js:818:9
-    at tests/js/server/resilience/moving-shards-cluster.js:826:3
-    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:248:12)
-    at eval (eval at callback (/work/ArangoDB/js/actions/_admin/app.js:82:18), <anonymous>:2:52)
-    at eval (eval at callback (/work/ArangoDB/js/actions/_admin/app.js:82:18), <anonymous>:2:135)
-    at Function.callback (/work/ArangoDB/js/actions/_admin/app.js:82:18))
-
-   Suites failed: 1 Tests Failed: 1
+    at source (eval at <anonymous> (unknown source), <anonymous>:4:52)
 
 
-- `tests/js/server/shell/shell-pregel-grey.js`
-
-  just hangs
-
-- `tests/js/common/aql/aql-view-arangosearch-cluster.js`
-
-  taking too long
 
 - `./tests/js/server/resilience/moving-shards-with-arangosearch-view-cluster.js` always fails (and needs refactoring) due to changes from PR 7748 with
 

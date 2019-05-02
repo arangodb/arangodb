@@ -25,7 +25,10 @@ if [ "x$@" = "x" ] ; then
     \
     ./js/common/modules/jsunity.js \
     ./js/client/client.js \
+    ./js/client/inspector.js \
     ./js/server/server.js \
+    ./js/server/initialize.js \
+    ./js/server/arango-dfdb.js \
     \
   "
   if [ -d ./enterprise ] ; then

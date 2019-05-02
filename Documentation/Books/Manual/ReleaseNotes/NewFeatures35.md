@@ -247,6 +247,19 @@ The HTTP API for running Foxx service tests now supports a `filter` attribute,
 which can be used to limit which test cases should be executed.
 
 
+### Stream Transaction API
+
+There is a new HTTP API for transactions. This API allows clients to add operations to a
+transaction in a streaming fashion. A transaction can consist of a series of supported
+transactional operations, followed by a commit or abort command.
+This allows clients to construct larger transactions in a more efficent way than
+with JavaScript-based transactions.
+
+Note that this requires client applications to abort transactions which are no 
+longer necessary. Otherwise resources and locks acquired by the transactions
+will hang around until the server decides to garbage-collect them.
+
+
 Web interface
 -------------
 
@@ -302,6 +315,41 @@ always be honored:
 Mon Apr 01 2019 02:00:00 GMT+0200 (Central European Summer Time)
 > new Date("2019-04-01T00:00:00Z");
 Mon Apr 01 2019 02:00:00 GMT+0200 (Central European Summer Time)
+```
+ 
+### JavaScript security options
+
+ArangoDB 3.5 provides several new options for restricting the functionality of
+JavaScript application code running in the server, with the intent to make a setup
+more secure.
+
+There now exist startup options for restricting which environment variables and
+values of which configuration options JavaScript code is allowed to read. These
+options can be set to prevent leaking of confidential information from the
+environment or the setup into the JavaScript application code.
+Additionally there are options to restrict outbound HTTP connections from JavaScript
+applications to certain endpoints and to restrict filesystem access from JavaScript
+applications to certain directories only.
+
+Finally there are startup options to turn off the REST APIs for managing Foxx
+services, which can be used to prevent installation and uninstallation of Foxx
+applications on a server. A separate option is provided to turn off access and
+connections to the central Foxx app store via the web interface.
+
+A complete overview of the security options can be found in [Security Options](../Security/SecurityOptions.md).
+
+### Foxx
+
+Request credentials are now exposed via the `auth` property:
+
+```js
+const tokens = context.collection("tokens");
+router.get("/authorized", (req, res) => {
+  if (!req.auth || !req.auth.bearer || !tokens.exists(req.auth.bearer)) {
+    res.throw(403, "Not authenticated");
+  }
+  // ...
+});
 ```
 
 ### API improvements
@@ -381,6 +429,7 @@ Client configurations that use this configuration variable should adjust their
 configuration and set this variable to a boolean value instead of to a numeric
 value.
 
+
 Miscellaneous
 -------------
 
@@ -455,19 +504,3 @@ The bundled JEMalloc memory allocator used in ArangoDB release packages has been
 upgraded from version 5.0.1 to version 5.2.0.
 
 The bundled version of the RocksDB library has been upgraded from 5.16 to 6.0.
-
-
-Foxx
-----
-
-Request credentials are now exposed via the `auth` property:
-
-```js
-const tokens = context.collection("tokens");
-router.get("/authorized", (req, res) => {
-    if (!req.auth || !req.auth.bearer || !tokens.exists(req.auth.bearer)) {
-        res.throw(403, "Not authenticated");
-    }
-    // ...
-});
-```

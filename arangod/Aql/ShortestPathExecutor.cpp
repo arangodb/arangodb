@@ -156,7 +156,7 @@ std::pair<ExecutionState, Result> ShortestPathExecutor::shutdown(int errorCode) 
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRows(OutputAqlItemRow& output) {
   NoStats s;
 
   // Can be length 0 but never nullptr.

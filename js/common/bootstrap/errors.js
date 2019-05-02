@@ -239,7 +239,6 @@
     "ERROR_USER_INVALID_PASSWORD"  : { "code" : 1701, "message" : "invalid password" },
     "ERROR_USER_DUPLICATE"         : { "code" : 1702, "message" : "duplicate user" },
     "ERROR_USER_NOT_FOUND"         : { "code" : 1703, "message" : "user not found" },
-    "ERROR_USER_CHANGE_PASSWORD"   : { "code" : 1704, "message" : "user must change his password" },
     "ERROR_USER_EXTERNAL"          : { "code" : 1705, "message" : "user is external" },
     "ERROR_SERVICE_INVALID_NAME"   : { "code" : 1750, "message" : "invalid service name" },
     "ERROR_SERVICE_INVALID_MOUNT"  : { "code" : 1751, "message" : "invalid mount" },
@@ -367,5 +366,43 @@
 
   // For compatibility with <= 3.3
   internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+
+  //arg1 can be a code or error object
+  internal.throwArangoError = function (arg1, message, httpCode) {
+    let errorNum;
+
+    if (typeof arg1 === "object" && typeof arg1.code === "number") {
+      errorNum = arg1.code;
+      if(message === undefined && arg1.message) {
+        message = arg1.message;
+      }
+    } else if ( typeof arg1 === "number" ) {
+      errorNum = arg1;
+    } else {
+      errorNum = internal.errors.ERROR_INTERNAL.code;
+    }
+
+    if (message === undefined) {
+      message = "could not resolve errorMessage";
+      for(var key in internal.errors) {
+        let attribute = internal.errors[key];
+        if(attribute.code === errorNum){
+          message = attribute.message;
+          break;
+        }
+      }
+    }
+
+    if (httpCode === undefined) {
+      httpCode = internal.errorNumberToHttpCode(errorNum);
+    }
+
+    throw new internal.ArangoError({
+      errorNum: errorNum,
+      errorMessage: message,
+      code: httpCode
+    });
+  };
+
 }());
 

@@ -409,6 +409,13 @@ class Methods {
   virtual bool isInaccessibleCollection(std::string const& /*cid*/) {
     return false;
   }
+#else
+  bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) {
+    return false;
+  }
+  bool isInaccessibleCollection(std::string const& /*cid*/) {
+    return false;
+  }
 #endif
 
   static int validateSmartJoinAttribute(LogicalCollection const& collinfo,

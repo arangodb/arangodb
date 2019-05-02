@@ -177,18 +177,6 @@ function ClusterTransactionSuite() {
   }
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief produce failure
-  ////////////////////////////////////////////////////////////////////////////////
-
-  function makeFailure(failure) {
-    if (failure.follower) {
-      failFollower();
-    } else {
-      failLeader();
-    }
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief the actual tests
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -252,9 +240,9 @@ function ClusterTransactionSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief check abort behaviour when leader fails
+    /// @brief check transaction abort when a leader fails
     ////////////////////////////////////////////////////////////////////////////////
-    testFailLeader: function () {
+    /*testFailLeader: function () {
       assertTrue(waitForSynchronousReplication("_system"));
 
       let docs = [];
@@ -287,8 +275,11 @@ function ClusterTransactionSuite() {
       assertTrue(waitForSynchronousReplication("_system"));
       assertEqual(db._collection(cn).count(), 1000);
       assertEqual(db._collection(cn).all().toArray().length, 1000);
-    },
-
+    },*/
+    
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief fail the follower, transaction should succeeed regardless
+  ////////////////////////////////////////////////////////////////////////////////
     testFailFollower: function () {
       assertTrue(waitForSynchronousReplication("_system"));
 

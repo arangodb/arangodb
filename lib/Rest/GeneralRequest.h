@@ -196,13 +196,7 @@ class GeneralRequest {
   /// @brief parsed request payload
   virtual VPackSlice payload(arangodb::velocypack::Options const* options = &VPackOptions::Defaults) = 0;
 
-  TEST_VIRTUAL std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr() {
-    VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
-    optionsWithUniquenessCheck.checkAttributeUniqueness = true;
-    return std::make_shared<VPackBuilder>(payload(&optionsWithUniquenessCheck),
-                                          &optionsWithUniquenessCheck);
-  };
-
+  TEST_VIRTUAL std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr();
   std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtrNoUniquenessChecks() {
     return std::make_shared<VPackBuilder>(payload());
   };

@@ -23,8 +23,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TESTS_BLOCK_FETCHER_HELPER_H
-#define ARANGOD_AQL_TESTS_BLOCK_FETCHER_HELPER_H
+#ifndef ARANGOD_AQL_TESTS_ROW_FETCHER_HELPER_H
+#define ARANGOD_AQL_TESTS_ROW_FETCHER_HELPER_H
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlockManager.h"
@@ -38,8 +38,6 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-
-// TODO rename this file to RowFetcherHelper!
 
 namespace arangodb {
 

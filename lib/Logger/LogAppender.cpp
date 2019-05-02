@@ -213,7 +213,7 @@ void LogAppender::log(LogMessage* message) {
 
   // otherwise use the general topic
   if (!shown) {
-    shown = output(LogTopic::MAX_LOG_TOPICS);
+    output(LogTopic::MAX_LOG_TOPICS);
   }
 
   for (auto const& logger : _loggers) {

@@ -60,7 +60,7 @@ EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher, EnumerateListExec
       _inputArrayPosition(0),
       _inputArrayLength(0){};
 
-std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRows(OutputAqlItemRow& output) {
   while (true) {
     // HIT in first run, because pos and length are initiliazed
     // both with 0

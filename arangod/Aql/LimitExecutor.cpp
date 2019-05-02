@@ -56,8 +56,8 @@ LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos), _fetcher(fetcher){};
 LimitExecutor::~LimitExecutor() = default;
 
-std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("LimitExecutor::produceRow") {
+std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("LimitExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   LimitStats stats{};

@@ -110,6 +110,11 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
     return {errorCode};
   }
 
+  if (versionString.empty() || versionString == "arango") {
+    // server running in hardened mode?
+    return {TRI_ERROR_NO_ERROR};
+  }
+
   if (logServerVersion) {
     // successfully connected
     LOG_TOPIC("06792", INFO, _topic) << "Server version: " << versionString;

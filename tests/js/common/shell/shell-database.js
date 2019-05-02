@@ -165,6 +165,20 @@ function DatabaseSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL literal and options
+////////////////////////////////////////////////////////////////////////////////
+
+    testAQLWithLiteralAndOptions : function () {
+      var aql = require("@arangodb").aql;
+      var result = internal.db._query(
+        aql`${aql.literal('RETURN 1')}`,
+        {fullCount: true}
+      );
+      assertEqual([ 1 ], result.toArray());
+      assertEqual(1, result.getExtra().stats.fullCount);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test _executeTransaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -698,4 +712,3 @@ function DatabaseSuite () {
 jsunity.run(DatabaseSuite);
 
 return jsunity.done();
-

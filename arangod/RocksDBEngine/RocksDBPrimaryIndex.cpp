@@ -364,8 +364,9 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     while (limit > 0) {
       LocalDocumentId documentId = RocksDBValue::documentId(_iterator->value());
       arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(_iterator->key());
-  
-      builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String)); 
+
+      builder->clear();
+      builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
       cb(documentId, builder->slice());
 
       --limit;
@@ -600,7 +601,10 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
   }
   val.Reset();  // clear used memory
 
-  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
+  if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    // blacklist new index entry to avoid caching without committing first
+    blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
+  }
 
   auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
 
@@ -627,7 +631,8 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
 
   TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(newDoc);
   auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
-
+  
+  // blacklist new index entry to avoid caching without committing first
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string());

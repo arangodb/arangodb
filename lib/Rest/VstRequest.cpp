@@ -83,7 +83,7 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
         // will throw on error
         _validatedPayload = validator.validate(vpack.data(), vpack.length());
       }
-      return VPackSlice(vpack.data());
+      return VPackSlice(reinterpret_cast<uint8_t const*>(vpack.data()));
     }
   }
   return VPackSlice::noneSlice();  // no body

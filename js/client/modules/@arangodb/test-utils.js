@@ -468,6 +468,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if (testname.indexOf('-grey') === -1 && options.onlyGrey) {
+    whichFilter.filter = 'grey';
+    return false;
+  }
+
   if (testname.indexOf('-graph') !== -1 && options.skipGraph) {
     whichFilter.filter = 'graph';
     return false;
@@ -734,6 +739,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   }
   
   let testCode;
+  // \n's in testCode are required because of content could contain '//' at the very EOF
   if (file.indexOf('-spec') === -1) {
     let testCase = JSON.stringify(options.testCase);
     if (options.testCase === undefined) {

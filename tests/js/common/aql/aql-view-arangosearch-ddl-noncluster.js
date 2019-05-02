@@ -309,7 +309,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection1.analyzers.length);
       assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
-      assertEqual(db._name() + "::text_en", properties.links.TestCollection1.analyzers[0]);
+      assertEqual("text_en", properties.links.TestCollection1.analyzers[0]);
 
 
       assertTrue(Object === properties.links.TestCollection2.constructor);
@@ -331,7 +331,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Array === properties.links.TestCollection2.fields.e.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection2.fields.e.analyzers.length);
       assertTrue(String === properties.links.TestCollection2.fields.e.analyzers[0].constructor);
-      assertEqual(db._name() + "::text_de", properties.links.TestCollection2.fields.e.analyzers[0]);
+      assertEqual("text_de", properties.links.TestCollection2.fields.e.analyzers[0]);
 
       assertTrue(Boolean === properties.links.TestCollection2.includeAllFields.constructor);
       assertEqual(false, properties.links.TestCollection2.includeAllFields);
@@ -362,7 +362,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection1.analyzers.length);
       assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
-      assertEqual(db._name() + "::text_en", properties.links.TestCollection1.analyzers[0]);
+      assertEqual("text_en", properties.links.TestCollection1.analyzers[0]);
 
 
       assertTrue(Object === properties.links.TestCollection2.constructor);

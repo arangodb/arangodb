@@ -96,7 +96,7 @@ class ReturnExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  inline std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output) {
+  inline std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output) {
     ReturnExecutor::Stats stats;
     auto res = _fetcher.fetchRow();
     ExecutionState const state = res.first;
