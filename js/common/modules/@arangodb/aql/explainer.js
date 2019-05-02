@@ -1094,12 +1094,12 @@ function processQuery(query, explain, planIndex) {
           condition = keyword(' SEARCH ') + buildExpression(node.condition);
         }
 
-	var sortCondition = ''
-	if (node.primarySort && Array.isArray(node.primarySort)) {
-	  sortCondition = keyword(' ORDER ') + node.primarySort.map(function (element) {
+        var sortCondition = ''
+        if (node.primarySort && Array.isArray(node.primarySort)) {
+          sortCondition = keyword(' SORT ') + node.primarySort.map(function (element) {
             return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.direction ? 'ASC' : 'DESC');
           }).join(', ');
-	}
+        }
 
         var scorers = '';
         if (node.scorers && node.scorers.length > 0) {
@@ -1108,7 +1108,7 @@ function processQuery(query, explain, planIndex) {
           }).join(', ');
         }
 
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + sortCondition + scorers + '   ' + annotation('/* view query */');
+        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') + view(node.view) + condition + sortCondition + scorers + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
