@@ -28,6 +28,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -294,4 +295,9 @@ double GeneralRequest::parsedValue(std::string const& key, double valueNotFound)
   }
   return valueNotFound;
 }
+  
+std::shared_ptr<VPackBuilder> GeneralRequest::toVelocyPackBuilderPtr() {
+  auto* opts = VelocyPackHelper::optionsWithUniquenessCheck();
+  return std::make_shared<VPackBuilder>(payload(opts), opts);
+};
 }  // namespace arangodb

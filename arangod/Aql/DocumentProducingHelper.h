@@ -288,7 +288,9 @@ inline DocumentProducingFunction getCallback<DocumentProducingCallbackVariant::D
     uint8_t const* vpack = slice.begin();
     // With NoCopy we do not clone anyways
     TRI_ASSERT(!output.isFull());
-    output.cloneValueInto(registerId, input, AqlValue(AqlValueHintDocumentNoCopy(vpack)));
+    AqlValue v{AqlValueHintDocumentNoCopy{vpack}};
+    AqlValueGuard guard{v, false};
+    output.moveValueInto(registerId, input, guard);
     TRI_ASSERT(output.produced());
     output.advanceRow();
     context.incrScanned();
