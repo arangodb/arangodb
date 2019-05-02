@@ -99,7 +99,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocate
 
   std::map<CollectionID, std::vector<VertexShardInfo>> result;
 
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Allocating memory";
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Allocating memory";
   uint64_t totalMemory = TRI_totalSystemMemory();
 
   // Contains the shards located on this db server in the right order
@@ -173,7 +173,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocate
                        eCount * _graphFormat->estimatedEdgeSize();
   if (!_config->lazyLoading() &&
       (_config->useMemoryMaps() || requiredMem > totalMemory / 2)) {
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Using memory mapped storage";
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Using memory mapped storage";
     if (_graphFormat->estimatedVertexSize() > 0) {
       _vertexData = new MappedFileBuffer<V>(vCount);
     }
@@ -521,8 +521,6 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, ShardID const& edge
   // Add up all added elements
   vertexEntry._edgeCount += added;
   _localEdgeCount += added;
-
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Pregel worker: done loading from edge shard " << edgeShard;
 }
 
 /// Loops over the array starting a new transaction for different shards
@@ -605,7 +603,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
 template <typename V, typename E>
 void GraphStore<V, E>::storeResults(WorkerConfig* config,
                                     std::function<void()> cb) {
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Storing vertex data";
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Storing vertex data";
 
   _config = config;
   double now = TRI_microtime();
