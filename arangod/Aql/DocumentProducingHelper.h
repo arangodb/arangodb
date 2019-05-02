@@ -234,7 +234,7 @@ inline DocumentProducingFunction buildCallback(DocumentProducingFunctionContext&
       output.advanceRow();
     };
   } else {
-    documentProducer = [](InputAqlItemRow& input, OutputAqlItemRow& output,
+    documentProducer = [](InputAqlItemRow const& input, OutputAqlItemRow& output,
                           VPackSlice slice, RegisterId registerId) {
       uint8_t const* vpack = slice.begin();
 

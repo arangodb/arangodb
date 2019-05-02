@@ -177,7 +177,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
 
 void IndexExecutor::initializeCursor() {
   _state = ExecutionState::HASMORE;
-  _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  _input = InvalidInputAqlItemRow;
   setAllowCoveringIndexOptimization(false);
   _currentIndex = 0;
   _alreadyReturned.clear();

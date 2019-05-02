@@ -170,7 +170,7 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
 
 void EnumerateCollectionExecutor::initializeCursor() {
   _state = ExecutionState::HASMORE;
-  _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  _input = InvalidInputAqlItemRow;
   setAllowCoveringIndexOptimization(true);
   _cursorHasMore = false;
   _cursor->reset();
