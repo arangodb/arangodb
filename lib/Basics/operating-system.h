@@ -858,18 +858,19 @@ int TRI_UNLINK(char const* filename);
 void TRI_GET_ARGV_WIN(int& argc, char** argv);
 
 // system error string macro requires ERRORBUF to instantiate its buffer before.
-// TODO get rid of ERRORBUF
 #define TRI_SYSTEM_ERROR()                                                       \
   do {                                                                           \
     auto result = translateWindowsError(::GetLastError());                       \
-    errno = result.errorNumber();                                                  \
+    errno = result.errorNumber();                                                \
     auto const& mesg = result.errorMessage();                                    \
-    if(mesg.empty()) {                                                           \
+    if (mesg.empty()) {                                                          \
       memcpy(&windowsErrorBuf[0], "unknown error\0", strlen("unknown error\0")); \
     } else {                                                                     \
-      memcpy(&windowsErrorBuf[0], mesg.data(), (std::min)(static_cast<size_t>(256U), mesg.size()));    \
+      memcpy(&windowsErrorBuf[0], mesg.data(),                                   \
+             (std::min)(sizeof(windowsErrorBuf) / sizeof(windowsErrorBuf[0]),    \
+                        mesg.size()));                                           \
     }                                                                            \
-  } while (false)                                                                \
+  } while (false)
 
 #define STDERR_FILENO 2
 #define STDIN_FILENO 0

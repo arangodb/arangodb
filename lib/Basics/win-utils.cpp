@@ -331,8 +331,11 @@ std::string windowsErrorToUTF8(DWORD errorNum) {
                            FORMAT_MESSAGE_IGNORE_INSERTS,
                        nullptr, errorNum, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                        (LPWSTR)&buffer, 0, nullptr);
-    std::wstring out(buffer, size);
-    return fromWString(out);
+    if (size) {
+      std::wstring out(buffer, size);
+      return fromWString(out);
+    }
+    return "error translation failed";
 }
 
 int TRI_MapSystemError(DWORD error) {
