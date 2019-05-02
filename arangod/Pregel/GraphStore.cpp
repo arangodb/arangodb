@@ -465,62 +465,92 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, ShardID const& edge
                                   "while looking up edges '%s' from %s",
                                   documentID.c_str(), edgeShard.c_str());
   }
-
-  auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
-    if (slice.isExternal()) {
-      slice = slice.resolveExternal();
-    }
-
+  
+  auto allocateSpace = [&] {
     // If this is called from loadDocument we didn't preallocate the vector
     if (_edges->size() <= offset) {
       if (!_config->lazyLoading()) {
         LOG_TOPIC(ERR, Logger::PREGEL) << "Pregel did not preallocate enough "
-                                       << "space for all edges. This hints "
-                                       << "at a bug with collection count()";
+        << "space for all edges. This hints "
+        << "at a bug with collection count()";
         TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
       // lazy loading always uses vector backed storage
       ((VectorTypedBuffer<Edge<E>>*)_edges)->appendEmptyElement();
     }
-
-    StringRef toValue(slice.get(StaticStrings::ToString));
+  };
+  
+  auto buildEdge = [&](Edge<E>* edge, StringRef toValue) {
     std::size_t pos = toValue.find('/');
     StringRef collectionName = toValue.substr(0, pos);
     StringRef toVal = toValue.substr(pos + 1);
-    
-    Edge<E>* edge = _edges->data() + offset;
     edge->_toKey = toVal.toString();
-
+    
     // resolve the shard of the target vertex.
     ShardID responsibleShard;
     int res = Utils::resolveShard(_config, collectionName.toString(),
                                   StaticStrings::KeyString,
                                   toVal, responsibleShard);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      // PregelShard sourceShard = (PregelShard)_config->shardId(edgeShard);
-      edge->_targetShard = (PregelShard)_config->shardId(responsibleShard);
-      _graphFormat->copyEdgeData(slice, edge->data(), sizeof(E));
-      if (edge->_targetShard != (PregelShard)-1) {
-        added++;
-        offset++;
-      } else {
-        LOG_TOPIC(ERR, Logger::PREGEL)
-            << "Could not resolve target shard of edge";
-      }
-    } else {
+    if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, Logger::PREGEL)
-          << "Could not resolve target shard of edge";
+      << "Could not resolve target shard of edge";
+      return res;
     }
+    
+    // PregelShard sourceShard = (PregelShard)_config->shardId(edgeShard);
+    edge->_targetShard = (PregelShard)_config->shardId(responsibleShard);
+    if (edge->_targetShard == (PregelShard)-1) {
+      LOG_TOPIC(ERR, Logger::PREGEL)
+      << "Could not resolve target shard of edge";
+      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+    }
+    added++;
+    offset++;
+    return TRI_ERROR_NO_ERROR;
   };
-  while (cursor->nextDocument(cb, 1000)) {
-    if (_destroyed) {
-      LOG_TOPIC(WARN, Logger::PREGEL) << "Aborted loading graph";
-      break;
+  
+  // allow for rocksdb edge index optimization
+  if (cursor->hasExtra() &&
+      _graphFormat->estimatedEdgeSize() == 0) {
+    
+    auto cb = [&](LocalDocumentId const& token, VPackSlice edgeSlice) {
+      allocateSpace();
+      TRI_ASSERT(edgeSlice.isString());
+      
+      StringRef toValue(edgeSlice);
+      Edge<E>* edge = _edges->data() + offset;
+      buildEdge(edge, toValue);
+    };
+    while (cursor->nextWithExtra(cb, 1000)) {
+      if (_destroyed) {
+        LOG_TOPIC(WARN, Logger::PREGEL) << "Aborted loading graph";
+        break;
+      }
+    }
+    
+  } else {
+    auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
+      if (slice.isExternal()) {
+        slice = slice.resolveExternal();
+      }
+      allocateSpace();
+      
+      StringRef toValue(transaction::helpers::extractToFromDocument(slice));
+      Edge<E>* edge = _edges->data() + offset;
+      int res = buildEdge(edge, toValue);
+      if (res == TRI_ERROR_NO_ERROR) {
+        _graphFormat->copyEdgeData(slice, edge->data(), sizeof(E));
+      }
+    };
+    while (cursor->nextDocument(cb, 1000)) {
+      if (_destroyed) {
+        LOG_TOPIC(WARN, Logger::PREGEL) << "Aborted loading graph";
+        break;
+      }
     }
   }
-
+  
   // Add up all added elements
   vertexEntry._edgeCount += added;
   _localEdgeCount += added;
