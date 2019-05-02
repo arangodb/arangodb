@@ -207,9 +207,7 @@
 #endif
 
 // hook for MSVC2019-only code
-#if defined(_MSC_VER) \
-    && (_MSC_VER == 1920 \
-        || false )
+#if defined(_MSC_VER) && (_MSC_VER == 1920 )
   #define MSVC2019_ONLY(...) __VA_ARGS__
 #else
   #define MSVC2019_ONLY(...)
