@@ -107,10 +107,10 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
 
   MUTEX_LOCKER(mutexLocker, _lock);
 
-  std::map<std::string, std::string>::iterator i = _scripts.find(name);
+  auto it = _scripts.find(name);
 
-  if (i != _scripts.end()) {
-    return i->second;
+  if (it != _scripts.end()) {
+    return it->second;
   }
 
   if (!_directory.empty()) {

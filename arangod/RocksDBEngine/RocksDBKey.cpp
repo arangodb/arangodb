@@ -446,7 +446,7 @@ arangodb::velocypack::StringRef RocksDBKey::vertexId(char const* data, size_t si
 VPackSlice RocksDBKey::indexedVPack(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size > sizeof(uint64_t));
-  return VPackSlice(data + sizeof(uint64_t));
+  return VPackSlice(reinterpret_cast<uint8_t const*>(data) + sizeof(uint64_t));
 }
 
 namespace arangodb {

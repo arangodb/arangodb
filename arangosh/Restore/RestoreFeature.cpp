@@ -156,8 +156,8 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
   if (response == nullptr || !response->isComplete()) {
     return {TRI_ERROR_INTERNAL,
             "got invalid response from server: '" + client.getErrorMessage() +
-                "' while executing " + requestAction + " with this payload: '" +
-                originalRequest + "'"};
+                "' while executing " + requestAction + (originalRequest.empty() ? "" : " with this payload: '" +
+                originalRequest + "'")};
   }
   if (response->wasHttpError()) {
     int errorNum = TRI_ERROR_INTERNAL;
@@ -171,7 +171,7 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
     return {errorNum, "got invalid response from server: HTTP " +
                           itoa(response->getHttpReturnCode()) + ": '" +
                           errorMsg + "' while executing '" + requestAction +
-                          "' with this payload: '" + originalRequest + "'"};
+                          (originalRequest.empty() ? "" : "' with this payload: '" + originalRequest + "'")};
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -618,16 +618,24 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
   std::string const collectionType(type == 2 ? "document" : "edge");
 
   // import data. check if we have a datafile
+  //  ... there are 4 possible names
   auto datafile = jobData.directory.readableFile(
       cname + "_" + arangodb::rest::SslInterface::sslMD5(cname) + ".data.json");
   if (!datafile || datafile->status().fail()) {
-    datafile = jobData.directory.readableFile(cname + ".data.json");
-    if (!datafile || datafile->status().fail()) {
-      result = {TRI_ERROR_CANNOT_READ_FILE, "could not open data file for collection " + cname + "'"};
-      return result;
-    }
+    datafile = jobData.directory.readableFile(
+      cname + "_" + arangodb::rest::SslInterface::sslMD5(cname) + ".data.json.gz");
   }
-
+  if (!datafile || datafile->status().fail()) {
+    datafile = jobData.directory.readableFile(cname + ".data.json.gz");
+  } 
+  if (!datafile || datafile->status().fail()) {
+    datafile = jobData.directory.readableFile(cname + ".data.json");
+  }
+  if (!datafile || datafile->status().fail()) {
+    result = {TRI_ERROR_CANNOT_READ_FILE, "could not open data file for collection '" + cname + "'"};
+    return result;
+  }
+  
   int64_t const fileSize = TRI_SizeFile(datafile->path().c_str());
 
   if (jobData.options.progress) {
@@ -638,6 +646,8 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
 
   int64_t numReadForThisCollection = 0;
   int64_t numReadSinceLastReport = 0;
+  
+  bool const isGzip = (0 == datafile->path().substr(datafile->path().size() - 3).compare(".gz"));
 
   buffer.clear();
   while (true) {
@@ -702,11 +712,21 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
       if (jobData.options.progress && fileSize > 0 &&
           numReadSinceLastReport > 1024 * 1024 * 8) {
         // report every 8MB of transferred data
+        //   currently do not have unzipped size for .gz files
+        std::stringstream percentage, ofFilesize;
+        if (isGzip) {
+          ofFilesize << "";
+          percentage << "";
+        } else {
+          ofFilesize << " of " << fileSize;
+          percentage << " ("
+            << int(100. * double(numReadForThisCollection) / double(fileSize)) << " %)";
+        } // else
+
         LOG_TOPIC("69a73", INFO, Logger::RESTORE)
             << "# Still loading data into " << collectionType << " collection '"
-            << cname << "', " << numReadForThisCollection << " of " << fileSize
-            << " byte(s) restored ("
-            << int(100. * double(numReadForThisCollection) / double(fileSize)) << " %)";
+            << cname << "', " << numReadForThisCollection << ofFilesize.str()
+            << " byte(s) restored" << percentage.str();
         numReadSinceLastReport = 0;
       }
     }
@@ -1107,7 +1127,7 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
       "--force-same-database",
       "force usage of the same database name as in the source dump.json file",
       new BooleanParameter(&_options.forceSameDatabase));
-  
+
   options->addOption(
       "--all-databases", "restore data to all databases",
       new BooleanParameter(&_options.allDatabases))
@@ -1197,7 +1217,7 @@ void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
         << "expecting at most one directory, got " + join(positionals, ", ");
     FATAL_ERROR_EXIT();
   }
-  
+
   if (_options.allDatabases) {
     if (options->processingResult().touched("server.database")) {
       LOG_TOPIC("94d22", FATAL, arangodb::Logger::RESTORE)
@@ -1314,7 +1334,7 @@ void RestoreFeature::start() {
       "Client");
 
   _exitCode = EXIT_SUCCESS;
-  
+
   // enumerate all databases present in the dump directory (in case of
   // --all-databases=true, or use just the flat files in case of --all-databases=false)
   std::vector<std::string> databases;
@@ -1325,8 +1345,8 @@ void RestoreFeature::start() {
         databases.push_back(it);
       }
     }
-    
-    // sort by name, with _system first   
+
+    // sort by name, with _system first
     std::sort(databases.begin(), databases.end(), [](std::string const& lhs, std::string const& rhs) {
       if (lhs == "_system" && rhs != "_system") {
         return true;
@@ -1342,12 +1362,12 @@ void RestoreFeature::start() {
   } else {
     databases.push_back(client->databaseName());
   }
- 
+
   std::unique_ptr<SimpleHttpClient> httpClient;
-  
+
   // final result
   Result result;
-    
+
   result = _clientManager.getConnectedClient(httpClient, _options.force,
                                              true, !_options.createDatabase);
   if (result.is(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
@@ -1378,13 +1398,13 @@ void RestoreFeature::start() {
       LOG_TOPIC("ad95b", WARN, Logger::RESTORE) << "Database '" << dbName << "' does not exist on target endpoint. In order to create this database along with the restore, please use the --create-database option";
     }
   }
-    
+
   if (result.fail() && !_options.force) {
     LOG_TOPIC("62a31", FATAL, Logger::RESTORE)
         << "cannot create server connection: " << result.errorMessage();
     FATAL_ERROR_EXIT();
   }
-  
+
   // check if we are in cluster or single-server mode
   std::string role;
   std::tie(result, role) = _clientManager.getArangoIsCluster(*httpClient);
@@ -1395,7 +1415,7 @@ void RestoreFeature::start() {
     _exitCode = EXIT_FAILURE;
     return;
   }
-  
+
   if (role == "DBSERVER" || role == "PRIMARY") {
     LOG_TOPIC("1fc99", WARN, arangodb::Logger::RESTORE) << "You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator. This is an unsupported operation!";
   }
@@ -1409,7 +1429,7 @@ void RestoreFeature::start() {
     _exitCode = EXIT_FAILURE;
     return;
   }
-  
+
   if (_options.progress) {
     LOG_TOPIC("05c30", INFO, Logger::RESTORE)
         << "Connected to ArangoDB '" << httpClient->getEndpointSpecification() << "'";
@@ -1423,7 +1443,7 @@ void RestoreFeature::start() {
   if (_options.allDatabases) {
     LOG_TOPIC("7c10a", INFO, Logger::RESTORE) << "About to restore databases '" << basics::StringUtils::join(databases, "', '") << "' from dump directory '" << _options.inputPath << "'...";
   }
-  
+
   for (auto const& db : databases) {
     result.reset();
 
@@ -1440,7 +1460,7 @@ void RestoreFeature::start() {
             << "cannot create server connection, giving up!";
         FATAL_ERROR_EXIT();
       }
-  
+
       if (result.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
         if (_options.createDatabase) {
           // database not found, but database creation requested
@@ -1471,12 +1491,12 @@ void RestoreFeature::start() {
           break;
         }
 
-        LOG_TOPIC("be86d", ERR, arangodb::Logger::RESTORE) << result.errorMessage(); 
+        LOG_TOPIC("be86d", ERR, arangodb::Logger::RESTORE) << result.errorMessage();
         // continue with next db
         continue;
       }
     }
-  
+
     // read encryption info
     ::checkEncryption(*_directory);
 

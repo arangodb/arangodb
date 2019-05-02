@@ -852,7 +852,7 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
   result.openArray();
   auto rSlice = rocksDBSlice(RocksDBEntryType::Database);
   for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice); iter->Next()) {
-    auto slice = VPackSlice(iter->value().data());
+    auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
 
     //// check format id
     VPackSlice idSlice = slice.get("id");
@@ -954,7 +954,7 @@ int RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
       continue;
     }
 
-    auto slice = VPackSlice(iter->value().data());
+    auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
 
     if (arangodb::basics::VelocyPackHelper::readBooleanValue(slice, StaticStrings::DataSourceDeleted,
                                                              false)) {
@@ -981,7 +981,7 @@ int RocksDBEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builde
   result.openArray();
   for (iter->Seek(bounds.start()); iter->Valid(); iter->Next()) {
     TRI_ASSERT(iter->key().compare(bounds.end()) < 0);
-    auto slice = VPackSlice(iter->value().data());
+    auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
 
     LOG_TOPIC("e3bcd", TRACE, Logger::VIEWS) << "got view slice: " << slice.toJson();
 
@@ -2052,6 +2052,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       auto phy = static_cast<RocksDBCollection*>(collection->getPhysical());
       TRI_ASSERT(phy != nullptr);
       phy->meta().deserializeMeta(_db, *collection);
+      phy->loadInitialNumberDocuments();
 
       StorageEngine::registerCollection(*vocbase, uniqCol);
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
@@ -2115,8 +2116,8 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
 
   builder.openObject();
   for (int i = 0; i < _options.num_levels; ++i) {
-    addInt(rocksdb::DB::Properties::kNumFilesAtLevelPrefix + std::to_string(i));
-    addInt(rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix + std::to_string(i));
+    addStr(rocksdb::DB::Properties::kNumFilesAtLevelPrefix + std::to_string(i));
+    addStr(rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix + std::to_string(i));
   }
   addInt(rocksdb::DB::Properties::kNumImmutableMemTable);
   addInt(rocksdb::DB::Properties::kNumImmutableMemTableFlushed);

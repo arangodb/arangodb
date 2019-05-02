@@ -244,11 +244,6 @@ size_t RocksDBCollection::memory() const { return 0; }
 
 void RocksDBCollection::open(bool /*ignoreErrors*/) {
   TRI_ASSERT(_objectId != 0);
-  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  TRI_ASSERT(engine != nullptr);
-  if (!engine->inRecovery()) {
-    loadInitialNumberDocuments();
-  }
 }
 
 void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice) {
@@ -403,7 +398,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
       VPackBuilder builder;
       builder.openObject();
-      for (auto const& pair : VPackObjectIterator(VPackSlice(ps.data()))) {
+      for (auto const& pair : VPackObjectIterator(VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())))) {
         if (pair.key.isEqualString("indexes")) {  // append new index
           VPackArrayBuilder arrGuard(&builder, "indexes");
           builder.add(VPackArrayIterator(pair.value));
@@ -560,11 +555,11 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(transaction::Methods* trx) const {
-  return std::make_unique<RocksDBAllIndexIterator>(&_logicalCollection, trx, primaryIndex());
+  return std::make_unique<RocksDBAllIndexIterator>(&_logicalCollection, trx);
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(transaction::Methods* trx) const {
-  return std::make_unique<RocksDBAnyIndexIterator>(&_logicalCollection, trx, primaryIndex());
+  return std::make_unique<RocksDBAnyIndexIterator>(&_logicalCollection, trx);
 }
 
 void RocksDBCollection::invokeOnAllElements(transaction::Methods* trx,
@@ -701,7 +696,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
     ++found;
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
-    VPackSlice document(iter->value().data());
+    VPackSlice document(reinterpret_cast<uint8_t const*>(iter->value().data()));
     TRI_ASSERT(document.isObject());
 
     // tmp may contain a pointer into rocksdb::WriteBuffer::_rep. This is
@@ -955,7 +950,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   }
 
   TRI_ASSERT(previousPS.size() > 0);
-  VPackSlice const oldDoc(previousPS.data());
+  VPackSlice const oldDoc(reinterpret_cast<uint8_t const*>(previousPS.data()));
   previousMdr.setRevisionId(transaction::helpers::extractRevFromDocument(oldDoc));
   TRI_ASSERT(previousMdr.revisionId() != 0);
 
@@ -1065,7 +1060,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   }
 
   TRI_ASSERT(previousPS.size() > 0);
-  VPackSlice const oldDoc(previousPS.data());
+  VPackSlice const oldDoc(reinterpret_cast<uint8_t const*>(previousPS.data()));
   previousMdr.setRevisionId(transaction::helpers::extractRevFromDocument(oldDoc));
   TRI_ASSERT(previousMdr.revisionId() != 0);
 
@@ -1170,7 +1165,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   }
 
   TRI_ASSERT(previousPS.size() > 0);
-  VPackSlice const oldDoc(previousPS.data());
+  VPackSlice const oldDoc(reinterpret_cast<uint8_t const*>(previousPS.data()));
   previousMdr.setRevisionId(transaction::helpers::extractRevFromDocument(oldDoc));
   TRI_ASSERT(previousMdr.revisionId() != 0);
 
@@ -1476,7 +1471,7 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
     auto f = _cache->find(key->string().data(),
                           static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
-      cb(documentId, VPackSlice(reinterpret_cast<char const*>(f.value()->value())));
+      cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())));
       return true;
     }
   }
@@ -1486,7 +1481,7 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
   Result res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/false, withCache);
   if (res.ok()) {
     TRI_ASSERT(ps.size() > 0);
-    cb(documentId, VPackSlice(ps.data()));
+    cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
     return true;
   }
   return false;

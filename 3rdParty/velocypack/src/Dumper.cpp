@@ -437,7 +437,7 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
     }
     
     case ValueType::External: {
-      Slice const external(slice->getExternal());
+      Slice const external(reinterpret_cast<uint8_t const*>(slice->getExternal()));
       dumpValue(&external, base);
       break;
     }

@@ -83,8 +83,8 @@ int RocksDBVPackComparator::compareIndexValues(rocksdb::Slice const& lhs,
   TRI_ASSERT(lhs.size() > sizeof(uint64_t));
   TRI_ASSERT(rhs.size() > sizeof(uint64_t));
 
-  VPackSlice const lSlice = VPackSlice(lhs.data() + sizeof(uint64_t));
-  VPackSlice const rSlice = VPackSlice(rhs.data() + sizeof(uint64_t));
+  VPackSlice const lSlice = VPackSlice(reinterpret_cast<uint8_t const*>(lhs.data()) + sizeof(uint64_t));
+  VPackSlice const rSlice = VPackSlice(reinterpret_cast<uint8_t const*>(rhs.data()) + sizeof(uint64_t));
 
   r = ::compareIndexedValues(lSlice, rSlice);
 

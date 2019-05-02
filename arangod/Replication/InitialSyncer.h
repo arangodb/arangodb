@@ -94,6 +94,7 @@ class InitialSyncer : public Syncer {
  protected:
   replutils::BatchInfo _batch;
   replutils::ProgressInfo _progress;
+  
   /// recurring task to keep the batch alive
   Scheduler::WorkHandle _batchPingTimer;
 };
