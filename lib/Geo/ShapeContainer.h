@@ -24,6 +24,7 @@
 #define ARANGOD_GEO_SHAPE_CONTAINER_H 1
 
 #include <string>
+#include <memory>
 
 #include <s2/s2cell_id.h>
 

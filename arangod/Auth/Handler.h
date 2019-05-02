@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AUTHENTICATION_HANDLER_H
 #define ARANGOD_AUTHENTICATION_HANDLER_H 1
 
-#include "Auth/Common.h"
 #include "Basics/Result.h"
+#include "Auth/Common.h"
 
 #include <velocypack/Slice.h>
 
