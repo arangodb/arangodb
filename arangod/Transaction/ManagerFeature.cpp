@@ -83,6 +83,7 @@ void ManagerFeature::beginShutdown() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
+  MANAGER->disallowInserts();
   // at this point all cursors should have been aborted already
   MANAGER->garbageCollect(/*abortAll*/true);
   // make sure no lingering managed trx remain
