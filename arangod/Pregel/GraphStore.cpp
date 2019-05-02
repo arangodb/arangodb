@@ -168,6 +168,9 @@ std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocate
     }
   }
 
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Estimating #numVertices: " << vCount;
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Estimating #numEdges: " << eCount;
+
   _index.resize(vCount);
   size_t requiredMem = vCount * _graphFormat->estimatedVertexSize() +
                        eCount * _graphFormat->estimatedEdgeSize();
