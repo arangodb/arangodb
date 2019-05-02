@@ -1,6 +1,9 @@
 v3.4.6 (XXXX-XX-XX)
 -------------------
 
+* fix the creation of debug packages (in the web interface) for queries that
+  involve smart graphs and/or multiple edge collections from a traversal
+
 * add --compress-output flag to arangodump. Activates gzip compression for
   collection data. Metadata files, such as .structure.json and .view.json,
   do not get compressed. No option is needed for arangorestore to restore
