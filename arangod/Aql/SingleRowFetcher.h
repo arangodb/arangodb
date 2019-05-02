@@ -229,7 +229,6 @@ template <bool passBlocksThrough>
 std::pair<ExecutionState, size_t> SingleRowFetcher<passBlocksThrough>::skipRows(size_t atMost) {
   TRI_ASSERT(!indexIsValid());
   return _dependencyProxy->skipSome(atMost);
-  //return _blockFetcher->skipSome(atMost);
 }
 
 template <bool passBlocksThrough>

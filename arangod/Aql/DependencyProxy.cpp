@@ -99,8 +99,6 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr>
 // NOLINTNEXTLINE google-default-arguments
 DependencyProxy<passBlocksThrough>::fetchBlockForDependency(size_t dependency, size_t atMost) {
   TRI_ASSERT(!passBlocksThrough);
-  LOG_DEVEL << "depdendency: " << dependency;
-  LOG_DEVEL << "at Most : " << atMost;
   ExecutionBlock& upstream = upstreamBlockForDependency(dependency);
 
   TRI_ASSERT(atMost > 0);

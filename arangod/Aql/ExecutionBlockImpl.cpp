@@ -74,7 +74,8 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
       _outputItemRow(),
-      _query(*engine->getQuery()) {
+      _query(*engine->getQuery()),
+      _isModificationNode(node->isModificationNode()) {
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
@@ -185,38 +186,145 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
   }
 }
 
-enum class SkipVariants {
-  DEFAULT,
-  PASSTHROUGH,
-  CUSTOM
+namespace arangodb {
+namespace aql {
+
+enum class SkipVariants { SKIPROW, SKIPROWS, EXECUTOR, DEFAULT };
+
+template <enum SkipVariants>
+struct ExecuteSkipVariant {};
+
+template <>
+struct ExecuteSkipVariant<SkipVariants::SKIPROW> {
+  template <class Executor>
+  static std::pair<ExecutionState, size_t> executeSkip(Executor& executor,
+                                                       typename Executor::Fetcher& fetcher,
+                                                       size_t toSkip) {
+    ExecutionState state;
+    InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+    ;
+
+    std::tie(state, input) = fetcher.skipRow();
+    if (state == ExecutionState::WAITING) {
+      return {state, 0};
+    } else {
+      return {state, 1};
+    }
+  }
 };
+
+template <>
+struct ExecuteSkipVariant<SkipVariants::SKIPROWS> {
+  template <class Executor>
+  static std::pair<ExecutionState, size_t> executeSkip(Executor& executor,
+                                                       typename Executor::Fetcher& fetcher,
+                                                       size_t toSkip) {
+    return fetcher.skipRows(toSkip);
+  }
+};
+
+template <>
+struct ExecuteSkipVariant<SkipVariants::EXECUTOR> {
+  template <class Executor>
+  static std::pair<ExecutionState, size_t> executeSkip(Executor& executor,
+                                                       typename Executor::Fetcher& fetcher,
+                                                       size_t toSkip) {
+    return executor().skipRows(toSkip);
+  }
+};
+
+template <>
+struct ExecuteSkipVariant<SkipVariants::DEFAULT> {
+  template <class Executor>
+  static std::pair<ExecutionState, size_t> executeSkip(Executor& executor,
+                                                       typename Executor::Fetcher& fetcher,
+                                                       size_t toSkip) {
+    // this function should never be executed
+    TRI_ASSERT(false);
+  }
+};
+
+template <class Executor>
+static SkipVariants constexpr skipType() {
+  // TODO: Add subquery modification check - still missing
+  /*if (std::is_same<Executor, SubqueryExecutor>::value && isModificationNode) {
+    return SkipVariants::DEFAULT;
+  }*/
+  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough &&
+                      !std::is_same<Executor, SubqueryExecutor>::value) {
+    if (std::is_same<typename Executor::Fetcher, SingleRowFetcher<true>>::value) {
+      return SkipVariants::SKIPROWS;
+    } else if (std::is_same<typename Executor::Fetcher, ConstFetcher>::value) {
+      return SkipVariants::SKIPROW;
+    } else {
+      return SkipVariants::DEFAULT;
+    }
+  } else if (std::is_same<Executor, EnumerateCollectionExecutor>::value) {
+    return SkipVariants::EXECUTOR;
+  } else if (std::is_same<Executor, IResearchViewExecutor<true>>::value) {
+    return SkipVariants::DEFAULT;
+  } else if (std::is_same<Executor, IResearchViewExecutor<false>>::value) {
+    return SkipVariants::EXECUTOR;
+  } else {
+    return SkipVariants::DEFAULT;
+  }
+}
+
+}  // namespace aql
+}  // namespace arangodb
 
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
 
-  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough && !std::is_same<Executor, SubqueryExecutor>::value) {  // TODO: check for modifications inside a subquery
+  constexpr SkipVariants customSkipType = skipType<Executor>();
+
+  // ConstFetcher has skipRow implemented,
+  // so assert this implementation is used.
+  static_assert(!std::is_same<Fetcher, ConstFetcher>::value ||
+                    customSkipType == SkipVariants::SKIPROW,
+                "ConstFetcher is expected to implement a custom "
+                "skipRow method!");
+  /*static_assert(!std::is_same<Fetcher, SingleRowFetcher<true>>::value ||
+     customSkipType == SkipVariants::SKIPROWS, "SingleRowFetcher with enabled
+     PassThrough is expected to implement a custom " "skipRows method!");*/ // TODO RE ADD
+
+  if (customSkipType == SkipVariants::DEFAULT) {
+    auto res = getSomeWithoutTrace(atMost);
+
+    size_t skipped = 0;
+    if (res.second != nullptr) {
+      skipped = res.second->size();
+    }
+
+    return traceSkipSomeEnd({res.first, skipped});
+  }
+
+  // EXECUTE TEMPLATE FUNCTION
+  return traceSkipSomeEnd(ExecuteSkipVariant<customSkipType>::executeSkip(_executor, _rowFetcher, atMost));
+
+  /*
+  // if (Executor::Properties::allowsBlockPassthrough && !std::is_same<Executor, SubqueryExecutor>::value) {  // TODO: check for modifications inside a subquery
     // TODO forbid modify executors
     // LOG_DEVEL << "PASS SKIP SOME route";
-    if (std::is_same<Fetcher, SingleRowFetcher<true>>::value || std::is_same<Fetcher, ConstFetcher>::value) {
+    if (std::is_same<Fetcher, SingleRowFetcher<true>>::value) {
+      customSkipType = SkipVariants::SKIPROWS;
+    } else if (std::is_same<Fetcher, ConstFetcher>::value) {
+      customSkipType = SkipVariants::SKIPROW;
       return traceSkipSomeEnd(passSkipSome(atMost));
     } else {
       return traceSkipSomeEnd(defaultSkipSome(atMost));
     }
   } else if (std::is_same<Executor, EnumerateCollectionExecutor>::value) {
-    LOG_DEVEL << "SKIP ENUM COLLECTION";
     return traceSkipSomeEnd(skipSome((atMost)));
   } else if (std::is_same<Executor, IResearchViewExecutor<true>>::value) {
-    LOG_DEVEL << "SKIP IRES true COLLECTION";
     return traceSkipSomeEnd(defaultSkipSome(atMost));
   } else if (std::is_same<Executor, IResearchViewExecutor<false>>::value) {
-    LOG_DEVEL << "SKIP IRES false COLLECTION";
     return traceSkipSomeEnd(skipSome((atMost)));
   } else {
-    LOG_DEVEL << typeid(Executor).name();
-    LOG_DEVEL << "DEFAULT SKIP SOME";
     return traceSkipSomeEnd(defaultSkipSome(atMost));
   }
+  */
 }
 
 namespace arangodb {
@@ -225,24 +333,20 @@ template <>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<EnumerateCollectionExecutor>::skipSome(size_t atMost) {
   LOG_DEVEL << " SKIP ENUM COLL Special case";
   return this->executor().skipRows(atMost);
-  LOG_DEVEL << "after enumerate";
 }
 
 template <>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<IResearchViewExecutor<true>>::skipSome(size_t atMost) {
-  LOG_DEVEL << " SKIP IRESEARCH true case";
   return this->executor().skipRows(atMost);
 }
 
 template <>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<IResearchViewExecutor<false>>::skipSome(size_t atMost) {
-  LOG_DEVEL << " SKIP IRESEARCH false case";
   return this->executor().skipRows(atMost);
 }
 
 template <>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<IndexExecutor>::skipSome(size_t atMost) {
-  LOG_DEVEL << " SKIP INDEX case";
   return this->executor().skipRows(atMost);
 }
 
@@ -250,16 +354,6 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<IndexExecutor>::skipSome(si
 }  // namespace arangodb
 
 /*
-template <class EnumerateCollectionExecutor>
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<EnumerateCollectionExecutor>::enumerateCollectionSkipSome(size_t atMost) {
-  ExecutionState state = ExecutionState::HASMORE;
-  ExecutorStats executorStats{};
-
-    std::tie(state, skipped) = _executor->skipRows(atMost);
-
-  return {res.first, skipped};
-}*/
-
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::defaultSkipSome(size_t atMost) {
   auto res = getSomeWithoutTrace(atMost);
@@ -271,51 +365,48 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::defaultSkipSome(
 
   return {res.first, skipped};
 }
+*/
 
+/*
 template <class Executor>
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::passSkipSome(size_t atMost) {
-  //return _blockFetcher.skipSome(atMost);
-  // return _rowFetcher.skipSome(atMost);
-  if (std::is_same<Fetcher, SingleRowFetcher<true>>::value) {
-    // TODO: maybe remove dynamic cast and implement skipRows for all fetchers
-    return dynamic_cast<SingleRowFetcher<true>&>(_rowFetcher).skipRows(atMost); // todo without cast?
-  } else if (std::is_same<Fetcher, ConstFetcher>::value) {
-    ExecutionState state;
-    InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};;
-    std::tie(state, input) = dynamic_cast<ConstFetcher&>(_rowFetcher).skipRow(); // todo implement me properly
-    if (state == ExecutionState::WAITING) {
-      return {state, 0};
-    } else {
-      return {state, 1};
+std::pair<ExecutionState, size_t>
+ExecutionBlockImpl<Executor>::passSkipSome(size_t atMost) { if
+(std::is_same<Fetcher, SingleRowFetcher<true>>::value) { return
+dynamic_cast<SingleRowFetcher<true>&>(_rowFetcher).skipRows(atMost); } else if
+(std::is_same<Fetcher, ConstFetcher>::value) { ExecutionState state; InputAqlItemRow
+input = InputAqlItemRow{CreateInvalidInputRowHint{}};; std::tie(state, input) =
+dynamic_cast<ConstFetcher&>(_rowFetcher).skipRow(); if (state ==
+ExecutionState::WAITING) { return {state, 0}; } else { return {state, 1};
     }
   }
 
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-}
+}*/
 
-template<bool customInit>
+template <bool customInit>
 struct InitializeCursor {};
 
-template<>
+template <>
 struct InitializeCursor<false> {
-  template<class Executor>
-  static void init(Executor& executor, typename Executor::Fetcher& rowFetcher, typename Executor::Infos& infos) {
+  template <class Executor>
+  static void init(Executor& executor, typename Executor::Fetcher& rowFetcher,
+                   typename Executor::Infos& infos) {
     // destroy and re-create the Executor
     executor.~Executor();
     new (&executor) Executor(rowFetcher, infos);
   }
 };
 
-template<>
+template <>
 struct InitializeCursor<true> {
-  template<class Executor>
-  static void init(Executor& executor, typename Executor::Fetcher&, typename Executor::Infos&) {
+  template <class Executor>
+  static void init(Executor& executor, typename Executor::Fetcher&,
+                   typename Executor::Infos&) {
     // re-initialize the Executor
     executor.initializeCursor();
   }
 };
-
 
 /*
  * Creates a metafunction `checkName` that tests whether a class has a method
@@ -353,8 +444,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   new (&_rowFetcher) Fetcher(_dependencyProxy);
 
   constexpr bool customInit = hasInitializeCursor<Executor>::value;
-  // IndexExecutor and EnumerateCollectionExecutor have initializeCursor implemented,
-  // so assert this implementation is used.
+  // IndexExecutor and EnumerateCollectionExecutor have initializeCursor
+  // implemented, so assert this implementation is used.
   static_assert(!std::is_same<Executor, EnumerateCollectionExecutor>::value || customInit,
                 "EnumerateCollectionExecutor is expected to implement a custom "
                 "initializeCursor method!");
@@ -432,7 +523,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<ShortestPathExecutor>::shut
   }
   return this->executor().shutdown(errorCode);
 }
-
 
 template <>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<KShortestPathsExecutor>::shutdown(int errorCode) {
@@ -530,7 +620,8 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
 
 /// @brief request an AqlItemBlock from the memory manager
 template <class Executor>
-SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems, RegisterId nrRegs) {
+SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
+                                                                 RegisterId nrRegs) {
   return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
 }
 
