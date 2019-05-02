@@ -42,7 +42,7 @@ function optimizerRuleTestSuite () {
       db._dropView(vn);
       db._drop(cn);
       
-      db._create(cn);
+      db._create(cn, { numberOfShards: 3 });
     },
 
     tearDown : function () {
