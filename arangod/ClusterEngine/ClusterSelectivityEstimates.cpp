@@ -63,7 +63,7 @@ IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating, TRI_voc_tid_t t
         }
       }
 
-      // only one thread is allow to fetch at any given time
+      // only one thread is allowed to fetch at any given time
       if (!_updating.test_and_set()) {
         auto guard = scopeGuard([this]() {
           _updating.clear();
