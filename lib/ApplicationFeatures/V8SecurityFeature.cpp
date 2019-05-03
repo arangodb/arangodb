@@ -282,12 +282,9 @@ void V8SecurityFeature::start() {
 }
 
 void V8SecurityFeature::dumpAccessLists() const {
-  LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY) << "files whitelisted by user:";
-  LOG_TOPIC("1babe", DEBUG, arangodb::Logger::SECURITY) << _filesWhitelist;
-  LOG_TOPIC("2bad4", DEBUG, arangodb::Logger::SECURITY) << "interal read whitelist:";
-  LOG_TOPIC("1dead", DEBUG, arangodb::Logger::SECURITY) << _readWhitelist;
-  LOG_TOPIC("beef2", DEBUG, arangodb::Logger::SECURITY) << "internal write whitelist:";
-  LOG_TOPIC("31337", DEBUG, arangodb::Logger::SECURITY) << _writeWhitelist;
+  LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY) << "files whitelisted by user:" << _filesWhitelist;
+  LOG_TOPIC("2bad4", DEBUG, arangodb::Logger::SECURITY) << "interal read whitelist:" << _readWhitelist;
+  LOG_TOPIC("beef2", DEBUG, arangodb::Logger::SECURITY) << "internal write whitelist:" << _writeWhitelist;
 }
 
 
