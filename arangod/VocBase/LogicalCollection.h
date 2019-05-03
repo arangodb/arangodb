@@ -212,7 +212,7 @@ class LogicalCollection : public LogicalDataSource {
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
   /// @param tid the optional transaction ID to use
-  IndexEstMap clusterIndexEstimates(bool allowUpdate, TRI_voc_tid_t tid = 0);
+  IndexEstMap clusterIndexEstimates(bool allowUpdating, TRI_voc_tid_t tid = 0);
 
   /// @brief sets the current index selectivity estimates
   void setClusterIndexEstimates(IndexEstMap&& estimates);

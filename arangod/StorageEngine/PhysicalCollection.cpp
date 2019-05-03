@@ -55,8 +55,8 @@ PhysicalCollection::PhysicalCollection(LogicalCollection& collection,
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
 /// to fetch current values!
-IndexEstMap PhysicalCollection::clusterIndexEstimates(bool allowUpdate,
-                                                      TRI_voc_tick_t tid) const {
+IndexEstMap PhysicalCollection::clusterIndexEstimates(bool allowUpdating,
+                                                      TRI_voc_tick_t tid) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       "cluster index estimates called for non-cluster collection");
