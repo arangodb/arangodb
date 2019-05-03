@@ -309,7 +309,8 @@ bool IndexExecutor::skipIndex(size_t toSkip, IndexStats& stats) {
       continue;
     }
 
-    if (_returned == toSkip) {
+    if (_returned >= toSkip) {
+      TRI_ASSERT(_returned == toSkip);
       // We have skipped enough, do not check if we have more
       return true;
     }
@@ -594,6 +595,6 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
   if (getCursor() != nullptr && getCursor()->hasMore()) {
     return {ExecutionState::HASMORE, stats, _returned};
   } else {
-    return {ExecutionState::DONE, stats, _returned};
+    return {_state, stats, _returned};
   }
 }
