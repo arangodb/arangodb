@@ -293,14 +293,14 @@ char* TRI_GETCWD(char* buffer, int maxlen) {
       memcpy(buffer, rcs.c_str(), rcs.length() + 1);
 
       // tolower on hard-drive letter
-      if (rcs.length() > 1) {
-        if (::isupper(static_cast<unsigned char>(buffer[0]))) {
-          buffer[0] = ::tolower(static_cast<unsigned char>(buffer[0]));
-        }
+      if ((rcs.length() >= 2) &&
+          (buffer[1] == ':') &&
+          (::isupper(static_cast<unsigned char>(buffer[0])))) {
+        buffer[0] = ::tolower(static_cast<unsigned char>(buffer[0]));
       }
       rc = buffer;
     }
-	}
+  }
   return rc;
 }
 
