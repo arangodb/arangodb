@@ -300,31 +300,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
     return traceSkipSomeEnd({res.first, skipped});
   }
 
-  // EXECUTE TEMPLATE FUNCTION
   return traceSkipSomeEnd(ExecuteSkipVariant<customSkipType>::executeSkip(_executor, _rowFetcher, atMost));
-
-  /*
-  // if (Executor::Properties::allowsBlockPassthrough && !std::is_same<Executor, SubqueryExecutor>::value) {  // TODO: check for modifications inside a subquery
-    // TODO forbid modify executors
-    // LOG_DEVEL << "PASS SKIP SOME route";
-    if (std::is_same<Fetcher, SingleRowFetcher<true>>::value) {
-      customSkipType = SkipVariants::SKIPROWS;
-    } else if (std::is_same<Fetcher, ConstFetcher>::value) {
-      customSkipType = SkipVariants::SKIPROW;
-      return traceSkipSomeEnd(passSkipSome(atMost));
-    } else {
-      return traceSkipSomeEnd(defaultSkipSome(atMost));
-    }
-  } else if (std::is_same<Executor, EnumerateCollectionExecutor>::value) {
-    return traceSkipSomeEnd(skipSome((atMost)));
-  } else if (std::is_same<Executor, IResearchViewExecutor<true>>::value) {
-    return traceSkipSomeEnd(defaultSkipSome(atMost));
-  } else if (std::is_same<Executor, IResearchViewExecutor<false>>::value) {
-    return traceSkipSomeEnd(skipSome((atMost)));
-  } else {
-    return traceSkipSomeEnd(defaultSkipSome(atMost));
-  }
-  */
 }
 
 namespace arangodb {
@@ -352,37 +328,6 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<IndexExecutor>::skipSome(si
 
 }  // namespace aql
 }  // namespace arangodb
-
-/*
-template <class Executor>
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::defaultSkipSome(size_t atMost) {
-  auto res = getSomeWithoutTrace(atMost);
-
-  size_t skipped = 0;
-  if (res.second != nullptr) {
-    skipped = res.second->size();
-  }
-
-  return {res.first, skipped};
-}
-*/
-
-/*
-template <class Executor>
-std::pair<ExecutionState, size_t>
-ExecutionBlockImpl<Executor>::passSkipSome(size_t atMost) { if
-(std::is_same<Fetcher, SingleRowFetcher<true>>::value) { return
-dynamic_cast<SingleRowFetcher<true>&>(_rowFetcher).skipRows(atMost); } else if
-(std::is_same<Fetcher, ConstFetcher>::value) { ExecutionState state; InputAqlItemRow
-input = InputAqlItemRow{CreateInvalidInputRowHint{}};; std::tie(state, input) =
-dynamic_cast<ConstFetcher&>(_rowFetcher).skipRow(); if (state ==
-ExecutionState::WAITING) { return {state, 0}; } else { return {state, 1};
-    }
-  }
-
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-}*/
 
 template <bool customInit>
 struct InitializeCursor {};

@@ -201,14 +201,6 @@ std::pair<ExecutionState, size_t> EnumerateCollectionExecutor::skipRows(size_t t
     return {ExecutionState::DONE, actuallySkipped};
   }
 
-  /* TODO: just a note, we do not need those checks, because we always run into hasmore
-  if (actuallySkipped < toSkip) {
-    return {ExecutionState::HASMORE, stats};
-  }
-  if (actuallySkipped == 0) {
-    return {ExecutionState::HASMORE, stats};
-  }*/
-
   return {ExecutionState::HASMORE, actuallySkipped};
 }
 

@@ -291,26 +291,6 @@ bool readPK(irs::doc_iterator& it, irs::columnstore_reader::values_reader_f cons
   return false;
 }
 
-/*
-template <bool ordered>
-bool IResearchViewExecutor<ordered>::readRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
-  LocalDocumentId const& documentId = _indexReadBuffer.getId(bufferEntry);
-  TRI_ASSERT(documentId.isSet());
-
-  std::shared_ptr<arangodb::LogicalCollection> const& collection =
-      _indexReadBuffer.getCollection();
-  TRI_ASSERT(collection != nullptr);
-
-  ManagedDocumentResult mdr; // TODO: we do not need any stored value. Optimize?
-  // read document from underlying storage engine, if we got an id
-  if (collection->readDocument(infos().getQuery().trx(), documentId, mdr)) {
-    // in the ordered case we have to write scores as well as a document
-    return true;
-  }
-
-  return false;
-}*/
-
 template <bool ordered>
 bool IResearchViewExecutor<ordered>::writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
   LocalDocumentId const& documentId = _indexReadBuffer.getId(bufferEntry);
