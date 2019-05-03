@@ -66,7 +66,7 @@ the decimal separator, i.e `0.1234`.
 
 AQL now allows to perform k Shortest Paths queries, that is, query a number of
 paths of increasing length from a start vertex to a target vertex. For more details,
-see the [k Shortest Paths documentation](../../AQL/Graphs/KShortestPaths.md).
+see the [k Shortest Paths documentation](../../AQL/Graphs/KShortestPaths.html).
 
 
 Smart Joins

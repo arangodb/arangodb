@@ -1,5 +1,5 @@
 k Shortest Paths in AQL
-==============================
+=======================
 
 General query idea
 --------------------
@@ -10,49 +10,83 @@ your graph.
 
 Every such path will be returned as a JSON object with three components:
 
-1. an array containing the `verticex` on the path,
-2. an array containing the `edges` on the path, and
-3. the `weight` of the path, that is the sum of all edge weights.
+- an array containing the `vertices` on the path
+- an array containing the `edges` on the path
+- the `weight` of the path, that is the sum of all edge weights
 
 If no *weightAttribute* is given, the weight of the path is just its length.
 
-### Example execution
+**Example**
 
-Let's take a look at a simple example to explain how it works.
+Let su take a look at a simple example to explain how it works.
 This is the graph that we are going to find some shortest path on:
 
 ![train_map](train_map.png)
 
-Let us assume 
+Each ellipse stands for a train station with the name of the city written inside
+of it. They are the vertices of the graph. Arrows represent train connections
+between cities and are the edges of the graph. The numbers near the arrows
+describe how long it takes to get from one station to another. They are used
+as edge weights.
 
-1. We start at the vertex **Aberdeen**.
-2. We finish with the vertex **London**.
+Let us assume that we want to go from **Aberdeen** to **London** by train.
 
-We expect to see the vertices **Aberdeen**, **Leuchars**, **Edinburgh** and **York**
-and **London** on *the* shortest path, in this order. An alternative path, which is slightly longer
-goes from **Aberdeen**, **Leuchars**, **Edinburgh**, **York**, **Carlisle**, **Birmingham**, **London**
+We expect to see the following vertices on *the* shortest path, in this order:
 
-Taking into account edge weights, the second path deviates, because the route
-**Aberdeen**, **Leuchars**, **Edinburgh**, **Glasgow**, **Carlisle**,
-**Birmingham**, **London** is quicker.
+1. Aberdeen
+2. Leuchars
+3. Edinburgh
+4. York
+5. London
+
+By the way, the weight of the path is: 1.5 + 1.5 + 3.5 + 1.8 = **8.3**.
+
+Let us look at alternative paths next, for example because we know that the
+direct connection between York and London does not operate currently.
+An alternative path, which is slightly longer, goes like this:
+
+1. Aberdeen
+2. Leuchars
+3. Edinburgh
+4. York
+5. **Carlisle**
+6. **Birmingham**
+7. London
+
+Its weight is: 1.5 + 1.5 + 3.5 + 2.0 + 1.5 = **10.0**.
+
+Another route goes via Glasgow. There are seven stations on the path as well,
+however, it is quicker if we compare the edge weights:
+
+1. Aberdeen
+2. Leuchars
+3. Edinburgh
+4. **Glasgow**
+5. Carlisle
+6. Birmingham
+7. London
+
+The path weight is lower: 1.5 + 1.5 + 1.0 + 1.0 + 2.0 + 1.5 = **8.5**.
 
 Syntax
 ------
 
-The syntax for k Shortest Paths queries is similar to the one for [Shortest Path](ShortestPath.md).
-You have two options: either use a named graph, or a set of edge
-collections.
+The syntax for k Shortest Paths queries is similar to the one for
+[Shortest Path](ShortestPath.md) and there are also two options to either
+use a named graph or a set of edge collections. It only emits a path
+variable however, whereas SHORTEST_PATH emits a vertex and an edge variable.
 
 {% hint 'warning' %}
-It is highly recommended that you use a **LIMIT** statement,
-as k Shortest Paths is a potentially expensive operation. On large connected graphs it can return 
-a large number of paths, or perform an expensive (but unsuccessful) search for more short paths.
+It is highly recommended that you use a **LIMIT** statement, as
+k Shortest Paths is a potentially expensive operation. On large connected
+graphs it can return a large number of paths, or perform an expensive
+(but unsuccessful) search for more short paths.
 {% endhint %}
 
 ### Working with named graphs
 
 ```
-FOR path 
+FOR path
   IN OUTBOUND|INBOUND|ANY K_SHORTEST_PATHS
   startVertex TO targetVertex
   GRAPH graphName
@@ -61,13 +95,13 @@ FOR path
 ```
 
 - `FOR`: emits the variable **path** which contains one path as an object containing 
-   vertices, edges, and the weight of the path.
+   `vertices`, `edges`, and the `weight` of the path.
 - `IN` `OUTBOUND|INBOUND|ANY`: defines in which direction
   edges are followed (outgoing, incoming, or both)
 - `K_SHORTEST_PATHS`: the keyword to compute k Shortest Paths
 - **startVertex** `TO` **targetVertex** (both string|object): the two vertices between
   which the paths will be computed. This can be specified in the form of
-  an ID string or in the form of a document with the attribute `_id`. All other
+  a ID string or in the form of a document with the attribute `_id`. All other
   values will lead to a warning and an empty result. If one of the specified
   documents does not exist, the result is empty as well and there is no warning.
 - `GRAPH` **graphName** (string): the name identifying the named graph. Its vertex and
@@ -80,8 +114,8 @@ FOR path
   - **defaultWeight** (number): this value will be used as fallback if there is
   no *weightAttribute* in the edge document, or if it's not a number. The default
   is 1.
-- `LIMIT` (as described [here](../Operations/Limit.html), *optional*) the
-  maximal number of paths to return. It is highly recommended to use
+- `LIMIT` (see [LIMIT operation](../Operations/Limit.html), *optional*):
+  the maximal number of paths to return. It is highly recommended to use
   a `LIMIT` for `K_SHORTEST_PATHS`.
 
 ### Working with collection sets
@@ -115,14 +149,14 @@ FOR vertex IN OUTBOUND K_SHORTEST_PATHS
 ```
 
 All collections in the list that do not specify their own direction will use the
-direction defined after *IN* (here: *OUTBOUND*). This allows to use a different
+direction defined after `IN` (here: `OUTBOUND`). This allows to use a different
 direction for each collection in your path search.
 
 Examples
 --------
 
-We create a graph that reflects some possible train connections in Europe and North America.
-This graph has no claim to accuracy or completeness.
+We load an example graph to get a named graph that reflects some possible
+train connections in Europe and North America.
 
 ![train_map](train_map.png)
 
@@ -157,7 +191,7 @@ Next, we can ask for more than one option for a route:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHKSP_03_Aberdeen_to_London
     
-Or, we can ask for routes that don't exist:
+If we ask for routes that don't exist we get an empty result:
 
     @startDocuBlockInline GRAPHKSP_04_Aberdeen_to_Toronto
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_04_Aberdeen_to_Toronto}
@@ -165,7 +199,8 @@ Or, we can ask for routes that don't exist:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHKSP_04_Aberdeen_to_Toronto
     
-Or, we can use the attribute *travelTime* that connections have to take into account which connections are quicker:
+We can use the attribute *travelTime* that connections have as edge weights to
+take into account which connections are quicker:
 
     @startDocuBlockInline GRAPHKSP_05_StAndrews_to_Cologne
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_05_StAndrews_to_Cologne}
@@ -173,7 +208,7 @@ Or, we can use the attribute *travelTime* that connections have to take into acc
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHKSP_05_StAndrews_to_Cologne
 
-And finally clean it up again:
+And finally clean up by removing the named graph:
 
     @startDocuBlockInline GRAPHKSP_99_drop_graph
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_99_drop_graph}
