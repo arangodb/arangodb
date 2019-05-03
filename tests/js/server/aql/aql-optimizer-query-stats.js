@@ -71,7 +71,7 @@ function optimizerQueryStatsTestSuite () {
       let stats = db._query("FOR doc IN " + c.name() + " LIMIT 500, 1000 RETURN doc").getExtra().stats;
 
       assertEqual(0, stats.filtered);
-      assertEqual(500, stats.scannedFull);
+      assertEqual(1000, stats.scannedFull);
       assertEqual(0, stats.scannedIndex);
     },
 
