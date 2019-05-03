@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchViewExecutor.h"
-#include <arangod/VocBase/ManagedDocumentResult.h>
+#include "VocBase/ManagedDocumentResult.h"
 
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
