@@ -58,7 +58,7 @@ std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow() {
   return {rowState, InputAqlItemRow{_currentBlock, _rowIndex++}};
 }
 
-std::pair<ExecutionState, size_t> ConstFetcher::skipRow() {
+std::pair<ExecutionState, size_t> ConstFetcher::skipRows(size_t) {
   // This fetcher never waits because it can return only its
   // injected block and does not have the ability to pull.
   if (!indexIsValid()) {

@@ -63,6 +63,33 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+/*
+ * Creates a metafunction `checkName` that tests whether a class has a method
+ * named `methodName`, used like this:
+ *
+ * CREATE_HAS_MEMBER_CHECK(someMethod, hasSomeMethod);
+ * ...
+ * constexpr bool someClassHasSomeMethod = hasSomeMethod<SomeClass>::value;
+ */
+
+#define CREATE_HAS_MEMBER_CHECK(methodName, checkName)  \
+  template <typename T>                                 \
+  class checkName {                                     \
+    typedef char yes[1];                                \
+    typedef char no[2];                                 \
+                                                        \
+    template <typename C>                               \
+    static yes& test(decltype(&C::methodName));         \
+    template <typename>                                 \
+    static no& test(...);                               \
+                                                        \
+   public:                                              \
+    enum { value = sizeof(test<T>(0)) == sizeof(yes) }; \
+  }
+
+CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
+CREATE_HAS_MEMBER_CHECK(skipRows, hasSkipRows);
+
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
@@ -188,23 +215,13 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
 namespace arangodb {
 namespace aql {
 
-enum class SkipVariants { SKIPROW, SKIPROWS, EXECUTOR, DEFAULT };
+enum class SkipVariants { FETCHER, EXECUTOR, DEFAULT };
 
 template <enum SkipVariants>
 struct ExecuteSkipVariant {};
 
 template <>
-struct ExecuteSkipVariant<SkipVariants::SKIPROW> {
-  template <class Executor>
-  static std::pair<ExecutionState, size_t> executeSkip(Executor& executor,
-                                                       typename Executor::Fetcher& fetcher,
-                                                       size_t toSkip) {
-    return fetcher.skipRow();
-  }
-};
-
-template <>
-struct ExecuteSkipVariant<SkipVariants::SKIPROWS> {
+struct ExecuteSkipVariant<SkipVariants::FETCHER> {
   template <class Executor>
   static std::pair<ExecutionState, size_t> executeSkip(Executor& executor,
                                                        typename Executor::Fetcher& fetcher,
@@ -236,22 +253,30 @@ struct ExecuteSkipVariant<SkipVariants::DEFAULT> {
 
 template <class Executor>
 static SkipVariants constexpr skipType() {
-  // TODO: Add subquery modification check - still missing
-  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough &&
-                      !std::is_same<Executor, SubqueryExecutor<true>>::value) {
-    if (std::is_same<typename Executor::Fetcher, SingleRowFetcher<true>>::value) {
-      return SkipVariants::SKIPROWS;
-    } else if (std::is_same<typename Executor::Fetcher, ConstFetcher>::value) {
-      return SkipVariants::SKIPROW;
-    } else {
-      return SkipVariants::DEFAULT;
-    }
-  } else if (std::is_same<Executor, EnumerateCollectionExecutor>::value) {
+  bool constexpr useFetcher = Executor::Properties::allowsBlockPassthrough &&
+                              !std::is_same<Executor, SubqueryExecutor<true>>::value;
+
+  bool constexpr useExecutor = hasSkipRows<Executor>::value;
+
+  static_assert(useFetcher ==
+                    (std::is_same<typename Executor::Fetcher, ConstFetcher>::value ||
+                     (std::is_same<typename Executor::Fetcher, SingleRowFetcher<true>>::value &&
+                      !std::is_same<Executor, SubqueryExecutor<true>>::value)),
+                "Unexpected fetcher for SkipVariants::FETCHER");
+
+  static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
+                "Fetcher is chosen for skipping, but has not skipRows method!");
+
+  static_assert(useExecutor ==
+                    (std::is_same<Executor, IndexExecutor>::value ||
+                     std::is_same<Executor, IResearchViewExecutor<false>>::value ||
+                     std::is_same<Executor, EnumerateCollectionExecutor>::value),
+                "Unexpected executor for SkipVariants::EXECUTOR");
+
+  if (useExecutor) {
     return SkipVariants::EXECUTOR;
-  } else if (std::is_same<Executor, IResearchViewExecutor<true>>::value) {
-    return SkipVariants::DEFAULT;
-  } else if (std::is_same<Executor, IResearchViewExecutor<false>>::value) {
-    return SkipVariants::EXECUTOR;
+  } else if (useFetcher) {
+    return SkipVariants::FETCHER;
   } else {
     return SkipVariants::DEFAULT;
   }
@@ -266,16 +291,6 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
 
   constexpr SkipVariants customSkipType = skipType<Executor>();
 
-  // ConstFetcher has skipRow implemented,
-  // so assert this implementation is used.
-  static_assert(!std::is_same<Fetcher, ConstFetcher>::value ||
-                    customSkipType == SkipVariants::SKIPROW,
-                "ConstFetcher is expected to implement a custom "
-                "skipRow method!");
-  /*static_assert(!std::is_same<Fetcher, SingleRowFetcher<true>>::value ||
-     customSkipType == SkipVariants::SKIPROWS, "SingleRowFetcher with enabled
-     PassThrough is expected to implement a custom " "skipRows method!");*/ // TODO RE ADD
-
   if (customSkipType == SkipVariants::DEFAULT) {
     auto res = getSomeWithoutTrace(atMost);
 
@@ -287,7 +302,8 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
     return traceSkipSomeEnd({res.first, skipped});
   }
 
-  return traceSkipSomeEnd(ExecuteSkipVariant<customSkipType>::executeSkip(_executor, _rowFetcher, atMost));
+  return traceSkipSomeEnd(
+      ExecuteSkipVariant<customSkipType>::executeSkip(_executor, _rowFetcher, atMost));
 }
 
 namespace arangodb {
@@ -339,32 +355,6 @@ struct InitializeCursor<true> {
     executor.initializeCursor();
   }
 };
-
-/*
- * Creates a metafunction `checkName` that tests whether a class has a method
- * named `methodName`, used like this:
- *
- * CREATE_HAS_MEMBER_CHECK(someMethod, hasSomeMethod);
- * ...
- * constexpr bool someClassHasSomeMethod = hasSomeMethod<SomeClass>::value;
- */
-
-#define CREATE_HAS_MEMBER_CHECK(methodName, checkName)  \
-  template <typename T>                                 \
-  class checkName {                                     \
-    typedef char yes[1];                                \
-    typedef char no[2];                                 \
-                                                        \
-    template <typename C>                               \
-    static yes& test(decltype(&C::methodName));         \
-    template <typename>                                 \
-    static no& test(...);                               \
-                                                        \
-   public:                                              \
-    enum { value = sizeof(test<T>(0)) == sizeof(yes) }; \
-  }
-
-CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
 
 template <class Executor>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
