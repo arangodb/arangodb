@@ -30,6 +30,7 @@
 
 const fs = require('fs');
 const internal = require('internal');
+const escapePath = (s) => { return s.replace('\\','\\\\'); };
 
 //  first inst - tmp  --                 /tmp/xxx-arangosh/
 //  first inst - rootDir  --             /tmp/xxx-arangosh/permissions
@@ -150,10 +151,10 @@ if (getOptions === true) {
   return {
     'temp.path': subInstanceTemp,     // Adjust the temp-path to match our current temp path
     'javascript.files-whitelist': [
-      '^' + testResults,
-      '^' + topLevelAllowed,
-      '^' + subLevelAllowed,
-      '^' + topLevelAllowedRecursive
+     escapePath('^' + testResults),
+     escapePath('^' + topLevelAllowed),
+     escapePath('^' + subLevelAllowed),
+     escapePath('^' + topLevelAllowedRecursive)
     ]
   };
 }
