@@ -604,6 +604,6 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
     return {ExecutionState::HASMORE, stats, _returned};
   } else {
     _done = true;
-    return {ExecutionState::DONE, stats, _returned};
+    return {_state, stats, _returned};
   }
 }
