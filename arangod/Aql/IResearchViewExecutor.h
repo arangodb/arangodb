@@ -205,7 +205,7 @@ class IResearchViewExecutorBase {
      public:
       ScoreIterator() = delete;
       inline ScoreIterator(std::vector<AqlValue>& scoreBuffer,
-                           std::size_t keyIdx, std::size_t numScores) noexcept
+                           std::size_t keyIdx, std::size_t numScores)
           : _scoreBuffer(scoreBuffer),
             _scoreBaseIdx(keyIdx * numScores),
             _numScores(numScores) {

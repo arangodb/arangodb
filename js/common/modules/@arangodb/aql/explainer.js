@@ -1094,7 +1094,7 @@ function processQuery(query, explain, planIndex) {
           condition = keyword(' SEARCH ') + buildExpression(node.condition);
         }
 
-        var sortCondition = ''
+        var sortCondition = '';
         if (node.primarySort && Array.isArray(node.primarySort)) {
           sortCondition = keyword(' SORT ') + node.primarySort.map(function (element) {
             return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.direction ? 'ASC' : 'DESC');
