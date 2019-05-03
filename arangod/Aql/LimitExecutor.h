@@ -81,7 +81,7 @@ class LimitExecutor {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
     /* This could be set to true after some investigation/fixes */
-    static const bool inputSizeRestrictsOutputSize = false; // TODO set to true again, as soon as expectedNumberOfRows calls skipSome when necessary
+    static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = LimitExecutorInfos;
