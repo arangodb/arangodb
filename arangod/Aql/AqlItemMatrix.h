@@ -145,7 +145,7 @@ class AqlItemMatrix {
         size_t const numBlocksRightFromHere = maxIndex - mostLikelyIndex;
         mostLikelyIndex += 1 + numBlocksRightFromHere / 2;
       } else {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if 0
         LOG_TOPIC_IF("c8c68", WARN, Logger::AQL, iterations > 1)
             << "Suboptimal AqlItemMatrix index lookup: Did " << iterations
             << " iterations.";
