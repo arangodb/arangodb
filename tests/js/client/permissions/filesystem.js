@@ -30,7 +30,7 @@
 
 const fs = require('fs');
 const internal = require('internal');
-const escapePath = (s) => { return s.replace('\\','\\\\'); };
+const escapePath = (s) => { return s.replace(/\\/g,'\\\\'); };
 
 //  first inst - tmp  --                 /tmp/xxx-arangosh/
 //  first inst - rootDir  --             /tmp/xxx-arangosh/permissions
