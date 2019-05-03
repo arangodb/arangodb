@@ -6213,8 +6213,6 @@ struct GeoIndexInfo {
   AstNode const* maxDistanceExpr = nullptr;
   // Was operator > or >= used
   bool maxInclusive = true;
-  /// for WITHIN, we know we need to scan the full range, so do it in one pass
-  bool fullRange = false;
 
   // ============ Near Info ============
   bool sorted = false;
@@ -6733,7 +6731,6 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   IndexIteratorOptions opts;
   opts.sorted = info.sorted;
   opts.ascending = info.ascending;
-  // opts.fullRange = info.fullRange;
   opts.limit = limit;
   opts.evaluateFCalls = false;  // workaround to avoid evaluating "doc.geo"
   std::unique_ptr<Condition> condition(buildGeoCondition(plan, info));
