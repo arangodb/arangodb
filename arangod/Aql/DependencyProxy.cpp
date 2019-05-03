@@ -134,9 +134,9 @@ DependencyProxy<allowBlockPassthrough>::skipSome(size_t const toSkip) {
 
   TRI_ASSERT(toSkip > 0);
   size_t totallySkipped = 0;
+  ExecutionState state = ExecutionState::HASMORE;
 
   while (totallySkipped < toSkip) {
-    ExecutionState state;
     size_t skipped = 0;
 
     // Note: upstreamBlock will return next dependency
@@ -156,7 +156,7 @@ DependencyProxy<allowBlockPassthrough>::skipSome(size_t const toSkip) {
     }
   }
 
-  return {ExecutionState::DONE, totallySkipped};
+  return {state, totallySkipped};
 }
 
 
