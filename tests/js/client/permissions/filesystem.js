@@ -45,23 +45,15 @@ const escapePath = (s) => { return s.replace(/\\/g,'\\\\'); };
 
 let rootDir = fs.join(fs.getTempPath(), '..');
 let subInstanceTemp; //not set for subinstance
-let testResults = fs.join(fs.getTempPath(), 'testresult.json'); // where we want to put our results ;-)
 let testFilesDir = fs.join(rootDir, 'test_file_tree');
 
 if (getOptions === true) {
   rootDir = fs.join(fs.getTempPath(), 'permissions');
   subInstanceTemp = fs.join(rootDir, 'subinstance_temp_directory');
-  testResults = fs.join(subInstanceTemp, 'testresult.json'); // where we want to put our results ;-)
   testFilesDir = fs.join(rootDir, 'test_file_tree');
   fs.makeDirectoryRecursive(subInstanceTemp);
   fs.makeDirectoryRecursive(testFilesDir);
 
-  //create al symlink from subinstance test result to test result expecte by calling arangosh
-  let callerResult = fs.join(rootDir, 'testresult.json');
-  try {
-    fs.remove(callerResult);
-  } catch(ex) {}
-  fs.linkFile(testResults, callerResult);
 }
 
 
@@ -147,11 +139,10 @@ if (getOptions === true) {
   fs.write(topLevelForbiddenReadJSONFile, JSONText);
   fs.write(subLevelAllowedReadJSONFile, JSONText);
 
-
   return {
     'temp.path': subInstanceTemp,     // Adjust the temp-path to match our current temp path
     'javascript.files-whitelist': [
-     escapePath('^' + testResults),
+     escapePath('^' + process.env['RESULT']),
      escapePath('^' + topLevelAllowed),
      escapePath('^' + subLevelAllowed),
      escapePath('^' + topLevelAllowedRecursive)

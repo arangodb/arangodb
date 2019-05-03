@@ -260,15 +260,23 @@ function permissions(options) {
 
   tests.forEach(function (f, i) {
     if (tu.filterTestcaseByOptions(f, options, filtered)) {
+      let t = f.split(fs.pathSeparator);
+      let testName = t[t.length - 1].replace(/\.js/, '');
+      let instanceRoot = fs.join(rootDir, testName);
+      let testResultJson = fs.join(instanceRoot, 'testresult.json');;
+      process.env['RESULT'] = testResultJson
+      fs.makeDirectoryRecursive(instanceRoot);
+      pu.cleanupDBDirectoriesAppend(instanceRoot);
+
       let content = fs.read(f);
       content = `(function(){ const getOptions = true; ${content} 
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
-
       let testOptions = executeScript(content, true, f);
+
       res[f] = tu.runInArangosh(options,
                                 {
                                   endpoint: 'tcp://127.0.0.1:8888',
-                                  rootDir: rootDir
+                                  rootDir: instanceRoot
                                 },
                                 f,
                                 testOptions
