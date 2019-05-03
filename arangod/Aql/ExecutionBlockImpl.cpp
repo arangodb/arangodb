@@ -236,7 +236,7 @@ struct ExecuteSkipVariant<SkipVariants::EXECUTOR> {
   static std::pair<ExecutionState, size_t> executeSkip(Executor& executor,
                                                        typename Executor::Fetcher& fetcher,
                                                        size_t toSkip) {
-    return executor().skipRows(toSkip);
+    return executor.skipRows(toSkip);
   }
 };
 
@@ -258,6 +258,8 @@ static SkipVariants constexpr skipType() {
 
   bool constexpr useExecutor = hasSkipRows<Executor>::value;
 
+  // ConstFetcher and SingleRowFetcher<true> can skip, but it may not be done
+  // for modification subqueries.
   static_assert(useFetcher ==
                     (std::is_same<typename Executor::Fetcher, ConstFetcher>::value ||
                      (std::is_same<typename Executor::Fetcher, SingleRowFetcher<true>>::value &&
@@ -270,6 +272,7 @@ static SkipVariants constexpr skipType() {
   static_assert(useExecutor ==
                     (std::is_same<Executor, IndexExecutor>::value ||
                      std::is_same<Executor, IResearchViewExecutor<false>>::value ||
+                     std::is_same<Executor, IResearchViewExecutor<true>>::value ||
                      std::is_same<Executor, EnumerateCollectionExecutor>::value),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
@@ -305,32 +308,6 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
   return traceSkipSomeEnd(
       ExecuteSkipVariant<customSkipType>::executeSkip(_executor, _rowFetcher, atMost));
 }
-
-namespace arangodb {
-namespace aql {
-template <>
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<EnumerateCollectionExecutor>::skipSome(size_t atMost) {
-  LOG_DEVEL << " SKIP ENUM COLL Special case";
-  return this->executor().skipRows(atMost);
-}
-
-template <>
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<IResearchViewExecutor<true>>::skipSome(size_t atMost) {
-  return this->executor().skipRows(atMost);
-}
-
-template <>
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<IResearchViewExecutor<false>>::skipSome(size_t atMost) {
-  return this->executor().skipRows(atMost);
-}
-
-template <>
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<IndexExecutor>::skipSome(size_t atMost) {
-  return this->executor().skipRows(atMost);
-}
-
-}  // namespace aql
-}  // namespace arangodb
 
 template <bool customInit>
 struct InitializeCursor {};

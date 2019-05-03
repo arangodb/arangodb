@@ -128,42 +128,35 @@ DependencyProxy<passBlocksThrough>::fetchBlockForDependency(size_t dependency, s
 
 template <bool allowBlockPassthrough>
 std::pair<ExecutionState, size_t>
-DependencyProxy<allowBlockPassthrough>::skipSome(size_t toSkip) {
+DependencyProxy<allowBlockPassthrough>::skipSome(size_t const toSkip) {
   TRI_ASSERT(_blockPassThroughQueue.empty());
   TRI_ASSERT(_blockQueue.empty());
 
   TRI_ASSERT(toSkip > 0);
-  ExecutionState state;
   size_t totallySkipped = 0;
 
   while (totallySkipped < toSkip) {
+    ExecutionState state;
     size_t skipped = 0;
 
     // Note: upstreamBlock will return next dependency
     // if we need to loop here
-    std::tie(state, skipped) = upstreamBlock().skipSome(toSkip);
-    TRI_IF_FAILURE("ExecutionBlock::getBlock") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    std::tie(state, skipped) = upstreamBlock().skipSome(toSkip - totallySkipped);
+
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(skipped == 0);
+      return {state, 0};
     }
 
     totallySkipped += skipped;
 
-    if (state == ExecutionState::WAITING) {
-      return {state, 0};
-    }
-
-    if (skipped == toSkip) {
-      return {state, skipped};
-    }
-
-    if (!advanceDependency()) {
-      return {state, skipped};
-    } else {
-      return {ExecutionState::HASMORE, skipped};
+    // When the current dependency is done, advance.
+    if (state == ExecutionState::DONE && !advanceDependency()) {
+      return {state, totallySkipped};
     }
   }
 
-  return {ExecutionState::DONE, 0};
+  return {ExecutionState::DONE, totallySkipped};
 }
 
 
