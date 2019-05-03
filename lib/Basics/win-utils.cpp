@@ -277,27 +277,31 @@ int TRI_STAT(char const* path, TRI_stat_t* buffer) {
 }
 
 char* TRI_GETCWD(char* buffer, int maxlen) {
-  char* rc = nullptr;
-  wchar_t* rcw;
-  int wBufLen = maxlen;
-  wchar_t* wbuf = (wchar_t*)malloc(wBufLen * sizeof(wchar_t));
 
-  if (wbuf == nullptr) {
+  char* rc = nullptr;
+  std::string in(buffer);
+  std::wsting win = toWString(in);
+  if (win.empty()) {
     return nullptr;
   }
-  rcw = ::_wgetcwd(wbuf, wBufLen);
 
+  wchar_t* rcw = ::_wgetcwd(win.data(), win.size());
   if (rcw != nullptr) {
-    std::string rcs;
-
-    icu::UnicodeString d(wbuf, static_cast<int32_t>(wcslen(wbuf)));
-    d.toUTF8String<std::string>(rcs);
+    std::string rcs = fromWString(rcw);
     if (rcs.length() + 1 < maxlen) {
       memcpy(buffer, rcs.c_str(), rcs.length() + 1);
+
+      //tolower on hard-drive letter
+      if(rcs.length() > 1){
+        if(std::isupper(static_cast<unsigned char>(buffer[0]))){
+          buffer[0] = std::tolower(static_cast<unsigned char>(buffer[0]);
+        }
+      }
+
       rc = buffer;
     }
   }
-  free(wbuf);
+
   return rc;
 }
 
