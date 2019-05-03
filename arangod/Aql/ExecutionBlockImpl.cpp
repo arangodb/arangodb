@@ -223,19 +223,18 @@ struct ExecuteSkipVariant {};
 template <>
 struct ExecuteSkipVariant<SkipVariants::FETCHER> {
   template <class Executor>
-  static std::pair<ExecutionState, size_t> executeSkip(Executor& executor,
-                                                       typename Executor::Fetcher& fetcher,
-                                                       size_t toSkip) {
-    return fetcher.skipRows(toSkip);
+  static std::tuple<ExecutionState, typename Executor::Stats, size_t> executeSkip(
+      Executor& executor, typename Executor::Fetcher& fetcher, size_t toSkip) {
+    auto res = fetcher.skipRows(toSkip);
+    return {res.first, typename Executor::Stats{}, res.second};
   }
 };
 
 template <>
 struct ExecuteSkipVariant<SkipVariants::EXECUTOR> {
   template <class Executor>
-  static std::pair<ExecutionState, size_t> executeSkip(Executor& executor,
-                                                       typename Executor::Fetcher& fetcher,
-                                                       size_t toSkip) {
+  static std::tuple<ExecutionState, typename Executor::Stats, size_t> executeSkip(
+      Executor& executor, typename Executor::Fetcher& fetcher, size_t toSkip) {
     return executor.skipRows(toSkip);
   }
 };
@@ -243,9 +242,8 @@ struct ExecuteSkipVariant<SkipVariants::EXECUTOR> {
 template <>
 struct ExecuteSkipVariant<SkipVariants::DEFAULT> {
   template <class Executor>
-  static std::pair<ExecutionState, size_t> executeSkip(Executor& executor,
-                                                       typename Executor::Fetcher& fetcher,
-                                                       size_t toSkip) {
+  static std::tuple<ExecutionState, typename Executor::Stats, size_t> executeSkip(
+      Executor& executor, typename Executor::Fetcher& fetcher, size_t toSkip) {
     // this function should never be executed
     TRI_ASSERT(false);
   }
@@ -305,8 +303,13 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
     return traceSkipSomeEnd({res.first, skipped});
   }
 
-  return traceSkipSomeEnd(
-      ExecuteSkipVariant<customSkipType>::executeSkip(_executor, _rowFetcher, atMost));
+  ExecutionState state;
+  typename Executor::Stats stats;
+  size_t skipped;
+  std::tie(state, stats, skipped) =
+      ExecuteSkipVariant<customSkipType>::executeSkip(_executor, _rowFetcher, atMost);
+
+  return traceSkipSomeEnd(state, skipped);
 }
 
 template <bool customInit>

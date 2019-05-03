@@ -199,35 +199,41 @@ IResearchViewExecutor<ordered>::produceRows(OutputAqlItemRow& output) {
 }
 
 template <bool ordered>
-std::pair<ExecutionState, size_t>
+std::tuple<ExecutionState, typename IResearchViewExecutor<ordered>::Stats, size_t>
 IResearchViewExecutor<ordered>::skipRows(size_t toSkip) {
   TRI_ASSERT(_indexReadBuffer.empty());
+  IResearchViewStats stats{};
   size_t skipped = 0;
 
   if (!_inputRow.isInitialized()) {
     if (_upstreamState == ExecutionState::DONE) {
       // There will be no more rows, stop fetching.
-      return {ExecutionState::DONE, 0};
+      return {ExecutionState::DONE, stats, 0};
     }
 
     std::tie(_upstreamState, _inputRow) = _fetcher.fetchRow();
 
     if (_upstreamState == ExecutionState::WAITING) {
-      return {_upstreamState, 0};
+      return {_upstreamState, stats, 0};
     }
 
     if (!_inputRow.isInitialized()) {
-      return {ExecutionState::DONE, 0};
+      return {ExecutionState::DONE, stats, 0};
     }
 
     // reset must be called exactly after we've got a new and valid input row.
     reset();
-
-    skipped = skip(toSkip);
-    return {ExecutionState::HASMORE, skipped};
   }
 
-  return {ExecutionState::HASMORE, skipped};
+  TRI_ASSERT(_inputRow.isInitialized());
+
+  skipped = skip(toSkip);
+  stats.incrScanned(skipped);
+  if (skipped < toSkip) {
+    _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  }
+
+  return {ExecutionState::HASMORE, stats, skipped};
 }
 
 
@@ -475,24 +481,6 @@ size_t IResearchViewExecutor<ordered>::skip(size_t limit) {
     ++_readerOffset;
     _itr.reset();
   }
-
-  // CID is constant until the next resetIterator(). Save the corresponding
-  // collection so we don't have to look it up every time.
-
-  TRI_voc_cid_t const cid = _reader->cid(_readerOffset);
-  Query& query = infos().getQuery();
-  std::shared_ptr<arangodb::LogicalCollection> collection =
-      lookupCollection(*query.trx(), cid, query);
-
-  if (!collection) {
-    std::stringstream msg;
-    msg << "failed to find collection while reading document from "
-           "arangosearch view, cid '"
-        << cid << "'";
-    query.registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
-  }
-
-  _indexReadBuffer.setCollectionAndReset(std::move(collection));
 
   return skipped;
 }

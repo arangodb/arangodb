@@ -175,7 +175,7 @@ class IndexExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-  std::pair<ExecutionState, size_t> skipRows(size_t toSkip);
+  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkip);
 
  public:
   void setProducingFunction(DocumentProducingFunction documentProducer) {

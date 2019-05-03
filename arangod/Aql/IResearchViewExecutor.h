@@ -141,7 +141,7 @@ class IResearchViewExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, size_t> skipRows(size_t toSkip);
+  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkip);
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {

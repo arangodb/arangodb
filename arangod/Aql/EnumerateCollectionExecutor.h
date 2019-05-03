@@ -118,7 +118,7 @@ class EnumerateCollectionExecutor {
    */
 
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-  std::pair<ExecutionState, size_t> skipRows(size_t atMost);
+  std::tuple<ExecutionState, EnumerateCollectionStats, size_t> skipRows(size_t atMost);
 
   typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
 

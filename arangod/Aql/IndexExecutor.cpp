@@ -554,7 +554,7 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRo
   }
 }
 
-std::pair<ExecutionState, size_t> IndexExecutor::skipRows(size_t toSkip) {
+std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows(size_t toSkip) {
   TRI_IF_FAILURE("IndexExecutor::skipRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -562,26 +562,26 @@ std::pair<ExecutionState, size_t> IndexExecutor::skipRows(size_t toSkip) {
   IndexStats stats{};
 
   if (_done) {
-    return {ExecutionState::DONE, 0};
+    return {ExecutionState::DONE, stats, 0};
   }
 
   while (_returned < toSkip) {
     if (!_input) {
       if (_state == ExecutionState::DONE) {
         _done = true;
-        return {_state, _returned};
+        return {_state, stats, _returned};
       }
 
       std::tie(_state, _input) = _fetcher.fetchRow();
 
       if (_state == ExecutionState::WAITING) {
-        return {_state, 0};
+        return {_state, stats, 0};
       }
 
       if (!_input) {
         TRI_ASSERT(_state == ExecutionState::DONE);
         _done = true;
-        return {_state, _returned};
+        return {_state, stats, _returned};
       }
 
       if (!initIndexes(_input)) {
@@ -600,9 +600,9 @@ std::pair<ExecutionState, size_t> IndexExecutor::skipRows(size_t toSkip) {
   }
 
   if (getCursor() != nullptr && getCursor()->hasMore()) {
-    return {ExecutionState::HASMORE, _returned};
+    return {ExecutionState::HASMORE, stats, _returned};
   } else {
     _done = true;
-    return {ExecutionState::DONE, _returned};
+    return {ExecutionState::DONE, stats, _returned};
   }
 }
