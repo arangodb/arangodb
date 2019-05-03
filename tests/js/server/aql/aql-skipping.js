@@ -84,6 +84,7 @@ function aqlSkippingTestsuite () {
     testPassSkipOffset: function () {
       var query = "FOR i in 1..100 let p = i+2 limit 90, 10 return p";
       var bindParams = {};
+      // This way the CalculationBlock stays before the LimitBlock.
       var queryOptions = {optimizer: {"rules": ["-move-calculations-down"]}};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
@@ -93,6 +94,7 @@ function aqlSkippingTestsuite () {
     testPassSkipOffsetWithFullCount: function () {
       var query = "FOR i in 1..100 let p = i+2 limit 90, 10 return p";
       var bindParams = {};
+      // This way the CalculationBlock stays before the LimitBlock.
       var queryOptions = {fullCount: true, optimizer: {"rules": ["-move-calculations-down"]}};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
@@ -103,52 +105,57 @@ function aqlSkippingTestsuite () {
     testPassSkipEnumerateCollection: function () {
       var query = "FOR i IN skipCollection LIMIT 10, 10 return i";
       var bindParams = {};
-      var queryOptions = {optimizer: {"rules": ["-move-calculations-down"]}};
+      var queryOptions = {};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(result.json.length, 10);
+      assertEqual(result.stats.scannedFull, 20);
     },
 
     testPassSkipEnumerateCollectionWithFullCount1: function () {
       var query = "FOR i IN skipCollection LIMIT 10, 20 return i";
       var bindParams = {};
-      var queryOptions = {optimizer: {"rules": ["-move-calculations-down"]}};
+      var queryOptions = {fullCount: true};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(result.json.length, 20);
-      assertEqual(result.stats.scannedFull, 20);
+      assertEqual(result.stats.scannedFull, 30);
+      assertEqual(result.stats.fullCount, 2000);
     },
 
     testPassSkipEnumerateCollectionWithFullCount2: function () {
       var query = "FOR i IN skipCollection LIMIT 900, 300 return i";
       var bindParams = {};
-      var queryOptions = {optimizer: {"rules": ["-move-calculations-down"]}};
+      var queryOptions = {fullCount: true};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(result.json.length, 300);
-      assertEqual(result.stats.scannedFull, 300);
+      assertEqual(result.stats.scannedFull, 1200);
+      assertEqual(result.stats.fullCount, 2000);
     },
 
     testPassSkipEnumerateCollectionWithFullCount3: function () {
       // skip more as documents are available
       var query = "FOR i IN skipCollection LIMIT 2000, 100 return i";
       var bindParams = {};
-      var queryOptions = {optimizer: {"rules": ["-move-calculations-down"]}};
+      var queryOptions = {fullCount: true};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(result.json.length, 0);
-      assertEqual(result.stats.scannedFull, 0);
+      assertEqual(result.stats.scannedFull, 2000);
+      assertEqual(result.stats.fullCount, 2000);
     },
 
     testPassSkipEnumerateCollectionWithFullCount4: function () {
       // skip more as documents are available, this will trigger done inside internal skip
       var query = "FOR i IN skipCollection LIMIT 3000, 100 return i";
       var bindParams = {};
-      var queryOptions = {optimizer: {"rules": ["-move-calculations-down"]}};
+      var queryOptions = {fullCount: true};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(result.json.length, 0);
-      assertEqual(result.stats.scannedFull, 0);
+      assertEqual(result.stats.scannedFull, 2000);
+      assertEqual(result.stats.fullCount, 2000);
     }
 
   };
@@ -241,16 +248,58 @@ function aqlSkippingIResearchTestsuite () {
     },
 
     testPassSkipArangoSearch: function () {
-      // skip half (5 out of 10)
+      // skip 3, return 3, out of 10
       var result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] }" +
-        " LIMIT 5,5 RETURN doc").toArray();
+        " LIMIT 3,3 RETURN doc").toArray();
 
-      assertEqual(result.length, 5);
+      assertEqual(result.length, 3);
       result.forEach(function(res) {
         assertEqual(res.a, "foo");
         assertTrue(res._id.startsWith('UnitTestsCollection/'));
       });
-    }
+    },
+
+    testPassSkipArangoSearchSorted: function () {
+      // skip 3, return 3, out of 10
+      var result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] }" +
+        " SORT BM25(doc)" +
+        " LIMIT 3,3 RETURN doc").toArray();
+
+      assertEqual(result.length, 3);
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        assertTrue(res._id.startsWith('UnitTestsCollection/'));
+      });
+    },
+
+    testPassSkipArangoSearchFullCount: function () {
+      const opts = {fullCount: true};
+      // skip 3, return 3, out of 10
+      var result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] }" +
+        " LIMIT 3,3 RETURN doc", {}, opts).toArray();
+
+      assertEqual(result.length, 3);
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        assertTrue(res._id.startsWith('UnitTestsCollection/'));
+      });
+      assertEqual(10, result.stats.fullCount);
+    },
+
+    testPassSkipArangoSearchSortedFullCount: function () {
+      const opts = {fullCount: true};
+      // skip 3, return 3, out of 10
+      var result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] }" +
+        " SORT BM25(doc)" +
+        " LIMIT 3,3 RETURN doc", {}, opts).toArray();
+
+      assertEqual(result.length, 3);
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        assertTrue(res._id.startsWith('UnitTestsCollection/'));
+      });
+      assertEqual(10, result.stats.fullCount);
+    },
 
   };
 
