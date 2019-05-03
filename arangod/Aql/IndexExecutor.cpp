@@ -311,7 +311,8 @@ bool IndexExecutor::skipIndex(size_t toSkip, IndexStats& stats) {
       continue;
     }
 
-    if (_returned == toSkip) {
+    if (_returned >= toSkip) {
+      TRI_ASSERT(_returned == toSkip);
       // We have skipped enough, do not check if we have more
       return true;
     }
