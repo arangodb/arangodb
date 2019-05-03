@@ -10,7 +10,7 @@ your graph.
 
 Every such path will be returned as a JSON object with three components:
 
-1. an array containing the `verticex` on the path,
+1. an array containing the `vertices` on the path,
 2. an array containing the `edges` on the path, and
 3. the `weight` of the path, that is the sum of all edge weights.
 
