@@ -83,7 +83,7 @@ FutureRes sendRequest(DestinationId const& destination, RestVerb type,
 
   ConnectionPool* pool = NetworkFeature::pool();
   if (!pool) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "connection pool unavailable";
+    LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION) << "connection pool unavailable";
     return futures::makeFuture(
         Response{destination, errorToInt(ErrorCondition::Canceled), nullptr});
   }
@@ -166,7 +166,7 @@ class RequestsState : public std::enable_shared_from_this<RequestsState<F>> {
 
     ConnectionPool* pool = NetworkFeature::pool();
     if (!pool) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "connection pool unavailable";
+      LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION) << "connection pool unavailable";
       _cb(Response{_destination, errorToInt(ErrorCondition::Canceled), nullptr});
       return;
     }
@@ -199,7 +199,7 @@ class RequestsState : public std::enable_shared_from_this<RequestsState<F>> {
         } else if (res->statusCode() == fuerte::StatusNotFound && _retryOnCollNotFound &&
                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                        network::errorCodeFromBody(res->slice())) {
-          LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "retrying request";
+          LOG_TOPIC("5a8e9", DEBUG, Logger::COMMUNICATION) << "retrying request";
         } else {
           _cb(Response{_destination, errorToInt(ErrorCondition::Canceled), std::move(res)});
           break;
