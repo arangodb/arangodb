@@ -22,6 +22,8 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+
 #include "GeneralListenTask.h"
 
 #include "GeneralServer/GeneralServer.h"
