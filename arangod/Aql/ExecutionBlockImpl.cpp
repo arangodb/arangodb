@@ -308,6 +308,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
   size_t skipped;
   std::tie(state, stats, skipped) =
       ExecuteSkipVariant<customSkipType>::executeSkip(_executor, _rowFetcher, atMost);
+  _engine->_stats += stats;
 
   return traceSkipSomeEnd(state, skipped);
 }
