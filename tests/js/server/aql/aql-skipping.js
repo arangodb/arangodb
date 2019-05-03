@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE */
+/*global assertEqual, assertTrue, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, simple queries
@@ -140,7 +140,7 @@ function aqlSkippingTestsuite () {
       assertEqual(result.stats.scannedFull, 0);
     },
 
-    testPassSkipEnumerateCollectionWithFullCount3: function () {
+    testPassSkipEnumerateCollectionWithFullCount4: function () {
       // skip more as documents are available, this will trigger done inside internal skip
       var query = "FOR i IN skipCollection LIMIT 3000, 100 return i";
       var bindParams = {};
@@ -156,6 +156,11 @@ function aqlSkippingTestsuite () {
 }
 
 function aqlSkippingIResearchTestsuite () {
+  var c;
+  var c2;
+  var v;
+  var v2;
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
