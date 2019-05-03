@@ -301,6 +301,7 @@ char* TRI_GETCWD(char* buffer, int maxlen) {
       rc = buffer;
     }
   }
+  free(wbuf);
   return rc;
 }
 
