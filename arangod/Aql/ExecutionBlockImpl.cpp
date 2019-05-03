@@ -200,16 +200,7 @@ struct ExecuteSkipVariant<SkipVariants::SKIPROW> {
   static std::pair<ExecutionState, size_t> executeSkip(Executor& executor,
                                                        typename Executor::Fetcher& fetcher,
                                                        size_t toSkip) {
-    ExecutionState state;
-    InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};
-    ;
-
-    std::tie(state, input) = fetcher.skipRow();
-    if (state == ExecutionState::WAITING) {
-      return {state, 0};
-    } else {
-      return {state, 1};
-    }
+    return fetcher.skipRow();
   }
 };
 
