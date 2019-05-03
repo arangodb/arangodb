@@ -340,24 +340,30 @@ void OutputAqlItemRow::doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMi
 
   if (mustClone) {
     for (auto itemId : registersToKeep()) {
-      TRI_ASSERT(sourceRow.isInitialized());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      if (!_allowSourceRowUninitialized) {
+        TRI_ASSERT(sourceRow.isInitialized());
+      }
+#endif
       if (ignoreMissing && itemId >= sourceRow.getNrRegisters()) {
         continue;
       }
-      auto const& value = sourceRow.getValue(itemId);
-      if (!value.isEmpty()) {
-        AqlValue clonedValue = value.clone();
-        AqlValueGuard guard(clonedValue, true);
+      if (!_allowSourceRowUninitialized) {
+        auto const& value = sourceRow.getValue(itemId);
+        if (!value.isEmpty()) {
+          AqlValue clonedValue = value.clone();
+          AqlValueGuard guard(clonedValue, true);
 
-        TRI_IF_FAILURE("OutputAqlItemRow::copyRow") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
+          TRI_IF_FAILURE("OutputAqlItemRow::copyRow") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+          TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
 
-        block().setValue(_baseIndex, itemId, clonedValue);
-        guard.steal();
+          block().setValue(_baseIndex, itemId, clonedValue);
+          guard.steal();
+        }
       }
     }
   } else {
