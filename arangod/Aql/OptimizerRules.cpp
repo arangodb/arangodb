@@ -3989,6 +3989,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
     TRI_ASSERT(node->getDependencies().size() == 1);
 
     auto collectNode = ExecutionNode::castTo<CollectNode*>(node);
+
     // look for next remote node
     GatherNode* gatherNode = nullptr;
     auto current = node->getFirstDependency();
@@ -4020,6 +4021,32 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
       } else if (current->getType() == ExecutionNode::REMOTE) {
         auto previous = current->getFirstDependency();
         // now we are on a DB server
+        
+        {
+          bool hasFoundMultipleShards = false;
+          auto p = previous;
+          while (p != nullptr) {
+            if (p->getType() == ExecutionNode::REMOTE) {
+              hasFoundMultipleShards = true;
+            } else if (p->getType() == ExecutionNode::ENUMERATE_COLLECTION || p->getType() == ExecutionNode::INDEX) {
+              auto col = getCollection(p);
+              if (col->numberOfShards() > 1) {
+                hasFoundMultipleShards = true;
+              }
+            } else if (p->getType() == ExecutionNode::TRAVERSAL) {
+              hasFoundMultipleShards = true;
+            }
+            if (hasFoundMultipleShards) {
+              break;
+            }
+            p = p->getFirstDependency();
+          }
+          if (!hasFoundMultipleShards) {
+            // only a single shard will be contacted - abort the optimization attempt
+            // to not make it a pessimization
+            break;
+          }
+        }
 
         // we may have moved another CollectNode here already. if so, we need to
         // move the new CollectNode to the front of multiple CollectNodes

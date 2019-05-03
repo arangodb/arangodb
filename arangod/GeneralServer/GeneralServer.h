@@ -35,6 +35,7 @@ namespace arangodb {
 class EndpointList;
 
 namespace rest {
+class GeneralListenTask;
 
 class GeneralServer {
   GeneralServer(GeneralServer const&) = delete;
@@ -47,6 +48,7 @@ class GeneralServer {
   void setEndpointList(EndpointList const* list);
   void startListening();
   void stopListening();
+  void stopWorking();
 
   class IoContext;
 
@@ -137,7 +139,8 @@ class GeneralServer {
   friend class IoThread;
   friend class IoContext;
 
-  uint64_t _numIoThreads;
+  uint64_t const _numIoThreads;
+  std::vector<std::shared_ptr<rest::GeneralListenTask>> _tasks;
   std::vector<IoContext> _contexts;
   EndpointList const* _endpointList = nullptr;
 };

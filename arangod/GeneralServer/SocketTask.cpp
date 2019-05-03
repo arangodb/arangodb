@@ -43,11 +43,14 @@ using namespace arangodb::rest;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-SocketTask::SocketTask(GeneralServer& server, GeneralServer::IoContext& context,
+SocketTask::SocketTask(GeneralServer& server, 
+                       GeneralServer::IoContext& context,
+                       char const* name,
                        std::unique_ptr<arangodb::Socket> socket,
                        arangodb::ConnectionInfo&& connectionInfo,
-                       double keepAliveTimeout, bool skipInit = false)
-    : IoTask(server, context, "SocketTask"),
+                       double keepAliveTimeout, 
+                       bool skipInit = false)
+    : IoTask(server, context, name),
       _peer(std::move(socket)),
       _connectionInfo(std::move(connectionInfo)),
       _connectionStatistics(nullptr),

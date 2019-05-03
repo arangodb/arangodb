@@ -34,6 +34,7 @@
 #include "GeneralServer/VstCommTask.h"
 #include "Meta/conversion.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Utils/Events.h"
 
@@ -49,8 +50,7 @@ size_t const HttpCommTask::RunCompactEvery = 500;
 HttpCommTask::HttpCommTask(GeneralServer& server, GeneralServer::IoContext& context,
                            std::unique_ptr<Socket> socket,
                            ConnectionInfo&& info, double timeout)
-    : IoTask(server, context, "HttpCommTask"),
-      GeneralCommTask(server, context, std::move(socket), std::move(info), timeout),
+    : GeneralCommTask(server, context, "HttpCommTask", std::move(socket), std::move(info), timeout),
       _readPosition(0),
       _startPosition(0),
       _bodyPosition(0),
@@ -68,6 +68,8 @@ HttpCommTask::HttpCommTask(GeneralServer& server, GeneralServer::IoContext& cont
 
   ConnectionStatistics::SET_HTTP(_connectionStatistics);
 }
+
+HttpCommTask::~HttpCommTask() {}
 
 // whether or not this task can mix sync and async I/O
 bool HttpCommTask::canUseMixedIO() const {

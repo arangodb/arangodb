@@ -71,9 +71,17 @@ void GeneralServer::startListening() {
 }
 
 void GeneralServer::stopListening() {
+  for (auto& task : _tasks) {
+    task->stop();
+  }
+}
+
+void GeneralServer::stopWorking() {
   for (auto& context : _contexts) {
     context.stop();
   }
+  
+  _tasks.clear();
 }
 
 // -----------------------------------------------------------------------------
@@ -90,11 +98,9 @@ bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
   }
 
   auto task = std::make_shared<GeneralListenTask>(*this, ioContext, endpoint, protocolType);
-  if (!task->start()) {
-    return false;
-  }
+  _tasks.emplace_back(task);
 
-  return true;
+  return task->start();
 }
 
 GeneralServer::IoThread::IoThread(IoContext& iocontext)
@@ -117,7 +123,9 @@ GeneralServer::IoContext::IoContext()
 
 GeneralServer::IoContext::~IoContext() { stop(); }
 
-void GeneralServer::IoContext::stop() { _asioIoContext.stop(); }
+void GeneralServer::IoContext::stop() { 
+  _asioIoContext.stop(); 
+}
 
 GeneralServer::IoContext& GeneralServer::selectIoContext() {
   uint64_t low = _contexts[0]._clients.load();

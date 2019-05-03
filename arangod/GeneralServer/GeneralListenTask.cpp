@@ -27,9 +27,6 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/HttpCommTask.h"
-#include "Rest/HttpRequest.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -40,8 +37,7 @@ using namespace arangodb::rest;
 
 GeneralListenTask::GeneralListenTask(GeneralServer& server, GeneralServer::IoContext& context,
                                      Endpoint* endpoint, ProtocolType connectionType)
-    : IoTask(server, context, "GeneralListenTask"),
-      ListenTask(server, context, endpoint),
+    : ListenTask(server, context, "GeneralListenTask", endpoint),
       _connectionType(connectionType) {
   _keepAliveTimeout = GeneralServerFeature::keepAliveTimeout();
 
