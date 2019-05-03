@@ -31,15 +31,15 @@ using namespace arangodb;
       
 ClusterSelectivityEstimates::ClusterSelectivityEstimates(LogicalCollection& collection)
     : _collection(collection),
-      _updating(ATOMIC_FLAG_INIT) {}
+      _updating(false) {}
 
 void ClusterSelectivityEstimates::flush() {
-  while (_updating.test_and_set()) {
+  while (_updating.load(std::memory_order_relaxed) || _updating.exchange(true, std::memory_order_acquire)) {
     std::this_thread::yield();
   }
 
   auto guard = scopeGuard([this]() {
-    _updating.clear();
+    _updating.store(false, std::memory_order_release);
   });
 
   std::atomic_store<InternalData>(&_data, std::shared_ptr<InternalData>());
@@ -63,10 +63,12 @@ std::unordered_map<std::string, double> ClusterSelectivityEstimates::get(bool al
         }
       }
 
-      // only one thread is allow to fetch at any given time
-      if (!_updating.test_and_set()) {
+      // only one thread is allowed to fetch the estimates from the DB servers at any given time
+      if (_updating.load(std::memory_order_relaxed) || _updating.exchange(true, std::memory_order_acquire)) {
+        useExpired = true;
+      } else {
         auto guard = scopeGuard([this]() {
-          _updating.clear();
+          _updating.store(false, std::memory_order_release);
         });
 
         // must fetch estimates from coordinator
@@ -79,8 +81,6 @@ std::unordered_map<std::string, double> ClusterSelectivityEstimates::get(bool al
           set(estimates);
           return estimates;
         }
-      } else {
-        useExpired = true;
       }
       
       data = std::atomic_load<ClusterSelectivityEstimates::InternalData>(&_data);
