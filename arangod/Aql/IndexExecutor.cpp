@@ -63,6 +63,21 @@ static void resolveFCallConstAttributes(AstNode* fcall) {
     }
   }
 }
+static inline DocumentProducingFunctionContext createContext(InputAqlItemRow const& inputRow,
+                                                             IndexExecutorInfos& infos) {
+  if (infos.getIndexes().size() > 1 || infos.hasMultipleExpansions()) {
+    return UniqueDocumentProducingFunctionContext(
+        inputRow, nullptr, infos.getOutputRegisterId(),
+        infos.getProduceResult(), infos.getProjections(), infos.getTrxPtr(),
+        infos.getCoveringIndexAttributePositions(), false,
+        infos.getUseRawDocumentPointers());
+  }
+  return DocumentProducingFunctionContext(inputRow, nullptr, infos.getOutputRegisterId(),
+                                          infos.getProduceResult(),
+                                          infos.getProjections(), infos.getTrxPtr(),
+                                          infos.getCoveringIndexAttributePositions(),
+                                          false, infos.getUseRawDocumentPointers());
+}
 }  // namespace
 
 IndexExecutorInfos::IndexExecutorInfos(
@@ -105,20 +120,13 @@ IndexExecutorInfos::IndexExecutorInfos(
 IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
-      _documentProducingFunctionContext(_input, nullptr, _infos.getOutputRegisterId(),
-                                        _infos.getProduceResult(),
-                                        _infos.getProjections(), _infos.getTrxPtr(),
-                                        _infos.getCoveringIndexAttributePositions(),
-                                        false, _infos.getUseRawDocumentPointers()),
-      _documentProducer(nullptr),
+      _documentProducingFunctionContext(::createContext(_input, _infos)),
       _state(ExecutionState::HASMORE),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _cursor(nullptr),
       _cursors(_infos.getIndexes().size()),
       _currentIndex(0),
-      _alreadyReturned(),
-      _indexesExhausted(false),
-      _isLastIndex(false) {
+      _indexesExhausted(false) {
   TRI_ASSERT(!_infos.getIndexes().empty());
 
   if (_infos.getCondition() != nullptr) {
@@ -166,24 +174,22 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       if (idx->isAttributeExpanded(i)) {
         ++expansions;
         if (expansions > 1 || i > 0) {
-          infos.setHasMultipleExpansions(true);
+          _infos.setHasMultipleExpansions(true);
           break;
         }
       }
     }
   }
-
-  this->setProducingFunction(buildCallback(_documentProducingFunctionContext));
+  _documentProducers.resize(_infos.getIndexes().size());
 };
 
 void IndexExecutor::initializeCursor() {
   _state = ExecutionState::HASMORE;
   _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
   setAllowCoveringIndexOptimization(false);
+  _documentProducingFunctionContext.reset();
   _currentIndex = 0;
-  _alreadyReturned.clear();
   _indexesExhausted = false;
-  _isLastIndex = false;
 }
 
 IndexExecutor::~IndexExecutor() = default;
@@ -215,10 +221,24 @@ arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
     // quick case. we can simply reset the existing cursor
     resetCursor(currentIndex);
   } else if (iterator == nullptr || !iterator->canRearm()) {
+    bool needsToBuildCallback = _infos.getProduceResult() && (iterator == nullptr);
     // inject a new index iterator into the existing cursor
     cursor->rearm(_infos.getTrxPtr()->indexScanForCondition(_infos.getIndexes()[currentIndex], conditionNode,
                                                             _infos.getOutVariable(),
                                                             _infos.getOptions()));
+    if (needsToBuildCallback) {
+      // check if the *current* cursor supports covering index queries or not
+      // if we can optimize or not must be stored in our instance, so the
+      // DocumentProducingBlock can access the flag
+      setAllowCoveringIndexOptimization(
+          cursor->hasCovering() && !_infos.getCoveringIndexAttributePositions().empty());
+      // On a new cursor we potentially need a new callback, as it can modify it's covering behaviour
+      if (needsUniquenessCheck()) {
+        setProducingFunction(currentIndex, buildCallback<true>(_documentProducingFunctionContext));
+      } else {
+        setProducingFunction(currentIndex, buildCallback<false>(_documentProducingFunctionContext));
+      }
+    }
   } else {
     // try to rearm an existing iterator
     if (iterator->rearm(conditionNode, _infos.getOutVariable(), _infos.getOptions())) {
@@ -232,10 +252,6 @@ arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
   }
 
   return cursor;
-}
-
-void IndexExecutor::createCursor() {
-  setCursor(orderCursor(getCurrentIndex()));
 }
 
 // this is called every time we need to fetch data from the indexes
@@ -262,21 +278,16 @@ bool IndexExecutor::readIndex(OutputAqlItemRow& output,
     if (!_infos.getProduceResult()) {
       // optimization: iterate over index (e.g. for filtering), but do not fetch
       // the actual documents
-      res = getCursor()->next(
-          [&callback](LocalDocumentId const& id) {
-            callback(id, VPackSlice::nullSlice());
-          },
-          output.numRowsLeft());
+      if (needsUniquenessCheck()) {
+        res = getCursor()->next(getNullCallback<true>(_documentProducingFunctionContext),
+                                output.numRowsLeft());
+      } else {
+        res = getCursor()->next(getNullCallback<false>(_documentProducingFunctionContext),
+                                output.numRowsLeft());
+      }
     } else {
-      // check if the *current* cursor supports covering index queries or not
-      // if we can optimize or not must be stored in our instance, so the
-      // DocumentProducingBlock can access the flag
-
       TRI_ASSERT(getCursor() != nullptr);
-      setAllowCoveringIndexOptimization(getCursor()->hasCovering());
-
-      if (getAllowCoveringIndexOptimization() &&
-          !_infos.getCoveringIndexAttributePositions().empty()) {
+      if (getAllowCoveringIndexOptimization()) {
         // index covers all projections
         res = getCursor()->nextCovering(callback, output.numRowsLeft());
       } else {
@@ -299,7 +310,7 @@ bool IndexExecutor::readIndex(OutputAqlItemRow& output,
 bool IndexExecutor::initIndexes(InputAqlItemRow& input) {
   // We start with a different context. Return documents found in the previous
   // context again.
-  _alreadyReturned.clear();
+  _documentProducingFunctionContext.reset();
   // Find out about the actual values for the bounds in the variable bound case:
 
   if (!_infos.getNonConstExpressions().empty()) {
@@ -402,12 +413,12 @@ bool IndexExecutor::advanceCursor() {
     if (!_infos.isAscending()) {
       decrCurrentIndex();
       if (_currentIndex == 0) {
-        setIsLastIndex(true);
+        _documentProducingFunctionContext.setIsLastIndex(true);
       }
     } else {
       incrCurrentIndex();
       if (_infos.getIndexes().size() - 1 == _currentIndex) {
-        setIsLastIndex(true);
+        _documentProducingFunctionContext.setIsLastIndex(true);
       }
     }
 
@@ -460,31 +471,6 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRo
     TRI_ASSERT(_input.isInitialized());
     TRI_ASSERT(getCursor() != nullptr && getCursor()->hasMore());
 
-    IndexIterator::DocumentCallback callback;
-
-    if (_infos.getIndexes().size() > 1 || _infos.hasMultipleExpansions()) {
-      // Activate uniqueness checks
-      callback = [this](LocalDocumentId const& token, VPackSlice slice) {
-        if (!isLastIndex()) {
-          // insert & check for duplicates in one go
-          if (!_alreadyReturned.insert(token.id()).second) {
-            // Document already in list. Skip this
-            return;
-          }
-        } else {
-          // only check for duplicates
-          if (_alreadyReturned.find(token.id()) != _alreadyReturned.end()) {
-            // Document found, skip
-            return;
-          }
-        }
-        _documentProducer(token, slice);
-      };
-    } else {
-      // No uniqueness checks
-      callback =_documentProducer;
-    }
-
     // We only get here with non-exhausted indexes.
     // At least one of them is prepared and ready to read.
     TRI_ASSERT(!getIndexesExhausted());
@@ -492,7 +478,7 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRo
     size_t numWritten = 0;
 
     // Read the next elements from the indexes
-    bool more = readIndex(output, callback, numWritten);
+    bool more = readIndex(output, _documentProducers[_currentIndex], numWritten);
     TRI_ASSERT(getCursor() != nullptr || !more);
 
     if (!more) {

@@ -177,8 +177,9 @@ class IndexExecutor {
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
  public:
-  void setProducingFunction(DocumentProducingFunction documentProducer) {
-    _documentProducer = std::move(documentProducer);
+  void setProducingFunction(size_t idx, DocumentProducingFunction documentProducer) {
+    TRI_ASSERT(_cursors.size() > idx);
+    _documentProducers[idx] = std::move(documentProducer);
   }
 
   inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
@@ -196,7 +197,7 @@ class IndexExecutor {
   bool initIndexes(InputAqlItemRow& input);
 
   /// @brief create an iterator object
-  void createCursor();
+  inline void createCursor() { setCursor(orderCursor(getCurrentIndex())); }
 
   /// @brief continue fetching of documents
   bool readIndex(OutputAqlItemRow& output,
@@ -222,12 +223,12 @@ class IndexExecutor {
     return _cursors[pos].get();
   }
 
+  inline bool needsUniquenessCheck() const {
+    return _infos.getIndexes().size() > 1 || _infos.hasMultipleExpansions();
+  }
+
   void setIndexesExhausted(bool flag) { _indexesExhausted = flag; }
   bool getIndexesExhausted() { return _indexesExhausted; }
-
-  bool isLastIndex() { return _isLastIndex; }
-  void setIsLastIndex(bool flag) { _isLastIndex = flag; }
-
   void setCurrentIndex(size_t pos) { _currentIndex = pos; }
   void decrCurrentIndex() { _currentIndex--; }
   void incrCurrentIndex() { _currentIndex++; }
@@ -247,10 +248,8 @@ class IndexExecutor {
   Infos& _infos;
   Fetcher& _fetcher;
   DocumentProducingFunctionContext _documentProducingFunctionContext;
-  DocumentProducingFunction _documentProducer;
   ExecutionState _state;
   InputAqlItemRow _input;
-
 
   /// @brief _cursor: holds the current index cursor found using
   /// createCursor (if any) so that it can be read in chunks and not
@@ -261,19 +260,14 @@ class IndexExecutor {
   /// reused
   std::vector<std::unique_ptr<OperationCursor>> _cursors;
 
+  std::vector<DocumentProducingFunction> _documentProducers;
+
   /// @brief current position in _indexes
   size_t _currentIndex;
-
-  /// @brief set of already returned documents. Used to make the result distinct
-  std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
 
   /// @brief Flag if all indexes are exhausted to be maintained accross several
   /// getSome() calls
   bool _indexesExhausted;
-
-  /// @brief Flag if the current index pointer is the last of the list.
-  ///        Used in uniqueness checks.
-  bool _isLastIndex;
 };
 
 }  // namespace aql

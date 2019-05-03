@@ -94,7 +94,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                        " did not come into sync in time (" +
                                        std::to_string(maxWait) + ")");
   }
-  this->setProducingFunction(buildCallback(_documentProducingFunctionContext));
+  this->setProducingFunction(buildCallback<false>(_documentProducingFunctionContext));
 }
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
@@ -104,14 +104,14 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
   TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-/*  // Allocate this on the stack, not the heap.
-  struct {
-    EnumerateCollectionExecutor& executor;
-    OutputAqlItemRow& output;
-    EnumerateCollectionStats stats;
-  } context{*this, output, {}};
-  // just a shorthand
-  EnumerateCollectionStats& stats = context.stats;*/
+  /*  // Allocate this on the stack, not the heap.
+    struct {
+      EnumerateCollectionExecutor& executor;
+      OutputAqlItemRow& output;
+      EnumerateCollectionStats stats;
+    } context{*this, output, {}};
+    // just a shorthand
+    EnumerateCollectionStats& stats = context.stats;*/
   EnumerateCollectionStats stats{};
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
   _documentProducingFunctionContext.setOutputRow(&output);
@@ -143,13 +143,14 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
     if (_infos.getProduceResult()) {
       // properly build up results by fetching the actual documents
       // using nextDocument()
-      _cursorHasMore = _cursor->nextDocument(_documentProducer, output.numRowsLeft() /*atMost*/);
+      _cursorHasMore =
+          _cursor->nextDocument(_documentProducer, output.numRowsLeft() /*atMost*/);
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
-      _cursorHasMore = _cursor->next(
-          getNullCallback(_documentProducingFunctionContext),
-          output.numRowsLeft() /*atMost*/);
+      _cursorHasMore =
+          _cursor->next(getNullCallback<false>(_documentProducingFunctionContext),
+                        output.numRowsLeft() /*atMost*/);
     }
 
     stats.incrScanned(_documentProducingFunctionContext.getAndResetNumScanned());
