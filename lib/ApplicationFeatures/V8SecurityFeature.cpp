@@ -305,7 +305,11 @@ void V8SecurityFeature::addToInternalWhitelist(std::string const& inItem, FSAcce
     re = &_writeWhitelistRegex;
   }
 
-  auto item =  canonicalpath(inItem) + TRI_DIR_SEPARATOR_STR;
+  auto item =  canonicalpath(inItem);
+  if ((item.length() > 0) &&
+      (item[item.length() - 1] != TRI_DIR_SEPARATOR_CHAR)) {
+    item += TRI_DIR_SEPARATOR_STR;
+  }
   auto path = "^" + arangodb::basics::StringUtils::escapeRegexParams(item);
   set->emplace(std::move(path));
   expression->clear();
