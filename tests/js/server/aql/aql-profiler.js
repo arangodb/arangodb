@@ -464,13 +464,14 @@ function ahuacatlProfilerTestSuite () {
     testLimitBlock3: function() {
       const query = 'FOR i IN 1..@rows LIMIT @skip, @limit RETURN i';
       const skip = rows => Math.floor(rows/4);
+      const skipBatches = rows => Math.ceil(skip(rows) / defaultBatchSize);
       const limit = rows => Math.ceil(3*rows/4);
       const limitBatches = rows => Math.ceil(limit(rows) / defaultBatchSize);
 
       const genNodeList = (rows, batches) => [
         {type: SingletonBlock, calls: 1, items: 1},
         {type: CalculationBlock, calls: 1, items: 1},
-        {type: EnumerateListBlock, calls: limitBatches(rows) + (skip(rows) > 0 ? 1 : 0), items: limit(rows) + skip(rows)},
+        {type: EnumerateListBlock, calls: limitBatches(rows) + skipBatches(rows), items: limit(rows) + skip(rows)},
         {type: LimitBlock, calls: limitBatches(rows), items: limit(rows)},
         {type: ReturnBlock, calls: limitBatches(rows), items: limit(rows)},
       ];
