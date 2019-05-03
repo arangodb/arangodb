@@ -31,6 +31,7 @@
 #include "ProgramOptions/Section.h"
 #include "V8/v8-globals.h"
 
+#include <stdexcept>
 #include <v8.h>
 
 using namespace arangodb;
@@ -84,7 +85,8 @@ void convertToSingleExpression(std::vector<std::string> const& files, std::strin
   targetRegex = arangodb::basics::StringUtils::join(files, '|');
 }
 
-void convertToSingleExpression(std::unordered_set<std::string> const& files, std::string& targetRegex) {
+void convertToSingleExpression(std::unordered_set<std::string> const& files,
+                               std::string& targetRegex) {
   // does not delete from the set
   if (files.empty()) {
     return;
@@ -286,19 +288,23 @@ void V8SecurityFeature::addToInternalWhitelist(std::string const& inItem, FSAcce
   auto* expression = &_readWhitelist;
   auto* re = &_readWhitelistRegex;
 
-  if(type == FSAccessType::WRITE) {
+  if (type == FSAccessType::WRITE) {
     set = &_writeWhitelistSet;
     expression = &_writeWhitelist;
     re = &_writeWhitelistRegex;
   }
 
-
-  auto item = arangodb::basics::StringUtils::escapeRegexParams(inItem);
-  auto path = "^" + canonicalpath(item) + TRI_DIR_SEPARATOR_STR;
+  auto item =  canonicalpath(inItem + TRI_DIR_SEPARATOR_STR);
+  auto path = "^" + arangodb::basics::StringUtils::escapeRegexParams(item);
   set->emplace(std::move(path));
   expression->clear();
   convertToSingleExpression(*set, *expression);
-  *re = std::regex(*expression, std::regex::nosubs | std::regex::ECMAScript);
+  try {
+    *re = std::regex(*expression, std::regex::nosubs | std::regex::ECMAScript);
+  } catch (std::exception const& ex) {
+    throw std::invalid_argument(ex.what() + std::string(" '") + *expression + "'");
+
+  }
 }
 
 bool V8SecurityFeature::isAllowedToControlProcesses(v8::Isolate* isolate) const {
@@ -400,5 +406,5 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
   }
 
   return checkBlackAndWhitelist(path, !_filesWhitelist.empty(), _filesWhitelistRegex,
-                               false, _filesWhitelistRegex /*passed to match the signature but not used*/);
+                                false, _filesWhitelistRegex /*passed to match the signature but not used*/);
 }
