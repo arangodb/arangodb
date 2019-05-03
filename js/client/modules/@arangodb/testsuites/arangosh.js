@@ -264,7 +264,7 @@ function permissions(options) {
       let testName = t[t.length - 1].replace(/\.js/, '');
       let instanceRoot = fs.join(rootDir, testName);
       let testResultJson = fs.join(instanceRoot, 'testresult.json');;
-      process.env['RESULT'] = testResultJson
+      process.env['RESULT'] = testResultJson;
       fs.makeDirectoryRecursive(instanceRoot);
       pu.cleanupDBDirectoriesAppend(instanceRoot);
 
