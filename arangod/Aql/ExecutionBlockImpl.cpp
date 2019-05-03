@@ -238,11 +238,8 @@ struct ExecuteSkipVariant<SkipVariants::DEFAULT> {
 template <class Executor>
 static SkipVariants constexpr skipType() {
   // TODO: Add subquery modification check - still missing
-  /*if (std::is_same<Executor, SubqueryExecutor>::value && isModificationNode) {
-    return SkipVariants::DEFAULT;
-  }*/
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough &&
-                      !std::is_same<Executor, SubqueryExecutor>::value) {
+                      !std::is_same<Executor, SubqueryExecutor<true>>::value) {
     if (std::is_same<typename Executor::Fetcher, SingleRowFetcher<true>>::value) {
       return SkipVariants::SKIPROWS;
     } else if (std::is_same<typename Executor::Fetcher, ConstFetcher>::value) {
@@ -435,6 +432,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   return ExecutionBlock::initializeCursor(input);
 }
 
+// TODO the shutdown specializations shall be unified!
+
 template <>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<TraversalExecutor>::shutdown(int errorCode) {
   ExecutionState state;
@@ -473,7 +472,28 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<KShortestPathsExecutor>::sh
 }
 
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor>::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<true>>::shutdown(int errorCode) {
+  ExecutionState state;
+  Result subqueryResult;
+  // shutdown is repeatable
+  std::tie(state, subqueryResult) = this->executor().shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {ExecutionState::WAITING, subqueryResult};
+  }
+  Result result;
+
+  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {state, result};
+  }
+  if (result.fail()) {
+    return {state, result};
+  }
+  return {state, subqueryResult};
+}
+
+template <>
+std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::shutdown(int errorCode) {
   ExecutionState state;
   Result subqueryResult;
   // shutdown is repeatable
@@ -600,6 +620,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;

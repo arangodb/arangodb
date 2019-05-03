@@ -1810,8 +1810,13 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
                               getRegisterPlan()->nrRegs[getDepth()],
                               getRegsToClear(), calcRegsToKeep(), *subquery,
                               outReg, const_cast<SubqueryNode*>(this)->isConst());
-  return std::make_unique<ExecutionBlockImpl<SubqueryExecutor>>(&engine, this,
-                                                                std::move(infos));
+  if (isModificationSubquery()) {
+    return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<true>>>(&engine, this,
+                                                                        std::move(infos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<false>>>(&engine, this,
+                                                                         std::move(infos));
+  }
 }
 
 ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
