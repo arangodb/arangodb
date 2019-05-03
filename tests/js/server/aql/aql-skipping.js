@@ -119,7 +119,7 @@ function aqlSkippingTestsuite () {
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(result.json.length, 20);
-      assertEqual(result.stats.scannedFull, 30);
+      assertEqual(result.stats.scannedFull, 2000);
       assertEqual(result.stats.fullCount, 2000);
     },
 
@@ -130,7 +130,7 @@ function aqlSkippingTestsuite () {
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(result.json.length, 300);
-      assertEqual(result.stats.scannedFull, 1200);
+      assertEqual(result.stats.scannedFull, 2000);
       assertEqual(result.stats.fullCount, 2000);
     },
 
