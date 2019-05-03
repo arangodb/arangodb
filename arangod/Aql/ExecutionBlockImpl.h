@@ -207,8 +207,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   Executor& executor() { return _executor; }
 
-  bool const& isModificationNode() { return _isModificationNode; }
-
   /// @brief request an AqlItemBlock from the memory manager
   SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterId nrRegs);
 
@@ -237,8 +235,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;
 
   Query const& _query;
-
-  bool _isModificationNode;
 };
 
 }  // namespace aql

@@ -74,8 +74,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
       _outputItemRow(),
-      _query(*engine->getQuery()),
-      _isModificationNode(node->isModificationNode()) {
+      _query(*engine->getQuery()) {
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
