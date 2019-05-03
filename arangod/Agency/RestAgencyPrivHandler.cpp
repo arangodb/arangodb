@@ -49,13 +49,13 @@ RestAgencyPrivHandler::RestAgencyPrivHandler(GeneralRequest* request,
     : RestBaseHandler(request, response), _agent(agent) {}
 
 inline RestStatus RestAgencyPrivHandler::reportErrorEmptyRequest() {
-  LOG_TOPIC(WARN, Logger::AGENCY) << "Empty request to agency!";
+  LOG_TOPIC("53e2d", WARN, Logger::AGENCY) << "Empty request to agency!";
   generateError(rest::ResponseCode::NOT_FOUND, 404);
   return RestStatus::DONE;
 }
 
 inline RestStatus RestAgencyPrivHandler::reportTooManySuffices() {
-  LOG_TOPIC(WARN, Logger::AGENCY)
+  LOG_TOPIC("472c8", WARN, Logger::AGENCY)
       << "Agency handles a single suffix: vote, log or configure";
   generateError(rest::ResponseCode::NOT_FOUND, 404);
   return RestStatus::DONE;
@@ -78,7 +78,7 @@ inline RestStatus RestAgencyPrivHandler::reportGone() {
 
 RestStatus RestAgencyPrivHandler::reportMessage(rest::ResponseCode code,
                                                 std::string const& message) {
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << message;
+  LOG_TOPIC("ddf09", DEBUG, Logger::AGENCY) << message;
   Builder body;
   {
     VPackObjectBuilder b(&body);
@@ -93,14 +93,14 @@ void RestAgencyPrivHandler::redirectRequest(std::string const& leaderId) {
     std::string url = Endpoint::uriForm(_agent->config().poolAt(leaderId));
     _response->setResponseCode(rest::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
+    LOG_TOPIC("e493e", DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
   } catch (std::exception const&) {
     reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
 }
 
 RestStatus RestAgencyPrivHandler::reportError(VPackSlice error) {
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << error.toJson();
+  LOG_TOPIC("558e5", DEBUG, Logger::AGENCY) << error.toJson();
   rest::ResponseCode code;
   try {
     code = rest::ResponseCode(error.get(StaticStrings::Code).getNumber<int>());
@@ -116,7 +116,7 @@ RestStatus RestAgencyPrivHandler::reportError(VPackSlice error) {
       builder.add(StaticStrings::ErrorNum, VPackValue(500));
       builder.add(StaticStrings::ErrorMessage, VPackValue(errstr));
     }
-    LOG_TOPIC(ERR, Logger::AGENCY) << errstr;
+    LOG_TOPIC("186f3", ERR, Logger::AGENCY) << errstr;
     generateResult(rest::ResponseCode::SERVER_ERROR, builder.slice());
   }
   return RestStatus::DONE;
@@ -190,7 +190,7 @@ RestStatus RestAgencyPrivHandler::execute() {
         try {
           query_t ret = _agent->gossip(query);
           auto slice = ret->slice();
-          LOG_TOPIC(DEBUG, Logger::AGENCY)
+          LOG_TOPIC("bcd46", DEBUG, Logger::AGENCY)
               << "Responding to gossip request " << query->toJson() << " with "
               << slice.toJson();
           if (slice.hasKey(StaticStrings::Error)) {
@@ -204,7 +204,7 @@ RestStatus RestAgencyPrivHandler::execute() {
             result.add(obj.key.copyString(), obj.value);
           }
         } catch (std::exception const& e) {
-          LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+          LOG_TOPIC("d7dda", ERR, Logger::AGENCY) << e.what();
         }
       } else if (suffixes[0] == "activeAgents") {
         if (_request->requestType() != rest::RequestType::GET) {

@@ -55,7 +55,8 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
 
     ~PathStep();
 
-    PathStep(PathStep& other);
+    PathStep(PathStep const& other) = default;
+    PathStep& operator=(PathStep const& other) = default;
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -185,6 +186,8 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   aql::AqlValue edgeToAqlValue(size_t index);
 
   aql::AqlValue pathToIndexToAqlValue(arangodb::velocypack::Builder& result, size_t index);
+
+  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index);
 
   bool shouldPrune();
 };

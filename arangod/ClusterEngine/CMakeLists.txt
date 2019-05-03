@@ -15,7 +15,6 @@ set(CLUSTER_ENGINE_SOURCES
   ClusterEngine/ClusterRestWalHandler.cpp
   ClusterEngine/ClusterSelectivityEstimates.cpp
   ClusterEngine/ClusterTransactionCollection.cpp
-  ClusterEngine/ClusterTransactionContextData.h
   ClusterEngine/ClusterTransactionState.cpp
   ClusterEngine/ClusterV8Functions.cpp
   ClusterEngine/MMFilesMethods.cpp

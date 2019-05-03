@@ -399,7 +399,7 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
           REQUIRE(typeName(q->slice()) == "array");
           REQUIRE(q->slice().length() == 1);
           REQUIRE(typeName(q->slice()[0]) == "array");
-          REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+          REQUIRE(q->slice()[0].length() == 2); // precondition
           REQUIRE(typeName(q->slice()[0][0]) == "object");
 
           auto writes = q->slice()[0][0];
@@ -407,8 +407,12 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
           REQUIRE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) == "string");
           CHECK(writes.get("/arango/Target/ToDo/1").get("op").copyString() == "delete");
           CHECK(writes.get("/arango/Target/Finished/1").get("collection").copyString() == COLLECTION);
-          CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
           CHECK(typeName(writes.get("/arango/Target/Failed/1")) == "none");
+
+          auto precond = q->slice()[0][1];
+          REQUIRE(typeName(precond) == "object");
+          REQUIRE(typeName(precond.get("/arango/Supervision/Health/follower1/Status")) == "object");
+
           return fakeWriteResult;
         }
       );

@@ -57,7 +57,7 @@ RemoveFollower::RemoveFollower(Node const& snapshot, AgentInterface* agent,
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
+    LOG_TOPIC("ac178", ERR, Logger::SUPERVISION) << err.str();
     finish("", tmp_shard.first, false, err.str());
     _status = FAILED;
   }
@@ -68,7 +68,7 @@ RemoveFollower::~RemoveFollower() {}
 void RemoveFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 bool RemoveFollower::create(std::shared_ptr<VPackBuilder> envelope) {
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("26152", DEBUG, Logger::SUPERVISION)
       << "Todo: RemoveFollower(s) "
       << " to shard " << _shard << " in collection " << _collection;
 
@@ -110,7 +110,7 @@ bool RemoveFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   _jb->close();  // transaction object
   _jb->close();  // close array
 
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
@@ -118,7 +118,7 @@ bool RemoveFollower::create(std::shared_ptr<VPackBuilder> envelope) {
 
   _status = NOTFOUND;
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
+  LOG_TOPIC("83bf8", INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
   return false;
 }
 
@@ -131,7 +131,7 @@ bool RemoveFollower::start(bool&) {
     finish("", "", true, "collection has been dropped in the meantime");
     return false;
   }
-  Node collection =
+  Node const& collection =
       _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection).first;
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
@@ -158,7 +158,7 @@ bool RemoveFollower::start(bool&) {
     if (replFact2.second && replFact2.first == "satellite") {
       // satellites => distribute to every server
       auto available = Job::availableServers(_snapshot);
-      desiredReplFactor = Job::countGoodServersInList(_snapshot, available);
+      desiredReplFactor = Job::countGoodOrBadServersInList(_snapshot, available);
     }
   }
 
@@ -170,7 +170,7 @@ bool RemoveFollower::start(bool&) {
 
   // Check that the shard is not locked:
   if (_snapshot.has(blockedShardsPrefix + _shard)) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("cef47", DEBUG, Logger::SUPERVISION)
         << "shard " << _shard
         << " is currently locked, not starting RemoveFollower job " << _jobId;
     return false;
@@ -183,8 +183,7 @@ bool RemoveFollower::start(bool&) {
   // Now find some new servers to remove:
   std::unordered_map<std::string, int> overview;  // get an overview over the servers
                                                   // -1 : not "GOOD", can be in sync, or leader, or not
-                                                  // >=0: number of servers for which it is in sync or confirmed
-                                                  // leader
+                                                  // >=0: number of servers for which it is in sync or confirmed leader
   bool leaderBad = false;
   for (auto const& srv : VPackArrayIterator(planned)) {
     std::string serverName = srv.copyString();
@@ -230,22 +229,24 @@ bool RemoveFollower::start(bool&) {
 
   // Check that leader is OK for all shards:
   if (leaderBad) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("d4845", DEBUG, Logger::SUPERVISION)
         << "shard " << _shard
         << " does not have a leader that has confirmed leadership, waiting, "
            "jobId="
         << _jobId;
+    finish("", "", false, "job no longer sensible, leader has gone bad");
     return false;
   }
 
   // Check that we have enough:
   if (inSyncCount < desiredReplFactor) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("d9118", DEBUG, Logger::SUPERVISION)
         << "shard " << _shard
         << " does not have enough in sync followers to remove one, waiting, "
            "jobId="
         << _jobId;
-    return false;
+    finish("", "", false, "job no longer sensible, do not have few enough replicas");
+    return true;
   }
 
   // We now know actualReplFactor >= inSyncCount + noGoodCount and
@@ -352,7 +353,7 @@ bool RemoveFollower::start(bool&) {
       if (!tmp_todo.second) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
-        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
+        LOG_TOPIC("4fac6", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
                                                     " from agency snapshot";
         return false;
       }
@@ -362,7 +363,7 @@ bool RemoveFollower::start(bool&) {
       } catch (std::exception const& e) {
         // Just in case, this is never going to happen, since when _jb is
         // set, then the current job is stored under ToDo.
-        LOG_TOPIC(WARN, Logger::SUPERVISION)
+        LOG_TOPIC("95927", WARN, Logger::SUPERVISION)
             << e.what() << ": " << __FILE__ << ":" << __LINE__;
         return false;
       }
@@ -409,17 +410,17 @@ bool RemoveFollower::start(bool&) {
   }    // array for transaction done
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, trx);
+  write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     _status = FINISHED;
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("9ec40", DEBUG, Logger::SUPERVISION)
         << "Pending: RemoveFollower(s) to shard " << _shard << " in collection "
         << _collection;
     return true;
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("f2df8", INFO, Logger::SUPERVISION)
       << "Start precondition failed for RemoveFollower Job " + _jobId;
   return false;
 }

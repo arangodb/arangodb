@@ -114,6 +114,9 @@ CEIL()
 
 Return the integer closest but not less than *value*.
 
+To round downward, see [FLOOR()](#floor).<br>
+To round to the nearest integer value, see [ROUND()](#round).
+
 - **value** (number): any number
 - returns **roundedValue** (number): the value rounded to the ceiling
 
@@ -196,8 +199,11 @@ FLOOR()
 
 Return the integer closest but not greater than *value*.
 
+To round upward, see [CEIL()](#ceil).<br>
+To round to the nearest integer value, see [ROUND()](#round).
+
 - **value** (number): any number
-- returns **roundedValue** (number): the value rounded to the floor
+- returns **roundedValue** (number): the value rounded downward
 
 ```js
 FLOOR(2.49) // 2
@@ -467,7 +473,7 @@ a combination of the [ternary operator](../Operators.md#ternary-operator),
 and [FLOOR()](#floor):
 
 ```js
-LET rounded = value >= 0 ? FLOOR(value) : CEIL(value)
+value >= 0 ? FLOOR(value) : CEIL(value)
 ```
 
 SIN()

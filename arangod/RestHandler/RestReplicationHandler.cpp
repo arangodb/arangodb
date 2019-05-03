@@ -93,7 +93,7 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force
   if (!force && name[0] == '_') {
     if (strncmp(name.c_str(), "_local_", 7) == 0 ||
         strncmp(name.c_str(), "_from_", 6) == 0 || strncmp(name.c_str(), "_to_", 4) == 0) {
-      LOG_TOPIC(WARN, arangodb::Logger::REPLICATION)
+      LOG_TOPIC("944c4", WARN, arangodb::Logger::REPLICATION)
           << "Restore ignoring collection " << name
           << ". Will be created via SmartGraphs of a full dump. If you want to "
           << "restore ONLY this collection use 'arangorestore --force'. "
@@ -699,7 +699,8 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     for (auto const& p : *shardMap) {
       auto currentServerList = cic->servers(p.first /* shardId */);
       if (currentServerList.size() == 0 || p.second.size() == 0 ||
-          currentServerList[0] != p.second[0]) {
+          currentServerList[0] != p.second[0] ||
+          (!p.second[0].empty() && p.second[0][0] == '_')) {
         isReady = false;
       }
       if (!ClusterHelpers::compareServerLists(p.second, currentServerList)) {
@@ -1006,17 +1007,21 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
           || TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE ==
                  result.errorNumber()) {
         // some collections must not be dropped
-        auto res = truncateCollectionOnCoordinator(dbName, name);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          return Result(
-              res,
-              std::string(
-                  "unable to truncate collection (dropping is forbidden): '") +
-                  name + "'");
+        auto ctx = transaction::StandaloneContext::Create(_vocbase);
+        SingleCollectionTransaction trx(ctx, name, AccessMode::Type::EXCLUSIVE);
+        
+        Result res = trx.begin();
+        if (res.fail()) {
+          return res;
         }
-
-        return Result(res);
+        
+        OperationOptions options;
+        OperationResult result = trx.truncate(name, options);
+        res = trx.finish(result.result);
+        if (res.fail()) {
+          res.appendErrorMessage(". Unable to truncate collection (dropping is forbidden)");
+        }
+        return res;
       }
 
       if (!result.ok()) {
@@ -1030,7 +1035,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
                         "': " + TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
     }
   } catch (basics::Exception const& ex) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    LOG_TOPIC("41579", DEBUG, Logger::REPLICATION)
         << "processRestoreCollectionCoordinator "
         << "could not drop collection: " << ex.what();
   } catch (...) {
@@ -1318,7 +1323,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(std::string const& colle
     af->userManager()->triggerGlobalReload();
   }
 
-  return Result{queryResult.code};
+  return queryResult.result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1377,26 +1382,26 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
     OperationResult opRes = trx.remove(collectionName, oldBuilder.slice(), options);
     double duration = TRI_microtime() - startTime;
     if (opRes.fail()) {
-      LOG_TOPIC(WARN, Logger::CLUSTER)
+      LOG_TOPIC("e86e3", WARN, Logger::CLUSTER)
           << "Could not delete " << oldBuilder.slice().length()
           << " documents for restore: " << opRes.result.errorMessage();
       return opRes.result;
     }
     if (duration > 30) {
-      LOG_TOPIC(INFO, Logger::PERFORMANCE)
+      LOG_TOPIC("f4aed", INFO, Logger::PERFORMANCE)
           << "Restored/deleted " << oldBuilder.slice().length()
           << " documents in time: " << duration << " seconds.";
     }
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(WARN, Logger::CLUSTER)
+    LOG_TOPIC("a046b", WARN, Logger::CLUSTER)
         << "Could not delete documents for restore exception: " << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    LOG_TOPIC(WARN, Logger::CLUSTER)
+    LOG_TOPIC("677b7", WARN, Logger::CLUSTER)
         << "Could not delete documents for restore exception: " << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::CLUSTER)
+    LOG_TOPIC("734da", WARN, Logger::CLUSTER)
         << "Could not delete documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
@@ -1456,26 +1461,26 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
     opRes = trx.insert(collectionName, requestSlice, options);
     double duration = TRI_microtime() - startTime;
     if (opRes.fail()) {
-      LOG_TOPIC(WARN, Logger::CLUSTER)
+      LOG_TOPIC("e6280", WARN, Logger::CLUSTER)
           << "Could not insert " << requestSlice.length()
           << " documents for restore: " << opRes.result.errorMessage();
       return opRes.result;
     }
     if (duration > 30) {
-      LOG_TOPIC(INFO, Logger::PERFORMANCE)
+      LOG_TOPIC("38f0d", INFO, Logger::PERFORMANCE)
           << "Restored/inserted " << requestSlice.length()
           << " documents in time: " << duration << " seconds.";
     }
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(WARN, Logger::CLUSTER)
+    LOG_TOPIC("8e8e1", WARN, Logger::CLUSTER)
         << "Could not insert documents for restore exception: " << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    LOG_TOPIC(WARN, Logger::CLUSTER)
+    LOG_TOPIC("f1e7f", WARN, Logger::CLUSTER)
         << "Could not insert documents for restore exception: " << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::CLUSTER)
+    LOG_TOPIC("368bb", WARN, Logger::CLUSTER)
         << "Could not insert documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
@@ -1526,26 +1531,26 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
     opRes = trx.replace(collectionName, builder.slice(), options);
     double duration = TRI_microtime() - startTime;
     if (opRes.fail()) {
-      LOG_TOPIC(WARN, Logger::CLUSTER)
+      LOG_TOPIC("c708e", WARN, Logger::CLUSTER)
           << "Could not replace " << builder.slice().length()
           << " documents for restore: " << opRes.result.errorMessage();
       return opRes.result;
     }
     if (duration > 30) {
-      LOG_TOPIC(INFO, Logger::PERFORMANCE)
+      LOG_TOPIC("12b62", INFO, Logger::PERFORMANCE)
           << "Restored/replaced " << builder.slice().length()
           << " documents in time: " << duration << " seconds.";
     }
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(WARN, Logger::CLUSTER)
+    LOG_TOPIC("37b43", WARN, Logger::CLUSTER)
         << "Could not replace documents for restore exception: " << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    LOG_TOPIC(WARN, Logger::CLUSTER)
+    LOG_TOPIC("33217", WARN, Logger::CLUSTER)
         << "Could not replace documents for restore exception: " << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::CLUSTER)
+    LOG_TOPIC("5f400", WARN, Logger::CLUSTER)
         << "Could not replace documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
@@ -1619,7 +1624,7 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
       if (value.isString()) {
         std::string const typeString = value.copyString();
         if ((typeString == "primary") || (typeString == "edge")) {
-          LOG_TOPIC(DEBUG, Logger::REPLICATION)
+          LOG_TOPIC("0d352", DEBUG, Logger::REPLICATION)
               << "processRestoreIndexes silently ignoring primary or edge "
               << "index: " << idxDef.toJson();
           continue;
@@ -1768,7 +1773,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
     return;
   }
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "restoring view: " << nameSlice.copyString();
+  LOG_TOPIC("f874e", TRACE, Logger::REPLICATION) << "restoring view: " << nameSlice.copyString();
 
   try {
     CollectionNameResolver resolver(_vocbase);
@@ -1880,7 +1885,7 @@ void RestReplicationHandler::handleCommandSync() {
   Result r = syncer->run(config._incremental);
 
   if (r.fail()) {
-    LOG_TOPIC(ERR, Logger::REPLICATION) << "failed to sync: " << r.errorMessage();
+    LOG_TOPIC("c4818", ERR, Logger::REPLICATION) << "failed to sync: " << r.errorMessage();
     generateError(r);
     return;
   }
@@ -2126,12 +2131,12 @@ void RestReplicationHandler::handleCommandAddFollower() {
   }
 
   const std::string followerId = followerIdSlice.copyString();
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+  LOG_TOPIC("312cc", DEBUG, Logger::REPLICATION)
       << "Attempt to Add Follower: " << followerId << " to shard "
       << col->name() << " in database: " << _vocbase.name();
   // Short cut for the case that the collection is empty
   if (readLockIdSlice.isNone()) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    LOG_TOPIC("aaff2", DEBUG, Logger::REPLICATION)
         << "Try add follower fast-path (no documents)";
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
@@ -2143,7 +2148,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
         uint64_t nr = nrSlice.getNumber<uint64_t>();
-        LOG_TOPIC(DEBUG, Logger::REPLICATION)
+        LOG_TOPIC("533c3", DEBUG, Logger::REPLICATION)
             << "Compare with shortCut Leader: " << nr
             << " == Follower: " << checksumSlice.copyString();
         if (nr == 0 && checksumSlice.isEqualString("0")) {
@@ -2156,7 +2161,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
           }
 
           generateResult(rest::ResponseCode::OK, b.slice());
-          LOG_TOPIC(DEBUG, Logger::REPLICATION)
+          LOG_TOPIC("c316e", DEBUG, Logger::REPLICATION)
               << followerId << " is now following on shard " << _vocbase.name()
               << "/" << col->name();
           return;
@@ -2166,7 +2171,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     // If we get here, we have to report an error:
     generateError(rest::ResponseCode::FORBIDDEN,
                   TRI_ERROR_REPLICATION_SHARD_NONEMPTY, "shard not empty");
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << followerId << " is not yet in sync with "
+    LOG_TOPIC("8bf6e", DEBUG, Logger::REPLICATION) << followerId << " is not yet in sync with "
                                           << _vocbase.name() << "/" << col->name();
     return;
   }
@@ -2176,7 +2181,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
                   "'readLockId' is not a string or empty");
     return;
   }
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Try add follower with documents";
+  LOG_TOPIC("23b9f", DEBUG, Logger::REPLICATION) << "Try add follower with documents";
   // previous versions < 3.3x might not send the checksum, if mixed clusters
   // get into trouble here we may need to be more lenient
   TRI_ASSERT(checksumSlice.isString() && readLockIdSlice.isString());
@@ -2191,14 +2196,14 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+  LOG_TOPIC("40b17", DEBUG, Logger::REPLICATION)
       << "Compare Leader: " << referenceChecksum.get()
       << " == Follower: " << checksumSlice.copyString();
   if (!checksumSlice.isEqualString(referenceChecksum.get())) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << followerId << " is not yet in sync with "
+    LOG_TOPIC("94ebe", DEBUG, Logger::REPLICATION) << followerId << " is not yet in sync with "
                                           << _vocbase.name() << "/" << col->name();
     const std::string checksum = checksumSlice.copyString();
-    LOG_TOPIC(WARN, Logger::REPLICATION)
+    LOG_TOPIC("592ef", WARN, Logger::REPLICATION)
         << "Cannot add follower, mismatching checksums. "
         << "Expected: " << referenceChecksum.get() << " Actual: " << checksum;
     generateError(rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
@@ -2215,7 +2220,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     b.add(StaticStrings::Error, VPackValue(false));
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << followerId << " is now following on shard "
+  LOG_TOPIC("c13d4", DEBUG, Logger::REPLICATION) << followerId << " is now following on shard "
                                         << _vocbase.name() << "/" << col->name();
   generateResult(rest::ResponseCode::OK, b.slice());
 }
@@ -2305,6 +2310,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
+  // 0.0 means using the default timeout (whatever that is)
   double ttl = VelocyPackHelper::getNumericValue(ttlSlice, 0.0);
 
   if (col->getStatusLocked() != TRI_VOC_COL_STATUS_LOADED) {
@@ -2329,7 +2335,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     lockType = AccessMode::Type::EXCLUSIVE;
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+  LOG_TOPIC("4fac2", DEBUG, Logger::REPLICATION)
       << "Attempt to create a Lock: " << id << " for shard: " << _vocbase.name()
       << "/" << col->name() << " of type: " << (doSoftLock ? "soft" : "hard");
   Result res = createBlockingTransaction(id, *col, ttl, lockType);
@@ -2347,7 +2353,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     b.add(StaticStrings::Error, VPackValue(false));
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+  LOG_TOPIC("61a9d", DEBUG, Logger::REPLICATION)
       << "Shard: " << _vocbase.name() << "/" << col->name()
       << " is now locked with type: " << (doSoftLock ? "soft" : "hard")
       << " lock id: " << id;
@@ -2380,7 +2386,7 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
     return;
   }
   aql::QueryId id = ExtractReadlockId(idSlice);
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Test if Lock " << id << " is still active.";
+  LOG_TOPIC("05a75", DEBUG, Logger::REPLICATION) << "Test if Lock " << id << " is still active.";
   auto res = isLockHeld(id);
   if (!res.ok()) {
     generateError(std::move(res).result());
@@ -2393,7 +2399,7 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
     b.add(StaticStrings::Error, VPackValue(false));
     b.add("lockHeld", VPackValue(res.get()));
   }
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+  LOG_TOPIC("ca554", DEBUG, Logger::REPLICATION)
       << "Lock " << id << " is " << (res.get() ? "still active." : "gone.");
   generateResult(rest::ResponseCode::OK, b.slice());
 }
@@ -2424,11 +2430,11 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
     return;
   }
   aql::QueryId id = ExtractReadlockId(idSlice);
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Attempt to cancel Lock: " << id;
+  LOG_TOPIC("9a5e3", DEBUG, Logger::REPLICATION) << "Attempt to cancel Lock: " << id;
 
   auto res = cancelBlockingTransaction(id);
   if (!res.ok()) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    LOG_TOPIC("9caf7", DEBUG, Logger::REPLICATION)
         << "Lock " << id << " not canceled because of: " << res.errorMessage();
     generateError(std::move(res).result());
     return;
@@ -2441,7 +2447,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
     b.add("lockHeld", VPackValue(res.get()));
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+  LOG_TOPIC("a58e5", DEBUG, Logger::REPLICATION)
       << "Lock: " << id << " is now canceled, "
       << (res.get() ? "it is still in use." : "it is gone.");
   generateResult(rest::ResponseCode::OK, b.slice());
@@ -2476,7 +2482,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
   auto res = engine->createLoggerState(&_vocbase, builder);
 
   if (res.fail()) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    LOG_TOPIC("c7471", DEBUG, Logger::REPLICATION)
         << "failed to create logger-state" << res.errorMessage();
     generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
     return;
@@ -2701,10 +2707,10 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
 
   {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    auto trx = std::make_unique<SingleCollectionTransaction>(ctx, col, access);
+    auto trx = std::make_shared<SingleCollectionTransaction>(ctx, col, access);
     query->setTransactionContext(ctx);
     // Inject will take over responsiblilty of transaction, even on error case.
-    query->injectTransaction(trx.release());
+    query->injectTransaction(std::move(trx));
   }
   auto trx = query->trx();
   TRI_ASSERT(trx != nullptr);
@@ -2722,13 +2728,19 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   // is not responsible anymore, it has been handed over to the
   // registry.
   auto q = query.release();
+
   // Make sure to return the query after we are done
-  TRI_DEFER(queryRegistry->close(&_vocbase, id));
+  auto guard = scopeGuard([this, id, &queryRegistry]() {
+    queryRegistry->close(&_vocbase, id);
+  });
 
   if (isTombstoned(id)) {
     try {
-      // Code does not matter, read only access, so we can roll back.
-      queryRegistry->destroy(&_vocbase, id, TRI_ERROR_QUERY_KILLED);
+      guard.fire();
+      // error code does not matter, read only access, so we can roll back.
+      // we can ignore the openness here, as it was our thread that had
+      // inserted the query just a couple of instructions before
+      queryRegistry->destroy(_vocbase.name(), id, TRI_ERROR_QUERY_KILLED, true /*ignoreOpened*/);
     } catch (...) {
       // Maybe thrown in shutdown.
     }
@@ -2749,6 +2761,9 @@ ResultT<bool> RestReplicationHandler::isLockHeld(aql::QueryId id) const {
   auto queryRegistry = QueryRegistryFeature::registry();
   if (queryRegistry == nullptr) {
     return ResultT<bool>::error(TRI_ERROR_SHUTTING_DOWN);
+  }
+  if (_vocbase.isDropped()) {
+    return ResultT<bool>::error(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   auto res = queryRegistry->isQueryInUse(&_vocbase, id);
   if (!res.ok()) {
@@ -2775,7 +2790,7 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id)
     }
     try {
       // Code does not matter, read only access, so we can roll back.
-      queryRegistry->destroy(&_vocbase, id, TRI_ERROR_QUERY_KILLED);
+      queryRegistry->destroy(_vocbase.name(), id, TRI_ERROR_QUERY_KILLED, false);
     } catch (...) {
       // All errors that show up here can only be
       // triggered if the query is destroyed in between.

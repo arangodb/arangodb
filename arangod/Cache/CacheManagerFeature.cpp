@@ -79,13 +79,13 @@ void CacheManagerFeature::collectOptions(std::shared_ptr<options::ProgramOptions
 
 void CacheManagerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   if (_cacheSize < Manager::minSize) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("75778", FATAL, arangodb::Logger::FIXME)
         << "invalid value for `--cache.size', need at least " << Manager::minSize;
     FATAL_ERROR_EXIT();
   }
 
   if (_rebalancingInterval < (CacheManagerFeature::minRebalancingInterval)) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("8bb45", FATAL, arangodb::Logger::FIXME)
         << "invalid value for `--cache.rebalancing-interval', need at least "
         << (CacheManagerFeature::minRebalancingInterval);
     FATAL_ERROR_EXIT();
@@ -108,7 +108,7 @@ void CacheManagerFeature::start() {
   MANAGER = _manager.get();
   _rebalancer.reset(new CacheRebalancerThread(_manager.get(), _rebalancingInterval));
   _rebalancer->start();
-  LOG_TOPIC(DEBUG, Logger::STARTUP) << "cache manager has started";
+  LOG_TOPIC("13894", DEBUG, Logger::STARTUP) << "cache manager has started";
 }
 
 void CacheManagerFeature::beginShutdown() {

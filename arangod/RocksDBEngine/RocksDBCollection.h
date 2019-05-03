@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,6 +32,7 @@
 #include "VocBase/LogicalCollection.h"
 
 namespace rocksdb {
+class PinnableSlice;
 class Transaction;
 }
 
@@ -108,6 +109,10 @@ class RocksDBCollection final : public PhysicalCollection {
   ///////////////////////////////////
 
   Result truncate(transaction::Methods& trx, OperationOptions& options) override;
+  
+  /// @brief compact-data operation
+  /// triggers rocksdb compaction for documentDB and indexes
+  Result compact() override;
 
   void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) override;
 
@@ -130,32 +135,27 @@ class RocksDBCollection final : public PhysicalCollection {
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const override;
 
+  /// @brief lookup with callback, not thread-safe on same transaction::Context
   bool readDocumentWithCallback(transaction::Methods* trx, LocalDocumentId const& token,
                                 IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                arangodb::ManagedDocumentResult& result, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock,
-                TRI_voc_tick_t& revisionId, KeyLockInfo* /*keyLockInfo*/,
-                std::function<Result(void)> callbackDuringLock) override;
+                arangodb::ManagedDocumentResult& resultMdr, OperationOptions& options,
+                bool lock, KeyLockInfo* /*keyLockInfo*/,
+                std::function<void()> const& cbDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                ManagedDocumentResult& result, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-                ManagedDocumentResult& previous, arangodb::velocypack::Slice key,
-                std::function<Result(void)> callbackDuringLock) override;
+                ManagedDocumentResult& resultMdr, OperationOptions& options,
+                bool lock, ManagedDocumentResult& previousMdr) override;
 
   Result replace(transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                 ManagedDocumentResult& result, OperationOptions& options,
-                 TRI_voc_tick_t& resultMarkerTick, bool lock,
-                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                 std::function<Result(void)> callbackDuringLock) override;
+                 ManagedDocumentResult& resultMdr, OperationOptions& options,
+                 bool lock, ManagedDocumentResult& previousMdr) override;
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
                 ManagedDocumentResult& previous, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-                TRI_voc_rid_t& revisionId, KeyLockInfo* keyLockInfo,
-                std::function<Result(void)> callbackDuringLock) override;
+                bool lock, KeyLockInfo* keyLockInfo,
+                std::function<void()> const& cbDuringLock) override;
 
   /// adjust the current number of docs
   void adjustNumberDocuments(TRI_voc_rid_t revisionId, int64_t adjustment);
@@ -172,8 +172,6 @@ class RocksDBCollection final : public PhysicalCollection {
   /// recalculte counts for collection in case of failure
   uint64_t recalculateCounts();
 
-  /// trigger rocksdb compaction for documentDB and indexes
-  void compact();
   void estimateSize(velocypack::Builder& builder);
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
@@ -209,27 +207,32 @@ class RocksDBCollection final : public PhysicalCollection {
                                   arangodb::velocypack::Slice const& newDoc,
                                   OperationOptions& options) const;
 
-  arangodb::Result lookupDocumentVPack(LocalDocumentId const& documentId,
-                                       transaction::Methods*,
-                                       arangodb::ManagedDocumentResult&,
-                                       bool withCache) const;
+  /// @brief lookup document in cache and / or rocksdb
+  /// @param readCache attempt to read from cache
+  /// @param fillCache fill cache with found document
+  arangodb::Result lookupDocumentVPack(transaction::Methods* trx,
+                                       LocalDocumentId const& documentId,
+                                       rocksdb::PinnableSlice& ps,
+                                       bool readCache,
+                                       bool fillCache) const;
+  
+  bool lookupDocumentVPack(transaction::Methods*,
+                           LocalDocumentId const& documentId,
+                           IndexIterator::DocumentCallback const& cb,
+                           bool withCache) const;
 
-  arangodb::Result lookupDocumentVPack(LocalDocumentId const& documentId,
-                                       transaction::Methods*,
-                                       IndexIterator::DocumentCallback const& cb,
-                                       bool withCache) const;
-
+  /// @brief create hash-cache
   void createCache() const;
-
+  /// @brief destory hash-cache
   void destroyCache() const;
 
   /// is this collection using a cache
   inline bool useCache() const noexcept {
     return (_cacheEnabled && _cachePresent);
   }
-
+  
   /// @brief track key in file
-  void blackListKey(char const* data, std::size_t len) const;
+  void blackListKey(RocksDBKey const& key) const;
 
   /// @brief track the usage of waitForSync option in an operation
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);

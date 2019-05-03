@@ -115,13 +115,17 @@ class Query {
   /// @brief set the query to killed
   void kill();
 
+  /// @brief increase number of HTTP requests. this is normally
+  /// called during the setup of a query
+  void incHttpRequests(size_t requests);
+
   void setExecutionTime();
 
   QueryString const& queryString() const { return _queryString; }
 
   /// @brief Inject a transaction from outside. Use with care!
-  void injectTransaction(transaction::Methods* trx) {
-    _trx = trx;
+  void injectTransaction(std::shared_ptr<transaction::Methods> trx) {
+    _trx = std::move(trx);
     init();
   }
 
@@ -209,7 +213,10 @@ class Query {
   void registerErrorCustom(int, char const*);
 
   /// @brief register a warning
-  virtual void registerWarning(int, char const* = nullptr);
+  TEST_VIRTUAL void registerWarning(int, char const* = nullptr);
+
+  /// @brief register a warning (convenience overload)
+  TEST_VIRTUAL void registerWarning(int code, std::string const& details);
 
   void prepare(QueryRegistry*);
 
@@ -245,7 +252,7 @@ class Query {
   TEST_VIRTUAL void setEngine(ExecutionEngine* engine);
 
   /// @brief return the transaction, if prepared
-  TEST_VIRTUAL inline transaction::Methods* trx() { return _trx; }
+  TEST_VIRTUAL inline transaction::Methods* trx() { return _trx.get(); }
 
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
@@ -282,9 +289,6 @@ class Query {
   ///        Will add a new entry { ..., warnings: <warnings>, } if there are
   ///        warnings. If there are none it will not modify the builder
   void addWarningsToVelocyPack(arangodb::velocypack::Builder&) const;
-
-  /// @brief get a description of the query's current state
-  std::string getStateString() const;
 
   /// @brief look up a graph in the _graphs collection
   graph::Graph const* lookupGraphByName(std::string const& name);
@@ -323,9 +327,6 @@ class Query {
 
   /// @brief whether or not the query cache can be used for the query
   bool canUseQueryCache() const;
-
-  /// @brief neatly format exception messages for the users
-  std::string buildErrorMessage(int errorCode) const;
 
   /// @brief enter a new state
   void enterState(QueryExecutionState::ValueType);
@@ -404,7 +405,8 @@ class Query {
   /// @brief the transaction object, in a distributed query every part of
   /// the query has its own transaction object. The transaction object is
   /// created in the prepare method.
-  transaction::Methods* _trx;
+  std::shared_ptr<transaction::Methods> _trx;
+  bool _isClonedQuery = false;
 
   /// @brief the ExecutionEngine object, if the query is prepared
   std::unique_ptr<ExecutionEngine> _engine;

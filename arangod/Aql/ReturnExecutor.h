@@ -52,8 +52,6 @@ class ReturnExecutorInfos : public ExecutorInfos {
   ReturnExecutorInfos(ReturnExecutorInfos const&) = delete;
   ~ReturnExecutorInfos() = default;
 
-  Variable const& inVariable() const { return *_inVariable; }
-
   RegisterId getInputRegisterId() const { return _inputRegisterId; }
 
   RegisterId getOutputRegisterId() const {
@@ -68,7 +66,6 @@ class ReturnExecutorInfos : public ExecutorInfos {
 
  private:
   /// @brief the variable produced by Return
-  Variable const* _inVariable;
   RegisterId _inputRegisterId;
   bool _doCount;
   bool _returnInheritedResults;
@@ -99,7 +96,7 @@ class ReturnExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  inline std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output) {
+  inline std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output) {
     ExecutionState state;
     ReturnExecutor::Stats stats;
     InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -131,6 +128,13 @@ class ReturnExecutor {
       stats.incrCounted();
     }
     return {state, stats};
+  }
+  
+  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Logic_error, prefetching number fo rows not supported");
   }
 
  private:

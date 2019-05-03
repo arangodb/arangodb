@@ -97,36 +97,35 @@ class CalculationExecutor {
   using Stats = NoStats;
 
   CalculationExecutor(Fetcher& fetcher, CalculationExecutorInfos&);
-  ~CalculationExecutor() = default;
+  ~CalculationExecutor();
 
   /**
    * @brief produce the next Row of Aql Values.
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  inline std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output) {
-    ExecutionState state;
-    InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
-    std::tie(state, row) = _fetcher.fetchRow();
+  inline std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(!row);
-      return {state, NoStats{}};
-    }
-
-    if (!row) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, NoStats{}};
-    }
-
-    doEvaluation(row, output);
-
-    return {state, NoStats{}};
+  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Logic_error, prefetching number fo rows not supported");
   }
 
  private:
   // specialized implementations
   inline void doEvaluation(InputAqlItemRow& input, OutputAqlItemRow& output);
+
+  // Only for V8Conditions
+  template <CalculationType U = calculationType, typename = std::enable_if_t<U == CalculationType::V8Condition>>
+  inline void enterContext();
+
+  // Only for V8Conditions
+  template <CalculationType U = calculationType, typename = std::enable_if_t<U == CalculationType::V8Condition>>
+  inline void exitContext();
+
+  inline bool shouldExitContextBetweenBlocks() const;
 
  public:
   CalculationExecutorInfos& _infos;
@@ -136,7 +135,39 @@ class CalculationExecutor {
 
   InputAqlItemRow _currentRow;
   ExecutionState _rowState;
+
+  // true iff we entered a V8 context and didn't exit it yet.
+  // Necessary for owned contexts, which will not be exited when we call
+  // exitContext; but only for assertions in maintainer mode.
+  bool _hasEnteredContext;
 };
+
+template<CalculationType calculationType>
+template<CalculationType U, typename>
+inline void CalculationExecutor<calculationType>::enterContext() {
+  _infos.getQuery().enterContext();
+  _hasEnteredContext = true;
+}
+
+template<CalculationType calculationType>
+template<CalculationType U, typename>
+inline void CalculationExecutor<calculationType>::exitContext() {
+  if (shouldExitContextBetweenBlocks()) {
+    // must invalidate the expression now as we might be called from
+    // different threads
+    _infos.getExpression().invalidate();
+    _infos.getQuery().exitContext();
+    _hasEnteredContext = false;
+  }
+}
+
+template<CalculationType calculationType>
+bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks() const {
+  static const bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
+  const bool stream = _infos.getQuery().queryOptions().stream;
+
+  return isRunningInCluster || stream;
+}
 
 template <>
 inline void CalculationExecutor<CalculationType::Reference>::doEvaluation(
@@ -152,6 +183,45 @@ inline void CalculationExecutor<CalculationType::Reference>::doEvaluation(
   }
 
   output.cloneValueInto(_infos.getOutputRegisterId(), input, input.getValue(inRegs[0]));
+}
+
+template <CalculationType calculationType>
+inline std::pair<ExecutionState, typename CalculationExecutor<calculationType>::Stats>
+CalculationExecutor<calculationType>::produceRows(OutputAqlItemRow& output) {
+  ExecutionState state;
+  InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  std::tie(state, row) = _fetcher.fetchRow();
+
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(!row);
+    TRI_ASSERT(!_infos.getQuery().hasEnteredContext());
+    return {state, NoStats{}};
+  }
+
+  if (!row) {
+    TRI_ASSERT(state == ExecutionState::DONE);
+    TRI_ASSERT(!_infos.getQuery().hasEnteredContext());
+    return {state, NoStats{}};
+  }
+
+  doEvaluation(row, output);
+
+  // _hasEnteredContext implies the query has entered the context, but not
+  // the other way round because it may be owned by exterior.
+  TRI_ASSERT(!_hasEnteredContext || _infos.getQuery().hasEnteredContext());
+
+  // The following only affects V8Conditions. If we should exit the V8 context
+  // between blocks, because we might have to wait for client or upstream, then
+  //   hasEnteredContext => state == HASMORE,
+  // as we only leave the context open when there are rows left in the current
+  // block.
+  // Note that _infos.getQuery().hasEnteredContext() may be true, even if
+  // _hasEnteredContext is false, if (and only if) the query context is owned
+  // by exterior.
+  TRI_ASSERT(!shouldExitContextBetweenBlocks() || !_hasEnteredContext ||
+             state == ExecutionState::HASMORE);
+
+  return {state, NoStats{}};
 }
 
 template <>
@@ -175,20 +245,18 @@ inline void CalculationExecutor<CalculationType::Condition>::doEvaluation(
 template <>
 inline void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
     InputAqlItemRow& input, OutputAqlItemRow& output) {
-  static const bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
-  const bool stream = _infos.getQuery().queryOptions().stream;
-  auto cleanup = [&]() {
-    if (isRunningInCluster || stream) {
-      // must invalidate the expression now as we might be called from
-      // different threads
-      _infos.getExpression().invalidate();
-      _infos.getQuery().exitContext();
-    }
-  };
+  // must have a V8 context here to protect Expression::execute().
 
-  // must have a V8 context here to protect Expression::execute()
-  _infos.getQuery().enterContext();
-  TRI_DEFER(cleanup());
+  // enterContext is safe to call even if we've already entered.
+
+  // If we should exit the context between two blocks, because client or
+  // upstream might send us to sleep, it is expected that we enter the context
+  // exactly on the first row of every block.
+  TRI_ASSERT(!shouldExitContextBetweenBlocks() ||
+             _hasEnteredContext == !input.isFirstRowInBlock());
+
+  enterContext();
+  auto contextGuard = scopeGuard([this]() { exitContext(); });
 
   ISOLATE;
   v8::HandleScope scope(isolate);  // do not delete this!
@@ -205,6 +273,16 @@ inline void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
   }
 
   output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
+
+  if (input.blockHasMoreRows()) {
+    // We will be called again before the fetcher needs to get a new block.
+    // Thus we won't wait for upstream, nor will get a WAITING on the next
+    // fetchRow().
+    // So we keep the context open.
+    // This works because this block allows pass through, i.e. produces exactly
+    // one output row per input row.
+    contextGuard.cancel();
+  }
 }
 
 }  // namespace aql

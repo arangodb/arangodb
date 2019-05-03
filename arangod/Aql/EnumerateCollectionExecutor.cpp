@@ -45,8 +45,10 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
-    RegisterId outputRegister, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+    RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToClear,
+    // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     std::vector<std::string> const& projections, transaction::Methods* trxPtr,
@@ -70,15 +72,19 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
 EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
+      _documentProducer(nullptr),
+      _documentProducingFunctionContext(_infos.getProduceResult(),
+                                        _infos.getProjections(), _infos.getTrxPtr(),
+                                        _infos.getCoveringIndexAttributePositions(),
+                                        true, _infos.getUseRawDocumentPointers()),
       _state(ExecutionState::HASMORE),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _allowCoveringIndexOptimization(true),
       _cursorHasMore(false) {
-  _cursor =
+  _cursor = std::make_unique<OperationCursor>(
       _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
                                     (_infos.getRandom()
                                          ? transaction::Methods::CursorType::ANY
-                                         : transaction::Methods::CursorType::ALL));
+                                         : transaction::Methods::CursorType::ALL)));
 
   if (!waitForSatellites(_infos.getEngine(), _infos.getCollection())) {
     double maxWait = _infos.getEngine()->getQuery()->queryOptions().satelliteSyncWait;
@@ -87,21 +93,24 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                        " did not come into sync in time (" +
                                        std::to_string(maxWait) + ")");
   }
-  this->setProducingFunction(buildCallback(
-        _documentProducer, _infos.getOutVariable(), _infos.getProduceResult(),
-        _infos.getProjections(), _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
-        _allowCoveringIndexOptimization, _infos.getUseRawDocumentPointers()));
-
-};
+  this->setProducingFunction(buildCallback(_documentProducingFunctionContext));
+}
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
 
-std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor::produceRow(
+std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor::produceRows(
     OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRow") {
+  TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  EnumerateCollectionStats stats{};
+  // Allocate this on the stack, not the heap.
+  struct {
+    EnumerateCollectionExecutor& executor;
+    OutputAqlItemRow& output;
+    EnumerateCollectionStats stats;
+  } context{*this, output, {}};
+  // just a shorthand
+  EnumerateCollectionStats& stats = context.stats;
 
   while (true) {
     if (!_cursorHasMore) {
@@ -131,19 +140,23 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
       // properly build up results by fetching the actual documents
       // using nextDocument()
       _cursorHasMore = _cursor->nextDocument(
-          [&](LocalDocumentId const&, VPackSlice slice) {
-            _documentProducer(_input, output, slice, _infos.getOutputRegisterId());
-            stats.incrScanned();
-          }, 1 /*atMost*/);
+          [&context](LocalDocumentId const&, VPackSlice slice) {
+            context.executor._documentProducer(context.executor._input, context.output, slice,
+                                               context.executor._infos.getOutputRegisterId());
+            context.stats.incrScanned();
+          },
+          output.numRowsLeft() /*atMost*/);
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
       _cursorHasMore = _cursor->next(
-          [&](LocalDocumentId const&) {
-            _documentProducer(_input, output, VPackSlice::nullSlice(),
-                              _infos.getOutputRegisterId());
-            stats.incrScanned();
-          }, 1 /*atMost*/);
+          [&context](LocalDocumentId const&) {
+            context.executor._documentProducer(context.executor._input, context.output,
+                                               VPackSlice::nullSlice(),
+                                               context.executor._infos.getOutputRegisterId());
+            context.stats.incrScanned();
+          },
+          output.numRowsLeft() /*atMost*/);
     }
 
     if (_state == ExecutionState::DONE && !_cursorHasMore) {
@@ -151,6 +164,14 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
     }
     return {ExecutionState::HASMORE, stats};
   }
+}
+
+void EnumerateCollectionExecutor::initializeCursor() {
+  _state = ExecutionState::HASMORE;
+  _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  setAllowCoveringIndexOptimization(true);
+  _cursorHasMore = false;
+  _cursor->reset();
 }
 
 #ifndef USE_ENTERPRISE

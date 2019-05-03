@@ -207,7 +207,7 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
       return false;
     default:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("ebe25", ERR, arangodb::Logger::FIXME)
           << "Traversal optimizer encountered node: " << node->getTypeString();
 #endif
       return false;
@@ -298,7 +298,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent, size_t te
           default:
             // Other types cannot be optimized
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-            LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            LOG_TOPIC("fcdf3", ERR, arangodb::Logger::FIXME)
                 << "Failed type: " << node->getTypeString();
             node->dump(0);
 #endif
@@ -513,9 +513,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::ENUMERATE_COLLECTION:
     case EN::LIMIT:
     case EN::SHORTEST_PATH:
-#ifdef USE_IRESEARCH
     case EN::ENUMERATE_IRESEARCH_VIEW:
-#endif
     {
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions

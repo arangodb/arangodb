@@ -1,7 +1,7 @@
 Registering and Unregistering User Functions
 ============================================
 
-AQL user functions can be registered in the selected database 
+User-defined functions (UDFs) can be registered in the selected database 
 using the *aqlfunctions* object as follows:
 
 ```js
@@ -13,6 +13,8 @@ function code must be specified. This can easily be done in
 [arangosh](../../Manual/Programs/Arangosh/index.html). The
 [HTTP Interface](../../HTTP/AqlUserFunctions/index.html) also offers
 User Functions management.
+
+In a cluster setup, make sure to connect to a coordinator to manage the UDFs.
 
 Documents in the *_aqlfunctions* collection (or any other system collection)
 should not be accessed directly, but only via the dedicated interfaces.
@@ -75,7 +77,7 @@ collection *_aqlfunctions*.
 
 The function returns *true* when it updates/replaces an existing AQL 
 function of the same name, and *false* otherwise. It will throw an exception
-when it detects syntactially invalid function code.
+when it detects syntactically invalid function code.
 
 
 **Examples**

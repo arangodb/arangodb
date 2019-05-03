@@ -30,8 +30,13 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterTrxMethods.h"
 #include "Graph/Traverser.h"
 #include "Indexes/Index.h"
+#include "Transaction/Context.h"
+#include "Transaction/Methods.h"
+#include "StorageEngine/TransactionCollection.h"
+#include "StorageEngine/TransactionState.h"
 #include "RestServer/TtlFeature.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
@@ -41,7 +46,6 @@
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
-#include <velocypack/Helpers.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -50,6 +54,7 @@
 #include <numeric>
 #include <vector>
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -153,52 +158,70 @@ void recursiveAdd(VPackSlice const& value, std::shared_ptr<VPackBuilder>& builde
   TRI_ASSERT(builder->isClosed());
 }
 
-static void InjectNoLockHeader(arangodb::transaction::Methods const& trx,
-                               std::string const& shard,
-                               std::unordered_map<std::string, std::string>* headers) {
-  if (trx.isLockedShard(shard)) {
-    headers->emplace(arangodb::StaticStrings::XArangoNoLock, shard);
-  }
-}
+/// @brief begin a transaction on some leader shards
+template <typename ShardDocsMap>
+Result beginTransactionOnSomeLeaders(TransactionState& state,
+                                     std::shared_ptr<LogicalCollection> const& coll,
+                                     ShardDocsMap const& shards) {
+  TRI_ASSERT(state.isCoordinator());
+  TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
-static std::unique_ptr<std::unordered_map<std::string, std::string>> CreateNoLockHeader(
-    arangodb::transaction::Methods const& trx, std::string const& shard) {
-  if (trx.isLockedShard(shard)) {
-    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-    headers->emplace(arangodb::StaticStrings::XArangoNoLock, shard);
-    return headers;
+  std::shared_ptr<ShardMap> shardMap = coll->shardIds();
+  std::vector<std::string> leaders;
+
+  for (auto const& pair : shards) {
+    auto const& it = shardMap->find(pair.first);
+    if (it->second.empty()) {
+      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;  // something is broken
+    }
+    // now we got the shard leader
+    std::string const& leader = it->second[0];
+    if (!state.knowsServer(leader)) {
+      leaders.emplace_back(leader);
+    }
   }
-  return nullptr;
+  return ClusterTrxMethods::beginTransactionOnLeaders(state, leaders);
+}
+  
+// begin transaction on shard leaders
+static Result beginTransactionOnAllLeaders(transaction::Methods& trx,
+                                           ShardMap const& shards) {
+  TRI_ASSERT(trx.state()->isCoordinator());
+  TRI_ASSERT(trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
+  std::vector<ServerID> leaders;
+  for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : shards) {
+    ServerID const& srv = shardServers.second.at(0);
+    if (!trx.state()->knowsServer(srv)) {
+      leaders.emplace_back(srv);
+    }
+  }
+  return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), leaders);
+}
+  
+/// @brief add the correct header for the shard
+static void addTransactionHeaderForShard(transaction::Methods& trx,
+                                         ShardMap const& shardMap, ShardID const& shard,
+                                         std::unordered_map<std::string, std::string>& headers) {
+  TRI_ASSERT(trx.state()->isCoordinator());
+  if (!ClusterTrxMethods::isElCheapo(trx)) {
+    return; // no need
+  }
+
+  auto const& it = shardMap.find(shard);
+  if (it != shardMap.end()) {
+    if (it->second.empty()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+    }
+    ServerID const& leader = it->second[0];
+    ClusterTrxMethods::addTransactionHeader(trx, leader, headers);
+  } else {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "couldnt find shard in shardMap");
+  }
 }
 }  // namespace
 
 namespace arangodb {
-
-static int handleGeneralCommErrors(ClusterCommResult const* res) {
-  // This function creates an error code from a ClusterCommResult,
-  // but only if it is a communication error. If the communication
-  // was successful and there was an HTTP error code, this function
-  // returns TRI_ERROR_NO_ERROR.
-  // If TRI_ERROR_NO_ERROR is returned, then the result was CL_COMM_RECEIVED
-  // and .answer can safely be inspected.
-  if (res->status == CL_COMM_TIMEOUT) {
-    // No reply, we give up:
-    return TRI_ERROR_CLUSTER_TIMEOUT;
-  } else if (res->status == CL_COMM_ERROR) {
-    return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-  } else if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
-    if (res->result == nullptr) {
-      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-    }
-    if (!res->result->isComplete()) {
-      // there is no result
-      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-    }
-    return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a numeric value from an hierarchical VelocyPack
@@ -213,19 +236,6 @@ static T ExtractFigure(VPackSlice const& slice, char const* group, char const* n
     return static_cast<T>(0);
   }
   return arangodb::basics::VelocyPackHelper::getNumericValue<T>(g, name, 0);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts answer from response into a VPackBuilder.
-///        If there was an error extracting the answer the builder will be
-///        empty.
-///        No Error can be thrown.
-////////////////////////////////////////////////////////////////////////////////
-
-static std::shared_ptr<VPackBuilder> ExtractAnswer(ClusterCommResult const& res) {
-  auto rv = std::make_shared<VPackBuilder>();
-  rv->add(res.answer->payload());
-  return rv;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -419,6 +429,13 @@ static int distributeBabyOnShards(
     shardID = shards->at(0);
     userSpecifiedKey = true;
   } else {
+
+    int r = transaction::Methods::validateSmartJoinAttribute(*(collinfo.get()), value);
+
+    if (r != TRI_ERROR_NO_ERROR) {
+      return r;
+    }
+
     // Sort out the _key attribute:
     // The user is allowed to specify _key, provided that _key is the one
     // and only sharding attribute, because in this case we can delegate
@@ -552,7 +569,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
     for (uint64_t j = 0; j < replicationFactor; ++j) {
       if (j >= dbServers.size()) {
         if (warnAboutReplicationFactor) {
-          LOG_TOPIC(WARN, Logger::CLUSTER)
+          LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
               << "createCollectionCoordinator: replicationFactor is "
               << "too large for the number of DBservers";
         }
@@ -636,6 +653,33 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
   }
   return result;
 }
+  
+/// @brief convert ClusterComm error into arango error code
+int handleGeneralCommErrors(arangodb::ClusterCommResult const* res) {
+  // This function creates an error code from a ClusterCommResult,
+  // but only if it is a communication error. If the communication
+  // was successful and there was an HTTP error code, this function
+  // returns TRI_ERROR_NO_ERROR.
+  // If TRI_ERROR_NO_ERROR is returned, then the result was CL_COMM_RECEIVED
+  // and .answer can safely be inspected.
+  if (res->status == CL_COMM_TIMEOUT) {
+    // No reply, we give up:
+    return TRI_ERROR_CLUSTER_TIMEOUT;
+  } else if (res->status == CL_COMM_ERROR) {
+    return TRI_ERROR_CLUSTER_CONNECTION_LOST;
+  } else if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
+    if (res->result == nullptr) {
+      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
+    }
+    if (!res->result->isComplete()) {
+      // there is no result
+      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
+    }
+    return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+  }
+  
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a copy of all HTTP headers to forward
@@ -713,8 +757,38 @@ bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& old
       return true;
     }
   }
-
+  
   return false;
+}
+
+bool smartJoinAttributeChanged(LogicalCollection const& collection, 
+                               VPackSlice const& oldValue,
+                               VPackSlice const& newValue, bool isPatch) {
+  if (!collection.hasSmartJoinAttribute()) {
+    return false;
+  }
+  if (!oldValue.isObject() || !newValue.isObject()) {
+    // expecting two objects. everything else is an error
+    return true;
+  }
+
+  std::string const& s = collection.smartJoinAttribute();
+    
+  VPackSlice n = newValue.get(s);
+  if (!n.isString()) {
+    if (isPatch && n.isNone()) {
+      // attribute not set in patch document. this means no update
+      return false;
+    }
+
+    // no string value... invalid!
+    return true;
+  }
+
+  VPackSlice o = oldValue.get(s);
+  TRI_ASSERT(o.isString());
+    
+  return (arangodb::basics::VelocyPackHelper::compare(n, o, false) != 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -742,7 +816,7 @@ int revisionOnCoordinator(std::string const& dbname,
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
-  auto shards = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
   std::unordered_map<std::string, std::string> headers;
@@ -762,8 +836,7 @@ int revisionOnCoordinator(std::string const& dbname,
     auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
-        VPackSlice answer = answerBuilder->slice();
+        VPackSlice answer = res.answer->payload();
 
         if (answer.isObject()) {
           VPackSlice r = answer.get("revision");
@@ -810,7 +883,7 @@ int warmupOnCoordinator(std::string const& dbname, std::string const& cid) {
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
-  auto shards = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
   std::unordered_map<std::string, std::string> headers;
@@ -855,7 +928,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
-  auto shards = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
   std::unordered_map<std::string, std::string> headers;
@@ -875,8 +948,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
     auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
-        VPackSlice answer = answerBuilder->slice();
+        VPackSlice answer = res.answer->payload();
 
         if (answer.isObject()) {
           VPackSlice figures = answer.get("figures");
@@ -902,8 +974,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 /// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
-int countOnCoordinator(std::string const& dbname, std::string const& cname,
-                       transaction::Methods const& trx,
+int countOnCoordinator(transaction::Methods& trx, std::string const& cname,
                        std::vector<std::pair<std::string, uint64_t>>& result) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -915,31 +986,42 @@ int countOnCoordinator(std::string const& dbname, std::string const& cname,
 
   result.clear();
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, cname);
   if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-
-  auto shards = collinfo->shardIds();
+  
+  std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
+  const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  if (isManaged) {
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    if (res.fail()) {
+      return res.errorNumber();
+    }
+  }
+  
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>();
-  for (auto const& p : *shards) {
+  for (std::pair<ShardID, std::vector<ServerID>> const& p : *shardIds) {
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+    ClusterTrxMethods::addTransactionHeader(trx, /*leader*/p.second[0], *headers);
     requests.emplace_back("shard:" + p.first, arangodb::rest::RequestType::GET,
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               "/_api/collection/" +
                               StringUtils::urlEncode(p.first) + "/count",
-                          body, ::CreateNoLockHeader(trx, p.first));
+                          body, std::move(headers));
   }
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::QUERIES, true);
+
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::QUERIES,
+                      /*retryOnCollNotFound*/true, /*retryOnBackUnvlbl*/!isManaged);
   for (auto& req : requests) {
     auto& res = req.result;
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
-        VPackSlice answer = answerBuilder->slice();
+        VPackSlice answer = res.answer->payload();
 
         if (answer.isObject()) {
           // add to the total
@@ -965,7 +1047,8 @@ int countOnCoordinator(std::string const& dbname, std::string const& cname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string const& collname,
-                                      std::unordered_map<std::string, double>& result) {
+                                      std::unordered_map<std::string, double>& result,
+                                      TRI_voc_tick_t tid) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
@@ -983,76 +1066,65 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  auto shards = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
   std::vector<ClusterCommRequest> requests;
   std::string requestsUrl;
   auto body = std::make_shared<std::string>();
   for (auto const& p : *shards) {
+    std::unique_ptr<std::unordered_map<std::string, std::string>> headers;
+    if (tid != 0) {
+      headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      headers->emplace(StaticStrings::TransactionId, std::to_string(tid));
+    }
+    
     requestsUrl = "/_db/" + StringUtils::urlEncode(dbname) +
-                  "/_api/index?collection=" + StringUtils::urlEncode(p.first);
+                  "/_api/index/selectivity?collection=" + StringUtils::urlEncode(p.first);
     requests.emplace_back("shard:" + p.first, arangodb::rest::RequestType::GET,
-                          requestsUrl, body);
+                          requestsUrl, body, std::move(headers));
   }
 
   // format of expected answer:
-  // in identifiers is a map that has keys in the format
+  // in indexes is a map that has keys in the format
   // s<shardid>/<indexid> and index information as value
 
   // {"code":200
   // ,"error":false
-  // ,"identifiers":{ "s10004/0"    :{"fields":["_key"]
-  //                                 ,"id":"s10004/0"
-  //                                 ,"selectivityEstimate":1
-  //                                 ,"sparse":false
-  //                                 ,"type":"primary"
-  //                                 ,"unique":true
-  //                                 }
-  //                 ,"s10004/10005":{"deduplicate":true
-  //                                 ,"fields":["user"]
-  //                                 ,"id":"s10004/10005"
-  //                                 ,"selectivityEstimate":1
-  //                                 ,"sparse":true
-  //                                 ,"type":"hash"
-  //                                 ,"unique":true
-  //                                 }
-  //                 }
+  // ,"indexes":{ "s10004/0"    : 1.0,
+  //              "s10004/10005": 0.5
+  //            }
   // }
 
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::QUERIES, true);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::QUERIES,
+                      /*retryOnCollNotFound*/true);
 
   std::map<std::string, std::vector<double>> indexEstimates;
 
   for (auto& req : requests) {
-    auto& res = req.result;
-    if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
-        VPackSlice answer = answerBuilder->slice();
-
-        if (answer.isObject()) {
-          // add to the total
-          for (auto const& identifier :
-               VPackObjectIterator(answer.get("identifiers"))) {
-            if (identifier.value.hasKey("selectivityEstimate")) {
-              arangodb::velocypack::StringRef shard_index_id(identifier.key);
-              auto split_point =
-                  std::find(shard_index_id.begin(), shard_index_id.end(), '/');
-              std::string index(split_point + 1, shard_index_id.end());
-
-              double estimate = arangodb::basics::VelocyPackHelper::getNumericValue(
-                  identifier.value, "selectivityEstimate", 0.0);
-              indexEstimates[index].push_back(estimate);
-            }
-          }
-        } else {
-          return TRI_ERROR_INTERNAL;
-        }
-      } else {
-        return static_cast<int>(res.answer_code);
+    int res = handleGeneralCommErrors(&req.result);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    
+    ClusterCommResult const& comRes = req.result;
+    
+    if (comRes.answer_code == arangodb::rest::ResponseCode::OK) {
+      VPackSlice answer = comRes.answer->payload();
+      if (!answer.isObject()) {
+        return TRI_ERROR_INTERNAL;
       }
+
+      // add to the total
+      for (auto const& pair : VPackObjectIterator(answer.get("indexes"), true)) {
+        velocypack::StringRef shard_index_id(pair.key);
+        auto split_point =
+        std::find(shard_index_id.begin(), shard_index_id.end(), '/');
+        std::string index(split_point + 1, shard_index_id.end());
+        double estimate = basics::VelocyPackHelper::getNumericValue(pair.value, 0.0);
+        indexEstimates[index].push_back(estimate);
+      }
+      
     } else {
-      return handleGeneralCommErrors(&req.result);
+      return static_cast<int>(comRes.answer_code);
     }
   }
 
@@ -1082,8 +1154,7 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 /// for their documents.
 ////////////////////////////////////////////////////////////////////////////////
 
-Result createDocumentOnCoordinator(std::string const& dbname, std::string const& collname,
-                                   transaction::Methods const& trx,
+Result createDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
                                    arangodb::OperationOptions const& options,
                                    VPackSlice const& slice,
                                    arangodb::rest::ResponseCode& responseCode,
@@ -1098,6 +1169,7 @@ Result createDocumentOnCoordinator(std::string const& dbname, std::string const&
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(ci != nullptr);
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, collname);
@@ -1105,6 +1177,7 @@ Result createDocumentOnCoordinator(std::string const& dbname, std::string const&
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   auto collid = std::to_string(collinfo->id());
+  std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
 
   // create vars used in this function
   bool const useMultiple = slice.isArray();  // insert more than one document
@@ -1128,6 +1201,15 @@ Result createDocumentOnCoordinator(std::string const& dbname, std::string const&
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
+    }
+  }
+
+  // lazily begin transactions on leaders
+  const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  if (isManaged && shardMap.size() > 1) {
+    Result res = beginTransactionOnSomeLeaders(*trx.state(), collinfo, shardMap);
+    if (res.fail()) {
+      return res.errorNumber();
     }
   }
 
@@ -1178,14 +1260,16 @@ Result createDocumentOnCoordinator(std::string const& dbname, std::string const&
       body = std::make_shared<std::string>(reqBuilder.slice().toJson());
     }
 
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+    addTransactionHeaderForShard(trx, *shardIds, /*shard*/it.first, *headers);
     requests.emplace_back("shard:" + it.first, arangodb::rest::RequestType::POST,
                           baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
-                          body, ::CreateNoLockHeader(trx, it.first));
+                          body, std::move(headers));
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, Logger::COMMUNICATION,
+                      /*retryOnCollNotFound*/true, /*retryOnBackUnavai*/!isManaged);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -1197,6 +1281,8 @@ Result createDocumentOnCoordinator(std::string const& dbname, std::string const&
     if (commError != TRI_ERROR_NO_ERROR) {
       return commError;
     }
+    
+    
 
     responseCode = res.answer_code;
     TRI_ASSERT(res.answer != nullptr);
@@ -1224,9 +1310,8 @@ Result createDocumentOnCoordinator(std::string const& dbname, std::string const&
 /// @brief deletes a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& collname,
-                                arangodb::transaction::Methods const& trx,
-                                VPackSlice const slice,
+int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
+                                std::string const& collname, VPackSlice const slice,
                                 arangodb::OperationOptions const& options,
                                 arangodb::rest::ResponseCode& responseCode,
                                 std::unordered_map<int, size_t>& errorCounter,
@@ -1238,7 +1323,8 @@ int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& co
     // nullptr happens only during controlled shutdown
     return TRI_ERROR_SHUTTING_DOWN;
   }
-
+  
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, collname);
@@ -1247,6 +1333,7 @@ int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& co
   }
   bool useDefaultSharding = collinfo->usesDefaultShardKeys();
   auto collid = std::to_string(collinfo->id());
+  std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
   bool useMultiple = slice.isArray();
 
   std::string const baseUrl =
@@ -1323,10 +1410,19 @@ int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& co
 
     // We sorted the shards correctly.
 
+    // lazily begin transactions on leaders
+    const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+    if (isManaged && shardMap.size() > 1) {
+      Result res = beginTransactionOnSomeLeaders(*trx.state(), collinfo, shardMap);
+      if (res.fail()) {
+        return res.errorNumber();
+      }
+    }
+
     // Now prepare the requests:
     std::vector<ClusterCommRequest> requests;
-    auto body = std::make_shared<std::string>();
     for (auto const& it : shardMap) {
+      std::shared_ptr<std::string> body;
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
         body = std::make_shared<std::string>(slice.toJson());
@@ -1339,15 +1435,16 @@ int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& co
         reqBuilder.close();
         body = std::make_shared<std::string>(reqBuilder.slice().toJson());
       }
+      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      addTransactionHeaderForShard(trx, *shardIds, /*shard*/it.first, *headers);
       requests.emplace_back("shard:" + it.first, arangodb::rest::RequestType::DELETE_REQ,
                             baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
-                            body, ::CreateNoLockHeader(trx, it.first));
+                            body, std::move(headers));
     }
 
     // Perform the requests
-    size_t nrDone = 0;
-    cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone,
-                        Logger::COMMUNICATION, true);
+    cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, Logger::COMMUNICATION,
+                        /*retryOnCollNotFound*/true, /*retryOnBackUnvlbl*/!isManaged);
 
     // Now listen to the results:
     if (!useMultiple) {
@@ -1377,6 +1474,15 @@ int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& co
 
   // slowpath we do not know which server is responsible ask all of them.
 
+  // lazily begin transactions on leaders
+  const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  if (isManaged && shardIds->size() > 1) {
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    if (res.fail()) {
+      return res.errorNumber();
+    }
+  }
+  
   // We simply send the body to all shards and await their results.
   // As soon as we have the results we merge them in the following way:
   // For 1 .. slice.length()
@@ -1384,19 +1490,21 @@ int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& co
   //      if res != NOT_FOUND => insert this result. skip other results
   //    end
   //    if (!skipped) => insert NOT_FOUND
-
+  
   auto body = std::make_shared<std::string>(slice.toJson());
   std::vector<ClusterCommRequest> requests;
-  auto shardList = ci->getShardList(collid);
-  for (auto const& shard : *shardList) {
+  for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
+    ShardID const& shard = shardServers.first;
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+    addTransactionHeaderForShard(trx, *shardIds, shard, *headers);
     requests.emplace_back("shard:" + shard, arangodb::rest::RequestType::DELETE_REQ,
                           baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
-                          body, ::CreateNoLockHeader(trx, shard));
+                          body, std::move(headers));
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, Logger::COMMUNICATION,
+                      /*retryOnCollNotFound*/true, /*retryOnBackUnvlbl*/!isManaged);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -1429,7 +1537,7 @@ int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& co
 
   // We select all results from all shards an merge them back again.
   std::vector<std::shared_ptr<VPackBuilder>> allResults;
-  allResults.reserve(shardList->size());
+  allResults.reserve(shardIds->size());
   // If no server responds we return 500
   responseCode = rest::ResponseCode::SERVER_ERROR;
   for (auto const& req : requests) {
@@ -1448,7 +1556,7 @@ int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& co
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
-  TRI_ASSERT(allResults.size() == shardList->size());
+  TRI_ASSERT(allResults.size() == shardIds->size());
   mergeResultsAllShards(allResults, resultBody, errorCounter,
                         static_cast<size_t>(slice.length()));
   return TRI_ERROR_NO_ERROR;
@@ -1458,28 +1566,41 @@ int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& co
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int truncateCollectionOnCoordinator(std::string const& dbname, std::string const& collname) {
+Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string const& collname) {
+  Result res;
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
-    return TRI_ERROR_SHUTTING_DOWN;
+    return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+    return res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   // Some stuff to prepare cluster-intern requests:
   // We have to contact everybody:
-  auto shards = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
+
+  // lazily begin transactions on all leader shards
+  if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    res = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    if (res.fail()) {
+      return res;
+    }
+  }
+
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   std::unordered_map<std::string, std::string> headers;
-  for (auto const& p : *shards) {
+  for (auto const& p : *shardIds) {
+    std::unordered_map<std::string, std::string> headers;
+    addTransactionHeaderForShard(trx, *shardIds, /*shard*/p.first, headers);
     cc->asyncRequest(coordTransactionID, "shard:" + p.first,
                      arangodb::rest::RequestType::PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
@@ -1489,28 +1610,32 @@ int truncateCollectionOnCoordinator(std::string const& dbname, std::string const
   // Now listen to the results:
   unsigned int count;
   unsigned int nrok = 0;
-  for (count = (unsigned int)shards->size(); count > 0; count--) {
-    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
-    if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
+  for (count = (unsigned int)shardIds->size(); count > 0; count--) {
+    auto ccRes = cc->wait(coordTransactionID, 0, "", 0.0);
+    if (ccRes.status == CL_COMM_RECEIVED) {
+      if (ccRes.answer_code == arangodb::rest::ResponseCode::OK) {
         nrok++;
+      } else if (ccRes.answer->payload().isObject()) {
+        VPackSlice answer = ccRes.answer->payload();
+        return res.reset(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
+                                                         TRI_ERROR_TRANSACTION_INTERNAL),
+                      VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage, ""));
       }
     }
   }
 
   // Note that nrok is always at least 1!
-  if (nrok < shards->size()) {
-    return TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION;
+  if (nrok < shardIds->size()) {
+    return res.reset(TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION);
   }
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int getDocumentOnCoordinator(std::string const& dbname, std::string const& collname,
-                             arangodb::transaction::Methods const& trx,
+int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string const& collname,
                              VPackSlice slice, OperationOptions const& options,
                              arangodb::rest::ResponseCode& responseCode,
                              std::unordered_map<int, size_t>& errorCounter,
@@ -1523,6 +1648,7 @@ int getDocumentOnCoordinator(std::string const& dbname, std::string const& colln
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, collname);
@@ -1531,6 +1657,7 @@ int getDocumentOnCoordinator(std::string const& dbname, std::string const& colln
   }
 
   auto collid = std::to_string(collinfo->id());
+  std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
 
   // If _key is the one and only sharding attribute, we can do this quickly,
   // because we can easily determine which shard is responsible for the
@@ -1563,6 +1690,9 @@ int getDocumentOnCoordinator(std::string const& dbname, std::string const& colln
     }
   }
 
+  // lazily begin transactions on leaders
+  const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  
   // Some stuff to prepare cluster-internal requests:
 
   std::string baseUrl =
@@ -1585,10 +1715,16 @@ int getDocumentOnCoordinator(std::string const& dbname, std::string const& colln
     optsUrlPart += std::string("&onlyget=true");
   }
 
-  auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
   if (canUseFastPath) {
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
+    
+    if (isManaged && shardMap.size() > 1) { // lazily begin the transaction
+      Result res = beginTransactionOnSomeLeaders(*trx.state(), collinfo, shardMap);
+      if (res.fail()) {
+        return res.errorNumber();
+      }
+    }
 
     VPackBuilder reqBuilder;
 
@@ -1598,6 +1734,8 @@ int getDocumentOnCoordinator(std::string const& dbname, std::string const& colln
     for (auto const& it : shardMap) {
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
+        auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+        addTransactionHeaderForShard(trx, *shardIds, /*shard*/it.first, *headers);
         if (!options.ignoreRevs && slice.hasKey(StaticStrings::RevString)) {
           headers->emplace("if-match", slice.get(StaticStrings::RevString).copyString());
         }
@@ -1607,7 +1745,6 @@ int getDocumentOnCoordinator(std::string const& dbname, std::string const& colln
           keySlice = slice.get(StaticStrings::KeyString);
         }
 
-        ::InjectNoLockHeader(trx, it.first, headers.get());
         // We send to single endpoint
         requests.emplace_back("shard:" + it.first, reqType,
                               baseUrl + StringUtils::urlEncode(it.first) + "/" +
@@ -1621,16 +1758,18 @@ int getDocumentOnCoordinator(std::string const& dbname, std::string const& colln
         }
         reqBuilder.close();
         body = std::make_shared<std::string>(reqBuilder.slice().toJson());
+        auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+        addTransactionHeaderForShard(trx, *shardIds, /*shard*/it.first, *headers);
         // We send to Babies endpoint
         requests.emplace_back("shard:" + it.first, reqType,
                               baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
-                              body, ::CreateNoLockHeader(trx, it.first));
+                              body, std::move(headers));
       }
     }
 
     // Perform the requests
-    size_t nrDone = 0;
-    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
+                        /*retryOnCollNotFound*/true, /*retryOnBackUnvlbl*/!isManaged);
 
     // Now listen to the results:
     if (!useMultiple) {
@@ -1664,38 +1803,48 @@ int getDocumentOnCoordinator(std::string const& dbname, std::string const& colln
 
   // Not all shard keys are known in all documents.
   // We contact all shards with the complete body and ignore NOT_FOUND
-
-  std::vector<ClusterCommRequest> requests;
-  auto shardList = ci->getShardList(collid);
-  if (!useMultiple) {
-    if (!options.ignoreRevs && slice.hasKey(StaticStrings::RevString)) {
-      headers->emplace("if-match", slice.get(StaticStrings::RevString).copyString());
+  
+  if (isManaged) { // lazily begin the transaction
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    if (res.fail()) {
+      return res.errorNumber();
     }
-    for (auto const& shard : *shardList) {
+  }
+  
+  std::vector<ClusterCommRequest> requests;
+  if (!useMultiple) {
+    const bool addMatch = !options.ignoreRevs && slice.hasKey(StaticStrings::RevString);
+    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
       VPackSlice keySlice = slice;
       if (slice.isObject()) {
         keySlice = slice.get(StaticStrings::KeyString);
       }
-      auto headersCopy =
-          std::make_unique<std::unordered_map<std::string, std::string>>(*headers);
-      ::InjectNoLockHeader(trx, shard, headersCopy.get());
+      ShardID const& shard = shardServers.first;
+      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      addTransactionHeaderForShard(trx, *shardIds, shard, *headers);
+      if (addMatch) {
+        headers->emplace("if-match", slice.get(StaticStrings::RevString).copyString());
+      }
       requests.emplace_back("shard:" + shard, reqType,
                             baseUrl + StringUtils::urlEncode(shard) + "/" +
                                 StringUtils::urlEncode(keySlice.copyString()) + optsUrlPart,
-                            nullptr, std::move(headersCopy));
+                            nullptr, std::move(headers));
     }
   } else {
     auto body = std::make_shared<std::string>(slice.toJson());
-    for (auto const& shard : *shardList) {
+    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
+      ShardID const& shard = shardServers.first;
+      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      addTransactionHeaderForShard(trx, *shardIds, shard, *headers);
       requests.emplace_back("shard:" + shard, reqType,
                             baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
-                            body, ::CreateNoLockHeader(trx, shard));
+                            body, std::move(headers));
     }
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
+                      /*retryOnCollNotFound*/true, /*retryOnBackUnvlbl*/!isManaged);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -1732,7 +1881,7 @@ int getDocumentOnCoordinator(std::string const& dbname, std::string const& colln
 
   // We select all results from all shards and merge them back again.
   std::vector<std::shared_ptr<VPackBuilder>> allResults;
-  allResults.reserve(shardList->size());
+  allResults.reserve(shardIds->size());
   // If no server responds we return 500
   responseCode = rest::ResponseCode::SERVER_ERROR;
   for (auto const& req : requests) {
@@ -1751,7 +1900,7 @@ int getDocumentOnCoordinator(std::string const& dbname, std::string const& colln
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
-  TRI_ASSERT(allResults.size() == shardList->size());
+  TRI_ASSERT(allResults.size() == shardIds->size());
   mergeResultsAllShards(allResults, resultBody, errorCounter,
                         static_cast<size_t>(slice.length()));
   return TRI_ERROR_NO_ERROR;
@@ -1803,8 +1952,8 @@ int fetchEdgesFromEngines(std::string const& dbname,
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
+                      /*retryOnCollNotFound*/false);
 
   result.clear();
   // Now listen to the results:
@@ -1834,7 +1983,7 @@ int fetchEdgesFromEngines(std::string const& dbname,
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
-        LOG_TOPIC(ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
+        LOG_TOPIC("a23b5", ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
         continue;
       }
       arangodb::velocypack::StringRef idRef(id);
@@ -1900,8 +2049,7 @@ void fetchVerticesFromEngines(
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION, false);
 
   // Now listen to the results:
   for (auto const& req : requests) {
@@ -1941,7 +2089,7 @@ void fetchVerticesFromEngines(
       VPackSlice id = val.slice().get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
-        LOG_TOPIC(ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
+        LOG_TOPIC("e0b50", ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
         continue;
       }
       TRI_ASSERT(id.isString());
@@ -2005,8 +2153,8 @@ void fetchVerticesFromEngines(
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
+                      /*retryOnCollNotFound*/false);
 
   // Now listen to the results:
   for (auto const& req : requests) {
@@ -2057,9 +2205,8 @@ void fetchVerticesFromEngines(
 /// @brief get all edges on coordinator using a Traverser Filter
 ////////////////////////////////////////////////////////////////////////////////
 
-int getFilteredEdgesOnCoordinator(std::string const& dbname, std::string const& collname,
-                                  arangodb::transaction::Methods const& trx,
-                                  std::string const& vertex,
+int getFilteredEdgesOnCoordinator(arangodb::transaction::Methods const& trx,
+                                  std::string const& collname, std::string const& vertex,
                                   TRI_edge_direction_e const& direction,
                                   arangodb::rest::ResponseCode& responseCode,
                                   VPackBuilder& result) {
@@ -2073,8 +2220,12 @@ int getFilteredEdgesOnCoordinator(std::string const& dbname, std::string const& 
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo = ci->getCollection(dbname, collname);
+  std::shared_ptr<LogicalCollection> collinfo = ci->getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
 
   std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> shards;
   if (collinfo->isSmart() && collinfo->type() == TRI_COL_TYPE_EDGE) {
@@ -2102,14 +2253,16 @@ int getFilteredEdgesOnCoordinator(std::string const& dbname, std::string const& 
 
   auto body = std::make_shared<std::string>();
   for (auto const& p : *shards) {
+    // this code is not used in transactions anyways
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
     requests.emplace_back("shard:" + p.first, arangodb::rest::RequestType::GET,
                           baseUrl + StringUtils::urlEncode(p.first) + queryParameters,
-                          body, ::CreateNoLockHeader(trx, p.first));
+                          body, std::move(headers));
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION,
+                      /*retryOnCollNotFound*/true);
 
   size_t filtered = 0;
   size_t scannedIndex = 0;
@@ -2181,8 +2334,7 @@ int getFilteredEdgesOnCoordinator(std::string const& dbname, std::string const& 
 ////////////////////////////////////////////////////////////////////////////////
 
 int modifyDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    arangodb::transaction::Methods const& trx, VPackSlice const& slice,
+    transaction::Methods& trx, std::string const& collname, VPackSlice const& slice,
     arangodb::OperationOptions const& options, bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::rest::ResponseCode& responseCode, std::unordered_map<int, size_t>& errorCounter,
@@ -2195,10 +2347,12 @@ int modifyDocumentOnCoordinator(
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo = ci->getCollection(dbname, collname);
   auto collid = std::to_string(collinfo->id());
-
+  std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
+  
   // We have a fast path and a slow path. The fast path only asks one shard
   // to do the job and the slow path asks them all and expects to get
   // "not found" from all but one shard. We have to cover the following
@@ -2282,14 +2436,28 @@ int modifyDocumentOnCoordinator(
   if (options.returnOld) {
     optsUrlPart += "&returnOld=true";
   }
+  
+  const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   if (canUseFastPath) {
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
+    
+    if (isManaged && shardMap.size() > 1) {  // lazily begin transactions on leaders
+      Result res = beginTransactionOnSomeLeaders(*trx.state(), collinfo, shardMap);
+      if (res.fail()) {
+        return res.errorNumber();
+      }
+    }
+    
     std::vector<ClusterCommRequest> requests;
     VPackBuilder reqBuilder;
     auto body = std::make_shared<std::string>();
     for (auto const& it : shardMap) {
+      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      addTransactionHeaderForShard(trx, *shardIds, /*shard*/it.first, *headers);
+      
+
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
         body = std::make_shared<std::string>(slice.toJson());
@@ -2304,7 +2472,7 @@ int modifyDocumentOnCoordinator(
         requests.emplace_back("shard:" + it.first, reqType,
                               baseUrl + StringUtils::urlEncode(it.first) + "/" +
                                   StringUtils::urlEncode(keyStr.data(), keyStr.length()) + optsUrlPart,
-                              body, ::CreateNoLockHeader(trx, it.first));
+                              body, std::move(headers));
       } else {
         reqBuilder.clear();
         reqBuilder.openArray();
@@ -2316,14 +2484,13 @@ int modifyDocumentOnCoordinator(
         // We send to Babies endpoint
         requests.emplace_back("shard:" + it.first, reqType,
                               baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
-                              body, ::CreateNoLockHeader(trx, it.first));
+                              body, std::move(headers));
       }
     }
 
     // Perform the requests
-    size_t nrDone = 0;
-    cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone,
-                        Logger::COMMUNICATION, true);
+    cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, Logger::COMMUNICATION,
+                        /*retryOnCollNotFound*/true, /*retryOnBackUnvlbl*/!isManaged);
 
     // Now listen to the results:
     if (!useMultiple) {
@@ -2355,35 +2522,47 @@ int modifyDocumentOnCoordinator(
 
   // Not all shard keys are known in all documents.
   // We contact all shards with the complete body and ignore NOT_FOUND
-
+  
+  if (isManaged) { // lazily begin the transaction
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    if (res.fail()) {
+      return res.errorNumber();
+    }
+  }
+  
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>(slice.toJson());
-  auto shardList = ci->getShardList(collid);
   if (!useMultiple) {
     std::string key = slice.get(StaticStrings::KeyString).copyString();
-    for (auto const& shard : *shardList) {
+    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
+      ShardID const& shard = shardServers.first;
+      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      addTransactionHeaderForShard(trx, *shardIds, /*shard*/shard, *headers);
       requests.emplace_back("shard:" + shard, reqType,
                             baseUrl + StringUtils::urlEncode(shard) + "/" + key + optsUrlPart,
-                            body);
+                            body, std::move(headers));
     }
   } else {
-    for (auto const& shard : *shardList) {
+    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
+      ShardID const& shard = shardServers.first;
+      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      addTransactionHeaderForShard(trx, *shardIds, /*shard*/shard, *headers);
       requests.emplace_back("shard:" + shard, reqType,
                             baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
-                            body, ::CreateNoLockHeader(trx, shard));
+                            body, std::move(headers));
     }
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, Logger::COMMUNICATION,
+                      /*retryOnCollNotFound*/true, /*retryOnBackUnvlbl*/!isManaged);
 
   // Now listen to the results:
   if (!useMultiple) {
     // Only one can answer, we react a bit differently
     int nrok = 0;
     int commError = TRI_ERROR_NO_ERROR;
-    for (size_t count = shardList->size(); count > 0; count--) {
+    for (size_t count = shardIds->size(); count > 0; count--) {
       auto const& req = requests[count - 1];
       auto res = req.result;
       if (res.status == CL_COMM_RECEIVED) {
@@ -2431,7 +2610,7 @@ int modifyDocumentOnCoordinator(
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
-  TRI_ASSERT(allResults.size() == shardList->size());
+  TRI_ASSERT(allResults.size() == shardIds->size());
   mergeResultsAllShards(allResults, resultBody, errorCounter,
                         static_cast<size_t>(slice.length()));
   return TRI_ERROR_NO_ERROR;
@@ -2482,7 +2661,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
         if (resSlice.isObject()) {
           int code = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
               resSlice, "errorNum", TRI_ERROR_INTERNAL);
-
+ 
           if (code != TRI_ERROR_NO_ERROR) {
             globalErrorCode = code;
           }
@@ -2492,7 +2671,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
   }
 
   if (nrok != (int)DBservers.size()) {
-    LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("48327", WARN, arangodb::Logger::CLUSTER)
         << "could not flush WAL on all servers. confirmed: " << nrok
         << ", expected: " << DBservers.size();
     return globalErrorCode;
@@ -2520,7 +2699,7 @@ Result getTtlStatisticsFromAllDBServers(TtlStatistics& out) {
     cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::GET,
                      url, body, headers, nullptr, 120.0);
   }
-  
+
   // Now listen to the results:
   int count;
   int nrok = 0;
@@ -2529,8 +2708,7 @@ Result getTtlStatisticsFromAllDBServers(TtlStatistics& out) {
     auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
-        VPackSlice answer = answerBuilder->slice();
+        VPackSlice answer = res.answer->payload();
         out += answer.get("result");
         nrok++;
       } else {
@@ -2576,7 +2754,7 @@ Result getTtlPropertiesFromAllDBServers(VPackBuilder& out) {
     cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::GET,
                      url, body, headers, nullptr, 120.0);
   }
-  
+
   // Now listen to the results:
   bool set = false;
   int count;
@@ -2586,8 +2764,7 @@ Result getTtlPropertiesFromAllDBServers(VPackBuilder& out) {
     auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
-        VPackSlice answer = answerBuilder->slice();
+        VPackSlice answer = res.answer->payload();
         if (!set) {
           out.add(answer.get("result"));
           set = true;
@@ -2636,7 +2813,7 @@ Result setTtlPropertiesOnAllDBServers(VPackSlice const& properties, VPackBuilder
     cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::PUT,
                      url, body, headers, nullptr, 120.0);
   }
-  
+
   // Now listen to the results:
   bool set = false;
   int count;
@@ -2646,8 +2823,7 @@ Result setTtlPropertiesOnAllDBServers(VPackSlice const& properties, VPackBuilder
     auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
-        VPackSlice answer = answerBuilder->slice();
+        VPackSlice answer = res.answer->payload();
         if (!set) {
           out.add(answer.get("result"));
           set = true;
@@ -2730,7 +2906,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
     // the default behaviour however is to bail out and inform the user
     // that the requested replicationFactor is not possible right now
     if (dbServers.size() < replicationFactor) {
-      LOG_TOPIC(DEBUG, Logger::CLUSTER)
+      LOG_TOPIC("9ce2e", DEBUG, Logger::CLUSTER)
           << "Do not have enough DBServers for requested replicationFactor,"
           << " nrDBServers: " << dbServers.size()
           << " replicationFactor: " << replicationFactor;
@@ -2742,7 +2918,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
     if (!avoid.empty()) {
       // We need to remove all servers that are in the avoid list
       if (dbServers.size() - avoid.size() < replicationFactor) {
-        LOG_TOPIC(DEBUG, Logger::CLUSTER)
+        LOG_TOPIC("03682", DEBUG, Logger::CLUSTER)
             << "Do not have enough DBServers for requested replicationFactor,"
             << " (after considering avoid list),"
             << " nrDBServers: " << dbServers.size() << " replicationFactor: " << replicationFactor
@@ -2777,12 +2953,11 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
 
   VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);
   auto& dbName = col->vocbase().name();
-  auto res = ci->createCollectionCoordinator( // create collection
-    dbName, std::to_string(col->id()),
-                                                col->numberOfShards(),
-                                                col->replicationFactor(), waitForSyncReplication,
-    velocy.slice(), // collection definition
-    240.0 // request timeout
+  auto res = ci->createCollectionCoordinator(  // create collection
+      dbName, std::to_string(col->id()), col->numberOfShards(),
+      col->replicationFactor(), waitForSyncReplication,
+      velocy.slice(),  // collection definition
+      240.0            // request timeout
   );
 
   if (!res.ok()) {
@@ -2845,8 +3020,7 @@ int fetchEdgesFromEngines(std::string const& dbname,
   }
 
   // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::COMMUNICATION, false);
 
   result.clear();
   // Now listen to the results:
@@ -2873,7 +3047,7 @@ int fetchEdgesFromEngines(std::string const& dbname,
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
-        LOG_TOPIC(ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
+        LOG_TOPIC("da49d", ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
         continue;
       }
       arangodb::velocypack::StringRef idRef(id);

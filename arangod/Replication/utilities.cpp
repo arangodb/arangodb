@@ -154,7 +154,7 @@ arangodb::Result handleMasterStateResponse(arangodb::replutils::Connection& conn
   master.active = running;
   master.engine = engineString;
 
-  LOG_TOPIC(INFO, arangodb::Logger::REPLICATION)
+  LOG_TOPIC("6c920", INFO, arangodb::Logger::REPLICATION)
       << "connected to master at " << master.endpoint << ", id " << master.serverId
       << ", version " << master.majorVersion << "." << master.minorVersion
       << ", last log tick " << master.lastLogTick << ", last uncommitted log tick "
@@ -274,7 +274,7 @@ Result BarrierInfo::create(Connection& connection, TRI_voc_tick_t minTick) {
 
   id = basics::StringUtils::uint64(barrierId);
   updateTime = TRI_microtime();
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "created WAL logfile barrier " << id;
+  LOG_TOPIC("88e90", DEBUG, Logger::REPLICATION) << "created WAL logfile barrier " << id;
 
   return Result();
 }
@@ -534,7 +534,7 @@ Result MasterInfo::getState(replutils::Connection& connection, bool isChildSynce
   VPackSlice const slice = builder.slice();
 
   if (!slice.isObject()) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    LOG_TOPIC("22327", DEBUG, Logger::REPLICATION)
         << "syncer::getMasterState - state is not an object";
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +
@@ -572,6 +572,11 @@ Result buildHttpError(httpclient::SimpleHttpResult* response,
     connection.lease([&errorMsg](httpclient::SimpleHttpClient* client) {
       errorMsg = client->getErrorMessage();
     });
+    if (errorMsg.empty() && response != nullptr) {
+      errorMsg = "HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) +
+                 ": " + response->getHttpReturnMessage() + " - " +
+                response->getBody().toString();
+    } 
     return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
                   std::string("could not connect to master at ") +
                       connection.endpoint() + " for URL " + url + ": " + errorMsg);

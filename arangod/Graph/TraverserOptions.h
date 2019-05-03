@@ -33,7 +33,6 @@
 #include <velocypack/StringRef.h>
 
 namespace arangodb {
-class ManagedDocumentResult;
 
 namespace velocypack {
 class Builder;
@@ -48,11 +47,6 @@ class Query;
 class TraversalNode;
 struct Variable;
 }  // namespace aql
-
-namespace graph {
-class EdgeUniquenessChecker;
-class TraverserCache;
-}  // namespace graph
 
 namespace traverser {
 
@@ -98,6 +92,7 @@ struct TraverserOptions : public graph::BaseOptions {
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
   TraverserOptions(TraverserOptions const&);
+  TraverserOptions& operator=(TraverserOptions const&) = delete;
 
   virtual ~TraverserOptions();
 
@@ -126,8 +121,7 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t) const;
 
-  graph::EdgeCursor* nextCursor(ManagedDocumentResult*,
-                                arangodb::velocypack::StringRef vid, uint64_t);
+  graph::EdgeCursor* nextCursor(arangodb::velocypack::StringRef vid, uint64_t);
 
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
 

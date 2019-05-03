@@ -46,9 +46,6 @@ BreadthFirstEnumerator::PathStep::PathStep(size_t sourceIdx, EdgeDocumentToken&&
 
 BreadthFirstEnumerator::PathStep::~PathStep() {}
 
-BreadthFirstEnumerator::PathStep::PathStep(PathStep& other)
-    : sourceIdx(other.sourceIdx), edge(other.edge), vertex(other.vertex) {}
-
 BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser, VPackSlice startVertex,
                                                TraverserOptions* opts)
     : PathEnumerator(traverser, startVertex.copyString(), opts),
@@ -116,8 +113,9 @@ bool BreadthFirstEnumerator::next() {
     arangodb::velocypack::StringRef vId;
 
     std::unique_ptr<EdgeCursor> cursor(
-        _opts->nextCursor(_traverser->mmdr(), nextVertex, _currentDepth));
+        _opts->nextCursor(nextVertex, _currentDepth));
     if (cursor != nullptr) {
+      incHttpRequests(cursor->httpRequests());
       bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
       bool didInsert = false;
 
@@ -180,6 +178,7 @@ bool BreadthFirstEnumerator::next() {
   // entry. We compute the path to it.
   return true;
 }
+
 arangodb::aql::AqlValue BreadthFirstEnumerator::lastVertexToAqlValue() {
   return vertexToAqlValue(_lastReturned);
 }
@@ -206,8 +205,7 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::edgeToAqlValue(size_t index) {
   return _opts->cache()->fetchEdgeAqlResult(_schreier[index]->edge);
 }
 
-arangodb::aql::AqlValue BreadthFirstEnumerator::pathToIndexToAqlValue(
-    arangodb::velocypack::Builder& result, size_t index) {
+VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result, size_t index) {
   // TODO make deque class variable
   std::deque<size_t> fullPath;
   while (index != 0) {
@@ -234,7 +232,13 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::pathToIndexToAqlValue(
   }
   result.close();  // vertices
   result.close();
-  return arangodb::aql::AqlValue(result.slice());
+  TRI_ASSERT(result.isClosed());
+  return result.slice();
+}
+
+arangodb::aql::AqlValue BreadthFirstEnumerator::pathToIndexToAqlValue(
+    arangodb::velocypack::Builder& result, size_t index) {
+  return arangodb::aql::AqlValue(pathToIndexToSlice(result, index));
 }
 
 bool BreadthFirstEnumerator::pathContainsVertex(size_t index,
@@ -297,19 +301,33 @@ bool BreadthFirstEnumerator::prepareSearchOnNextDepth() {
 
 bool BreadthFirstEnumerator::shouldPrune() {
   if (_opts->usesPrune()) {
-    auto* evaluator = _opts->getPruneEvaluator();
-    if (evaluator->needsVertex()) {
-      evaluator->injectVertex(vertexToAqlValue(_schreierIndex).slice());
+    // evaluator->evaluate() might access these, so they have to live long enough.
+    // To make that perfectly clear, I added a scope.
+    transaction::BuilderLeaser pathBuilder(_opts->trx());
+    aql::AqlValue vertex, edge;
+    aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
+    {
+      auto* evaluator = _opts->getPruneEvaluator();
+      if (evaluator->needsVertex()) {
+        // Note: vertexToAqlValue() copies the original vertex into the AqlValue.
+        // This could be avoided with a function that just returns the slice,
+        // as it will stay valid long enough.
+        vertex = vertexToAqlValue(_schreierIndex);
+        evaluator->injectVertex(vertex.slice());
+      }
+      if (evaluator->needsEdge()) {
+        // Note: edgeToAqlValue() copies the original edge into the AqlValue.
+        // This could be avoided with a function that just returns the slice,
+        // as it will stay valid long enough.
+        edge = edgeToAqlValue(_schreierIndex);
+        evaluator->injectEdge(edge.slice());
+      }
+      if (evaluator->needsPath()) {
+        VPackSlice path = pathToIndexToSlice(*pathBuilder.get(), _schreierIndex);
+        evaluator->injectPath(path);
+      }
+      return evaluator->evaluate();
     }
-    if (evaluator->needsEdge()) {
-      evaluator->injectEdge(edgeToAqlValue(_schreierIndex).slice());
-    }
-    transaction::BuilderLeaser builder(_opts->trx());
-    if (evaluator->needsPath()) {
-      aql::AqlValue val = pathToIndexToAqlValue(*builder.get(), _schreierIndex);
-      evaluator->injectPath(val.slice());
-    }
-    return evaluator->evaluate();
   }
   return false;
 }

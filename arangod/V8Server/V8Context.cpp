@@ -37,16 +37,6 @@ std::string const GlobalContextMethods::CodeReloadRouting =
 std::string const GlobalContextMethods::CodeReloadAql =
     "try { require(\"@arangodb/aql\").reload(); } catch (err) { }";
 
-std::string const GlobalContextMethods::CodeCollectGarbage =
-    "require(\"internal\").wait(0.01, true);";
-
-std::string const GlobalContextMethods::CodeBootstrapCoordinator =
-    "require('internal').loadStartup('server/bootstrap/autoload.js').startup();"
-    "require('internal').loadStartup('server/bootstrap/routing.js').startup();";
-
-std::string const GlobalContextMethods::CodeWarmupExports =
-    "require(\"@arangodb/actions\").warmupExports()";
-
 V8Context::V8Context(size_t id, v8::Isolate* isolate)
     : _id(id),
       _isolate(isolate),
@@ -154,12 +144,15 @@ void V8Context::handleGlobalContextMethods() {
   for (auto& type : copy) {
     std::string const& func = GlobalContextMethods::code(type);
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::V8)
+    LOG_TOPIC("fcb75", DEBUG, arangodb::Logger::V8)
         << "executing global context method '" << func << "' for context " << _id;
 
     TRI_GET_GLOBALS2(_isolate);
-    bool allowUseDatabase = v8g->_allowUseDatabase;
-    v8g->_allowUseDatabase = true;
+
+    // save old security context settings
+    JavaScriptSecurityContext old(v8g->_securityContext);
+
+    v8g->_securityContext = JavaScriptSecurityContext::createInternalContext();
 
     try {
       v8::TryCatch tryCatch(_isolate);
@@ -176,18 +169,19 @@ void V8Context::handleGlobalContextMethods() {
         }
       }
     } catch (...) {
-      LOG_TOPIC(WARN, arangodb::Logger::V8)
+      LOG_TOPIC("d0adc", WARN, arangodb::Logger::V8)
           << "caught exception during global context method '" << func << "'";
     }
 
-    v8g->_allowUseDatabase = allowUseDatabase;
+    // restore old security settings
+    v8g->_securityContext = old;
   }
 }
 
 void V8Context::handleCancelationCleanup() {
   v8::HandleScope scope(_isolate);
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::V8)
+  LOG_TOPIC("e8060", DEBUG, arangodb::Logger::V8)
       << "executing cancelation cleanup context #" << _id;
 
   try {
@@ -197,7 +191,7 @@ void V8Context::handleCancelationCleanup() {
                             "require('module')._cleanupCancelation();"),
         TRI_V8_ASCII_STRING(_isolate, "context cleanup method"), false);
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::Logger::V8)
+    LOG_TOPIC("558dd", WARN, arangodb::Logger::V8)
         << "caught exception during cancelation cleanup";
     // do not throw from here
   }

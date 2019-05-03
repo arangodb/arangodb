@@ -37,10 +37,9 @@ MMFilesTransactionCollection::MMFilesTransactionCollection(TransactionState* trx
                                                            TRI_voc_cid_t cid,
                                                            AccessMode::Type accessType,
                                                            int nestingLevel)
-    : TransactionCollection(trx, cid, accessType),
+    : TransactionCollection(trx, cid, accessType, nestingLevel),
       _operations{_arena},
       _originalRevision(0),
-      _nestingLevel(nestingLevel),
       _compactionLocked(false),
       _waitForSync(false) {}
 
@@ -110,29 +109,6 @@ bool MMFilesTransactionCollection::canAccess(AccessMode::Type accessType) const 
   return true;
 }
 
-int MMFilesTransactionCollection::updateUsage(AccessMode::Type accessType, int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    if (nestingLevel > 0) {
-      // trying to write access a collection that is only marked with
-      // read-access
-      return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
-    }
-
-    TRI_ASSERT(nestingLevel == 0);
-
-    // upgrade collection type to write-access
-    _accessType = accessType;
-  }
-
-  if (nestingLevel < _nestingLevel) {
-    _nestingLevel = nestingLevel;
-  }
-
-  // all correct
-  return TRI_ERROR_NO_ERROR;
-}
-
 int MMFilesTransactionCollection::use(int nestingLevel) {
   if (_nestingLevel != nestingLevel) {
     // only process our own collections
@@ -146,7 +122,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
       // use and usage-lock
       TRI_vocbase_col_status_e status;
 
-      LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
+      LOG_TRX("4c87c", TRACE, _transaction, nestingLevel) << "using collection " << _cid;
       TRI_set_errno(TRI_ERROR_NO_ERROR);  // clear error state so can get valid
                                           // error below
       _collection = _transaction->vocbase().useCollection(_cid, status);
@@ -237,7 +213,7 @@ void MMFilesTransactionCollection::release() {
   // the top level transaction releases all collections
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
-    LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
+    LOG_TRX("99a8a", TRACE, _transaction, 0) << "unusing collection " << _cid;
 
     if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
         !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
@@ -259,10 +235,10 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (_transaction->isLockedShard(_collection->name())) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
+//  if (_transaction->isLockedShard(_collection->name())) {
+//    // do not lock by command
+//    return TRI_ERROR_NO_ERROR;
+//  }
 
   TRI_ASSERT(!isLocked());
   TRI_ASSERT(_collection);
@@ -282,10 +258,10 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
   int res;
   if (!AccessMode::isWriteOrExclusive(type)) {
-    LOG_TRX(_transaction, nestingLevel) << "read-locking collection " << _cid;
+    LOG_TRX("70bc0", TRACE, _transaction, nestingLevel) << "read-locking collection " << _cid;
     res = physical->lockRead(useDeadlockDetector, _transaction, timeout);
   } else {  // WRITE or EXCLUSIVE
-    LOG_TRX(_transaction, nestingLevel) << "write-locking collection " << _cid;
+    LOG_TRX("dfffd", TRACE, _transaction, nestingLevel) << "write-locking collection " << _cid;
     res = physical->lockWrite(useDeadlockDetector, _transaction, timeout);
   }
 
@@ -297,12 +273,12 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   }
 
   if (res == TRI_ERROR_LOCK_TIMEOUT && timeout >= 0.1) {
-    LOG_TOPIC(WARN, Logger::QUERIES)
+    LOG_TOPIC("81cb4", WARN, Logger::QUERIES)
         << "timed out after " << timeout << " s waiting for "
         << AccessMode::typeString(type) << "-lock on collection '"
         << _collection->name() << "'";
   } else if (res == TRI_ERROR_DEADLOCK) {
-    LOG_TOPIC(WARN, Logger::QUERIES)
+    LOG_TOPIC("47ad8", WARN, Logger::QUERIES)
         << "deadlock detected while trying to acquire " << AccessMode::typeString(type)
         << "-lock on collection '" << _collection->name() << "'";
   }
@@ -319,11 +295,11 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   TRI_ASSERT(_collection != nullptr);
 
-  std::string collName(_collection->name());
-  if (_transaction->isLockedShard(collName)) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
+//  std::string collName(_collection->name());
+//  if (_transaction->isLockedShard(collName)) {
+//    // do not lock by command
+//    return TRI_ERROR_NO_ERROR;
+//  }
 
   TRI_ASSERT(isLocked());
 
@@ -339,7 +315,7 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   if (AccessMode::isWriteOrExclusive(type) && !AccessMode::isWriteOrExclusive(_lockType)) {
     // we should never try to write-unlock a collection that we have only
     // read-locked
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "logic error in doUnlock";
+    LOG_TOPIC("1c9eb", ERR, arangodb::Logger::ENGINES) << "logic error in doUnlock";
     TRI_ASSERT(false);
     return TRI_ERROR_INTERNAL;
   }
@@ -353,10 +329,10 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   TRI_ASSERT(physical != nullptr);
 
   if (!AccessMode::isWriteOrExclusive(_lockType)) {
-    LOG_TRX(_transaction, nestingLevel) << "read-unlocking collection " << _cid;
+    LOG_TRX("63161", TRACE, _transaction, nestingLevel) << "read-unlocking collection " << _cid;
     physical->unlockRead(useDeadlockDetector, _transaction);
   } else {  // WRITE or EXCLUSIVE
-    LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;
+    LOG_TRX("02543", TRACE, _transaction, nestingLevel) << "write-unlocking collection " << _cid;
     physical->unlockWrite(useDeadlockDetector, _transaction);
   }
 

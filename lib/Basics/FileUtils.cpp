@@ -147,7 +147,7 @@ static void throwFileReadError(std::string const& filename) {
   int res = TRI_errno();
 
   std::string message("read failed for file '" + filename + "': " + strerror(res));
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << message;
+  LOG_TOPIC("a0898", TRACE, arangodb::Logger::FIXME) << message;
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
 }
@@ -204,11 +204,40 @@ void slurp(std::string const& filename, StringBuffer& result) {
   fillStringBuffer(fd, filename, result, chunkSize);
 }
 
+Result slurpNoEx(std::string const& filename, StringBuffer& result) {
+  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+
+  if (fd == -1) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    int res = TRI_errno();
+    std::string message("read failed for file '" + filename + "': " + strerror(res));
+    LOG_TOPIC("a1898", TRACE, arangodb::Logger::FIXME) << message;
+    return {TRI_ERROR_SYS_ERROR, message};
+  }
+
+  TRI_DEFER(TRI_CLOSE(fd));
+
+  result.reset();
+  constexpr size_t chunkSize = 8192;
+  fillStringBuffer(fd, filename, result, chunkSize);
+  return {};
+}
+
+Result slurp(std::string const& filename, std::string& result) {
+  constexpr size_t chunkSize = 8192;
+  StringBuffer buffer(chunkSize, false);
+
+  auto status = slurpNoEx(filename, buffer);
+
+  result = std::string(buffer.data(), buffer.length());
+  return status;
+}
+
 static void throwFileWriteError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
   std::string message("write failed for file '" + filename + "': " + TRI_last_error());
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "" << message;
+  LOG_TOPIC("a8930", TRACE, arangodb::Logger::FIXME) << "" << message;
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
 }
@@ -590,14 +619,9 @@ void makePathAbsolute(std::string& path) {
   std::string cwd = FileUtils::currentDirectory().result();
 
   if (path.empty()) {
-    path = cwd;
+    path = std::move(cwd);
   } else {
-    char* p = TRI_GetAbsolutePath(path.c_str(), cwd.c_str());
-
-    if (p != nullptr) {
-      path = p;
-      TRI_FreeString(p);
-    }
+    path = TRI_GetAbsolutePath(path, cwd);
   }
 }
 
@@ -606,7 +630,7 @@ static void throwProgramError(std::string const& filename) {
   int res = TRI_errno();
 
   std::string message("open failed for file '" + filename + "': " + strerror(res));
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << message;
+  LOG_TOPIC("a557b", TRACE, arangodb::Logger::FIXME) << message;
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }

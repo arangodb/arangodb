@@ -39,55 +39,8 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/Slice.h>
 
-namespace rocksdb {
-class TransactionDB;
-class Iterator;
-}  // namespace rocksdb
-
 namespace arangodb {
 class RocksDBEdgeIndex;
-
-class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
- public:
-  RocksDBEdgeIndexLookupIterator(LogicalCollection* collection, transaction::Methods* trx,
-                                 arangodb::RocksDBEdgeIndex const* index,
-                                 std::unique_ptr<VPackBuilder> keys,
-                                 std::shared_ptr<cache::Cache>);
-  ~RocksDBEdgeIndexLookupIterator();
-  char const* typeName() const override { return "edge-index-iterator"; }
-  bool hasExtra() const override { return true; }
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-  bool nextCovering(DocumentCallback const& cb, size_t limit) override;
-  bool nextExtra(ExtraCallback const& cb, size_t limit) override;
-  void reset() override;
-
-  /// @brief we provide a method to provide the index attribute values
-  /// while scanning the index
-  bool hasCovering() const override { return true; }
-
- private:
-  // returns true if we have one more key for the index lookup.
-  // if true, sets the `key` Slice to point to the new key's value
-  // note that the underlying data for the Slice must remain valid
-  // as long as the iterator is used and the key is not moved forward.
-  // returns false if there are no more keys to look for
-  bool initKey(arangodb::velocypack::Slice& key);
-  void resetInplaceMemory();
-  arangodb::velocypack::StringRef getFromToFromIterator(arangodb::velocypack::ArrayIterator const&);
-  void lookupInRocksDB(arangodb::velocypack::StringRef edgeKey);
-
-  std::unique_ptr<arangodb::velocypack::Builder> _keys;
-  arangodb::velocypack::ArrayIterator _keysIterator;
-  RocksDBEdgeIndex const* _index;
-
-  // the following 2 values are required for correct batch handling
-  std::unique_ptr<rocksdb::Iterator> _iterator;  // iterator position in rocksdb
-  RocksDBKeyBounds _bounds;
-  std::shared_ptr<cache::Cache> _cache;
-  arangodb::velocypack::ArrayIterator _builderIterator;
-  arangodb::velocypack::Builder _builder;
-  arangodb::velocypack::Slice _lastKey;
-};
 
 class RocksDBEdgeIndexWarmupTask : public basics::LocalTask {
  private:
@@ -139,14 +92,12 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
 
-  bool hasBatchInsert() const override { return false; }
-
   bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
                                arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, 
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;
@@ -175,6 +126,15 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   IndexIterator* createInIterator(transaction::Methods*, arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
+
+  /// @brief populate the keys builder with a single (string) lookup value
+  void fillLookupValue(arangodb::velocypack::Builder& keys,
+                       arangodb::aql::AstNode const* value) const;
+
+  /// @brief populate the keys builder with the keys from the array
+  void fillInLookupValues(transaction::Methods* trx,
+                          arangodb::velocypack::Builder& keys,
+                          arangodb::aql::AstNode const* values) const;
 
   /// @brief add a single value node to the iterator's keys
   void handleValNode(VPackBuilder* keys, arangodb::aql::AstNode const* valNode) const;

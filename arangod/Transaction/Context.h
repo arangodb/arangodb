@@ -83,6 +83,12 @@ class Context {
 
   /// @brief return a temporary StringBuffer object
   void returnStringBuffer(basics::StringBuffer* stringBuffer);
+  
+  /// @brief temporarily lease a std::string
+  std::string* leaseString();
+
+  /// @brief return a temporary std::string object
+  void returnString(std::string* str);
 
   /// @brief temporarily lease a Builder object
   arangodb::velocypack::Builder* leaseBuilder();
@@ -96,14 +102,15 @@ class Context {
   /// @brief get velocypack options for dumping
   arangodb::velocypack::Options* getVPackOptionsForDump();
 
-  /// @brief unregister the transaction
-  /// this will save the transaction's id and status locally
-  void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations, bool wasRegistered) noexcept;
+  /// @brief save the transaction's id and status locally
+  void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations,
+                              bool wasRegistered) noexcept;
 
+ public:
   /// @brief get a custom type handler
   virtual std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() = 0;
 
-  /// @brief get parent transaction (if any)
+  /// @brief get parent transaction (if any) increase nesting
   virtual TransactionState* getParentTransaction() const = 0;
 
   /// @brief whether or not the transaction is embeddable
@@ -117,30 +124,38 @@ class Context {
   /// @brief unregister the transaction
   virtual void unregisterTransaction() noexcept = 0;
 
+  /// @brief generate persisted transaction ID
+  virtual TRI_voc_tid_t generateId() const;
+  
+  /// @brief generates correct ID based on server type
+  static TRI_voc_tid_t makeTransactionId();
+
  protected:
   /// @brief create a resolver
   CollectionNameResolver const* createResolver();
 
-  transaction::ContextData* contextData();
-
+ protected:
   TRI_vocbase_t& _vocbase;
   CollectionNameResolver const* _resolver;
   std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
   SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
   SmallVector<arangodb::velocypack::Builder*, 32> _builders;
-
+  
   std::unique_ptr<arangodb::basics::StringBuffer> _stringBuffer;
+  
+  SmallVector<std::string*, 32>::allocator_type::arena_type _strArena;
+  SmallVector<std::string*, 32> _strings;
 
   arangodb::velocypack::Options _options;
   arangodb::velocypack::Options _dumpOptions;
-
+  
+ private:
   std::unique_ptr<transaction::ContextData> _contextData;
 
   struct {
     TRI_voc_tid_t id;
     bool hasFailedOperations;
-    bool wasRegistered;
   } _transaction;
 
   bool _ownsResolver;

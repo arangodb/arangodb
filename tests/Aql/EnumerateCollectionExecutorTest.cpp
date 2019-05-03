@@ -23,7 +23,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BlockFetcherHelper.h"
+#include "RowFetcherHelper.h"
 #include "catch.hpp"
 #include "fakeit.hpp"
 
@@ -36,14 +36,16 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Mocks/StorageEngineMock.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
-
-#include "arangod/Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -66,24 +68,32 @@ SCENARIO("EnumerateCollectionExecutor",
   AqlItemBlockManager itemBlockManager{&monitor};
 
   GIVEN("there are no rows upstream") {
-    fakeit::Mock<ExecutionEngine> mockEngine;
-
-    // fake transaction::Methods
-    fakeit::Mock<transaction::Methods> mockTrx;
-    // fake indexScan
-    fakeit::Mock<OperationCursor> mockCursor;
-    fakeit::Fake(Dtor(mockCursor));
-    fakeit::Fake(Method(mockCursor, reset));
-    OperationCursor& cursor = mockCursor.get();  // required as return value for index scan
-    fakeit::When(Method(mockTrx, indexScan))
-        .AlwaysDo(std::function<std::unique_ptr<OperationCursor>(std::string const&, CursorType&)>(
-            [&cursor](std::string const&, CursorType&) -> std::unique_ptr<OperationCursor> {
-              return std::unique_ptr<OperationCursor>(&cursor);
-            }));
-    // fake transaction::Methods - end
+    auto options = std::make_shared<options::ProgramOptions>("arangod", "something", "", "path");
+    arangodb::application_features::ApplicationServer server(options, "path");
+    StorageEngineMock storageEngine(server);
+    arangodb::EngineSelectorFeature::ENGINE = &storageEngine;
+    std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+    
+    // setup required application features
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required by TRI_vocbase_t(...)
+    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
 
     fakeit::Mock<TRI_vocbase_t> vocbaseMock;
     TRI_vocbase_t& vocbase = vocbaseMock.get();  // required to create collection
+  
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"cid\" : \"1337\", \"name\": \"UnitTestCollection\" }");
+    arangodb::LogicalCollection collection(vocbase, json->slice(), true);
+
+    fakeit::Mock<ExecutionEngine> mockEngine;
+    // fake transaction::Methods
+    fakeit::Mock<transaction::Methods> mockTrx;
+    // fake indexScan
+    fakeit::When(Method(mockTrx, indexScan))
+        .AlwaysDo(std::function<std::unique_ptr<IndexIterator>(std::string const&, CursorType&)>(
+            [&mockTrx, &collection](std::string const&, CursorType&) -> std::unique_ptr<IndexIterator> {
+              return std::make_unique<EmptyIndexIterator>(&collection, &(mockTrx.get()));
+            }));
+    // fake transaction::Methods - end
 
     // parameters for infos in order of ctor
     Variable outVariable("name", 1);
@@ -104,9 +114,7 @@ SCENARIO("EnumerateCollectionExecutor",
                                            &trx, coveringIndexAttributePositions,
                                            useRawPointers, random);
 
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
-    auto outputBlockShell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
@@ -114,13 +122,13 @@ SCENARIO("EnumerateCollectionExecutor",
       EnumerateCollectionExecutor testee(fetcher, infos);
       // Use this instead of std::ignore, so the tests will be noticed and
       // updated when someone changes the stats type in the return value of
-      // EnumerateCollectionExecutor::produceRow().
+      // EnumerateCollectionExecutor::produceRows().
       EnumerateCollectionStats stats{};
 
       THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
       }
@@ -131,18 +139,18 @@ SCENARIO("EnumerateCollectionExecutor",
       EnumerateCollectionExecutor testee(fetcher, infos);
       // Use this instead of std::ignore, so the tests will be noticed and
       // updated when someone changes the stats type in the return value of
-      // EnumerateCollectionExecutor::produceRow().
+      // EnumerateCollectionExecutor::produceRows().
       EnumerateCollectionStats stats{};
 
       THEN("the executor should first return WAIT") {
-        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRows(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
 
         AND_THEN("the executor should return DONE") {
-          std::tie(state, stats) = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRows(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
         }

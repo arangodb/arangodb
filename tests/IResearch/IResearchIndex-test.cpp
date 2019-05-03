@@ -33,6 +33,13 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
+#include "Cluster/ClusterFeature.h"
+
+#if USE_ENTERPRISE
+  #include "Enterprise/Ldap/LdapFeature.h"
+#endif
+
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
@@ -52,6 +59,7 @@
 #include "utils/utf8_path.hpp"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
@@ -133,7 +141,6 @@ REGISTER_ANALYZER_JSON(TestAnalyzer, TestAnalyzer::make);
 struct IResearchIndexSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
   IResearchIndexSetup(): engine(server), server(nullptr, nullptr) {
@@ -142,7 +149,8 @@ struct IResearchIndexSetup {
     arangodb::tests::init(true);
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::ERR); // suppress WARNING {aql} Suboptimal AqlItemMatrix index lookup:
@@ -151,19 +159,29 @@ struct IResearchIndexSetup {
 
     // setup required application features
     features.emplace_back(new arangodb::AqlFeature(server), true); // required for arangodb::aql::Query(...)
+    features.emplace_back(new arangodb::AuthenticationFeature(server), false); // required for ExecContext in Collections::create(...)
     features.emplace_back(new arangodb::DatabaseFeature(server), false); // required for LogicalViewStorageEngine::modify(...)
     features.emplace_back(new arangodb::DatabasePathFeature(server), false); // requires for IResearchView::open()
     features.emplace_back(new arangodb::ShardingFeature(server), false);
+    features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ViewTypesFeature(server), true); // required by TRI_vocbase_t::createView(...)
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required by TRI_vocbase_t(...)
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // required for AQLFeature
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true); // required for arangodb::aql::Query::execute(...)
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true); // required for use of iresearch analyzers
     features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true); // required for creating views of type 'iresearch'
+
+    #if USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+    #endif
+
+    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
+    arangodb::application_features::ApplicationServer::server->addFeature(
+      new arangodb::ClusterFeature(server)
+    );
 
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
@@ -172,6 +190,12 @@ struct IResearchIndexSetup {
     for (auto& f: features) {
       f.first->prepare();
     }
+
+    auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature
+    >("Database");
+    dbFeature->loadDatabases(databases->slice());
 
     for (auto& f: features) {
       if (f.second) {
@@ -182,20 +206,21 @@ struct IResearchIndexSetup {
     auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
       arangodb::iresearch::IResearchAnalyzerFeature
     >();
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    TRI_vocbase_t* vocbase;
 
-    analyzers->emplace("test_A", "TestInsertAnalyzer", "X"); // cache analyzer
-    analyzers->emplace("test_B", "TestInsertAnalyzer", "Y"); // cache analyzer
+    dbFeature->createDatabase(1, "testVocbase", vocbase); // required for IResearchAnalyzerFeature::emplace(...)
+    analyzers->emplace(result, "testVocbase::test_A", "TestInsertAnalyzer", "X"); // cache analyzer
+    analyzers->emplace(result, "testVocbase::test_B", "TestInsertAnalyzer", "Y"); // cache analyzer
 
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
   ~IResearchIndexSetup() {
-    system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f: features) {
@@ -209,6 +234,7 @@ struct IResearchIndexSetup {
     }
 
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 };
 
@@ -252,10 +278,10 @@ SECTION("test_analyzer") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    CHECK((trx.begin().ok()));
-    CHECK((trx.insert(collection0->name(), doc0->slice(), arangodb::OperationOptions()).ok()));
-    CHECK((trx.insert(collection1->name(), doc1->slice(), arangodb::OperationOptions()).ok()));
-    CHECK((trx.commit().ok()));
+    CHECK(trx.begin().ok());
+    CHECK(trx.insert(collection0->name(), doc0->slice(), arangodb::OperationOptions()).ok());
+    CHECK(trx.insert(collection1->name(), doc1->slice(), arangodb::OperationOptions()).ok());
+    CHECK(trx.commit().ok());
   }
 
   // link collections with view
@@ -271,7 +297,7 @@ SECTION("test_analyzer") {
       } } \
     } }");
 
-    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
+    CHECK(viewImpl->properties(updateJson->slice(), false).ok());
   }
 
   // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
@@ -281,8 +307,8 @@ SECTION("test_analyzer") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.X, 'abc', 'test_A'), 'test_B') OPTIONS { waitForSync: true } SORT d.seq RETURN d",
       nullptr
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 0, 1 };
     size_t i = 0;
@@ -290,11 +316,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
@@ -304,8 +330,8 @@ SECTION("test_analyzer") {
       "FOR d IN testView SEARCH PHRASE(d.X, 'abc', 'test_A') OPTIONS { waitForSync: true } SORT d.seq RETURN d",
       nullptr
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 0, 1 };
     size_t i = 0;
@@ -313,11 +339,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
     // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
@@ -327,8 +353,8 @@ SECTION("test_analyzer") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.X, 'abc'), 'test_A') OPTIONS { waitForSync: true } SORT d.seq RETURN d",
       nullptr
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 0, 1 };
     size_t i = 0;
@@ -336,11 +362,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -349,8 +375,8 @@ SECTION("test_analyzer") {
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d.X, 'abc', 'test_B') SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 0 };
     size_t i = 0;
@@ -358,11 +384,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -371,8 +397,8 @@ SECTION("test_analyzer") {
       vocbase,
       "FOR d IN testView SEARCH analyzer(PHRASE(d.X, 'abc'), 'test_B') SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 0 };
     size_t i = 0;
@@ -380,11 +406,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -393,8 +419,8 @@ SECTION("test_analyzer") {
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d.Y, 'def', 'test_A') SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 1 };
     size_t i = 0;
@@ -402,11 +428,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -415,8 +441,8 @@ SECTION("test_analyzer") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.Y, 'def', 'test_A'), 'test_B') SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 1 };
     size_t i = 0;
@@ -424,11 +450,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -437,8 +463,8 @@ SECTION("test_analyzer") {
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d.Y, 'def', 'test_A') SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 1 };
     size_t i = 0;
@@ -446,11 +472,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -459,8 +485,8 @@ SECTION("test_analyzer") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.Y, 'def'), 'test_A') SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 1 };
     size_t i = 0;
@@ -468,11 +494,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 }
 
@@ -502,7 +528,7 @@ SECTION("test_async_index") {
       } } \
     } }");
 
-    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
+    CHECK(viewImpl->properties(updateJson->slice(), false).ok());
   }
 
   // `catch` doesn't support cuncurrent checks
@@ -601,8 +627,8 @@ SECTION("test_async_index") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.same, 'xyz', 'test_A'), 'test_B') OPTIONS { waitForSync: true } SORT d.seq RETURN d",
       nullptr
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9,
@@ -615,11 +641,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
@@ -629,8 +655,8 @@ SECTION("test_async_index") {
       "FOR d IN testView SEARCH PHRASE(d.same, 'xyz', 'test_A') OPTIONS { waitForSync : true } SORT d.seq RETURN d",
       nullptr
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9,
@@ -643,11 +669,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
@@ -657,8 +683,8 @@ SECTION("test_async_index") {
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.same, 'xyz'), 'test_A') OPTIONS { waitForSync : true } SORT d.seq RETURN d",
       nullptr
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9,
@@ -671,11 +697,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -684,8 +710,8 @@ SECTION("test_async_index") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.same, 'xyz', 'test_B'), 'identity') SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -698,11 +724,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -711,8 +737,8 @@ SECTION("test_async_index") {
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d.same, 'xyz', 'test_B') SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -725,11 +751,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -738,8 +764,8 @@ SECTION("test_async_index") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.same, 'xyz'), 'test_B') SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -752,11 +778,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -765,8 +791,8 @@ SECTION("test_async_index") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'abcd', 'test_A'), 'test_B') SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 4, 10, 20, 26, 30, 50
@@ -776,11 +802,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -789,8 +815,8 @@ SECTION("test_async_index") {
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d.duplicated, 'abcd', 'test_A') SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 4, 10, 20, 26, 30, 50
@@ -800,11 +826,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -813,8 +839,8 @@ SECTION("test_async_index") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'abcd'), 'test_A') SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected {
       0, 4, 10, 20, 26, 30, 50
@@ -824,11 +850,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 }
 
@@ -858,10 +884,10 @@ SECTION("test_fields") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    CHECK((trx.begin().ok()));
-    CHECK((trx.insert(collection0->name(), doc0->slice(), arangodb::OperationOptions()).ok()));
-    CHECK((trx.insert(collection1->name(), doc1->slice(), arangodb::OperationOptions()).ok()));
-    CHECK((trx.commit().ok()));
+    CHECK(trx.begin().ok());
+    CHECK(trx.insert(collection0->name(), doc0->slice(), arangodb::OperationOptions()).ok());
+    CHECK(trx.insert(collection1->name(), doc1->slice(), arangodb::OperationOptions()).ok());
+    CHECK(trx.commit().ok());
   }
 
   // link collections with view
@@ -876,7 +902,7 @@ SECTION("test_fields") {
       } } \
     } }");
 
-    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
+    CHECK(viewImpl->properties(updateJson->slice(), false).ok());
   }
 
   // docs match from both collections
@@ -886,8 +912,8 @@ SECTION("test_fields") {
       "FOR d IN testView SEARCH d.X == 'abc' OPTIONS { waitForSync: true } SORT d.seq RETURN d",
       nullptr
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 0, 1 };
     size_t i = 0;
@@ -895,11 +921,11 @@ SECTION("test_fields") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection0
@@ -908,8 +934,8 @@ SECTION("test_fields") {
       vocbase,
       "FOR d IN testView SEARCH d.Y == 'def' SORT d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     std::vector<size_t> expected { 0 };
     size_t i = 0;
@@ -917,11 +943,11 @@ SECTION("test_fields") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 }
 

@@ -94,6 +94,8 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool parseQuery();
+
+  virtual uint32_t forwardingTarget() override;
 };
 }  // namespace arangodb
 

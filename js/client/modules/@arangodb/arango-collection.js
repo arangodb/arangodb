@@ -31,7 +31,7 @@
 var internal = require('internal');
 var arangosh = require('@arangodb/arangosh');
 var engine = null;
- 
+
 function getEngine(db) {
   if (engine === null) {
     try {
@@ -304,8 +304,8 @@ ArangoCollection.prototype.name = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.status = function () {
-  if (this._status === null || 
-      this._status === ArangoCollection.STATUS_UNLOADING || 
+  if (this._status === null ||
+      this._status === ArangoCollection.STATUS_UNLOADING ||
       this._status === ArangoCollection.STATUS_UNLOADED) {
     this._status = null;
     this.refresh();
@@ -350,6 +350,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'waitForSync': true,
     'shardKeys': false,
     'smartGraphAttribute': false,
+    'smartJoinAttribute': false,
     'numberOfShards': false,
     'keyOptions': false,
     'indexBuckets': true,
@@ -431,6 +432,23 @@ ArangoCollection.prototype.figures = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief gets the responsible shard for a specific value
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.getResponsibleShard = function (data) {
+  if (data === undefined || data === null) {
+    data = {};
+  } else if (typeof data === 'string' || typeof data === 'number') {
+    data = { _key: String(data) };
+  }
+  var requestResult = this._database._connection.PUT(this._baseurl('responsibleShard'), data);
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.shardId;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief gets the checksum of a collection
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -476,7 +494,7 @@ ArangoCollection.prototype.drop = function (options) {
     requestResult = this._database._connection.DELETE(this._baseurl());
   }
 
-  if (requestResult !== null 
+  if (requestResult !== null
     && requestResult !== undefined
     && requestResult.error === true
     && requestResult.errorNum !== internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
@@ -513,21 +531,27 @@ ArangoCollection.prototype.truncate = function (options) {
     options = options || {};
   }
 
+  let headers = {};
+  if (options && options.transactionId) {
+    headers['x-arango-trx-id'] = options.transactionId;
+  }
+
   var append = (options.waitForSync ? '&waitForSync=true' : '');
-  var requestResult = this._database._connection.PUT(this._baseurl('truncate') + append, null);
+  var requestResult = this._database._connection.PUT(this._baseurl('truncate') + append, null, headers);
 
   arangosh.checkRequestResult(requestResult);
+  // invalidate cache
   this._status = null;
- 
+
   if (!options.compact) {
     return;
   }
-  
+
   // fetch storage engine type
   var engine = getEngine(this._database);
 
   if (engine === 'mmfiles') {
-    try {  
+    try {
       // after we are done with the truncation, we flush the WAL to move out all
       // remove operations
       this._database._connection.PUT(this._prefixurl('/_admin/wal/flush?waitForSync=true&waitForCollector=true&maxWaitTime=5'), null);
@@ -542,6 +566,18 @@ ArangoCollection.prototype.truncate = function (options) {
       // ignore any WAL-flush related error (may be a privilege issue anyway)
     }
   }
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief compacts a collection
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.compact = function () {
+  let requestResult = this._database._connection.PUT(this._baseurl('compact'), null);
+
+  arangosh.checkRequestResult(requestResult);
+  // invalidate cache
+  this._status = null;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -560,6 +596,7 @@ ArangoCollection.prototype.load = function (count) {
 
   arangosh.checkRequestResult(requestResult);
 
+  // invalidate cache
   this._status = null;
 };
 
@@ -630,6 +667,8 @@ ArangoCollection.prototype.getIndexes = ArangoCollection.prototype.indexes = fun
 ArangoCollection.prototype.index = function (id) {
   if (id.hasOwnProperty('id')) {
     id = id.id;
+  } else if (id.hasOwnProperty('name')) {
+    id = id.name;
   }
 
   var requestResult = this._database._connection.GET(this._database._indexurl(id, this.name()));
@@ -698,7 +737,7 @@ ArangoCollection.prototype.count = function (details) {
 // / @brief gets a single document from the collection
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.document = function (id) {
+ArangoCollection.prototype.document = function (id, options) {
   var rev = null;
   var requestResult;
 
@@ -709,9 +748,14 @@ ArangoCollection.prototype.document = function (id) {
     });
   }
 
+  let headers = {};
+  if (options && options.transactionId) {
+    headers['x-arango-trx-id'] = options.transactionId;
+  }
+
   if (Array.isArray(id)) {
     var url = this._documentcollectionurl() + '?onlyget=true&ignoreRevs=false';
-    requestResult = this._database._connection.PUT(url, id);
+    requestResult = this._database._connection.PUT(url, id, headers);
   } else {
     if (typeof id === 'object') {
       if (id.hasOwnProperty('_rev')) {
@@ -723,12 +767,10 @@ ArangoCollection.prototype.document = function (id) {
         id = id._key;
       }
     }
-    if (rev === null) {
-      requestResult = this._database._connection.GET(this._documenturl(id));
-    }else {
-      requestResult = this._database._connection.GET(this._documenturl(id),
-        {'if-match': JSON.stringify(rev) });
+    if (rev !== null) {
+      headers['if-match'] = JSON.stringify(rev);
     }
+    requestResult = this._database._connection.GET(this._documenturl(id), headers);
   }
 
   if (requestResult !== null && requestResult.error === true) {
@@ -857,7 +899,7 @@ ArangoCollection.prototype.firstExample = function (example) {
 
 ArangoCollection.prototype.save =
   ArangoCollection.prototype.insert = function (from, to, data, options) {
-    var type = this.type(), url;
+    let type = this.type(), url;
 
     if (type === undefined) {
       type = ArangoCollection.TYPE_DOCUMENT;
@@ -919,6 +961,11 @@ ArangoCollection.prototype.save =
       url = this._appendBoolParameter(url, 'overwrite', options.overwrite);
     }
 
+    let headers = {};
+    if (options.transactionId) {
+      headers['x-arango-trx-id'] = options.transactionId;
+    }
+    
     if (data === undefined || typeof data !== 'object') {
       throw new ArangoError({
         errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
@@ -926,8 +973,8 @@ ArangoCollection.prototype.save =
       });
     }
 
-    var requestResult = this._database._connection.POST(
-      url, data
+    let requestResult = this._database._connection.POST(
+      url, data, headers
     );
 
     arangosh.checkRequestResult(requestResult);
@@ -947,8 +994,7 @@ ArangoCollection.prototype.save =
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
-  var rev = null;
-  var requestResult;
+  let rev = null;
 
   if (id === undefined || id === null) {
     throw new ArangoError({
@@ -957,8 +1003,8 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     });
   }
 
-  var ignoreRevs = false;
-  var options;
+  let ignoreRevs = false;
+  let options;
   if (typeof overwrite === 'object') {
     // we assume the caller uses new signature (id, data, options)
     if (typeof waitForSync !== 'undefined') {
@@ -982,8 +1028,8 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     delete id._rev;
   }
 
-  var url;
-  var body = null;
+  let url;
+  let body = null;
 
   if (Array.isArray(id)) {
     url = this._documentcollectionurl();
@@ -1011,13 +1057,15 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     url = this._appendBoolParameter(url, 'silent', options.silent);
   }
 
-  if (rev === null || ignoreRevs) {
-    requestResult = this._database._connection.DELETE(url, body);
-  } else {
-    requestResult = this._database._connection.DELETE(url, body,
-      {'if-match': JSON.stringify(rev)});
+  let headers = {};
+  if (options.transactionId) {
+    headers['x-arango-trx-id'] = options.transactionId;
+  }
+  if (rev !== null && !ignoreRevs) {
+    headers['if-match'] = JSON.stringify(rev);
   }
 
+  let requestResult = this._database._connection.DELETE(url, body, headers);
   if (requestResult !== null && requestResult.error === true) {
     if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
       requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;
@@ -1041,7 +1089,7 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function fillInSpecial (id, data) {
-  var pos;
+  let pos;
   if (data === null || typeof data !== 'object' || Array.isArray(data)) {
     return;
   }
@@ -1082,8 +1130,7 @@ function fillInSpecial (id, data) {
 }
 
 ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync) {
-  var rev = null;
-  var requestResult;
+  let rev = null;
 
   if (id === undefined || id === null) {
     throw new ArangoError({
@@ -1115,7 +1162,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     options = {};
   }
 
-  var url;
+  let url;
   if (Array.isArray(id)) {
     if (!Array.isArray(data) || id.length !== data.length) {
       throw new ArangoError({
@@ -1125,7 +1172,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
         errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
       });
     }
-    for (var i = 0; i < id.length; i++) {
+    for (let i = 0; i < id.length; i++) {
       fillInSpecial(id[i], data[i]);
     }
     url = this._documentcollectionurl();
@@ -1158,12 +1205,15 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     url = this._appendBoolParameter(url, 'silent', options.silent);
   }
 
-  if (rev === null || ignoreRevs) {
-    requestResult = this._database._connection.PUT(url, data);
-  }else {
-    requestResult = this._database._connection.PUT(url, data, {'if-match': JSON.stringify(rev) });
+  let headers ={};
+  if (options.transactionId) {
+    headers['x-arango-trx-id'] = options.transactionId;
   }
-
+  if (rev !== null && !ignoreRevs) {
+    headers['if-match'] = JSON.stringify(rev);
+  }
+  
+  let requestResult = this._database._connection.PUT(url, data, headers);
   if (requestResult !== null && requestResult.error === true) {
     if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
       requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;
@@ -1189,8 +1239,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, waitForSync) {
-  var rev = null;
-  var requestResult;
+  let rev = null;
 
   if (id === undefined || id === null) {
     throw new ArangoError({
@@ -1274,13 +1323,15 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     url = this._appendBoolParameter(url, 'silent', options.silent);
   }
 
-  if (rev === null || ignoreRevs) {
-    requestResult = this._database._connection.PATCH(url, data);
-  } else {
-    requestResult = this._database._connection.PATCH(url, data,
-      {'if-match': JSON.stringify(rev) });
+  let headers = {};
+  if (options.transactionId) {
+    headers['x-arango-trx-id'] = options.transactionId;
+  }
+  if (rev !== null && !ignoreRevs) {
+    headers['if-match'] = JSON.stringify(rev);
   }
 
+  let requestResult = this._database._connection.PATCH(url, data, headers);
   if (requestResult !== null && requestResult.error === true) {
     if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
       requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;

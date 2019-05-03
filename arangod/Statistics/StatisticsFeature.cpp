@@ -168,7 +168,7 @@ void StatisticsFeature::start() {
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
 
   if (!sysDbFeature) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS)
+    LOG_TOPIC("9b551", FATAL, arangodb::Logger::STATISTICS)
         << "could not find feature 'SystemDatabase'";
     FATAL_ERROR_EXIT();
   }
@@ -176,7 +176,7 @@ void StatisticsFeature::start() {
   auto vocbase = sysDbFeature->use();
 
   if (!vocbase) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS)
+    LOG_TOPIC("cff56", FATAL, arangodb::Logger::STATISTICS)
         << "could not find system database";
     FATAL_ERROR_EXIT();
   }
@@ -185,13 +185,13 @@ void StatisticsFeature::start() {
   _statisticsWorker.reset(new StatisticsWorker(*vocbase));
 
   if (!_statisticsThread->start()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS)
+    LOG_TOPIC("46b0c", FATAL, arangodb::Logger::STATISTICS)
         << "could not start statistics thread";
     FATAL_ERROR_EXIT();
   }
 
   if (!_statisticsWorker->start()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS)
+    LOG_TOPIC("6ecdc", FATAL, arangodb::Logger::STATISTICS)
         << "could not start statistics worker";
     FATAL_ERROR_EXIT();
   }

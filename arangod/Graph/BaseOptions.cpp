@@ -36,6 +36,7 @@
 #include "Graph/TraverserCacheFactory.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
+#include "Utils/OperationCursor.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -247,9 +248,10 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
                                          aql::AstNode* condition) {
   LookupInfo info;
   info.indexCondition = condition->clone(plan->getAst());
-  bool res = _trx->getBestIndexHandleForFilterCondition(collectionName,
-                                                        info.indexCondition, _tmpVar,
-                                                        1000, info.idxHandles[0]);
+  bool res =
+      _trx->getBestIndexHandleForFilterCondition(collectionName, info.indexCondition,
+                                                 _tmpVar, 1000, aql::IndexHint(),
+                                                 info.idxHandles[0]);
   // Right now we have an enforced edge index which should always fit.
   if (!res) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -394,9 +396,8 @@ double BaseOptions::costForLookupInfoList(std::vector<BaseOptions::LookupInfo> c
   return cost;
 }
 
-EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr, arangodb::velocypack::StringRef vid,
-                                         std::vector<LookupInfo>& list) {
-  TRI_ASSERT(mmdr != nullptr);
+EdgeCursor* BaseOptions::nextCursorLocal(arangodb::velocypack::StringRef vid,
+                                         std::vector<LookupInfo> const& list) {
   auto allCursor = std::make_unique<SingleServerEdgeCursor>(this, list.size());
   auto& opCursors = allCursor->getCursors();
   for (auto& info : list) {
@@ -411,7 +412,7 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr, arangodb::
       auto idNode = dirCmp->getMemberUnchecked(1);
       TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
       TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-      // must edit node inplace; TODO replace node?
+      // must edit node in place; TODO replace node?
       TEMPORARILY_UNLOCK_NODE(idNode);
       idNode->setStringValue(vid.data(), vid.length());
     }
@@ -419,7 +420,8 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr, arangodb::
     csrs.reserve(info.idxHandles.size());
     IndexIteratorOptions opts;
     for (auto const& it : info.idxHandles) {
-      csrs.emplace_back(_trx->indexScanForCondition(it, node, _tmpVar, mmdr, opts));
+      // the emplace_back cannot throw here, as we reserved enough space before
+      csrs.emplace_back(new OperationCursor(_trx->indexScanForCondition(it, node, _tmpVar, opts)));
     }
     opCursors.emplace_back(std::move(csrs));
   }

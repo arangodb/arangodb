@@ -35,6 +35,8 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
@@ -55,7 +57,8 @@ ShortestPathExecutorInfos::ShortestPathExecutorInfos(
     std::unique_ptr<graph::ShortestPathFinder>&& finder,
     std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
     InputVertex&& source, InputVertex&& target)
-    : ExecutorInfos(inputRegisters, outputRegisters, nrInputRegisters, nrOutputRegisters,
+    : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
+                    nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _finder(std::move(finder)),
       _registerMapping(std::move(registerMapping)),
@@ -97,9 +100,30 @@ bool ShortestPathExecutorInfos::usesOutputRegister(OutputName type) const {
   return _registerMapping.find(type) != _registerMapping.end();
 }
 
+static std::string typeToString(ShortestPathExecutorInfos::OutputName type) {
+  switch(type) {
+    case ShortestPathExecutorInfos::VERTEX:
+      return std::string{"VERTEX"};
+    case ShortestPathExecutorInfos::EDGE:
+      return std::string{"EDGE"};
+    default:
+      return std::string{"<INVALID("} + std::to_string(type) + ")>";
+  }
+}
+
+RegisterId ShortestPathExecutorInfos::findRegisterChecked(OutputName type) const {
+  auto const& it = _registerMapping.find(type);
+  if (ADB_UNLIKELY(it == _registerMapping.end())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "Logic error: requested unused register type " + typeToString(type));
+  }
+  return it->second;
+}
+
 RegisterId ShortestPathExecutorInfos::getOutputRegister(OutputName type) const {
   TRI_ASSERT(usesOutputRegister(type));
-  return _registerMapping.find(type)->second;
+  return findRegisterChecked(type);
 }
 
 graph::TraverserCache* ShortestPathExecutorInfos::cache() const {
@@ -132,7 +156,7 @@ std::pair<ExecutionState, Result> ShortestPathExecutor::shutdown(int errorCode) 
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRows(OutputAqlItemRow& output) {
   NoStats s;
 
   // Can be length 0 but never nullptr.
@@ -140,12 +164,16 @@ std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRow(OutputAqlIte
   while (true) {
     if (_posInPath < _path->length()) {
       if (_infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
-        output.cloneValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
-                              _input, _path->vertexToAqlValue(_infos.cache(), _posInPath));
+        AqlValue vertex = _path->vertexToAqlValue(_infos.cache(), _posInPath);
+        AqlValueGuard guard{vertex, true};
+        output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
+                             _input, guard);
       }
       if (_infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
-        output.cloneValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
-                              _input, _path->edgeToAqlValue(_infos.cache(), _posInPath));
+        AqlValue edge = _path->edgeToAqlValue(_infos.cache(), _posInPath);
+        AqlValueGuard guard{edge, true};
+        output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
+                             _input, guard);
       }
       _posInPath++;
       return {computeState(), s};
@@ -177,11 +205,7 @@ bool ShortestPathExecutor::fetchPath() {
     TRI_ASSERT(start.isString());
     TRI_ASSERT(end.isString());
     _path->clear();
-  } while (!_finder.shortestPath(start, end, *_path, [this]() {
-    if (_finder.options().query()->killed()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-    }
-  }));
+  } while (!_finder.shortestPath(start, end, *_path));
   _posInPath = 0;
   return true;
 }

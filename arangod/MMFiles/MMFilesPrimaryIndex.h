@@ -225,8 +225,6 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
   MMFilesSimpleIndexElement lookupKey(transaction::Methods*, VPackSlice const&,
                                       ManagedDocumentResult&) const;
   MMFilesSimpleIndexElement* lookupKeyRef(transaction::Methods*, VPackSlice const&) const;
-  MMFilesSimpleIndexElement* lookupKeyRef(transaction::Methods*, VPackSlice const&,
-                                          ManagedDocumentResult&) const;
 
   /// @brief a method to iterate over all elements in the index in
   ///        a sequential order.
@@ -276,7 +274,7 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, 
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;

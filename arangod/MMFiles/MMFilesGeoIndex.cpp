@@ -33,7 +33,6 @@
 #include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
@@ -321,7 +320,7 @@ Result MMFilesGeoIndex::insert(transaction::Methods& trx, LocalDocumentId const&
     }
     return res;
   }
-  // LOG_TOPIC(ERR, Logger::ENGINES) << "Inserting #cells " << cells.size() << "
+  // LOG_TOPIC("0e6a2", ERR, Logger::ENGINES) << "Inserting #cells " << cells.size() << "
   // doc: " << doc.toJson() << " center: " << centroid.toString();
   TRI_ASSERT(!cells.empty());
   TRI_ASSERT(S2::IsUnitLength(centroid));
@@ -349,7 +348,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods& trx, LocalDocumentId const&
     }
     return res;
   }
-  // LOG_TOPIC(ERR, Logger::ENGINES) << "Removing #cells " << cells.size() << "
+  // LOG_TOPIC("1255b", ERR, Logger::ENGINES) << "Removing #cells " << cells.size() << "
   // doc: " << doc.toJson();
   TRI_ASSERT(!cells.empty());
 
@@ -368,7 +367,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods& trx, LocalDocumentId const&
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*, arangodb::aql::AstNode const* node,
+    transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node != nullptr);

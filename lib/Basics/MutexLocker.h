@@ -106,7 +106,7 @@ class MutexLocker {
 
 #ifdef TRI_SHOW_LOCK_TIME
     if (_time > TRI_SHOW_LOCK_THRESHOLD) {
-      LOG_TOPIC(INFO, arangodb::Logger::PERFORMANCE)
+      LOG_TOPIC("bb435", INFO, arangodb::Logger::PERFORMANCE)
           << "MutexLocker " << _file << ":" << _line << " took " << _time << " s";
     }
 #endif

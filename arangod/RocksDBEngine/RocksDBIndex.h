@@ -124,11 +124,11 @@ class RocksDBIndex : public Index {
   virtual RocksDBCuckooIndexEstimator<uint64_t>* estimator() { return nullptr; }
   virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) {}
   virtual void recalculateEstimates() {}
-  
+
   virtual bool isPersistent() const override { return true; }
 
  protected:
-  RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
+  RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection, std::string const& name,
                std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
                uint64_t objectId, bool useCache);
@@ -139,7 +139,9 @@ class RocksDBIndex : public Index {
 
   inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
   void blackListKey(char const* data, std::size_t len);
-  void blackListKey(arangodb::velocypack::StringRef& ref) { blackListKey(ref.data(), ref.size()); };
+  void blackListKey(arangodb::velocypack::StringRef& ref) {
+    blackListKey(ref.data(), ref.size());
+  };
 
  protected:
   uint64_t _objectId;

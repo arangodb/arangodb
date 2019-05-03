@@ -94,9 +94,9 @@ class ClientManager {
   /**
    * @brief Determines whether the ArangoDB instance is part of a cluster
    * @param  client Client to use for request
-   * @return        status result; `true` if successful and part of a cluster
+   * @return        status result; role name
    */
-  std::pair<Result, bool> getArangoIsCluster(httpclient::SimpleHttpClient& client);
+  std::pair<Result, std::string> getArangoIsCluster(httpclient::SimpleHttpClient& client);
 
   /**
    * Determines whether the ArangoDB instance is using the specified engine

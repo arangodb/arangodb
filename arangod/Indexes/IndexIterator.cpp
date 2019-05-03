@@ -31,40 +31,41 @@ using namespace arangodb;
 
 IndexIterator::IndexIterator(LogicalCollection* collection, transaction::Methods* trx)
     : _collection(collection), _trx(trx) {
-  TRI_ASSERT(_collection != nullptr);
+  // note: collection may be a nullptr here, if we are dealing with the EmptyIndexIterator
   TRI_ASSERT(_trx != nullptr);
 }
 
 bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  TRI_ASSERT(_collection != nullptr);
   return next(
       [this, &cb](LocalDocumentId const& token) {
         _collection->readDocumentWithCallback(_trx, token, cb);
       },
       limit);
 }
+  
+/// @brief default implementation for rearm
+/// specialized index iterators can implement this method with some
+/// sensible behavior
+bool IndexIterator::rearm(arangodb::aql::AstNode const*,
+                          arangodb::aql::Variable const*,
+                          IndexIteratorOptions const&) {
+  TRI_ASSERT(canRearm());
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested rearming of an index iterator that does not support it");
+}
 
 /// @brief default implementation for nextCovering
 /// specialized index iterators can implement this method with some
 /// sensible behavior
 bool IndexIterator::nextCovering(DocumentCallback const&, size_t) {
-  TRI_ASSERT(!hasCovering());
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "Requested covering values from an index that "
-                                 "does not support it. This seems to be a bug "
-                                 "in ArangoDB. Please report the query you are "
-                                 "using + the indexes you have defined on the "
-                                 "relevant collections to arangodb.com");
+  TRI_ASSERT(hasCovering());
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested covering values from an index iterator that does not support it");
 }
 
 /// @brief default implementation for nextExtra
 bool IndexIterator::nextExtra(ExtraCallback const&, size_t) {
-  TRI_ASSERT(!hasExtra());
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "Requested extra values from an index that "
-                                 "does not support it. This seems to be a bug "
-                                 "in ArangoDB. Please report the query you are "
-                                 "using + the indexes you have defined on the "
-                                 "relevant collections to arangodb.com");
+  TRI_ASSERT(hasExtra());
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested extra values from an index iterator that does not support it");
 }
 
 /// @brief default implementation for reset
@@ -103,6 +104,37 @@ bool MultiIndexIterator::next(LocalDocumentIdCallback const& callback, size_t li
   }
   return true;
 }
+
+/// @brief Get the next elements
+///        If one iterator is exhausted, the next one is used.
+///        If callback is called less than limit many times
+///        all iterators are exhausted
+bool MultiIndexIterator::nextDocument(DocumentCallback const& callback, size_t limit) {
+  auto cb = [&limit, &callback](LocalDocumentId const& token, arangodb::velocypack::Slice slice) {
+    --limit;
+    callback(token, slice);
+  };
+  while (limit > 0) {
+    if (_current == nullptr) {
+      return false;
+    }
+    if (!_current->nextDocument(cb, limit)) {
+      _currentIdx++;
+      if (_currentIdx >= _iterators.size()) {
+        _current = nullptr;
+        return false;
+      } else {
+        _current = _iterators.at(_currentIdx);
+      }
+    }
+  }
+  return true;
+}
+
+bool MultiIndexIterator::nextExtra(ExtraCallback const& callback, size_t limit) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested extra values from an index iterator that does not support it");
+}
+
 
 /// @brief Get the next elements
 ///        If one iterator is exhausted, the next one is used.

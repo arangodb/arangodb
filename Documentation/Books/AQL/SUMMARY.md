@@ -45,7 +45,7 @@
   * [Miscellaneous](Functions/Miscellaneous.md)
   * [Numeric](Functions/Numeric.md)
   * [String](Functions/String.md)
-  * [Type cast](Functions/TypeCast.md)
+  * [Type check & cast](Functions/TypeCast.md)
 * [Graphs](Graphs/README.md)
   * [Traversals explained](Graphs/TraversalsExplained.md)
   * [Traversals](Graphs/Traversals.md)

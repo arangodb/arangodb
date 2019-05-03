@@ -228,8 +228,13 @@ class ApplicationServer {
   // report that we are going down by fatal error
   void shutdownFatalError();
 
-  // return VPack options
-  VPackBuilder options(std::unordered_set<std::string> const& excludes) const;
+  // return VPack options, with optional filters applied to filter
+  // out specific options. the filter function is expected to return true
+  // for any options that should become part of the result
+  VPackBuilder options(std::function<bool(std::string const&)> const& filter) const;
+  
+  // return the program options object
+  std::shared_ptr<options::ProgramOptions> options() const { return _options; }
 
   // return the server state
   ServerState state() const { return _state; }

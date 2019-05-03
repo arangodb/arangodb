@@ -57,112 +57,6 @@ namespace transaction {
 class Methods;
 }
 
-/// @brief Iterator structure for RocksDB unique index.
-/// This iterator can be used only for equality lookups that use all
-/// index attributes. It uses a point lookup and no seeks
-class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
- private:
-  friend class RocksDBVPackIndex;
-
- public:
-  RocksDBVPackUniqueIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                                  arangodb::RocksDBVPackIndex const* index,
-                                  VPackSlice const& indexValues);
-
-  ~RocksDBVPackUniqueIndexIterator() = default;
-
- public:
-  char const* typeName() const override {
-    return "rocksdb-unique-index-iterator";
-  }
-
-  /// @brief Get the next limit many element in the index
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-
-  bool nextCovering(DocumentCallback const& cb, size_t limit) override;
-
-  /// @brief Reset the cursor
-  void reset() override;
-
-  /// @brief we provide a method to provide the index attribute values
-  /// while scanning the index
-  bool hasCovering() const override;
-
- private:
-  arangodb::RocksDBVPackIndex const* _index;
-  rocksdb::Comparator const* _cmp;
-  RocksDBKeyLeaser _key;
-  bool _done;
-};
-
-/// @brief Iterator structure for RocksDB. We require a start and stop node
-class RocksDBVPackIndexIterator final : public IndexIterator {
- private:
-  friend class RocksDBVPackIndex;
-
- public:
-  RocksDBVPackIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                            arangodb::RocksDBVPackIndex const* index,
-                            bool reverse, RocksDBKeyBounds&& bounds);
-
-  ~RocksDBVPackIndexIterator() = default;
-
- public:
-  char const* typeName() const override { return "rocksdb-index-iterator"; }
-
-  /// @brief Get the next limit many elements in the index
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-
-  bool nextCovering(DocumentCallback const& cb, size_t limit) override;
-
-  void skip(uint64_t count, uint64_t& skipped) override;
-
-  /// @brief Reset the cursor
-  void reset() override;
-
-  /// @brief we provide a method to provide the index attribute values
-  /// while scanning the index
-  bool hasCovering() const override;
-
- private:
-  inline bool outOfRange() const {
-    if (_fullEnumerationObjectId) {
-      // we are enumerating the entire index
-      // so we can use a cheap comparator that only checks the objectId
-      return (arangodb::rocksutils::uint64FromPersistent(_iterator->key().data()) != _fullEnumerationObjectId);
-    }
-
-    // we are enumerating a subset of the index
-    // so we really need to run the full-featured (read: expensive)
-    // comparator
-
-    if (_reverse) {
-      return (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
-    } else {
-      return (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
-    }
-  }
-
-  inline bool advance() {
-    if (_reverse) {
-      _iterator->Prev();
-    } else {
-      _iterator->Next();
-    }
-
-    return _iterator->Valid() && !outOfRange();
-  }
-
-  arangodb::RocksDBVPackIndex const* _index;
-  rocksdb::Comparator const* _cmp;
-  std::unique_ptr<rocksdb::Iterator> _iterator;
-  uint64_t _fullEnumerationObjectId;
-  bool const _reverse;
-  RocksDBKeyBounds _bounds;
-  // used for iterate_upper_bound iterate_lower_bound
-  rocksdb::Slice _rangeBound;
-};
-
 class RocksDBVPackIndex : public RocksDBIndex {
   friend class RocksDBVPackIndexIterator;
 
@@ -218,7 +112,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
                                               arangodb::aql::Variable const*) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, 
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;

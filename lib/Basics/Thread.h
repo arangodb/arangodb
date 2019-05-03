@@ -82,7 +82,7 @@ class Thread {
   static TRI_tid_t currentThreadId();
 
  public:
-  Thread(std::string const& name, bool deleteOnExit = false);
+  Thread(std::string const& name, bool deleteOnExit = false, std::uint32_t terminationTimeout = INFINITE);
   virtual ~Thread();
 
  public:
@@ -165,6 +165,11 @@ class Thread {
   // internal thread information
   thread_t _thread;
   uint64_t _threadNumber;
+
+  // The max timeout (in ms) to wait for the thread to terminate.
+  // Failure to terminate within the specified time results in process abortion!
+  // The default value is INFINITE, i.e., we want to wait forever instead of aborting the process.
+  std::uint32_t _terminationTimeout;
 
   basics::ConditionVariable* _finishedCondition;
 

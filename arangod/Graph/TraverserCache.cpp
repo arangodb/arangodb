@@ -52,6 +52,12 @@ TraverserCache::TraverserCache(aql::Query* query)
 }
 
 TraverserCache::~TraverserCache() {}
+  
+void TraverserCache::clear() {
+  _stringHeap->clear();
+  _persistedStrings.clear();
+  _mmdr->clear();
+}
 
 VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -59,7 +65,7 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
 
   if (col == nullptr) {
     // collection gone... should not happen
-    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS)
+    LOG_TOPIC("3b2ba", ERR, arangodb::Logger::GRAPHS)
         << "Could not extract indexed edge document. collection not found";
     TRI_ASSERT(col != nullptr);  // for maintainer mode
     return arangodb::velocypack::Slice::nullSlice();
@@ -67,7 +73,7 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
 
   if (!col->readDocument(_trx, idToken.localDocumentId(), *_mmdr.get())) {
     // We already had this token, inconsistent state. Return NULL in Production
-    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS)
+    LOG_TOPIC("3acb3", ERR, arangodb::Logger::GRAPHS)
         << "Could not extract indexed edge document, return 'null' instead. "
         << "This is most likely a caching issue. Try: 'db." << col->name()
         << ".unload(); db." << col->name() << ".load()' in arangosh to fix this.";

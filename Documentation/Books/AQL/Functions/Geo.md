@@ -36,6 +36,8 @@ FOR doc IN doc // e.g. documents returned by a traversal
 
 ### GEO_CONTAINS()
 
+<small>Introduced in: v3.4.0</small>
+
 `GEO_CONTAINS(geoJsonA, geoJsonB) → bool`
 
 Checks whether the [GeoJSON object](../../Manual/Indexing/Geo.html#geojson) `geoJsonA`
@@ -49,6 +51,8 @@ This function can be **optimized** by a S2 based [geospatial index](../../Manual
 
 
 ### GEO_DISTANCE()
+
+<small>Introduced in: v3.4.0</small>
 
 `GEO_DISTANCE(geoJsonA, geoJsonB) → distance`
 
@@ -72,6 +76,8 @@ FOR doc IN collectionName
 ```
 
 ### GEO_EQUALS()
+
+<small>Introduced in: v3.4.0</small>
 
 `GEO_EQUALS(geoJsonA, geoJsonB) → bool`
 
@@ -103,6 +109,8 @@ RETURN GEO_EQUALS(polygonA, polygonB) // false
 ```
 
 ### GEO_INTERSECTS()
+
+<small>Introduced in: v3.4.0</small>
 
 `GEO_INTERSECTS(geoJsonA, geoJsonB) → bool`
 
@@ -171,6 +179,8 @@ IS_IN_POLYGON( [ [ 0, 0 ], [ 10, 0 ], [ 10, 10 ], [ 0, 10 ] ], [ 7, 4 ], true )
 GeoJSON Constructors
 ---------------------
 
+<small>Introduced in: v3.4.0</small>
+
 The following helper functions are available to easily create valid GeoJSON
 output. In all cases you can write equivalent JSON yourself, but these functions
 will help you to make all your AQL queries shorter and easier to read.
@@ -188,7 +198,7 @@ Needs at least two longitude/latitude pairs.
 @startDocuBlockInline aqlGeoLineString_1
 @EXAMPLE_AQL{aqlGeoLineString_1}
 RETURN GEO_LINESTRING([
-  [35, 10], [45, 45]
+    [35, 10], [45, 45]
 ])
 @END_EXAMPLE_AQL
 @endDocuBlock aqlGeoLineString_1
@@ -206,8 +216,8 @@ Needs at least two elements consisting valid LineStrings coordinate arrays.
 @startDocuBlockInline aqlGeoMultiLineString_1
 @EXAMPLE_AQL{aqlGeoMultiLineString_1}
 RETURN GEO_MULTILINESTRING([
-  [[100.0, 0.0], [101.0, 1.0]],
-  [[102.0, 2.0], [101.0, 2.3]]
+    [[100.0, 0.0], [101.0, 1.0]],
+    [[102.0, 2.0], [101.0, 2.3]]
 ])
 @END_EXAMPLE_AQL
 @endDocuBlock aqlGeoMultiLineString_1
@@ -224,7 +234,7 @@ Construct a GeoJSON LineString. Needs at least two longitude/latitude pairs.
 @startDocuBlockInline aqlGeoMultiPoint_1
 @EXAMPLE_AQL{aqlGeoMultiPoint_1}
 RETURN GEO_MULTIPOINT([
-  [35, 10], [45, 45]
+    [35, 10], [45, 45]
 ])
 @END_EXAMPLE_AQL
 @endDocuBlock aqlGeoMultiPoint_1
@@ -262,7 +272,7 @@ Simple Polygon:
 @startDocuBlockInline aqlGeoPolygon_1
 @EXAMPLE_AQL{aqlGeoPolygon_1}
 RETURN GEO_POLYGON([
-  [0.0, 0.0], [7.5, 2.5], [0.0, 5.0]
+    [0.0, 0.0], [7.5, 2.5], [0.0, 5.0]
 ])
 @END_EXAMPLE_AQL
 @endDocuBlock aqlGeoPolygon_1
@@ -272,8 +282,8 @@ Advanced Polygon with a hole inside:
 @startDocuBlockInline aqlGeoPolygon_2
 @EXAMPLE_AQL{aqlGeoPolygon_2}
 RETURN GEO_POLYGON([
-  [[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],
-  [[20, 30], [35, 35], [30, 20], [20, 30]]
+    [[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],
+    [[20, 30], [35, 35], [30, 20], [20, 30]]
 ])
 @END_EXAMPLE_AQL
 @endDocuBlock aqlGeoPolygon_2
@@ -293,13 +303,13 @@ MultiPolygon comprised of a simple Polygon and a Polygon with hole:
 @startDocuBlockInline aqlGeoMultiPolygon_1
 @EXAMPLE_AQL{aqlGeoMultiPolygon_1}
 RETURN GEO_MULTIPOLYGON([
-  [
-    [[40, 40], [20, 45], [45, 30], [40, 40]]
-  ],  
-  [
-    [[20, 35], [10, 30], [10, 10], [30, 5], [45, 20], [20, 35]],
-    [[30, 20], [20, 15], [20, 25], [30, 20]]
-  ]
+    [
+        [[40, 40], [20, 45], [45, 30], [40, 40]]
+    ],
+    [
+        [[20, 35], [10, 30], [10, 10], [30, 5], [45, 20], [20, 35]],
+        [[30, 20], [20, 15], [20, 25], [30, 20]]
+    ]
 ])
 @END_EXAMPLE_AQL
 @endDocuBlock aqlGeoMultiPolygon_1

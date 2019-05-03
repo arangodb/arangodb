@@ -30,7 +30,6 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -52,6 +51,7 @@
 #include "Transaction/Hints.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -874,14 +874,15 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
-
   if (vocbase.isDangling()) {
+    events::DropCollection(vocbase.name(), "", TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
+    events::DropCollection(vocbase.name(), "", TRI_ERROR_INTERNAL);
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -908,10 +909,17 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  auto res = methods::Collections::drop(&vocbase, collection, allowDropSystem, timeout);
-
-  if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
+  try {
+    auto res = methods::Collections::drop(*collection, allowDropSystem, timeout);
+    if (res.fail()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  } catch (basics::Exception const& ex) {
+    events::DropCollection(vocbase.name(), collection->name(), ex.code());
+    throw;
+  } catch (...) {
+    events::DropCollection(vocbase.name(), collection->name(), TRI_ERROR_INTERNAL);
+    throw;
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -959,6 +967,42 @@ static void JS_FiguresVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_GetResponsibleShardVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  if (!ServerState::instance()->isCoordinator()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
+  }
+
+  auto* collection = UnwrapCollection(isolate, args.Holder());
+
+  if (!collection) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+  if (args.Length() < 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleShard(<data>)");
+  }
+  
+  VPackBuilder builder;      
+  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  std::string shardId;
+  res = collection->getResponsibleShard(builder.slice(), false, shardId);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, shardId);
+  TRI_V8_RETURN(result);
+
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1105,7 +1149,9 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
   // properties, which will break tests. We need an extra lookup
   VPackBuilder builder;
 
-  methods::Collections::lookup(&(consoleColl->vocbase()), consoleColl->name(),
+  methods::Collections::lookup(
+    consoleColl->vocbase(), // vocbase to search
+    consoleColl->name(), // collection to find
                                [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
                                  TRI_ASSERT(coll);
 
@@ -1649,7 +1695,7 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
   }
   
-  pregel::PregelFeature* feature = pregel::PregelFeature::instance();
+  std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
   if (feature == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
@@ -1657,7 +1703,7 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint64_t executionNum = TRI_ObjectToUInt64(isolate, args[0], true);
   auto c = feature->conductor(executionNum);
   if (!c) {
-    TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND, "Execution number is invalid");
   }
 
   VPackBuilder builder = c->toVelocyPack();
@@ -1676,7 +1722,7 @@ static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>)");
   }
   
-  pregel::PregelFeature* feature = pregel::PregelFeature::instance();
+  std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
   if (feature == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
@@ -1684,7 +1730,7 @@ static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint64_t executionNum = TRI_ObjectToUInt64(isolate, args[0], true);
   auto c = feature->conductor(executionNum);
   if (!c) {
-    TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND, "Execution number is invalid");
   }
   c->cancel();
   feature->cleanupConductor(executionNum);
@@ -1704,7 +1750,7 @@ static void JS_PregelAQLResult(v8::FunctionCallbackInfo<v8::Value> const& args) 
     TRI_V8_THROW_EXCEPTION_USAGE("_pregelAqlResult(<executionNum>)");
   }
 
-  pregel::PregelFeature* feature = pregel::PregelFeature::instance();
+  std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
   if (feature == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
@@ -1772,6 +1818,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
+  
   auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
@@ -1856,7 +1903,6 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
 
   // copy default options (and set exclude handler in copy)
   VPackOptions vpackOptions = VPackOptions::Defaults;
-  vpackOptions.attributeExcludeHandler = basics::VelocyPackHelper::getExcludeHandler();
   VPackBuilder builder(&vpackOptions);
 
   auto doOneDocument = [&](v8::Handle<v8::Value> obj) -> void {
@@ -2042,27 +2088,31 @@ static void JS_TruncateVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
-  SingleCollectionTransaction trx(ctx, *collection, AccessMode::Type::EXCLUSIVE);
-  trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-  trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-  Result res = trx.begin();
+  {
+    auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
+    SingleCollectionTransaction trx(ctx, *collection, AccessMode::Type::EXCLUSIVE);
+    trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+    trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
+    Result res = trx.begin();
 
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION(res);
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+
+    auto result = trx.truncate(collection->name(), opOptions);
+
+    res = trx.finish(result.result);
+
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
   }
 
-  auto result = trx.truncate(collection->name(), opOptions);
-
-  res = trx.finish(result.result);
-
-  if (result.fail()) {
-    TRI_V8_THROW_EXCEPTION(result.result);
-  }
-
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  // wait for the transaction to finish first. only after that compact the
+  // data range(s) for the collection
+  // we shouldn't run compact() as part of the transaction, because the compact
+  // will be useless inside due to the snapshot the transaction has taken
+  collection->compact();
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -2373,10 +2423,6 @@ static void JS_CountVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) 
   SingleCollectionTransaction trx(transaction::V8Context::Create(col->vocbase(), true),
                                   collectionName, AccessMode::Type::READ);
 
-  if (trx.isLockedShard(collectionName)) {
-    trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
-  }
-
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -2468,7 +2514,7 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context, TRI_vocbase_t* vocba
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoCollection"));
 
   rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(3);
+  rt->SetInternalFieldCount(2); // SLOT_CLASS_TYPE + SLOT_CLASS
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "count"), JS_CountVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "document"),
@@ -2479,6 +2525,7 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context, TRI_vocbase_t* vocba
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "drop"), JS_DropVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "exists"), JS_ExistsVocbaseVPack);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "figures"), JS_FiguresVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getResponsibleShard"), JS_GetResponsibleShardVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "insert"), JS_InsertVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "_binaryInsert"),

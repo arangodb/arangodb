@@ -36,10 +36,10 @@ class LogicalCollection;
 
 class MMFilesIndex : public Index {
  public:
-  MMFilesIndex(TRI_idx_iid_t id, LogicalCollection& collection,
+  MMFilesIndex(TRI_idx_iid_t id, LogicalCollection& collection, std::string const& name,
                std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                bool unique, bool sparse)
-      : Index(id, collection, attributes, unique, sparse) {}
+      : Index(id, collection, name, attributes, unique, sparse) {}
 
   MMFilesIndex(TRI_idx_iid_t id, LogicalCollection& collection,
                arangodb::velocypack::Slice const& info)
@@ -49,24 +49,23 @@ class MMFilesIndex : public Index {
   virtual bool isHidden() const override {
     return false;  // do not generally hide MMFiles indexes
   }
-  
+
   virtual bool isPersistent() const override { return false; };
 
   virtual void batchInsert(transaction::Methods& trx,
                            std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& docs,
                            std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
-  
+
   virtual Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const& doc, OperationMode mode) = 0;
-  
+
   virtual Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const& doc, OperationMode mode) = 0;
-  
+
   void afterTruncate(TRI_voc_tick_t) override {
     // for mmfiles, truncating the index just unloads it
     unload();
   }
-
 };
 }  // namespace arangodb
 

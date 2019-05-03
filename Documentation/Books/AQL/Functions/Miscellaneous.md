@@ -115,6 +115,37 @@ a request context. Otherwise, the return value of this function will be *null*.
 - returns **userName** (string|null): the current user name, or *null* if
   authentication is disabled
 
+### DECODE_REV()
+
+`DECODE_REV(revision) → details`
+
+Decompose the specified `revision` string into its components.
+The resulting object has a `date` and a `count` attribute.
+This function is supposed to be called with the `_rev` attribute value
+of a database document as argument.
+
+- **revision** (string): revision ID string
+- returns **details** (object|null): object with two attributes
+  *date* (string in ISO 8601 format) and *count* (integer number),
+  or *null*
+
+If the input revision ID is not a string or cannot be processed, the function
+issues a warning and returns *null*.
+
+Please note that the result structure may change in future versions of
+ArangoDB in case the internal format of revision strings is modified. Please 
+also note that the *date* value in the current result provides the date and
+time of when the document record was put together on the server, but not
+necessarily the time of insertion into the underlying storage engine. Therefore
+in case of concurrent document operations the exact document storage order 
+cannot be derived unambiguously from the revision value. It should thus be
+treated as a rough estimate of when a document was created or last updated.
+
+```js
+DECODE_REV( "_YU0HOEG---" )
+// { "date" : "2019-03-11T16:15:05.314Z", "count" : 0 }
+```
+
 ### DOCUMENT()
 
 `DOCUMENT(collection, id) → doc`
@@ -163,7 +194,8 @@ DOCUMENT("users/john")
 DOCUMENT( [ "users/john", "users/amy" ] )
 ```
 
-Please also consider [to use `DOCUMENT` in conjunction with `WITH`](../Operations/With.md)
+Please also consider to use
+[`DOCUMENT` in conjunction with `WITH`](../Operations/With.md)
 
 ### LENGTH()
 
@@ -182,6 +214,8 @@ the [character length](String.md#length) of a string.
 
 Hash functions
 --------------
+
+### HASH()
 
 `HASH(value) → hashNumber`
 
@@ -203,6 +237,16 @@ The hash value returned by this function is a number. The hash algorithm is not
 guaranteed to remain the same in future versions of ArangoDB. The hash values
 should therefore be used only for temporary calculations, e.g. to compare if two
 documents are the same, or for grouping values in queries.
+
+### String-based hashing
+
+See the following string functions:
+
+- [CRC32()](String.md#crc32)
+- [FNV64()](String.md#fnv64)
+- [MD5()](String.md#md5)
+- [SHA1()](String.md#sha1)
+- [SHA512()](String.md#sha512)
 
 Function calling
 ----------------
@@ -228,15 +272,16 @@ APPLY( "SUBSTRING", [ "this is a test", 0, 7 ] )
 
 ### ASSERT() / WARN()
 
-`ASSERT(expression, message) → retVal`
+`ASSERT(expr, message) → retVal`<br>
+`WARN(expr, message) → retVal`
 
-The 2 functions evaluate an expression. In case the expression evaluates to
+The two functions evaluate an expression. In case the expression evaluates to
 *true* both functions will return *true*. If the expression evaluates to
 *false* *ASSERT* will throw an error and *WARN* will issue a warning and return
 *false*. This behavior allows the use of *ASSERT* and *WARN* in *FILTER*
 conditions.
 
-- **expression** (AqlValue): AQL expression to be evaluated
+- **expr** (expression): AQL expression to be evaluated
 - **message** (string): message that will be used in exception or warning if expression evaluates to false
 - returns **retVal** (bool): returns true if expression evaluates to true
 

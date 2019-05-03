@@ -49,12 +49,18 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
     return false;
   }
 
-  arangodb::aql::AstNode const* what = access;
   std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> attributeData;
   bool const isPrimaryIndex = idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX;
+      
+  if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX && 
+      (!other->isConstant() || !(other->isIntValue() || other->isDoubleValue()))) {
+    // TTL index can only be used for numeric lookup values, no date strings or
+    // anything else
+    return false;
+  }
 
   if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-    if (!what->isAttributeAccessForVariable(attributeData) || attributeData.first != reference) {
+    if (!access->isAttributeAccessForVariable(attributeData) || attributeData.first != reference) {
       // this access is not referencing this collection
       return false;
     }
@@ -71,7 +77,7 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
     // doc.value[*]
     TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
 
-    if (what->isAttributeAccessForVariable(attributeData) && attributeData.first == reference &&
+    if (access->isAttributeAccessForVariable(attributeData) && attributeData.first == reference &&
         !arangodb::basics::TRI_AttributeNamesHaveExpansion(attributeData.second) &&
         idx->attributeMatches(attributeData.second, isPrimaryIndex)) {
       // doc.value IN 'value'
@@ -81,7 +87,6 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
                idx->isAttributeExpanded(attributeData.second) &&
                idx->attributeMatches(attributeData.second, isPrimaryIndex)) {
       // check for  'value' IN doc.value  AND  'value' IN doc.value[*]
-      what = other;  // if what should be used later
     } else {
       return false;
     }

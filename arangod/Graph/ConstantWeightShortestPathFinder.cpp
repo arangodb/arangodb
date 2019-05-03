@@ -32,7 +32,6 @@
 #include "Transaction/Helpers.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -47,7 +46,7 @@ ConstantWeightShortestPathFinder::PathSnippet::PathSnippet(arangodb::velocypack:
     : _pred(pred), _path(std::move(path)) {}
 
 ConstantWeightShortestPathFinder::ConstantWeightShortestPathFinder(ShortestPathOptions& options)
-    : ShortestPathFinder(options), _mmdr(new ManagedDocumentResult{}) {}
+    : ShortestPathFinder(options) {}
 
 ConstantWeightShortestPathFinder::~ConstantWeightShortestPathFinder() {
   clearVisited();
@@ -55,7 +54,7 @@ ConstantWeightShortestPathFinder::~ConstantWeightShortestPathFinder() {
 
 bool ConstantWeightShortestPathFinder::shortestPath(
     arangodb::velocypack::Slice const& s, arangodb::velocypack::Slice const& e,
-    arangodb::graph::ShortestPathResult& result, std::function<void()> const& callback) {
+    arangodb::graph::ShortestPathResult& result) {
   result.clear();
   TRI_ASSERT(s.isString());
   TRI_ASSERT(e.isString());
@@ -82,7 +81,7 @@ bool ConstantWeightShortestPathFinder::shortestPath(
 
   arangodb::velocypack::StringRef n;
   while (!_leftClosure.empty() && !_rightClosure.empty()) {
-    callback();
+    options().isQueryKilledCallback();
 
     if (_leftClosure.size() < _rightClosure.size()) {
       if (expandClosure(_leftClosure, _leftFound, _rightFound, false, n)) {
@@ -166,9 +165,9 @@ void ConstantWeightShortestPathFinder::fillResult(arangodb::velocypack::StringRe
 void ConstantWeightShortestPathFinder::expandVertex(bool backward, arangodb::velocypack::StringRef vertex) {
   std::unique_ptr<EdgeCursor> edgeCursor;
   if (backward) {
-    edgeCursor.reset(_options.nextReverseCursor(_mmdr.get(), vertex));
+    edgeCursor.reset(_options.nextReverseCursor(vertex));
   } else {
-    edgeCursor.reset(_options.nextCursor(_mmdr.get(), vertex));
+    edgeCursor.reset(_options.nextCursor(vertex));
   }
 
   auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {

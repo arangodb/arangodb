@@ -109,14 +109,14 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (1 < count) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("353cd", FATAL, arangodb::Logger::FIXME)
         << "cannot combine '--console', '--javascript.unit-tests' and "
         << "'--javascript.script'";
     FATAL_ERROR_EXIT();
   }
 
   if (_operationMode == OperationMode::MODE_SERVER && !_restServer) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("8daab", FATAL, arangodb::Logger::FIXME)
         << "need at least '--console', '--javascript.unit-tests' or"
         << "'--javascript.script if rest-server is disabled";
     FATAL_ERROR_EXIT();
@@ -132,7 +132,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       v8dealer->setMinimumContexts(1);
     }
   } else if (_operationMode != OperationMode::MODE_SERVER) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("a114b", FATAL, arangodb::Logger::FIXME)
         << "Options '--console', '--javascript.unit-tests'"
         << " or '--javascript.script' are not supported without V8";
     FATAL_ERROR_EXIT();
@@ -182,7 +182,7 @@ void ServerFeature::start() {
       break;
 
     case OperationMode::MODE_SERVER:
-      LOG_TOPIC(TRACE, Logger::STARTUP) << "server operation mode: SERVER";
+      LOG_TOPIC("7031b", TRACE, Logger::STARTUP) << "server operation mode: SERVER";
       break;
   }
 

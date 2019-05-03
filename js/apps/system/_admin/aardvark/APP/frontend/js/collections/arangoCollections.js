@@ -164,7 +164,16 @@
       data.type = parseInt(object.collType, 10);
       if (object.shards) {
         data.numberOfShards = object.shards;
-        data.shardKeys = object.shardBy;
+        data.shardKeys = object.shardKeys;
+      }
+
+      if (object.smartJoinAttribute &&
+          object.smartJoinAttribute !== '') {
+        data.smartJoinAttribute = object.smartJoinAttribute;
+      }
+      if (object.distributeShardsLike &&
+          object.distributeShardsLike !== '') {
+        data.distributeShardsLike = object.distributeShardsLike;
       }
 
       if (object.replicationFactor) {

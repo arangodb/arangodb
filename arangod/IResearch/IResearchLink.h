@@ -113,51 +113,54 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is dropped
   ////////////////////////////////////////////////////////////////////////////////
-  arangodb::Result drop();  // arangodb::Index override
+  arangodb::Result drop(); // arangodb::Index override
 
-  bool hasBatchInsert() const;          // arangodb::Index override
-  bool hasSelectivityEstimate() const;  // arangodb::Index override
+  bool hasSelectivityEstimate() const; // arangodb::Index override
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the identifier for this link
+  //////////////////////////////////////////////////////////////////////////////
+  TRI_idx_iid_t id() const noexcept { return _id; }
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief insert an ArangoDB document into an iResearch View using '_meta'
-  /// params
+  /// @brief insert an ArangoDB document into an iResearch View using '_meta' params
   ////////////////////////////////////////////////////////////////////////////////
-  arangodb::Result insert(arangodb::transaction::Methods& trx,
-                          arangodb::LocalDocumentId const& documentId,
-                          arangodb::velocypack::Slice const& doc,
-                          arangodb::Index::OperationMode mode);  // arangodb::Index override
-
-  bool isSorted() const;  // arangodb::Index override
+  arangodb::Result insert( // insert document
+    arangodb::transaction::Methods& trx, // transaction
+    arangodb::LocalDocumentId const& documentId, // document identifier
+    arangodb::velocypack::Slice const& doc, // document
+    arangodb::Index::OperationMode mode // insert mode
+  ); // arangodb::Index override
 
   bool isHidden() const;  // arangodb::Index override
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief the identifier for this link
-  ////////////////////////////////////////////////////////////////////////////////
-  TRI_idx_iid_t id() const noexcept;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fill and return a jSON description of a IResearchLink object
-  ///        elements are appended to an existing object
-  /// @return success or set TRI_set_errno(...) and return false
-  ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::Builder& builder) const;
+  bool isSorted() const; // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is loaded into memory
   ////////////////////////////////////////////////////////////////////////////////
-  void load();  // arangodb::Index override
+  void load(); // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief index comparator, used by the coordinator to detect if the specified
   ///        definition is the same as this link
   ////////////////////////////////////////////////////////////////////////////////
-  bool matchesDefinition(arangodb::velocypack::Slice const& slice) const;  // arangodb::Index override
+  bool matchesDefinition( // matches
+    arangodb::velocypack::Slice const& slice // other definition
+  ) const; // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link
   ////////////////////////////////////////////////////////////////////////////////
-  size_t memory() const;  // arangodb::Index override
+  size_t memory() const; // arangodb::Index override
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief fill and return a jSON description of a IResearchLink object
+  ///        elements are appended to an existing object
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result properties( // get link properties
+    arangodb::velocypack::Builder& builder, // output buffer
+    bool forPersistence // properties for persistance
+  ) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update runtine data processing properties (not persisted)

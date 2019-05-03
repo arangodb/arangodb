@@ -37,8 +37,6 @@
 
 namespace arangodb {
 
-class ManagedDocumentResult;
-
 namespace graph {
 
 struct EdgeDocumentToken;
@@ -60,8 +58,9 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
     arangodb::graph::EdgeDocumentToken _edge;
     bool _done;
 
-    Step(arangodb::velocypack::StringRef const& vert, arangodb::velocypack::StringRef const& pred,
-         double weig, EdgeDocumentToken&& edge);
+    Step(arangodb::velocypack::StringRef const& vert,
+         arangodb::velocypack::StringRef const& pred, double weig,
+         EdgeDocumentToken&& edge);
 
     double weight() const { return _weight; }
 
@@ -154,7 +153,8 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   class Searcher {
    public:
     Searcher(AttributeWeightShortestPathFinder* pathFinder, ThreadInfo& myInfo,
-             ThreadInfo& peerInfo, arangodb::velocypack::StringRef const& start, bool isBackward);
+             ThreadInfo& peerInfo, arangodb::velocypack::StringRef const& start,
+             bool isBackward);
 
    public:
     //////////////////////////////////////////////////////////////////////////////
@@ -168,7 +168,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
     /// @brief Insert a neighbor to the todo list.
     ////////////////////////////////////////////////////////////////////////////////
 
-    void insertNeighbor(Step* step, double newWeight);
+    void insertNeighbor(std::unique_ptr<Step>&& step, double newWeight);
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief Lookup our current vertex in the data of our peer.
@@ -210,16 +210,16 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   // path
   bool shortestPath(arangodb::velocypack::Slice const& start,
                     arangodb::velocypack::Slice const& target,
-                    arangodb::graph::ShortestPathResult& result,
-                    std::function<void()> const& callback) override;
+                    arangodb::graph::ShortestPathResult& result) override;
 
   void inserter(std::unordered_map<arangodb::velocypack::StringRef, size_t>& candidates,
-                std::vector<Step*>& result, arangodb::velocypack::StringRef const& s,
+                std::vector<std::unique_ptr<Step>>& result,
+                arangodb::velocypack::StringRef const& s,
                 arangodb::velocypack::StringRef const& t, double currentWeight,
                 graph::EdgeDocumentToken&& edge);
 
   void expandVertex(bool isBackward, arangodb::velocypack::StringRef const& source,
-                    std::vector<Step*>& result);
+                    std::vector<std::unique_ptr<Step>>& result);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the shortest path between the start and target vertex,
@@ -275,14 +275,6 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 
   bool _intermediateSet;
   arangodb::velocypack::StringRef _intermediate;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Reusable ManagedDocumentResult that temporarily takes
-  ///        responsibility for one document.
-  //////////////////////////////////////////////////////////////////////////////
-
- private:
-  std::unique_ptr<ManagedDocumentResult> _mmdr;
 };
 
 }  // namespace graph

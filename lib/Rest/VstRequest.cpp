@@ -83,7 +83,7 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
         // will throw on error
         _validatedPayload = validator.validate(vpack.data(), vpack.length());
       }
-      return VPackSlice(vpack.data());
+      return VPackSlice(reinterpret_cast<uint8_t const*>(vpack.data()));
     }
   }
   return VPackSlice::noneSlice();  // no body
@@ -116,7 +116,7 @@ void VstRequest::parseHeaderInformation() {
   using namespace std;
   auto vHeader = _message.header();
   if (!vHeader.isArray() || vHeader.length() != 7) {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION) << "invalid VST message header";
+    LOG_TOPIC("0007b", WARN, Logger::COMMUNICATION) << "invalid VST message header";
     throw std::runtime_error("invalid VST message header");
   }
 
@@ -131,11 +131,11 @@ void VstRequest::parseHeaderInformation() {
     VPackSlice meta = vHeader.at(6);            // meta
 
     if (version != 1) {
-      LOG_TOPIC(WARN, Logger::COMMUNICATION)
+      LOG_TOPIC("e7fe5", WARN, Logger::COMMUNICATION)
           << "invalid version in vst message";
     }
     if (type != 1) {
-      LOG_TOPIC(WARN, Logger::COMMUNICATION) << "not a VST request";
+      LOG_TOPIC("d8a18", WARN, Logger::COMMUNICATION) << "not a VST request";
       return;
     }
 

@@ -92,11 +92,30 @@ class StaticStrings {
   static std::string const IndexExpireAfter;   // ttl index expire value
   static std::string const IndexFields;        // index fields
   static std::string const IndexId;            // index id
+  static std::string const IndexInBackground;  // index in background
+  static std::string const IndexIsBuilding;    // index build in-process
+  static std::string const IndexName;          // index name
   static std::string const IndexSparse;        // index sparsity marker
   static std::string const IndexType;          // index type
   static std::string const IndexUnique;        // index uniqueness marker
-  static std::string const IndexIsBuilding;    // index build in-process
-  static std::string const IndexInBackground;  // index in background
+
+  // static index names
+  static std::string const IndexNameEdge;
+  static std::string const IndexNameEdgeFrom;
+  static std::string const IndexNameEdgeTo;
+  static std::string const IndexNameInaccessible;
+  static std::string const IndexNamePrimary;
+
+  // index hint strings
+  static std::string const IndexHintAny;
+  static std::string const IndexHintCollection;
+  static std::string const IndexHintHint;
+  static std::string const IndexHintDepth;
+  static std::string const IndexHintInbound;
+  static std::string const IndexHintOption;
+  static std::string const IndexHintOptionForce;
+  static std::string const IndexHintOutbound;
+  static std::string const IndexHintWildcard;
 
   // HTTP headers
   static std::string const Accept;
@@ -141,6 +160,8 @@ class StaticStrings {
   static std::string const RequestForwardedTo;
   static std::string const ResponseCode;
   static std::string const Server;
+  static std::string const TransactionBody;
+  static std::string const TransactionId;
   static std::string const Unlimited;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
@@ -159,6 +180,7 @@ class StaticStrings {
   static std::string const DistributeShardsLike;
   static std::string const ReplicationFactor;
   static std::string const ShardKeys;
+  static std::string const SmartJoinAttribute;
 
   // graph attribute names
   static std::string const GraphCollection;

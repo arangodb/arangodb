@@ -25,7 +25,6 @@
 #define ARANGOD_GRAPH_EDGECURSOR_H 1
 
 #include "Basics/Common.h"
-#include <velocypack/StringRef.h>
 
 namespace arangodb {
 
@@ -45,10 +44,15 @@ class EdgeCursor {
  public:
   EdgeCursor() {}
   virtual ~EdgeCursor() {}
+  
+  using Callback =
+      std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)>;
 
-  virtual bool next(std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)> callback) = 0;
+  virtual bool next(std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)> const& callback) = 0;
 
-  virtual void readAll(std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)>) = 0;
+  virtual void readAll(std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)> const& callback) = 0;
+
+  virtual size_t httpRequests() const = 0;
 };
 
 }  // namespace graph

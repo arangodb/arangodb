@@ -60,13 +60,13 @@ class ReplicationApplierConfiguration {
   bool _adaptivePolling;
   bool _autoResync;  /// resync completely if we miss updates
   bool _includeSystem;
+  bool _includeFoxxQueues; /// sync the _jobs and _queues collection
   bool _requireFromPresent;  /// while tailing WAL: master must have the clients
                              /// requested tick
   bool _incremental;         /// use incremental sync if we got local data
   bool _verbose;
   RestrictType _restrictType;
   std::set<std::string> _restrictCollections;
-  bool _includeFoxxQueues; /// sync the _jobs collection
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _force32mode = false;  // force client to act like 3.2
 #endif

@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 class LogicalCollection;
@@ -35,7 +36,11 @@ class ClusterSelectivityEstimates {
  public:
   explicit ClusterSelectivityEstimates(LogicalCollection& collection);
   void flush();
-  std::unordered_map<std::string, double> get(bool allowUpdate) const;
+  
+  /// @brief fetch estimates from cache or server
+  /// @param allowUpdate allow cluster communication
+  /// @param tid specify ongoing transaction this is a part of
+  std::unordered_map<std::string, double> get(bool allowUpdate, TRI_voc_tick_t tid) const;
   void set(std::unordered_map<std::string, double>&& estimates);
 
  private:

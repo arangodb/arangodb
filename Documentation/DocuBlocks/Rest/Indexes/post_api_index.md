@@ -32,6 +32,10 @@ Indexing the system attribute *_id* is not supported for user-defined indexes.
 Manually creating an index using *_id* as an index attribute will fail with 
 an error.
 
+Optionally, an index name may be specified as a string in the *name* attribute.
+Index names have the same restrictions as collection names. If no value is
+specified, one will be auto-generated.
+
 Some indexes can be created as unique or non-unique variants. Uniqueness
 can be controlled for most indexes by specifying the *unique* flag in the
 index details. Setting it to *true* will create a unique index.
@@ -76,4 +80,3 @@ target index will not support, then an *HTTP 400* is returned.
 @RESTRETURNCODE{404}
 If *collection* is unknown, then an *HTTP 404* is returned.
 @endDocuBlock
-

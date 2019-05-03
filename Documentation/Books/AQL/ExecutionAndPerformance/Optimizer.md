@@ -447,10 +447,15 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   enable follow-up optimizations.
 * `sort-limit`: will appear when a *SortNode* is followed by a *LimitNode* with no
   intervening nodes that may change the element count (e.g. a *FilterNode* which
-  could not be moved before the sort, or an source node like *EnumerateCollectionNode*).
+  could not be moved before the sort, or a source node like *EnumerateCollectionNode*).
   This is used to make the *SortNode* aware of the limit and offset from the *LimitNode*
   to enable some optimizations internal to the *SortNode* which allow for reduced
-  memory usage and and in many cases, improved sorting speed.
+  memory usage and and in many cases, improved sorting speed. The optimizer may
+  choose not to apply the rule if it decides that it will offer little or no benefit.
+  In particular it will not apply the rule if the input size is very small or if
+  the output from the `LimitNode` is similar in size to the input. In exceptionally rare 
+  cases, this rule could result in some small slowdown. If observed, one can 
+  disable the rule for the affected query at the cost of increased memory usage.
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 
@@ -487,6 +492,10 @@ The following optimizer rules may appear in the `rules` attribute of cluster pla
   determine the values of all the collection's shard keys from the query, and when the
   shard keys are covered by a single index (this is always true if the shard key is
   the default `_key`).
+* `smart-joins`: will appear when the query optimizer can reduce an inter-node join
+  to a server-local join. This rule is only active in the *Enterprise Edition* of
+  ArangoDB, and will only be employed when joining two collections with identical 
+  sharding setup via their shard keys.
 
 Note that some rules may appear multiple times in the list, with number suffixes.
 This is due to the same rule being applied multiple times, at different positions

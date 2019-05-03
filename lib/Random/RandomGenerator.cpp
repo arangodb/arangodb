@@ -166,13 +166,13 @@ int32_t RandomDevice::other(int32_t left, uint32_t range) {
 
   while (r >= g) {
     if (++count >= MAX_COUNT) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("3ca9f", ERR, arangodb::Logger::FIXME)
           << "cannot generate small random number after " << count << " tries";
       r %= g;
       continue;
     }
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("47fbf", TRACE, arangodb::Logger::FIXME)
         << "random number too large, trying again";
     r = random();
   }
@@ -227,11 +227,11 @@ class RandomDeviceDirect : public RandomDevice {
       ssize_t r = TRI_READ(fd, ptr, static_cast<TRI_read_t>(n));
 
       if (r == 0) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("7153b", FATAL, arangodb::Logger::FIXME)
             << "read on random device failed: nothing read";
         FATAL_ERROR_EXIT();
       } else if (r < 0) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("f5ba9", FATAL, arangodb::Logger::FIXME)
             << "read on random device failed: " << strerror(errno);
         FATAL_ERROR_EXIT();
       }
@@ -312,17 +312,17 @@ class RandomDeviceCombined : public RandomDevice {
       ssize_t r = TRI_READ(fd, ptr, static_cast<TRI_read_t>(n));
 
       if (r == 0) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("71bae", FATAL, arangodb::Logger::FIXME)
             << "read on random device failed: nothing read";
         FATAL_ERROR_EXIT();
       } else if (r < 0) {
         if (errno == EWOULDBLOCK || errno == EAGAIN) {
-          LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+          LOG_TOPIC("15cf0", INFO, arangodb::Logger::FIXME)
               << "not enough entropy (got " << (sizeof(buffer) - n)
               << "), switching to pseudo-random";
           break;
         }
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("72c65", FATAL, arangodb::Logger::FIXME)
             << "read on random device failed: " << strerror(errno);
         FATAL_ERROR_EXIT();
       }
@@ -332,7 +332,7 @@ class RandomDeviceCombined : public RandomDevice {
 
       rseed = buffer[0];
 
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "using seed " << rseed;
+      LOG_TOPIC("6a060", TRACE, arangodb::Logger::FIXME) << "using seed " << rseed;
     }
 
     if (0 < n) {
@@ -404,7 +404,7 @@ class RandomDeviceWin32 : public RandomDevice {
     }
   }
 
-  uint32_t random() {
+  uint32_t random() override {
     if (pos >= N) {
       fillBuffer();
     }
@@ -420,7 +420,7 @@ class RandomDeviceWin32 : public RandomDevice {
     // fill the buffer with random characters
     int result = CryptGenRandom(cryptoHandle, n, ptr);
     if (result == 0) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("cec47", FATAL, arangodb::Logger::FIXME)
           << "read on random device failed: nothing read";
       FATAL_ERROR_EXIT();
     }

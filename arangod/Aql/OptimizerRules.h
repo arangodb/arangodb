@@ -129,10 +129,6 @@ void substituteClusterSingleDocumentOperations(Optimizer* opt,
 void optimizeClusterSingleShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                     OptimizerRule const*);
 
-/// @brief try to find candidates for shard-local joins in the cluster
-void optimizeClusterJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                              OptimizerRule const*);
-
 /// @brief scatter operations in cluster - send all incoming rows to all remote
 /// clients
 void scatterInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
@@ -156,6 +152,9 @@ ExecutionNode* distributeInClusterRuleSmartEdgeCollection(ExecutionPlan*, Subque
 /// @brief remove scatter/gather and remote nodes for satellite collections
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                               OptimizerRule const*);
+
+void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                    OptimizerRule const*);
 #endif
 
 /// @brief try to restrict fragments to a single shard if possible

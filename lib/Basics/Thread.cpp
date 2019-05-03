@@ -87,7 +87,7 @@ void Thread::startThread(void* arg) {
   try {
     ptr->runMe();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(WARN, Logger::THREADS)
+    LOG_TOPIC("6784f", WARN, Logger::THREADS)
         << "caught exception in thread '" << ptr->_name << "': " << ex.what();
     ptr->crashNotification(ex);
     throw;
@@ -140,13 +140,14 @@ std::string Thread::stringify(ThreadState state) {
 }
 
 /// @brief constructs a thread
-Thread::Thread(std::string const& name, bool deleteOnExit)
+Thread::Thread(std::string const& name, bool deleteOnExit, std::uint32_t terminationTimeout)
     : _deleteOnExit(deleteOnExit),
       _threadStructInitialized(false),
       _refs(0),
       _name(name),
       _thread(),
       _threadNumber(0),
+      _terminationTimeout(terminationTimeout),
       _finishedCondition(nullptr),
       _state(ThreadState::CREATED) {
   TRI_InitThread(&_thread);
@@ -157,11 +158,11 @@ Thread::~Thread() {
   TRI_ASSERT(_refs.load() == 0);
 
   auto state = _state.load();
-  LOG_TOPIC(TRACE, Logger::THREADS)
+  LOG_TOPIC("944b1", TRACE, Logger::THREADS)
       << "delete(" << _name << "), state: " << stringify(state);
 
   if (state != ThreadState::STOPPED) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("80e0e", FATAL, arangodb::Logger::FIXME)
         << "thread '" << _name << "' is not stopped but " << stringify(state)
         << ". shutting down hard";
     FATAL_ERROR_ABORT();
@@ -170,7 +171,7 @@ Thread::~Thread() {
 
 /// @brief flags the thread as stopping
 void Thread::beginShutdown() {
-  LOG_TOPIC(TRACE, Logger::THREADS)
+  LOG_TOPIC("1a183", TRACE, Logger::THREADS)
       << "beginShutdown(" << _name << ") in state " << stringify(_state.load());
 
   ThreadState state = _state.load();
@@ -183,13 +184,13 @@ void Thread::beginShutdown() {
     _state.compare_exchange_weak(state, ThreadState::STOPPING);
   }
 
-  LOG_TOPIC(TRACE, Logger::THREADS) << "beginShutdown(" << _name << ") reached state "
+  LOG_TOPIC("1fa5b", TRACE, Logger::THREADS) << "beginShutdown(" << _name << ") reached state "
                                     << stringify(_state.load());
 }
 
 /// @brief MUST be called from the destructor of the MOST DERIVED class
 void Thread::shutdown() {
-  LOG_TOPIC(TRACE, Logger::THREADS) << "shutdown(" << _name << ")";
+  LOG_TOPIC("93614", TRACE, Logger::THREADS) << "shutdown(" << _name << ")";
 
   beginShutdown();
   if (_threadStructInitialized) {
@@ -197,8 +198,30 @@ void Thread::shutdown() {
       // we must ignore any errors here, but TRI_DetachThread will log them
       TRI_DetachThread(&_thread);
     } else {
-      // we must ignore any errors here, but TRI_JoinThread will log them
-      TRI_JoinThread(&_thread);
+#ifdef __APPLE__
+      // MacOS does not provide an implemenation of pthread_timedjoin_np which is used in
+      // TRI_JoinThreadWithTimeout, so instead we simply wait for _state to be set to STOPPED.
+
+      std::uint32_t n = _terminationTimeout / 100;
+      for (std::uint32_t i = 0; i < n || _terminationTimeout == INFINITE; ++i) {
+        if (_state.load() == ThreadState::STOPPED) {
+          break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      }
+
+      // we still have to wait here until the thread has terminated, but this should
+      // happen immediately after _state has been set to STOPPED!
+      int ret = _state.load() == ThreadState::STOPPED ? TRI_JoinThread(&_thread) : TRI_ERROR_FAILED;
+#else
+      auto ret = TRI_JoinThreadWithTimeout(&_thread, _terminationTimeout);
+#endif
+
+      if (ret != TRI_ERROR_NO_ERROR) {
+        LOG_TOPIC("825a5", FATAL, arangodb::Logger::FIXME)
+          << "cannot shutdown thread '" << _name << "', giving up";
+        FATAL_ERROR_ABORT();
+      }
     }
   }
   TRI_ASSERT(_refs.load() == 0);
@@ -215,7 +238,7 @@ bool Thread::isStopping() const {
 /// @brief starts the thread
 bool Thread::start(ConditionVariable* finishedCondition) {
   if (!isSystem() && !ApplicationServer::isPrepared()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("6ba8a", FATAL, arangodb::Logger::FIXME)
         << "trying to start a thread '" << _name << "' before prepare has finished, current state: "
         << (ApplicationServer::server == nullptr
                 ? -1
@@ -227,7 +250,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   ThreadState state = _state.load();
 
   if (state != ThreadState::CREATED) {
-    LOG_TOPIC(FATAL, Logger::THREADS)
+    LOG_TOPIC("11a39", FATAL, Logger::THREADS)
         << "called started on an already started thread '" << _name << "', thread is in state "
         << stringify(state);
     FATAL_ERROR_ABORT();
@@ -236,7 +259,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   ThreadState expected = ThreadState::CREATED;
   if (!_state.compare_exchange_strong(expected, ThreadState::STARTING)) {
     // This should never happen! If it does, it means we have multiple calls to start().
-    LOG_TOPIC(WARN, Logger::THREADS)
+    LOG_TOPIC("7e453", WARN, Logger::THREADS)
         << "failed to set thread '" << _name << "' to state 'starting'; thread is in unexpected state "
         << stringify(expected);
     FATAL_ERROR_ABORT();
@@ -255,11 +278,11 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     // could not start the thread -> decrement ref for the foreign thread 
     _refs.fetch_sub(1);
     _state.store(ThreadState::STOPPED);
-    LOG_TOPIC(ERR, Logger::THREADS)
+    LOG_TOPIC("f5915", ERR, Logger::THREADS)
         << "could not start thread '" << _name << "': " << TRI_last_error();
+  } else {
+    _threadStructInitialized = true;
   }
-
-  _threadStructInitialized = true;
 
   releaseRef();
 
@@ -284,14 +307,14 @@ void Thread::runMe() {
     run();
   } catch (std::exception const& ex) {
     if (!isSilent()) {
-      LOG_TOPIC(ERR, Logger::THREADS)
+      LOG_TOPIC("3a30c", ERR, Logger::THREADS)
           << "exception caught in thread '" << _name << "': " << ex.what();
       Logger::flush();
     }
     throw;
   } catch (...) {
     if (!isSilent()) {
-      LOG_TOPIC(ERR, Logger::THREADS)
+      LOG_TOPIC("83582", ERR, Logger::THREADS)
           << "unknown exception caught in thread '" << _name << "'";
       Logger::flush();
     }

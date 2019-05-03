@@ -55,6 +55,7 @@ class TransactionState;
 class MMFilesCollection final : public PhysicalCollection {
   friend class MMFilesCompactorThread;
   friend class MMFilesEngine;
+  friend class MMFilesIndexLookupContext;
 
  public:
   static inline MMFilesCollection* toMMFilesCollection(PhysicalCollection* physical) {
@@ -269,6 +270,9 @@ class MMFilesCollection final : public PhysicalCollection {
 
   Result truncate(transaction::Methods& trx, OperationOptions& options) override;
 
+  /// @brief compact-data operation
+  Result compact() override;
+
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
   ///        the collection and it is guaranteed that no one is using
@@ -297,28 +301,23 @@ class MMFilesCollection final : public PhysicalCollection {
                                TRI_voc_tick_t maxTick, ManagedDocumentResult& result);
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                arangodb::ManagedDocumentResult& result,
-                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_tick_t& revisionId, KeyLockInfo* keyLockInfo,
-                std::function<Result(void)> callbackDuringLock) override;
+                arangodb::ManagedDocumentResult& resultMdr,
+                OperationOptions& options,
+                bool lock, KeyLockInfo* keyLockInfo,
+                std::function<void()> const& callbackDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                ManagedDocumentResult& result, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-                ManagedDocumentResult& previous, arangodb::velocypack::Slice key,
-                std::function<Result(void)> callbackDuringLock) override;
+                ManagedDocumentResult& resultMdr, OperationOptions& options,
+                bool lock, ManagedDocumentResult& previousMdr) override;
 
   Result replace(transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                 ManagedDocumentResult& result, OperationOptions& options,
-                 TRI_voc_tick_t& resultMarkerTick, bool lock,
-                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                 std::function<Result(void)> callbackDuringLock) override;
+                 ManagedDocumentResult& resultMdr, OperationOptions& options,
+                 bool lock, ManagedDocumentResult& previousMdr) override;
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                ManagedDocumentResult& previous, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-                TRI_voc_rid_t& revisionId, KeyLockInfo* keyLockInfo,
-                std::function<Result(void)> callbackDuringLock) override;
+                ManagedDocumentResult& previousMdr, OperationOptions& options,
+                bool lock, KeyLockInfo* keyLockInfo,
+                std::function<void()> const& callbackDuringLock) override;
 
   Result rollbackOperation(transaction::Methods& trx, TRI_voc_document_operation_e type,
                            LocalDocumentId const& oldDocumentId,
@@ -443,8 +442,8 @@ class MMFilesCollection final : public PhysicalCollection {
   Result deleteSecondaryIndexes(transaction::Methods& trx, LocalDocumentId const& documentId,
                                 velocypack::Slice const& doc, Index::OperationMode mode);
 
-  Result lookupDocument(transaction::Methods*, velocypack::Slice,
-                        ManagedDocumentResult& result);
+  LocalDocumentId lookupDocument(transaction::Methods*, velocypack::Slice,
+                                 ManagedDocumentResult& result);
 
   Result updateDocument(transaction::Methods& trx, TRI_voc_rid_t revisionId,
                         LocalDocumentId const& oldDocumentId,

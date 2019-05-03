@@ -73,6 +73,31 @@ Truncates a collection:
     @endDocuBlock collectionTruncate
 
 
+Compact
+-------
+
+<!-- js/server/modules/@arangodb/arango-collection.js-->
+
+<small>Introduced in: v3.4.5</small>
+
+Compacts the data of a collection
+`collection.compact()`
+
+Compacts the data of a collection in order to reclaim disk space. For the
+MMFiles storage engine, the operation will reset the collection's last
+compaction timestamp, so it will become a candidate for compaction. For the
+RocksDB storage engine, the operation will compact the document and index
+data by rewriting the underlying .sst files and only keeping the relevant
+entries.
+
+Under normal circumstances running a compact operation is not necessary,
+as the collection data will eventually get compacted anyway. However, in 
+some situations, e.g. after running lots of update/replace or remove 
+operations, the disk data for a collection may contain a lot of outdated data
+for which the space shall be reclaimed. In this case the compaction operation
+can be used.
+
+
 Properties
 ----------
 
@@ -187,6 +212,21 @@ used as a lower bound approximation of the disk usage.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock collectionFigures
 
+
+GetResponsibleShard
+-------------------
+
+<!-- arangod/V8Server/v8-collection.cpp -->
+
+
+returns the responsible shard for the given document.
+`collection.getResponsibleShard(document)`
+
+Returns a string with the responsible shard's ID. Note that the
+returned shard ID is the ID of responsible shard for the document's
+shard key values, and it will be returned even if no such document exists.
+
+**Note**: this function can only be used on a coordinator in a cluster.
 
 
 Load

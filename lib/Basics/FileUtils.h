@@ -60,6 +60,7 @@ inline std::string buildFilename(std::string const& path,
 // reads file into string or buffer
 std::string slurp(std::string const& filename);
 void slurp(std::string const& filename, StringBuffer& result);
+Result slurp(std::string const& filename, std::string& result);
 
 // creates file and writes string to it
 void spit(std::string const& filename, char const* ptr, size_t len, bool sync = false);

@@ -82,7 +82,7 @@ struct Job {
     try {
       status();  // This runs everything to to with state PENDING if needed!
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY)
+      LOG_TOPIC("e2d06", WARN, Logger::AGENCY)
           << "Exception caught in status() method: " << e.what();
       finish(server, shard, false, e.what());
     }
@@ -95,7 +95,7 @@ struct Job {
         }
       }
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "Exception caught in create() or "
+      LOG_TOPIC("5ac04", WARN, Logger::AGENCY) << "Exception caught in create() or "
                                          "start() method: "
                                       << e.what();
       finish("", "", false, e.what());
@@ -125,8 +125,8 @@ struct Job {
   static std::string randomIdleAvailableServer(Node const& snap,
                                                    std::vector<std::string> const& exclude);
   static std::string randomIdleAvailableServer(Node const& snap, VPackSlice const& exclude);
-  static size_t countGoodServersInList(Node const& snap, VPackSlice const& serverList);
-  static size_t countGoodServersInList(Node const& snap, std::vector<std::string> const& serverList);
+  static size_t countGoodOrBadServersInList(Node const& snap, VPackSlice const& serverList);
+  static size_t countGoodOrBadServersInList(Node const& snap, std::vector<std::string> const& serverList);
   static bool isInServerList(Node const& snap, std::string const& prefix, std::string const& server, bool isArray);
 
   /// @brief Get servers from plan, which are not failed or cleaned out
@@ -144,7 +144,7 @@ struct Job {
                                                                std::string const& shrd);
 
   JOB_STATUS _status;
-  Node const _snapshot;
+  Node const& _snapshot;
   AgentInterface* _agent;
   std::string _jobId;
   std::string _creator;
@@ -205,7 +205,7 @@ inline arangodb::consensus::write_ret_t singleWriteTransaction(AgentInterface* _
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::SUPERVISION)
+    LOG_TOPIC("5be90", ERR, Logger::SUPERVISION)
         << "Supervision failed to build single-write transaction: " << e.what();
   }
 
@@ -252,15 +252,17 @@ inline arangodb::consensus::trans_ret_t generalTransaction(AgentInterface* _agen
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::SUPERVISION)
+    LOG_TOPIC("aae99", ERR, Logger::SUPERVISION)
         << "Supervision failed to build transaction: " << e.what();
   }
 
   auto ret = _agent->transact(envelope);
 
-  if (ret.maxind > 0) {
-    _agent->waitFor(ret.maxind);
-  }
+  // This is for now disabled to speed up things. We wait after a full
+  // Supervision run, which is good enough.
+  //if (ret.maxind > 0) {
+  // _agent->waitFor(ret.maxind);
+  //
 
   return ret;
 }
@@ -288,7 +290,7 @@ inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::SUPERVISION)
+    LOG_TOPIC("d03d5", ERR, Logger::SUPERVISION)
         << "Supervision failed to build transaction for transient: " << e.what();
   }
 

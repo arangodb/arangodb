@@ -24,11 +24,16 @@
 
 using namespace arangodb::aql;
 
-ExecutorInfos::ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                             std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-                             RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                             std::unordered_set<RegisterId> registersToClear,
-                             std::unordered_set<RegisterId> registersToKeep)
+ExecutorInfos::ExecutorInfos(
+    // cppcheck-suppress passedByValue
+    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+    // cppcheck-suppress passedByValue
+    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToClear,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToKeep)
     : _inRegs(std::move(readableInputRegisters)),
       _outRegs(std::move(writeableOutputRegisters)),
       _numInRegs(nrInputRegisters),
@@ -45,7 +50,11 @@ ExecutorInfos::ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> rea
   if (_outRegs == nullptr) {
     _outRegs = std::make_shared<decltype(_outRegs)::element_type>();
   }
-  TRI_ASSERT(nrInputRegisters <= nrOutputRegisters);
+  // The second assert part is from ReturnExecutor special case, we shrink all
+  // results into a single Register column.
+  TRI_ASSERT((nrInputRegisters <= nrOutputRegisters) ||
+             (nrOutputRegisters == 1 && _registersToKeep->empty() &&
+              _registersToClear->empty()));
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   for (RegisterId const inReg : *_inRegs) {

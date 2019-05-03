@@ -41,6 +41,7 @@
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -84,26 +85,30 @@ std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const&
 
     return nullptr;
   }
-
-  MUTEX_LOCKER(guard, _tasksLock);
-
-  if (_tasks.find(id) != _tasks.end()) {
-    ec = TRI_ERROR_TASK_DUPLICATE_ID;
-
-    return {nullptr};
+  
+  if (application_features::ApplicationServer::isStopping()) {
+    ec = TRI_ERROR_SHUTTING_DOWN;
+    return nullptr;
   }
-
+  
   TRI_ASSERT(nullptr != vocbase);  // this check was previously in the
                                    // DatabaseGuard constructor which on failure
                                    // would fail Task constructor
 
   std::string user = ExecContext::CURRENT ? ExecContext::CURRENT->user() : "";
   auto task = std::make_shared<Task>(id, name, *vocbase, command, allowUseDatabase);
-  auto itr = _tasks.emplace(id, std::make_pair(user, std::move(task)));
+  
+  MUTEX_LOCKER(guard, _tasksLock);
+
+  if (!_tasks.emplace(id, std::make_pair(user, task)).second) {
+    ec = TRI_ERROR_TASK_DUPLICATE_ID;
+
+    return {nullptr};
+  }
 
   ec = TRI_ERROR_NO_ERROR;
 
-  return itr.first->second.second;
+  return task;
 }
 
 int Task::unregisterTask(std::string const& id, bool cancel) {
@@ -183,7 +188,7 @@ void Task::shutdownTasks() {
     }
 
     if (++iterations % 10 == 0) {
-      LOG_TOPIC(INFO, Logger::FIXME) << "waiting for " << size << " task(s) to complete";
+      LOG_TOPIC("3966b", INFO, Logger::FIXME) << "waiting for " << size << " task(s) to complete";
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
@@ -372,18 +377,15 @@ void Task::toVelocyPack(VPackBuilder& builder) const {
 }
 
 void Task::work(ExecContext const* exec) {
-  auto context = V8DealerFeature::DEALER->enterContext(&(_dbGuard->database()), _allowUseDatabase);
-
-  // note: the context might be 0 in case of shut-down
-  if (context == nullptr) {
-    return;
-  }
-
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
+  JavaScriptSecurityContext securityContext =
+      _allowUseDatabase
+          ? JavaScriptSecurityContext::createInternalContext() // internal context that may access internal data
+          : JavaScriptSecurityContext::createTaskContext(false /*_allowUseDatabase*/); // task context that has no access to dbs
+  V8ContextGuard guard(&(_dbGuard->database()), securityContext);
 
   // now execute the function within this context
   {
-    auto isolate = context->_isolate;
+    auto isolate = guard.isolate();
     v8::HandleScope scope(isolate);
 
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
@@ -412,7 +414,7 @@ void Task::work(ExecContext const* exec) {
 
       // call the function within a try/catch
       try {
-        v8::TryCatch tryCatch(isolate);;
+        v8::TryCatch tryCatch(isolate);
         action->Call(current, 1, &fArgs);
         if (tryCatch.HasCaught()) {
           if (tryCatch.CanContinue()) {
@@ -421,20 +423,20 @@ void Task::work(ExecContext const* exec) {
             TRI_GET_GLOBALS();
 
             v8g->_canceled = true;
-            LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+            LOG_TOPIC("131e8", WARN, arangodb::Logger::FIXME)
                 << "caught non-catchable exception (aka termination) in job";
           }
         }
       } catch (arangodb::basics::Exception const& ex) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("d6729", ERR, arangodb::Logger::FIXME)
             << "caught exception in V8 user task: " << TRI_errno_string(ex.code())
             << " " << ex.what();
       } catch (std::bad_alloc const&) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("bfe8a", ERR, arangodb::Logger::FIXME)
             << "caught exception in V8 user task: "
             << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
       } catch (...) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("342ec", ERR, arangodb::Logger::FIXME)
             << "caught unknown exception in V8 user task";
       }
     }

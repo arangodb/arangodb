@@ -29,7 +29,6 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/KeyGenerator.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -148,7 +147,6 @@ void Traverser::UniqueVertexGetter::reset(arangodb::velocypack::StringRef const&
 
 Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, transaction::Methods* trx)
     : _trx(trx),
-      _mmdr(new arangodb::ManagedDocumentResult()),
       _startIdBuilder(),
       _done(true),
       _opts(opts),
@@ -176,11 +174,10 @@ bool arangodb::traverser::Traverser::vertexMatchesConditions(arangodb::velocypac
   if (_opts->vertexHasFilter(depth)) {
     // We always need to destroy this vertex
     aql::AqlValue vertex = fetchVertexData(v);
+    aql::AqlValueGuard guard{vertex, true};
     if (!_opts->evaluateVertexExpression(vertex.slice(), depth)) {
-      vertex.destroy();
       return false;
     }
-    vertex.destroy();
   }
   return true;
 }
@@ -198,12 +195,19 @@ TraverserCache* arangodb::traverser::Traverser::traverserCache() {
   return _opts->cache();
 }
 
+size_t arangodb::traverser::Traverser::getAndResetFilteredPaths() {
+  return traverserCache()->getAndResetFilteredDocuments();
+}
+
 size_t arangodb::traverser::Traverser::getAndResetReadDocuments() {
   return traverserCache()->getAndResetInsertedDocuments();
 }
 
-size_t arangodb::traverser::Traverser::getAndResetFilteredPaths() {
-  return traverserCache()->getAndResetFilteredDocuments();
+size_t arangodb::traverser::Traverser::getAndResetHttpRequests() {
+  if (_enumerator != nullptr) {
+    return _enumerator->getAndResetHttpRequests();
+  }
+  return 0;
 }
 
 void arangodb::traverser::Traverser::allowOptimizedNeighbors() {

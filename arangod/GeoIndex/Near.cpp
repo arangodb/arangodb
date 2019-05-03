@@ -62,11 +62,11 @@ NearUtils<CMP>::NearUtils(geo::QueryParams&& qp) noexcept
   TRI_ASSERT(!isAscending() || _params.ascending);
   TRI_ASSERT(!isDescending() || !_params.ascending);
 
-  /*LOG_TOPIC(ERR, Logger::FIXME)
+  /*LOG_TOPIC("f2eed", ERR, Logger::FIXME)
       << "--------------------------------------------------------";
-  LOG_TOPIC(INFO, Logger::FIXME) << "[Near] origin target: "
+  LOG_TOPIC("f71a1", INFO, Logger::FIXME) << "[Near] origin target: "
                                  << _params.origin.ToStringInDegrees();
-  LOG_TOPIC(INFO, Logger::FIXME) << "[Near] minBounds: " <<
+  LOG_TOPIC("179ef", INFO, Logger::FIXME) << "[Near] minBounds: " <<
   (size_t)(_params.minDistanceRad() * geo::kEarthRadiusInMeters)
         << "  maxBounds:" << (size_t)(_params.maxDistanceRad() *
   geo::kEarthRadiusInMeters)
@@ -75,7 +75,7 @@ NearUtils<CMP>::NearUtils(geo::QueryParams&& qp) noexcept
 
 template <typename CMP>
 NearUtils<CMP>::~NearUtils() {
-  // LOG_TOPIC(ERR, Logger::FIXME) << "Scans: " << _numScans << " Found: " <<
+  // LOG_TOPIC("5d2f1", ERR, Logger::FIXME) << "Scans: " << _numScans << " Found: " <<
   // _found << " Rejections: " << _rejection;
 }
 
@@ -117,7 +117,7 @@ void NearUtils<CMP>::estimateDensity(S2Point const& found) {
     // only call after reset
     TRI_ASSERT(!isAscending() || (_innerAngle == _minAngle && _buffer.empty()));
     TRI_ASSERT(!isDescending() || (_innerAngle == _maxAngle && _buffer.empty()));
-    /*LOG_TOPIC(ERR, Logger::ENGINES)
+    /*LOG_TOPIC("42584", ERR, Logger::ENGINES)
     << "Estimating density with " << _deltaAngle.radians() *
     geo::kEarthRadiusInMeters
     << "m";*/
@@ -166,7 +166,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
     calculateBounds();
     TRI_ASSERT(_innerAngle <= _outerAngle && _outerAngle <= _maxAngle);
   } /* else {
-     LOG_TOPIC(WARN, Logger::FIXME) << "Found ("<<_numScans<<"): " << _found;
+     LOG_TOPIC("a298e", WARN, Logger::FIXME) << "Found ("<<_numScans<<"): " << _found;
    }*/
   _numScans++;
 
@@ -174,13 +174,13 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   TRI_ASSERT(_innerAngle != _outerAngle);
 
   /*if (!_buffer.empty()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "Inner angle: " << _innerAngle.radians() <<
+    LOG_TOPIC("bf909", ERR, Logger::FIXME) << "Inner angle: " << _innerAngle.radians() <<
   "  top distance: " << _buffer.top().distAngle.radians();
   }*/
 
   std::vector<S2CellId> cover;
   if (_innerAngle == _minAngle) {
-    // LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] 0 to something";
+    // LOG_TOPIC("55f3b", INFO, Logger::FIXME) << "[Scan] 0 to something";
     S2Cap ob = S2Cap(_origin, _outerAngle);
     //_coverer.GetCovering(ob, &cover);
     if (_scannedCells.empty() == 0) {
@@ -254,9 +254,9 @@ void NearUtils<CMP>::reportFound(LocalDocumentId lid, S2Point const& center) {
   if (!isFilterIntersects()) {
     if ((isAscending() && angle < _innerAngle) || (isDescending() && angle > _outerAngle) ||
         angle > _maxAngle || angle < _minAngle) {
-      /*LOG_TOPIC(ERR, Logger::FIXME) << "Rejecting doc with center " <<
+      /*LOG_TOPIC("8cc01", ERR, Logger::FIXME) << "Rejecting doc with center " <<
       center.toString();
-      LOG_TOPIC(ERR, Logger::FIXME) << "Dist: " << (rad *
+      LOG_TOPIC("38f63", ERR, Logger::FIXME) << "Dist: " << (rad *
       geo::kEarthRadiusInMeters);*/
       _rejection++;
       return;

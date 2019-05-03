@@ -42,22 +42,22 @@ class RocksDBKey {
  public:
   RocksDBKey()
       : _type(RocksDBEntryType::Document),  // placeholder
-        _buffer(),
-        _slice() {}
+        _local(),
+        _buffer(&_local) {}
+  
+  /// @brief construct a leased RocksDBKey
+  /// @param leased will use _local std::string if nullptr
+  explicit RocksDBKey(std::string* leased);
 
-  explicit RocksDBKey(rocksdb::Slice slice)
-      : _type(static_cast<RocksDBEntryType>(slice.data()[0])),
-        _buffer(slice.data(), slice.size()),
-        _slice(_buffer) {}
+  explicit RocksDBKey(rocksdb::Slice slice);
 
-  RocksDBKey(RocksDBKey&& other) noexcept
-      : _type(other._type),
-        _buffer(std::move(other._buffer)),
-        _slice(_buffer.data(), other._slice.size()) {}
+  RocksDBKey(RocksDBKey&& other) noexcept;
 
   RocksDBKey& operator=(RocksDBKey const& other) = delete;
   RocksDBKey& operator=(RocksDBKey&& other) = delete;
-
+  
+ public:
+  
   /// @brief verify that a key actually contains the given local document id
   bool containsLocalDocumentId(LocalDocumentId const& id) const;
 
@@ -264,12 +264,22 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the full, constructed key
   //////////////////////////////////////////////////////////////////////////////
-  rocksdb::Slice const& string() const { return _slice; }
+  rocksdb::Slice string() const { return rocksdb::Slice(*_buffer); }
 
-  inline size_t size() const { return _slice.size(); }
+  inline size_t size() const { return _buffer->size(); }
 
   bool operator==(RocksDBKey const& other) const {
-    return _type == other._type && _slice == other._slice;
+    return _type == other._type && *_buffer == *(other._buffer);
+  }
+  
+  /// @brief does this use the inline buffer or a leased one
+  inline bool usesInlineBuffer() const {
+    return &_local == _buffer;
+  }
+  
+  /// @brief  internal buffer string, unmanaged use carefully
+  inline std::string* buffer() const {
+    return _buffer;
   }
 
  private:
@@ -309,9 +319,10 @@ class RocksDBKey {
 
  private:
   static const char _stringSeparator;
+  
   RocksDBEntryType _type;
-  std::string _buffer;
-  rocksdb::Slice _slice;
+  std::string _local; // local inline buffer
+  std::string* _buffer;
 };
 
 std::ostream& operator<<(std::ostream&, RocksDBKey const&);

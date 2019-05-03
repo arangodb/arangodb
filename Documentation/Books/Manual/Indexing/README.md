@@ -9,10 +9,10 @@ There are special sections for
 - [Index Utilization](IndexUtilization.md): How ArangoDB uses indexes
 - [Working with Indexes](WorkingWithIndexes.md): How to handle indexes
   programmatically using the `db` object
- - [Hash Indexes](Hash.md)
- - [Skiplists](Skiplist.md)
- - [Persistent Indexes](Persistent.md)
- - [TTL Indexes](Ttl.md)
- - [Fulltext Indexes](Fulltext.md)
- - [Geo-spatial Indexes](Geo.md)
- - [Vertex-centric Indexes](VertexCentric.md)
+  - [Hash Indexes](Hash.md)
+  - [Skiplists](Skiplist.md)
+  - [Persistent Indexes](Persistent.md)
+  - [TTL Indexes](Ttl.md)
+  - [Fulltext Indexes](Fulltext.md)
+  - [Geo-spatial Indexes](Geo.md)
+  - [Vertex-centric Indexes](VertexCentric.md)

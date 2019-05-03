@@ -34,6 +34,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
+#include "DocumentProducingHelper.h"
 #include "Indexes/IndexIterator.h"
 #include "Utils/OperationCursor.h"
 
@@ -68,42 +69,40 @@ class IndexExecutorInfos : public ExecutorInfos {
   IndexExecutorInfos(IndexExecutorInfos const&) = delete;
   ~IndexExecutorInfos() = default;
 
-  ExecutionEngine* getEngine() { return _engine; };
-  Collection const* getCollection() { return _collection; };
-  Variable const* getOutVariable() { return _outVariable; };
-  std::vector<std::string> const& getProjections() { return _projections; };
-  transaction::Methods* getTrxPtr() { return _trxPtr; };
+  ExecutionEngine* getEngine() { return _engine; }
+  Collection const* getCollection() { return _collection; }
+  Variable const* getOutVariable() { return _outVariable; }
+  std::vector<std::string> const& getProjections() { return _projections; }
+  transaction::Methods* getTrxPtr() { return _trxPtr; }
   std::vector<size_t> const& getCoveringIndexAttributePositions() {
     return _coveringIndexAttributePositions;
-  };
-  std::vector<std::vector<Variable const*>> getInVars() { return _inVars; };
-  std::vector<std::vector<RegisterId>> getInRegs() { return _inRegs; };
-  bool getProduceResult() { return _produceResult; };
-  bool getUseRawDocumentPointers() { return _useRawDocumentPointers; };
+  }
+  bool getProduceResult() { return _produceResult; }
+  bool getUseRawDocumentPointers() { return _useRawDocumentPointers; }
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() {
     return _indexes;
-  };
-  AstNode const* getCondition() { return _condition; };
-  bool getV8Expression() { return _hasV8Expression; };
-  RegisterId getOutputRegisterId() { return _outputRegisterId; };
+  }
+  AstNode const* getCondition() { return _condition; }
+  bool getV8Expression() { return _hasV8Expression; }
+  RegisterId getOutputRegisterId() { return _outputRegisterId; }
   std::vector<std::unique_ptr<NonConstExpression>> const& getNonConstExpressions() {
     return _nonConstExpression;
-  };
-  bool hasMultipleExpansions() { return _hasMultipleExpansions; };
+  }
+  bool hasMultipleExpansions() { return _hasMultipleExpansions; }
 
   /// @brief whether or not all indexes are accessed in reverse order
   IndexIteratorOptions getOptions() const { return _options; }
-  bool isAscending() { return _options.ascending; };
+  bool isAscending() { return _options.ascending; }
 
-  Ast* getAst() { return _ast; };
+  Ast* getAst() { return _ast; }
 
   std::vector<Variable const*> const& getExpInVars() const {
     return _expInVars;
-  };
-  std::vector<RegisterId> const& getExpInRegs() const { return _expInRegs; };
+  }
+  std::vector<RegisterId> const& getExpInRegs() const { return _expInRegs; }
 
   // setter
-  void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; };
+  void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; }
 
  private:
   /// @brief _indexes holds all Indexes used in this block
@@ -175,17 +174,23 @@ class IndexExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
  public:
-  typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
-
   void setProducingFunction(DocumentProducingFunction documentProducer) {
-    _documentProducer = documentProducer;
-  };
+    _documentProducer = std::move(documentProducer);
+  }
+
+  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Logic_error, prefetching number fo rows not supported");
+  }
+
+  void initializeCursor();
 
  private:
-  bool initializeCursor();
   bool advanceCursor();
   void executeExpressions(InputAqlItemRow& input);
   bool initIndexes(InputAqlItemRow& input);
@@ -194,51 +199,58 @@ class IndexExecutor {
   void createCursor();
 
   /// @brief continue fetching of documents
-  bool readIndex(IndexIterator::DocumentCallback const&, bool& hasWritten);
+  bool readIndex(OutputAqlItemRow& output,
+                 IndexIterator::DocumentCallback const&, size_t& numWritten);
 
   /// @brief reset the cursor at given position
   void resetCursor(size_t pos) { _cursors[pos]->reset(); };
 
   /// @brief reset and initialize the cursor at given position
-  void resetCursor(size_t pos, OperationCursor* cursor) {
-    _cursors[pos].reset(cursor);
-  };
+  OperationCursor* resetCursor(size_t pos, std::unique_ptr<OperationCursor> cursor) {
+    _cursors[pos] = std::move(cursor);
+    return getCursor(pos);
+  }
 
   /// @brief order a cursor for the index at the specified position
   OperationCursor* orderCursor(size_t currentIndex);
 
   /// @brief set a new cursor
-  void setCursor(arangodb::OperationCursor* cursor) { _cursor = cursor; };
+  void setCursor(arangodb::OperationCursor* cursor) { _cursor = cursor; }
 
-  arangodb::OperationCursor* getCursor() { return _cursor; };
-  arangodb::OperationCursor* getCursor(size_t pos) {
+  inline arangodb::OperationCursor* getCursor() { return _cursor; }
+  inline arangodb::OperationCursor* getCursor(size_t pos) {
     return _cursors[pos].get();
-  };
-  std::vector<std::unique_ptr<OperationCursor>>& getCursors() {
-    return _cursors;
-  };
+  }
 
-  void setIndexesExhausted(bool flag) { _indexesExhausted = flag; };
-  bool getIndexesExhausted() { return _indexesExhausted; };
+  void setIndexesExhausted(bool flag) { _indexesExhausted = flag; }
+  bool getIndexesExhausted() { return _indexesExhausted; }
 
-  void setLastIndex(bool flag) { _isLastIndex = flag; };
-  bool isLastIndex() { return _isLastIndex; };
+  bool isLastIndex() { return _isLastIndex; }
+  void setIsLastIndex(bool flag) { _isLastIndex = flag; }
 
-  void setCurrentIndex(size_t pos) { _currentIndex = pos; };
-  void decrCurrentIndex() { _currentIndex--; };
-  void incrCurrentIndex() { _currentIndex++; };
-  size_t getCurrentIndex() const noexcept { return _currentIndex; };
+  void setCurrentIndex(size_t pos) { _currentIndex = pos; }
+  void decrCurrentIndex() { _currentIndex--; }
+  void incrCurrentIndex() { _currentIndex++; }
+  size_t getCurrentIndex() const noexcept { return _currentIndex; }
+
+  void setAllowCoveringIndexOptimization(bool const allowCoveringIndexOptimization) {
+    _documentProducingFunctionContext.setAllowCoveringIndexOptimization(allowCoveringIndexOptimization);
+  }
+
+  /// @brief whether or not we are allowed to use the covering index
+  /// optimization in a callback
+  bool getAllowCoveringIndexOptimization() const noexcept {
+    return _documentProducingFunctionContext.getAllowCoveringIndexOptimization();
+  }
 
  private:
   Infos& _infos;
   Fetcher& _fetcher;
+  DocumentProducingFunctionContext _documentProducingFunctionContext;
   DocumentProducingFunction _documentProducer;
   ExecutionState _state;
   InputAqlItemRow _input;
 
-  /// @brief whether or not we are allowed to use the covering index
-  /// optimization in a callback
-  bool _allowCoveringIndexOptimization;
 
   /// @brief _cursor: holds the current index cursor found using
   /// createCursor (if any) so that it can be read in chunks and not
@@ -254,9 +266,6 @@ class IndexExecutor {
 
   /// @brief set of already returned documents. Used to make the result distinct
   std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
-
-  /// @brief A managed document result to temporary hold one document
-  std::unique_ptr<ManagedDocumentResult> _mmdr;
 
   /// @brief Flag if all indexes are exhausted to be maintained accross several
   /// getSome() calls

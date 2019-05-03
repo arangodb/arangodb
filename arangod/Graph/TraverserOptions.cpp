@@ -495,19 +495,15 @@ bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vert
 }
 
 EdgeCursor* arangodb::traverser::TraverserOptions::nextCursor(
-    ManagedDocumentResult* mmdr, arangodb::velocypack::StringRef vid, uint64_t depth) {
+    arangodb::velocypack::StringRef vid, uint64_t depth) {
   if (_isCoordinator) {
     return nextCursorCoordinator(vid, depth);
   }
-  TRI_ASSERT(mmdr != nullptr);
   auto specific = _depthLookupInfo.find(depth);
-  std::vector<LookupInfo> list;
   if (specific != _depthLookupInfo.end()) {
-    list = specific->second;
-  } else {
-    list = _baseLookupInfos;
-  }
-  return nextCursorLocal(mmdr, vid, list);
+    return nextCursorLocal(vid, specific->second);
+  } 
+  return nextCursorLocal(vid, _baseLookupInfos);
 }
 
 EdgeCursor* TraverserOptions::nextCursorCoordinator(arangodb::velocypack::StringRef vid,

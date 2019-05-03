@@ -70,7 +70,7 @@ class SocketTcp final : public Socket {
     if (_socket->is_open()) {
       _socket->close(ec);
       if (ec && ec != asio_ns::error::not_connected) {
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        LOG_TOPIC("60423", DEBUG, Logger::COMMUNICATION)
             << "closing socket failed with: " << ec.message();
       }
     }

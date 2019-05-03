@@ -42,10 +42,9 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::INDEX:
     case EN::RETURN:
     case EN::TRAVERSAL:
+    case EN::K_SHORTEST_PATHS:
     case EN::SHORTEST_PATH:
-#ifdef USE_IRESEARCH
     case EN::ENUMERATE_IRESEARCH_VIEW:
-#endif
     {
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
@@ -91,11 +90,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::CALCULATION: {
-      auto outvars = en->getVariablesSetHere();
-      TRI_ASSERT(outvars.size() == 1);
-
       _variableDefinitions.emplace(
-          outvars[0]->id,
+          ExecutionNode::castTo<CalculationNode const*>(en)->outVariable()->id,
           ExecutionNode::castTo<CalculationNode const*>(en)->expression()->node());
       TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

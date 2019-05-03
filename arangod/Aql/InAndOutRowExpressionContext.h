@@ -49,6 +49,8 @@ class InAndOutRowExpressionContext final : public QueryExpressionContext {
 
   void setInputRow(InputAqlItemRow input);
 
+  void invalidateInputRow();
+
   size_t numRegisters() const override { return _regs.size(); }
 
   AqlValue const& getRegisterValue(size_t i) const override;

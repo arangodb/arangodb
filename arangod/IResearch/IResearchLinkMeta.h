@@ -65,7 +65,18 @@ enum class ValueStorage : uint32_t {
 /// @brief metadata describing how to process a field in a collection
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchLinkMeta {
+  struct Analyzer {
+    IResearchAnalyzerFeature::AnalyzerPool::ptr _pool;
+    std::string _shortName; // vocbase-dependent short analyzer name
+    Analyzer(); // identity analyzer
+    Analyzer( // constructor
+      IResearchAnalyzerFeature::AnalyzerPool::ptr const& pool, // pool
+      std::string&& shortName // short name (cached for use during insert(...))
+    ) noexcept: _pool(pool), _shortName(std::move(shortName)) {}
+    operator bool() const noexcept { return false == !_pool; }
+  };
   struct Mask {
+    bool _analyzerDefinitions;
     bool _analyzers;
     bool _fields;
     bool _includeAllFields;
@@ -74,7 +85,7 @@ struct IResearchLinkMeta {
     explicit Mask(bool mask = false) noexcept;
   };
 
-  typedef std::vector<IResearchAnalyzerFeature::AnalyzerPool::ptr> Analyzers;
+  typedef std::vector<Analyzer> Analyzers;
 
   // can't use IResearchLinkMeta as value type since it's incomplete type so far
   typedef UnorderedRefKeyMap<char, UniqueHeapInstance<IResearchLinkMeta>> Fields;
@@ -87,15 +98,14 @@ struct IResearchLinkMeta {
                              // (as opposed to without offset)
   ValueStorage _storeValues;  // how values should be stored inside the view
   // NOTE: if adding fields don't forget to modify the default constructor !!!
-  // NOTE: if adding fields don't forget to modify the copy assignment operator
-  // !!! NOTE: if adding fields don't forget to modify the move assignment
-  // operator !!! NOTE: if adding fields don't forget to modify the comparison
-  // operator !!! NOTE: if adding fields don't forget to modify
-  // IResearchLinkMeta::Mask !!! NOTE: if adding fields don't forget to modify
-  // IResearchLinkMeta::Mask constructor !!! NOTE: if adding fields don't forget
-  // to modify the init(...) function !!! NOTE: if adding fields don't forget to
-  // modify the json(...) function !!! NOTE: if adding fields don't forget to
-  // modify the memSize() function !!!
+  // NOTE: if adding fields don't forget to modify the copy assignment operator !!!
+  // NOTE: if adding fields don't forget to modify the move assignment operator !!!
+  // NOTE: if adding fields don't forget to modify the comparison operator !!!
+  // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask !!!
+  // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask constructor !!!
+  // NOTE: if adding fields don't forget to modify the init(...) function !!!
+  // NOTE: if adding fields don't forget to modify the json(...) function !!!
+  // NOTE: if adding fields don't forget to modify the memSize() function !!!
 
   IResearchLinkMeta();
   IResearchLinkMeta(IResearchLinkMeta const& other);
@@ -122,9 +132,10 @@ struct IResearchLinkMeta {
   ////////////////////////////////////////////////////////////////////////////////
   bool init( // initialize meta
     arangodb::velocypack::Slice const& slice, // definition
+    bool readAnalyzerDefinition, // allow reading analyzer definitions instead of just name
     std::string& errorField, // field causing error (out-param)
-    IResearchLinkMeta const& defaults = DEFAULT(), // inherited defaults
     TRI_vocbase_t const* defaultVocbase = nullptr, // fallback vocbase
+    IResearchLinkMeta const& defaults = DEFAULT(), // inherited defaults
     Mask* mask = nullptr // initialized fields (out-param)
   );
 
@@ -136,12 +147,15 @@ struct IResearchLinkMeta {
   ///        return success or set TRI_set_errno(...) and return false
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
+  /// @param usedAnalyzers add to this map analyzers used in meta,
   ////////////////////////////////////////////////////////////////////////////////
   bool json( // append meta jSON
     arangodb::velocypack::Builder& builder, // output buffer (out-param)
+    bool writeAnalyzerDefinition, // output full analyzer definition instead of just name
     IResearchLinkMeta const* ignoreEqual = nullptr, // values to ignore if equal
     TRI_vocbase_t const* defaultVocbase = nullptr, // fallback vocbase
-    Mask const* mask = nullptr // values to ignore always
+    Mask const* mask = nullptr, // values to ignore always
+    std::map<std::string, IResearchAnalyzerFeature::AnalyzerPool::ptr>* usedAnalyzers = nullptr // append analyzers used in definition
   ) const;
 
   ////////////////////////////////////////////////////////////////////////////////

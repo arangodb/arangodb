@@ -109,10 +109,8 @@ class EngineInfoContainerDBServer {
       return static_cast<EngineType>(_source.which());
     }
 
-#ifdef USE_IRESEARCH
     LogicalView const* view() const noexcept;
     void addClient(ServerID const& server);
-#endif
 
    private:
     struct CollectionSource {
@@ -213,8 +211,7 @@ class EngineInfoContainerDBServer {
   //   this methods a shutdown request is send to all DBServers.
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
-  Result buildEngines(MapRemoteToSnippet& queryIds,
-                      std::unordered_set<ShardID>& lockedShards) const;
+  Result buildEngines(MapRemoteToSnippet& queryIds) const;
 
   /**
    * @brief Will send a shutdown to all engines registered in the list of
@@ -262,8 +259,7 @@ class EngineInfoContainerDBServer {
 
   // @brief Helper to create DBServerInfos and sort collections/shards into
   // them
-  std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> createDBServerMapping(
-      std::unordered_set<ShardID>& lockedShards) const;
+  std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> createDBServerMapping() const;
 
   // @brief Helper to inject the TraverserEngines into the correct infos
   void injectGraphNodesToMapping(std::map<ServerID, DBServerInfo>& dbServerMapping) const;

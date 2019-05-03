@@ -34,7 +34,9 @@
 
 namespace arangodb {
 namespace aql {
+class AqlItemBlockManager;
 class BlockCollector;
+class SharedAqlItemBlockPtr;
 
 // an <AqlItemBlock> is a <nrItems>x<nrRegs> vector of <AqlValue>s (not
 // pointers). The size of an <AqlItemBlock> is the number of items.
@@ -57,6 +59,7 @@ class BlockCollector;
 class AqlItemBlock {
   friend class AqlItemBlockManager;
   friend class BlockCollector;
+  friend class SharedAqlItemBlockPtr;
 
  public:
   AqlItemBlock() = delete;
@@ -64,12 +67,16 @@ class AqlItemBlock {
   AqlItemBlock& operator=(AqlItemBlock const&) = delete;
 
   /// @brief create the block
-  AqlItemBlock(ResourceMonitor*, size_t nrItems, RegisterId nrRegs);
+  AqlItemBlock(AqlItemBlockManager&, size_t nrItems, RegisterId nrRegs);
 
-  AqlItemBlock(ResourceMonitor*, arangodb::velocypack::Slice const);
+  void initFromSlice(arangodb::velocypack::Slice);
 
+ protected:
   /// @brief destroy the block
+  /// Should only ever be deleted by AqlItemManager::returnBlock, so the
+  /// destructor is protected.
   ~AqlItemBlock() {
+    TRI_ASSERT(_refCount == 0);
     destroy();
     decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * _nrRegs);
   }
@@ -77,12 +84,14 @@ class AqlItemBlock {
  private:
   void destroy() noexcept;
 
+  ResourceMonitor& resourceMonitor() noexcept;
+
   inline void increaseMemoryUsage(size_t value) {
-    _resourceMonitor->increaseMemoryUsage(value);
+    resourceMonitor().increaseMemoryUsage(value);
   }
 
   inline void decreaseMemoryUsage(size_t value) noexcept {
-    _resourceMonitor->decreaseMemoryUsage(value);
+    resourceMonitor().decreaseMemoryUsage(value);
   }
 
  public:
@@ -241,6 +250,7 @@ class AqlItemBlock {
         if (_data[fromRow * _nrRegs + i].requiresDestruction()) {
           ++_valueCount[_data[fromRow * _nrRegs + i]];
         }
+        TRI_ASSERT(_data[currentRow * _nrRegs + i].isEmpty());
         _data[currentRow * _nrRegs + i] = _data[fromRow * _nrRegs + i];
       }
     }
@@ -301,7 +311,7 @@ class AqlItemBlock {
     return _nrRegs * _nrItems;
   }
 
-  inline size_t capacity() const { return _data.capacity(); }
+  inline size_t capacity() const noexcept { return _data.capacity(); }
 
   /// @brief shrink the block to the specified number of rows
   /// the superfluous rows are cleaned
@@ -317,35 +327,36 @@ class AqlItemBlock {
   void clearRegisters(std::unordered_set<RegisterId> const& toClear);
 
   /// @brief slice/clone, this does a deep copy of all entries
-  AqlItemBlock* slice(size_t from, size_t to) const;
+  SharedAqlItemBlockPtr slice(size_t from, size_t to) const;
 
   /// @brief create an AqlItemBlock with a single row, with copies of the
   /// specified registers from the current block
-  AqlItemBlock* slice(size_t row, std::unordered_set<RegisterId> const& registers,
+  SharedAqlItemBlockPtr slice(size_t row, std::unordered_set<RegisterId> const& registers,
                       size_t newNrRegs) const;
 
   /// @brief slice/clone chosen rows for a subset, this does a deep copy
   /// of all entries
-  AqlItemBlock* slice(std::vector<size_t> const& chosen, size_t from, size_t to) const;
+  SharedAqlItemBlockPtr slice(std::vector<size_t> const& chosen, size_t from, size_t to) const;
 
   /// @brief steal for a subset, this does not copy the entries, rather,
   /// it remembers which it has taken. This is stored in the
   /// this AqlItemBlock. It is highly recommended to delete it right
   /// after this operation, because it is unclear, when the values
   /// to which our AqlValues point will vanish.
-  AqlItemBlock* steal(std::vector<size_t> const& chosen, size_t from, size_t to);
-
-  /// @brief concatenate multiple blocks from a collector
-  static AqlItemBlock* concatenate(ResourceMonitor*, BlockCollector* collector);
-
-  /// @brief concatenate multiple blocks, note that the new block now owns all
-  /// AqlValue pointers in the old blocks, therefore, the latter are all
-  /// set to nullptr, just to be sure.
-  static AqlItemBlock* concatenate(ResourceMonitor*, std::vector<AqlItemBlock*> const& blocks);
+  SharedAqlItemBlockPtr steal(std::vector<size_t> const& chosen, size_t from, size_t to);
 
   /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
   void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
+
+ protected:
+  AqlItemBlockManager& aqlItemBlockManager() noexcept { return _manager; }
+  size_t getRefCount() const noexcept { return _refCount; }
+  void incrRefCount() const noexcept { ++_refCount; }
+  void decrRefCount() const noexcept {
+    TRI_ASSERT(_refCount > 0);
+    --_refCount;
+  }
 
  private:
   /// @brief _data, the actual data as a single vector of dimensions _nrItems
@@ -361,13 +372,17 @@ class AqlItemBlock {
   std::unordered_map<AqlValue, uint32_t> _valueCount;
 
   /// @brief _nrItems, number of rows
-  size_t _nrItems;
+  size_t _nrItems = 0;
 
   /// @brief _nrRegs, number of columns
-  RegisterId _nrRegs;
+  RegisterId _nrRegs = 0;
 
-  /// @brief resources manager for this item block
-  ResourceMonitor* _resourceMonitor;
+  /// @brief manager for this item block
+  AqlItemBlockManager& _manager;
+
+  /// @brief number of SharedAqlItemBlockPtr instances. shall be returned to
+  /// the _manager when it reaches 0.
+  mutable size_t _refCount = 0;
 };
 
 }  // namespace aql

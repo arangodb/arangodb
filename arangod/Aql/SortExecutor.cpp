@@ -52,12 +52,7 @@ class OurLessThan {
       AqlValue const& lhs = left.getValue(reg.reg);
       AqlValue const& rhs = right.getValue(reg.reg);
 
-#if 0  // #ifdef USE_IRESEARCH
-      TRI_ASSERT(reg.comparator);
-      int const cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
-#else
       int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
-#endif
 
       if (cmp < 0) {
         return reg.asc;
@@ -86,12 +81,14 @@ static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegiste
   return set;
 }
 
-SortExecutorInfos::SortExecutorInfos(std::vector<SortRegister> sortRegisters,
-                                     std::size_t limit, AqlItemBlockManager& manager,
-                                     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                                     std::unordered_set<RegisterId> registersToClear,
-                                     std::unordered_set<RegisterId> registersToKeep,
-                                     transaction::Methods* trx, bool stable)
+SortExecutorInfos::SortExecutorInfos(
+    // cppcheck-suppress passedByValue
+    std::vector<SortRegister> sortRegisters, std::size_t limit,
+    AqlItemBlockManager& manager, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToClear,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToKeep, transaction::Methods* trx, bool stable)
     : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), nullptr,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
@@ -116,7 +113,7 @@ SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher), _input(nullptr), _returnNext(0){};
 SortExecutor::~SortExecutor() = default;
 
-std::pair<ExecutionState, NoStats> SortExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> SortExecutor::produceRows(OutputAqlItemRow& output) {
   ExecutionState state;
   if (_input == nullptr) {
     // We need to get data
@@ -170,4 +167,19 @@ void SortExecutor::doSorting() {
   } else {
     std::sort(_sortedIndexes.begin(), _sortedIndexes.end(), ourLessThan);
   }
+}
+
+std::pair<ExecutionState, size_t> SortExecutor::expectedNumberOfRows(size_t atMost) const {
+  if (_input == nullptr) {
+    // This executor does not know anything yet.
+    // Just take whatever is presented from upstream.
+    // This will return WAITING a couple of times
+    return _fetcher.preFetchNumberOfRows(atMost);
+  }
+  TRI_ASSERT(_returnNext <= _sortedIndexes.size());
+  size_t rowsLeft = _sortedIndexes.size() - _returnNext;
+  if (rowsLeft > 0) {
+    return {ExecutionState::HASMORE, rowsLeft};
+  }
+  return {ExecutionState::DONE, rowsLeft};
 }

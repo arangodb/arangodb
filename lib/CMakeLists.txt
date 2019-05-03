@@ -232,6 +232,7 @@ add_library(${LIB_ARANGO} STATIC
   Logger/LoggerBufferFeature.cpp
   Logger/LoggerFeature.cpp
   Logger/LoggerStream.cpp
+  Logger/LogTimeFormat.cpp
   Maskings/AttributeMasking.cpp
   Maskings/Collection.cpp
   Maskings/Maskings.cpp
@@ -318,6 +319,8 @@ endif()
 ################################################################################
 
 add_library(${LIB_ARANGO_V8} STATIC
+  ApplicationFeatures/V8SecurityFeature.cpp
+  V8/JavaScriptSecurityContext.cpp
   V8/JSLoader.cpp
   V8/V8LineEditor.cpp
   V8/v8-buffer.cpp

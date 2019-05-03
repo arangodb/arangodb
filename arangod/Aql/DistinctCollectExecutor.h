@@ -71,9 +71,6 @@ class DistinctCollectExecutorInfos : public ExecutorInfos {
   /// @brief pairs, consisting of out register and in register
   std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
 
-  /// @brief input/output variables for the collection (out, in)
-  std::vector<std::pair<Variable const*, Variable const*>> _groupVariables;
-
   /// @brief the transaction for this query
   transaction::Methods* _trxPtr;
 };
@@ -87,7 +84,7 @@ class DistinctCollectExecutor {
   struct Properties {
     static const bool preservesOrder = false;
     static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = DistinctCollectExecutorInfos;
@@ -104,7 +101,9 @@ class DistinctCollectExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+
+  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
   Infos const& infos() const noexcept { return _infos; };
@@ -112,7 +111,7 @@ class DistinctCollectExecutor {
  private:
   Infos const& _infos;
   Fetcher& _fetcher;
-  std::unique_ptr<std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>> _seen;
+  std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual> _seen;
 };
 
 }  // namespace aql

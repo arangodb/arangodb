@@ -57,8 +57,8 @@ static arangodb::velocypack::StringRef const idRef("id");
 static arangodb::velocypack::StringRef const cidRef("cid");
 
 static std::unique_ptr<VPackAttributeTranslator> translator;
-static std::unique_ptr<VPackAttributeExcludeHandler> excludeHandler;
 static std::unique_ptr<VPackCustomTypeHandler>customTypeHandler;
+static VPackOptions optionsWithUniquenessCheck;
 
 template<bool useUtf8, typename Comparator>
 int compareObjects(VPackSlice const& lhs, 
@@ -157,44 +157,20 @@ static int8_t const typeWeights[256] = {
 // custom types are encountered during Slice.toJson() and family
 struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
   void dump(VPackSlice const&, VPackDumper* dumper, VPackSlice const&) override {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("723df", WARN, arangodb::Logger::FIXME)
         << "DefaultCustomTypeHandler called";
     dumper->appendString("hello from CustomTypeHandler");
   }
   std::string toString(VPackSlice const&, VPackOptions const*, VPackSlice const&) override {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("a01a7", WARN, arangodb::Logger::FIXME)
         << "DefaultCustomTypeHandler called";
     return "hello from CustomTypeHandler";
   }
 };
 
-// attribute exclude handler for skipping over system attributes
-struct SystemAttributeExcludeHandler final : public VPackAttributeExcludeHandler {
-  bool shouldExclude(VPackSlice const& key, int nesting) override final {
-    VPackValueLength keyLength;
-    char const* p = key.getString(keyLength);
-
-    if (p == nullptr || *p != '_' || keyLength < 3 || keyLength > 5 || nesting > 0) {
-      // keep attribute
-      return true;
-    }
-
-    // exclude these attributes (but not _key!)
-    if ((keyLength == 3 && memcmp(p, "_id", static_cast<size_t>(keyLength)) == 0) ||
-        (keyLength == 4 && memcmp(p, "_rev", static_cast<size_t>(keyLength)) == 0) ||
-        (keyLength == 3 && memcmp(p, "_to", static_cast<size_t>(keyLength)) == 0) ||
-        (keyLength == 5 && memcmp(p, "_from", static_cast<size_t>(keyLength)) == 0)) {
-      return true;
-    }
-
-    // keep attribute
-    return false;
-  }
-};
-
 /// @brief static initializer for all VPack values
 void VelocyPackHelper::initialize() {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "initializing vpack";
+  LOG_TOPIC("bbce8", TRACE, arangodb::Logger::FIXME) << "initializing vpack";
 
   // initialize attribute translator
   ::translator.reset(new VPackAttributeTranslator);
@@ -222,6 +198,9 @@ void VelocyPackHelper::initialize() {
   // allow dumping of Object attributes in "arbitrary" order (i.e. non-sorted
   // order)
   VPackOptions::Defaults.dumpAttributesInIndexOrder = false;
+  
+  ::optionsWithUniquenessCheck = VPackOptions::Defaults;
+  ::optionsWithUniquenessCheck.checkAttributeUniqueness = true;
 
   // run quick selfs test with the attribute translator
   TRI_ASSERT(VPackSlice(::translator->translate(StaticStrings::KeyString)).getUInt() ==
@@ -245,9 +224,6 @@ void VelocyPackHelper::initialize() {
              StaticStrings::FromString);
   TRI_ASSERT(VPackSlice(::translator->translate(ToAttribute - AttributeBase)).copyString() ==
              StaticStrings::ToString);
-
-  // initialize exclude handler for system attributes
-  ::excludeHandler.reset(new SystemAttributeExcludeHandler);
 }
 
 /// @brief turn off assembler optimizations in vpack
@@ -255,14 +231,14 @@ void VelocyPackHelper::disableAssemblerFunctions() {
   arangodb::velocypack::disableAssemblerFunctions();
 }
 
-/// @brief return the (global) attribute exclude handler instance
-arangodb::velocypack::AttributeExcludeHandler* VelocyPackHelper::getExcludeHandler() {
-  return ::excludeHandler.get();
-}
-
 /// @brief return the (global) attribute translator instance
 arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
   return ::translator.get();
+}
+
+/// @brief return the (global) attribute translator instance
+arangodb::velocypack::Options* VelocyPackHelper::optionsWithUniquenessCheck() {
+  return &::optionsWithUniquenessCheck;
 }
 
 bool VelocyPackHelper::AttributeSorterUTF8::operator()(std::string const& l,
@@ -501,7 +477,7 @@ void VelocyPackHelper::ensureStringValue(VPackSlice const& slice, std::string co
     arangodb::velocypack::Slice slice, std::string const& key,
     arangodb::velocypack::StringRef const& defaultValue) noexcept {
   if (slice.isExternal()) {
-    slice = arangodb::velocypack::Slice(slice.getExternal());
+    slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
   }
 
   if (!slice.isObject() || !slice.hasKey(key)) {
@@ -528,7 +504,7 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
 std::string VelocyPackHelper::getStringValue(VPackSlice slice, char const* name,
                                              std::string const& defaultValue) {
   if (slice.isExternal()) {
-    slice = VPackSlice(slice.getExternal());
+    slice = VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
   }
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey(name)) {
@@ -547,7 +523,7 @@ std::string VelocyPackHelper::getStringValue(VPackSlice slice, char const* name,
 std::string VelocyPackHelper::getStringValue(VPackSlice slice, std::string const& name,
                                              std::string const& defaultValue) {
   if (slice.isExternal()) {
-    slice = VPackSlice(slice.getExternal());
+    slice = VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
   }
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey(name)) {
@@ -644,7 +620,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
 
   if (fd < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("35198", WARN, arangodb::Logger::FIXME)
         << "cannot create json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     return false;
   }
@@ -652,19 +628,19 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
   if (!PrintVelocyPack(fd, slice, true)) {
     TRI_CLOSE(fd);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("549f4", WARN, arangodb::Logger::FIXME)
         << "cannot write to json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp.c_str());
     return false;
   }
 
   if (syncFile) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "syncing tmp file '" << tmp << "'";
+    LOG_TOPIC("0acab", TRACE, arangodb::Logger::FIXME) << "syncing tmp file '" << tmp << "'";
 
     if (!TRI_fsync(fd)) {
       TRI_CLOSE(fd);
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("fd628", WARN, arangodb::Logger::FIXME)
           << "cannot sync saved json '" << tmp << "': " << TRI_LAST_ERROR_STR;
       TRI_UnlinkFile(tmp.c_str());
       return false;
@@ -675,7 +651,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
 
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("3f835", WARN, arangodb::Logger::FIXME)
         << "cannot close saved file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp.c_str());
     return false;
@@ -685,12 +661,35 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("7f5c9", WARN, arangodb::Logger::FIXME)
         << "cannot rename saved file '" << tmp << "' to '" << filename
         << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp.c_str());
 
     return false;
+  }
+
+  if (syncFile) {
+    // also sync target directory
+    std::string const dir = TRI_Dirname(filename.c_str());
+    fd = TRI_OPEN(dir.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    if (fd < 0) {
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      LOG_TOPIC("fd84e", WARN, arangodb::Logger::FIXME)
+          << "cannot sync directory '" << tmp << "': " << TRI_LAST_ERROR_STR;
+    } else {
+      if (fsync(fd) < 0) {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        LOG_TOPIC("6b8f6", WARN, arangodb::Logger::FIXME)
+            << "cannot sync directory '" << tmp << "': " << TRI_LAST_ERROR_STR;
+      }
+      res = TRI_CLOSE(fd);
+      if (res < 0) {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        LOG_TOPIC("7ceee", WARN, arangodb::Logger::FIXME)
+            << "cannot close directory '" << dir << "': " << TRI_LAST_ERROR_STR;
+      }
+    }
   }
 
   return true;
@@ -911,6 +910,7 @@ void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
   }
 #else
   // other platforms support unaligned writes
+  // cppcheck-suppress *
   *reinterpret_cast<double*>(p + 1) = value;
 #endif
 }

@@ -57,6 +57,7 @@ class IdExecutorInfos : public ExecutorInfos {
   ~IdExecutorInfos() = default;
 };
 
+template <class UsedFetcher>
 class IdExecutor {
  public:
   struct Properties {
@@ -64,7 +65,8 @@ class IdExecutor {
     static const bool allowsBlockPassthrough = true;
     static const bool inputSizeRestrictsOutputSize = false;
   };
-  using Fetcher = ConstFetcher;
+  // Only Supports SingleRowFetcher and ConstFetcher
+  using Fetcher = UsedFetcher;
   using Infos = IdExecutorInfos;
   using Stats = NoStats;
 
@@ -77,11 +79,18 @@ class IdExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+
+  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
+    // This is passthrough!
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Logic_error, prefetching number fo rows not supported");
+  }
 
  private:
   Fetcher& _fetcher;
-  std::unique_ptr<AqlItemBlock> _inputRegisterValues;
 };
 }  // namespace aql
 }  // namespace arangodb

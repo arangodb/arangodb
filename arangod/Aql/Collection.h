@@ -76,6 +76,9 @@ struct Collection {
     // non-sharding case: simply return the name
     return _name;
   }
+  
+  /// @brief collection type
+  TRI_col_type_e type() const;
 
   /// @brief count the number of documents in the collection
   size_t count(transaction::Methods* trx) const;
@@ -100,7 +103,9 @@ struct Collection {
   std::shared_ptr<std::vector<std::string>> shardIds(std::unordered_set<std::string> const& includedShards) const;
 
   /// @brief returns the shard keys of a collection
-  std::vector<std::string> shardKeys() const;
+  /// if "normalize" is true, then the shard keys for a smart vertex collection
+  /// will be reported as "_key" instead of "_key:"
+  std::vector<std::string> shardKeys(bool normalize) const;
 
   size_t numberOfShards() const;
 
@@ -118,6 +123,10 @@ struct Collection {
 
   /// @brief check if collection is a satellite collection
   bool isSatellite() const;
+
+  /// @brief return the name of the smart join attribute (empty string
+  /// if no smart join attribute is present)
+  std::string const& smartJoinAttribute() const;
 
  private:
   arangodb::LogicalCollection* _collection;

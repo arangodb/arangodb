@@ -152,7 +152,8 @@ struct IResearchQuerySetup {
     IcuInitializer::setup(ARGV0); // initialize ICU, required for Utf8Helper which is using by optimizer
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
@@ -191,13 +192,6 @@ struct IResearchQuerySetup {
         f.first->start();
       }
     }
-
-    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
-      arangodb::iresearch::IResearchAnalyzerFeature
-    >();
-
-    analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
-    analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
 
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory

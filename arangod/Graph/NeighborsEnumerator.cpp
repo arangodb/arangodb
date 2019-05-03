@@ -47,6 +47,9 @@ NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser, VPackSlice const&
 bool NeighborsEnumerator::next() {
   if (_isFirst) {
     _isFirst = false;
+    if (shouldPrune(*_iterator)) {
+      _toPrune.emplace(*_iterator);
+    }
     if (_opts->minDepth == 0) {
       return true;
     }
@@ -103,8 +106,11 @@ bool NeighborsEnumerator::next() {
         };
 
         std::unique_ptr<arangodb::graph::EdgeCursor> cursor(
-            _opts->nextCursor(_traverser->mmdr(), nextVertex, _searchDepth));
-        cursor->readAll(callback);
+            _opts->nextCursor(nextVertex, _searchDepth));
+        if (cursor != nullptr) {
+          incHttpRequests(cursor->httpRequests());
+          cursor->readAll(callback);
+        }
       }
       if (_currentDepth.empty()) {
         // Nothing found. Cannot do anything more.

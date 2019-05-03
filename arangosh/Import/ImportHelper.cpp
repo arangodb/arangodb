@@ -485,7 +485,7 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double
     static int64_t nextProcessed = 10 * 1000 * 1000;
 
     if (totalRead >= nextProcessed) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+      LOG_TOPIC("c0e6e", INFO, arangodb::Logger::FIXME)
           << "processed " << totalRead << " bytes of input file";
       nextProcessed += 10 * 1000 * 1000;
     }
@@ -493,7 +493,7 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double
     double pct = 100.0 * ((double)totalRead / (double)totalLength);
 
     if (pct >= nextProgress && totalLength >= 1024) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+      LOG_TOPIC("9ddf3", INFO, arangodb::Logger::FIXME)
           << "processed " << totalRead << " bytes (" << (int)nextProgress
           << "%) of input file";
       nextProgress = (double)((int)(pct + ProgressStep));
@@ -734,12 +734,12 @@ bool ImportHelper::collectionExists() {
   if (!error.isNone()) {
     auto errorNum = error.get(StaticStrings::ErrorNum).getUInt();
     auto errorMsg = error.get(StaticStrings::ErrorMessage).copyString();
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("f2c4a", ERR, arangodb::Logger::FIXME)
         << "unable to access collection '" << _collectionName
         << "', server returned status code: " << static_cast<int>(code)
         << "; error [" << errorNum << "] " << errorMsg;
   } else {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("57d57", ERR, arangodb::Logger::FIXME)
         << "unable to accesss collection '" << _collectionName
         << "', server returned status code: " << static_cast<int>(code)
         << "; server returned message: "
@@ -788,12 +788,12 @@ bool ImportHelper::checkCreateCollection() {
   if (!error.isNone()) {
     auto errorNum = error.get(StaticStrings::ErrorNum).getUInt();
     auto errorMsg = error.get(StaticStrings::ErrorMessage).copyString();
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("09478", ERR, arangodb::Logger::FIXME)
         << "unable to create collection '" << _collectionName
         << "', server returned status code: " << static_cast<int>(code)
         << "; error [" << errorNum << "] " << errorMsg;
   } else {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("2211f", ERR, arangodb::Logger::FIXME)
         << "unable to create collection '" << _collectionName
         << "', server returned status code: " << static_cast<int>(code)
         << "; server returned message: "
@@ -824,7 +824,7 @@ bool ImportHelper::truncateCollection() {
     return true;
   }
 
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+  LOG_TOPIC("f8ae4", ERR, arangodb::Logger::FIXME)
       << "unable to truncate collection '" << _collectionName
       << "', server returned status code: " << static_cast<int>(code);
   _hasError = true;

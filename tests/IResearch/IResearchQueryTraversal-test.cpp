@@ -87,7 +87,8 @@ struct IResearchQueryTraversalSetup {
     arangodb::tests::init(true);
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::ERR); // suppress WARNING {aql} Suboptimal AqlItemMatrix index lookup:
@@ -129,13 +130,6 @@ struct IResearchQueryTraversalSetup {
         f.first->start();
       }
     }
-
-    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
-      arangodb::iresearch::IResearchAnalyzerFeature
-    >();
-
-    analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
-    analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
 
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
@@ -308,7 +302,7 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));
-    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
+    CHECK((arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
   }
 
   // create view on edge collection
@@ -332,7 +326,7 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((1 == cids.size()));
-    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testViewEdge SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
+    CHECK((arangodb::tests::executeQuery(vocbase, "FOR d IN testViewEdge SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
   }
 
   // check system attribute _from
@@ -345,8 +339,8 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testViewEdge SEARCH d._from == 'testCollection0/6' RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(slice);
@@ -374,8 +368,8 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testViewEdge SEARCH d._to == 'testCollection0/0' RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(slice);
@@ -406,8 +400,8 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR v, e IN OUTBOUND SHORTEST_PATH 'testCollection0/6' TO 'testCollection0/5' edges FOR d IN testView SEARCH d.seq == v.seq SORT TFIDF(d) DESC, d.seq DESC, d._id RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(slice);
@@ -439,8 +433,8 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR v, e, p IN 1..2 OUTBOUND 'testCollection0/0' edges FOR d IN testView SEARCH d.seq == v.seq SORT TFIDF(d) DESC, d.seq DESC RETURN v"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(slice);

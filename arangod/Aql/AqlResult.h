@@ -41,6 +41,7 @@ class ExecutionEngineResult {
   ExecutionEngineResult(int errorNumber, std::string&& errorMessage);
 
   // This is not explicit on purpose
+  // cppcheck-suppress noExplicitConstructor
   // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
   ExecutionEngineResult(Result const& result);
   explicit ExecutionEngineResult(ExecutionEngine*);

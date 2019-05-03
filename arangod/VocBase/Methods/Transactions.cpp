@@ -1,5 +1,5 @@
-#include "Transactions.h"
 #include <v8.h>
+#include "Transactions.h"
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -42,7 +42,7 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
   v8::Handle<v8::Value> in = TRI_VPackToV8(isolate, slice);
 
   v8::Handle<v8::Value> result;
-  v8::TryCatch tryCatch(isolate);;
+  v8::TryCatch tryCatch(isolate);
 
   v8::Handle<v8::Object> request = v8::Object::New(isolate);
   v8::Handle<v8::Value> jsPortTypeKey =
@@ -276,7 +276,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
     v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(
         current->Get(TRI_V8_ASCII_STRING(isolate, "Function")));
 
-    // Invoke Function constructor to create function with the given body and no
+    // Invoke Function constructor to create function with the given body and the
     // arguments
     std::string body = TRI_ObjectToString(isolate, 
                                           TRI_GetProperty(context, isolate, object, "action"));
@@ -319,12 +319,12 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   auto ctx = std::make_shared<transaction::V8Context>(vocbase, embed);
 
   // start actual transaction
-  std::unique_ptr<transaction::Methods> trx(
-      new transaction::Methods(ctx, readCollections, writeCollections,
-                               exclusiveCollections, trxOptions));
-
+  auto trx = std::make_unique<transaction::Methods>(ctx, readCollections, writeCollections,
+                                                    exclusiveCollections, trxOptions);
+  trx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  
   rv = trx->begin();
-
+  
   if (rv.fail()) {
     return rv;
   }

@@ -327,7 +327,7 @@ void ConsoleFeature::printWelcomeInfo() {
   }
 
   if (_useHistory) {
-    s << "Command-line history will be persisted when the shell is exited.";
+    s << "Command-line history will be persisted when the shell is exited. You can use `--console.history false` to turn this off";
   } else {
     s << "Command-line history is enabled for this session only and will *not* be persisted.";
   }
@@ -511,7 +511,7 @@ void ConsoleFeature::startPager() {
     _toPager = popen(_pagerCommand.c_str(), "w");
 
     if (_toPager == nullptr) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("25033", ERR, arangodb::Logger::FIXME)
           << "popen() for pager failed! Using stdout instead!";
       _toPager = stdout;
       _pager = false;

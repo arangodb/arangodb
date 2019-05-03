@@ -46,7 +46,6 @@ SingleServerEdgeCursor::SingleServerEdgeCursor(BaseOptions* opts, size_t nrCurso
                                                std::vector<size_t> const* mapping)
     : _opts(opts),
       _trx(opts->trx()),
-      _cursors(),
       _currentCursor(0),
       _currentSubCursor(0),
       _cachePos(0),
@@ -79,8 +78,11 @@ static bool CheckInaccesible(transaction::Methods* trx, VPackSlice const& edge) 
 }
 #endif
 
-void SingleServerEdgeCursor::getDocAndRunCallback(OperationCursor* cursor, Callback callback) {
+void SingleServerEdgeCursor::getDocAndRunCallback(OperationCursor* cursor, EdgeCursor::Callback const& callback) {
   auto collection = cursor->collection();
+  if (collection == nullptr) {
+    return;
+  }
   EdgeDocumentToken etkn(collection->id(), _cache[_cachePos++]);
   collection->readDocumentWithCallback(
       _trx, etkn.localDocumentId(), [&](LocalDocumentId const&, VPackSlice edgeDoc) {
@@ -123,7 +125,7 @@ bool SingleServerEdgeCursor::advanceCursor(OperationCursor*& cursor,
   return true;
 }
 
-bool SingleServerEdgeCursor::next(std::function<void(EdgeDocumentToken&&, VPackSlice, size_t)> callback) {
+bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
   // fills callback with next EdgeDocumentToken and Slice that contains the
   // ohter side of the edge (we are standing on a node and want to iterate all
   // connected edges
@@ -156,7 +158,7 @@ bool SingleServerEdgeCursor::next(std::function<void(EdgeDocumentToken&&, VPackS
       }
     } else {
       if (cursor->hasExtra()) {
-        bool operationSuccessfull = false;
+        bool operationSuccessful = false;
         auto extraCB = [&](LocalDocumentId const& token, VPackSlice edge) {
           if (token.isSet()) {
 #ifdef USE_ENTERPRISE
@@ -165,7 +167,10 @@ bool SingleServerEdgeCursor::next(std::function<void(EdgeDocumentToken&&, VPackS
               return;
             }
 #endif
-            operationSuccessfull = true;
+            if (cursor->collection() == nullptr) {
+              return;
+            }
+            operationSuccessful = true;
             auto etkn = EdgeDocumentToken(cursor->collection()->id(), token);
             if (_internalCursorMapping != nullptr) {
               TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
@@ -176,7 +181,7 @@ bool SingleServerEdgeCursor::next(std::function<void(EdgeDocumentToken&&, VPackS
           }
         };
         cursor->nextWithExtra(extraCB, 1);
-        if (operationSuccessfull) {
+        if (operationSuccessful) {
           return true;
         }
       } else {
@@ -198,7 +203,7 @@ bool SingleServerEdgeCursor::next(std::function<void(EdgeDocumentToken&&, VPackS
   return true;
 }
 
-void SingleServerEdgeCursor::readAll(std::function<void(EdgeDocumentToken&&, VPackSlice, size_t)> callback) {
+void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
   size_t cursorId = 0;
   for (_currentCursor = 0; _currentCursor < _cursors.size(); ++_currentCursor) {
     if (_internalCursorMapping != nullptr) {
@@ -210,6 +215,9 @@ void SingleServerEdgeCursor::readAll(std::function<void(EdgeDocumentToken&&, VPa
     auto& cursorSet = _cursors[_currentCursor];
     for (auto& cursor : cursorSet) {
       LogicalCollection* collection = cursor->collection();
+      if (collection == nullptr) {
+        continue;
+      }
       auto cid = collection->id();
       if (cursor->hasExtra()) {
         auto cb = [&](LocalDocumentId const& token, VPackSlice edge) {

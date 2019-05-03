@@ -143,7 +143,7 @@ std::string ServerState::roleToString(ServerState::RoleEnum role) {
       return "UNDEFINED";
     case ROLE_SINGLE:
       return "SINGLE";
-    case ROLE_PRIMARY:
+    case ROLE_DBSERVER:
       return "PRIMARY";
     case ROLE_COORDINATOR:
       return "COORDINATOR";
@@ -161,7 +161,7 @@ std::string ServerState::roleToShortString(ServerState::RoleEnum role) {
       return "NONE";
     case ROLE_SINGLE:
       return "SNGL";
-    case ROLE_PRIMARY:
+    case ROLE_DBSERVER:
       return "PRMR";
     case ROLE_COORDINATOR:
       return "CRDN";
@@ -184,7 +184,7 @@ ServerState::RoleEnum ServerState::stringToRole(std::string const& value) {
     // note: DBSERVER is an alias for PRIMARY
     // internally and in all API values returned we will still use PRIMARY
     // for compatibility reasons
-    return ROLE_PRIMARY;
+    return ROLE_DBSERVER;
   } else if (value == "COORDINATOR") {
     return ROLE_COORDINATOR;
   } else if (value == "AGENT") {
@@ -341,7 +341,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
 
   AgencyComm comm;
   if (!checkEngineEquality(comm)) {
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("1e2da", FATAL, arangodb::Logger::ENGINES)
         << "the usage of different storage engines in the "
         << "cluster is unsupported and may cause issues";
     return false;
@@ -363,12 +363,12 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
   if (!hasPersistedId()) {
     id = generatePersistedId(role);
 
-    LOG_TOPIC(INFO, Logger::CLUSTER) << "Fresh start. Persisting new UUID " << id;
+    LOG_TOPIC("0d924", INFO, Logger::CLUSTER) << "Fresh start. Persisting new UUID " << id;
   } else {
     id = getPersistedId();
-    LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Restarting with persisted UUID " << id;
+    LOG_TOPIC("db3ce", DEBUG, Logger::CLUSTER) << "Restarting with persisted UUID " << id;
   }
-  _id = id;
+  setId(id);
   _myEndpoint = myEndpoint;
   _advertisedEndpoint = advEndpoint;
   TRI_ASSERT(!_myEndpoint.empty());
@@ -380,7 +380,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
   Logger::setRole(roleToString(role)[0]);
   _role.store(role, std::memory_order_release);
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "We successfully announced ourselves as "
+  LOG_TOPIC("61a39", DEBUG, Logger::CLUSTER) << "We successfully announced ourselves as "
                                     << roleToString(role) << " and our id is " << id;
 
   // now overwrite the entry in /Current/ServersRegistered/<myId>
@@ -396,7 +396,7 @@ std::string ServerState::roleToAgencyListKey(ServerState::RoleEnum role) {
 
 std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
   switch (role) {
-    case ROLE_PRIMARY:
+    case ROLE_DBSERVER:
       return "DBServer";
     case ROLE_COORDINATOR:
       return "Coordinator";
@@ -414,7 +414,7 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
 void mkdir(std::string const& path) {
   if (!TRI_IsDirectory(path.c_str())) {
     if (!arangodb::basics::FileUtils::createDirectory(path)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("626e8", FATAL, arangodb::Logger::CLUSTER)
           << "Couldn't create file directory " << path << " (UUID)";
       FATAL_ERROR_EXIT();
     }
@@ -442,7 +442,7 @@ bool ServerState::writePersistedId(std::string const& id) {
   try {
     arangodb::basics::FileUtils::spit(uuidFilename, id, true);
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("f2f70", FATAL, arangodb::Logger::FIXME)
         << "Cannot write UUID file '" << uuidFilename << "': " << ex.what();
     FATAL_ERROR_EXIT();
   }
@@ -467,13 +467,13 @@ std::string ServerState::getPersistedId() {
         return uuidBuf;
       }
     } catch (arangodb::basics::Exception const& ex) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("8dd60", FATAL, arangodb::Logger::CLUSTER)
           << "Couldn't read UUID file '" << uuidFilename << "' - " << ex.what();
       FATAL_ERROR_EXIT();
     }
   }
 
-  LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't open UUID file '" << uuidFilename << "'";
+  LOG_TOPIC("b3923", FATAL, Logger::STARTUP) << "Couldn't open UUID file '" << uuidFilename << "'";
   FATAL_ERROR_EXIT();
 }
 
@@ -521,7 +521,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
 
   AgencyCommResult result = comm.getValues("Plan/" + agencyListKey);
   if (!result.successful()) {
-    LOG_TOPIC(FATAL, Logger::STARTUP)
+    LOG_TOPIC("0f327", FATAL, Logger::STARTUP)
         << "Couldn't fetch Plan/" << agencyListKey << " from agency. "
         << " Agency is not initialized?";
     return false;
@@ -530,7 +530,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
   VPackSlice servers = result.slice()[0].get(
       std::vector<std::string>({AgencyCommManager::path(), "Plan", agencyListKey}));
   if (!servers.isObject()) {
-    LOG_TOPIC(FATAL, Logger::STARTUP) << "Plan/" << agencyListKey << " in agency is no object. "
+    LOG_TOPIC("6507f", FATAL, Logger::STARTUP) << "Plan/" << agencyListKey << " in agency is no object. "
                                       << "Agency not initialized?";
     return false;
   }
@@ -566,7 +566,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
     AgencyCommResult result = comm.sendTransactionWithFailover(readValueTrx, 0.0);
 
     if (!result.successful()) {
-      LOG_TOPIC(WARN, Logger::CLUSTER)
+      LOG_TOPIC("8d5ff", WARN, Logger::CLUSTER)
           << "Couldn't fetch " << targetIdPath << " and " << targetUrl;
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
@@ -581,9 +581,9 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
       if (s.isNumber()) {
         uint32_t shortId = s.getNumericValue<uint32_t>();
         setShortId(shortId);
-        LOG_TOPIC(DEBUG, Logger::CLUSTER) << "restored short id " << shortId << " from agency";
+        LOG_TOPIC("c6fb2", DEBUG, Logger::CLUSTER) << "restored short id " << shortId << " from agency";
       } else {
-        LOG_TOPIC(WARN, Logger::CLUSTER)
+        LOG_TOPIC("13c13", WARN, Logger::CLUSTER)
             << "unable to restore short id from agency";
       }
       return true;
@@ -638,7 +638,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
-  LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't register shortname for " << _id;
+  LOG_TOPIC("309d7", FATAL, Logger::STARTUP) << "Couldn't register shortname for " << _id;
   return false;
 }
 
@@ -656,7 +656,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm) {
       builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
       builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
     } catch (...) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
+      LOG_TOPIC("de625", FATAL, arangodb::Logger::CLUSTER) << "out of memory";
       FATAL_ERROR_EXIT();
     }
 
@@ -665,7 +665,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm) {
     if (result.successful()) {
       return true;
     } else {
-      LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("ba205", WARN, arangodb::Logger::CLUSTER)
           << "failed to register server in agency: http code: " << result.httpCode()
           << ", body: '" << result.body() << "', retrying ...";
     }
@@ -690,7 +690,7 @@ void ServerState::setRole(ServerState::RoleEnum role) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::getId() const {
-  READ_LOCKER(readLocker, _lock);
+  std::lock_guard<std::mutex> guard(_idLock);
   return _id;
 }
 
@@ -703,7 +703,7 @@ void ServerState::setId(std::string const& id) {
     return;
   }
 
-  WRITE_LOCKER(writeLocker, _lock);
+  std::lock_guard<std::mutex> guard(_idLock);
   _id = id;
 }
 
@@ -768,7 +768,7 @@ void ServerState::setState(StateEnum state) {
   }
 
   auto role = getRole();
-  if (role == ROLE_PRIMARY) {
+  if (role == ROLE_DBSERVER) {
     result = checkPrimaryState(state);
   } else if (role == ROLE_COORDINATOR) {
     result = checkCoordinatorState(state);
@@ -777,14 +777,14 @@ void ServerState::setState(StateEnum state) {
   }
 
   if (result) {
-    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    LOG_TOPIC("bd5f1", DEBUG, Logger::CLUSTER)
         << "changing state of " << ServerState::roleToString(role)
         << " server from " << ServerState::stateToString(_state) << " to "
         << ServerState::stateToString(state);
 
     _state = state;
   } else {
-    LOG_TOPIC(ERR, Logger::CLUSTER)
+    LOG_TOPIC("fb1f9", ERR, Logger::CLUSTER)
         << "invalid state transition for " << ServerState::roleToString(role)
         << " server from " << ServerState::stateToString(_state) << " to "
         << ServerState::stateToString(state);

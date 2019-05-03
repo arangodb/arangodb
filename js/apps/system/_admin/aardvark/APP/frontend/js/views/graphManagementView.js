@@ -42,11 +42,12 @@
       } else {
         $('#modal-dialog .modal-footer .button-success').css('display', 'initial');
       }
+
       if (id === 'smartGraph') {
         this.toggleSmartGraph();
         $('#createGraph').addClass('active');
         this.showSmartGraphOptions();
-      } else {
+      } else if (id === 'createGraph') {
         this.toggleSmartGraph();
         this.hideSmartGraphOptions();
       }
@@ -246,6 +247,10 @@
     },
 
     toggleSmartGraph: function () {
+      if (!frontendConfig.isCluster || !frontendConfig.isEnterprise) {
+        return;
+      }
+
       var i;
       var self = this;
 
@@ -558,7 +563,7 @@
         reducedCollection;
 
       searchInput = $('#graphManagementSearchInput');
-      searchString = $('#graphManagementSearchInput').val();
+      searchString = arangoHelper.escapeHtml($('#graphManagementSearchInput').val());
       reducedCollection = this.collection.filter(
         function (u) {
           return u.get('_key').indexOf(searchString) !== -1;

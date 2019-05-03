@@ -129,27 +129,34 @@
       var sparse;
       var deduplicate;
       var background;
+      var name;
 
       switch (indexType) {
         case 'Ttl':
           fields = $('#newTtlFields').val();
           var expireAfter = parseInt($('#newTtlExpireAfter').val(), 10) || 0;
+          background = self.checkboxToValue('#newTtlBackground');
+          name = $('#newTtlName').val();
           postParameter = {
             type: 'ttl',
             fields: self.stringToArray(fields),
-            expireAfter: expireAfter
+            expireAfter: expireAfter,
+            inBackground: background,
+            name: name
           };
-          background = self.checkboxToValue('#newTtlBackground');
           break;
         case 'Geo':
           // HANDLE ARRAY building
           fields = $('#newGeoFields').val();
+          background = self.checkboxToValue('#newGeoBackground');
           var geoJson = self.checkboxToValue('#newGeoJson');
+          name = $('#newGeoName').val();
           postParameter = {
             type: 'geo',
             fields: self.stringToArray(fields),
             geoJson: geoJson,
-            inBackground: background
+            inBackground: background,
+            name: name
           };
           break;
         case 'Persistent':
@@ -158,13 +165,15 @@
           sparse = self.checkboxToValue('#newPersistentSparse');
           deduplicate = self.checkboxToValue('#newPersistentDeduplicate');
           background = self.checkboxToValue('#newPersistentBackground');
+          name = $('#newPersistentName').val();
           postParameter = {
             type: 'persistent',
             fields: self.stringToArray(fields),
             unique: unique,
             sparse: sparse,
             deduplicate: deduplicate,
-            inBackground: background
+            inBackground: background,
+            name: name
           };
           break;
         case 'Hash':
@@ -173,24 +182,28 @@
           sparse = self.checkboxToValue('#newHashSparse');
           deduplicate = self.checkboxToValue('#newHashDeduplicate');
           background = self.checkboxToValue('#newHashBackground');
+          name = $('#newHashName').val();
           postParameter = {
             type: 'hash',
             fields: self.stringToArray(fields),
             unique: unique,
             sparse: sparse,
             deduplicate: deduplicate,
-            inBackground: background
+            inBackground: background,
+            name: name
           };
           break;
         case 'Fulltext':
           fields = $('#newFulltextFields').val();
           var minLength = parseInt($('#newFulltextMinLength').val(), 10) || 0;
           background = self.checkboxToValue('#newFulltextBackground');
+          name = $('#newFulltextName').val();
           postParameter = {
             type: 'fulltext',
             fields: self.stringToArray(fields),
             minLength: minLength,
-            inBackground: background
+            inBackground: background,
+            name: name
           };
           break;
         case 'Skiplist':
@@ -199,13 +212,15 @@
           sparse = self.checkboxToValue('#newSkiplistSparse');
           deduplicate = self.checkboxToValue('#newSkiplistDeduplicate');
           background = self.checkboxToValue('#newSkiplistBackground');
+          name = $('#newSkiplistName').val();
           postParameter = {
             type: 'skiplist',
             fields: self.stringToArray(fields),
             unique: unique,
             sparse: sparse,
             deduplicate: deduplicate,
-            inBackground: background
+            inBackground: background,
+            name: name
           };
           break;
       }
@@ -430,6 +445,7 @@
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(deduplicate) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(selectivity) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(fieldString) + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(v.name) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>' +
             '</tr>'
           );

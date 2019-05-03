@@ -294,6 +294,7 @@ function printIndexes(indexes) {
     var maxCollectionLen = String('Collection').length;
     var maxUniqueLen = String('Unique').length;
     var maxSparseLen = String('Sparse').length;
+    var maxNameLen = String('Name').length;
     var maxTypeLen = String('Type').length;
     var maxSelectivityLen = String('Selectivity').length;
     var maxFieldsLen = String('Fields').length;
@@ -301,6 +302,10 @@ function printIndexes(indexes) {
       var l = String(index.node).length;
       if (l > maxIdLen) {
         maxIdLen = l;
+      }
+      l = index.name.length;
+      if (l > maxNameLen) {
+        maxNameLen = l;
       }
       l = index.type.length;
       if (l > maxTypeLen) {
@@ -316,6 +321,7 @@ function printIndexes(indexes) {
       }
     });
     var line = ' ' + pad(1 + maxIdLen - String('By').length) + header('By') + '   ' +
+      header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
       header('Type') + pad(1 + maxTypeLen - 'Type'.length) + '   ' +
       header('Collection') + pad(1 + maxCollectionLen - 'Collection'.length) + '   ' +
       header('Unique') + pad(1 + maxUniqueLen - 'Unique'.length) + '   ' +
@@ -344,6 +350,7 @@ function printIndexes(indexes) {
       );
       line = ' ' +
         pad(1 + maxIdLen - String(indexes[i].node).length) + variable(String(indexes[i].node)) + '   ' +
+        collection(indexes[i].name) + pad(1 + maxNameLen - indexes[i].name.length) + '   ' +
         keyword(indexes[i].type) + pad(1 + maxTypeLen - indexes[i].type.length) + '   ' +
         collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + '   ' +
         value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + '   ' +
@@ -420,14 +427,14 @@ class PrintedTable {
   setHeader(index, value) {
     this.content[index].header = value;
     this.content[index].size = Math.max(this.content[index].size, value.length);
-    print(this.content[index].size, value);
   }
 
   addCell(index, value, valueLength) {
+    // Value might be empty
+    value = value || "";
     valueLength = valueLength || value.length;
     this.content[index].cells.push({ formatted: value, size: valueLength });
     this.content[index].size = Math.max(this.content[index].size, valueLength);
-    print(this.content[index].size, value);
   }
 
   alignNewEntry() {
@@ -445,7 +452,6 @@ class PrintedTable {
     let line = ' ';
     let isFirst = true;
     for (let c of this.content) {
-      print(c.size, c.header.length);
       line += (isFirst ? '' : pad(3)) + header(c.header) + pad(1 + c.size - c.header.length);
       isFirst = false;
     }
@@ -606,6 +612,69 @@ function printShortestPathDetails(shortestPaths) {
   }
 }
 
+function printKShortestPathsDetails(shortestPaths) {
+  'use strict';
+  if (shortestPaths.length === 0) {
+    return;
+  }
+
+  stringBuilder.appendLine();
+  stringBuilder.appendLine(section('k shortest paths on graphs:'));
+
+  var maxIdLen = String('Id').length;
+  var maxVertexCollectionNameStrLen = String('Vertex collections').length;
+  var maxEdgeCollectionNameStrLen = String('Edge collections').length;
+
+  shortestPaths.forEach(function (node) {
+    var l = String(node.id).length;
+    if (l > maxIdLen) {
+      maxIdLen = l;
+    }
+
+    if (node.hasOwnProperty('vertexCollectionNameStr')) {
+      if (node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen) {
+        maxVertexCollectionNameStrLen = node.vertexCollectionNameStrLen;
+      }
+    }
+    if (node.hasOwnProperty('edgeCollectionNameStr')) {
+      if (node.edgeCollectionNameStrLen > maxEdgeCollectionNameStrLen) {
+        maxEdgeCollectionNameStrLen = node.edgeCollectionNameStrLen;
+      }
+    }
+  });
+
+  var line = ' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
+    header('Vertex collections') + pad(1 + maxVertexCollectionNameStrLen - 'Vertex collections'.length) + '   ' +
+    header('Edge collections') + pad(1 + maxEdgeCollectionNameStrLen - 'Edge collections'.length);
+
+  stringBuilder.appendLine(line);
+
+  for (let sp of shortestPaths) {
+    line = ' ' + pad(1 + maxIdLen - String(sp.id).length) + sp.id + '   ';
+
+    if (sp.hasOwnProperty('vertexCollectionNameStr')) {
+      line += sp.vertexCollectionNameStr +
+        pad(1 + maxVertexCollectionNameStrLen - sp.vertexCollectionNameStrLen) + '   ';
+    } else {
+      line += pad(1 + maxVertexCollectionNameStrLen) + '   ';
+    }
+
+    if (sp.hasOwnProperty('edgeCollectionNameStr')) {
+      line += sp.edgeCollectionNameStr +
+        pad(1 + maxEdgeCollectionNameStrLen - sp.edgeCollectionNameStrLen) + '   ';
+    } else {
+      line += pad(1 + maxEdgeCollectionNameStrLen) + '   ';
+    }
+
+    if (sp.hasOwnProperty('ConditionStr')) {
+      line += sp.ConditionStr;
+    }
+
+    stringBuilder.appendLine(line);
+  }
+}
+
+
 /* analyze and print execution plan */
 function processQuery(query, explain, planIndex) {
   'use strict';
@@ -723,6 +792,7 @@ function processQuery(query, explain, planIndex) {
     indexes = [],
     traversalDetails = [],
     shortestPathDetails = [],
+    kShortestPathsDetails = [],
     functions = [],
     modificationFlags,
     isConst = true,
@@ -1169,7 +1239,7 @@ function processQuery(query, explain, planIndex) {
         });
 
         return rc;
-      case 'ShortestPathNode':
+      case 'ShortestPathNode': {
         if (node.hasOwnProperty('vertexOutVariable')) {
           parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));
         }
@@ -1177,7 +1247,7 @@ function processQuery(query, explain, planIndex) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));
         }
         translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        var defaultDirection = node.directions[0];
+        let defaultDirection = node.directions[0];
         rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("SHORTEST_PATH")} `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;
@@ -1231,6 +1301,67 @@ function processQuery(query, explain, planIndex) {
           node.graph = '<anonymous>';
         }
         return rc;
+      }
+      case 'KShortestPathsNode': {
+        if (node.hasOwnProperty('pathOutVariable')) {
+          parts.push(variableName(node.pathOutVariable) + '  ' + annotation('/* path */'));
+        }
+        translate = ['ANY', 'INBOUND', 'OUTBOUND'];
+        let defaultDirection = node.directions[0];
+        rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("K_SHORTEST_PATHS")} `;
+        if (node.hasOwnProperty('startVertexId')) {
+          rc += `'${value(node.startVertexId)}'`;
+        } else {
+          rc += variableName(node.startInVariable);
+        }
+        rc += ` ${annotation("/* startnode */")} ${keyword("TO")} `;
+
+        if (node.hasOwnProperty('targetVertexId')) {
+          rc += `'${value(node.targetVertexId)}'`;
+        } else {
+          rc += variableName(node.targetInVariable);
+        }
+        rc += ` ${annotation("/* targetnode */")} `;
+
+        if (Array.isArray(node.graph)) {
+          rc += node.graph.map(function (g, index) {
+            var tmp = '';
+            if (node.directions[index] !== defaultDirection) {
+              tmp += keyword(translate[node.directions[index]]);
+              tmp += ' ';
+            }
+            return tmp + collection(g);
+          }).join(', ');
+        } else {
+          rc += keyword('GRAPH') + " '" + value(node.graph) + "'";
+        }
+
+        kShortestPathsDetails.push(node);
+        e = [];
+        if (node.hasOwnProperty('graphDefinition')) {
+          v = [];
+          node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
+            v.push(collection(vcn));
+          });
+          node.vertexCollectionNameStr = v.join(', ');
+          node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(', ').length;
+
+          node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
+            e.push(collection(ecn));
+          });
+          node.edgeCollectionNameStr = e.join(', ');
+          node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(', ').length;
+        } else {
+          edgeCols = node.graph || [];
+          edgeCols.forEach(function (ecn) {
+            e.push(collection(ecn));
+          });
+          node.edgeCollectionNameStr = e.join(', ');
+          node.edgeCollectionNameStrLen = edgeCols.join(', ').length;
+          node.graph = '<anonymous>';
+        }
+        return rc;
+      }
       case 'CalculationNode':
         (node.functions || []).forEach(function (f) {
           functions[f.name] = f;
@@ -1450,7 +1581,7 @@ function processQuery(query, explain, planIndex) {
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':
-        return keyword('DISTRIBUTE');
+        return keyword('DISTRIBUTE') + '  ' + annotation('/* create keys: ' + node.createKeys + ', variable: ') + variableName(node.variable) + ' ' + annotation('*/');
       case 'ScatterNode':
         return keyword('SCATTER');
       case 'GatherNode':
@@ -1590,6 +1721,7 @@ function processQuery(query, explain, planIndex) {
   printFunctions(functions);
   printTraversalDetails(traversalDetails);
   printShortestPathDetails(shortestPathDetails);
+  printKShortestPathsDetails(kShortestPathsDetails);
   stringBuilder.appendLine();
 
   printRules(plan.rules);

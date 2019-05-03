@@ -46,9 +46,7 @@
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
 
-#ifdef USE_IRESEARCH
 #include "3rdParty/iresearch/core/utils/version_defines.hpp"
-#endif
 
 using namespace arangodb::rest;
 
@@ -122,6 +120,16 @@ void Version::initialize() {
   Values["icu-version"] = getICUVersion();
   Values["openssl-version-compile-time"] = getOpenSSLVersion(true);
   Values["openssl-version-run-time"] = getOpenSSLVersion(false);
+#ifdef __pic__
+  Values["pic"] = std::to_string(__pic__);
+#else
+  Values["pic"] = "none";
+#endif
+#ifdef __pie__
+  Values["pie"] = std::to_string(__pie__);
+#else
+  Values["pie"] = "none";
+#endif
   Values["platform"] = TRI_PLATFORM;
   Values["reactor-type"] = getBoostReactorType();
   Values["server-version"] = getServerVersion();
@@ -212,9 +220,7 @@ void Version::initialize() {
   Values["fd-client-event-handler"] = "select";
 #endif
 
-#ifdef USE_IRESEARCH
   Values["iresearch-version"] = getIResearchVersion();
-#endif
 
   for (auto& it : Values) {
     arangodb::basics::StringUtils::trimInPlace(it.second);
@@ -350,12 +356,8 @@ std::string Version::getICUVersion() {
   return icuVersionString;
 }
 
-#ifdef USE_IRESEARCH
-
 /// @brief get IResearch version
 std::string Version::getIResearchVersion() { return IResearch_version; }
-
-#endif
 
 /// @brief get compiler
 std::string Version::getCompiler() {

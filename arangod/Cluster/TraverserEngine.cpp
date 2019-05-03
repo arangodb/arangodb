@@ -121,7 +121,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
       _collections.add(name, AccessMode::Type::READ);
       shards.emplace_back(std::move(name));
     }
-    _vertexShards.emplace(collection.key.copyString(), shards);
+    _vertexShards.emplace(collection.key.copyString(), std::move(shards));
   }
 
   // FIXME: in the future this needs to be replaced with
@@ -140,10 +140,10 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
     _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts,
                                        true, inaccessible);
   } else {
-    _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, true);
+    _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, /*isMainTransaction*/true);
   }
 #else
-  _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, true);
+  _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, /*isMainTransaction*/true);
 #endif
 
   if (!needToLock) {
@@ -197,7 +197,7 @@ bool BaseEngine::lockCollection(std::string const& shard) {
   Result lockResult = _trx->lockRecursive(cid, AccessMode::Type::READ);
 
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("d7485", ERR, arangodb::Logger::CLUSTER)
         << "Locking shard " << shard << " lead to exception '"
         << lockResult.errorNumber() << "' (" << lockResult.errorMessage() << ")";
     return false;
@@ -275,7 +275,6 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
   // We just hope someone has locked the shards properly. We have no clue...
   // Thanks locking
   TRI_ASSERT(vertex.isString() || vertex.isArray());
-  ManagedDocumentResult mmdr;
   builder.openObject();
   builder.add(VPackValue("edges"));
   builder.openArray();
@@ -285,7 +284,7 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
       // result.clear();
       arangodb::velocypack::StringRef vertexId(v);
       std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(
-          _opts->nextCursor(&mmdr, vertexId, depth));
+          _opts->nextCursor(vertexId, depth));
 
       edgeCursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
         if (edge.isString()) {
@@ -302,7 +301,7 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
     }
   } else if (vertex.isString()) {
     std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(
-        _opts->nextCursor(&mmdr, arangodb::velocypack::StringRef(vertex), depth));
+        _opts->nextCursor(arangodb::velocypack::StringRef(vertex), depth));
     edgeCursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {
         edge = _opts->cache()->lookupToken(eid);
@@ -423,7 +422,6 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward, VPackBuilder
 
   std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor;
 
-  ManagedDocumentResult mmdr;
   builder.openObject();
   builder.add(VPackValue("edges"));
   builder.openArray();
@@ -436,9 +434,9 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward, VPackBuilder
       // result.clear();
       arangodb::velocypack::StringRef vertexId(v);
       if (backward) {
-        edgeCursor.reset(_opts->nextReverseCursor(&mmdr, vertexId));
+        edgeCursor.reset(_opts->nextReverseCursor(vertexId));
       } else {
-        edgeCursor.reset(_opts->nextCursor(&mmdr, vertexId));
+        edgeCursor.reset(_opts->nextCursor(vertexId));
       }
 
       edgeCursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
@@ -455,9 +453,9 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward, VPackBuilder
   } else if (vertex.isString()) {
     arangodb::velocypack::StringRef vertexId(vertex);
     if (backward) {
-      edgeCursor.reset(_opts->nextReverseCursor(&mmdr, vertexId));
+      edgeCursor.reset(_opts->nextReverseCursor(vertexId));
     } else {
-      edgeCursor.reset(_opts->nextCursor(&mmdr, vertexId));
+      edgeCursor.reset(_opts->nextCursor(vertexId));
     }
     edgeCursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {

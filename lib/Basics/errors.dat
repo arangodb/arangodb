@@ -258,6 +258,7 @@ ERROR_QUERY_MULTI_MODIFY,1573,"multi-modify query","Will be raised when an AQL q
 ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION,1574,"invalid aggregate expression","Will be raised when an AQL query contains an invalid aggregate expression."
 ERROR_QUERY_COMPILE_TIME_OPTIONS,1575,"query options must be readable at query compile time","Will be raised when an AQL data-modification query contains options that cannot be figured out at query compile time."
 ERROR_QUERY_EXCEPTION_OPTIONS,1576,"query options expected","Will be raised when an AQL data-modification query contains an invalid options specification."
+ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,1577,"could not use forced index hint","Will be raised when forceIndexHint is specified, and the hint cannot be used to serve the query."
 ERROR_QUERY_DISALLOWED_DYNAMIC_CALL,1578,"disallowed dynamic call to '%s'","Will be raised when a dynamic function call is made to a function that cannot be called dynamically."
 ERROR_QUERY_ACCESS_AFTER_MODIFICATION,1579,"access after data-modification by %s","Will be raised when collection data are accessed after a data-modification operation."
 
@@ -297,6 +298,7 @@ ERROR_TRANSACTION_NESTED,1651,"nested transactions detected","Will be raised whe
 ERROR_TRANSACTION_UNREGISTERED_COLLECTION,1652,"unregistered collection used in transaction","Will be raised when a collection is used in the middle of a transaction but was not registered at transaction start."
 ERROR_TRANSACTION_DISALLOWED_OPERATION,1653,"disallowed operation inside transaction","Will be raised when a disallowed operation is carried out in a transaction."
 ERROR_TRANSACTION_ABORTED,1654,"transaction aborted","Will be raised when a transaction was aborted."
+ERROR_TRANSACTION_NOT_FOUND,1655,"transaction not found","Will be raised when a transaction was not found."
 
 ################################################################################
 ## User management errors
@@ -306,7 +308,6 @@ ERROR_USER_INVALID_NAME,1700,"invalid user name","Will be raised when an invalid
 ERROR_USER_INVALID_PASSWORD,1701,"invalid password","Will be raised when an invalid password is used."
 ERROR_USER_DUPLICATE,1702,"duplicate user","Will be raised when a user name already exists."
 ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is updated that does not exist."
-ERROR_USER_CHANGE_PASSWORD,1704,"user must change his password","Will be raised when the user must change his password."
 ERROR_USER_EXTERNAL,1705,"user is external","Will be raised when the user is authenicated by an external server."
 
 ###############################################################################
@@ -452,6 +453,10 @@ ERROR_CANNOT_DROP_SMART_COLLECTION,4002,"cannot drop this smart collection","Thi
 ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE,4003,"in smart vertex collections _key must be prefixed with the value of the smart graph attribute","In a smart vertex collection _key must be prefixed with the value of the smart graph attribute."
 ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE,4004,"attribute cannot be used as smart graph attribute","The given smartGraph attribute is illegal and connot be used for sharding. All system attributes are forbidden."
 ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH,4005,"smart graph attribute mismatch","The smart graph attribute of the given collection does not match the smart graph attribute of the graph."
+ERROR_INVALID_SMART_JOIN_ATTRIBUTE,4006,"invalid smart join attribute declaration","Will be raised when the smartJoinAttribute declaration is invalid."
+ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE,4007,"shard key value must be prefixed with the value of the smart join attribute","when using smartJoinAttribute for a collection, the shard key value must be prefixed with the value of the smart join attribute."
+ERROR_NO_SMART_JOIN_ATTRIBUTE,4008,"smart join attribute not given or invalid","The given document does not have the required smart join attribute set or it has an invalid value."
+ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE,4009,"must not change the value of the smartJoinAttribute","Will be raised if there is an attempt to update the value of the smartJoinAttribute."
 
 ################################################################################
 ## Cluster repair errors

@@ -47,12 +47,10 @@ class PhysicalCollection;
 class PhysicalView;
 class Result;
 class TransactionCollection;
-class TransactionManager;
 class TransactionState;
 class WalAccess;
 
 namespace rest {
-
 class RestHandlerFactory;
 }
 
@@ -60,6 +58,7 @@ namespace transaction {
 
 class Context;
 class ContextData;
+class Manager;
 struct Options;
 
 }  // namespace transaction
@@ -88,10 +87,10 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual bool supportsDfdb() const = 0;
 
-  virtual std::unique_ptr<TransactionManager> createTransactionManager() = 0;
+  virtual std::unique_ptr<transaction::Manager> createTransactionManager() = 0;
   virtual std::unique_ptr<transaction::ContextData> createTransactionContextData() = 0;
   virtual std::unique_ptr<TransactionState> createTransactionState(
-      TRI_vocbase_t& vocbase, transaction::Options const& options) = 0;
+      TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) = 0;
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
       TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
       int nestingLevel) = 0;
@@ -162,7 +161,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) = 0;
 
-  //// operations on databasea
+  //// operations on databases
 
   /// @brief opens a database
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::velocypack::Slice const& args,
@@ -338,6 +337,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void addRestHandlers(rest::RestHandlerFactory& handlerFactory) {}
 
   // replication
+  virtual void cleanupReplicationContexts() = 0;
+
   virtual velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                                  int& status) = 0;
   virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(int&) = 0;

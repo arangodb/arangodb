@@ -33,6 +33,7 @@
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/ServerState.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -100,11 +101,11 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
 
 void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_maintenanceThreadsMax < minThreadLimit) {
-    LOG_TOPIC(WARN, Logger::MAINTENANCE)
+    LOG_TOPIC("37726", WARN, Logger::MAINTENANCE)
         << "Need at least" << minThreadLimit << "maintenance-threads";
     _maintenanceThreadsMax = minThreadLimit;
   } else if (_maintenanceThreadsMax >= maxThreadLimit) {
-    LOG_TOPIC(WARN, Logger::MAINTENANCE) << "maintenance-threads limited to " << maxThreadLimit;
+    LOG_TOPIC("8fb0e", WARN, Logger::MAINTENANCE) << "maintenance-threads limited to " << maxThreadLimit;
     _maintenanceThreadsMax = maxThreadLimit;
   }
 }
@@ -117,7 +118,7 @@ void MaintenanceFeature::start() {
 
   // _forceActivation is set by the catch tests
   if (!_forceActivation && (serverState->isAgent() || serverState->isSingleServer())) {
-    LOG_TOPIC(TRACE, Logger::MAINTENANCE) << "Disable maintenance-threads"
+    LOG_TOPIC("deb1a", TRACE, Logger::MAINTENANCE) << "Disable maintenance-threads"
                                           << " for single-server or agents.";
     return;
   }
@@ -133,7 +134,7 @@ void MaintenanceFeature::start() {
     auto newWorker = std::make_unique<maintenance::MaintenanceWorker>(*this, labels);
 
     if (!newWorker->start(&_workerCompletion)) {
-      LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      LOG_TOPIC("4d8b8", ERR, Logger::MAINTENANCE)
           << "MaintenanceFeature::start:  newWorker start failed";
     } else {
       _activeWorkers.push_back(std::move(newWorker));
@@ -153,7 +154,7 @@ void MaintenanceFeature::stop() {
 
     // loop on each worker, retesting at 10ms just in case
     while (itWorker->isRunning()) {
-      _workerCompletion.wait(10000);
+      _workerCompletion.wait(std::chrono::microseconds(10000));
     }  // if
   }    // for
 
@@ -300,7 +301,9 @@ void MaintenanceFeature::registerAction(std::shared_ptr<Action> action, bool exe
   // mark as executing so no other workers accidentally grab it
   if (executeNow) {
     action->setState(maintenance::EXECUTING);
-  }  // if
+  } else if (action->getState() == maintenance::READY) {
+    _prioQueue.push(action);
+  }
 
   // WARNING: holding write lock to _actionRegistry and about to
   //   lock condition variable
@@ -309,7 +312,13 @@ void MaintenanceFeature::registerAction(std::shared_ptr<Action> action, bool exe
 
     if (!executeNow) {
       CONDITION_LOCKER(cLock, _actionRegistryCond);
-      _actionRegistryCond.signal();
+      _actionRegistryCond.broadcast();
+      // Note that we do a broadcast here for the following reason: if we did
+      // signal here, we cannot control which of the sleepers is woken up.
+      // If the new action is not fast track, then we could wake up the
+      // fast track worker, which would leave the action as it is. This would
+      // cause a delay of up to 0.1 seconds. With the broadcast, the worst
+      // case is that we wake up sleeping workers unnecessarily.
     }  // if
   }    // lock
 }
@@ -326,7 +335,7 @@ std::shared_ptr<Action> MaintenanceFeature::createAction(std::shared_ptr<ActionD
 
   // if a new action constructed successfully
   if (!newAction->ok()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("ef5cb", ERR, Logger::MAINTENANCE)
         << "createAction:  unknown action name given, \"" << name.c_str()
         << "\", or other construction failure.";
   }
@@ -346,7 +355,7 @@ std::shared_ptr<Action> MaintenanceFeature::createAndRegisterAction(
   return newAction;
 }
 
-std::shared_ptr<Action> MaintenanceFeature::findAction(std::shared_ptr<ActionDescription> const& description) {
+std::shared_ptr<Action> MaintenanceFeature::findAction(std::shared_ptr<ActionDescription> const description) {
   return findActionHash(description->hash());
 }
 
@@ -399,28 +408,48 @@ std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
 std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<std::string> const& labels) {
   std::shared_ptr<Action> ret_ptr;
 
-  while (!_isShuttingDown && !ret_ptr) {
-    // scan for ready action (and purge any that are done waiting)
+  while (!_isShuttingDown) {
+    // use priority queue for ready action (and purge any that are done waiting)
     {
       WRITE_LOCKER(wLock, _actionRegistryLock);
 
-      for (auto loop = _actionRegistry.begin(); _actionRegistry.end() != loop && !ret_ptr;) {
-        auto state = (*loop)->getState();
-        if (state == maintenance::READY && (*loop)->matches(labels)) {
-          ret_ptr = *loop;
-          ret_ptr->setState(maintenance::EXECUTING);
-        } else if ((*loop)->done()) {
-          loop = _actionRegistry.erase(loop);
-        } else {
-          ++loop;
-        }  // else
-      }    // for
+      while (!_prioQueue.empty()) {
+        // If _prioQueue is empty, we have no ready job and simply loop in the
+        // outer loop.
+        auto const& top = _prioQueue.top();
+        if (top->getState() != maintenance::READY) {  // in case it is deleted
+          _prioQueue.pop();
+          continue;
+        }
+        if (top->matches(labels)) {
+          ret_ptr = top;
+          _prioQueue.pop();
+          return ret_ptr;
+        }
+        // We are not interested, this can only mean that we are fast track
+        // and the top action is not. Therefore, the whole queue does not
+        // contain any fast track, so we can idle.
+        break;
+      }
+ 
+      // When we get here, there is currently nothing to do, so we might
+      // as well clean up those jobs in the _actionRegistry, which are
+      // in state DONE:
+      if (RandomGenerator::interval(uint32_t(10)) == 0) {
+        for (auto loop = _actionRegistry.begin(); _actionRegistry.end() != loop;) {
+          if ((*loop)->done()) {
+            loop = _actionRegistry.erase(loop);
+          } else {
+            ++loop;
+          }  // else
+        }    // for
+      }
     }      // WRITE
 
-    // no pointer ... wait 5 second
-    if (!_isShuttingDown && !ret_ptr) {
+    // no pointer ... wait 0.1 seconds unless woken up
+    if (!_isShuttingDown) {
       CONDITION_LOCKER(cLock, _actionRegistryCond);
-      _actionRegistryCond.wait(100000);
+      _actionRegistryCond.wait(std::chrono::milliseconds(100));
     }  // if
 
   }  // while
@@ -446,10 +475,6 @@ void MaintenanceFeature::toVelocyPack(VPackBuilder& vb) const {
   }
 
 }  // MaintenanceFeature::toVelocyPack
-#if 0
-std::string MaintenanceFeature::toJson(VPackBuilder & builder) {
-} // MaintenanceFeature::toJson
-#endif
 
 std::string const SLASH("/");
 
@@ -474,7 +499,7 @@ arangodb::Result MaintenanceFeature::storeDBError(std::string const& database,
   if (it != _dbErrors.end()) {
     std::stringstream error;
     error << "database " << database << " already has pending error";
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
+    LOG_TOPIC("0d580", DEBUG, Logger::MAINTENANCE) << error.str();
     return Result(TRI_ERROR_FAILED, error.str());
   }
 
@@ -502,7 +527,7 @@ arangodb::Result MaintenanceFeature::removeDBError(std::string const& database) 
   } catch (std::exception const&) {
     std::stringstream error;
     error << "erasing database error for " << database << " failed";
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
+    LOG_TOPIC("4ab17", DEBUG, Logger::MAINTENANCE) << error.str();
     return Result(TRI_ERROR_FAILED, error.str());
   }
 
@@ -542,7 +567,7 @@ arangodb::Result MaintenanceFeature::storeShardError(
   if (it != _shardErrors.end()) {
     std::stringstream error;
     error << "shard " << key << " already has pending error";
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
+    LOG_TOPIC("378fa", DEBUG, Logger::MAINTENANCE) << error.str();
     return Result(TRI_ERROR_FAILED, error.str());
   }
 
@@ -573,7 +598,7 @@ arangodb::Result MaintenanceFeature::removeShardError(std::string const& key) {
   } catch (std::exception const&) {
     std::stringstream error;
     error << "erasing shard error for " << key << " failed";
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
+    LOG_TOPIC("b05d6", DEBUG, Logger::MAINTENANCE) << error.str();
     return Result(TRI_ERROR_FAILED, error.str());
   }
 
@@ -608,7 +633,7 @@ arangodb::Result MaintenanceFeature::storeIndexError(
   if (it != errors.end()) {
     std::stringstream error;
     error << "index " << indexId << " for shard " << key << " already has pending error";
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
+    LOG_TOPIC("d3c92", DEBUG, Logger::MAINTENANCE) << error.str();
     return Result(TRI_ERROR_FAILED, error.str());
   }
 
@@ -659,7 +684,7 @@ arangodb::Result MaintenanceFeature::removeIndexErrors(
     std::stringstream error;
     error << "erasing index " << indexIds << " error for shard " << key
           << " failed as no such key is found in index error bucket";
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
+    LOG_TOPIC("678a2", DEBUG, Logger::MAINTENANCE) << error.str();
     return Result(TRI_ERROR_FAILED, error.str());
   }
 
@@ -672,7 +697,7 @@ arangodb::Result MaintenanceFeature::removeIndexErrors(
   } catch (std::exception const&) {
     std::stringstream error;
     error << "erasing index errors " << indexIds << " for " << key << " failed";
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
+    LOG_TOPIC("e75c8", DEBUG, Logger::MAINTENANCE) << error.str();
     return Result(TRI_ERROR_FAILED, error.str());
   }
 
@@ -704,7 +729,7 @@ arangodb::Result MaintenanceFeature::copyAllErrors(errors_t& errors) const {
 uint64_t MaintenanceFeature::shardVersion(std::string const& shname) const {
   MUTEX_LOCKER(guard, _versionLock);
   auto const it = _shardVersion.find(shname);
-  LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+  LOG_TOPIC("23fbc", TRACE, Logger::MAINTENANCE)
       << "getting shard version for '" << shname << "' from " << _shardVersion;
   return (it != _shardVersion.end()) ? it->second : 0;
 }
@@ -712,7 +737,7 @@ uint64_t MaintenanceFeature::shardVersion(std::string const& shname) const {
 uint64_t MaintenanceFeature::incShardVersion(std::string const& shname) {
   MUTEX_LOCKER(guard, _versionLock);
   auto ret = ++_shardVersion[shname];
-  LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+  LOG_TOPIC("cc492", TRACE, Logger::MAINTENANCE)
       << "incremented shard version for " << shname << " to " << ret;
   return ret;
 }

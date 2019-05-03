@@ -155,7 +155,7 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexComplete(uint64_t indexId,
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds const& other)
     : _type(other._type), _internals(other._internals) {}
 
-RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds&& other)
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds&& other) noexcept
     : _type(other._type), _internals(std::move(other._internals)) {}
 
 RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds const& other) {
@@ -167,7 +167,7 @@ RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds const& other) {
   return *this;
 }
 
-RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds&& other) {
+RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds&& other) noexcept {
   if (this != &other) {
     _type = other._type;
     _internals = std::move(other._internals);
@@ -309,8 +309,10 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       // 7 + 8-byte object ID of index + VPack array with index value(s) ....
       // prefix is the same for non-unique indexes
       // static slices with an array with one entry
-      VPackSlice min("\x02\x03\x1e");  // [minSlice]
-      VPackSlice max("\x02\x03\x1f");  // [maxSlice]
+      uint8_t const minSlice[] = { 0x02, 0x03, 0x1e }; // [minSlice]
+      uint8_t const maxSlice[] = { 0x02, 0x03, 0x1f }; // [maxSlice]
+      VPackSlice min(minSlice);
+      VPackSlice max(maxSlice);
       _internals.reserve(2 * sizeof(uint64_t) + min.byteSize() + max.byteSize());
 
       uint64ToPersistent(_internals.buffer(), first);
@@ -318,8 +320,16 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
 
       _internals.separate();
 
-      uint64ToPersistent(_internals.buffer(), first);
-      _internals.buffer().append((char*)(max.begin()), max.byteSize());
+      if (rocksDBEndianness == RocksDBEndianness::Big) {
+        // if we are in big-endian mode, we can cheat a bit...
+        // for the upper bound we can use the object id + 1, which will always compare higher in a
+        // bytewise comparison
+        uint64ToPersistent(_internals.buffer(), first + 1);
+        _internals.buffer().append((char*)(min.begin()), min.byteSize());
+      } else {
+        uint64ToPersistent(_internals.buffer(), first);
+        _internals.buffer().append((char*)(max.begin()), max.byteSize());
+      }
       break;
     }
 
@@ -360,11 +370,22 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
         _internals.push_back('\0');
         _internals.push_back(_stringSeparator);
       }
+
       _internals.separate();
-      uint64ToPersistent(_internals.buffer(), first);
-      _internals.push_back(0xFFU);  // higher than any ascci char
-      if (type == RocksDBEntryType::EdgeIndexValue) {
-        _internals.push_back(_stringSeparator);
+
+      if (type == RocksDBEntryType::PrimaryIndexValue && 
+          rocksDBEndianness == RocksDBEndianness::Big) {
+        // if we are in big-endian mode, we can cheat a bit...
+        // for the upper bound we can use the object id + 1, which will always compare higher in a
+        // bytewise comparison
+        uint64ToPersistent(_internals.buffer(), first + 1);
+        _internals.push_back(0x00U);  // lower/equal to any ascii char
+      } else {
+        uint64ToPersistent(_internals.buffer(), first);
+        _internals.push_back(0xFFU);  // higher than any ascii char
+        if (type == RocksDBEntryType::EdgeIndexValue) {
+          _internals.push_back(_stringSeparator);
+        }
       }
       break;
     }

@@ -40,8 +40,7 @@ constexpr bool AnyIteratorFillBlockCache = false;
 // ================ All Iterator ==================
 
 RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
-                                                 transaction::Methods* trx,
-                                                 RocksDBPrimaryIndex const* index)
+                                                 transaction::Methods* trx) 
     : IndexIterator(col, trx),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(col->getPhysical())->objectId())),
@@ -113,7 +112,7 @@ bool RocksDBAllIndexIterator::nextDocument(IndexIterator::DocumentCallback const
   }
 
   while (limit > 0) {
-    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(_iterator->value().data()));
+    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())));
     --limit;
     _iterator->Next();
 
@@ -143,8 +142,7 @@ void RocksDBAllIndexIterator::reset() {
 
 // ================ Any Iterator ================
 RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
-                                                 transaction::Methods* trx,
-                                                 RocksDBPrimaryIndex const* index)
+                                                 transaction::Methods* trx) 
     : IndexIterator(col, trx),
       _cmp(RocksDBColumnFamily::documents()->GetComparator()),
       _objectId(static_cast<RocksDBCollection*>(col->getPhysical())->objectId()),
@@ -222,7 +220,7 @@ bool RocksDBAnyIndexIterator::nextDocument(IndexIterator::DocumentCallback const
   }
 
   while (limit > 0) {
-    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(_iterator->value().data()));
+    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())));
     --limit;
     _returned++;
     _iterator->Next();
@@ -244,11 +242,11 @@ void RocksDBAnyIndexIterator::reset() {
     return;
   }
   uint64_t steps = RandomGenerator::interval(_total - 1) % 500;
-  auto initialKey = RocksDBKey();
-
-  initialKey.constructDocument(_objectId,
-                               LocalDocumentId(RandomGenerator::interval(UINT64_MAX)));
-  _iterator->Seek(initialKey.string());
+  
+  RocksDBKeyLeaser key(_trx);
+  key->constructDocument(_objectId,
+                         LocalDocumentId(RandomGenerator::interval(UINT64_MAX)));
+  _iterator->Seek(key->string());
 
   if (checkIter()) {
     if (_forward) {

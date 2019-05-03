@@ -33,35 +33,14 @@ namespace aql {
 /// @brief sort element for block, consisting of register, sort direction,
 /// and a possible attribute path to dig into the document
 struct SortRegister {
-   SortRegister(SortRegister&) = delete; //we can not copy the ireseach scorer
-   SortRegister(SortRegister&&) = default;
-
-#if 0  // #ifdef USE_IRESEARCH
-  typedef int(*CompareFunc)(
-    irs::sort::prepared const* scorer,
-    transaction::Methods* trx,
-    AqlValue const& lhs,
-    AqlValue const& rhs
-  );
-
-  irs::sort::prepared::ptr scorer;
-  CompareFunc comparator;
-#endif
+  SortRegister(SortRegister&) = delete; //we can not copy the ireseach scorer
+  SortRegister(SortRegister&&) = default;
 
   std::vector<std::string> const& attributePath;
   RegisterId reg;
   bool asc;
 
-#if 0 // #ifdef USE_IRESEARCH
-  SortRegister(RegisterId reg, SortElement const& element,
-               CompareFunc comparator) noexcept
-      : comparator(comparator),
-        attributePath(element.attributePath),
-        reg(reg),
-        asc(element.ascending) {}
-#else
   SortRegister(RegisterId reg, SortElement const& element) noexcept;
-#endif
 
   static void fill(ExecutionPlan const& /*execPlan*/,
                    ExecutionNode::RegisterPlan const& regPlan,

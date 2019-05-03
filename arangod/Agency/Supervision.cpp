@@ -38,6 +38,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Cluster/ServerState.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -168,11 +169,14 @@ Supervision::Supervision()
       _okThreshold(5.),
       _jobId(0),
       _jobIdMax(0),
+      _haveAborts(false),
       _selfShutdown(false),
       _upgraded(false) {}
 
 Supervision::~Supervision() {
-  shutdown();
+  if (!isStopping()) {
+    shutdown();
+  }
 }
 
 static std::string const syncPrefix = "/Sync/ServerStates/";
@@ -243,7 +247,7 @@ void Supervision::upgradeHealthRecords(Builder& builder) {
     HealthRecord hr;
     {
       VPackObjectBuilder oo(&b);
-      for (auto recPair : _snapshot.hasAsChildren(healthPrefix).first) {
+      for (auto const& recPair : _snapshot.hasAsChildren(healthPrefix).first) {
         if (recPair.second->has("ShortName") &&
             recPair.second->has("Endpoint")) {
           hr = *recPair.second;
@@ -284,7 +288,7 @@ void Supervision::upgradeAgency() {
     upgradeHealthRecords(builder);
   }
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Upgrading the agency:" << builder.toJson();
+  LOG_TOPIC("f7315", DEBUG, Logger::AGENCY) << "Upgrading the agency:" << builder.toJson();
 
   if (builder.slice().length() > 0) {
     generalTransaction(_agent, builder);
@@ -331,7 +335,7 @@ void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
 
 void handleOnStatusCoordinator(Agent* agent, Node const& snapshot, HealthRecord& persisted,
                                HealthRecord& transisted, std::string const& serverID) {
-  
+
   if (transisted.status == Supervision::HEALTH_STATUS_FAILED) {
     // if the current foxxmaster server failed => reset the value to ""
     if (snapshot.hasAsString(foxxmaster).first == serverID) {
@@ -343,7 +347,7 @@ void handleOnStatusCoordinator(Agent* agent, Node const& snapshot, HealthRecord&
           create.add(foxxmaster, VPackValue(""));
         }
       }
-      singleWriteTransaction(agent, create);
+      singleWriteTransaction(agent, create, false);
     }
   }
 }
@@ -394,7 +398,7 @@ void handleOnStatus(Agent* agent, Node const& snapshot, HealthRecord& persisted,
   } else if (serverID.compare(0, 4, "SNGL") == 0) {
     handleOnStatusSingle(agent, snapshot, persisted, transisted, serverID, jobId, envelope);
   } else {
-    LOG_TOPIC(ERR, Logger::SUPERVISION)
+    LOG_TOPIC("86191", ERR, Logger::SUPERVISION)
         << "Unknown server type. No supervision action taken. " << serverID;
   }
 }
@@ -604,7 +608,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       if (!this->isStopping()) {
         // Replicate special event and only then transient store
         if (changed) {
-          write_ret_t res = singleWriteTransaction(_agent, *pReport);
+          write_ret_t res = singleWriteTransaction(_agent, *pReport, false);
           if (res.accepted && res.indices.front() != 0) {
             ++_jobId;  // Job was booked
             transient(_agent, *tReport);
@@ -614,7 +618,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
         }
       }
     } else {
-      LOG_TOPIC(INFO, Logger::SUPERVISION)
+      LOG_TOPIC("a55cd", INFO, Logger::SUPERVISION)
           << "Short name for << " << serverID
           << " not yet available.  Skipping health check.";
     }  // else
@@ -630,7 +634,7 @@ bool Supervision::earlyBird() const {
   std::vector<std::string> pcpath{"Plan", "Coordinators"};
 
   if (!_snapshot.has(pdbpath)) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("3206f", DEBUG, Logger::SUPERVISION)
         << "No Plan/DBServers key in persistent store";
     return false;
   }
@@ -638,7 +642,7 @@ bool Supervision::earlyBird() const {
   VPackSlice dbservers = dbserversB.slice();
 
   if (!_snapshot.has(pcpath)) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("b0e08", DEBUG, Logger::SUPERVISION)
         << "No Plan/Coordinators key in persistent store";
     return false;
   }
@@ -646,7 +650,7 @@ bool Supervision::earlyBird() const {
   VPackSlice coordinators = coordinatorsB.slice();
 
   if (!_transient.has(tpath)) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("fe42a", DEBUG, Logger::SUPERVISION)
         << "No Sync/ServerStates key in transient store";
     return false;
   }
@@ -694,9 +698,9 @@ bool Supervision::updateSnapshot() {
 // All checks, guarded by main thread
 bool Supervision::doChecks() {
   _lock.assertLockedByCurrentThread();
-  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_PRIMARY) ==
+  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_DBSERVER) ==
              "DBServers");
-  check(ServerState::roleToAgencyListKey(ServerState::ROLE_PRIMARY));
+  check(ServerState::roleToAgencyListKey(ServerState::ROLE_DBSERVER));
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR) ==
              "Coordinators");
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR));
@@ -741,7 +745,7 @@ void Supervision::reportStatus(std::string const& status) {
   }
 
   if (persist) {
-    write_ret_t res = singleWriteTransaction(_agent, *report);
+    write_ret_t res = singleWriteTransaction(_agent, *report, false);
   }
 }
 
@@ -768,7 +772,7 @@ void Supervision::run() {
             done = true;
           }
         } catch (...) {
-          LOG_TOPIC(WARN, Logger::SUPERVISION)
+          LOG_TOPIC("4bc80", WARN, Logger::SUPERVISION)
               << "Main node in agency gone. Contact your db administrator.";
         }
       }
@@ -778,7 +782,7 @@ void Supervision::run() {
       break;
     }
 
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Waiting for ArangoDB to "
+    LOG_TOPIC("9a79b", DEBUG, Logger::SUPERVISION) << "Waiting for ArangoDB to "
                                              "initialize its data.";
   }
 
@@ -790,7 +794,7 @@ void Supervision::run() {
     while (!this->isStopping()) {
 
       auto lapStart = std::chrono::steady_clock::now();
-      
+
       {
         MUTEX_LOCKER(locker, _lock);
 
@@ -809,8 +813,9 @@ void Supervision::run() {
           if (_jobId == 0 || _jobId == _jobIdMax) {
             getUniqueIds();  // cannot fail but only hang
           }
-
+          LOG_TOPIC("edeee", TRACE, Logger::SUPERVISION) << "Begin updateSnapshot";
           updateSnapshot();
+          LOG_TOPIC("aaabb", TRACE, Logger::SUPERVISION) << "Finished updateSnapshot";
 
           if (!_snapshot.has("Supervision/Maintenance")) {
             reportStatus("Normal");
@@ -825,56 +830,62 @@ void Supervision::run() {
               // 55 seconds is less than a minute, which fits to the
               // 60 seconds timeout in /_admin/cluster/health
               try {
+                LOG_TOPIC("aa565", TRACE, Logger::SUPERVISION) << "Begin doChecks";
                 doChecks();
+                LOG_TOPIC("675fc", TRACE, Logger::SUPERVISION) << "Finished doChecks";
               } catch (std::exception const& e) {
-                LOG_TOPIC(ERR, Logger::SUPERVISION)
+                LOG_TOPIC("e0869", ERR, Logger::SUPERVISION)
                     << e.what() << " " << __FILE__ << " " << __LINE__;
               } catch (...) {
-                LOG_TOPIC(ERR, Logger::SUPERVISION)
+                LOG_TOPIC("ac4c4", ERR, Logger::SUPERVISION)
                     << "Supervision::doChecks() generated an uncaught "
                        "exception.";
               }
             } else {
-              LOG_TOPIC(INFO, Logger::SUPERVISION)
+              LOG_TOPIC("7928f", INFO, Logger::SUPERVISION)
                   << "Postponing supervision for now, waiting for incoming "
                      "heartbeats: "
                   << _agent->leaderFor();
             }
-
-            handleJobs();
-
+            try {
+              LOG_TOPIC("7895a", TRACE, Logger::SUPERVISION) << "Begin handleJobs";
+              handleJobs();
+              LOG_TOPIC("febbc", TRACE, Logger::SUPERVISION) << "Finished handleJobs";
+            } catch(std::exception const& e) {
+              LOG_TOPIC("76123", WARN, Logger::SUPERVISION)
+                << "Caught exception in handleJobs(), error message: "
+                << e.what();
+            }
           } else {
             reportStatus("Maintenance");
           }
         }
       }
 
-      // If anything was rafted, we need to
-      index_t leaderIndex = _agent->index();
-      
-      if (leaderIndex != 0) {
-        while (true) { // No point in progressing, if indexes cannot be advanced
-
-          // avoid getting trapped as last agent standing
-          if (this->isStopping()) {
-            break;
+      // If anything was rafted, we need to wait until it is replicated,
+      // otherwise it is not "committed" in the Raft sense. However, let's
+      // only wait for our changes not for new ones coming in during the wait.
+      if (_agent->leading()) {
+        index_t leaderIndex = _agent->index();
+        if (leaderIndex != 0) {
+          while (!this->isStopping() && _agent->leading()) {
+            auto result = _agent->waitFor(leaderIndex);
+            if (result == Agent::raft_commit_t::TIMEOUT) { // Oh snap
+              // Note that we can get UNKNOWN if we have lost leadership or
+              // if we are shutting down. In both cases we just leave the loop.
+              LOG_TOPIC("c72b0", WARN, Logger::SUPERVISION)
+                << "Waiting for commits to be done ... ";
+              continue;
+            } else {                       // Good we can continue
+              break;
+            }
           }
-
-          auto result = _agent->waitFor(leaderIndex);
-          if (result == Agent::raft_commit_t::UNKNOWN ||
-              result == Agent::raft_commit_t::TIMEOUT) { // Oh snap
-            LOG_TOPIC(WARN, Logger::SUPERVISION) << "Waiting for commits to be done ... ";
-            continue; 
-          } else {                                       // Good we can continue
-            break;
-          }
-
         }
       }
-      
+
       auto lapTime = std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::steady_clock::now() - lapStart).count();
-      
+
       if (lapTime < 1000000) {
         _cv.wait(static_cast<uint64_t>((1000000 - lapTime) * _frequency));
       }
@@ -908,7 +919,7 @@ void Supervision::handleShutdown() {
   _lock.assertLockedByCurrentThread();
 
   _selfShutdown = true;
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Waiting for clients to shut down";
+  LOG_TOPIC("f1f68", DEBUG, Logger::SUPERVISION) << "Waiting for clients to shut down";
   auto const& serversRegistered =
       _snapshot.hasAsChildren(currentServersRegisteredPrefix).first;
   bool serversCleared = true;
@@ -917,10 +928,10 @@ void Supervision::handleShutdown() {
       continue;
     }
 
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Waiting for " << server.first << " to shutdown";
+    LOG_TOPIC("d212a", DEBUG, Logger::SUPERVISION) << "Waiting for " << server.first << " to shutdown";
 
     if (serverHealth(server.first) != HEALTH_STATUS_GOOD) {
-      LOG_TOPIC(WARN, Logger::SUPERVISION)
+      LOG_TOPIC("3db81", WARN, Logger::SUPERVISION)
           << "Server " << server.first << " did not shutdown properly it seems!";
       continue;
     }
@@ -946,12 +957,12 @@ void Supervision::handleShutdown() {
       }
       auto result = _agent->write(del);
       if (result.indices.size() != 1) {
-        LOG_TOPIC(ERR, Logger::SUPERVISION)
+        LOG_TOPIC("3bba4", ERR, Logger::SUPERVISION)
             << "Invalid resultsize of " << result.indices.size()
             << " found during shutdown";
       } else {
         if (!_agent->waitFor(result.indices.at(0))) {
-          LOG_TOPIC(ERR, Logger::SUPERVISION)
+          LOG_TOPIC("d98af", ERR, Logger::SUPERVISION)
               << "Result was not written to followers during shutdown";
         }
       }
@@ -960,7 +971,7 @@ void Supervision::handleShutdown() {
 }
 
 void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* agent,
-                                         std::string const& jobId) {
+                                         uint64_t& jobId) {
   std::unordered_set<std::string> failedServers;
 
   // Search for failed server
@@ -1010,21 +1021,23 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
             auto const& servername = servers[0].copyString();
 
             if (failedServers.find(servername) != failedServers.end()) {
-              // lost shard
-              LOG_TOPIC(TRACE, Logger::SUPERVISION)
-                  << "Found a lost shard: " << shard.first;
+              // potentially lost shard
               auto const& shardname = shard.first;
 
-              auto const& planurl = "/arango/Plan/Collections/" + dbname + "/" +
-                                    colname + "/shards/" + shardname;
+              auto const& planurlinsnapshot = "/Plan/Collections/" + dbname
+                + "/" + colname + "/shards/" + shardname;
+
+              auto const& planurl = "/arango" + planurlinsnapshot;
               auto const& currenturl = "/arango/Current/Collections/" + dbname +
                                        "/" + colname + "/" + shardname;
               auto const& healthurl =
                   "/arango/Supervision/Health/" + servername + "/Status";
               // check if it exists in Plan
-              if (snapshot.has(planurl)) {
+              if (snapshot.has(planurlinsnapshot)) {
                 continue;
               }
+              LOG_TOPIC("89987", TRACE, Logger::SUPERVISION)
+                  << "Found a lost shard: " << shard.first;
               // Now remove that shard
               {
                 VPackArrayBuilder trx(builder.get());
@@ -1037,16 +1050,17 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
                     builder->add("op", VPackValue("delete"));
                   }
                   // add a job done entry to "Target/Finished"
-                  builder->add(VPackValue("/arango/Target/Finished"));
+                  std::string jobIdStr = std::to_string(jobId++);
+                  builder->add(VPackValue("/arango/Target/Finished/" + jobIdStr));
                   {
                     VPackObjectBuilder op(builder.get());
-                    builder->add("op", VPackValue("push"));
+                    builder->add("op", VPackValue("set"));
                     builder->add(VPackValue("new"));
                     {
                       VPackObjectBuilder job(builder.get());
                       builder->add("type", VPackValue("cleanUpLostCollection"));
                       builder->add("server", VPackValue(shardname));
-                      builder->add("jobId", VPackValue(jobId));
+                      builder->add("jobId", VPackValue(jobIdStr));
                       builder->add("creator", VPackValue("supervision"));
                       builder->add("timeCreated", VPackValue(timepointToString(
                                                       std::chrono::system_clock::now())));
@@ -1101,15 +1115,82 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
 bool Supervision::handleJobs() {
   _lock.assertLockedByCurrentThread();
   // Do supervision
-
+  LOG_TOPIC("76ffe", TRACE, Logger::SUPERVISION) << "Begin shrinkCluster";
   shrinkCluster();
+
+  LOG_TOPIC("43256", TRACE, Logger::SUPERVISION) << "Begin enforceReplication";
   enforceReplication();
-  cleanupLostCollections(_snapshot, _agent, std::to_string(_jobId++));
+
+  LOG_TOPIC("76190", TRACE, Logger::SUPERVISION) << "Begin cleanupLostCollections";
+  cleanupLostCollections(_snapshot, _agent, _jobId);
+  // Note that this function consumes job IDs, potentially many, so the member
+  // is incremented inside the function. Furthermore, `cleanupLostCollections`
+  // is static for catch testing purposes.
+
+  LOG_TOPIC("00789", TRACE, Logger::SUPERVISION) << "Begin readyOrphanedIndexCreations";
   readyOrphanedIndexCreations();
 
+  LOG_TOPIC("00aab", TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();
 
+  LOG_TOPIC("0892b", TRACE, Logger::SUPERVISION) << "Begin cleanupFinishedAndFailedJobs";
+  cleanupFinishedAndFailedJobs();
+
   return true;
+}
+
+// Guarded by caller
+void Supervision::cleanupFinishedAndFailedJobs() {
+  // This deletes old Supervision jobs in /Target/Finished and
+  // /Target/Failed. We can be rather generous here since old
+  // snapshots and log entries are kept for much longer.
+  // We only keep up to 500 finished jobs and 1000 failed jobs.
+  _lock.assertLockedByCurrentThread();
+
+  constexpr size_t maximalFinishedJobs = 500;
+  constexpr size_t maximalFailedJobs = 1000;
+
+  auto cleanup = [&](std::string prefix, size_t limit) {
+    auto const& jobs = _snapshot.hasAsChildren(prefix).first;
+    if (jobs.size() <= 2 * limit) {
+      return;
+    }
+    typedef std::pair<std::string, std::string> keyDate;
+    std::vector<keyDate> v;
+    v.reserve(jobs.size());
+    for (auto const& p: jobs) {
+      auto created = p.second->hasAsString("timeCreated");
+      if (created.second) {
+        v.emplace_back(p.first, created.first);
+      } else {
+        v.emplace_back(p.first, "1970");   // will be sorted very early
+      }
+    }
+    std::sort(v.begin(), v.end(), [](keyDate const& a, keyDate const& b) -> bool {
+        return a.second < b.second;
+      });
+    size_t toBeDeleted = v.size() - limit;  // known to be positive
+    LOG_TOPIC("98451", INFO, Logger::AGENCY) << "Deleting " << toBeDeleted << " old jobs"
+      " in " << prefix;
+    VPackBuilder trx;  // We build a transaction here
+    { // Pair for operation, no precondition here
+      VPackArrayBuilder guard1(&trx);
+      {
+        VPackObjectBuilder guard2(&trx);
+        for (auto it = v.begin(); toBeDeleted-- > 0 && it != v.end(); ++it) {
+          trx.add(VPackValue(prefix + it->first));
+          {
+            VPackObjectBuilder guard2(&trx);
+            trx.add("op", VPackValue("delete"));
+          }
+        }
+      }
+    }
+    singleWriteTransaction(_agent, trx, false);  // do not care about the result
+  };
+
+  cleanup(finishedPrefix, maximalFinishedJobs);
+  cleanup(failedPrefix, maximalFailedJobs);
 }
 
 // Guarded by caller
@@ -1117,35 +1198,79 @@ void Supervision::workJobs() {
   _lock.assertLockedByCurrentThread();
 
   bool dummy = false;
+  // ATTENTION: It is necessary to copy the todos here, since we modify
+  // below!
   auto todos = _snapshot.hasAsChildren(toDoPrefix).first;
   auto it = todos.begin();
   static std::string const FAILED = "failed";
-    
+
+  // In the case that there are a lot of jobs in ToDo or in Pending we cannot
+  // afford to run through all of them before we do another Supervision round.
+  // This is because only in a new round we discover things like a server
+  // being good again. Currently, we manage to work through approx. 200 jobs
+  // per second. Therefore, we have - for now - chosen to limit the number of
+  // jobs actually worked on to 1000 in ToDo and 1000 in Pending. However,
+  // since some jobs are just waiting, we cannot work on the same 1000
+  // jobs in each round. This is where the randomization comes in. We work 
+  // on up to 1000 *random* jobs. This will eventually cover everything with
+  // very high probability. Note that the snapshot does not change, so
+  // `todos.size()` is constant for the loop, even though we do agency
+  // transactions to remove ToDo jobs.
+  size_t const maximalJobsPerRound = 1000;
+  bool selectRandom = todos.size() > maximalJobsPerRound;
+
+  LOG_TOPIC("00567", TRACE, Logger::SUPERVISION) << "Begin ToDos of type Failed*";
   while (it != todos.end()) {
-    auto jobNode = *(it->second);
+    if (selectRandom && RandomGenerator::interval(static_cast<uint64_t>(todos.size())) > maximalJobsPerRound) {
+      LOG_TOPIC("675fe", TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
+      ++it;
+      continue;
+    }
+ 
+    auto const& jobNode = *(it->second);
     if (jobNode.hasAsString("type").first.compare(0, FAILED.length(), FAILED) == 0) {
+      LOG_TOPIC("87812", TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
       JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
         .run(_haveAborts);
+      LOG_TOPIC("98115", TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
       it = todos.erase(it);
     } else {
       ++it;
     }
   }
-  
-  // Do not start other jobs, if above resilience jobs aborted stuff 
+
+  // Do not start other jobs, if above resilience jobs aborted stuff
   if (!_haveAborts) {
+    LOG_TOPIC("00654", TRACE, Logger::SUPERVISION) << "Begin ToDos";
     for (auto const& todoEnt : todos) {
-      auto jobNode = *(todoEnt.second);
+      if (selectRandom && RandomGenerator::interval(static_cast<uint64_t>(todos.size())) > maximalJobsPerRound) {
+        LOG_TOPIC("77889", TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
+        continue;
+      }
+
+      auto const& jobNode = *(todoEnt.second);
+      LOG_TOPIC("aa667", TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
       JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
         .run(dummy);
+      LOG_TOPIC("65bcd", TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
     }
   }
 
-  auto pends = _snapshot.hasAsChildren(pendingPrefix).first;
+
+  LOG_TOPIC("08641", TRACE, Logger::SUPERVISION) << "Begin Pendings";
+  auto const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  selectRandom = pends.size() > maximalJobsPerRound;
+
   for (auto const& pendEnt : pends) {
-    auto jobNode = *(pendEnt.second);
+    if (selectRandom && RandomGenerator::interval(static_cast<uint64_t>(pends.size())) > maximalJobsPerRound) {
+      LOG_TOPIC("54310", TRACE, Logger::SUPERVISION) << "Skipped Pending Job";
+      continue;
+    }
+    auto const& jobNode = *(pendEnt.second);
+    LOG_TOPIC("009ba", TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
     JobContext(PENDING, jobNode.hasAsString("jobId").first, _snapshot, _agent)
       .run(dummy);
+    LOG_TOPIC("99006", TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
   }
 
 }
@@ -1171,8 +1296,7 @@ void Supervision::readyOrphanedIndexCreations() {
           indexes = collection("indexes").getArray();
           if (indexes.length() > 0) {
             for (auto const& planIndex : VPackArrayIterator(indexes)) {
-              if (planIndex.hasKey(StaticStrings::IndexIsBuilding) &&
-                  collection.has("shards")) {
+              if (planIndex.hasKey(StaticStrings::IndexIsBuilding) && collection.has("shards")) {
                 auto const& planId = planIndex.get("id");
                 auto const& shards = collection("shards");
                 if (collection.has("numberOfShards") &&
@@ -1247,7 +1371,7 @@ void Supervision::readyOrphanedIndexCreations() {
 
           write_ret_t res = _agent->write(envelope);
           if (!res.successful()) {
-            LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+            LOG_TOPIC("38482", DEBUG, Logger::SUPERVISION)
                 << "failed to report ready index to agency. Will retry.";
           }
         }
@@ -1258,7 +1382,32 @@ void Supervision::readyOrphanedIndexCreations() {
 
 void Supervision::enforceReplication() {
   _lock.assertLockedByCurrentThread();
+
+  // First check the number of AddFollower and RemoveFollower jobs in ToDo:
+  // We always maintain that we have at most maxNrAddRemoveJobsInTodo
+  // AddFollower or RemoveFollower jobs in ToDo. These are all long-term
+  // cleanup jobs, so they can be done over time. This is to ensure that
+  // there is no overload on the Agency job system. Therefore, if this
+  // number is at least maxNrAddRemoveJobsInTodo, we skip the rest of
+  // the function:
+  int const maxNrAddRemoveJobsInTodo = 50;
+
+  auto const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  int nrAddRemoveJobsInTodo = 0;
+  for (auto it = todos.begin(); it != todos.end(); ++it) {
+    auto jobNode = *(it->second);
+    auto t = jobNode.hasAsString("type");
+    if (t.second && (t.first == "addFollower" || t.first == "removeFollower")) {
+      if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
+        return;
+      }
+    }
+  }
+
+  // We will loop over plannedDBs, so we use hasAsChildren
   auto const& plannedDBs = _snapshot.hasAsChildren(planColPrefix).first;
+  // We will lookup in currentDBs, so we use hasAsNode
+  auto const& currentDBs = _snapshot.hasAsNode(curColPrefix).first;
 
   for (const auto& db_ : plannedDBs) {  // Planned databases
     auto const& db = *(db_.second);
@@ -1274,9 +1423,9 @@ void Supervision::enforceReplication() {
         if (replFact2.second && replFact2.first == "satellite") {
           // satellites => distribute to every server
           auto available = Job::availableServers(_snapshot);
-          replicationFactor = Job::countGoodServersInList(_snapshot, available);
+          replicationFactor = Job::countGoodOrBadServersInList(_snapshot, available);
         } else {
-          LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+          LOG_TOPIC("d3b54", DEBUG, Logger::SUPERVISION)
               << "no replicationFactor entry in " << col.toJson();
           continue;
         }
@@ -1299,12 +1448,23 @@ void Supervision::enforceReplication() {
             }
           }
           size_t actualReplicationFactor
-            = 1 + Job::countGoodServersInList(_snapshot, onlyFollowers.slice());
+            = 1 + Job::countGoodOrBadServersInList(_snapshot, onlyFollowers.slice());
             // leader plus GOOD followers
           size_t apparentReplicationFactor = shard.slice().length();
 
           if (actualReplicationFactor != replicationFactor ||
               apparentReplicationFactor != replicationFactor) {
+            // First check the case that not all are in sync:
+            std::string curPath = db_.first + "/" + col_.first + "/"
+              + shard_.first + "/servers";
+            auto const& currentServers = currentDBs.hasAsArray(curPath);
+            size_t inSyncReplicationFactor = actualReplicationFactor;
+            if (currentServers.second) {
+              if (currentServers.first.length() < actualReplicationFactor) {
+                inSyncReplicationFactor = currentServers.first.length();
+              }
+            }
+
             // Check that there is not yet an addFollower or removeFollower
             // or moveShard job in ToDo for this shard:
             auto const& todo = _snapshot.hasAsChildren(toDoPrefix).first;
@@ -1317,7 +1477,7 @@ void Supervision::enforceReplication() {
                    tmp_type.first == "moveShard") &&
                   tmp_shard.first == shard_.first) {
                 found = true;
-                LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+                LOG_TOPIC("441b6", DEBUG, Logger::SUPERVISION)
                     << "already found "
                        "addFollower or removeFollower job in ToDo, not "
                        "scheduling "
@@ -1335,11 +1495,17 @@ void Supervision::enforceReplication() {
                 AddFollower(_snapshot, _agent, std::to_string(_jobId++),
                             "supervision", db_.first, col_.first, shard_.first)
                     .create();
+                if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
+                  return;
+                }
               } else if (apparentReplicationFactor > replicationFactor &&
-                         actualReplicationFactor >= replicationFactor) {
+                         inSyncReplicationFactor >= replicationFactor) {
                 RemoveFollower(_snapshot, _agent, std::to_string(_jobId++),
                                "supervision", db_.first, col_.first, shard_.first)
                     .create();
+                if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
+                  return;
+                }
               }
             }
           }
@@ -1357,7 +1523,7 @@ void Supervision::fixPrototypeChain(Builder& migrate) {
   std::function<std::string(std::string const&, std::string const&)> resolve;
   resolve = [&](std::string const& db, std::string const& col) {
     std::string s;
-    auto tmp_n = snap.hasAsNode(planColPrefix + db + "/" + col);
+    auto const& tmp_n = snap.hasAsNode(planColPrefix + db + "/" + col);
     if (tmp_n.second) {
       Node const& n = tmp_n.first;
       s = n.hasAsString("distributeShardsLike").first;
@@ -1420,7 +1586,7 @@ void Supervision::shrinkCluster() {
   if (_snapshot.hasAsUInt(NDBServers).second) {
     targetNumDBServers = _snapshot.hasAsUInt(NDBServers).first;
   } else {
-    LOG_TOPIC(TRACE, Logger::SUPERVISION)
+    LOG_TOPIC("7aa3b", TRACE, Logger::SUPERVISION)
         << "Targeted number of DB servers not set yet";
     return;
   }
@@ -1429,7 +1595,7 @@ void Supervision::shrinkCluster() {
   if (targetNumDBServers < availServers.size()) {
     // Minimum 1 DB server must remain
     if (availServers.size() == 1) {
-      LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      LOG_TOPIC("4ced8", DEBUG, Logger::SUPERVISION)
           << "Only one db server left for operation";
       return;
     }
@@ -1456,11 +1622,8 @@ void Supervision::shrinkCluster() {
           if (replFact > maxReplFact) {
             maxReplFact = replFact;
           }
-        } else {
-          LOG_TOPIC(WARN, Logger::SUPERVISION)
-              << "Cannot retrieve replication factor for collection " << collptr.first;
-          return;
         }
+        // Note that this could be a satellite collection, in any case, ignore:
       }
     }
 
@@ -1537,7 +1700,7 @@ void Supervision::getUniqueIds() {
               .getUInt();
       _jobId = _jobIdMax - n;
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::SUPERVISION)
+      LOG_TOPIC("4da4b", ERR, Logger::SUPERVISION)
           << "Failed to acquire job IDs from agency: " << e.what() << __FILE__
           << " " << __LINE__;
     }

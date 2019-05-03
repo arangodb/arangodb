@@ -44,6 +44,8 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
+  void beginShutdown() override final;
+  void stop() override final;
   void unprepare() override final;
 
   bool trackSlowQueries() const { return _trackSlowQueries; }
@@ -53,6 +55,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
     return _slowStreamingQueryThreshold;
   }
   bool failOnWarning() const { return _failOnWarning; }
+  bool smartJoins() const { return _smartJoins; }
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
   uint64_t maxQueryPlans() const { return _maxQueryPlans; }
 
@@ -60,6 +63,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool _trackSlowQueries;
   bool _trackBindVars;
   bool _failOnWarning;
+  bool _smartJoins;
   uint64_t _queryMemoryLimit;
   uint64_t _maxQueryPlans;
   double _slowQueryThreshold;

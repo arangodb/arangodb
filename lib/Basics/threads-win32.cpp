@@ -74,7 +74,7 @@ bool TRI_StartThread(TRI_thread_t* thread, char const* name,
   try {
     d.reset(new thread_data_t(starter, data, name));
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::THREADS)
+    LOG_TOPIC("00944", ERR, arangodb::Logger::THREADS)
         << "could not start thread: out of memory";
     return false;
   }
@@ -88,7 +88,7 @@ bool TRI_StartThread(TRI_thread_t* thread, char const* name,
                          nullptr);       // returns the thread identifier
 
   if (*thread == 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::THREADS)
+    LOG_TOPIC("11a8a", ERR, arangodb::Logger::THREADS)
         << "could not start thread: " << strerror(errno) << " ";
     return false;
   }
@@ -101,36 +101,40 @@ bool TRI_StartThread(TRI_thread_t* thread, char const* name,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_JoinThread(TRI_thread_t* thread) {
+  return TRI_JoinThreadWithTimeout(thread, INFINITE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief waits for a thread to finish within the specified timeout (in ms).
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout) {
   TRI_ASSERT(thread != nullptr);
-  DWORD result = WaitForSingleObject(*thread, INFINITE);
+  DWORD result = WaitForSingleObject(*thread, timeout);
 
   switch (result) {
-    case WAIT_ABANDONED: {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "could not join thread --> WAIT_ABANDONED";
-      break;
-    }
-
     case WAIT_OBJECT_0: {
       // everything ok
-      break;
+      return TRI_ERROR_NO_ERROR;
     }
 
     case WAIT_TIMEOUT: {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("02438", ERR, arangodb::Logger::FIXME)
           << "could not join thread --> WAIT_TIMEOUT";
-      break;
+      return TRI_ERROR_FAILED;
     }
 
     case WAIT_FAILED: {
       result = GetLastError();
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("953dd", ERR, arangodb::Logger::FIXME)
           << "could not join thread --> WAIT_FAILED - reason -->" << result;
-      break;
+      return TRI_ERROR_FAILED;
     }
-  }
 
-  return TRI_ERROR_NO_ERROR;
+    default:
+      TRI_ASSERT(false);
+      return TRI_ERROR_FAILED;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,7 +150,7 @@ int TRI_DetachThread(TRI_thread_t* thread) {
 
   if (res == 0) {
     DWORD result = GetLastError();
-    LOG_TOPIC(ERR, arangodb::Logger::THREADS) << "cannot detach thread: " << result;
+    LOG_TOPIC("333c2", ERR, arangodb::Logger::THREADS) << "cannot detach thread: " << result;
     return TRI_ERROR_INTERNAL;
   }
 

@@ -24,7 +24,6 @@
 #include "catch.hpp"
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/AqlItemBlockShell.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -77,38 +76,33 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
   AqlItemBlockManager itemBlockManager{&monitor};
 
   WHEN("only copying from source to target") {
-    auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
+    SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 3)};
     ExecutorInfos executorInfos{{}, {}, 3, 3, {}, {0, 1, 2}};
-    auto blockShell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
     auto outputRegisters = executorInfos.getOutputRegisters();
     auto registersToKeep = executorInfos.registersToKeep();
 
-    OutputAqlItemRow testee(std::move(blockShell), outputRegisters,
+    OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                             registersToKeep, executorInfos.registersToClear());
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
         // Make sure this data is cleared before the assertions
         auto inputBlock =
-            buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
+            buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
                                      {{{4}, {5}, {6}}},
                                      {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
 
-        auto blockShell =
-            std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
-
-        InputAqlItemRow source{blockShell, 0};
+        InputAqlItemRow source{inputBlock, 0};
 
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
-        source = {blockShell, 1};
+        source = {inputBlock, 1};
         testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
-        source = {blockShell, 2};
+        source = {inputBlock, 2};
         testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
@@ -124,25 +118,22 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
         // Make sure this data is cleared before the assertions
         // Every of these entries has a size > 16 uint_8
         auto inputBlock = buildBlock<3>(
-            &monitor,
+            itemBlockManager,
             {{{{"\"aaaaaaaaaaaaaaaaaaaa\""}, {"\"bbbbbbbbbbbbbbbbbbbb\""}, {"\"cccccccccccccccccccc\""}}},
              {{{"\"dddddddddddddddddddd\""}, {"\"eeeeeeeeeeeeeeeeeeee\""}, {"\"ffffffffffffffffffff\""}}},
              {{{"\"gggggggggggggggggggg\""}, {"\"hhhhhhhhhhhhhhhhhhhh\""}, {"\"iiiiiiiiiiiiiiiiiiii\""}}}});
 
-        auto blockShell =
-            std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
-
-        InputAqlItemRow source{blockShell, 0};
+        InputAqlItemRow source{inputBlock, 0};
 
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
-        source = {blockShell, 1};
+        source = {inputBlock, 1};
         testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
-        source = {blockShell, 2};
+        source = {inputBlock, 2};
         testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
@@ -162,30 +153,25 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
   }
 
   WHEN("only copying from source to target but multiplying rows") {
-    auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 9, 3);
+    SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 9, 3)};
     ExecutorInfos executorInfos{{}, {}, 3, 3, {}, {0, 1, 2}};
-    auto blockShell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
     auto outputRegisters = executorInfos.getOutputRegisters();
     auto registersToKeep = executorInfos.registersToKeep();
 
-    OutputAqlItemRow testee(std::move(blockShell), outputRegisters,
+    OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                             registersToKeep, executorInfos.registersToClear());
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
         // Make sure this data is cleared before the assertions
         auto inputBlock =
-            buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
+            buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
                                      {{{4}, {5}, {6}}},
                                      {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
 
-        auto blockShell =
-            std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
-
         for (size_t i = 0; i < 3; ++i) {
           // Iterate over source rows
-          InputAqlItemRow source{blockShell, i};
+          InputAqlItemRow source{inputBlock, i};
           for (size_t j = 0; j < 3; ++j) {
             testee.copyRow(source);
             REQUIRE(testee.produced());
@@ -214,30 +200,25 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
   }
 
   WHEN("dropping a register from source while writing to target") {
-    auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
+    SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 3)};
     ExecutorInfos executorInfos{{}, {}, 3, 3, {1}, {0, 2}};
-    auto blockShell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
     auto outputRegisters = executorInfos.getOutputRegisters();
     auto registersToKeep = executorInfos.registersToKeep();
 
-    OutputAqlItemRow testee(std::move(blockShell), outputRegisters,
+    OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                             registersToKeep, executorInfos.registersToClear());
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
         // Make sure this data is cleared before the assertions
         auto inputBlock =
-            buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
+            buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
                                      {{{4}, {5}, {6}}},
                                      {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
 
-        auto blockShell =
-            std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
-
         for (size_t i = 0; i < 3; ++i) {
           // Iterate over source rows
-          InputAqlItemRow source{blockShell, i};
+          InputAqlItemRow source{inputBlock, i};
           testee.copyRow(source);
           REQUIRE(testee.produced());
           if (i < 2) {
@@ -281,27 +262,22 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
       nrInputRegisters = 3;
       nrOutputRegisters = 5;
     }
-    auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 3, 5);
+    SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 5)};
     ExecutorInfos executorInfos{inputRegisters, outputRegisters, nrInputRegisters,
                                 nrOutputRegisters, *registersToClear, *registersToKeep};
-    auto blockShell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
     std::unordered_set<RegisterId> &regsToKeep = *registersToKeep;
 
-    OutputAqlItemRow testee(std::move(blockShell), outputRegisters,
+    OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                             registersToKeep, executorInfos.registersToClear());
     {
       // Make sure this data is cleared before the assertions
-      auto inputBlock = buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
+      auto inputBlock = buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
                                                  {{{4}, {5}, {6}}},
                                                  {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
 
-      auto blockShell =
-          std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
-
       for (size_t i = 0; i < 3; ++i) {
         // Iterate over source rows
-        InputAqlItemRow source{blockShell, i};
+        InputAqlItemRow source{inputBlock, i};
         for (RegisterId j = 3; j < 5; ++j) {
           AqlValue v{AqlValueHintInt{(int64_t)(j + 5)}};
           testee.cloneValueInto(j, source, v);

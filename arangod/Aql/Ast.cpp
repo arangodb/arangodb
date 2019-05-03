@@ -1358,6 +1358,33 @@ AstNode* Ast::createNodeShortestPath(AstNode const* outVars, AstNode const* grap
   return node;
 }
 
+/// @brief create an AST k-shortest paths node
+AstNode* Ast::createNodeKShortestPaths(AstNode const* outVars, AstNode const* graphInfo) {
+  TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
+  TRI_ASSERT(graphInfo->type == NODE_TYPE_ARRAY);
+  AstNode* node = createNode(NODE_TYPE_K_SHORTEST_PATHS);
+  node->reserve(outVars->numMembers() + graphInfo->numMembers());
+
+  TRI_ASSERT(graphInfo->numMembers() == 5);
+  TRI_ASSERT(outVars->numMembers() > 0);
+  TRI_ASSERT(outVars->numMembers() < 3);
+
+  // Add GraphInfo
+  for (size_t i = 0; i < graphInfo->numMembers(); ++i) {
+    node->addMember(graphInfo->getMemberUnchecked(i));
+  }
+
+  // Add variables
+  for (size_t i = 0; i < outVars->numMembers(); ++i) {
+    node->addMember(outVars->getMemberUnchecked(i));
+  }
+  TRI_ASSERT(node->numMembers() == graphInfo->numMembers() + outVars->numMembers());
+
+  _containsTraversal = true;
+
+  return node;
+}
+
 AstNode const* Ast::createNodeOptions(AstNode const* options) const {
   if (options != nullptr) {
     return options;

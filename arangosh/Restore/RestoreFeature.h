@@ -83,6 +83,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     bool createDatabase{false};
     bool force{false};
     bool forceSameDatabase{false};
+    bool allDatabases{false};
     bool ignoreDistributeShardsLikeErrors{false};
     bool importData{true};
     bool importStructure{true};

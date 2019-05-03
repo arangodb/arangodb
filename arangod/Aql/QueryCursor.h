@@ -26,6 +26,7 @@
 #define ARANGOD_AQL_QUERY_CURSOR_H 1
 
 #include "Aql/QueryResult.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/Common.h"
 #include "Transaction/Methods.h"
 #include "Utils/Cursor.h"
@@ -37,12 +38,13 @@ namespace aql {
 class AqlItemBlock;
 enum class ExecutionState;
 class Query;
+class SharedAqlItemBlockPtr;
 
 /// Cursor managing an entire query result in-memory
 /// Should be used in conjunction with the RestCursorHandler
 class QueryResultCursor final : public arangodb::Cursor {
  public:
-  QueryResultCursor(TRI_vocbase_t& vocbase, CursorId id, aql::QueryResult&& result,
+  QueryResultCursor(TRI_vocbase_t& vocbase, aql::QueryResult&& result,
                     size_t batchSize, double ttl, bool hasCount);
 
   ~QueryResultCursor() = default;
@@ -83,10 +85,12 @@ class QueryResultCursor final : public arangodb::Cursor {
 /// cursor is deleted (or query exhausted)
 class QueryStreamCursor final : public arangodb::Cursor {
  public:
-  QueryStreamCursor(TRI_vocbase_t& vocbase, CursorId id, std::string const& query,
+  QueryStreamCursor(TRI_vocbase_t& vocbase, std::string const& query,
                     std::shared_ptr<velocypack::Builder> bindVars,
-                    std::shared_ptr<velocypack::Builder> opts, size_t batchSize,
-                    double ttl, bool contextOwnedByExterior);
+                    std::shared_ptr<velocypack::Builder> opts,
+                    size_t batchSize, double ttl,
+                    bool contextOwnedByExterior,
+                    std::shared_ptr<transaction::Context> ctx);
 
   ~QueryStreamCursor();
 
@@ -117,11 +121,11 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
  private:
   DatabaseGuard _guard;
-  int64_t _exportCount;  // used by RocksDBRestExportHandler
+  int64_t _exportCount;  // used by RocksDBRestExportHandler (<0 is not used)
   /// current query
   std::unique_ptr<aql::Query> _query;
   /// buffered results
-  std::deque<std::unique_ptr<AqlItemBlock>> _queryResults;
+  std::deque<SharedAqlItemBlockPtr> _queryResults;
   /// index of the next to-be-returned row in _queryResults.front()
   size_t _queryResultPos;
   /// used when cursor is owned by V8 transaction

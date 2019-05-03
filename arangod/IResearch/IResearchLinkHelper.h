@@ -56,24 +56,33 @@ struct IResearchLinkHelper {
   /// @brief compare two link definitions for equivalience if used to create a
   ///        link instance
   //////////////////////////////////////////////////////////////////////////////
-  static bool equal(arangodb::velocypack::Slice const& lhs,
-                    arangodb::velocypack::Slice const& rhs);
+  static bool equal( // equal definition
+    arangodb::velocypack::Slice const& lhs, // left hand side
+    arangodb::velocypack::Slice const& rhs // right hand side
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds link between specified collection and view with the given id
   //////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<IResearchLink> find(arangodb::LogicalCollection const& collection,
-                                             TRI_idx_iid_t id);
+  static std::shared_ptr<IResearchLink> find( // find link
+    arangodb::LogicalCollection const& collection, // collection to search
+    TRI_idx_iid_t id // index to find
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds first link between specified collection and view
   //////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<IResearchLink> find(arangodb::LogicalCollection const& collection,
-                                             LogicalView const& view);
+  static std::shared_ptr<IResearchLink> find( // find link
+    arangodb::LogicalCollection const& collection, // collection to search
+    LogicalView const& view // link for view to find
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate and copy required fields from the 'definition' into
   ///        'normalized'
+  /// @note missing analyzers will be created if exceuted on db-server
+  /// @note engine == nullptr then SEGFAULT in Methods constructor during insert
+  /// @note true == inRecovery() then AnalyzerFeature will not allow persistence
   //////////////////////////////////////////////////////////////////////////////
   static arangodb::Result normalize( // normalize definition
     arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
@@ -94,34 +103,40 @@ struct IResearchLinkHelper {
   ///        * collection permissions
   ///        * valid link meta
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result validateLinks(TRI_vocbase_t& vocbase,
-                                        arangodb::velocypack::Slice const& links);
+  static arangodb::Result validateLinks( // validate links
+    TRI_vocbase_t& vocbase, // link vocbase
+    arangodb::velocypack::Slice const& links // links to validate
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief visits all links in a collection
   /// @return full visitation compleated
   //////////////////////////////////////////////////////////////////////////////
-  static bool visit(arangodb::LogicalCollection const& collection,
-                    std::function<bool(IResearchLink& link)> const& visitor);
+  static bool visit( // visit links
+    arangodb::LogicalCollection const& collection, // collection to visit
+    std::function<bool(IResearchLink& link)> const& visitor // visitor to call
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates the collections in 'vocbase' to match the specified
   ///        IResearchLink definitions
   /// @param modified set of modified collection IDs
-  /// @param viewId the view to associate created links with
+  /// @param view the view to associate created links with
   /// @param links the link modification definitions, null link == link removal
   /// @param stale links to remove if there is no creation definition in 'links'
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result updateLinks(std::unordered_set<TRI_voc_cid_t>& modified,
-                                      TRI_vocbase_t& vocbase, arangodb::LogicalView& view,
-                                      arangodb::velocypack::Slice const& links,
-                                      std::unordered_set<TRI_voc_cid_t> const& stale = {});
+  static arangodb::Result updateLinks( // update links
+      std::unordered_set<TRI_voc_cid_t>& modified, // odified cids
+      arangodb::LogicalView& view, // modified view
+      arangodb::velocypack::Slice const& links, // link definitions to apply
+      std::unordered_set<TRI_voc_cid_t> const& stale = {} //stale view links
+  );
 
  private:
   IResearchLinkHelper() = delete;
-};  // IResearchLinkHelper
+}; // IResearchLinkHelper
 
-}  // namespace iresearch
-}  // namespace arangodb
+} // iresearch
+} // arangodb
 
-#endif  // ARANGODB_IRESEARCH__IRESEARCH_LINK_HELPER_H
+#endif // ARANGODB_IRESEARCH__IRESEARCH_LINK_HELPER_H

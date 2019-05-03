@@ -24,6 +24,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Function.h"
+#include "Aql/IndexHint.h"
 #include "Aql/IndexNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Query.h"
@@ -266,7 +267,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
   ExecutionNode* eEnumerate = plan->registerNode(
       // link output of index with the return node
       new EnumerateCollectionNode(plan, plan->nextId(), aqlCollection,
-                                  enumerateOutVariable, false));
+                                  enumerateOutVariable, false, IndexHint()));
 
   //// build sort condition - DISTANCE(d.lat, d.long, param.lat, param.lon)
   auto* docRef = ast->createNodeReference(enumerateOutVariable);

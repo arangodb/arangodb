@@ -52,25 +52,29 @@ RestStatus RestClusterHandler::execute() {
   if (!suffixes.empty()) {
     if (suffixes[0] == "endpoints") {
       handleCommandEndpoints();
+      return RestStatus::DONE;
     } else if (suffixes[0] == "agency-dump") {
       handleAgencyDump();
-    } else {
-      generateError(
-        Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/[endpoints,agency-dump]"));
+      return RestStatus::DONE;
     }
-  } else {
-    generateError(
-      Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/[endpoints,agency-dump]"));
-  }
+  } 
+  
+  generateError(
+    Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/[endpoints,agency-dump]"));
 
   return RestStatus::DONE;
 }
 
 void RestClusterHandler::handleAgencyDump() {
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "only to be executed on coordinators");
+    return;
+  }
 
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
-    auth::Level lvl = auth::Level::NONE;
+    auth::Level lvl;
     if (af->userManager() != nullptr) {
       lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", true);
     } else {
@@ -78,7 +82,7 @@ void RestClusterHandler::handleAgencyDump() {
     }
     if (lvl < auth::Level::RW) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to trigger shutdown");
+                    "you need admin rights to produce an agency dump");
       return;
     }
   }
@@ -86,7 +90,6 @@ void RestClusterHandler::handleAgencyDump() {
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
   ClusterInfo::instance()->agencyDump(body);
   generateResult(rest::ResponseCode::OK, body->slice());
-
 }
 
 /// @brief returns information about all coordinator endpoints

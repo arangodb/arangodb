@@ -53,7 +53,7 @@ std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
       (_state.master.majorVersion == 3 && _state.master.minorVersion <= 2)) {
     std::string err =
         "You need >= 3.3 to perform the replication of an entire server";
-    LOG_TOPIC(ERR, Logger::REPLICATION) << err;
+    LOG_TOPIC("75fa1", ERR, Logger::REPLICATION) << err;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, err);
   }
   return TailingSyncer::WalAccessUrl + "/" + command + "?global=true&";
@@ -90,7 +90,7 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
       _queriedTranslations = true;
 
       if (res.fail()) {
-        LOG_TOPIC(ERR, Logger::REPLICATION)
+        LOG_TOPIC("e25ae", ERR, Logger::REPLICATION)
             << "got error while fetching master inventory for collection name "
                "translations: "
             << res.errorMessage();
@@ -131,7 +131,7 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
         }
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::REPLICATION)
+      LOG_TOPIC("2c5c2", ERR, Logger::REPLICATION)
           << "got error while fetching inventory: " << ex.what();
       return false;
     }

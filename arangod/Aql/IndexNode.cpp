@@ -135,14 +135,14 @@ void IndexNode::initIndexCoversProjections() {
   // note that we made sure that if we have multiple index instances, they
   // are actually all of the same index
 
-  auto const& fields = idx->coveredFields();
-
   if (!idx->hasCoveringIterator()) {
     // index does not have a covering index iterator
     return;
   }
 
   // check if we can use covering indexes
+  auto const& fields = idx->coveredFields();
+
   if (fields.size() < projections().size()) {
     // we will not be able to satisfy all requested projections with this index
     return;
@@ -151,7 +151,6 @@ void IndexNode::initIndexCoversProjections() {
   std::vector<size_t> coveringAttributePositions;
   // test if the index fields are the same fields as used in the projection
   std::string result;
-  size_t i = 0;
   for (auto const& it : projections()) {
     bool found = false;
     for (size_t j = 0; j < fields.size(); ++j) {
@@ -166,7 +165,6 @@ void IndexNode::initIndexCoversProjections() {
     if (!found) {
       return;
     }
-    ++i;
   }
 
   _coveringIndexAttributePositions = std::move(coveringAttributePositions);
@@ -410,6 +408,8 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->projections(_projections);
   c->needsGatherNodeSort(_needsGatherNodeSort);
   c->initIndexCoversProjections();
+  c->_prototypeCollection = _prototypeCollection;
+  c->_prototypeOutVariable = _prototypeOutVariable;
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }

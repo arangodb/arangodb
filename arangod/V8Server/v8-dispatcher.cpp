@@ -87,6 +87,8 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (SchedulerFeature::SCHEDULER == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
+  } else if (application_features::ApplicationServer::isStopping()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
   if (args.Length() != 1 || !args[0]->IsObject()) {
@@ -136,6 +138,11 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     isSystem = TRI_ObjectToBoolean(
         isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "isSystem"))
                      .FromMaybe(v8::Local<v8::Value>()));
+  }
+
+  if(isSystem && !v8g->_securityContext.isInternal()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "Only Internal Context may create System Tasks");
+
   }
 
   // offset in seconds into period or from now on if no period
@@ -355,7 +362,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   doc.add("runAsUser", VPackValue(runAsUser));
   doc.close();
 
-  LOG_TOPIC(TRACE, Logger::FIXME) << "Adding queue " << key;
+  LOG_TOPIC("aeb56", TRACE, Logger::FIXME) << "Adding queue " << key;
   ExecContextScope exscope(ExecContext::superuser());
   auto ctx = transaction::V8Context::Create(*vocbase, true);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
@@ -408,7 +415,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "deleteQueue() needs db RW permissions");
   }
 
-  LOG_TOPIC(TRACE, Logger::FIXME) << "Removing queue " << key;
+  LOG_TOPIC("2cef9", TRACE, Logger::FIXME) << "Removing queue " << key;
   ExecContextScope exscope(ExecContext::superuser());
   auto ctx = transaction::V8Context::Create(*vocbase, true);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::WRITE);

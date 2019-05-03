@@ -26,27 +26,26 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Basics/HashSet.h"
 #include "Basics/SmallVector.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define LOG_TRX(trx, level)                        \
-  LOG_TOPIC(TRACE, arangodb::Logger::TRANSACTIONS) \
-      << "#" << trx->id() << "." << level << " ("  \
+#define LOG_TRX(logid, llevel, trx, tlevel)                \
+  LOG_TOPIC(logid, llevel, arangodb::Logger::TRANSACTIONS) \
+      << "#" << trx->id() << "." << tlevel << " ("         \
       << transaction::statusString(trx->status()) << "): "
 
 #else
 
-#define LOG_TRX(...) \
-  while (0) LOG_TOPIC(TRACE, arangodb::Logger::TRANSACTIONS)
-
+#define LOG_TRX(logid, llevel, ...) \
+  while (0) LOG_TOPIC(logid, llevel,  arangodb::Logger::TRANSACTIONS)
 #endif
 
 struct TRI_vocbase_t;
@@ -54,10 +53,9 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 namespace transaction {
-
+class Context;
 class Methods;
 struct Options;
-
 }  // namespace transaction
 
 class ExecContext;
@@ -106,13 +104,17 @@ class TransactionState {
   void setRegistered() noexcept { _registeredTransaction = true; }
   bool wasRegistered() const noexcept { return _registeredTransaction; }
 
-  int increaseNesting() { return ++_nestingLevel; }
-  int decreaseNesting() {
-    TRI_ASSERT(_nestingLevel > 0);
-    return --_nestingLevel;
+  int increaseNesting() {
+    return _nestingLevel.fetch_add(1, std::memory_order_relaxed) + 1;
   }
-  int nestingLevel() const { return _nestingLevel; }
-  bool isTopLevelTransaction() const { return _nestingLevel == 0; }
+  int decreaseNesting() {
+    TRI_ASSERT(nestingLevel() > 0);
+    return _nestingLevel.fetch_sub(1, std::memory_order_relaxed) - 1;
+  }
+  int nestingLevel() const {
+    return _nestingLevel.load(std::memory_order_relaxed);
+  }
+  bool isTopLevelTransaction() const { return nestingLevel() == 0; }
   bool isEmbeddedTransaction() const { return !isTopLevelTransaction(); }
 
   double timeout() const { return _options.lockTimeout; }
@@ -133,11 +135,12 @@ class TransactionState {
   }
 
   /// @brief return the collection from a transaction
-  TransactionCollection* collection(TRI_voc_cid_t cid, AccessMode::Type accessType);
+  TransactionCollection* collection(TRI_voc_cid_t cid,
+                                    AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
-  int addCollection(TRI_voc_cid_t cid, std::string const& cname,
-                    AccessMode::Type accessType, int nestingLevel, bool force);
+  Result addCollection(TRI_voc_cid_t cid, std::string const& cname,
+                       AccessMode::Type accessType, int nestingLevel, bool force);
 
   /// @brief make sure all declared collections are used & locked
   Result ensureCollections(int nestingLevel = 0);
@@ -181,60 +184,60 @@ class TransactionState {
 
   TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
 
-  void setType(AccessMode::Type type);
-
+  /// @brief make a exclusive transaction, only valid before begin
+  void setExclusiveAccessType();
+  
   /// @brief whether or not a transaction is read-only
   bool isReadOnlyTransaction() const {
     return (_type == AccessMode::Type::READ);
   }
 
-  /**
-   * @brief Check if this shard is locked, used to send nolockheader
-   *
-   * @param shard The name of the shard
-   *
-   * @return True if locked by this transaction.
-   */
-  bool isLockedShard(std::string const& shard) const;
-
-  /**
-   * @brief Set that this shard is locked by this transaction
-   *        Used to define nolockheaders
-   *
-   * @param shard the shard name
-   */
-  void setLockedShard(std::string const& shard);
-
-  /**
-   * @brief Overwrite the entire list of locked shards.
-   *
-   * @param lockedShards The list of locked shards.
-   */
-  void setLockedShards(std::unordered_set<std::string> const& lockedShards);
-
   /// @brief whether or not a transaction only has exculsive or read accesses
   bool isOnlyExclusiveTransaction() const;
+  
+  /// @brief servers already contacted
+  arangodb::HashSet<std::string> const& knownServers() const {
+    return _knownServers;
+  }
+
+  bool knowsServer(std::string const& uuid) const {
+    return _knownServers.find(uuid) != _knownServers.end();
+  }
+  
+  /// @brief add a server to the known set
+  void addKnownServer(std::string const& uuid) {
+    _knownServers.emplace(uuid);
+  }
+  
+  /// @brief remove a server from the known set
+  void removeKnownServer(std::string const& uuid) {
+    _knownServers.erase(uuid);
+  }
+  
+  void clearKnownServers() {
+    _knownServers.clear();
+  }
 
  protected:
   /// @brief find a collection in the transaction's list of collections
   TransactionCollection* findCollection(TRI_voc_cid_t cid, size_t& position) const;
 
-  /// @brief check if current user can access this collection
-  int checkCollectionPermission(TRI_voc_cid_t cid, std::string const& cname,
-                                AccessMode::Type) const;
-
   /// @brief release collection locks for a transaction
-  int releaseCollections();
+  void releaseCollections();
 
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
   void clearQueryCache();
 
-  /// @brief vocbase for this transaction
-  TRI_vocbase_t& _vocbase;
+ private:
+  /// @brief check if current user can access this collection
+  Result checkCollectionPermission(std::string const& cname, AccessMode::Type) const;
 
-  /// @brief local trx id
-  TRI_voc_tid_t const _id;
+  
+ protected:
+  TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
+  TRI_voc_tid_t const _id;  /// @brief local trx id
+
   /// @brief access type (read|write)
   AccessMode::Type _type;
   /// @brief current status
@@ -243,20 +246,23 @@ class TransactionState {
   SmallVector<TransactionCollection*>::allocator_type::arena_type _arena;  // memory for collections
   SmallVector<TransactionCollection*> _collections;  // list of participating collections
 
-  ServerState::RoleEnum const _serverRole;  // role of the server
+  ServerState::RoleEnum const _serverRole;  /// role of the server
 
-  transaction::Hints _hints;  // hints;
-  int _nestingLevel;
-  bool _registeredTransaction;
+  transaction::Hints _hints;  // hints; set on _nestingLevel == 0
 
   transaction::Options _options;
 
  private:
   /// a collection of stored cookies
   std::map<void const*, Cookie::ptr> _cookies;
-
-  /// the list of locked shards (cluster only)
-  std::unordered_set<std::string> _lockedShards;
+  
+  /// @brief servers we already talked to for this transactions
+  arangodb::HashSet<std::string> _knownServers;
+  
+  /// @brief reference counter of # of 'Methods' instances using this object
+  std::atomic<int> _nestingLevel;
+  
+  bool _registeredTransaction;
 };
 
 }  // namespace arangodb

@@ -76,7 +76,7 @@ EnsureIndex::EnsureIndex(MaintenanceFeature& feature, ActionDescription const& d
   TRI_ASSERT(desc.has(FIELDS));
 
   if (!error.str().empty()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+    LOG_TOPIC("8473a", ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -103,7 +103,7 @@ bool EnsureIndex::first() {
     if (col == nullptr) {
       std::stringstream error;
       error << "failed to lookup local collection " << shard << " in database " + database;
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+      LOG_TOPIC("12767", ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
       _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
@@ -123,12 +123,12 @@ bool EnsureIndex::first() {
       std::string log = std::string("Index ") + id;
       log += (created.isBool() && created.getBool() ? std::string(" created")
                                                     : std::string(" updated"));
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << log;
+      LOG_TOPIC("6e2cd", DEBUG, Logger::MAINTENANCE) << log;
     } else {
       std::stringstream error;
       error << "failed to ensure index " << body.slice().toJson() << " "
             << _result.errorMessage();
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+      LOG_TOPIC("bc555", ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
 
       VPackBuilder eb;
       {
@@ -139,7 +139,7 @@ bool EnsureIndex::first() {
         eb.add(ID, VPackValue(id));
       }
 
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "Reporting error " << eb.toJson();
+      LOG_TOPIC("397e2", DEBUG, Logger::MAINTENANCE) << "Reporting error " << eb.toJson();
 
       // FIXMEMAINTENANCE: If this action is refused due to missing
       // components in description, no IndexError gets produced. But
@@ -155,7 +155,7 @@ bool EnsureIndex::first() {
   } catch (std::exception const& e) {  // Guard failed?
     std::stringstream error;
     error << "action " << _description << " failed with exception " << e.what();
-    LOG_TOPIC(WARN, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+    LOG_TOPIC("445e5", WARN, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     return false;
   }

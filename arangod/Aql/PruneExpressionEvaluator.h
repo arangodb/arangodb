@@ -25,6 +25,8 @@
 
 #include "Aql/InAndOutRowExpressionContext.h"
 
+#include <utility>
+
 namespace arangodb {
 namespace velocypack {
 class Slice;
@@ -48,7 +50,8 @@ class PruneExpressionEvaluator {
   ~PruneExpressionEvaluator();
 
   bool evaluate();
-  void prepareContext(InputAqlItemRow input) { _ctx.setInputRow(input); }
+  void prepareContext(InputAqlItemRow input) { _ctx.setInputRow(std::move(input)); }
+  void unPrepareContext() { _ctx.invalidateInputRow(); }
 
   bool needsVertex() const { return _ctx.needsVertexValue(); }
   void injectVertex(velocypack::Slice v) { _ctx.setVertexValue(v); }

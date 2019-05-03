@@ -34,19 +34,6 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-class PhysicalCollection;
-class PhysicalView;
-class TransactionCollection;
-class TransactionState;
-
-namespace rest {
-class RestHandlerFactory;
-}
-
-namespace transaction {
-class ContextData;
-struct Options;
-}  // namespace transaction
 
 class ClusterEngine final : public StorageEngine {
  public:
@@ -82,9 +69,9 @@ class ClusterEngine final : public StorageEngine {
   bool supportsDfdb() const override { return false; }
   bool useRawDocumentPointers() override { return false; }
 
-  std::unique_ptr<TransactionManager> createTransactionManager() override;
+  std::unique_ptr<transaction::Manager> createTransactionManager() override;
   std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
-  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
+  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                                                            transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
@@ -121,6 +108,8 @@ class ClusterEngine final : public StorageEngine {
   std::string collectionPath(TRI_vocbase_t const& vocbase, TRI_voc_cid_t id) const override {
     return std::string();  // no path to be returned here
   }
+
+  void cleanupReplicationContexts() override {}
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                          int& status) override;

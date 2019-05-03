@@ -70,7 +70,7 @@ FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency";
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
+    LOG_TOPIC("4667d", ERR, Logger::SUPERVISION) << err.str();
     finish("", _shard, false, err.str());
     _status = FAILED;
   }
@@ -82,7 +82,7 @@ void FailedFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   using namespace std::chrono;
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("b0a34", INFO, Logger::SUPERVISION)
       << "Create failedFollower for " + _shard + " from " + _from;
 
   _created = system_clock::now();
@@ -112,7 +112,7 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   if (envelope == nullptr) {
     _jb->close(); // object
     _jb->close(); // array
-    write_ret_t res = singleWriteTransaction(_agent, *_jb);
+    write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
     return (res.accepted && res.indices.size() == 1 && res.indices[0]);
   }
 
@@ -178,7 +178,7 @@ bool FailedFollower::start(bool& aborts) {
     return false;
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("80b9d", INFO, Logger::SUPERVISION)
       << "Start failedFollower for " + _shard + " from " + _from + " to " + _to;
 
   // Copy todo to pending
@@ -186,11 +186,11 @@ bool FailedFollower::start(bool& aborts) {
   {
     VPackArrayBuilder a(&todo);
     if (_jb == nullptr) {
-      auto jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      auto const& jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
       if (jobIdNode.second) {
         jobIdNode.first.toBuilder(todo);
       } else {
-        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
+        LOG_TOPIC("4571c", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
                                                     " from agency snapshot";
         return false;
       }
@@ -276,14 +276,18 @@ bool FailedFollower::start(bool& aborts) {
       JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
       return false;
     }
-  } 
+  }
 
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("2b961", DEBUG, Logger::SUPERVISION)
       << "FailedFollower start transaction: " << job.toJson();
 
   auto res = generalTransaction(_agent, job);
+  if (!res.accepted) {  // lost leadership
+    LOG_TOPIC("f5b87", INFO, Logger::SUPERVISION) << "Leadership lost! Job " << _jobId << " handed off.";
+    return false;
+  }
 
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("84797", DEBUG, Logger::SUPERVISION)
       << "FailedFollower start result: " << res.result->toJson();
 
   auto result = res.result->slice()[0];
@@ -303,28 +307,28 @@ bool FailedFollower::start(bool& aborts) {
   slice = result.get(std::vector<std::string>(
       {agencyPrefix, "Supervision", "Health", _to, "Status"}));
   if (!slice.isString() || slice.copyString() != "GOOD") {
-    LOG_TOPIC(INFO, Logger::SUPERVISION)
+    LOG_TOPIC("4785b", INFO, Logger::SUPERVISION)
         << "Destination server " << _to << " is no longer in good condition";
   }
 
   slice = result.get(std::vector<std::string>(
       {agencyPrefix, "Plan", "Collections", _database, _collection, "shards", _shard}));
   if (!slice.isNone()) {
-    LOG_TOPIC(INFO, Logger::SUPERVISION)
+    LOG_TOPIC("9fd56", INFO, Logger::SUPERVISION)
         << "Planned db server list is in mismatch with snapshot";
   }
 
   slice = result.get(
       std::vector<std::string>({agencyPrefix, "Supervision", "DBServers", _to}));
   if (!slice.isNone()) {
-    LOG_TOPIC(INFO, Logger::SUPERVISION)
+    LOG_TOPIC("ad849", INFO, Logger::SUPERVISION)
         << "Destination " << _to << " is now blocked by job " << slice.copyString();
   }
 
   slice = result.get(
       std::vector<std::string>({agencyPrefix, "Supervision", "Shards", _shard}));
   if (!slice.isNone()) {
-    LOG_TOPIC(INFO, Logger::SUPERVISION)
+    LOG_TOPIC("57da4", INFO, Logger::SUPERVISION)
         << "Shard " << _shard << " is now blocked by job " << slice.copyString();
   }
 

@@ -113,7 +113,10 @@ absolute path to the same location is returned.
 
 
 sets file permissions of specified files (non windows only)
-`fs.exists(path)`
+`fs.chmod(path, mode)`
+
+where `mode` is a string with a leading zero matching the `OCTAL-MODE` as explained
+in *nix `man chmod`.
 
 Returns true on success.
 
@@ -287,6 +290,13 @@ of the same name will be created in that directory, else the copy will get
 the
 specified filename.
 
+
+### linkFile
+
+creates a symbolic link from a target in the place of linkpath.
+`fs.linkFile(target, linkpath)`
+
+In `linkpath` a symbolic link to `target` will be created.
 
 ### move
 

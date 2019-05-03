@@ -270,6 +270,10 @@ struct Functions {
                        VPackFunctionParameters const&);
   static AqlValue Sha512(arangodb::aql::ExpressionContext*,
                          transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue Crc32(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                        VPackFunctionParameters const&);
+  static AqlValue Fnv64(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                        VPackFunctionParameters const&);
   static AqlValue Hash(arangodb::aql::ExpressionContext*, transaction::Methods*,
                        VPackFunctionParameters const&);
   static AqlValue IsKey(arangodb::aql::ExpressionContext*,
@@ -438,7 +442,8 @@ struct Functions {
                        VPackFunctionParameters const&);
   static AqlValue Fail(arangodb::aql::ExpressionContext*, transaction::Methods*,
                        VPackFunctionParameters const&);
-
+  static AqlValue DecodeRev(arangodb::aql::ExpressionContext*,
+                            transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue CurrentUser(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
 

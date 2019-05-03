@@ -245,7 +245,7 @@ describe('Replication factor constraints', function() {
 
     it('check replication factor of system collections', function() {
         ["_appbundles", "_apps", "_aqlfunctions", "_frontend", "_graphs",
-         "_iresearch_analyzers", "_jobs", "_modules", "_queues", "_routing",
+         "_jobs", "_modules", "_queues", "_routing",
          "_statistics" , "_statistics15" , "_statisticsRaw" ,"_users"
         ].forEach(name => {
           if(name === "_graphs"){

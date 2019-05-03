@@ -38,7 +38,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Hints.h"
-#include "Utils/CollectionGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -79,7 +78,7 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
 /// @brief save the current applier state
 Result DatabaseTailingSyncer::saveApplierState() {
   auto rv = _applier->persistStateResult(false);
-  if (rv.fail()){
+  if (rv.fail()) {
     THROW_ARANGO_EXCEPTION(rv);
   }
   return rv;
@@ -109,10 +108,10 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
   TRI_voc_tick_t lastScannedTick = fromTick;
 
   if (hard) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "starting syncCollectionFinalize: " << collectionName
+    LOG_TOPIC("0e15c", DEBUG, Logger::REPLICATION) << "starting syncCollectionFinalize: " << collectionName
                                           << ", fromTick " << fromTick;
   } else {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "starting syncCollectionCatchup: " << collectionName
+    LOG_TOPIC("70711", DEBUG, Logger::REPLICATION) << "starting syncCollectionCatchup: " << collectionName
                                           << ", fromTick " << fromTick;
   }
 
@@ -180,6 +179,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     }
     if (!fromIncluded && fromTick > 0) {
       until = fromTick;
+      abortOngoingTransactions();
       return Result(
           TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
           std::string("required follow tick value '") + StringUtils::itoa(lastIncludedTick) +
@@ -189,9 +189,9 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
               "number of historic logfiles on the master.");
     }
 
-    uint64_t processedMarkers = 0;
+    ApplyStats applyStats;
     uint64_t ignoreCount = 0;
-    Result r = applyLog(response.get(), fromTick, processedMarkers, ignoreCount);
+    Result r = applyLog(response.get(), fromTick, applyStats, ignoreCount);
     if (r.fail()) {
       until = fromTick;
       return r;
@@ -205,7 +205,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     } else if (checkMore) {
       // we got the same tick again, this indicates we're at the end
       checkMore = false;
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "we got the same tick again, "
+      LOG_TOPIC("098be", WARN, Logger::REPLICATION) << "we got the same tick again, "
                                            << "this indicates we're at the end";
     }
 
@@ -233,7 +233,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
       until = fromTick;
       return Result();
     }
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Fetching more data, fromTick: " << fromTick
+    LOG_TOPIC("2598f", DEBUG, Logger::REPLICATION) << "Fetching more data, fromTick: " << fromTick
                                           << ", lastScannedTick: " << lastScannedTick;
   }
 }
@@ -264,7 +264,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
       Result res = init->getInventory(inventoryResponse);
       _queriedTranslations = true;
       if (res.fail()) {
-        LOG_TOPIC(ERR, Logger::REPLICATION)
+        LOG_TOPIC("89080", ERR, Logger::REPLICATION)
             << "got error while fetching master inventory for collection name "
                "translations: "
             << res.errorMessage();
@@ -290,7 +290,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
         }
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::REPLICATION)
+      LOG_TOPIC("cfaf3", ERR, Logger::REPLICATION)
           << "got error while fetching inventory: " << ex.what();
       return false;
     }

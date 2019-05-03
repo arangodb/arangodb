@@ -6,7 +6,7 @@ The _DocumentCollection API_ extends the
 
 ## documentCollection.document
 
-`async documentCollection.document(documentHandle, [opts]): Object`
+`async documentCollection.document(documentHandle, [opts]): Document`
 
 Retrieves the document with the given _documentHandle_ from the collection.
 
@@ -108,11 +108,15 @@ if (exists === false) {
 `async documentCollection.save(data, [opts]): Object`
 
 Creates a new document with the given _data_ and returns an object containing
-the document's metadata.
+the document's metadata (`_id`, `_key` and `_rev` attributes).
+
+Multiple documents can be created in a single call by passing an array of
+objects as argument for _data_. The result will be an array too, of which
+some elements can be error objects if the documents couldn't be saved.
 
 **Arguments**
 
-- **data**: `Object`
+- **data**: `Object | Object[]`
 
   The data of the new document, may include a `_key`.
 
@@ -126,12 +130,12 @@ the document's metadata.
 
   - **returnNew**: `boolean` (Default: `false`)
 
-    If set to `true`, return additionally the complete new documents under the
+    If set to `true`, return additionally the complete new document(s) under the
     attribute `new` in the result.
 
   - **returnOld**: `boolean` (Default: `false`)
 
-    If set to `true`, return additionally the complete old documents under the
+    If set to `true`, return additionally the complete old document(s) under the
     attribute `old` in the result.
 
   - **silent**: `boolean` (Default: `false`)
@@ -141,6 +145,10 @@ the document's metadata.
     some network traffic.
 
   - **overwrite**: `boolean` (Default: `false`)
+    
+    {% hint 'warning' %}
+    This option is only available when targeting ArangoDB v3.4.0 and later.
+    {% endhint %}
 
     If set to true, the insert becomes a replace-insert. If a document with the
     same \_key already exists the new document is not rejected with unique

@@ -170,13 +170,13 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testHashedAggregateBlock : function () {
-      internal.debugSetFailAt("HashedCollectBlock::getOrSkipSome");
+      internal.debugSetFailAt("HashedCollectExecutor::produceRows");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value RETURN key");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 RETURN key");
       assertFailingQuery("FOR i IN 1..10000 COLLECT key = i RETURN key");
       
       internal.debugClearFailAt();
-      internal.debugSetFailAt("HashedCollectBlock::getOrSkipSomeOuter");
+      internal.debugSetFailAt("HashedCollectExecutor::produceRows");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value RETURN key");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 RETURN key");
       assertFailingQuery("FOR i IN 1..10000 COLLECT key = i RETURN key");
@@ -272,7 +272,7 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFilterBlock2 : function () {
-      internal.debugSetFailAt("FilterExecutor::produceRow");
+      internal.debugSetFailAt("FilterExecutor::produceRows");
       assertFailingQuery("LET doc = { \"_id\": \"test/76689250173\", \"_rev\": \"76689250173\", \"_key\": \"76689250173\", \"test1\": \"something\", \"test2\": { \"DATA\": [ \"other\" ] } } FOR attr IN ATTRIBUTES(doc) LET prop = doc[attr] FILTER HAS(prop, 'DATA') RETURN [ attr, prop.DATA ]"); 
     },
 
@@ -281,7 +281,7 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFilterBlock3 : function () {
-      internal.debugSetFailAt("FilterExecutor::produceRow");
+      internal.debugSetFailAt("FilterExecutor::produceRows");
       assertFailingQuery("FOR i IN [1,2,3,4] FILTER i IN [1,2,3,4] RETURN i");
     },
 

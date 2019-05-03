@@ -23,7 +23,8 @@
 #ifndef ARANGODB_BASICS_RESULT_H
 #define ARANGODB_BASICS_RESULT_H 1
 
-#include "Basics/Common.h"
+#include <string>
+#include "Basics/voc-errors.h"
 
 namespace arangodb {
 class Result final {
@@ -41,7 +42,7 @@ class Result final {
    * @param  errorNumber   Said error number
    * @param  errorMessage  Said error message
    */
-  Result(int errorNumber, std::string&& errorMessage);
+  Result(int errorNumber, std::string&& errorMessage) noexcept;
 
   /**
    * @brief Construct as copy
@@ -158,6 +159,9 @@ class Result final {
 
   template <typename S>
   void appendErrorMessage(S&& msg) {
+    if (_errorMessage.empty() && _errorNumber != TRI_ERROR_NO_ERROR) {
+      _errorMessage.append(errorMessage());
+    }
     _errorMessage.append(std::forward<S>(msg));
   }
 

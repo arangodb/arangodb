@@ -20,13 +20,13 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterIndexFactory.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterIndex.h"
+#include "ClusterIndexFactory.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -69,10 +69,9 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
 
   arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
                                arangodb::LogicalCollection& collection,
-                               arangodb::velocypack::Slice const& definition,
-                               TRI_idx_iid_t id,
+                               arangodb::velocypack::Slice const& definition, TRI_idx_iid_t id,
                                bool  // isClusterConstructor
-                              ) const override {
+                               ) const override {
     auto* clusterEngine =
         static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE);
 
@@ -121,13 +120,13 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
 };
 
 struct EdgeIndexFactory : public DefaultIndexFactory {
-  explicit EdgeIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit EdgeIndexFactory(std::string const& type)
+      : DefaultIndexFactory(type) {}
 
   arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
                                arangodb::LogicalCollection& collection,
                                arangodb::velocypack::Slice const& definition,
-                               TRI_idx_iid_t id,
-                               bool isClusterConstructor) const override {
+                               TRI_idx_iid_t id, bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this indexes cannot be created directly
       return arangodb::Result(TRI_ERROR_INTERNAL, "cannot create edge index");
@@ -153,13 +152,13 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 };
 
 struct PrimaryIndexFactory : public DefaultIndexFactory {
-  explicit PrimaryIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit PrimaryIndexFactory(std::string const& type)
+      : DefaultIndexFactory(type) {}
 
   arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
                                arangodb::LogicalCollection& collection,
                                arangodb::velocypack::Slice const& definition,
-                               TRI_idx_iid_t id,
-                               bool isClusterConstructor) const override {
+                               TRI_idx_iid_t id, bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this indexes cannot be created directly
       return arangodb::Result(TRI_ERROR_INTERNAL,
@@ -213,13 +212,14 @@ ClusterIndexFactory::ClusterIndexFactory() {
   emplace(ttlIndexFactory._type, ttlIndexFactory);
 }
 
-/// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" => "hash")
-/// used to display storage engine capabilities
+/// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
+/// "hash") used to display storage engine capabilities
 std::unordered_map<std::string, std::string> ClusterIndexFactory::indexAliases() const {
   auto* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
   auto* ae = ce->actualEngine();
   if (!ae) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no actual storage engine for ClusterIndexFactory");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "no actual storage engine for ClusterIndexFactory");
   }
   return ae->indexFactory().indexAliases();
 }
@@ -254,6 +254,7 @@ void ClusterIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
   input.openObject();
   input.add(StaticStrings::IndexType, VPackValue("primary"));
   input.add(StaticStrings::IndexId, VPackValue("0"));
+  input.add(StaticStrings::IndexName, VPackValue(StaticStrings::IndexNamePrimary));
   input.add(StaticStrings::IndexFields, VPackValue(VPackValueType::Array));
   input.add(VPackValue(StaticStrings::KeyString));
   input.close();
@@ -277,14 +278,20 @@ void ClusterIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
     input.add(StaticStrings::IndexType,
               VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
     input.add(StaticStrings::IndexId, VPackValue("1"));
+
     input.add(StaticStrings::IndexFields, VPackValue(VPackValueType::Array));
     input.add(VPackValue(StaticStrings::FromString));
-
     if (ct == ClusterEngineType::MMFilesEngine) {
       input.add(VPackValue(StaticStrings::ToString));
     }
-
     input.close();
+
+    if (ct == ClusterEngineType::MMFilesEngine) {
+      input.add(StaticStrings::IndexName, VPackValue(StaticStrings::IndexNameEdge));
+    } else if (ct == ClusterEngineType::RocksDBEngine) {
+      input.add(StaticStrings::IndexName, VPackValue(StaticStrings::IndexNameEdgeFrom));
+    }
+
     input.add(StaticStrings::IndexUnique, VPackValue(false));
     input.add(StaticStrings::IndexSparse, VPackValue(false));
     input.close();
@@ -299,6 +306,7 @@ void ClusterIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
       input.add(StaticStrings::IndexType,
                 VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
       input.add(StaticStrings::IndexId, VPackValue("2"));
+      input.add(StaticStrings::IndexName, VPackValue(StaticStrings::IndexNameEdgeTo));
       input.add(StaticStrings::IndexFields, VPackValue(VPackValueType::Array));
       input.add(VPackValue(StaticStrings::ToString));
       input.close();
@@ -330,7 +338,7 @@ void ClusterIndexFactory::prepareIndexes(
     auto idx = prepareIndexFromSlice(v, false, col, true);
 
     if (!idx) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("88934", ERR, arangodb::Logger::ENGINES)
           << "error creating index from definition '" << v.toString() << "'";
 
       continue;

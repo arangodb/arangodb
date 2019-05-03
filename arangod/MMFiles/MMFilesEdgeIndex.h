@@ -43,7 +43,6 @@ namespace basics {
 class LocalTaskQueue;
 }
 
-class ManagedDocumentResult;
 class MMFilesEdgeIndex;
 
 struct MMFilesEdgeIndexHelper {
@@ -111,7 +110,7 @@ typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice, MMFilesSimpleI
 class MMFilesEdgeIndexIterator final : public IndexIterator {
  public:
   MMFilesEdgeIndexIterator(LogicalCollection* collection,
-                           transaction::Methods* trx, ManagedDocumentResult* mmdr,
+                           transaction::Methods* trx,
                            arangodb::MMFilesEdgeIndex const* index,
                            TRI_MMFilesEdgeIndexHash_t const* indexImpl,
                            std::unique_ptr<VPackBuilder> keys);
@@ -177,8 +176,6 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
   Result sizeHint(transaction::Methods& trx, size_t size) override;
 
-  bool hasBatchInsert() const override { return true; }
-
   TRI_MMFilesEdgeIndexHash_t* from() const { return _edgesFrom.get(); }
 
   TRI_MMFilesEdgeIndexHash_t* to() const { return _edgesTo.get(); }
@@ -188,7 +185,7 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, 
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;
@@ -198,11 +195,11 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
  private:
   /// @brief create the iterator
-  IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* createEqIterator(transaction::Methods*, 
                                   arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
 
-  IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* createInIterator(transaction::Methods*, 
                                   arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
 

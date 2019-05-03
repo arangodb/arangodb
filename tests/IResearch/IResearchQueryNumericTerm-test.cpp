@@ -88,7 +88,8 @@ struct IResearchQueryNumericTermSetup {
     arangodb::tests::init(true);
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::ERR); // suppress WARNING {aql} Suboptimal AqlItemMatrix index lookup:
@@ -130,13 +131,6 @@ struct IResearchQueryNumericTermSetup {
         f.first->start();
       }
     }
-
-    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
-      arangodb::iresearch::IResearchAnalyzerFeature
-    >();
-
-    analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
-    analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
 
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
@@ -250,7 +244,6 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
   // populate view with the data
   {
     arangodb::OperationOptions opt;
-    TRI_voc_tick_t tick;
 
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -277,14 +270,14 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt, tick, false);
+        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt, false);
         CHECK(res.ok());
         ++i;
       }
     }
 
     CHECK((trx.commit().ok()));
-    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
+    CHECK((arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
   }
 
   // -----------------------------------------------------------------------------
@@ -297,9 +290,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq == '0' RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -313,9 +306,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq == true RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -329,9 +322,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq == false RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -345,9 +338,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq == null RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -361,9 +354,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq == -1 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -381,9 +374,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value == 90.564 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -412,9 +405,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value == -32.5 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -443,9 +436,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq == 2 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -474,9 +467,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq == 2.0 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -516,9 +509,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH 100.0 == d.value SORT BM25(d) ASC, TFIDF(d) ASC, d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -550,9 +543,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq != '0' RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -584,9 +577,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq != false RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -618,9 +611,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq != null SORT d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -649,9 +642,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq != -1 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -690,9 +683,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value != 100 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -725,9 +718,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq != 2.0 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -765,9 +758,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value != -1 SORT d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -801,9 +794,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH 123 != d.value SORT TFIDF(d) ASC, BM25(d) ASC, d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -828,9 +821,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq < '0' RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -844,9 +837,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq < true RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -860,9 +853,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq < false RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -876,9 +869,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq < null RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -903,9 +896,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq < 7 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -930,9 +923,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq < 0 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -957,9 +950,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq < 31 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -992,9 +985,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value < 0 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1027,9 +1020,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value < 95 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1054,9 +1047,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq <= '0' RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1070,9 +1063,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq <= true RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1086,9 +1079,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq <= false RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1102,9 +1095,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq <= null RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1129,9 +1122,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq <= 7 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1156,9 +1149,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq <= 0 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1189,9 +1182,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq <= 31 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1224,9 +1217,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value <= 0 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1259,9 +1252,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value <= 95 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1286,9 +1279,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > '0' RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1302,9 +1295,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > true RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1318,9 +1311,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > false RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1334,9 +1327,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > null RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1361,9 +1354,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > 7 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1388,9 +1381,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > 31 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1415,9 +1408,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > 0 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1450,9 +1443,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value > 0 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1485,9 +1478,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value > 95 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1512,9 +1505,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= '0' RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1528,9 +1521,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= true RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1544,9 +1537,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= false RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1560,9 +1553,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= null RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1587,9 +1580,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= 7 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1614,9 +1607,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= 31 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1644,9 +1637,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= 0 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1679,9 +1672,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value >= 0 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1714,9 +1707,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value >= 95 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1741,9 +1734,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > '0' AND d.seq < 15 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1757,9 +1750,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > true AND d.seq < 15 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1773,9 +1766,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > false AND d.seq < 15 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1789,9 +1782,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > null AND d.seq < 15 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1816,9 +1809,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > 7 AND d.seq < 18 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1854,9 +1847,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > 7.1 AND d.seq < 17.9 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1881,9 +1874,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > 18 AND d.seq < 7 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1897,9 +1890,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > 7 AND d.seq < 7.0 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1924,9 +1917,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > 0 AND d.seq < 31 SORT tfidf(d), BM25(d), d.name DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -1963,9 +1956,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value > 90.564 AND d.value < 300 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2002,9 +1995,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value > -32.5 AND d.value < 50 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2029,9 +2022,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= '0' AND d.seq < 15 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2045,9 +2038,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= true AND d.seq < 15 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2061,9 +2054,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= false AND d.seq < 15 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2077,9 +2070,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= null AND d.seq < 15 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2104,9 +2097,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= 7 AND d.seq < 18 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2142,9 +2135,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= 7.1 AND d.seq <= 17.9 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2169,9 +2162,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= 18 AND d.seq < 7 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2185,9 +2178,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= 7 AND d.seq < 7.0 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2212,9 +2205,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= 0 AND d.seq < 31 SORT tfidf(d), BM25(d), d.name DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2251,9 +2244,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value >= 90.564 AND d.value < 300 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2290,9 +2283,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value >= -32.5 AND d.value < 50 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2317,9 +2310,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > '0' AND d.seq <= 15 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2333,9 +2326,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > true AND d.seq <= 15 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2349,9 +2342,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > false AND d.seq <= 15 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2365,9 +2358,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > null AND d.seq <= 15 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2392,9 +2385,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > 7 AND d.seq <= 18 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2430,9 +2423,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > 7.1 AND d.seq <= 17.9 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2457,9 +2450,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > 18 AND d.seq <= 7 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2473,9 +2466,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > 7 AND d.seq <= 7.0 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2500,9 +2493,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq > 0 AND d.seq <= 31 SORT tfidf(d), BM25(d), d.name DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2539,9 +2532,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value > 90.564 AND d.value <= 300 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2578,9 +2571,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value > -32.5 AND d.value <= 50 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2605,9 +2598,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= '0' AND d.seq <= 15 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2621,9 +2614,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= true AND d.seq <= 15 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2637,9 +2630,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= false AND d.seq <= 15 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2653,9 +2646,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= null AND d.seq <= 15 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2680,9 +2673,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= 7 AND d.seq <= 18 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2718,9 +2711,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= 7.1 AND d.seq <= 17.9 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2745,9 +2738,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= 18 AND d.seq <= 7 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2762,9 +2755,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= 7.0 AND d.seq <= 7.0 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2784,9 +2777,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= 7 AND d.seq <= 7.0 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2816,9 +2809,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq >= 0 AND d.seq <= 31 SORT tfidf(d), BM25(d), d.name DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2855,9 +2848,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value >= 90.564 AND d.value <= 300 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2894,9 +2887,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value >= -32.5 AND d.value <= 50 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2932,9 +2925,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq IN 7..18 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2971,9 +2964,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq IN 7.1..17.9 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -2998,9 +2991,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq IN 18..7 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3014,9 +3007,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq IN 7..7.0 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3046,9 +3039,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.seq IN 0..31 SORT tfidf(d), BM25(d), d.name DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3085,9 +3078,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value IN 90.564..300 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
@@ -3125,9 +3118,9 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.value IN -32.5..50 SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result.ok());
 
-    auto result = queryResult.result->slice();
+    auto result = queryResult.data->slice();
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);

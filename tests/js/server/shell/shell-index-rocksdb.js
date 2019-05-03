@@ -42,17 +42,17 @@ function backgroundIndexSuite() {
     }).length;
   };
   const waitForTasks = () => {
-    const time = require("internal").time;
+    const time = internal.time;
     const start = time();
     while (!tasksCompleted()) {
       if (time() - start > 300) { // wait for 5 minutes maximum
         fail("Timeout after 5 minutes");
       }
-      require("internal").wait(0.5, false);
+      internal.wait(0.5, false);
     }
-    require('internal').wal.flush(true, true);
+    internal.wal.flush(true, true);
     // wait an extra second for good measure
-    require("internal").wait(1.0, false);
+    internal.wait(1.0, false);
   };
 
   return {
@@ -74,14 +74,14 @@ function backgroundIndexSuite() {
       });
       db._drop(cn);
     },
-
+    
     testInsertParallelNonUnique: function () {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
       let x = 10; 
-      while(x-- > 0) {
+      while (x-- > 0) {
         let docs = []; 
-        for(let i = 0; i < 1000; i++) {
+        for (let i = 0; i < 1000; i++) {
           docs.push({value:i});
         } 
         c.save(docs);
@@ -92,9 +92,9 @@ function backgroundIndexSuite() {
       for (let i = 0; i < n; ++i) {
         let command = `const c = require("internal").db._collection("${cn}"); 
                        let x = 10;
-                       while(x-- > 0) {
+                       while (x-- > 0) {
                          let docs = []; 
-                         for(let i = 0; i < 1000; i++) {
+                         for (let i = 0; i < 1000; i++) {
                            docs.push({value:i})
                          } 
                          c.save(docs);
@@ -135,9 +135,9 @@ function backgroundIndexSuite() {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
       let x = 10; 
-      while(x-- > 0) {
+      while (x-- > 0) {
         let docs = []; 
-        for(let i = 0; i < 1000; i++) {
+        for (let i = 0; i < 1000; i++) {
           docs.push({value:i});
         } 
         c.save(docs);
@@ -153,9 +153,9 @@ function backgroundIndexSuite() {
         }
         let command = `const c = require("internal").db._collection("${cn}"); 
                        let x = 10;
-                       while(x-- > 0) {
+                       while (x-- > 0) {
                          let docs = []; 
-                         for(let i = 0; i < 1000; i++) {
+                         for (let i = 0; i < 1000; i++) {
                            docs.push({value:i})
                          } 
                          c.save(docs);
@@ -193,9 +193,9 @@ function backgroundIndexSuite() {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
       let x = 0;
-      while(x < 5000) {
+      while (x < 5000) {
         let docs = []; 
-        for(let i = 0; i < 1000; i++) {
+        for (let i = 0; i < 1000; i++) {
           docs.push({value: x++});
         } 
         c.save(docs);
@@ -212,9 +212,9 @@ function backgroundIndexSuite() {
         }
         let command = `const c = require("internal").db._collection("${cn}"); 
                        let x = ${i} * 5000; 
-                       while(x < ${i + 1} * 5000) {
+                       while (x < ${i + 1} * 5000) {
                          let docs = []; 
-                         for(let i = 0; i < 1000; i++) {
+                         for (let i = 0; i < 1000; i++) {
                            docs.push({value: x++})
                          } 
                          c.save(docs);
@@ -259,7 +259,7 @@ function backgroundIndexSuite() {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
       let x = 0;
-      while(x < 10000) {
+      while (x < 10000) {
         let docs = []; 
         for(let i = 0; i < 1000; i++) {
           docs.push({value: x++});
@@ -271,9 +271,9 @@ function backgroundIndexSuite() {
       for (let i = 1; i < 5; ++i) {
         let command = `const c = require("internal").db._collection("${cn}"); 
                        let x = ${i} * 10000; 
-                       while(x < ${i + 1} * 10000) {
+                       while (x < ${i + 1} * 10000) {
                          let docs = []; 
-                         for(let i = 0; i < 1000; i++) {
+                         for (let i = 0; i < 1000; i++) {
                            docs.push({value: x++})
                          } 
                          c.save(docs);
@@ -298,15 +298,16 @@ function backgroundIndexSuite() {
       // sanity checks
       assertEqual(c.count(), 50001);
     },
-
+    
     testRemoveParallel: function () {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
       let x = 0;
-      while(x < 100000) {
+      while (x < 100000) {
         let docs = []; 
         for(let i = 0; i < 1000; i++) {
-          docs.push({_key: "test_" + x, value: x++});
+          docs.push({_key: "test_" + x, value: x});
+          ++x;
         } 
         c.save(docs);
       }
@@ -326,7 +327,7 @@ function backgroundIndexSuite() {
                          throw new Error('could not find collection');
                        }
                        let x = ${i} * 10000; 
-                       while(x < ${i} * 10000 + 5000) {
+                       while (x < ${i} * 10000 + 5000) {
                          let docs = [];
                          for(let i = 0; i < 1000; i++) {
                            docs.push("test_" + x++);
@@ -346,17 +347,17 @@ function backgroundIndexSuite() {
       // sanity checks
       assertEqual(c.count(), 50000);
       for (let i = 0; i < 10; i++) { // check for remaining docs via index
-        for (let x = i * 10000 + 5000; x < (i+1) * 10000; x++) {
+        for (let x = i * 10000 + 5000; x < (i + 1) * 10000; x++) {
           const cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
-                                {'@coll': cn, 'val': x}, {count:true});
+                                   {'@coll': cn, 'val': x}, {count:true});
           assertEqual(cursor.count(), 1);
         }
       }
       for (let i = 0; i < 10; i++) { // check for removed docs via index
         for (let x = i * 10000; x < i * 10000 + 5000; x++) {
           const cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
-                                {'@coll': cn, 'val': x}, {count:true});
-          assertEqual(cursor.count(), 0);
+                                   {'@coll': cn, 'val': x}, {count:true});
+          assertEqual(cursor.count(), 0, [i, x]);
         }
       }
 
@@ -367,7 +368,7 @@ function backgroundIndexSuite() {
           case 'primary':
             break;
           case 'hash':
-          assertTrue(Math.abs(i.selectivityEstimate - 1.0) < 0.005, i);
+            assertTrue(Math.abs(i.selectivityEstimate - 1.0) < 0.005, i);
             break;
           default:
             fail();
@@ -379,10 +380,11 @@ function backgroundIndexSuite() {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
       let x = 0;
-      while(x < 100000) {
+      while (x < 100000) {
         let docs = []; 
         for(let i = 0; i < 1000; i++) {
-          docs.push({_key: "test_" + x, value: x++});
+          docs.push({_key: "test_" + x, value: x});
+          ++x;
         } 
         c.save(docs);
       }
@@ -401,7 +403,7 @@ function backgroundIndexSuite() {
                          throw new Error('could not find collection');
                        }
                        let x = ${i * 10000}; 
-                       while(x < ${(i+1) * 10000}) {
+                       while (x < ${(i + 1) * 10000}) {
                          let updated = false;
                          const current = x++;
                          const key = "test_" + current
@@ -437,7 +439,7 @@ function backgroundIndexSuite() {
           case 'primary':
             break;
           case 'skiplist':
-          assertTrue(Math.abs(i.selectivityEstimate - 1.0) < 0.005, i);
+            assertTrue(Math.abs(i.selectivityEstimate - 1.0) < 0.005, i);
           break;
           default:
             fail();

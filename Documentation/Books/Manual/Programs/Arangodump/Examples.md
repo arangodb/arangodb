@@ -15,20 +15,32 @@ directory, you can use the parameter *--overwrite true* to confirm this:
     arangodump --output-directory "dump" --overwrite true
 
 _arangodump_ will by default connect to the *_system* database using the default
-endpoint. If you want to connect to a different database or a different endpoint,
-or use authentication, you can use the following command-line options:
+endpoint. To override the endpoint, or specify a different user, use one of the
+following startup options:
 
-- `--server.database <string>`: name of the database to connect to
 - `--server.endpoint <string>`: endpoint to connect to
 - `--server.username <string>`: username
 - `--server.password <string>`: password to use (omit this and you'll be prompted for the
   password)
 - `--server.authentication <bool>`: whether or not to use authentication
 
+If you want to connect to a different database or dump all databases you can additionaly
+use the following startup options:
+
+- `--all-databases true`: must have access to all databases, and not specify a database.
+- `--server.database <string>`: name of the database to connect to
+
+Note that the specified user must have access to the databases.
+
 Here's an example of dumping data from a non-standard endpoint, using a dedicated
 [database name](../../Appendix/Glossary.md#database-name):
 
     arangodump --server.endpoint tcp://192.168.173.13:8531 --server.username backup --server.database mydb --output-directory "dump"
+
+In contrast to the above call `--server.database` must not be specified when dumping
+all databases using `--all-databases true`:
+
+    arangodump --server.endpoint tcp://192.168.173.13:8531 --server.username backup --all-databases true --output-directory "dump-multiple"
 
 When finished, _arangodump_ will print out a summary line with some aggregate
 statistics about what it did, e.g.:
@@ -69,7 +81,7 @@ Cluster Backup
 --------------
 
 Starting with Version 2.1 of ArangoDB, the *arangodump* tool also
-supports sharding and can be used to backup data from a Cluster. 
+supports sharding and can be used to backup data from a Cluster.
 Simply point it to one of the _Coordinators_ and it
 will behave exactly as described above, working on sharded collections
 in the Cluster.
@@ -136,7 +148,7 @@ dd if=/dev/random bs=1 count=32 of=yourSecretKeyFile
 ```
 
 For security reasons, it is best to create these keys offline (away from your
-database servers) and directly store them in you secret management
+database servers) and directly store them in your secret management
 tool.
 
 
@@ -177,6 +189,32 @@ arangorestore --collection "secret-collection" dump --create-collection true --e
 
 Using a different key will lead to the backup being non-recoverable.
 
-Note that encrypted backups can be used together with the already existing 
+Note that encrypted backups can be used together with the already existing
 RocksDB encryption-at-rest feature, but they can also be used for the MMFiles
 engine, which does not have encryption-at-rest.
+
+Compression
+-----------
+
+<small>Introduced in:  v3.4.6, v3.5.0</small>
+
+`--compress-output`
+
+Data can optionally be dumped in a compressed format to save space on disk.
+The `--compress-output` option can not be used together with [Encryption](#encryption).
+
+If compression is enabled, no `.data.json` files are written. Instead, the
+collection data gets compressed using the Gzip algorithm and for each collection
+a `.data.json.gz` file is written. Metadata files such as `.structure.json` and
+`.view.json` do not get compressed.
+
+```
+arangodump --output-directory "dump" --compress-output
+```
+
+Compressed dumps can be restored with *arangorestore*, which automatically
+detects whether the data is compressed or not based on the file extension.
+
+```
+arangorestore --input-directory "dump"
+```

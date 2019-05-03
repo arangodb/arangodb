@@ -143,7 +143,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_sslProtocol == SslProtocol::SSL_V2) {
-    LOG_TOPIC(FATAL, arangodb::Logger::SSL)
+    LOG_TOPIC("64f4f", FATAL, arangodb::Logger::SSL)
         << "SSLv2 is not supported any longer because of security "
            "vulnerabilities in this protocol";
     FATAL_ERROR_EXIT();
@@ -160,7 +160,7 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   // check timeouts
   if (_connectionTimeout < 0.0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("81598", FATAL, arangodb::Logger::FIXME)
         << "invalid value for --server.connect-timeout, must be >= 0";
     FATAL_ERROR_EXIT();
   } else if (_connectionTimeout == 0.0) {
@@ -168,7 +168,7 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (_requestTimeout < 0.0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("fb847", FATAL, arangodb::Logger::FIXME)
         << "invalid value for --server.request-timeout, must be positive";
     FATAL_ERROR_EXIT();
   } else if (_requestTimeout == 0.0) {
@@ -176,14 +176,14 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (_maxPacketSize < 1 * 1024 * 1024) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("f7793", FATAL, arangodb::Logger::FIXME)
         << "invalid value for --server.max-packet-size, must be at least 1 MB";
     FATAL_ERROR_EXIT();
   }
 
   // username must be non-empty
   if (_username.empty()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("fa58c", FATAL, arangodb::Logger::FIXME)
         << "no value specified for --server.username";
     FATAL_ERROR_EXIT();
   }
@@ -191,13 +191,13 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   _haveServerPassword = !options->processingResult().touched("server.password");
 
   if (_askJwtSecret && options->processingResult().touched("server.password")) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("65475", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both --server.password and --server.ask-jwt-token";
     FATAL_ERROR_EXIT();
   }
 
   if (_askJwtSecret && options->processingResult().touched("server.username")) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("9d886", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both --server.username and --server.ask-jwt-token";
     FATAL_ERROR_EXIT();
   }
@@ -265,7 +265,7 @@ std::unique_ptr<GeneralClientConnection> ClientFeature::createConnection(std::st
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
 
   if (endpoint.get() == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("701fa", ERR, arangodb::Logger::FIXME)
         << "invalid value for --server.endpoint ('" << definition << "')";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
@@ -290,7 +290,7 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
 
   if (endpoint.get() == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("2fac8", ERR, arangodb::Logger::FIXME)
         << "invalid value for --server.endpoint ('" << definition << "')";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
@@ -329,16 +329,30 @@ void ClientFeature::stop() {
 #endif
 }
 
+std::string ClientFeature::buildConnectedMessage(
+    std::string const& endpointSpecification,
+    std::string const& version,
+    std::string const& role,
+    std::string const& mode,
+    std::string const& databaseName,
+    std::string const& user
+) {
+  return std::string("Connected to ArangoDB '") + endpointSpecification + 
+         ((version.empty() || version == "arango") ? "" : ", version: " + version) +
+         (role.empty() ? "" : " [" + role + ", " + mode + "]") +
+         ", database: '" + databaseName + "', username: '" + user + "'";
+}
+
 int ClientFeature::runMain(int argc, char* argv[],
                            std::function<int(int argc, char* argv[])> const& mainFunc) {
   try {
     return mainFunc(argc, argv);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("5b00f", ERR, arangodb::Logger::FIXME)
         << argv[0] << " terminated because of an unhandled exception: " << ex.what();
     return EXIT_FAILURE;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("98466", ERR, arangodb::Logger::FIXME)
         << argv[0] << " terminated because of an unhandled exception of unknown type";
     return EXIT_FAILURE;
   }

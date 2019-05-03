@@ -239,17 +239,18 @@ POST /_db/_system/_api/replication/clusterInventory
 }
 ```
 
-Check that for all collections the attribute `"allInSync"` has
-the value `true`. Note that it is necessary to do this for all databases!
+Check that for all collections the attributes `"isReady"` and `"allInSync"`
+both have the value `true`. Note that it is necessary to do this for all
+databases!
 
 Here is a shell command which makes this check easy:
 
 ```bash
-curl -k https://arangodb.9hoeffer.de:8529/_db/_system/_api/replication/clusterInventory --user root: | jq . | grep '"allInSync"' | sort | uniq -c
+curl -k https://arangodb.9hoeffer.de:8529/_db/_system/_api/replication/clusterInventory --user root: | jq . | grep '"isReady"\|"allInSync"' | sort | uniq -c
 ```
 
-If all these checks are performed and are okay, the cluster is ready to
-run a risk-free drain operation.
+If all these checks are performed and are okay, then it is safe to
+continue with the clean out and drain procedure as described below.
 
 {% hint 'danger' %}
 If there are some collections with `replicationFactor` set to
@@ -275,13 +276,14 @@ below, the procedure should also work without this.
 Finally, one should **not run a rolling upgrade or restart operation**
 at the time of a node drain.
 
-## Clean out a DBserver manually (optional)
+## Clean out a DBserver manually
 
-In this step we clean out a _DBServer_ manually, before even issuing the
-`kubectl drain` command. This step is optional, but can speed up things
-considerably. Here is why:
+In this step we clean out a _DBServer_ manually, **before issuing the
+`kubectl drain` command**. Previously, we have denoted this step as optional,
+but for safety reasons, we consider it mandatory now, since it is near
+impossible to choose the grace period long enough in a reliable way.
 
-If this step is not performed, we must choose
+Furthermore, if this step is not performed, we must choose
 the grace period long enough to avoid any risk, as explained in the
 previous section. However, this has a disadvantage which has nothing to
 do with ArangoDB: We have observed, that some k8s internal services like
@@ -309,10 +311,10 @@ POST /_admin/cluster/cleanOutServer
 {"server":"DBServer0006"}
 ```
 
-(please compare the above output of the `/_admin/cluster/health` API).
 The value of the `"server"` attribute should be the name of the DBserver
 which is the one in the pod which resides on the node that shall be
-drained next. This uses the UI short name, alternatively one can use the
+drained next. This uses the UI short name (`ShortName` in the
+`/_admin/cluster/health` API), alternatively one can use the
 internal name, which corresponds to the pod name. In our example, the
 pod name is:
 
@@ -327,6 +329,12 @@ could use the body:
 
 ```JSON
 {"server":"PRMR-wbsq47rz"}
+```
+
+You can use this command line to achieve this:
+
+```bash
+curl -k https://arangodb.9hoeffer.de:8529/_admin/cluster/cleanOutServer --user root: -d '{"server":"PRMR-wbsq47rz"}'
 ```
 
 The API call will return immediately with a body like this:
@@ -361,6 +369,12 @@ GET /_admin/cluster/queryAgencyJob?id=38029195
 }
 ```
 
+Use this command line to check progress:
+
+```bash
+curl -k https://arangodb.9hoeffer.de:8529/_admin/cluster/queryAgencyJob?id=38029195 --user root:
+```
+
 It indicates that the job is still ongoing (`"Pending"`). As soon as
 the job has completed, the answer will be:
 
@@ -392,8 +406,8 @@ completely risk-free, even with a small grace period.
 ## Performing the drain
 
 After all above [checks before a node drain](#things-to-check-in-arangodb-before-a-node-drain)
-have been done successfully, it is safe to perform the drain
-operation, similar to this command:
+and the [manual clean out of the DBServer](#clean-out-a-dbserver-manually)
+have been done successfully, it is safe to perform the drain operation, similar to this command:
 
 ```bash
 kubectl drain gke-draintest-default-pool-394fe601-glts --delete-local-data --ignore-daemonsets --grace-period=300
@@ -403,12 +417,12 @@ As described above, the options `--delete-local-data` for ArangoDB and
 `--ignore-daemonsets` for other services have been added. A `--grace-period` of
 300 seconds has been chosen because for this example we are confident that all the data on our _DBServer_ pod
 can be moved to a different server within 5 minutes. Note that this is
-**not saying** that 300 seconds will always be enough, regardless of how
+**not saying** that 300 seconds will always be enough. Regardless of how
 much data is stored in the pod, your mileage may vary, moving a terabyte
 of data can take considerably longer!
 
-If the optional step of
-[cleaning out a DBserver manually](#clean-out-a-dbserver-manually-optional)
+If the highly recommended step of
+[cleaning out a DBserver manually](#clean-out-a-dbserver-manually)
 has been performed beforehand, the grace period can easily be reduced to 60
 seconds - at least from the perspective of ArangoDB, since the server is already
 cleaned out, so it can be dropped readily and there is still no risk.

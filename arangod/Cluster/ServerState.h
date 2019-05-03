@@ -24,6 +24,8 @@
 #ifndef ARANGOD_CLUSTER_SERVER_STATE_H
 #define ARANGOD_CLUSTER_SERVER_STATE_H 1
 
+#include <mutex>
+
 #include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "VocBase/voc-types.h"
@@ -38,7 +40,7 @@ class ServerState {
   enum RoleEnum : int {
     ROLE_UNDEFINED = 0,  // initial value
     ROLE_SINGLE,         // is set when cluster feature is off
-    ROLE_PRIMARY,
+    ROLE_DBSERVER,
     ROLE_COORDINATOR,
     ROLE_AGENT
   };
@@ -146,13 +148,13 @@ class ServerState {
   /// running in cluster mode.
   static bool isDBServer(ServerState::RoleEnum role) {
     TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
-    return (role == ServerState::ROLE_PRIMARY);
+    return (role == ServerState::ROLE_DBSERVER);
   }
 
   /// @brief whether or not the role is a cluster-related role
   static bool isClusterRole(ServerState::RoleEnum role) {
     TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
-    return (role == ServerState::ROLE_PRIMARY || role == ServerState::ROLE_COORDINATOR);
+    return (role == ServerState::ROLE_DBSERVER || role == ServerState::ROLE_COORDINATOR);
   }
 
   /// @brief whether or not the role is a cluster-related role
@@ -283,8 +285,10 @@ class ServerState {
   /// @brief r/w lock for state
   mutable arangodb::basics::ReadWriteSpinLock _lock;
 
-  /// @brief the server's id, can be set just once
+  /// @brief the server's id, can be set just once, use getId and setId, do not access directly
   std::string _id;
+  /// @brief lock for writing and reading server id
+  mutable std::mutex _idLock;
 
   /// @brief the server's short id, can be set just once
   std::atomic<uint32_t> _shortId;

@@ -110,7 +110,6 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   Result fillIndexBackground(Locker& locker);
 
   virtual IndexIterator* iteratorForCondition(transaction::Methods* trx,
-                                              ManagedDocumentResult* result,
                                               aql::AstNode const* condNode,
                                               aql::Variable const* var,
                                               IndexIteratorOptions const& opts) override {

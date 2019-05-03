@@ -70,19 +70,19 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_upgrade && !_upgradeCheck) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("47698", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both '--database.auto-upgrade true' and "
            "'--database.upgrade-check false'";
     FATAL_ERROR_EXIT();
   }
 
   if (!_upgrade) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("ed226", TRACE, arangodb::Logger::FIXME)
         << "executing upgrade check: not disabling server features";
     return;
   }
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+  LOG_TOPIC("23525", INFO, arangodb::Logger::FIXME)
       << "executing upgrade procedure: disabling server features";
 
   ApplicationServer::forceDisableFeatures(_nonServerFeatures);
@@ -132,7 +132,7 @@ void UpgradeFeature::start() {
   if (init->restoreAdmin() && ServerState::instance()->isSingleServerOrCoordinator()) {
     Result res = um->removeAllUsers();
     if (res.fail()) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("70922", ERR, arangodb::Logger::FIXME)
           << "failed to clear users: " << res.errorMessage();
       *_result = EXIT_FAILURE;
       return;
@@ -145,14 +145,14 @@ void UpgradeFeature::start() {
     }
 
     if (res.fail()) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("e9637", ERR, arangodb::Logger::FIXME)
           << "failed to create root user: " << res.errorMessage();
       *_result = EXIT_FAILURE;
       return;
     }
     auto oldLevel = arangodb::Logger::FIXME.level();
     arangodb::Logger::FIXME.setLogLevel(arangodb::LogLevel::INFO);
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "Password changed.";
+    LOG_TOPIC("95cab", INFO, arangodb::Logger::FIXME) << "Password changed.";
     arangodb::Logger::FIXME.setLogLevel(oldLevel);
     *_result = EXIT_SUCCESS;
   }
@@ -163,7 +163,7 @@ void UpgradeFeature::start() {
       *_result = EXIT_SUCCESS;
     }
 
-    LOG_TOPIC(INFO, arangodb::Logger::STARTUP)
+    LOG_TOPIC("7da27", INFO, arangodb::Logger::STARTUP)
         << "server will now shut down due to upgrade, database initialization "
            "or admin restoration.";
 
@@ -172,7 +172,7 @@ void UpgradeFeature::start() {
 }
 
 void UpgradeFeature::upgradeDatabase() {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "starting database init/upgrade";
+  LOG_TOPIC("05dff", TRACE, arangodb::Logger::FIXME) << "starting database init/upgrade";
 
   DatabaseFeature* databaseFeature =
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
@@ -180,7 +180,9 @@ void UpgradeFeature::upgradeDatabase() {
 
   bool ignoreDatafileErrors = false;
   {
-    VPackBuilder options = server()->options(std::unordered_set<std::string>());
+    VPackBuilder options = server()->options([](std::string const& name) {
+      return (name.find("database.ignore-datafile-errors") != std::string::npos);
+    });
     VPackSlice s = options.slice();
     if (s.get("database.ignore-datafile-errors").isBoolean()) {
       ignoreDatafileErrors = s.get("database.ignore-datafile-errors").getBool();
@@ -200,13 +202,13 @@ void UpgradeFeature::upgradeDatabase() {
         typeName = "upgrade";  // an upgrade failed or is required
 
         if (!_upgrade) {
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          LOG_TOPIC("1c156", ERR, arangodb::Logger::FIXME)
               << "Database '" << vocbase->name() << "' needs upgrade. "
               << "Please start the server with --database.auto-upgrade";
         }
       }
 
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("2eb08", FATAL, arangodb::Logger::FIXME)
           << "Database '" << vocbase->name() << "' " << typeName << " failed ("
           << res.errorMessage() << "). "
           << "Please inspect the logs from the " << typeName << " procedure"
@@ -218,11 +220,11 @@ void UpgradeFeature::upgradeDatabase() {
 
   if (_upgrade) {
     *_result = EXIT_SUCCESS;
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "database upgrade passed";
+    LOG_TOPIC("0de5e", INFO, arangodb::Logger::FIXME) << "database upgrade passed";
   }
 
   // and return from the context
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "finished database init/upgrade";
+  LOG_TOPIC("01a03", TRACE, arangodb::Logger::FIXME) << "finished database init/upgrade";
 }
 
 }  // namespace arangodb

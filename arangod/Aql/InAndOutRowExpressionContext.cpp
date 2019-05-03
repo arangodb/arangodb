@@ -56,6 +56,10 @@ void InAndOutRowExpressionContext::setInputRow(InputAqlItemRow input) {
   _input = input;
 }
 
+void InAndOutRowExpressionContext::invalidateInputRow() {
+  _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+}
+
 AqlValue const& InAndOutRowExpressionContext::getRegisterValue(size_t i) const {
   TRI_ASSERT(_input.isInitialized());
   TRI_ASSERT(i < _regs.size());

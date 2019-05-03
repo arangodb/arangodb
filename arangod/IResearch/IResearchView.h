@@ -127,7 +127,7 @@ class IResearchView final: public arangodb::LogicalView {
   ///        also track 'cid' via the persisted list of tracked collection IDs
   /// @return the 'link' was newly added to the IResearch View
   //////////////////////////////////////////////////////////////////////////////
-  bool link(AsyncLinkPtr const& link);
+  arangodb::Result link(AsyncLinkPtr const& link);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link
@@ -177,19 +177,24 @@ class IResearchView final: public arangodb::LogicalView {
   ///////////////////////////////////////////////////////////////////////////////
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief persist data store states for all known links to permanent storage
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result commit();
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @return primary sorting order of a view, empty -> use system order
+  ///////////////////////////////////////////////////////////////////////////////
+  IResearchViewMeta::Sort const& primarySort() const noexcept {
+    return _meta._primarySort;
+  }
 
  protected:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
   //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder,
-                                                bool detailed,
-                                                bool forPersistence) const override;
+  virtual arangodb::Result appendVelocyPackImpl( // append definition
+    arangodb::velocypack::Builder& builder, // definition destination
+    bool detailed, // detailed definition flag
+    bool forPersistence // for-persistence definition flag
+  ) const override;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief drop this IResearch View
@@ -222,6 +227,11 @@ class IResearchView final: public arangodb::LogicalView {
   );
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief persist data store states for all known links to permanent storage
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result commit();
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are updated (i.e. delta-modified)
   //////////////////////////////////////////////////////////////////////////////
   arangodb::Result updateProperties( // update properties
@@ -235,7 +245,7 @@ class IResearchView final: public arangodb::LogicalView {
   void verifyKnownCollections();
 };
 
-}  // namespace iresearch
-}  // namespace arangodb
+} // iresearch
+} // arangodb
 
 #endif

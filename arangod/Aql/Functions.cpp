@@ -32,6 +32,7 @@
 #include "Aql/Query.h"
 #include "Aql/V8Executor.h"
 #include "Basics/Exceptions.h"
+#include "Basics/HybridLogicalClock.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
@@ -39,7 +40,9 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/conversions.h"
 #include "Basics/fpconv.h"
+#include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
@@ -865,7 +868,7 @@ void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionN
         return;
       }
     }
-    if (res.errorNumber() == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
+    if (res.is(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) {
       // special error message to indicate which collection was undeclared
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
                                      res.errorMessage() + ": " + collectionName +
@@ -1083,15 +1086,11 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
   // JavaScript function (this includes user-defined functions)
   {
     ISOLATE;
-    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
+    v8::HandleScope scope(isolate);                                   \
 
     Query* query = expressionContext->query();
     TRI_ASSERT(query != nullptr);
     query->prepareV8Context();
-
-    auto old = v8g->_query;
-    v8g->_query = query;
-    TRI_DEFER(v8g->_query = old);
 
     std::string jsName;
     int const n = static_cast<int>(invokeParams.size());
@@ -1466,6 +1465,7 @@ AqlValue Functions::LevenshteinDistance(ExpressionContext*, transaction::Methods
   AqlValue const& value1 = extractFunctionParameterValue(parameters, 0);
   AqlValue const& value2 = extractFunctionParameterValue(parameters, 1);
 
+  // FIXME: there is only one shared stringbuffer instance
   transaction::StringBufferLeaser buffer1(trx);
   transaction::StringBufferLeaser buffer2(trx);
 
@@ -3403,7 +3403,6 @@ AqlValue Functions::DateSubtract(ExpressionContext* expressionContext,
   // size == 3 unit / unit type
   // size == 2 iso duration
 
-  year_month_day ymd{floor<days>(tp)};
   if (parameters.size() == 3) {
     AqlValue const& durationUnit = extractFunctionParameterValue(parameters, 1);
     if (!durationUnit.isNumber()) {  // unit must be number
@@ -4188,6 +4187,36 @@ AqlValue Functions::Sha512(ExpressionContext*, transaction::Methods* trx,
   arangodb::rest::SslInterface::sslHEX(hash, 64, p, length);
 
   return AqlValue(&hex[0], 128);
+}
+
+/// @brief function Crc32
+AqlValue Functions::Crc32(ExpressionContext*, transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  ::appendAsString(trx, adapter, value);
+
+  uint32_t crc = TRI_Crc32HashPointer(buffer->c_str(), buffer->length());
+  char out[9];
+  size_t length = TRI_StringUInt32HexInPlace(crc, &out[0]);
+  return AqlValue(&out[0], length);
+}
+
+/// @brief function Fnv64
+AqlValue Functions::Fnv64(ExpressionContext*, transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  ::appendAsString(trx, adapter, value);
+
+  uint64_t hash = TRI_FnvHashPointer(buffer->c_str(), buffer->length());
+  char out[17];
+  size_t length = TRI_StringUInt64HexInPlace(hash, &out[0]);
+  return AqlValue(&out[0], length);
 }
 
 /// @brief function HASH
@@ -6684,7 +6713,7 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
   }
 
   uint64_t execNr = arg1.toInt64();
-  pregel::PregelFeature* feature = pregel::PregelFeature::instance();
+  std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
   if (!feature) {
     ::registerWarning(expressionContext, AFN, TRI_ERROR_FAILED);
     return AqlValue(AqlValueHintEmptyArray());
@@ -6796,6 +6825,50 @@ AqlValue Functions::DateFormat(ExpressionContext* expressionContext,
   }
 
   return AqlValue(arangodb::basics::formatDate(aqlFormatString.slice().copyString(), tp));
+}
+
+/// @brief function DECODE_REV
+AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
+                              transaction::Methods* trx,
+                              VPackFunctionParameters const& parameters) {
+  auto const rev = extractFunctionParameterValue(parameters, 0);
+  if (!rev.isString()) {
+    ::registerInvalidArgumentWarning(expressionContext, "DECODE_REV");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  VPackValueLength l;
+  char const* p = rev.slice().getString(l);
+  uint64_t revInt = arangodb::basics::HybridLogicalClock::decodeTimeStamp(p, l);
+ 
+  if (revInt == 0 || revInt == UINT64_MAX) {
+    ::registerInvalidArgumentWarning(expressionContext, "DECODE_REV");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  uint64_t timeMilli = arangodb::basics::HybridLogicalClock::extractTime(revInt);
+  uint64_t count = arangodb::basics::HybridLogicalClock::extractCount(revInt);
+  time_t timeSeconds = timeMilli / 1000;
+  uint64_t millis = timeMilli % 1000;
+  struct tm date;
+  TRI_gmtime(timeSeconds, &date);
+  
+  char buffer[32];
+  strftime(buffer, 32, "%Y-%m-%dT%H:%M:%S.000Z", &date);
+  // fill millisecond part not covered by strftime
+  buffer[20] = static_cast<char>(millis / 100) + '0';
+  buffer[21] = ((millis / 10) % 10) + '0';
+  buffer[22] = (millis % 10) + '0';
+  // buffer[23] is 'Z'
+  buffer[24] = 0;
+
+  transaction::BuilderLeaser builder(trx);
+  builder->openObject();
+  builder->add("date", VPackValue(buffer));
+  builder->add("count", VPackValue(count));
+  builder->close();
+
+  return AqlValue(builder.get());
 }
 
 AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,

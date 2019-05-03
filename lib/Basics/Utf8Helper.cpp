@@ -43,6 +43,29 @@
 using namespace arangodb::basics;
 using namespace icu;
 
+#ifdef _WIN32
+std::wstring arangodb::basics::toWString(std::string const& validUTF8String) {
+  icu::UnicodeString utf16(validUTF8String.c_str(), validUTF8String.size());
+  // // probably required for newer c++ versions
+  // using bufferType = std::remove_pointer_t<decltype(utf16.getTerminatedBuffer())>;
+  // static_assert(sizeof(std::wchar_t) == sizeof(bufferType), "sizes do not match");
+  // return std::wstring(reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()), utf16.length());
+  return std::wstring(utf16.getTerminatedBuffer(), utf16.length());
+}
+
+std::string arangodb::basics::fromWString(wchar_t const* validUTF16String, std::size_t size) {
+  std::string out;
+  icu::UnicodeString ICUString(validUTF16String, size);
+  ICUString.toUTF8String<std::string>(out);
+  return out;
+}
+
+std::string arangodb::basics::fromWString(std::wstring const& validUTF16String) {
+  return arangodb::basics::fromWString(validUTF16String.data(), validUTF16String.size());
+}
+#endif
+
+
 Utf8Helper Utf8Helper::DefaultUtf8Helper(nullptr);
 
 Utf8Helper::Utf8Helper(std::string const& lang, void* icuDataPtr)
@@ -102,7 +125,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang, void* icuDataPoint
   UErrorCode status = U_ZERO_ERROR;
   udata_setCommonData(reinterpret_cast<void*>(icuDataPointer), &status);
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("2d56a", ERR, arangodb::Logger::FIXME)
         << "error while udata_setCommonData(...): " << u_errorName(status);
     return false;
   }
@@ -113,7 +136,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang, void* icuDataPoint
     const icu::Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("b251d", ERR, arangodb::Logger::FIXME)
           << "error in Collator::getLocale(...): " << u_errorName(status);
       return false;
     }
@@ -132,7 +155,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang, void* icuDataPoint
   }
 
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("d0e00", ERR, arangodb::Logger::FIXME)
         << "error in Collator::createInstance('" << lang
         << "'): " << u_errorName(status);
     if (coll) {
@@ -149,7 +172,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang, void* icuDataPoint
                      status);  // UCOL_IDENTICAL, UCOL_PRIMARY, UCOL_SECONDARY, UCOL_TERTIARY
 
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("f0757", ERR, arangodb::Logger::FIXME)
         << "error in Collator::setAttribute(...): " << u_errorName(status);
     delete coll;
     return false;
@@ -170,7 +193,7 @@ std::string Utf8Helper::getCollatorLanguage() {
     const icu::Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("1d8d0", ERR, arangodb::Logger::FIXME)
           << "error in Collator::getLocale(...): " << u_errorName(status);
       return "";
     }
@@ -186,7 +209,7 @@ std::string Utf8Helper::getCollatorCountry() {
     const icu::Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("a596f", ERR, arangodb::Logger::FIXME)
           << "error in Collator::getLocale(...): " << u_errorName(status);
       return "";
     }
@@ -235,7 +258,7 @@ char* Utf8Helper::tolower(char const* src, int32_t srcLength, int32_t& dstLength
   icu::LocalUCaseMapPointer csm(ucasemap_open(locale.c_str(), options, &status));
 
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("12bc5", ERR, arangodb::Logger::FIXME)
         << "error in ucasemap_open(...): " << u_errorName(status);
   } else {
     utf8_dest = (char*)TRI_Allocate((srcLength + 1) * sizeof(char));
@@ -259,7 +282,7 @@ char* Utf8Helper::tolower(char const* src, int32_t srcLength, int32_t& dstLength
     }
 
     if (U_FAILURE(status)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("d7295", ERR, arangodb::Logger::FIXME)
           << "error in ucasemap_utf8ToLower(...): " << u_errorName(status);
       TRI_Free(utf8_dest);
     } else {
@@ -314,7 +337,7 @@ char* Utf8Helper::toupper(char const* src, int32_t srcLength, int32_t& dstLength
   LocalUCaseMapPointer csm(ucasemap_open(locale.c_str(), options, &status));
 
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("10333", ERR, arangodb::Logger::FIXME)
         << "error in ucasemap_open(...): " << u_errorName(status);
   } else {
     utf8_dest = (char*)TRI_Allocate((srcLength + 1) * sizeof(char));
@@ -338,7 +361,7 @@ char* Utf8Helper::toupper(char const* src, int32_t srcLength, int32_t& dstLength
     }
 
     if (U_FAILURE(status)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("cafe4", ERR, arangodb::Logger::FIXME)
           << "error in ucasemap_utf8ToUpper(...): " << u_errorName(status);
       TRI_Free(utf8_dest);
     } else {
@@ -407,7 +430,7 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
 
   if (U_FAILURE(status)) {
     TRI_Free(textUtf16);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("0e8cb", ERR, arangodb::Logger::FIXME)
         << "error in Collator::getLocale(...): " << u_errorName(status);
     return false;
   }
@@ -554,7 +577,7 @@ char* TRI_tolower_utf8(char const* src, int32_t srcLength, int32_t* dstLength) {
 /// @brief convert a utf-8 string to a uchar (utf-16)
 ////////////////////////////////////////////////////////////////////////////////
 
-UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, 
+UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength,
                        UChar* buffer, size_t bufferSize, size_t* outLength) {
   UErrorCode status = U_ZERO_ERROR;
 
@@ -571,7 +594,7 @@ UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength,
     // use local buffer
     utf16 = buffer;
   } else {
-    // dynamic memory 
+    // dynamic memory
     utf16 = (UChar*)TRI_Allocate((utf16Length + 1) * sizeof(UChar));
     if (utf16 == nullptr) {
       return nullptr;

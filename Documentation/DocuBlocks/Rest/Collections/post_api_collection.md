@@ -168,6 +168,21 @@ collections (requires the *Enterprise Edition* of ArangoDB).
 Manually overriding the sharding strategy does not yet provide a 
 benefit, but it may later in case other sharding strategies are added.
 
+@RESTBODYPARAM{smartJoinAttribute,string,optional,string}
+In an *Enterprise Edition* cluster, this attribute determines an attribute
+of the collection that must contain the shard key value of the referred-to 
+smart join collection. Additionally, the shard key for a document in this 
+collection must contain the value of this attribute, followed by a colon, 
+followed by the actual primary key of the document.
+
+This feature can only be used in the *Enterprise Edition* and requires the
+*distributeShardsLike* attribute of the collection to be set to the name
+of another collection. It also requires the *shardKeys* attribute of the
+collection to be set to a single shard key attribute, with an additional ':'
+at the end.
+A further restriction is that whenever documents are stored or updated in the 
+collection, the value stored in the *smartJoinAttribute* must be a string.
+
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{waitForSyncReplication,integer,optional}
@@ -189,6 +204,9 @@ returned.
 @RESTRETURNCODE{404}
 If the *collection-name* is unknown, then a *HTTP 404* is returned.
 
+@RESTRETURNCODE{200}
+
+@RESTREPLYBODY{,object,required,collection_info}
 
 @EXAMPLES
 

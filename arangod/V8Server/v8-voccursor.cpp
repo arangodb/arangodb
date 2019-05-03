@@ -24,6 +24,7 @@
 #include "V8Server/v8-voccursor.h"
 #include "Aql/QueryCursor.h"
 #include "Aql/QueryResult.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Transaction/Context.h"
@@ -94,7 +95,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto* cursors = vocbase.cursorRepository();  // create a cursor
   arangodb::aql::QueryResult result(TRI_ERROR_NO_ERROR);
 
-  result.result = builder;
+  result.data = builder;
   result.cached = false;
   result.context = transaction::V8Context::Create(vocbase, false);
 
@@ -345,7 +346,8 @@ struct V8Cursor final {
     // specify ID 0 so it uses the external V8 context
     auto cc = cursors->createQueryStream(queryString, std::move(bindVars),
                                          std::move(options), batchSize, ttl,
-                                         contextOwnedByExterior);
+                                         contextOwnedByExterior,
+                                         /*trxCtx*/ nullptr);
     TRI_DEFER(cc->release());
     // args.Holder() is supposedly better than args.This()
     auto self = std::make_unique<V8Cursor>(isolate, args.Holder(), *vocbase, cc->id());

@@ -24,6 +24,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 
 #include <algorithm>
@@ -32,19 +33,25 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
+                                 // cppcheck-suppress passedByValue
                                  std::unordered_set<RegisterId> toKeep,
+                                 // cppcheck-suppress passedByValue
                                  std::unordered_set<RegisterId> registersToClear)
     : ExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
                     nrInOutRegisters, nrInOutRegisters,
                     std::move(registersToClear), std::move(toKeep)) {}
 
-IdExecutor::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)
+template <class UsedFetcher>
+IdExecutor<UsedFetcher>::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)
     : _fetcher(fetcher){};
-IdExecutor::~IdExecutor() = default;
 
-std::pair<ExecutionState, IdExecutor::Stats> IdExecutor::produceRow(OutputAqlItemRow& output) {
+template <class UsedFetcher>
+IdExecutor<UsedFetcher>::~IdExecutor() = default;
+
+template <class UsedFetcher>
+std::pair<ExecutionState, NoStats> IdExecutor<UsedFetcher>::produceRows(OutputAqlItemRow& output) {
   ExecutionState state;
-  IdExecutor::Stats stats;
+  NoStats stats;
 
   InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   std::tie(state, inputRow) = _fetcher.fetchRow();
@@ -64,8 +71,9 @@ std::pair<ExecutionState, IdExecutor::Stats> IdExecutor::produceRow(OutputAqlIte
   }
 
   TRI_ASSERT(state == ExecutionState::HASMORE || state == ExecutionState::DONE);
-  output.copyRow(inputRow,
-                 /*ignore registers that should be kept but are missing in the input row*/ true);
+  /*Second parameter are to ignore registers that should be kept but are missing in the input row*/
+  output.copyRow(inputRow, std::is_same<UsedFetcher, ConstFetcher>::value);
+  TRI_ASSERT(output.produced());
 
   TRI_IF_FAILURE("SingletonBlock::getOrSkipSomeSet") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -73,3 +81,7 @@ std::pair<ExecutionState, IdExecutor::Stats> IdExecutor::produceRow(OutputAqlIte
 
   return {state, std::move(stats)};
 }
+
+template class ::arangodb::aql::IdExecutor<ConstFetcher>;
+// ID can always pass through
+template class ::arangodb::aql::IdExecutor<SingleRowFetcher<true>>;

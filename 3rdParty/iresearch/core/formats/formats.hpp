@@ -525,7 +525,7 @@ class IRESEARCH_API formats {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether a format with the specified name is registered
   ////////////////////////////////////////////////////////////////////////////////
-  static bool exists(const string_ref& name);
+  static bool exists(const string_ref& name, bool load_library = true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find a format by name, or nullptr if not found
@@ -533,7 +533,10 @@ class IRESEARCH_API formats {
   ///        requires use of DECLARE_FACTORY() in class definition
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   //////////////////////////////////////////////////////////////////////////////
-  static format::ptr get(const string_ref& name) NOEXCEPT;
+  static format::ptr get(
+    const string_ref& name,
+    bool load_library = true
+  ) NOEXCEPT;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for static lib reference all known formats in lib

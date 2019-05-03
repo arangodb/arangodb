@@ -58,6 +58,9 @@ void Collection::setExclusiveAccess() {
 /// @brief get the collection id
 TRI_voc_cid_t Collection::id() const { return getCollection()->id(); }
 
+/// @brief collection type
+TRI_col_type_e Collection::type() const { return getCollection()->type(); }
+
 /// @brief count the number of documents in the collection
 size_t Collection::count(transaction::Methods* trx) const {
   // estimate for the number of documents in the collection. may be outdated...
@@ -147,12 +150,25 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds(
 }
 
 /// @brief returns the shard keys of a collection
-std::vector<std::string> Collection::shardKeys() const {
+std::vector<std::string> Collection::shardKeys(bool normalize) const {
   auto coll = getCollection();
-  std::vector<std::string> keys;
-  for (auto const& x : coll->shardKeys()) {
-    keys.emplace_back(x);
+  auto const& originalKeys = coll->shardKeys();
+    
+  if (normalize && 
+      coll->isSmart() && coll->type() == TRI_COL_TYPE_DOCUMENT) {
+    // smart vertex collection always has ["_key:"] as shard keys
+    TRI_ASSERT(originalKeys.size() == 1);
+    TRI_ASSERT(originalKeys[0] == "_key:");
+    // now normalize it this to _key
+    return std::vector<std::string>{ StaticStrings::KeyString };
   }
+  
+  std::vector<std::string> keys;
+  keys.reserve(originalKeys.size());
+  for (auto const& key : originalKeys) {
+    keys.emplace_back(key);
+  }
+
   return keys;
 }
 
@@ -186,3 +202,7 @@ bool Collection::isSmart() const { return getCollection()->isSmart(); }
 
 /// @brief check if collection is a satellite collection
 bool Collection::isSatellite() const { return getCollection()->isSatellite(); }
+  
+/// @brief return the name of the smart join attribute (empty string
+/// if no smart join attribute is present)
+std::string const& Collection::smartJoinAttribute() const { return getCollection()->smartJoinAttribute(); }

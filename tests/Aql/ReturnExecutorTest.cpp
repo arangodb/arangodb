@@ -20,11 +20,10 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BlockFetcherHelper.h"
+#include "RowFetcherHelper.h"
 #include "catch.hpp"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
@@ -47,10 +46,8 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
 
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager(&monitor);
-  auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 1)};
   auto registersToKeep = make_shared_unordered_set();
-  auto blockShell =
-      std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
 
   RegisterId inputRegister(0);
 /*
@@ -89,9 +86,9 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
             CountStats stats{};
 
             THEN("the executor should return DONE with nullptr") {
-              OutputAqlItemRow result(std::move(blockShell), outputRegisters,
+              OutputAqlItemRow result(std::move(block), outputRegisters,
                                       registersToKeep, infos.registersToClear());
-              std::tie(state, stats) = testee.produceRow(result);
+              std::tie(state, stats) = testee.produceRows(result);
               REQUIRE(state == ExecutionState::DONE);
               REQUIRE(!result.produced());
             }
@@ -103,14 +100,14 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
             CountStats stats{};
 
             THEN("the executor should first return WAIT with nullptr") {
-              OutputAqlItemRow result(std::move(blockShell), outputRegisters,
+              OutputAqlItemRow result(std::move(block), outputRegisters,
                                       registersToKeep, infos.registersToClear());
-              std::tie(state, stats) = testee.produceRow(result);
+              std::tie(state, stats) = testee.produceRows(result);
               REQUIRE(state == ExecutionState::WAITING);
               REQUIRE(!result.produced());
 
               AND_THEN("the executor should return DONE with nullptr") {
-                std::tie(state, stats) = testee.produceRow(result);
+                std::tie(state, stats) = testee.produceRows(result);
                 REQUIRE(state == ExecutionState::DONE);
                 REQUIRE(!result.produced());
               }
@@ -130,28 +127,28 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
 
             THEN("the executor should return the rows") {
               if (passBlocksThrough) {
-                blockShell = fetcher.getItemBlockShell();
+                block = fetcher.getItemBlock();
               }
-              OutputAqlItemRow row(std::move(blockShell), outputRegisters,
+              OutputAqlItemRow row(std::move(block), outputRegisters,
                                    registersToKeep, infos.registersToClear());
 
-              std::tie(state, stats) = testee.produceRow(row);
+              std::tie(state, stats) = testee.produceRows(row);
               REQUIRE(state == ExecutionState::HASMORE);
               REQUIRE(row.produced());
               row.advanceRow();
 
-              std::tie(state, stats) = testee.produceRow(row);
+              std::tie(state, stats) = testee.produceRows(row);
               REQUIRE(state == ExecutionState::HASMORE);
               REQUIRE(row.produced());
               row.advanceRow();
 
-              std::tie(state, stats) = testee.produceRow(row);
+              std::tie(state, stats) = testee.produceRows(row);
               REQUIRE(state == ExecutionState::DONE);
               REQUIRE(row.produced());
               row.advanceRow();
 
               AND_THEN("The output should stay stable") {
-                std::tie(state, stats) = testee.produceRow(row);
+                std::tie(state, stats) = testee.produceRows(row);
                 REQUIRE(state == ExecutionState::DONE);
                 REQUIRE(!row.produced());
               }
@@ -175,39 +172,39 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
 
             THEN("the executor should return the rows") {
               if (passBlocksThrough) {
-                blockShell = fetcher.getItemBlockShell();
+                block = fetcher.getItemBlock();
               }
-              OutputAqlItemRow row{std::move(blockShell), outputRegisters,
+              OutputAqlItemRow row{std::move(block), outputRegisters,
                                    registersToKeep, infos.registersToClear()};
 
-              std::tie(state, stats) = testee.produceRow(row);
+              std::tie(state, stats) = testee.produceRows(row);
               REQUIRE(state == ExecutionState::WAITING);
               REQUIRE(!row.produced());
 
-              std::tie(state, stats) = testee.produceRow(row);
+              std::tie(state, stats) = testee.produceRows(row);
               REQUIRE(state == ExecutionState::HASMORE);
               REQUIRE(row.produced());
               row.advanceRow();
 
-              std::tie(state, stats) = testee.produceRow(row);
+              std::tie(state, stats) = testee.produceRows(row);
               REQUIRE(state == ExecutionState::WAITING);
               REQUIRE(!row.produced());
 
-              std::tie(state, stats) = testee.produceRow(row);
+              std::tie(state, stats) = testee.produceRows(row);
               REQUIRE(state == ExecutionState::HASMORE);
               REQUIRE(row.produced());
               row.advanceRow();
 
-              std::tie(state, stats) = testee.produceRow(row);
+              std::tie(state, stats) = testee.produceRows(row);
               REQUIRE(state == ExecutionState::WAITING);
               REQUIRE(!row.produced());
 
-              std::tie(state, stats) = testee.produceRow(row);
+              std::tie(state, stats) = testee.produceRows(row);
               REQUIRE(state == ExecutionState::DONE);
               REQUIRE(row.produced());
               row.advanceRow();
 
-              std::tie(state, stats) = testee.produceRow(row);
+              std::tie(state, stats) = testee.produceRows(row);
               REQUIRE(state == ExecutionState::DONE);
               REQUIRE(!row.produced());
             }

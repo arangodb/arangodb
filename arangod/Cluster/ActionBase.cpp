@@ -40,12 +40,13 @@ inline static std::chrono::system_clock::duration secs_since_epoch() {
 }
 
 ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription const& desc)
-    : _feature(feature), _description(desc), _state(READY), _progress(0) {
+    : _feature(feature), _description(desc), _state(READY), _progress(0),
+      _priority(desc.priority()) {
   init();
 }
 
 ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription&& desc)
-    : _feature(feature), _description(std::move(desc)), _state(READY), _progress(0) {
+    : _feature(feature), _description(std::move(desc)), _state(READY), _progress(0), _priority(desc.priority()) {
   init();
 }
 
@@ -64,7 +65,7 @@ void ActionBase::init() {
 ActionBase::~ActionBase() {}
 
 void ActionBase::notify() {
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC("df020", DEBUG, Logger::MAINTENANCE)
       << "Job " << _description << " calling syncDBServerStatusQuo";
   auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");
   if (cf != nullptr) {
@@ -75,7 +76,7 @@ void ActionBase::notify() {
 bool ActionBase::matches(std::unordered_set<std::string> const& labels) const {
   for (auto const& label : labels) {
     if (_labels.find(label) == _labels.end()) {
-      LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+      LOG_TOPIC("e29f1", TRACE, Logger::MAINTENANCE)
           << "Must not run in worker with " << label << ": " << *this;
       return false;
     }
@@ -163,12 +164,12 @@ void ActionBase::endStats() {
 }  // ActionBase::endStats
 
 Result arangodb::actionError(int errorCode, std::string const& errorMessage) {
-  LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
+  LOG_TOPIC("c889d", ERR, Logger::MAINTENANCE) << errorMessage;
   return Result(errorCode, errorMessage);
 }
 
 Result arangodb::actionWarn(int errorCode, std::string const& errorMessage) {
-  LOG_TOPIC(WARN, Logger::MAINTENANCE) << errorMessage;
+  LOG_TOPIC("abe54", WARN, Logger::MAINTENANCE) << errorMessage;
   return Result(errorCode, errorMessage);
 }
 

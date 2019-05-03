@@ -204,6 +204,8 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"MD5", ".", flags, &Functions::Md5});
   add({"SHA1", ".", flags, &Functions::Sha1});
   add({"SHA512", ".", flags, &Functions::Sha512});
+  add({"CRC32", ".", flags, &Functions::Crc32});
+  add({"FNV64", ".", flags, &Functions::Fnv64});
   add({"HASH", ".", flags, &Functions::Hash});
   add({"TO_BASE64", ".", flags, &Functions::ToBase64});
   add({"TO_HEX", ".", flags, &Functions::ToHex});
@@ -413,7 +415,8 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"FIRST_DOCUMENT", ".|+", flags, &Functions::FirstDocument});
   add({"PARSE_IDENTIFIER", ".", flags, &Functions::ParseIdentifier});
   add({"IS_SAME_COLLECTION", ".h,.h", flags, &Functions::IsSameCollection});
-  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable)});  // only native function without a
+  add({"DECODE_REV", ".", flags, &Functions::DecodeRev});
+  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable)});  // only function without a
                                                                             // C++ implementation
 
   // special flags:

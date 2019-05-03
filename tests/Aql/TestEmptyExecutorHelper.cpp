@@ -38,33 +38,23 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-TestEmptyExecutorHelper::TestEmptyExecutorHelper(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher){};
+TestEmptyExecutorHelper::TestEmptyExecutorHelper(Fetcher&, Infos&){};
 TestEmptyExecutorHelper::~TestEmptyExecutorHelper() = default;
 
-std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRow(OutputAqlItemRow &output) {
-  TRI_IF_FAILURE("TestEmptyExecutorHelper::produceRow") {
-     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("TestEmptyExecutorHelper::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   ExecutionState state = ExecutionState::DONE;
   FilterStats stats{};
 
   return {state, stats};
-
-  // will not reach this part of code, it is still here to prevent
-  // a compile warning. We do not want to test the fetcher here. But it
-  // must be included due template scheme.
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
-  std::tie(state, input) = _fetcher.fetchRow();
 }
 
 TestEmptyExecutorHelperInfos::TestEmptyExecutorHelperInfos(
-    RegisterId inputRegister_, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
+    RegisterId inputRegister, RegisterId nrInputRegisters,
+    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
     std::unordered_set<RegisterId> registersToKeep)
-    : ExecutorInfos(
-          std::make_shared<std::unordered_set<RegisterId>>(inputRegister_),
-          nullptr, nrInputRegisters, nrOutputRegisters,
-          std::move(registersToClear),
-          std::move(registersToKeep)),
-      _inputRegister(inputRegister_) {}
+    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(inputRegister),
+                    nullptr, nrInputRegisters, nrOutputRegisters,
+                    std::move(registersToClear), std::move(registersToKeep)) {}

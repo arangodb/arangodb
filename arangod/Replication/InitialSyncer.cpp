@@ -46,6 +46,7 @@ InitialSyncer::~InitialSyncer() {
 void InitialSyncer::startRecurringBatchExtension() {
   TRI_ASSERT(!_state.isChildSyncer);
   if (isAborted()) {
+    _batchPingTimer.reset();
     return;
   }
 
@@ -53,11 +54,19 @@ void InitialSyncer::startRecurringBatchExtension() {
   if (secs < 30) {
     secs = 30;
   }
+        
+  std::weak_ptr<Syncer> self(shared_from_this());
   _batchPingTimer = SchedulerFeature::SCHEDULER->queueDelay(
-      RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs), [this](bool cancelled) {
-        if (!cancelled && _batch.id != 0 && !isAborted()) {
-          _batch.extend(_state.connection, _progress);
-          startRecurringBatchExtension();
+      RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs), [self](bool cancelled) {
+        if (!cancelled) {
+          auto syncer = self.lock();
+          if (syncer) {
+            InitialSyncer* s = static_cast<InitialSyncer*>(syncer.get());
+            if (s->_batch.id != 0 && !s->isAborted()) {
+              s->_batch.extend(s->_state.connection, s->_progress);
+              s->startRecurringBatchExtension();
+            }
+          }
         }
       });
 }

@@ -32,7 +32,8 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 ShortestPathFinder::ShortestPathFinder(ShortestPathOptions& options)
-    : _options(options) {}
+    : _options(options),
+      _httpRequests(0) {}
 
 void ShortestPathFinder::destroyEngines() {
   if (ServerState::instance()->isCoordinator()) {
@@ -48,6 +49,7 @@ void ShortestPathFinder::destroyEngines() {
           "/_internal/traverser/");
 
       for (auto const& it : *ch->engines()) {
+        incHttpRequests(1);
         arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
         std::unordered_map<std::string, std::string> headers;
         auto res = cc->syncRequest(coordTransactionID, "server:" + it.first,
@@ -64,7 +66,7 @@ void ShortestPathFinder::destroyEngines() {
             message += std::string(": ") + res->errorMessage;
           }
 
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << message;
+          LOG_TOPIC("d31a4", ERR, arangodb::Logger::FIXME) << message;
         }
       }
     }

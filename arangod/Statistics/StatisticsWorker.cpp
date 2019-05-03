@@ -156,11 +156,11 @@ void StatisticsWorker::collectGarbage(std::string const& name, double start) con
 
   aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  VPackSlice keysToRemove = queryResult.result->slice();
+  VPackSlice keysToRemove = queryResult.data->slice();
   OperationOptions opOptions;
 
   opOptions.ignoreRevs = true;
@@ -180,7 +180,7 @@ void StatisticsWorker::collectGarbage(std::string const& name, double start) con
   res = trx.finish(result.result);
 
   if (res.fail()) {
-    LOG_TOPIC(WARN, Logger::STATISTICS)
+    LOG_TOPIC("14fa9", WARN, Logger::STATISTICS)
         << "removing outdated statistics failed: " << res.errorMessage();
   }
 }
@@ -243,13 +243,13 @@ void StatisticsWorker::historianAverage() {
       saveSlice(stat15, statistics15Collection);
     }
   } catch (velocypack::Exception const& ex) {
-    LOG_TOPIC(DEBUG, Logger::STATISTICS)
+    LOG_TOPIC("1c429", DEBUG, Logger::STATISTICS)
         << "vpack exception in historian average: " << ex.what();
   } catch (basics::Exception const& ex) {
-    LOG_TOPIC(DEBUG, Logger::STATISTICS)
+    LOG_TOPIC("40480", DEBUG, Logger::STATISTICS)
         << "exception in historian average: " << ex.what();
   } catch (...) {
-    LOG_TOPIC(DEBUG, Logger::STATISTICS)
+    LOG_TOPIC("570d6", DEBUG, Logger::STATISTICS)
         << "unknown exception in historian average";
   }
 }
@@ -281,11 +281,11 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
 
   aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  return queryResult.result;
+  return queryResult.data;
 }
 
 void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
@@ -314,11 +314,11 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
 
   aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  VPackSlice result = queryResult.result->slice();
+  VPackSlice result = queryResult.data->slice();
   uint64_t count = result.length();
 
   builder.clear();
@@ -438,7 +438,7 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
       }
     } catch (std::exception const& ex) {
       // should almost never happen now
-      LOG_TOPIC(WARN, Logger::STATISTICS)
+      LOG_TOPIC("e4102", WARN, Logger::STATISTICS)
           << "caught exception during statistics processing: " << ex.what();
     }
   }
@@ -990,7 +990,7 @@ void StatisticsWorker::saveSlice(VPackSlice const& slice, std::string const& col
   Result res = trx.begin();
 
   if (!res.ok()) {
-    LOG_TOPIC(WARN, Logger::STATISTICS) << "could not start transaction on "
+    LOG_TOPIC("ecdb9", WARN, Logger::STATISTICS) << "could not start transaction on "
                                         << collection << ": " << res.errorMessage();
     return;
   }
@@ -1002,7 +1002,7 @@ void StatisticsWorker::saveSlice(VPackSlice const& slice, std::string const& col
   // result stays valid!
   res = trx.finish(result.result);
   if (res.fail()) {
-    LOG_TOPIC(WARN, Logger::STATISTICS) << "could not commit stats to " << collection
+    LOG_TOPIC("82af5", WARN, Logger::STATISTICS) << "could not commit stats to " << collection
                                         << ": " << res.errorMessage();
   }
 }
@@ -1031,8 +1031,10 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
 
   s.close();
 
-  Result r =
-      methods::Collections::create(&_vocbase, collection, TRI_COL_TYPE_DOCUMENT,
+  auto r = methods::Collections::create(
+    _vocbase, // collection vocbase
+    collection, // collection name
+    TRI_COL_TYPE_DOCUMENT, // collection type
                                    s.slice(), false, true,
                                    [](std::shared_ptr<LogicalCollection> const&) -> void {});
 
@@ -1043,14 +1045,16 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
 
   // check if the collection already existed. this is acceptable too
   if (r.fail() && !r.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
-    LOG_TOPIC(WARN, Logger::STATISTICS)
+    LOG_TOPIC("e32fd", WARN, Logger::STATISTICS)
         << "could not create statistics collection '" << collection
         << "': error: " << r.errorMessage();
   }
 
   // check if the index on the collection must be created
   r = methods::Collections::lookup(
-      &_vocbase, collection, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+    _vocbase, // vocbase to search
+    collection, // collection to find
+    [&](std::shared_ptr<LogicalCollection> const& coll)->void { // callback if found
         TRI_ASSERT(coll);
 
         VPackBuilder t;
@@ -1070,7 +1074,7 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
         Result idxRes = methods::Indexes::ensureIndex(coll.get(), t.slice(), true, output);
 
         if (!idxRes.ok()) {
-          LOG_TOPIC(WARN, Logger::STATISTICS)
+          LOG_TOPIC("7356a", WARN, Logger::STATISTICS)
               << "could not create the skiplist index for statistics "
                  "collection '"
               << collection << "': error: " << idxRes.errorMessage();
@@ -1123,10 +1127,10 @@ void StatisticsWorker::run() {
         historianAverage();
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::STATISTICS)
+      LOG_TOPIC("92a40", WARN, Logger::STATISTICS)
           << "caught exception in StatisticsWorker: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(WARN, Logger::STATISTICS)
+      LOG_TOPIC("9a4f9", WARN, Logger::STATISTICS)
           << "caught unknown exception in StatisticsWorker";
     }
 
