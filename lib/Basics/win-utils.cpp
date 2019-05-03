@@ -282,11 +282,13 @@ char* TRI_GETCWD(char* buffer, int maxlen) {
   char* rc = nullptr;
   wchar_t* rcw;
   int wBufLen = maxlen;
-  wchar_t* wbuf = (wchar_t*)malloc(wBufLen * sizeof(wchar_t));
-  if (wbuf == nullptr) {
+  // wchar_t* wbuf = (wchar_t*)malloc(wBufLen * sizeof(wchar_t));
+  auto wbuf = std::make_unique<wchar_t[]>(wBufLen);
+
+  if (wbuf.get() == nullptr) {
     return nullptr;
   }
-  rcw = ::_wgetcwd(wbuf, wBufLen);
+  rcw = ::_wgetcwd(wbuf.get(), wBufLen);
   if (rcw != nullptr) {
     std::string rcs = fromWString(rcw);
     if (rcs.length() + 1 < maxlen) {
@@ -301,7 +303,6 @@ char* TRI_GETCWD(char* buffer, int maxlen) {
       rc = buffer;
     }
   }
-  free(wbuf);
   return rc;
 }
 
