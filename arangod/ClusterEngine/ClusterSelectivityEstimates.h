@@ -50,7 +50,7 @@ class ClusterSelectivityEstimates {
   // the current estimates, only load and stored using atomic operations
   mutable std::shared_ptr<InternalData> _data;
   // whether or not a thread is currently updating the estimates
-  mutable std::atomic<bool> _updating;
+  std::atomic_flag _updating;
 
   static constexpr double defaultTtl = 90.0;
   static constexpr double systemCollectionTtl = 900.0;
