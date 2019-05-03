@@ -321,8 +321,13 @@ function availableJson (matchEngine) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var update = function () {
-  var url = utils.buildGithubUrl(getFishbowlUrl());
-  var filename = fs.getTempFile('bundles', false);
+  let url = utils.buildGithubUrl(getFishbowlUrl());
+  let filename = fs.getTempFile('bundles', false);
+  let internal = require('internal');
+    
+  if (internal.isFoxxStoreDisabled && internal.isFoxxStoreDisabled()) {
+    throw new Error('Foxx store is disabled in configuration');
+  }
 
   try {
     var result = download(url, '', {

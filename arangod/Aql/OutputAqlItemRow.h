@@ -217,6 +217,8 @@ class OutputAqlItemRow {
   /*
    * @brief Returns the number of rows left. *Always* includes the current row,
    *        whether it was already written or not!
+   *        NOTE that we later want to replace this with some "atMost" value
+   *        passed from ExecutionBlockImpl.
    */
   size_t numRowsLeft() const { return block().size() - _baseIndex; }
 
@@ -319,8 +321,48 @@ class OutputAqlItemRow {
     return *_block;
   }
 
-  void doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing);
+  inline void doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing);
 };
+
+
+void OutputAqlItemRow::doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing) {
+  // Note that _lastSourceRow is invalid right after construction. However, when
+  // _baseIndex > 0, then we must have seen one row already.
+  TRI_ASSERT(!_doNotCopyInputRow);
+  TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
+  bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
+
+  if (mustClone) {
+    for (auto itemId : registersToKeep()) {
+      TRI_ASSERT(sourceRow.isInitialized());
+      if (ignoreMissing && itemId >= sourceRow.getNrRegisters()) {
+        continue;
+      }
+      auto const& value = sourceRow.getValue(itemId);
+      if (!value.isEmpty()) {
+        AqlValue clonedValue = value.clone();
+        AqlValueGuard guard(clonedValue, true);
+
+        TRI_IF_FAILURE("OutputAqlItemRow::copyRow") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        block().setValue(_baseIndex, itemId, clonedValue);
+        guard.steal();
+      }
+    }
+  } else {
+    TRI_ASSERT(_baseIndex > 0);
+    block().copyValuesFromRow(_baseIndex, registersToKeep(), _lastBaseIndex);
+  }
+
+  _lastBaseIndex = _baseIndex;
+  _inputRowCopied = true;
+  _lastSourceRow = sourceRow;
+}
 
 }  // namespace aql
 

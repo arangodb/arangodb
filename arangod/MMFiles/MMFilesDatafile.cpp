@@ -1718,7 +1718,7 @@ DatafileScan MMFilesDatafile::scanHelper() {
 
     if (ok) {
       if (type == TRI_DF_MARKER_VPACK_DOCUMENT || type == TRI_DF_MARKER_VPACK_REMOVE) {
-        VPackSlice const slice(reinterpret_cast<char const*>(marker) +
+        VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) +
                                MMFilesDatafileHelper::VPackOffset(type));
         TRI_ASSERT(slice.isObject());
         try {

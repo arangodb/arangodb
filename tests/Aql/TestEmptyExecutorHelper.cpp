@@ -41,8 +41,8 @@ using namespace arangodb::aql;
 TestEmptyExecutorHelper::TestEmptyExecutorHelper(Fetcher&, Infos&){};
 TestEmptyExecutorHelper::~TestEmptyExecutorHelper() = default;
 
-std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("TestEmptyExecutorHelper::produceRow") {
+std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("TestEmptyExecutorHelper::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   ExecutionState state = ExecutionState::DONE;

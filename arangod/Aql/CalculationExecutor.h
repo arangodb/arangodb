@@ -104,7 +104,7 @@ class CalculationExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  inline std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  inline std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
     TRI_ASSERT(false);
@@ -187,7 +187,7 @@ inline void CalculationExecutor<CalculationType::Reference>::doEvaluation(
 
 template <CalculationType calculationType>
 inline std::pair<ExecutionState, typename CalculationExecutor<calculationType>::Stats>
-CalculationExecutor<calculationType>::produceRow(OutputAqlItemRow& output) {
+CalculationExecutor<calculationType>::produceRows(OutputAqlItemRow& output) {
   ExecutionState state;
   InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
   std::tie(state, row) = _fetcher.fetchRow();

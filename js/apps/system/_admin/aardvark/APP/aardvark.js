@@ -88,7 +88,8 @@ router.get('/config.js', function (req, res) {
       ldapEnabled: ldapEnabled,
       isCluster: cluster.isCluster(),
       engine: db._engine().name,
-      statisticsEnabled: internal.enabledStatistics()
+      statisticsEnabled: internal.enabledStatistics(),
+      disableFoxxStore: internal.isFoxxStoreDisabled(),
     })}`
   );
 })

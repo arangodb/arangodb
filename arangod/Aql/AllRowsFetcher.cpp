@@ -23,7 +23,7 @@
 #include "AllRowsFetcher.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/BlockFetcher.h"
+#include "Aql/DependencyProxy.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SortExecutor.h"
 
@@ -81,18 +81,18 @@ std::pair<ExecutionState, size_t> AllRowsFetcher::preFetchNumberOfRows(size_t) {
   return {ExecutionState::DONE, _aqlItemMatrix->size()};
 }
 
-AllRowsFetcher::AllRowsFetcher(BlockFetcher<false>& executionBlock)
-    : _blockFetcher(&executionBlock),
+AllRowsFetcher::AllRowsFetcher(DependencyProxy<false>& executionBlock)
+    : _dependencyProxy(&executionBlock),
       _aqlItemMatrix(nullptr),
       _upstreamState(ExecutionState::HASMORE),
       _blockToReturnNext(0) {}
 
 RegisterId AllRowsFetcher::getNrInputRegisters() const {
-  return _blockFetcher->getNrInputRegisters();
+  return _dependencyProxy->getNrInputRegisters();
 }
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlock() {
-  auto res = _blockFetcher->fetchBlock();
+  auto res = _dependencyProxy->fetchBlock();
 
   _upstreamState = res.first;
 

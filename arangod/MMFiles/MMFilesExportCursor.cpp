@@ -101,7 +101,7 @@ Result MMFilesExportCursor::dumpSync(VPackBuilder& builder) {
         break;
       }
 
-      VPackSlice const slice(reinterpret_cast<char const*>(_ex->_vpack.at(_position++)));
+      VPackSlice const slice(reinterpret_cast<uint8_t const*>(_ex->_vpack.at(_position++)));
 
       builder.openObject();
 

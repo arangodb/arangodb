@@ -260,7 +260,10 @@ SECTION("test_normalize") {
 
   // analyzer single-server
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"analyzers\": [ { \"name\": \"testAnalyzer0\", \"type\": \"identity\" } ] }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \
+      \"analyzerDefinitions\": [ { \"name\": \"testAnalyzer0\", \"type\": \"identity\" } ], \
+      \"analyzers\": [\"testAnalyzer0\" ] \
+    }");
     arangodb::velocypack::Builder builder;
     builder.openObject();
     CHECK((false == arangodb::iresearch::IResearchLinkHelper::normalize(builder, json->slice(), false, *sysVocbase).ok()));
@@ -269,7 +272,10 @@ SECTION("test_normalize") {
 
   // analyzer single-server (inRecovery) fail persist in recovery
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"analyzers\": [ { \"name\": \"testAnalyzer1\", \"type\": \"identity\" } ] }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \
+      \"analyzerDefinitions\": [ { \"name\": \"testAnalyzer1\", \"type\": \"identity\" } ], \
+      \"analyzers\": [\"testAnalyzer1\" ] \
+    }");
     auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
@@ -281,7 +287,10 @@ SECTION("test_normalize") {
 
   // analyzer single-server (no engine) fail persist if not storage engine, else SEGFAULT in Methods(...)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"analyzers\": [ { \"name\": \"testAnalyzer2\", \"type\": \"identity\" } ] }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \
+      \"analyzerDefinitions\": [ { \"name\": \"testAnalyzer2\", \"type\": \"identity\" } ], \
+      \"analyzers\": [\"testAnalyzer2\" ] \
+    }");
     auto* before = arangodb::EngineSelectorFeature::ENGINE;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
     auto restore = irs::make_finally([&before]()->void { arangodb::EngineSelectorFeature::ENGINE = before; });
@@ -293,7 +302,10 @@ SECTION("test_normalize") {
 
   // analyzer coordinator
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"analyzers\": [ { \"name\": \"testAnalyzer3\", \"type\": \"identity\" } ] }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \
+      \"analyzerDefinitions\": [ { \"name\": \"testAnalyzer3\", \"type\": \"identity\" } ], \
+      \"analyzers\": [\"testAnalyzer3\" ] \
+    }");
     auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
     auto serverRoleRestore = irs::make_finally([&serverRoleBefore]()->void { arangodb::ServerState::instance()->setRole(serverRoleBefore); });
@@ -305,7 +317,10 @@ SECTION("test_normalize") {
 
   // analyzer coordinator (inRecovery) fail persist in recovery
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"analyzers\": [ { \"name\": \"testAnalyzer5\", \"type\": \"identity\" } ] }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \
+      \"analyzerDefinitions\": [ { \"name\": \"testAnalyzer5\", \"type\": \"identity\" } ], \
+      \"analyzers\": [\"testAnalyzer5\" ] \
+     }");
     auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
     auto serverRoleRestore = irs::make_finally([&serverRoleBefore]()->void { arangodb::ServerState::instance()->setRole(serverRoleBefore); });
@@ -314,13 +329,16 @@ SECTION("test_normalize") {
     auto restore = irs::make_finally([&inRecoveryBefore]()->void { StorageEngineMock::inRecoveryResult = inRecoveryBefore; });
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    CHECK((false == arangodb::iresearch::IResearchLinkHelper::normalize(builder, json->slice(), false, *sysVocbase).ok()));
+    CHECK((true == arangodb::iresearch::IResearchLinkHelper::normalize(builder, json->slice(), false, *sysVocbase).ok()));
     CHECK((true == !analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer5")));
   }
 
   // analyzer coordinator (no engine)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"analyzers\": [ { \"name\": \"testAnalyzer6\", \"type\": \"identity\" } ] }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \
+      \"analyzerDefinitions\": [ { \"name\": \"testAnalyzer6\", \"type\": \"identity\" } ], \
+      \"analyzers\": [\"testAnalyzer6\" ] \
+    }");
     auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
     auto serverRoleRestore = irs::make_finally([&serverRoleBefore]()->void { arangodb::ServerState::instance()->setRole(serverRoleBefore); });
@@ -335,7 +353,10 @@ SECTION("test_normalize") {
 
   // analyzer db-server
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"analyzers\": [ { \"name\": \"testAnalyzer7\", \"type\": \"identity\" } ] }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \
+      \"analyzerDefinitions\": [ { \"name\": \"testAnalyzer7\", \"type\": \"identity\" } ], \
+      \"analyzers\": [\"testAnalyzer7\" ] \
+    }");
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
     auto serverRoleRestore = irs::make_finally([&before]()->void { arangodb::ServerState::instance()->setRole(before); });

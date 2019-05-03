@@ -23,7 +23,7 @@
 #include "Aql/ConstFetcher.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/BlockFetcher.h"
+#include "Aql/DependencyProxy.h"
 #include "Aql/FilterExecutor.h"
 #include "ConstFetcher.h"
 
@@ -32,7 +32,7 @@ using namespace arangodb::aql;
 
 ConstFetcher::ConstFetcher() : _currentBlock{nullptr}, _rowIndex(0) {}
 
-ConstFetcher::ConstFetcher(BlockFetcher& executionBlock)
+ConstFetcher::ConstFetcher(DependencyProxy& executionBlock)
     : _currentBlock{nullptr}, _rowIndex(0) {}
 
 void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block) {

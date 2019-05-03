@@ -34,6 +34,7 @@
 #include "Transaction/V8Context.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8DealerFeature.h"
@@ -232,8 +233,9 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
   {
     ISOLATE;
     bool throwV8Exception = (isolate != nullptr);
-    V8ContextDealerGuard dealerGuard(res, isolate, &vocbase, true /*allowModification*/
-    );
+   
+    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestrictedContext();
+    V8ConditionalContextGuard contextGuard(res, isolate, &vocbase, securityContext);
 
     if (res.fail()) {
       return res;

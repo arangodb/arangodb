@@ -95,27 +95,24 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   void start() override final;
   void stop() override final;
   void unprepare() override final;
-
- private:
-  double _keepAliveTimeout = 300.0;
-  bool _allowMethodOverride;
-
-  bool _proxyCheck;
-  std::vector<std::string> _trustedProxies;
-  std::vector<std::string> _accessControlAllowOrigins;
-
- public:
+ 
   bool proxyCheck() const { return _proxyCheck; }
   std::vector<std::string> trustedProxies() const { return _trustedProxies; }
-
+ 
  private:
   void buildServers();
   void defineHandlers();
 
+ private:
+  double _keepAliveTimeout = 300.0;
+  bool _allowMethodOverride;
+  bool _proxyCheck;
+  std::vector<std::string> _trustedProxies;
+  std::vector<std::string> _accessControlAllowOrigins;
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::unique_ptr<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> _combinedRegistries;
-  std::vector<rest::GeneralServer*> _servers;
+  std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
   uint64_t _numIoThreads;
 };
 

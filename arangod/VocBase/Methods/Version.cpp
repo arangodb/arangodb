@@ -144,7 +144,7 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
   return res;
 }
 
-Result Version::write(TRI_vocbase_t* vocbase, std::map<std::string, bool> tasks, bool sync) {
+Result Version::write(TRI_vocbase_t* vocbase, std::map<std::string, bool> const& tasks, bool sync) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
 

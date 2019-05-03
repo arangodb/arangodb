@@ -51,14 +51,6 @@ class JSLoader : public ScriptLoader {
 
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief executes a named script in the global context
-  //////////////////////////////////////////////////////////////////////////////
-
-  v8::Handle<v8::Value> executeGlobalScript(v8::Isolate* isolate,
-                                            v8::Handle<v8::Context> context,
-                                            std::string const& name);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief loads a named script, if the builder pointer is not nullptr the
   /// returned result will be written there as vpack
   //////////////////////////////////////////////////////////////////////////////
