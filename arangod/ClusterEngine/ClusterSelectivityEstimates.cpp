@@ -31,15 +31,15 @@ using namespace arangodb;
       
 ClusterSelectivityEstimates::ClusterSelectivityEstimates(LogicalCollection& collection)
     : _collection(collection),
-      _updating(false) {}
+      _updating(ATOMIC_FLAG_INIT) {}
 
 void ClusterSelectivityEstimates::flush() {
-  while (_updating.exchange(true)) {
+  while (_updating.test_and_set()) {
     std::this_thread::yield();
   }
 
   auto guard = scopeGuard([this]() {
-    _updating.store(false);
+    _updating.clear();
   });
   
   std::atomic_store<InternalData>(&_data, std::shared_ptr<InternalData>());
@@ -64,9 +64,9 @@ IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating, TRI_voc_tid_t t
       }
 
       // only one thread is allow to fetch at any given time
-      if (!_updating.exchange(true)) {
+      if (!_updating.test_and_set()) {
         auto guard = scopeGuard([this]() {
-          _updating.store(false);
+          _updating.clear();
         });
 
         // must fetch estimates from coordinator
