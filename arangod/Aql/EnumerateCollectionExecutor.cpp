@@ -94,7 +94,9 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                        " did not come into sync in time (" +
                                        std::to_string(maxWait) + ")");
   }
-  this->setProducingFunction(buildCallback<false>(_documentProducingFunctionContext));
+  if (_infos.getProduceResult()) {
+    this->setProducingFunction(buildCallback<false>(_documentProducingFunctionContext));
+  }
 }
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
