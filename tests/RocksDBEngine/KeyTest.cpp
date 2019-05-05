@@ -678,7 +678,6 @@ TEST_CASE("RocksDBKeyBoundsTest Big-Endian", "[rocksdb][keybounds]") {
   
   /// @brief test hash index with prefix over indexed slice
   SECTION("test_hash_index") {
-    
     VPackBuilder lower;
     lower(VPackValue(VPackValueType::Array))(VPackValue("a"))();
     VPackBuilder higher;
@@ -707,14 +706,16 @@ TEST_CASE("RocksDBKeyBoundsTest Big-Endian", "[rocksdb][keybounds]") {
     CHECK(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()) == 0);
     CHECK(prefixBegin.data()[0] == '\0');
     CHECK(prefixEnd.data()[0] == '\0');
-    CHECK(prefixBegin.data()[prefixBegin.size()-1] == '\x01');
-    CHECK(prefixEnd.data()[prefixBegin.size()-1] == '\x01');
+    CHECK(prefixBegin.data()[prefixBegin.size() - 2] == '\x00');
+    CHECK(prefixBegin.data()[prefixBegin.size() - 1] == '\x01');
+    CHECK(prefixEnd.data()[prefixBegin.size() - 2] == '\x00');
+    CHECK(prefixEnd.data()[prefixBegin.size() - 1] == '\x02');
     
     // prefix is just object id
     auto cmp = std::make_unique<RocksDBVPackComparator>();
-    CHECK(cmp->Compare(prefixBegin, prefixEnd) == 0);
+    CHECK(cmp->Compare(prefixBegin, prefixEnd) < 0);
     CHECK(cmp->Compare(prefixBegin, key1.string()) < 0);
-    CHECK(cmp->Compare(prefixEnd, key1.string()) < 0);
+    CHECK(cmp->Compare(prefixEnd, key1.string()) > 0);
     
     CHECK(cmp->Compare(key1.string(), key2.string()) < 0);
     CHECK(cmp->Compare(key2.string(), key3.string()) < 0);

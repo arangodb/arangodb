@@ -189,7 +189,7 @@ void VPackFeature::start() {
       return;
     }
 
-    slice = VPackSlice(s.data());
+    slice = VPackSlice(reinterpret_cast<uint8_t const*>(s.data()));
   }
 
   VPackBuffer<char> buffer(4096);

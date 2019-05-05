@@ -391,7 +391,7 @@ class RocksDBFlushMarker {
 
     _databaseId = arangodb::rocksutils::uint64FromPersistent(ptr);
     ptr += sizeof(uint64_t);
-    _slice = arangodb::velocypack::Slice(ptr);
+    _slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(ptr));
 
     if (_slice.byteSize() != size_t(end - ptr)) {
       THROW_ARANGO_EXCEPTION(arangodb::Result( // exception

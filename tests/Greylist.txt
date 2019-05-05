@@ -5,6 +5,50 @@ greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 
 
+- `tests/js/server/recovery/view-arangosearch-link-populate-transaction.js`
+
+  * Test "recovery_3"
+    [FAILED]  tests/js/server/recovery/view-arangosearch-link-populate-transaction.js
+
+      "test" failed: unable to run recovery test tests/js/server/recovery/view-arangosearch-link-populate-transaction.js
+
+   Suites failed: 1 Tests Failed: 1
+
+- `tests/js/client/resilience/foxxmaster.js` started to fail again
+
+    [FAILED]  tests/js/client/resilience/foxxmaster.js
+
+      "testQueueFailover" failed: Error: Supervision should have moved the Foxx queues and Foxx queues should have been started to run on a new coordinator - Error: Supervision should have moved the Foxx queues and Foxx queues should have been started to run on a new coordinator
+    at Object.testQueueFailover (/work/ArangoDB/tests/js/client/resilience/foxxmaster.js:196:15)
+    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:532:23)
+    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:195:24)
+    at /work/ArangoDB/tests/js/client/resilience/foxxmaster.js:263:9
+    at /work/ArangoDB/tests/js/client/resilience/foxxmaster.js:266:3
+    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:275:12)
+    at /work/ArangoDB/js/common/modules/@arangodb/testrunner.js:47:13
+    at arrayEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:516:11)
+    at Function.forEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:9344:14)
+    at runJSUnityTests (/work/ArangoDB/js/common/modules/@arangodb/testrunner.js:38:5)
+
+
+- `tests/js/server/recovery/view-arangosearch-link-populate-transaction-no-flushthread.js` started to fail again
+
+    [FAILED]  tests/js/server/recovery/view-arangosearch-link-populate-transaction-no-flushthread.js
+
+      "test" failed: unable to run recovery test tests/js/server/recovery/view-arangosearch-link-populate-transaction-no-flushthread.js
+
+- `tests/js/server/recovery/view-arangosearch-link-populate-no-callbacks.js` - fails
+
+    2019-05-02T10:23:35Z [25095] S INFO [b1bb8] {engines} replaying WAL logfile '/work/tmp/arangosh_EgJGCj/crashtmp/28/datadb/journals/logfile-62.db' (1 of 1)
+    2019-05-02T10:23:35Z [25095] S ERROR [77be6] {engines} failed to instantiate index, error: 1000 failed to find checkpoint file matching the latest data store state for arangosearch link '54', expecting file 'seg
+    ments_2.checkpoint' in path: /work/tmp/arangosh_EgJGCj/crashtmp/28/datadb/databases/database-1/arangosearch-47_54
+    2019-05-02T10:23:35Z [25095] S ERROR [baec2] {engines} index creation failed while restoring
+    2019-05-02T10:23:35Z [25095] S ERROR [b092e] caught exception while opening collection 'UnitTestsRecoveryDummy': cannot initialize collection indexes: index creation failed
+    2019-05-02T10:23:35Z [25095] S WARNING [d765d] {engines} unable to open collection 47. Please check the logs above for errors.
+    2019-05-02T10:23:35Z [25095] S WARNING [42c11] {engines} unable to insert document in collection 47 of database 1: corrupted collection
+    2019-05-02T10:23:35Z [25095] S WARNING [b3dd6] {engines} WAL inspection failed when scanning logfile '/work/tmp/arangosh_EgJGCj/crashtmp/28/datadb/journals/logfile-62.db'
+    2019-05-02T10:23:35Z [25095] S FATAL [c6422] {engines} unable to finish WAL recovery: logfile recovery error
+
 - `tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js`
 
     [FAILED]  tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js

@@ -55,7 +55,10 @@ class Manager final {
   static constexpr double tombstoneTTL = 5.0 * 60.0;  // 5 minutes
 
  public:
-  explicit Manager(bool keepData) : _keepTransactionData(keepData), _nrRunning(0) {}
+  explicit Manager(bool keepData)
+    : _keepTransactionData(keepData),
+      _nrRunning(0),
+      _disallowInserts(false) {}
 
  public:
   typedef std::function<void(TRI_voc_tid_t, TransactionData const*)> TrxCallback;
@@ -82,6 +85,10 @@ class Manager final {
   uint64_t getActiveTransactionCount();
   
  public:
+  
+  void disallowInserts() {
+    _disallowInserts.store(true, std::memory_order_release);
+  }
   
   /// @brief register a AQL transaction
   void registerAQLTrx(TransactionState*);
@@ -171,6 +178,8 @@ private:
 
   /// Nr of running transactions
   std::atomic<uint64_t> _nrRunning;
+  
+  std::atomic<bool> _disallowInserts;
 };
 }  // namespace transaction
 }  // namespace arangodb

@@ -54,7 +54,7 @@ void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder,
   TRI_ASSERT(!empty());
   if (_vpack == nullptr) { // managed
     TRI_ASSERT(!_string.empty());
-    builder.add(VPackSlice(_string.data()));
+    builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(_string.data())));
   } else {
     if (allowExternals) {
       builder.addExternal(_vpack);
