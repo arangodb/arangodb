@@ -24,10 +24,14 @@
 
 #include "GeneralServer.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/exitcodes.h"
+#include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointList.h"
 #include "GeneralServer/GeneralDefinitions.h"
 #include "GeneralServer/GeneralListenTask.h"
+#include "GeneralServer/SocketTask.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -41,6 +45,22 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 GeneralServer::GeneralServer(uint64_t numIoThreads)
     : _numIoThreads(numIoThreads), _contexts(numIoThreads) {}
+
+GeneralServer::~GeneralServer() {}
+  
+void GeneralServer::registerTask(std::shared_ptr<rest::SocketTask> const& task) {
+  if (application_features::ApplicationServer::isStopping()) {
+    // TODO: throw?
+    return;
+  }
+  MUTEX_LOCKER(locker, _tasksLock);
+  _commTasks.emplace(task->id(), task);
+}
+
+void GeneralServer::unregisterTask(uint64_t id) {
+  MUTEX_LOCKER(locker, _tasksLock);
+  _commTasks.erase(id);
+}
 
 void GeneralServer::setEndpointList(EndpointList const* list) {
   _endpointList = list;
@@ -71,8 +91,15 @@ void GeneralServer::startListening() {
 }
 
 void GeneralServer::stopListening() {
-  for (auto& task : _tasks) {
+  for (auto& task : _listenTasks) {
     task->stop();
+  }
+  
+  // close connections of all socket tasks so the tasks will
+  // eventually shut themselves down
+  MUTEX_LOCKER(lock, _tasksLock);
+  for (auto& task : _commTasks) {
+    task.second->closeStream();
   }
 }
 
@@ -81,7 +108,16 @@ void GeneralServer::stopWorking() {
     context.stop();
   }
   
-  _tasks.clear();
+  _listenTasks.clear();
+
+  while (true) {
+    MUTEX_LOCKER(lock, _tasksLock);
+    if (_commTasks.empty()) {
+      break;
+    }
+    LOG_DEVEL << "waiting for " << _commTasks.size() << " to shut down";
+    std::this_thread::sleep_for(std::chrono::microseconds(5));
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -98,7 +134,7 @@ bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
   }
 
   auto task = std::make_shared<GeneralListenTask>(*this, ioContext, endpoint, protocolType);
-  _tasks.emplace_back(task);
+  _listenTasks.emplace_back(task);
 
   return task->start();
 }

@@ -44,6 +44,7 @@ class ConnectionStatistics;
 namespace rest {
 class SocketTask : public IoTask {
   friend class HttpCommTask;
+  friend class GeneralServer;
 
   explicit SocketTask(SocketTask const&) = delete;
   SocketTask& operator=(SocketTask const&) = delete;

@@ -194,7 +194,6 @@ void SocketTask::closeStream() {
   // strand::dispatch may execute this immediately if this
   // is called on a thread inside the same strand
   auto self = shared_from_this();
-
   _peer->post([self, this] { closeStreamNoLock(); });
 }
 
@@ -217,6 +216,8 @@ void SocketTask::closeStreamNoLock() {
   _closeRequested.store(false, std::memory_order_release);
   _keepAliveTimer->cancel();
   _keepAliveTimerActive.store(false, std::memory_order_relaxed);
+  
+  _server.unregisterTask(this->id());
 }
 
 // -----------------------------------------------------------------------------

@@ -300,6 +300,9 @@ bool HttpCommTask::processRead(double startTime) {
                                         std::move(_connectionInfo),
                                         GeneralServerFeature::keepAliveTimeout(), protocolVersion,
                                         /*skipSocketInit*/ true);
+  
+      _server.registerTask(commTask);
+
       commTask->addToReadBuffer(_readBuffer.c_str() + 11, _readBuffer.length() - 11);
       commTask->processAll();
       commTask->start();

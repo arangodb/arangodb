@@ -27,15 +27,17 @@
 #define ARANGOD_HTTP_SERVER_HTTP_SERVER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Basics/asio_ns.h"
-#include "Endpoint/Endpoint.h"
 
 namespace arangodb {
+class Endpoint;
 class EndpointList;
 
 namespace rest {
 class GeneralListenTask;
+class SocketTask;
 
 class GeneralServer {
   GeneralServer(GeneralServer const&) = delete;
@@ -43,8 +45,11 @@ class GeneralServer {
 
  public:
   explicit GeneralServer(uint64_t numIoThreads);
+  ~GeneralServer();
 
  public:
+  void registerTask(std::shared_ptr<rest::SocketTask> const&);
+  void unregisterTask(uint64_t id);
   void setEndpointList(EndpointList const* list);
   void startListening();
   void stopListening();
@@ -140,9 +145,12 @@ class GeneralServer {
   friend class IoContext;
 
   uint64_t const _numIoThreads;
-  std::vector<std::shared_ptr<rest::GeneralListenTask>> _tasks;
   std::vector<IoContext> _contexts;
   EndpointList const* _endpointList = nullptr;
+
+  Mutex _tasksLock;
+  std::vector<std::shared_ptr<rest::GeneralListenTask>> _listenTasks;
+  std::unordered_map<uint64_t, std::shared_ptr<rest::SocketTask>> _commTasks;
 };
 }  // namespace rest
 }  // namespace arangodb

@@ -47,6 +47,8 @@ class IoTask : public std::enable_shared_from_this<IoTask> {
   char const* name() const { return _name; }
 #endif
 
+  uint64_t id() const { return _taskId; }
+
  protected:
   GeneralServer::IoContext& _context;
   GeneralServer& _server;
